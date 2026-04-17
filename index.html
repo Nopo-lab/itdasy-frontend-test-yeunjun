@@ -891,11 +891,6 @@
       <input type="range" id="reviewScale" min="15" max="80" value="40" oninput="updateReviewScale(this.value)" style="flex:1;">
       <span id="reviewScaleVal" style="color:#fff; font-size:12px; width:36px; text-align:right;">40%</span>
     </div>
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
-      <span style="color:#fff; font-size:12px; width:50px;">투명도</span>
-      <input type="range" id="reviewOpacity" min="10" max="100" value="100" oninput="updateReviewOpacity(this.value)" style="flex:1;">
-      <span id="reviewOpacityVal" style="color:#fff; font-size:12px; width:36px; text-align:right;">100%</span>
-    </div>
     <div style="color:rgba(255,255,255,0.6); font-size:11px; text-align:center;">드래그로 위치 이동</div>
   </div>
 </div>
@@ -908,7 +903,13 @@
 <script src="app-caption.js"></script>
 <script src="app-portfolio.js"></script>
 <script src="app-ai.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/index.umd.js"></script>
 <script src="app-gallery.js"></script>
+<script src="app-gallery-bg.js"></script>
+<script src="app-gallery-element.js"></script>
+<script src="app-gallery-review.js"></script>
+<script src="app-gallery-write.js"></script>
+<script src="app-gallery-finish.js"></script>
 <script src="app-persona.js"></script>
 <script type="module" src="components/persona-popup.js"></script>
 
