@@ -15,9 +15,12 @@
 | 항목 | URL |
 |---|---|
 | **프론트엔드 (운영)** | https://nopo-lab.github.io/itdasy-frontend |
-| **프론트엔드 (테스트)** | https://nopo-lab.github.io/itdasy-frontend-test |
-| **백엔드 API** | https://itdasy260417-production.up.railway.app |
-| **헬스체크** | https://itdasy260417-production.up.railway.app/health |
+| **프론트엔드 (테스트-원영)** | https://nopo-lab.github.io/itdasy-frontend-test |
+| **프론트엔드 (테스트-연준, 이 레포)** | https://nopo-lab.github.io/itdasy-frontend-test-yeunjun |
+| **운영 백엔드 API** | https://itdasy260417-production.up.railway.app |
+| **스테이징 백엔드 API (이 레포가 연결됨)** | https://itdasy260417-staging-production.up.railway.app |
+| **스테이징 API 문서 (Swagger)** | https://itdasy260417-staging-production.up.railway.app/docs |
+| **스테이징 헬스체크** | https://itdasy260417-staging-production.up.railway.app/health |
 
 ## 테스트 계정
 

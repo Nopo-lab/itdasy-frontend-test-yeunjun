@@ -1,7 +1,9 @@
 // Itdasy Studio - Core (설정, 인증, 유틸, 탭, 온보딩)
 
 // ===== 백엔드 설정 =====
-const PROD_API = 'https://itdasy260417-production.up.railway.app';
+// 이 레포(itdasy-frontend-test-yeunjun)는 연준 스테이징 전용 → 스테이징 백엔드 바라봄
+// 운영 레포(itdasy-frontend)는 프로덕션 백엔드(itdasy260417-production)를 사용해야 함
+const PROD_API = 'https://itdasy260417-staging-production.up.railway.app';
 const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:8000'
   : PROD_API;
