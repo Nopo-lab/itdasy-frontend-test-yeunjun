@@ -778,10 +778,19 @@ window.authHeader = authHeader;
       card.addEventListener('click', () => selectPlan(card.dataset.plan));
     });
 
-    // 예약 발행 팝업
+    // 예약 발행 팝업 (설정 시트 내 진입점)
     on('openScheduledBtn', () => {
       if (typeof closeSettings === 'function') closeSettings();
       if (typeof openScheduledPopup === 'function') openScheduledPopup();
+    });
+    // 하단 nav 예약 탭 — 탭 전환 대신 팝업 오픈 방식 (상시 접근)
+    on('schedNavBtn', () => {
+      if (typeof openScheduledPopup === 'function') openScheduledPopup();
+    });
+
+    // 홈의 "샘플 캡션 보기" 버튼 (연동 전 체험)
+    on('sampleBtn', () => {
+      if (typeof openSamplePopup === 'function') openSamplePopup();
     });
 
     // 통계 카드 Pro 업그레이드 버튼

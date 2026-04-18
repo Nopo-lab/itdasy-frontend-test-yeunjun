@@ -990,16 +990,22 @@ function _renderCaptionActionBar(caption, hashtags) {
 
   actionBar.style.display = 'block';
   actionBar.innerHTML = `
-    <!-- 재생성 옵션 4종 (Apple HIG 44pt 보장) -->
+    <!-- 재생성 옵션 4종 (Apple HIG 44pt 보장) + 첫 사용 툴팁 -->
     <div style="background:rgba(241,128,145,0.06);border:1.5px solid rgba(241,128,145,0.2);border-radius:14px;padding:12px;margin-bottom:10px;">
-      <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px;">마음에 안 드시면 다시 써드릴게요</div>
+      <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px;">마음에 안 드시면 다시 써드릴게요 <span style="color:var(--text3);font-weight:500;">· 각 버튼 누르면 조건만 바꿔 재생성</span></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-        <button onclick="regenerateCaption({})" style="${_btnBase}">🔄 다시 생성</button>
-        <button onclick="regenerateCaption({length_tier:'short'})" style="${_btnBase}">📏 더 짧게</button>
-        <button onclick="regenerateCaption({length_tier:'long'})" style="${_btnBase}">📖 더 길게</button>
-        <button onclick="regenerateCaption({tone_override:'ornate'})" style="${_btnBase}">💕 더 친근하게</button>
+        <button onclick="regenerateCaption({})" title="같은 조건으로 한 번 더 생성" style="${_btnBase}">🔄 다시 생성</button>
+        <button onclick="regenerateCaption({length_tier:'short'})" title="1~2문장으로 압축" style="${_btnBase}">📏 더 짧게</button>
+        <button onclick="regenerateCaption({length_tier:'long'})" title="상세 설명·스토리 포함" style="${_btnBase}">📖 더 길게</button>
+        <button onclick="regenerateCaption({tone_override:'ornate'})" title="이모지·감탄사 풍성하게" style="${_btnBase}">💕 더 친근하게</button>
       </div>
+      ${localStorage.getItem('_regen_hint_shown') ? '' : `
+      <div id="_regenFirstHint" style="margin-top:10px;padding:8px 10px;background:#fff5f7;border-radius:8px;font-size:11px;color:var(--accent);display:flex;align-items:center;gap:6px;">
+        <span>💡 각 버튼 <b>꾹 누르면</b> 뭘 바꾸는지 설명 뜹니다</span>
+      </div>
+      `}
     </div>
+    <script>if(!localStorage.getItem('_regen_hint_shown')){localStorage.setItem('_regen_hint_shown','1');setTimeout(()=>{const e=document.getElementById('_regenFirstHint');if(e)e.style.display='none';},8000);}</script>
 
     <div style="background:rgba(76,175,80,0.08);border:1.5px solid rgba(76,175,80,0.25);border-radius:14px;padding:14px;margin-bottom:10px;">
       <div style="font-size:12px;font-weight:700;color:#388e3c;margin-bottom:10px;">✅ 캡션 생성 완료!</div>

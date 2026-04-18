@@ -174,6 +174,7 @@
   <button class="nav-btn" onclick="showTab('caption',this); initCaptionSlotPicker(); if(typeof renderCaptionKeywordTags==='function')renderCaptionKeywordTags();" aria-label="글쓰기 탭">글쓰기</button>
   <button class="nav-btn" onclick="showTab('ai-suggest',this); initAiRecommendTab()" aria-label="AI 추천 탭">AI추천</button>
   <button class="nav-btn" onclick="showTab('finish',this); initFinishTab()" aria-label="마무리 탭">마무리</button>
+  <button class="nav-btn" id="schedNavBtn" aria-label="예약 발행 탭">예약 🗓️</button>
   <button class="nav-btn" style="display:none" onclick="showTab('persona',this); initPersonaTab()" aria-label="페르소나 탭">페르소나</button>
 </div>
 
@@ -207,6 +208,7 @@
       <div class="hc-title">인스타 연동 (선택)</div>
       <div class="hc-desc">연동하면 <b>내 말투 그대로</b> 피드를 써드려요<br><span style="font-size:12px; color:var(--text3);">연동 없이도 AI 캡션·누끼 편집은 전부 사용 가능</span></div>
       <button class="hc-btn-primary" onclick="connectInstagram()" style="min-height:48px;">연동하고 시작하기 →</button>
+      <button class="hc-btn-ghost" id="sampleBtn" style="min-height:44px;">🎁 인스타 연동 전 샘플 캡션 보기</button>
       <button class="hc-btn-ghost" onclick="openQuickAction()" style="min-height:44px;">나중에 — 먼저 둘러볼게요</button>
     </div>
 
@@ -1036,6 +1038,9 @@
 <script src="app-gallery-finish.js"></script>
 <script src="app-persona.js"></script>
 <script src="app-scheduled.js"></script>
+<script src="app-story-template.js"></script>
+<script src="app-sample-captions.js"></script>
+<script src="app-cookie-consent.js"></script>
 <script type="module" src="components/persona-popup.js"></script>
 
 </body>
