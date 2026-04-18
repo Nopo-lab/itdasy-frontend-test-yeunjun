@@ -308,7 +308,11 @@ function openAssignPopup() {
 
 function closeAssignPopup() {
   const pop = document.getElementById('_assignPopup');
-  if (pop) pop.style.display = 'none';
+  if (pop) {
+    // 피드백 #10: display:none으로는 일부 기기에서 회색 오버레이가 남음. 완전 제거로 변경.
+    pop.style.display = 'none';
+    pop.remove();
+  }
   _selectedIds.clear();
   _renderSlotCards();
   _renderPhotoGrid();

@@ -13,17 +13,33 @@ async function checkInstaStatus(fromLogin = false) {
       showWelcome(data.shop_name);
     }
 
+    // 3단계 인디케이터 상태 업데이트 (인스타 연동 / 말투 학습 / 첫 글 완성)
+    const updateStep = (id, done) => {
+      const el = document.querySelector('#' + id + ' .step-circle');
+      if (!el) return;
+      if (done) { el.style.background = 'linear-gradient(135deg,var(--accent),var(--accent2))'; el.style.color = '#fff'; }
+      else      { el.style.background = '#f0f0f0'; el.style.color = '#aaa'; }
+    };
+
     if (data.connected) {
       document.getElementById('homePreConnect').style.display = 'none';
       document.getElementById('homePostConnect').style.display = 'flex';
       _instaHandle = data.handle || '';
       updateHeaderProfile(_instaHandle, data.persona ? data.persona.tone : null, data.profile_picture_url || '');
-      // 실제 분석 완료된 경우에만 말투 카드 표시
-      if (data.persona && data.persona.style_summary) renderPersonaDash(data.persona);
+      updateStep('stepInsta', true);
+      const persona = data.persona || {};
+      const personaDone = !!(persona.style_summary);
+      updateStep('stepPersona', personaDone);
+      if (personaDone) renderPersonaDash(persona);
       else document.getElementById('personaDash').style.display = 'none';
+      // 첫 글 완성 여부는 generationLog 기반. 백엔드 지원 전까진 localStorage hint로
+      updateStep('stepCaption', !!localStorage.getItem('_first_caption_done'));
     } else {
       document.getElementById('homePreConnect').style.display = 'flex';
       document.getElementById('homePostConnect').style.display = 'none';
+      updateStep('stepInsta', false);
+      updateStep('stepPersona', false);
+      updateStep('stepCaption', false);
     }
   } catch(e) {}
 }

@@ -1235,6 +1235,29 @@ textarea:focus, input[type=text]:focus { border-color: var(--accent); }
 /* ───── 본문 기본 폰트 15px 상향 (40대 이상 가독성) ───── */
 body { font-size: 15px; line-height: 1.55; }
 
+/* ───── 피드백 #3,#4,#7,#9: 팝업을 화면 중앙에 (bottom sheet → center modal) ───── */
+#planPopup, #_scheduledPopup, #scheduledPopup, #_storyPopup, #_samplePopup, #quickActionPopup, #captionPreviewOverlay {
+  align-items: center !important;
+}
+/* 하단 고정 팝업들(설정시트 등)은 유지하되 max-height 제한 */
+#_storyPopup > div, #_samplePopup > div, #scheduledPopup > div {
+  max-height: 82vh !important;
+  border-radius: 24px !important;
+  margin: 0 14px !important;
+}
+/* 슬롯 편집 팝업: 바텀 툴바가 뷰포트 밖으로 나가지 않도록 */
+#slotToolbar {
+  bottom: calc(env(safe-area-inset-bottom) + 0px) !important;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+}
+#slotPopupBody {
+  padding-bottom: calc(120px + env(safe-area-inset-bottom)) !important;
+}
+/* 배경/요소 하단 패널도 safe-area 반영 */
+#bgPanel > div, #elementPanel > div, #templatePanel > div, #reviewPanel > div {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+}
+
 /* ───── 스플래시 스크린 ───── */
 #splashScreen {
   position: fixed;

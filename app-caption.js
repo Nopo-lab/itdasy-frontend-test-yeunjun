@@ -573,6 +573,25 @@ async function _doGenerateCaption(scenario, closePopup) {
       const msg = _CAP_ERR_MSG[code] || '캡션 생성에 실패했습니다. 다시 시도해주세요.';
       hideCaptionLoader(false, () => {
         closePopup();
+        // 피드백 #11: identity_incomplete 시 페르소나 탭으로 바로 유도 (CBT/초기 사용자)
+        if (code.startsWith('identity_incomplete')) {
+          if (confirm('사장님 프로필(업종·매장명 등)을 먼저 등록해주세요.\n\n지금 등록하러 가시겠어요?')) {
+            if (typeof showTab === 'function') {
+              const personaBtn = document.querySelector('[onclick*="showTab(\'persona\'"]');
+              showTab('persona', personaBtn);
+              if (typeof initPersonaTab === 'function') initPersonaTab();
+            }
+          }
+          return;
+        }
+        if (code.startsWith('consent_missing')) {
+          showToast('페르소나 탭 하단 "AI 처리 동의"를 먼저 체크해주세요');
+          return;
+        }
+        if (code.startsWith('insufficient_posts') || code.startsWith('fingerprint_missing')) {
+          showToast('인스타 게시물 5개 이상 필요. 홈에서 인스타 연동 → 말투 분석해주세요');
+          return;
+        }
         showToast(msg);
       });
       return;
@@ -597,6 +616,10 @@ async function _doGenerateCaption(scenario, closePopup) {
 
     hideCaptionLoader(true, () => {
       closePopup();
+      // 피드백 #1 3단계: 첫 캡션 완성 플래그 (인디케이터 3단계 표시용)
+      if (!localStorage.getItem('_first_caption_done')) {
+        localStorage.setItem('_first_caption_done', new Date().toISOString());
+      }
       const ta = document.getElementById('captionText');
       ta.value = finalCaption;
       _capAutoGrow(ta);
