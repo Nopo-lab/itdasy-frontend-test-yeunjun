@@ -162,13 +162,13 @@
   </div>
 </div>
 
-<div class="nav" id="nav">
-  <button class="nav-btn active" onclick="showTab('home',this)">홈</button>
-  <button class="nav-btn" onclick="showTab('workshop',this); initWorkshopTab()">작업실</button>
-  <button class="nav-btn" onclick="showTab('caption',this); initCaptionSlotPicker(); if(typeof renderCaptionKeywordTags==='function')renderCaptionKeywordTags();">글쓰기</button>
-  <button class="nav-btn" onclick="showTab('ai-suggest',this); initAiRecommendTab()">AI추천</button>
-  <button class="nav-btn" onclick="showTab('finish',this); initFinishTab()">마무리</button>
-  <button class="nav-btn" style="display:none" onclick="showTab('persona',this); initPersonaTab()">페르소나</button>
+<div class="nav" id="nav" role="navigation" aria-label="메인 네비게이션">
+  <button class="nav-btn active" onclick="showTab('home',this)" aria-label="홈 탭">홈</button>
+  <button class="nav-btn" onclick="showTab('workshop',this); initWorkshopTab()" aria-label="작업실 탭">작업실</button>
+  <button class="nav-btn" onclick="showTab('caption',this); initCaptionSlotPicker(); if(typeof renderCaptionKeywordTags==='function')renderCaptionKeywordTags();" aria-label="글쓰기 탭">글쓰기</button>
+  <button class="nav-btn" onclick="showTab('ai-suggest',this); initAiRecommendTab()" aria-label="AI 추천 탭">AI추천</button>
+  <button class="nav-btn" onclick="showTab('finish',this); initFinishTab()" aria-label="마무리 탭">마무리</button>
+  <button class="nav-btn" style="display:none" onclick="showTab('persona',this); initPersonaTab()" aria-label="페르소나 탭">페르소나</button>
 </div>
 
 <!-- 홈 탭 -->
@@ -471,7 +471,7 @@
     <div class="upload-label">인물 사진 올리기</div>
     <input type="file" accept="image/*" onchange="loadEditImage(this)">
   </div>
-  <img class="upload-preview" id="editPreview" style="width:100%; max-height:200px; object-fit:cover; border-radius:10px; display:none; margin-top:10px;">
+  <img class="upload-preview" id="editPreview" alt="업로드한 사진 미리보기" style="width:100%; max-height:200px; object-fit:cover; border-radius:10px; display:none; margin-top:10px;">
 
   <div style="height:14px;"></div>
 
@@ -567,7 +567,7 @@
         <div class="upload-label">시술 전 사진</div>
         <input type="file" accept="image/*" onchange="loadImage(this,'before')">
       </div>
-      <img class="upload-preview" id="beforePreview">
+      <img class="upload-preview" id="beforePreview" alt="시술 전 사진 미리보기">
     </div>
     <div class="ba-slot">
       <span class="ba-badge after">AFTER</span>
@@ -576,7 +576,7 @@
         <div class="upload-label">시술 후 사진</div>
         <input type="file" accept="image/*" onchange="loadImage(this,'after')">
       </div>
-      <img class="upload-preview" id="afterPreview">
+      <img class="upload-preview" id="afterPreview" alt="시술 후 사진 미리보기">
     </div>
   </div>
 
@@ -676,7 +676,7 @@
                 <div id="previewShopName" style="font-size:13px; font-weight:700; color:var(--text);">사장님</div>
             </div>
             <div style="width:100%; aspect-ratio:1/1; background:#f0f0f0;">
-                <img id="previewFinalImg" style="width:100%; height:100%; object-fit:contain;">
+                <img id="previewFinalImg" alt="최종 합성 이미지 미리보기" style="width:100%; height:100%; object-fit:contain;">
             </div>
             <div style="padding:14px;">
                 <div style="font-size:13px; line-height:1.5; color:var(--text); white-space:pre-wrap; word-break:break-all; max-height:120px; overflow-y:auto;" id="previewFinalCaption"></div>
