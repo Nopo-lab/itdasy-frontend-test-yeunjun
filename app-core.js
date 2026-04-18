@@ -684,6 +684,21 @@ if ('serviceWorker' in navigator) {
 })();
 
 // ──────────────────────────────────────────────
+// 통계 카드 데이터 로드 (Subscription usage 기반)
+// ──────────────────────────────────────────────
+async function loadStatsCard() {
+  try {
+    const r = await fetch(API + '/subscription/usage', { headers: authHeader() });
+    if (!r.ok) return;
+    const d = await r.json();
+    const cap = document.getElementById('statCaptions');
+    const pub = document.getElementById('statPosts');
+    if (cap) cap.textContent = d.caption?.used ?? 0;
+    if (pub) pub.textContent = d.publish?.used ?? 0;
+  } catch(_) {}
+}
+
+// ──────────────────────────────────────────────
 // 429 한도 초과 감지 → 플랜 팝업 자동 오픈 (Pro 전환 유도)
 // fetch 래핑해서 429 응답을 감시. 단일 이벤트만 발행해서 토스트·팝업 중복 방지.
 // ──────────────────────────────────────────────
@@ -740,6 +755,18 @@ window.authHeader = authHeader;
     document.querySelectorAll('.plan-card[data-plan]').forEach(card => {
       card.addEventListener('click', () => selectPlan(card.dataset.plan));
     });
+
+    // 예약 발행 팝업
+    on('openScheduledBtn', () => {
+      if (typeof closeSettings === 'function') closeSettings();
+      if (typeof openScheduledPopup === 'function') openScheduledPopup();
+    });
+
+    // 통계 카드 Pro 업그레이드 버튼
+    on('statsUpgradeBtn', openPlanPopup);
+
+    // 통계 숫자 로드 (Subscription/usage 에서 가져옴)
+    loadStatsCard();
 
     // 프로덕션(운영) 배포에서만 CBT 전용 버튼 숨김. yeunjun/test 레포는 유지.
     if (location.pathname.startsWith('/itdasy-frontend/') || location.pathname === '/itdasy-frontend') {
