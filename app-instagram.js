@@ -302,7 +302,11 @@ async function connectInstagram() {
       baseOrigin += window.location.pathname.replace(/\/index\.html$/, '');
     }
     const origin = encodeURIComponent(baseOrigin);
-    window.location.href = `${API}/instagram/go?token=${encodeURIComponent(token)}&origin=${origin}`;
+    // Capacitor 네이티브 앱에선 OAuth 완료 후 딥링크(itdasy://oauth/callback)로 앱에 복귀
+    const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    const returnTo = isNative ? 'itdasy://oauth/callback' : baseOrigin + '/';
+    const returnToEnc = encodeURIComponent(returnTo);
+    window.location.href = `${API}/instagram/go?token=${encodeURIComponent(token)}&origin=${origin}&return_to=${returnToEnc}`;
 
   } catch(e) {
     showToast('연동 중 오류가 발생했습니다. 크롬/사파리에서 재시도해주세요');
