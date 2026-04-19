@@ -107,8 +107,36 @@ p { word-break: keep-all; }
 .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
 
 /* 탭 컨텐츠 — 하단 safe-area 보정 */
-.tab { display: none; padding: 24px 20px calc(120px + env(safe-area-inset-bottom)); }
-.tab.active { display: block; }
+.tab {
+  display: none;
+  padding: 24px 20px calc(120px + env(safe-area-inset-bottom));
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.22s ease-out, transform 0.22s ease-out;
+  will-change: opacity, transform;
+}
+.tab.active {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+  animation: tabFadeIn 0.22s ease-out;
+}
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 버튼 탭 시 미세 축소 피드백 (모든 버튼 공통) */
+button:active:not([disabled]) {
+  transform: scale(0.96);
+  transition: transform 0.08s ease-out;
+}
+
+/* 줄임: transform 가속 버튼에만 */
+.nav-btn:active, .btn-main:active, .hc-btn-ghost:active, .frame-action-btn:active,
+.plan-action-btn:active, .tc-btn:active, .tag-chip:active {
+  transform: scale(0.94);
+}
 
 /* 섹션 타이틀 */
 .sec-title {

@@ -168,8 +168,8 @@ function renderDetailedPopup(data) {
     `;
 }
 
-function reAnalyzePersona() {
-  if (confirm('최신 게시물들을 바탕으로 말투와 성과 비결을 다시 분석하시겠습니까?')) {
+async function reAnalyzePersona() {
+  if (await nativeConfirm("확인", '최신 게시물들을 바탕으로 말투와 성과 비결을 다시 분석하시겠습니까?')) {
     runPersonaAnalyze();
   }
 }
@@ -268,7 +268,7 @@ async function runPersonaAnalyze() {
 }
 
 async function disconnectInstagram() {
-  if (!confirm('인스타 연동을 해제하시겠습니까? 데이터가 다시 연결될 때까지 글 자동 생성이 끊어집니다.')) return;
+  if (!(await nativeConfirm("확인", '인스타 연동을 해제하시겠습니까? 데이터가 다시 연결될 때까지 글 자동 생성이 끊어집니다.'))) return;
   try {
     await fetch(API + '/instagram/disconnect', { method: 'POST', headers: authHeader() });
 

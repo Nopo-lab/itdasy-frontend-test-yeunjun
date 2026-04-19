@@ -147,7 +147,7 @@
     // 취소 버튼 바인딩
     box.querySelectorAll('.sched-cancel-btn').forEach(b => {
       b.addEventListener('click', async () => {
-        if (!confirm('이 예약을 취소하시겠어요?')) return;
+        if (!(await nativeConfirm("확인", '이 예약을 취소하시겠어요?'))) return;
         try {
           await cancelScheduledPost(b.dataset.cancelId);
           showToast('예약이 취소됐습니다');

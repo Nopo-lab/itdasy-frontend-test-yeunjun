@@ -827,12 +827,33 @@ function _renderPopupPhotoGrid(slot) {
 }
 
 function togglePopupPhotoSel(id) {
-  _popupSelIds.has(id) ? _popupSelIds.delete(id) : _popupSelIds.add(id);
+  const wasSelected = _popupSelIds.has(id);
+  wasSelected ? _popupSelIds.delete(id) : _popupSelIds.add(id);
   const slot = _slots.find(s => s.id === _popupSlotId);
   if (slot) _renderPopupPhotoGrid(slot);
+
+  // Haptic: 선택/해제 구분
+  if (window.hapticLight) window.hapticLight();
+
   // 비포/애프터 모드에서 2장 선택시 자동 적용
   if (_baMode && _popupSelIds.size >= 2) {
     setTimeout(() => _checkAndApplyBA(), 100);
+    return;
+  }
+
+  // 🆕 첫 선택 시 사용자에게 다음 단계 안내 (UX 개선)
+  // 선택 상태에서 하단 액션 바가 안 보이는 경우 대비
+  if (!wasSelected && _popupSelIds.size === 1) {
+    if (typeof showToast === 'function') {
+      showToast('1장 선택됨 — 아래에서 편집 방식을 골라주세요');
+    }
+    // 팝업 하단 액션 영역으로 자동 스크롤 (버튼 잘 보이도록)
+    setTimeout(() => {
+      const actionBar = document.getElementById('popupActionBar') || document.getElementById('slotPopupActions');
+      if (actionBar && typeof actionBar.scrollIntoView === 'function') {
+        actionBar.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+    }, 150);
   }
 }
 

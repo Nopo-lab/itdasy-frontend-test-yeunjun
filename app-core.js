@@ -355,8 +355,8 @@ function closeSettings() {
   setTimeout(() => { sheet.style.display = 'none'; }, 280);
 }
 
-function resetShopSetup() {
-  if (!confirm('샵 이름과 종류를 다시 설정할까요?')) return;
+async function resetShopSetup() {
+  if (!(await nativeConfirm("확인", '샵 이름과 종류를 다시 설정할까요?'))) return;
   localStorage.removeItem('shop_name');
   localStorage.removeItem('shop_type');
   localStorage.removeItem('onboarding_done');
@@ -365,7 +365,7 @@ function resetShopSetup() {
 }
 
 async function localReset() {
-  if (!confirm('앱을 처음 상태로 초기화할까요?\n(로그인은 유지됩니다)')) return;
+  if (!(await nativeConfirm("확인", '앱을 처음 상태로 초기화할까요?\n(로그인은 유지됩니다)'))) return;
   ['itdasy_consented','itdasy_consented_at','itdasy_latest_analysis',
    'onboarding_done','shop_name','shop_type'].forEach(k => localStorage.removeItem(k));
   // 인스타 연동도 백엔드에서 해제
@@ -381,7 +381,7 @@ function checkCbt1Reset() {
 }
 
 async function fullReset() {
-  if (!confirm('⚠️ 모든 데이터(온보딩·샵설정·인스타연동·말투분석)가 초기화됩니다.\n정말 처음부터 시작할까요?')) return;
+  if (!(await nativeConfirm("확인", '⚠️ 모든 데이터(온보딩·샵설정·인스타연동·말투분석)가 초기화됩니다.\n정말 처음부터 시작할까요?'))) return;
   try {
     const res = await fetch(API + '/admin/reset', { method: 'POST', headers: authHeader() });
     if (!res.ok) throw new Error('초기화 실패');
@@ -405,7 +405,7 @@ function handle401() {
 }
 
 async function logout() {
-  if (!confirm("로그아웃 하시겠습니까? 세션과 캐시가 모두 초기화됩니다.")) return;
+  if (!(await nativeConfirm("확인", "로그아웃 하시겠습니까? 세션과 캐시가 모두 초기화됩니다."))) return;
 
   // 1. 토큰 및 로컬 스토리지 삭제
   setToken(null);

@@ -132,9 +132,9 @@ function handleBgUpload(input) {
   input.value = '';
 }
 
-function deleteUserBg(id, e) {
+async function deleteUserBg(id, e) {
   e.stopPropagation();
-  if (!confirm('이 배경을 삭제할까요?')) return;
+  if (!(await nativeConfirm('배경 삭제', '이 배경을 삭제할까요?', '삭제'))) return;
   const userBgs = _loadUserBgs();
   _saveUserBgs(userBgs.filter(b => b.id !== id));
   const favs = _loadFavBgs();
@@ -367,9 +367,9 @@ function saveCurrentAsTemplate() {
   showToast('템플릿 저장됨!');
 }
 
-function deleteTemplate(id, e) {
+async function deleteTemplate(id, e) {
   e.stopPropagation();
-  if (!confirm('이 템플릿을 삭제할까요?')) return;
+  if (!(await nativeConfirm('템플릿 삭제', '이 템플릿을 삭제할까요?', '삭제'))) return;
   _saveUserTemplates(_loadUserTemplates().filter(t => t.id !== id));
   _renderTemplatePanel();
 }
