@@ -804,8 +804,8 @@ function _renderPopupPhotoGrid(slot) {
       <button onclick="unassignPopupPhoto('${photo.id}',event)" style="position:absolute;top:${baLbl?'22':'3'}px;left:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,0.5);border:none;color:#fff;font-size:9px;cursor:pointer;z-index:2;line-height:1;">↩</button>
     `;
     imgBox.addEventListener('click', e => { e.stopPropagation(); togglePopupPhotoSel(photo.id); });
-    // 텍스트 선택 방지
-    imgBox.addEventListener('touchstart', e => { e.preventDefault(); }, { passive: false });
+    // 텍스트 선택 방지 — CSS user-select:none 로 충분. touchstart preventDefault 는 click 을 막아서 제거.
+    imgBox.style.webkitTapHighlightColor = 'transparent';
     wrap.appendChild(imgBox);
 
     if (photo.mode === 'ba') {
