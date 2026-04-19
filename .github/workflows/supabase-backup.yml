@@ -1,8 +1,9 @@
 name: Supabase Daily Backup
 
-# 매일 UTC 18:00 (한국 03:00) 실행 — Supabase pg_dump 결과를 Actions artifact로 저장
+# 매일 UTC 18:00 (한국 03:00) 운영 + 스테이징 두 DB를 pg_dump → artifact 저장
 # 필요 secrets:
-#   SUPABASE_DB_URL : postgres://postgres:PASSWORD@db.PROJECT.supabase.co:5432/postgres
+#   SUPABASE_PROD_DB_URL     : 운영 (beauty-platform)
+#   SUPABASE_STAGING_DB_URL  : 스테이징 (itdasy-staging)
 on:
   schedule:
     - cron: "0 18 * * *"
@@ -11,31 +12,53 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - name: Install postgresql-client
+      - name: Install postgresql-client (v16 — Supabase pooler 호환)
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y postgresql-common
+          sudo sh /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-16
 
-      - name: Dump
-        env:
-          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      - name: Prepare backup directory
         run: |
-          if [ -z "$DB_URL" ]; then
-            echo "::error::SUPABASE_DB_URL secret 누락"
-            exit 1
-          fi
           mkdir -p backup
           TS=$(date -u +%Y%m%d_%H%M)
-          FILE="backup/itdasy_${TS}.sql.gz"
-          pg_dump --no-owner --no-acl --format=plain "$DB_URL" | gzip > "$FILE"
+          echo "BACKUP_TS=$TS" >> $GITHUB_ENV
+
+      - name: Dump production DB (beauty-platform)
+        env:
+          DB_URL: ${{ secrets.SUPABASE_PROD_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::warning::SUPABASE_PROD_DB_URL 미설정 — 운영 백업 건너뜀"
+            exit 0
+          fi
+          FILE="backup/itdasy_PROD_${BACKUP_TS}.sql.gz"
+          /usr/lib/postgresql/16/bin/pg_dump --no-owner --no-acl --format=plain "$DB_URL" | gzip > "$FILE"
           ls -lh "$FILE"
-          echo "BACKUP_FILE=$FILE" >> $GITHUB_ENV
+
+      - name: Dump staging DB (itdasy-staging)
+        env:
+          DB_URL: ${{ secrets.SUPABASE_STAGING_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::warning::SUPABASE_STAGING_DB_URL 미설정 — 스테이징 백업 건너뜀"
+            exit 0
+          fi
+          FILE="backup/itdasy_STAGING_${BACKUP_TS}.sql.gz"
+          /usr/lib/postgresql/16/bin/pg_dump --no-owner --no-acl --format=plain "$DB_URL" | gzip > "$FILE"
+          ls -lh "$FILE"
+
+      - name: Backup summary
+        run: |
+          echo "=== 백업 완료 ==="
+          ls -lh backup/ | tail -5
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: supabase-backup-${{ github.run_id }}
+          name: supabase-backup-${{ env.BACKUP_TS }}
           path: backup/*.sql.gz
           retention-days: 30
