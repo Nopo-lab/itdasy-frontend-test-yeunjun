@@ -1,107 +1,154 @@
-/* ───── 다크모드 대응 (2026-04-20) ─────
-   1. 시스템 다크 감지 (prefers-color-scheme) — data-theme 미지정 시
-   2. 수동 토글 — html[data-theme="dark"] 또는 body[data-theme="dark"]
-   라이트 강제: html[data-theme="light"] (시스템 다크여도 라이트 유지) */
+/* ───── 다크모드 (2026-04-20 강제 override 버전) ─────
+   기존 inline style 이 많아 CSS 변수만으로는 안 먹힘.
+   html[data-theme="dark"] 상태에서 !important 로 강제. */
 
-/* 수동 라이트 강제 — 시스템 다크여도 라이트로 (prefers-color-scheme media block 안 탐) */
-html[data-theme="light"], body[data-theme="light"] {
-  color-scheme: light;
-}
+/* 라이트 강제 */
+html[data-theme="light"] { color-scheme: light; }
 
-/* 공통 다크 규칙 — system (media) 또는 manual (data-theme) */
-html[data-theme="dark"], body[data-theme="dark"] {
+/* 다크 — system 또는 manual */
+html[data-theme="dark"], html[data-theme="dark"] body {
   color-scheme: dark;
-}
-
-html[data-theme="dark"], html[data-theme="dark"] body,
-body[data-theme="dark"] {
-  --bg:  #14171C;
-  --bg2: #1E2229;
-  --bg3: #262B33;
+  --bg:  #0F1014;
+  --bg2: #1A1C22;
+  --bg3: #262930;
   --text:  #ECEEF1;
   --text2: #B0B4BB;
   --text3: #8E929A;
+  --accent: #F18091;
+  --accent2: #FF9AA8;
   --border: rgba(255,255,255,0.08);
-  background: #14171C;
-  color: #ECEEF1;
+  background: #0F1014 !important;
+  color: #ECEEF1 !important;
 }
 
+html[data-theme="dark"] body {
+  background: #0F1014 !important;
+  color: #ECEEF1 !important;
+}
+
+/* 탭·카드·팝업 전체 강제 어둡게 */
+html[data-theme="dark"] .tab,
 html[data-theme="dark"] .hc-card,
 html[data-theme="dark"] .pf-upload-card,
 html[data-theme="dark"] .input-card,
-html[data-theme="dark"] .tab,
 html[data-theme="dark"] .insta-frame,
 html[data-theme="dark"] .popup-content,
+html[data-theme="dark"] .bottom-sheet,
 html[data-theme="dark"] #planPopup > div,
 html[data-theme="dark"] #_samplePopup > div,
-html[data-theme="dark"] .bottom-sheet,
-body[data-theme="dark"] .hc-card,
-body[data-theme="dark"] .pf-upload-card,
-body[data-theme="dark"] .input-card,
-body[data-theme="dark"] .tab,
-body[data-theme="dark"] .insta-frame,
-body[data-theme="dark"] .popup-content {
-  background: #1E2229 !important;
-  color: #ECEEF1;
+html[data-theme="dark"] #analyzeResultPopup,
+html[data-theme="dark"] #captionLoadingPopup,
+html[data-theme="dark"] #onboardingCaptionPopup,
+html[data-theme="dark"] #slotPopup,
+html[data-theme="dark"] #scheduledPopup,
+html[data-theme="dark"] #welcomeOverlay,
+html[data-theme="dark"] #analyzeOverlay {
+  background: #1A1C22 !important;
+  color: #ECEEF1 !important;
 }
 
-html[data-theme="dark"] input[type="text"],
-html[data-theme="dark"] input[type="email"],
-html[data-theme="dark"] input[type="password"],
-html[data-theme="dark"] input[type="datetime-local"],
-html[data-theme="dark"] textarea {
-  background: #262B33;
-  color: #ECEEF1;
-  border-color: rgba(255,255,255,0.08);
+/* inline style 로 background:#fff 박힌 요소들 강제 */
+html[data-theme="dark"] [style*="background:#fff"],
+html[data-theme="dark"] [style*="background: #fff"],
+html[data-theme="dark"] [style*="background:white"],
+html[data-theme="dark"] [style*="background: white"],
+html[data-theme="dark"] [style*="background:#FFF"],
+html[data-theme="dark"] [style*="background: #FFFFFF"] {
+  background: #1A1C22 !important;
 }
 
-/* 시스템 모드 — 저장값 없으면 prefers-color-scheme 따름 */
+/* inline style 배경색 그라데이션 중 흰색 베이스 완화 */
+html[data-theme="dark"] [style*="linear-gradient(135deg,#fff"] {
+  background: #1A1C22 !important;
+}
+
+/* 텍스트 색 — 흰 배경 가정한 짙은 텍스트 보정 */
+html[data-theme="dark"] [style*="color:#1a"],
+html[data-theme="dark"] [style*="color: #1a"],
+html[data-theme="dark"] [style*="color:#000"],
+html[data-theme="dark"] [style*="color: #000"],
+html[data-theme="dark"] [style*="color:#333"],
+html[data-theme="dark"] [style*="color: #333"],
+html[data-theme="dark"] [style*="color:#555"],
+html[data-theme="dark"] [style*="color: #555"],
+html[data-theme="dark"] [style*="color:var(--text)"],
+html[data-theme="dark"] [style*="color: var(--text)"] {
+  color: #ECEEF1 !important;
+}
+
+/* 회색 텍스트 */
+html[data-theme="dark"] [style*="color:#888"],
+html[data-theme="dark"] [style*="color: #888"],
+html[data-theme="dark"] [style*="color:#999"],
+html[data-theme="dark"] [style*="color: #999"],
+html[data-theme="dark"] [style*="color:#aaa"],
+html[data-theme="dark"] [style*="color: #bbb"] {
+  color: #B0B4BB !important;
+}
+
+/* 입력 필드 */
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select {
+  background: #262930 !important;
+  color: #ECEEF1 !important;
+  border-color: rgba(255,255,255,0.12) !important;
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+  color: #6A6E76 !important;
+}
+
+/* 헤더 */
+html[data-theme="dark"] header,
+html[data-theme="dark"] .header,
+html[data-theme="dark"] [style*="position:sticky"] {
+  background: #1A1C22 !important;
+  border-bottom-color: rgba(255,255,255,0.05) !important;
+}
+
+/* 네비게이션 바 */
+html[data-theme="dark"] nav {
+  background: #1A1C22 !important;
+  border-top-color: rgba(255,255,255,0.06) !important;
+}
+
+html[data-theme="dark"] .nav-btn {
+  color: #B0B4BB !important;
+}
+html[data-theme="dark"] .nav-btn.active {
+  color: #F18091 !important;
+}
+
+/* 토스트 */
+html[data-theme="dark"] .copy-toast {
+  background: rgba(30,34,41,0.95) !important;
+  color: #ECEEF1 !important;
+}
+
+/* 구분선 */
+html[data-theme="dark"] hr,
+html[data-theme="dark"] [style*="border-top:1px solid var(--border)"],
+html[data-theme="dark"] [style*="border-bottom:1px solid var(--border)"] {
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+/* 이미지·아이콘은 반전 안 함 (원본 유지) */
+html[data-theme="dark"] img,
+html[data-theme="dark"] svg,
+html[data-theme="dark"] video,
+html[data-theme="dark"] canvas {
+  filter: none;
+}
+
+/* ───── 시스템 다크 (저장값 없을 때 자동) ───── */
 @media (prefers-color-scheme: dark) {
-  html:not([data-theme]):not([data-theme="light"]),
-  html:not([data-theme]):not([data-theme="light"]) body {
+  html:not([data-theme="light"]):not([data-theme="dark"]) {
     color-scheme: dark;
   }
-  html:not([data-theme]) {
-    --bg:  #14171C;
-    --bg2: #1E2229;
-    --bg3: #262B33;
-    --text:  #ECEEF1;
-    --text2: #B0B4BB;
-    --text3: #8E929A;
-    --border: rgba(255,255,255,0.08);
-  }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-  }
-
-  /* 흰 배경 카드들 자동 반전 */
-  .hc-card, .pf-upload-card, .input-card,
-  #tab-home, #tab-portfolio, #tab-caption, #tab-ai-suggest, #tab-finish,
-  .insta-frame {
-    background: var(--bg2) !important;
-    color: var(--text);
-  }
-
-  /* 팝업 배경 반투명 + 본문은 다크 */
-  .popup-content, #planPopup > div, #_samplePopup > div,
-  #analyzeResultPopup, #captionLoadingPopup {
-    background: var(--bg2) !important;
-    color: var(--text);
-  }
-
-  /* 텍스트 인풋 */
-  input[type="text"], input[type="email"], input[type="password"],
-  input[type="datetime-local"], textarea {
-    background: var(--bg3);
-    color: var(--text);
-    border-color: var(--border);
-  }
-
-  /* 토스트 */
-  .copy-toast {
-    background: rgba(40,44,52,0.95);
-    color: #fff;
+  html:not([data-theme="light"]):not([data-theme="dark"]) body {
+    background: #0F1014;
+    color: #ECEEF1;
   }
 }
