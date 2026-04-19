@@ -1,5 +1,39 @@
 // Itdasy Studio - Instagram 연동 & 말투분석
 
+// ===== 인스타 토큰 만료 배너 =====
+// Instagram Graph API 장기 토큰은 60일 만료. 7일 이내 또는 이미 만료 시 재연동 배너 노출.
+function _renderTokenExpiryBanner(expiresAtIso) {
+  const existing = document.getElementById('tokenExpiryBanner');
+  if (existing) existing.remove();
+  if (!expiresAtIso) return;
+
+  const expMs = new Date(expiresAtIso).getTime();
+  if (isNaN(expMs)) return;
+  const remainDays = Math.floor((expMs - Date.now()) / 86400000);
+  if (remainDays > 7) return;  // 여유 있으면 표시 안 함
+
+  const isExpired = remainDays < 0;
+  const msg = isExpired
+    ? '인스타 연동이 만료됐어요 — 재연동이 필요합니다'
+    : `인스타 연동이 ${remainDays}일 뒤 만료돼요 — 지금 갱신하세요`;
+  const bg = isExpired ? 'linear-gradient(135deg,#e55,#c33)' : 'linear-gradient(135deg,#f5a623,#ff8c00)';
+
+  const banner = document.createElement('div');
+  banner.id = 'tokenExpiryBanner';
+  banner.setAttribute('role', 'alert');
+  banner.style.cssText = `margin:10px 14px 0;padding:12px 14px;background:${bg};color:#fff;border-radius:12px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,0.1);`;
+  banner.innerHTML = `<span style="flex:1;">⚠️ ${msg}</span>
+    <button onclick="(document.getElementById('connectInstaBtn')||{click:()=>{}}).click()"
+      style="background:#fff;color:#c33;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;min-height:32px;">
+      재연동
+    </button>`;
+
+  const homePost = document.getElementById('homePostConnect');
+  if (homePost && homePost.firstElementChild) {
+    homePost.insertBefore(banner, homePost.firstElementChild);
+  }
+}
+
 // ===== 인스타그램 연동 =====
 async function checkInstaStatus(fromLogin = false) {
   if (!getToken()) return;
@@ -27,6 +61,7 @@ async function checkInstaStatus(fromLogin = false) {
       _instaHandle = data.handle || '';
       updateHeaderProfile(_instaHandle, data.persona ? data.persona.tone : null, data.profile_picture_url || '');
       updateStep('stepInsta', true);
+      _renderTokenExpiryBanner(data.expires_at);
       const persona = data.persona || {};
       const personaDone = !!(persona.style_summary);
       updateStep('stepPersona', personaDone);

@@ -1,0 +1,41 @@
+name: Supabase Daily Backup
+
+# 매일 UTC 18:00 (한국 03:00) 실행 — Supabase pg_dump 결과를 Actions artifact로 저장
+# 필요 secrets:
+#   SUPABASE_DB_URL : postgres://postgres:PASSWORD@db.PROJECT.supabase.co:5432/postgres
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install postgresql-client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Dump
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret 누락"
+            exit 1
+          fi
+          mkdir -p backup
+          TS=$(date -u +%Y%m%d_%H%M)
+          FILE="backup/itdasy_${TS}.sql.gz"
+          pg_dump --no-owner --no-acl --format=plain "$DB_URL" | gzip > "$FILE"
+          ls -lh "$FILE"
+          echo "BACKUP_FILE=$FILE" >> $GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup-${{ github.run_id }}
+          path: backup/*.sql.gz
+          retention-days: 30
