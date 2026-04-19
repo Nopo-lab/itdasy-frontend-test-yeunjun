@@ -130,7 +130,8 @@
     <div class="header-persona" id="headerPersona">
       <div class="profile-avatar" id="headerAvatar">잇</div>
     </div>
-    <button id="planBadge" onclick="if(typeof openPlanPopup==='function')openPlanPopup();" style="padding:6px 12px;border-radius:8px;font-size:11px;font-weight:800;background:#e0e0e0;color:#888;cursor:pointer;min-height:32px;display:inline-flex;align-items:center;border:none;">Free</button>
+    <button id="planBadge" data-haptic="light" onclick="if(typeof openPlanPopup==='function')openPlanPopup();" style="padding:6px 12px;border-radius:8px;font-size:11px;font-weight:800;background:#e0e0e0;color:#888;cursor:pointer;min-height:32px;display:inline-flex;align-items:center;border:none;">Free</button>
+    <button id="themeToggleBtn" data-haptic="light" onclick="if(typeof toggleTheme==='function')toggleTheme();" aria-label="다크모드 전환" title="화면 모드 전환" style="background:none;border:none;padding:4px;cursor:pointer;min-width:36px;min-height:36px;font-size:18px;">🌗</button>
     <button class="btn-settings" onclick="openSettings()" aria-label="설정">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F18091" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
         <path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/>
@@ -170,11 +171,11 @@
 
 <div class="nav" id="nav" role="navigation" aria-label="메인 네비게이션">
   <button class="nav-btn active" onclick="showTab('home',this)" aria-label="홈 탭">홈</button>
-  <button class="nav-btn" onclick="showTab('workshop',this); initWorkshopTab()" aria-label="작업실 탭">작업실</button>
-  <button class="nav-btn" onclick="showTab('caption',this); initCaptionSlotPicker(); if(typeof renderCaptionKeywordTags==='function')renderCaptionKeywordTags();" aria-label="글쓰기 탭">글쓰기</button>
-  <button class="nav-btn" onclick="showTab('ai-suggest',this); initAiRecommendTab()" aria-label="AI 추천 탭">AI추천</button>
-  <button class="nav-btn" onclick="showTab('finish',this); initFinishTab()" aria-label="마무리 탭">마무리</button>
-  <button class="nav-btn" id="schedNavBtn" onclick="if(typeof openScheduledPopup==='function')openScheduledPopup();" aria-label="예약 발행 탭">예약 🗓️</button>
+  <button class="nav-btn" data-haptic="light" onclick="showTab('workshop',this); initWorkshopTab()" aria-label="작업실 탭">작업실</button>
+  <button class="nav-btn" data-haptic="light" onclick="showTab('caption',this); initCaptionSlotPicker(); if(typeof renderCaptionKeywordTags==='function')renderCaptionKeywordTags();" aria-label="글쓰기 탭">글쓰기</button>
+  <button class="nav-btn" data-haptic="light" onclick="showTab('ai-suggest',this); initAiRecommendTab()" aria-label="AI 추천 탭">AI추천</button>
+  <button class="nav-btn" data-haptic="light" onclick="showTab('finish',this); initFinishTab()" aria-label="마무리 탭">마무리</button>
+  <button class="nav-btn" data-haptic="light" id="schedNavBtn" onclick="if(typeof openScheduledPopup==='function')openScheduledPopup();" aria-label="예약 발행 탭">예약 🗓️</button>
   <button class="nav-btn" style="display:none" onclick="showTab('persona',this); initPersonaTab()" aria-label="페르소나 탭">페르소나</button>
 </div>
 
@@ -1062,6 +1063,7 @@
 <script src="app-push.js"></script>
 <script src="app-oauth-return.js"></script>
 <script src="app-haptic.js"></script>
+<script src="app-theme.js"></script>
 <script src="app-plan.js"></script>
 <!-- 쿠키 배너 제거 (2번 피드백): 한국 타겟 + 제3자 쿠키 없음이라 불필요 -->
 <!-- <script src="app-cookie-consent.js"></script> -->

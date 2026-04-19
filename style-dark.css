@@ -1,9 +1,67 @@
-/* ───── 다크모드 대응 (2026-04-20 추가) ─────
-   시스템 다크모드 감지 시 기본 색상만 반전. 완전한 다크 테마는 아니고
-   흰 배경에서 눈부심 완화 수준. 완성 디자인은 TECH_DEBT 참조. */
+/* ───── 다크모드 대응 (2026-04-20) ─────
+   1. 시스템 다크 감지 (prefers-color-scheme) — data-theme 미지정 시
+   2. 수동 토글 — html[data-theme="dark"] 또는 body[data-theme="dark"]
+   라이트 강제: html[data-theme="light"] (시스템 다크여도 라이트 유지) */
 
+/* 수동 라이트 강제 — 시스템 다크여도 라이트로 (prefers-color-scheme media block 안 탐) */
+html[data-theme="light"], body[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* 공통 다크 규칙 — system (media) 또는 manual (data-theme) */
+html[data-theme="dark"], body[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-theme="dark"], html[data-theme="dark"] body,
+body[data-theme="dark"] {
+  --bg:  #14171C;
+  --bg2: #1E2229;
+  --bg3: #262B33;
+  --text:  #ECEEF1;
+  --text2: #B0B4BB;
+  --text3: #8E929A;
+  --border: rgba(255,255,255,0.08);
+  background: #14171C;
+  color: #ECEEF1;
+}
+
+html[data-theme="dark"] .hc-card,
+html[data-theme="dark"] .pf-upload-card,
+html[data-theme="dark"] .input-card,
+html[data-theme="dark"] .tab,
+html[data-theme="dark"] .insta-frame,
+html[data-theme="dark"] .popup-content,
+html[data-theme="dark"] #planPopup > div,
+html[data-theme="dark"] #_samplePopup > div,
+html[data-theme="dark"] .bottom-sheet,
+body[data-theme="dark"] .hc-card,
+body[data-theme="dark"] .pf-upload-card,
+body[data-theme="dark"] .input-card,
+body[data-theme="dark"] .tab,
+body[data-theme="dark"] .insta-frame,
+body[data-theme="dark"] .popup-content {
+  background: #1E2229 !important;
+  color: #ECEEF1;
+}
+
+html[data-theme="dark"] input[type="text"],
+html[data-theme="dark"] input[type="email"],
+html[data-theme="dark"] input[type="password"],
+html[data-theme="dark"] input[type="datetime-local"],
+html[data-theme="dark"] textarea {
+  background: #262B33;
+  color: #ECEEF1;
+  border-color: rgba(255,255,255,0.08);
+}
+
+/* 시스템 모드 — 저장값 없으면 prefers-color-scheme 따름 */
 @media (prefers-color-scheme: dark) {
-  :root {
+  html:not([data-theme]):not([data-theme="light"]),
+  html:not([data-theme]):not([data-theme="light"]) body {
+    color-scheme: dark;
+  }
+  html:not([data-theme]) {
     --bg:  #14171C;
     --bg2: #1E2229;
     --bg3: #262B33;
