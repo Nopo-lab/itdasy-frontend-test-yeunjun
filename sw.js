@@ -3,7 +3,7 @@
 //  CACHE_VERSION = 날짜(YYYYMMDD) + 빌드번호
 //  배포할 때마다 이 값만 올리면 구 캐시 자동 삭제
 // ─────────────────────────────────────────────
-const CACHE_VERSION = '20260419-v9';
+const CACHE_VERSION = '20260420-v10';
 const CACHE_NAME    = `itdasy-${CACHE_VERSION}`;
 const OFFLINE_URL   = '/itdasy-frontend-test-yeunjun/offline.html';
 

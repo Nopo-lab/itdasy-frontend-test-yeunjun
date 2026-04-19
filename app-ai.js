@@ -317,7 +317,7 @@ async function createSchedule() {
   const hashtags = hash.replace(/#/g, '').split(/\s+/).filter(Boolean).join(',');
   const imageUrl = window._lastPublishedImageUrl || '';
   try {
-    const res = await fetch(API + '/schedule', {
+    const res = await fetch(API + '/scheduled-posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify({
