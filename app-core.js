@@ -596,23 +596,74 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/itdasy-studio/sw.js')
+window.APP_BUILD = '20260420-v21';
+function _updateVersionBadge(swVer) {
+  const el = document.getElementById('appVersionBadge');
+  if (!el) return;
+  const v = swVer || window.APP_BUILD || '?';
+  el.textContent = 'v' + v.replace(/^20\d{6}-?/, '');
+  el.title = '빌드: ' + v + ' (탭하면 최근 로그)';
+  if (swVer && window.APP_BUILD && swVer !== window.APP_BUILD && !sessionStorage.getItem('cache_busted')) {
+    console.warn('[SW] 버전 불일치 감지 — 캐시 전부 삭제 후 리로드. active=' + swVer + ' / bundle=' + window.APP_BUILD);
+    sessionStorage.setItem('cache_busted', '1');
+    (async () => {
+      try {
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+      } catch (_) {}
+      location.reload();
+    })();
+  }
+}
+document.addEventListener('DOMContentLoaded', () => _updateVersionBadge(window.APP_BUILD));
+
+const _isCapacitor = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+
+if ('serviceWorker' in navigator && !_isCapacitor) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(reg => {
+      const u = reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL || '';
+      if (u && !u.endsWith('/sw.js')) {
+        console.warn('[SW] 구 SW 언레지스터:', u);
+        reg.unregister();
+      }
+    });
+  }).catch(() => {});
+
+  navigator.serviceWorker.register('sw.js', { scope: './' })
     .then(reg => {
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'activated') {
-            /* SW 활성화 완료 */
-          }
+      const askVersion = () => {
+        const ch = new MessageChannel();
+        ch.port1.onmessage = (ev) => {
+          if (ev.data && ev.data.version) _updateVersionBadge(ev.data.version);
+        };
+        (navigator.serviceWorker.controller || reg.active)?.postMessage({ type: 'GET_VERSION' }, [ch.port2]);
+      };
+      if (reg.active) askVersion();
+      else reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        nw?.addEventListener('statechange', () => {
+          if (nw.state === 'activated') askVersion();
         });
       });
+      navigator.serviceWorker.addEventListener('controllerchange', askVersion);
     })
-    .catch(err => console.warn('[SW] 등록 실패:', err));
+    .catch(err => {
+      console.warn('[SW] 등록 실패:', {
+        name: err?.name, message: err?.message, code: err?.code,
+        toString: String(err), loc: location.href, origin: location.origin,
+      });
+    });
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     window.location.reload();
   });
+} else if (_isCapacitor) {
+  console.log('[SW] Capacitor 네이티브 — SW 미사용 (WebView 자체 캐시)');
 }
 
 // ───── Pull-to-Refresh (iOS PWA 전용) ─────

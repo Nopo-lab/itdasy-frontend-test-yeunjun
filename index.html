@@ -9,6 +9,17 @@
 <meta name="apple-mobile-web-app-title" content="잇데이">
 <meta name="theme-color" content="#F2F4F6">
 <title>잇데이 스튜디오</title>
+<script>
+  window.__LATEST_BUILD__ = '20260420-v21';
+  setTimeout(function(){
+    if (window.APP_BUILD && window.APP_BUILD !== window.__LATEST_BUILD__ && !sessionStorage.getItem('build_busted')) {
+      console.warn('[BUILD] stale JS 감지 — HTML=' + window.__LATEST_BUILD__ + ' / JS=' + window.APP_BUILD + ' → 캐시 파괴');
+      sessionStorage.setItem('build_busted', '1');
+      if ('caches' in window) caches.keys().then(function(ks){ ks.forEach(function(k){ caches.delete(k); }); });
+      location.reload(true);
+    }
+  }, 500);
+</script>
 <link rel="manifest" href="manifest.json">
 <!-- iOS 홈 스크린 아이콘 (180x180 권장, 없으면 icon.svg 폴백) -->
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png">
@@ -124,7 +135,10 @@
 </div>
 
 <div class="app-header">
-  <div class="logo" onclick="document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); document.getElementById('tab-home').classList.add('active'); document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active')); document.querySelectorAll('.nav-btn')[0].classList.add('active');" style="cursor:pointer;">잇데이 <span>STUDIO</span></div>
+  <div style="display:flex;flex-direction:column;align-items:flex-start;gap:1px;">
+    <div class="logo" onclick="document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); document.getElementById('tab-home').classList.add('active'); document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active')); document.querySelectorAll('.nav-btn')[0].classList.add('active');" style="cursor:pointer;">잇데이 <span>STUDIO</span></div>
+    <span id="appVersionBadge" onclick="if(typeof showRecentLogs==='function')showRecentLogs();" style="font-size:9px;color:#bbb;font-weight:600;line-height:1;cursor:pointer;user-select:none;white-space:nowrap;" title="탭하면 최근 로그">v21</span>
+  </div>
   <div style="display:flex; align-items:center; gap:8px;">
     <span id="headerShopName" style="display:none;">사장님</span>
     <div class="header-persona" id="headerPersona">
@@ -169,6 +183,9 @@
     </button>
     <button class="sheet-row" data-haptic="light" onclick="closeSettings(); runInstagramDiagnose();">
       🔧 인스타 연동 진단
+    </button>
+    <button class="sheet-row" data-haptic="light" onclick="closeSettings(); testMetaWithImgur();">
+      🧪 Meta 외부 URL 테스트
     </button>
 
     <div class="sheet-sep"></div>
@@ -1081,6 +1098,7 @@
 <script src="app-theme.js"></script>
 <script src="app-plan.js"></script>
 <script src="app-support.js"></script>
+<script src="app-debug-panel.js"></script>
 <!-- 쿠키 배너 제거 (2번 피드백): 한국 타겟 + 제3자 쿠키 없음이라 불필요 -->
 <!-- <script src="app-cookie-consent.js"></script> -->
 <script type="module" src="components/persona-popup.js"></script>

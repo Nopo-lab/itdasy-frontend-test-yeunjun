@@ -12,6 +12,21 @@
 
   let _pollTimer = null;
   let _lastMessageId = 0;
+  const CACHE_KEY = 'itdasy_support_cache_v1';
+
+  function _saveCache(messages) {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ messages, saved_at: Date.now() })); } catch (_) {}
+  }
+  function _loadCache() {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const d = JSON.parse(raw);
+      // 7일 이상 오래된 캐시는 무시
+      if (Date.now() - (d.saved_at || 0) > 7 * 24 * 3600 * 1000) return null;
+      return d.messages || [];
+    } catch (_) { return null; }
+  }
 
   async function _fetchMessages() {
     if (!window.API || !window.authHeader || !window.authHeader()?.Authorization) {
@@ -58,14 +73,23 @@
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  async function _renderAll() {
+  function _renderFromList(messages) {
     const box = document.getElementById('supportChatMessages');
     if (!box) return;
-    // 기존 환영 메시지(정적) 유지, 동적 msgId 있는 것만 제거
     box.querySelectorAll('[data-msg-id]').forEach(el => el.remove());
+    _lastMessageId = 0;
+    (messages || []).forEach(_renderMessage);
+  }
 
+  async function _renderAll() {
+    // 1) 캐시 즉시 표시 (체감 0ms)
+    const cached = _loadCache();
+    if (cached && cached.length) _renderFromList(cached);
+
+    // 2) 네트워크 결과로 교체
     const d = await _fetchMessages();
-    (d.messages || []).forEach(_renderMessage);
+    _renderFromList(d.messages || []);
+    _saveCache(d.messages || []);
     _updateBadge(d.unread_count || 0);
   }
 
@@ -137,7 +161,15 @@
     }
     if (!window.API || !window.authHeader) return;
 
-    input.disabled = true;
+    // 1) optimistic render — 서버 응답 기다리지 않고 즉시 말풍선 표시
+    const tempId = -Date.now();
+    const tempMsg = { id: tempId, from_admin: false, content, created_at: new Date().toISOString(), _pending: true };
+    _renderMessage(tempMsg);
+    input.value = '';
+    input.focus();
+    if (window.hapticLight) window.hapticLight();
+
+    // 2) 서버 전송은 비동기 — UI 블로킹 없음
     try {
       const res = await fetch(window.API + '/support/messages', {
         method: 'POST',
@@ -146,25 +178,36 @@
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const msg = await res.json();
-      _renderMessage(msg);
-      input.value = '';
+      // temp 말풍선을 실제 id 로 교체
+      const tempEl = document.querySelector(`[data-msg-id="${tempId}"]`);
+      if (tempEl) {
+        tempEl.dataset.msgId = msg.id;
+        tempEl.style.opacity = '1';
+      }
+      _lastMessageId = Math.max(_lastMessageId, msg.id);
       if (window.hapticSuccess) window.hapticSuccess();
     } catch (e) {
-      if (window.showToast) window.showToast('전송 실패: ' + e.message);
+      // 전송 실패 — 말풍선에 빨간색 느낌표 표시
+      const tempEl = document.querySelector(`[data-msg-id="${tempId}"]`);
+      if (tempEl) {
+        tempEl.style.opacity = '0.5';
+        const errSpan = document.createElement('span');
+        errSpan.textContent = ' ⚠️전송실패';
+        errSpan.style.cssText = 'color:#e74c3c;font-size:10px;';
+        tempEl.appendChild(errSpan);
+      }
+      if (window.showToast) window.showToast('전송 실패 — 잠시 후 다시 시도');
       if (window.hapticError) window.hapticError();
-    } finally {
-      input.disabled = false;
-      input.focus();
     }
   };
 
   // 로그인 후 앱 로드 시 읽지않음 배지 1회 체크
   document.addEventListener('DOMContentLoaded', () => {
     setTimeout(async () => {
-      // T-006: 레거시 키 itdasy_token 제거 + getToken() 통합
-      // app-core.js getToken() 이 _TOKEN_KEY 기반으로 현재 환경 토큰만 반환.
-      // 만료 체크도 포함되므로 수동 분기 불필요.
-      if (!window.getToken()) return;
+      if (!localStorage.getItem('itdasy_token::staging') &&
+          !localStorage.getItem('itdasy_token::prod') &&
+          !localStorage.getItem('itdasy_token::local') &&
+          !localStorage.getItem('itdasy_token')) return;
       const d = await _fetchMessages();
       _updateBadge(d.unread_count || 0);
     }, 2500);
