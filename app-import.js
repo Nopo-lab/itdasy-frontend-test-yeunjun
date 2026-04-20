@@ -93,13 +93,16 @@
           ${label.icon} <strong>${label.title}</strong> 가져오기
         </div>
         <label style="display:block;">
-          <input type="file" accept=".csv,.xlsx,.xlsm" hidden id="importFile" />
+          <input type="file" accept=".csv,.xlsx,.xlsm,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream" hidden id="importFile" />
           <div style="border:2px dashed #ccc;border-radius:12px;padding:40px 16px;text-align:center;cursor:pointer;">
             <div style="font-size:36px;margin-bottom:8px;">📥</div>
             <div style="font-size:14px;color:#666;">파일을 탭해서 선택하세요</div>
             <div style="font-size:11px;color:#aaa;margin-top:4px;">CSV · XLSX · 최대 10MB</div>
           </div>
         </label>
+        <div style="font-size:10px;color:#aaa;margin-top:8px;line-height:1.6;padding:0 4px;">
+          💡 아이폰·카톡으로 받은 엑셀은 .zip 로 뜰 수 있어요. 그대로 선택하면 자동으로 엑셀로 변환해서 올려드려요.
+        </div>
         <div id="importStatus" style="margin-top:12px;font-size:12px;color:#666;text-align:center;"></div>
       </div>
     `;
@@ -113,8 +116,21 @@
   async function _uploadPreview(file) {
     const status = document.getElementById('importStatus');
     status.textContent = '업로드 중…';
+
+    // iOS / 카카오톡 다운로드 시 xlsx 가 .zip 로 내려오는 케이스 자동 처리
+    // xlsx 는 실제로 ZIP 컨테이너라 MIME 이 zip 으로 뜨는 경우 많음
+    let effective = file;
+    const nameL = (file.name || '').toLowerCase();
+    if (nameL.endsWith('.zip') || file.type === 'application/zip') {
+      if (confirm('파일이 .zip 으로 인식됐어요.\nxlsx 파일이면 이름만 바꿔 업로드할까요?\n(아니오를 누르면 그대로 업로드 — 엑셀 파일만 처리 가능)')) {
+        const newName = file.name.replace(/\.zip$/i, '.xlsx') || (file.name + '.xlsx');
+        effective = new File([file], newName, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        status.textContent = `${newName} 로 변환해서 업로드 중…`;
+      }
+    }
+
     const fd = new FormData();
-    fd.append('file', file);
+    fd.append('file', effective);
     fd.append('kind', _currentKind);
     try {
       const res = await fetch(window.API + '/imports/preview', {
