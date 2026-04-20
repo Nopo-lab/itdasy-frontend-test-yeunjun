@@ -1,0 +1,307 @@
+/* ─────────────────────────────────────────────────────────────
+   고객 관리 (Phase 2 P0-1) — 경량 CRM
+
+   엔드포인트 (shared/schemas.json 참조):
+   - GET    /customers                 목록
+   - POST   /customers                 생성
+   - GET    /customers/{id}            상세
+   - PATCH  /customers/{id}            수정
+   - DELETE /customers/{id}            소프트 삭제
+
+   특징:
+   - 백엔드 미배포 시 localStorage 오프라인 폴백
+   - 원영 T-200 하단 네비와 독립 — 오버레이 시트로 동작
+   - openCustomers() 로 외부 진입
+   ──────────────────────────────────────────────────────────── */
+(function () {
+  'use strict';
+
+  const OFFLINE_KEY = 'itdasy_customers_offline_v1';
+  let _cache = null;
+  let _isOffline = false;
+
+  function _now() { return new Date().toISOString(); }
+
+  function _uuid() {
+    if (crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+  }
+
+  // ── 오프라인 스토어 (백엔드 미배포 시) ──────────────────────
+  function _loadOffline() {
+    try {
+      const raw = localStorage.getItem(OFFLINE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (_) { return []; }
+  }
+  function _saveOffline(list) {
+    try { localStorage.setItem(OFFLINE_KEY, JSON.stringify(list)); } catch (_) {}
+  }
+
+  // ── 네트워크 호출 공통 ────────────────────────────────────
+  async function _api(method, path, body) {
+    if (!window.API || !window.authHeader) throw new Error('no-auth');
+    const auth = window.authHeader();
+    if (!auth?.Authorization) throw new Error('no-token');
+    const opts = {
+      method,
+      headers: { ...auth, 'Content-Type': 'application/json' },
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(window.API + path, opts);
+    if (res.status === 404 || res.status === 501) throw new Error('endpoint-missing');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.status === 204 ? null : await res.json();
+  }
+
+  // ── CRUD ────────────────────────────────────────────────
+  async function list() {
+    try {
+      const d = await _api('GET', '/customers');
+      _isOffline = false;
+      _cache = d.items || [];
+      return _cache;
+    } catch (e) {
+      if (e.message === 'endpoint-missing' || e.message === 'no-token') {
+        _isOffline = true;
+        _cache = _loadOffline();
+        return _cache;
+      }
+      throw e;
+    }
+  }
+
+  async function create(payload) {
+    if (!payload || !payload.name) throw new Error('name-required');
+    const data = {
+      name: String(payload.name).trim().slice(0, 50),
+      phone: payload.phone ? String(payload.phone).trim().slice(0, 20) : null,
+      memo: payload.memo ? String(payload.memo).slice(0, 500) : null,
+      tags: Array.isArray(payload.tags) ? payload.tags.slice(0, 10) : [],
+      birthday: payload.birthday || null,
+    };
+    if (_isOffline) {
+      const record = {
+        id: _uuid(),
+        shop_id: localStorage.getItem('shop_id') || 'offline',
+        ...data,
+        last_visit_at: null,
+        visit_count: 0,
+        created_at: _now(),
+        deleted_at: null,
+      };
+      const list = _loadOffline();
+      list.unshift(record);
+      _saveOffline(list);
+      _cache = list;
+      return record;
+    }
+    const created = await _api('POST', '/customers', data);
+    if (_cache) _cache.unshift(created);
+    return created;
+  }
+
+  async function update(id, patch) {
+    if (_isOffline) {
+      const list = _loadOffline();
+      const i = list.findIndex(c => c.id === id);
+      if (i < 0) throw new Error('not-found');
+      list[i] = { ...list[i], ...patch };
+      _saveOffline(list);
+      _cache = list;
+      return list[i];
+    }
+    const updated = await _api('PATCH', '/customers/' + id, patch);
+    if (_cache) {
+      const i = _cache.findIndex(c => c.id === id);
+      if (i >= 0) _cache[i] = updated;
+    }
+    return updated;
+  }
+
+  async function remove(id) {
+    if (_isOffline) {
+      const list = _loadOffline().filter(c => c.id !== id);
+      _saveOffline(list);
+      _cache = list;
+      return { ok: true };
+    }
+    await _api('DELETE', '/customers/' + id);
+    if (_cache) _cache = _cache.filter(c => c.id !== id);
+    return { ok: true };
+  }
+
+  // ── 검색 ────────────────────────────────────────────────
+  function search(query) {
+    if (!_cache) return [];
+    const q = String(query || '').trim().toLowerCase();
+    if (!q) return _cache;
+    return _cache.filter(c =>
+      (c.name && c.name.toLowerCase().includes(q)) ||
+      (c.phone && c.phone.includes(q)) ||
+      (c.memo && c.memo.toLowerCase().includes(q)) ||
+      (c.tags || []).some(t => t.toLowerCase().includes(q))
+    );
+  }
+
+  // ── UI: 오버레이 시트 ────────────────────────────────────
+  function _ensureSheet() {
+    let sheet = document.getElementById('customerSheet');
+    if (sheet) return sheet;
+    sheet = document.createElement('div');
+    sheet.id = 'customerSheet';
+    sheet.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;background:rgba(0,0,0,0.4);';
+    sheet.innerHTML = `
+      <div style="position:absolute;inset:auto 0 0 0;background:var(--bg,#fff);border-radius:20px 20px 0 0;max-height:85vh;display:flex;flex-direction:column;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom));">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <strong style="font-size:18px;">내 고객</strong>
+          <span id="customerCount" style="font-size:12px;color:#888;"></span>
+          <span id="customerOfflineBadge" style="display:none;font-size:10px;padding:2px 6px;border-radius:4px;background:#f2c94c;color:#333;">오프라인</span>
+          <button onclick="closeCustomers()" style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;" aria-label="닫기">✕</button>
+        </div>
+        <input id="customerSearch" type="search" placeholder="이름·연락처·태그 검색" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:10px;font-size:14px;margin-bottom:10px;" />
+        <div id="customerList" style="flex:1;overflow-y:auto;min-height:120px;"></div>
+        <button id="customerAddBtn" style="margin-top:10px;padding:12px;border:none;border-radius:10px;background:var(--accent,#F18091);color:#fff;font-weight:700;font-size:15px;cursor:pointer;">+ 고객 추가</button>
+      </div>
+    `;
+    document.body.appendChild(sheet);
+    sheet.querySelector('#customerSearch').addEventListener('input', _rerender);
+    sheet.querySelector('#customerAddBtn').addEventListener('click', _openAddForm);
+    sheet.addEventListener('click', (e) => {
+      if (e.target === sheet) closeCustomers();
+    });
+    return sheet;
+  }
+
+  function _rerender() {
+    const sheet = document.getElementById('customerSheet');
+    if (!sheet) return;
+    const q = sheet.querySelector('#customerSearch').value;
+    const items = search(q);
+    const box = sheet.querySelector('#customerList');
+    const count = sheet.querySelector('#customerCount');
+    const offBadge = sheet.querySelector('#customerOfflineBadge');
+    count.textContent = (_cache ? _cache.length : 0) + '명';
+    offBadge.style.display = _isOffline ? 'inline-block' : 'none';
+
+    if (!items.length) {
+      box.innerHTML = '<div style="padding:40px 16px;text-align:center;color:#aaa;font-size:13px;">' +
+        (_cache && _cache.length ? '검색 결과 없음' : '아직 고객이 없어요. 아래 버튼으로 추가해 주세요.') +
+        '</div>';
+      return;
+    }
+    box.innerHTML = items.map(c => `
+      <div class="customer-row" data-id="${c.id}" style="padding:12px 8px;border-bottom:1px solid #eee;cursor:pointer;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <strong style="font-size:15px;">${_esc(c.name)}</strong>
+          ${c.phone ? `<span style="font-size:12px;color:#888;">${_esc(c.phone)}</span>` : ''}
+          ${c.visit_count ? `<span style="font-size:11px;color:var(--accent,#F18091);margin-left:auto;">방문 ${c.visit_count}회</span>` : '<span style="margin-left:auto;font-size:11px;color:#bbb;">신규</span>'}
+        </div>
+        ${c.memo ? `<div style="font-size:12px;color:#666;margin-top:4px;line-height:1.4;">${_esc(c.memo).slice(0,60)}${c.memo.length>60?'…':''}</div>` : ''}
+        ${(c.tags||[]).length ? `<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;">${c.tags.map(t => `<span style="font-size:10px;padding:2px 6px;background:#f5f5f5;border-radius:4px;">#${_esc(t)}</span>`).join('')}</div>` : ''}
+      </div>
+    `).join('');
+    box.querySelectorAll('.customer-row').forEach(row => {
+      row.addEventListener('click', () => _openDetail(row.dataset.id));
+    });
+  }
+
+  function _esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
+  }
+
+  function _openAddForm() {
+    _openDetail(null);
+  }
+
+  function _openDetail(id) {
+    const existing = id && _cache ? _cache.find(c => c.id === id) : null;
+    const box = document.getElementById('customerList');
+    if (!box) return;
+    const c = existing || { name: '', phone: '', memo: '', tags: [], birthday: '' };
+    box.innerHTML = `
+      <div style="padding:8px 4px;">
+        <button onclick="window._customerBack()" style="background:none;border:none;font-size:13px;color:#888;margin-bottom:12px;cursor:pointer;">← 목록</button>
+        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">이름 *</label>
+        <input id="cfName" value="${_esc(c.name)}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;" maxlength="50" />
+        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">연락처</label>
+        <input id="cfPhone" value="${_esc(c.phone||'')}" inputmode="tel" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;" maxlength="20" />
+        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">생일 (MM-DD)</label>
+        <input id="cfBirthday" value="${_esc(c.birthday||'')}" placeholder="03-14" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;" maxlength="5" />
+        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">태그 (쉼표로 구분)</label>
+        <input id="cfTags" value="${_esc((c.tags||[]).join(', '))}" placeholder="VIP, 속눈썹" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;" />
+        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">메모</label>
+        <textarea id="cfMemo" rows="3" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font-family:inherit;resize:vertical;" maxlength="500">${_esc(c.memo||'')}</textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button onclick="window._customerSave('${id||''}')" style="flex:1;padding:12px;border:none;border-radius:8px;background:var(--accent,#F18091);color:#fff;font-weight:700;cursor:pointer;">${existing ? '수정' : '추가'}</button>
+          ${existing ? `<button onclick="window._customerDelete('${id}')" style="padding:12px 16px;border:1px solid #eee;border-radius:8px;background:#fff;color:#c00;cursor:pointer;">삭제</button>` : ''}
+        </div>
+      </div>
+    `;
+    document.getElementById('cfName')?.focus();
+  }
+
+  window._customerBack = _rerender;
+
+  window._customerSave = async function (id) {
+    const payload = {
+      name: document.getElementById('cfName').value.trim(),
+      phone: document.getElementById('cfPhone').value.trim() || null,
+      birthday: document.getElementById('cfBirthday').value.trim() || null,
+      tags: document.getElementById('cfTags').value.split(',').map(t => t.trim()).filter(Boolean).slice(0, 10),
+      memo: document.getElementById('cfMemo').value.trim() || null,
+    };
+    if (!payload.name) {
+      if (window.showToast) window.showToast('이름을 입력해 주세요');
+      return;
+    }
+    try {
+      if (id) await update(id, payload);
+      else await create(payload);
+      if (window.hapticLight) window.hapticLight();
+      if (window.showToast) window.showToast(id ? '수정 완료' : '추가 완료');
+      _rerender();
+    } catch (e) {
+      console.warn('[customer] save 실패:', e);
+      if (window.showToast) window.showToast('저장 실패 — 잠시 후 다시 시도해 주세요');
+    }
+  };
+
+  window._customerDelete = async function (id) {
+    if (!confirm('이 고객을 삭제할까요?')) return;
+    try {
+      await remove(id);
+      if (window.hapticLight) window.hapticLight();
+      if (window.showToast) window.showToast('삭제 완료');
+      _rerender();
+    } catch (e) {
+      console.warn('[customer] delete 실패:', e);
+      if (window.showToast) window.showToast('삭제 실패');
+    }
+  };
+
+  window.openCustomers = async function () {
+    const sheet = _ensureSheet();
+    sheet.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    // 로딩 플레이스홀더
+    const box = sheet.querySelector('#customerList');
+    box.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa;">불러오는 중…</div>';
+    try {
+      await list();
+      _rerender();
+    } catch (e) {
+      console.warn('[customer] list 실패:', e);
+      box.innerHTML = '<div style="padding:40px;text-align:center;color:#c00;">불러오기 실패</div>';
+    }
+  };
+
+  window.closeCustomers = function () {
+    const sheet = document.getElementById('customerSheet');
+    if (sheet) sheet.style.display = 'none';
+    document.body.style.overflow = '';
+  };
+
+  // 외부 노출 (디버그·테스트용)
+  window.Customer = { list, create, update, remove, search, get _cache() { return _cache; }, get isOffline() { return _isOffline; } };
+})();

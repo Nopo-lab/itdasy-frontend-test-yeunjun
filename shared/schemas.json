@@ -1670,9 +1670,87 @@
           }
         }
       }
+    },
+    "GET /customers": {
+      "response": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/models/Customer" }
+          },
+          "total": { "type": "integer" }
+        },
+        "required": ["items", "total"]
+      }
+    },
+    "POST /customers": {
+      "request": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 50 },
+          "phone": { "type": ["string", "null"], "pattern": "^[0-9\\-+ ]{0,20}$" },
+          "memo": { "type": ["string", "null"], "maxLength": 500 },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 20 },
+            "maxItems": 10
+          },
+          "birthday": { "type": ["string", "null"], "description": "MM-DD" }
+        },
+        "required": ["name"]
+      },
+      "response": { "$ref": "#/models/Customer" }
+    },
+    "GET /customers/{customer_id}": {
+      "response": { "$ref": "#/models/Customer" }
+    },
+    "PATCH /customers/{customer_id}": {
+      "request": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 50 },
+          "phone": { "type": ["string", "null"] },
+          "memo": { "type": ["string", "null"], "maxLength": 500 },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "birthday": { "type": ["string", "null"] },
+          "last_visit_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "response": { "$ref": "#/models/Customer" }
+    },
+    "DELETE /customers/{customer_id}": {
+      "response": {
+        "type": "object",
+        "properties": { "ok": { "type": "boolean" } },
+        "required": ["ok"]
+      }
     }
   },
   "models": {
+    "Customer": {
+      "description": "샵 고객 레코드. shop_id 격리, 소프트 삭제 지원.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "shop_id": { "type": "string" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 50 },
+        "phone": { "type": ["string", "null"], "pattern": "^[0-9\\-+ ]{0,20}$" },
+        "memo": { "type": ["string", "null"], "maxLength": 500 },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 20 },
+          "maxItems": 10,
+          "default": []
+        },
+        "birthday": { "type": ["string", "null"], "description": "MM-DD 형식, 연도 X" },
+        "last_visit_at": { "type": ["string", "null"], "format": "date-time" },
+        "visit_count": { "type": "integer", "minimum": 0, "default": 0 },
+        "created_at": { "type": "string", "format": "date-time" },
+        "deleted_at": { "type": ["string", "null"], "format": "date-time" }
+      },
+      "required": ["id", "shop_id", "name", "tags", "visit_count", "created_at"]
+    },
     "ServiceEntry": {
       "description": "대표 서비스 항목 (프론트 Q2 스펙).",
       "properties": {

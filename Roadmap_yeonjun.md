@@ -54,15 +54,17 @@
 
 #### 2.1 고객 DB (경량 CRM) — 2주
 
-| 상태 | 파일 | 변경 내용 | 예상 라인 |
-|---|---|---|---|
-| 🔴 | `itdasy_backend/routers/customers.py` | CRUD + 태그 + 메모 + 방문이력 | ~400 |
-| 🔴 | `itdasy_backend/migrations/20260501_customers.sql` | `customers` 테이블 (id, shop_id, name, phone, tags JSONB, notes TEXT, created_at, last_visit_at) | ~40 |
-| 🔴 | `app-customer.js` | 고객 목록·검색·등록·상세 | ~450 |
-| 🟡 | `app-core.js` | 고객 탭 라우팅 추가 (`show('customer')`) | +30 |
-| 🟡 | `index.html` | 하단 네비 `고객` 버튼, `#tab-customer` 섹션 | +80 |
-| 🟡 | `shared/schemas.json` | `Customer` 스키마 추가 | +30 |
-| 🟡 | `style-home.css` | 고객 카드 CSS 토큰 | +60 |
+| 상태 | 파일 | 변경 내용 | 실제/예상 라인 | 진행 |
+|---|---|---|---|---|
+| 🔴 | `itdasy_backend/routers/customers.py` | CRUD + 태그 + 메모 + 방문이력 | ~400 | ⏳ |
+| 🔴 | `itdasy_backend/migrations/20260501_customers.sql` | `customers` 테이블 | ~40 | ⏳ |
+| 🔴 | `app-customer.js` | 고객 목록·검색·CRUD·상세 + 오프라인 폴백 + 오버레이 시트 | **307** | ✅ |
+| 🟡 | `shared/schemas.json` | `Customer` 모델 + 5개 엔드포인트(GET/POST/GET-id/PATCH/DELETE) | **+81** | ✅ |
+| 🟡 | `index.html` | 설정시트 `👥 내 고객 관리` 행 + script 태그 | **+4** | ✅ |
+| 🟡 | `app-core.js` | 탭 라우팅 (T-200 후 추가) | +30 | ⏸ T-200 대기 |
+| 🟡 | `style-home.css` | 고객 카드 CSS 토큰 (T-200 디자인 확정 후) | +60 | ⏸ T-200 대기 |
+
+**2.1 진입 경로 (Phase 2 잠정)**: 설정시트 → `👥 내 고객 관리` → 오버레이 시트. T-200 하단 네비 확정 후 메인 탭으로 승격 예정.
 
 #### 2.2 자체 예약 캘린더 — 2주
 
@@ -266,7 +268,8 @@
 |---|---|---|
 | 2026-04-20 | `27e885f` (원영) | T-200 디자인 리프레시 기반 + T-202 예약 제거 초기 커밋 |
 | 2026-04-20 | `5c59eb2` (연준) | Salvage — 네트워크/진단/채팅 UX 재이식 |
-| 2026-04-20 | (이 문서) | Phase 2~5 로드맵 수립 |
+| 2026-04-20 | `811f291` (연준) | Phase 2~5 로드맵 수립 |
+| 2026-04-20 | (이번 커밋) | Phase 2 P0-1 프론트 착수 — Customer 스키마·app-customer.js·설정시트 진입 |
 
 ---
 
