@@ -1,0 +1,477 @@
+/* ───── 온보딩 캡션 테스트 팝업 ───── */
+#onboardingCaptionPopup {
+  position: fixed; inset: 0; z-index: 6000;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+#onboardingCaptionPopup .ocp-card {
+  background: #fff; border-radius: 28px;
+  padding: 32px 24px; max-width: 360px; width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.1); border: 1px solid rgba(241,128,145,0.15);
+  animation: udPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+#onboardingCaptionPopup .ocp-emoji { font-size: 36px; text-align: center; margin-bottom: 10px; }
+#onboardingCaptionPopup .ocp-title {
+  font-size: 17px; font-weight: 800; color: var(--text);
+  text-align: center; letter-spacing: -0.4px; margin-bottom: 6px;
+}
+#onboardingCaptionPopup .ocp-sub {
+  font-size: 12px; color: var(--text3); text-align: center;
+  line-height: 1.6; margin-bottom: 18px;
+}
+#onboardingCaptionPopup textarea {
+  width: 100%; min-height: 120px; padding: 14px;
+  border: 1.5px solid rgba(241,128,145,0.25); border-radius: 14px;
+  font-size: 13px; line-height: 1.7; color: var(--text);
+  resize: vertical; box-sizing: border-box; font-family: inherit;
+  background: rgba(241,128,145,0.03);
+}
+#onboardingCaptionPopup textarea:focus { outline: none; border-color: var(--accent2); }
+.ocp-actions { display: flex; gap: 8px; margin-top: 14px; }
+.ocp-skip { flex: 1; height: 46px; background: transparent; border: 1.5px solid rgba(0,0,0,0.08); border-radius: 14px; font-size: 13px; font-weight: 600; color: var(--text3); cursor: pointer; }
+.ocp-save { flex: 2; height: 46px; background: linear-gradient(135deg,#f18091,#ff9aa8); border: none; border-radius: 14px; font-size: 14px; font-weight: 700; color: white; cursor: pointer; }
+
+/* ───── 톤 컨트롤러 ───── */
+.tc-group { display: flex; gap: 6px; }
+.tc-btn {
+  flex: 1; height: 34px; border-radius: 10px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  background: white; border: 1.5px solid rgba(241,128,145,0.2);
+  color: var(--text3); transition: all 0.18s;
+}
+.tc-btn.active {
+  background: rgba(241,128,145,0.12);
+  border-color: rgba(241,128,145,0.5);
+  color: var(--accent2);
+}
+
+/* ───── 업로드 진행 팝업 ───── */
+#uploadProgressPopup {
+  position: fixed; inset: 0; z-index: 5000;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+#uploadProgressPopup .up-card {
+  background: #fff; border-radius: 28px;
+  padding: 44px 28px 36px; max-width: 300px; width: 100%; text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.1); border: 1px solid rgba(241,128,145,0.1);
+}
+#upPct {
+  font-size: 52px; font-weight: 900; color: #F18091;
+  letter-spacing: -2px; line-height: 1; margin-bottom: 10px;
+  transition: all 0.4s ease;
+}
+#upMsg {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  margin-bottom: 24px; letter-spacing: -0.02em;
+}
+#upBarWrap {
+  height: 4px; background: rgba(241,128,145,0.15);
+  border-radius: 2px; overflow: hidden;
+}
+#upFill {
+  height: 100%; width: 0%;
+  background: #F18091; border-radius: 2px;
+  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ───── 업로드 완료 팝업 ───── */
+#uploadDonePopup {
+  position: fixed; inset: 0; z-index: 5001;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+#uploadDonePopup .ud-card {
+  background: #fff; border-radius: 28px;
+  padding: 44px 28px; max-width: 320px; width: 100%; text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.1); border: 1px solid rgba(241,128,145,0.1);
+  animation: udPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes udPop {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+/* ───── confetti ───── */
+.confetti {
+  position: fixed; top: -30px; font-size: 22px;
+  pointer-events: none; z-index: 9998;
+  animation: confettiFall linear forwards;
+}
+@keyframes confettiFall {
+  to { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+
+/* ───── 환영 오버레이 ───── */
+#welcomeOverlay {
+  position: fixed; inset: 0; z-index: 9998;
+  background: linear-gradient(145deg, #fff5f7 0%, #fff 60%, #fce8ec 100%);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+#welcomeOverlay.show {
+  opacity: 1; pointer-events: auto;
+}
+#welcomeOverlay.hide {
+  opacity: 0;
+}
+.welcome-ribbon {
+  font-size: 52px;
+  animation: wRibbonPop 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+  margin-bottom: 20px;
+}
+.welcome-name {
+  font-size: 26px; font-weight: 900;
+  color: var(--text);
+  letter-spacing: -0.04em;
+  animation: wSlideUp 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.12s both;
+  margin-bottom: 8px;
+}
+.welcome-name span { color: #F18091; }
+.welcome-sub {
+  font-size: 14px; font-weight: 600; color: var(--text2);
+  animation: wSlideUp 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.22s both;
+}
+.welcome-dots {
+  display: flex; gap: 6px; margin-top: 40px;
+  animation: wSlideUp 0.5s ease 0.35s both;
+}
+.welcome-dots span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #F18091; opacity: 0.3;
+  animation: wDotPulse 1s ease-in-out infinite;
+}
+.welcome-dots span:nth-child(2) { animation-delay: 0.15s; }
+.welcome-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes wRibbonPop {
+  from { transform: scale(0.3) rotate(-20deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes wSlideUp {
+  from { transform: translateY(18px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@keyframes wDotPulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.4); }
+}
+
+/* ───── Pull-to-Refresh ───── */
+#ptrBar {
+  position: fixed;
+  top: -56px; left: 0; right: 0;   /* 기본: 뷰포트 위에 숨김 */
+  z-index: 9999;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #fff;
+  border-bottom: 1px solid rgba(241,128,145,0.15);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text2);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  /* transform은 JS가 body와 함께 직접 제어 */
+}
+#ptrEmoji {
+  display: inline-block;
+  font-size: 18px;
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+#ptrEmoji.spin {
+  animation: ptrSpin 0.7s linear infinite;
+}
+@keyframes ptrSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ───── 설정 버튼 ───── */
+.btn-settings {
+  background: none; border: none;
+  cursor: pointer; padding: 7px; flex-shrink: 0;
+  border-radius: 11px;
+  transition: background 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-settings:active { background: rgba(241,128,145,0.13); }
+
+/* ───── 설정 바텀시트 ───── */
+#settingsSheet {
+  position: fixed; inset: 0; z-index: 8000;
+  display: none; align-items: flex-end; justify-content: center;
+}
+#settingsBackdrop {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.28);
+}
+#settingsCard {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 480px;
+  background: #fff;
+  border-radius: 28px 28px 0 0;
+  padding: 12px 0 calc(24px + env(safe-area-inset-bottom));
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.10);
+  transform: translateY(100%);
+  transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+#settingsCard.open { transform: translateY(0); }
+.sheet-handle {
+  width: 36px; height: 4px; border-radius: 2px;
+  background: #e0e0e0; margin: 0 auto 20px;
+}
+.sheet-header {
+  padding: 0 24px 16px;
+  font-size: 13px; font-weight: 700; color: var(--text2);
+  border-bottom: 1px solid var(--border);
+}
+.sheet-row {
+  display: flex; align-items: center;
+  padding: 16px 24px; font-size: 15px; font-weight: 600;
+  color: var(--text); cursor: pointer; border: none;
+  background: none; width: 100%; text-align: left;
+  transition: background 0.08s;
+  letter-spacing: -0.02em;
+  font-family: 'Pretendard', sans-serif;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+}
+.sheet-row:active { background: rgba(241,128,145,0.1); }
+.sheet-row.danger { color: #E05565; font-weight: 500; }
+.sheet-row.muted  { color: var(--text3); font-size: 13px; font-weight: 400; }
+
+/* ───── 설정 프로필 카드 ───── */
+.settings-profile-card {
+  margin: 4px 16px 12px;
+  background: var(--bg3);
+  border-radius: 20px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.settings-profile-avatar {
+  width: 50px; height: 50px; border-radius: 50%;
+  background: rgba(241,128,145,0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 19px; font-weight: 800; color: var(--accent);
+  overflow: hidden; flex-shrink: 0;
+  border: 1.5px solid rgba(241,128,145,0.2);
+}
+.settings-profile-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.settings-profile-name {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  letter-spacing: -0.03em;
+}
+.settings-profile-handle {
+  font-size: 12px; color: var(--text3); margin-top: 3px;
+  letter-spacing: -0.01em;
+}
+.sheet-sep {
+  height: 0.5px; background: var(--border);
+  margin: 6px 24px;
+}
+
+/* ───── 입력 카드 ───── */
+.input-card {
+  background: linear-gradient(150deg, rgba(241,128,145,0.05) 0%, rgba(255,243,246,0.75) 100%);
+  border: 1.5px solid rgba(241,128,145,0.14);
+  border-radius: 24px;
+  padding: 18px 18px 14px;
+  margin-bottom: 16px;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+.input-card:focus-within {
+  border-color: rgba(241,128,145,0.5);
+  box-shadow: 0 0 0 4px rgba(241,128,145,0.09), 0 6px 24px rgba(241,128,145,0.11);
+}
+.input-card label { color: var(--text2); font-size: 12px; margin-bottom: 8px; }
+.input-card textarea {
+  background: rgba(255,255,255,0.7);
+  border: 1px solid rgba(241,128,145,0.1);
+  border-radius: 14px;
+}
+.input-card textarea:focus {
+  background: rgba(255,255,255,0.95);
+  border-color: var(--accent);
+  box-shadow: none;
+}
+
+/* ───── 스켈레톤 로딩 ───── */
+.skeleton-box {
+  display: none;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 20px;
+  margin-top: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+.skeleton-box.show { display: block; }
+.sk {
+  border-radius: 7px;
+  background: linear-gradient(90deg, var(--bg3) 25%, rgba(241,128,145,0.08) 50%, var(--bg3) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+/* 글 길이 슬라이더 */
+#lengthSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: 2px solid rgba(255,255,255,0.25);
+  box-shadow: 0 2px 8px rgba(241,128,145,0.45);
+  cursor: grab;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+#lengthSlider:active::-webkit-slider-thumb { transform: scale(1.18); cursor: grabbing; }
+#lengthSlider::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: 2px solid rgba(255,255,255,0.25);
+  box-shadow: 0 2px 8px rgba(241,128,145,0.45);
+  cursor: grab;
+}
+@keyframes pulse { 0%,100%{transform:scale(1);opacity:0.8} 50%{transform:scale(1.18);opacity:1} }
+@keyframes aiLoadingFade { 0%,100%{opacity:0.5} 50%{opacity:1} }
+/* AI 추천 단계 체크리스트 로딩 */
+@keyframes stepFadeIn {
+  from { opacity:0; transform:translateX(-10px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes stepSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes stepCheck {
+  0%   { transform: scale(0); opacity:0; }
+  60%  { transform: scale(1.3); opacity:1; }
+  100% { transform: scale(1); opacity:1; }
+}
+.ai-step-card {
+  background: linear-gradient(145deg,#fff0f4,#fff8fa);
+  border-radius: 22px; border: 1.5px solid rgba(241,128,145,0.2);
+  box-shadow: 0 8px 32px rgba(241,128,145,0.12);
+  padding: 22px 20px;
+}
+.ai-step-title {
+  font-size: 14px; font-weight: 800; color: var(--accent);
+  letter-spacing: -0.02em; margin-bottom: 18px; text-align: center;
+}
+.ai-step-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 14px;
+  margin-bottom: 8px; opacity: 0.3;
+  transition: opacity 0.3s, background 0.3s;
+  border: 1.5px solid transparent;
+}
+.ai-step-row.active {
+  opacity: 1; background: rgba(241,128,145,0.07);
+  border-color: rgba(241,128,145,0.2);
+  animation: stepFadeIn 0.35s ease both;
+}
+.ai-step-row.done {
+  opacity: 1; background: rgba(241,128,145,0.04);
+}
+.ai-step-icon { font-size: 18px; flex-shrink:0; }
+.ai-step-label { flex: 1; font-size: 12px; font-weight: 700; color: var(--text2); letter-spacing: -0.01em; }
+.ai-step-indicator {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink:0;
+  border: 2px solid rgba(241,128,145,0.3); background: transparent;
+}
+.ai-step-row.active .ai-step-indicator {
+  border-color: var(--accent); border-right-color: transparent;
+  animation: stepSpin 0.8s linear infinite;
+}
+.ai-step-row.done .ai-step-indicator {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none; display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: #fff;
+  animation: stepCheck 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+/* 포트폴리오 업로드 카드 */
+.pf-upload-card {
+  flex: 1; border-radius: 14px; padding: 14px 10px;
+  text-align: center; cursor: pointer; transition: all 0.18s;
+  border: 2px dashed; position: relative; overflow: hidden;
+}
+.pf-upload-card:hover { transform: translateY(-2px); }
+.pf-upload-card input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; font-size:0; }
+.pf-upload-card.before { border-color: rgba(100,149,237,0.4); background: rgba(100,149,237,0.05); }
+.pf-upload-card.before:hover { border-color: rgba(100,149,237,0.7); background: rgba(100,149,237,0.1); }
+.pf-upload-card.after  { border-color: rgba(241,128,145,0.4); background: rgba(241,128,145,0.05); }
+.pf-upload-card.after:hover  { border-color: rgba(241,128,145,0.7); background: rgba(241,128,145,0.1); }
+.pf-upload-card.general{ border-color: var(--border2); background: var(--bg3); }
+.pf-upload-card.general:hover{ border-color: rgba(0,0,0,0.2); background: rgba(0,0,0,0.04); }
+/* 피드글 Before/After 사진 첨부 */
+.caption-photo-zone {
+  flex:1; border-radius: 12px; padding:12px 8px; text-align:center;
+  cursor: pointer; border: 2px dashed; position: relative; transition: all 0.15s;
+}
+.caption-photo-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; font-size:0; }
+.caption-photo-zone.before { border-color: rgba(100,149,237,0.4); background: rgba(100,149,237,0.05); }
+.caption-photo-zone.after  { border-color: rgba(241,128,145,0.35); background: rgba(241,128,145,0.04); }
+.caption-photo-zone.has-img { border-style: solid; }
+.caption-photo-zone.before.has-img { border-color: #6495ed; }
+.caption-photo-zone.after.has-img  { border-color: var(--accent); }
+/* Before/After 필터 탭 */
+.ptype-tab {
+  padding: 7px 13px; border-radius: 20px; font-size: 11.5px; font-weight: 600;
+  border: 1.5px solid var(--border2); background: transparent; color: var(--text3);
+  cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+}
+.ptype-tab.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff; border-color: transparent;
+  box-shadow: 0 2px 8px rgba(241,128,145,0.3);
+}
+
+/* ── P3 Workshop (T-200 2026-04-20) ── */
+.ws-dropzone {
+  background: var(--surface); border: 1.5px dashed var(--border-strong);
+  border-radius: var(--r-lg); padding: 32px 20px; text-align: center;
+  margin-bottom: 16px; cursor: pointer; transition: border-color .2s, background .2s;
+}
+.ws-dropzone:hover,
+.ws-dropzone:active { border-color: var(--brand); background: var(--brand-bg); }
+.ws-drop-icon {
+  width: 56px; height: 56px; border-radius: 999px; margin: 0 auto 12px;
+  background: var(--brand-bg); color: var(--brand);
+  display: flex; align-items: center; justify-content: center;
+}
+.ws-drop-title { font-size: 16px; font-weight: 700; margin: 0 0 4px; color: var(--text); }
+.ws-drop-sub { font-size: 12px; color: var(--text-subtle); margin: 0; }
+.ws-top-row {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  margin-bottom: 12px; min-height: 24px;
+}
+.ws-reset-btn {
+  padding: 5px 12px; border-radius: 14px;
+  border: 1px solid rgba(220,53,69,.3); background: transparent;
+  color: #dc3545; font-size: 11px; font-weight: 700;
+  cursor: pointer; font-family: 'Pretendard', sans-serif;
+  transition: background .15s, transform .15s;
+}
+.ws-reset-btn:active { transform: scale(.96); background: rgba(220,53,69,.06); }
+.ws-badge { font-size: 11px; font-weight: 700; color: var(--brand-strong); }
+.ws-slot-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.ws-slot-label { font-size: 13px; font-weight: 800; color: var(--text); }
+.ws-slot-hint { font-size: 11px; color: var(--text-subtle); margin: 0; }
+.ws-completion-count { font-size: 11px; color: var(--text-subtle); }
+.ws-assign-btn {
+  padding: 6px 14px; border-radius: 14px; border: none;
+  background: var(--brand); color: #fff; font-size: 11px; font-weight: 700;
+  cursor: pointer; font-family: 'Pretendard', sans-serif;
+  transition: opacity .15s, transform .15s;
+}
+.ws-assign-btn:active { transform: scale(.96); opacity: .85; }
+

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "524023965960",
+    "project_id": "itdasy",
+    "storage_bucket": "itdasy.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:524023965960:android:042a7c802124d55c5ce4bd",
+        "android_client_info": {
+          "package_name": "com.nopolab.itdasy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAU3F5xfPR0lna_ypGkDWeEGS4LvYJcDzU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

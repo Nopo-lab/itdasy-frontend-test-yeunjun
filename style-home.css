@@ -1,0 +1,537 @@
+/* eslint-disable max-lines */
+/* T-200 P2 임시 오버라이드, Phase 2 재분할 예정 (2026-04-20) */
+
+/* ───── Long Press 게이지 ───── */
+.lp-ring {
+  position: absolute; inset: 0; border-radius: 20px; pointer-events: none; z-index: 3;
+  display: flex; align-items: center; justify-content: center;
+}
+.lp-svg { position: absolute; width: 56px; height: 56px; transform: rotate(-90deg); }
+.lp-circle {
+  fill: none; stroke: #F18091; stroke-width: 4;
+  stroke-dasharray: 157; stroke-dashoffset: 157;
+  stroke-linecap: round; transition: stroke-dashoffset 0.05s linear;
+}
+
+/* ───── 카드덱 UI ───── */
+.card-deck-wrap {
+  position: relative; height: 200px; margin-bottom: 16px;
+}
+.card-deck-item {
+  position: absolute; inset: 0;
+  border-radius: 16px; overflow: hidden; background: var(--bg2);
+  border: 1.5px solid rgba(241,128,145,0.15);
+  cursor: pointer; user-select: none;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+.card-deck-item img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.card-deck-item .card-idx {
+  position: absolute; top: 8px; right: 10px;
+  background: rgba(0,0,0,0.4); color: white; font-size: 11px; font-weight: 700;
+  padding: 2px 7px; border-radius: 20px;
+}
+.card-deck-nav {
+  display: flex; justify-content: center; gap: 6px; margin-bottom: 12px;
+}
+.card-deck-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(241,128,145,0.25); transition: all 0.2s;
+}
+.card-deck-dot.active { background: var(--accent2); width: 18px; border-radius: 3px; }
+
+/* ===== BEFORE/AFTER ===== */
+.upload-area {
+  border: 1.5px dashed var(--border2);
+  border-radius: 20px;
+  padding: 28px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg2);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+}
+.upload-area:active { border-color: var(--accent); background: rgba(241,128,145,0.06); }
+.upload-area input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-icon { font-size: 28px; margin-bottom: 8px; }
+.upload-label { font-size: 13px; color: var(--text2); }
+.upload-preview { width: 100%; height: 160px; object-fit: cover; border-radius: 8px; display: none; }
+
+.ba-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.ba-slot label { margin-bottom: 8px; }
+.ba-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.ba-badge.before { background: rgba(180,140,100,0.2); color: var(--gold); border: 0.5px solid rgba(212,168,83,0.3); }
+.ba-badge.after { background: rgba(196,96,122,0.2); color: var(--accent); border: 0.5px solid var(--border2); }
+
+#baCanvas { width: 100%; border-radius: 12px; display: none; margin-top: 4px; }
+
+.style-opts { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.style-opt {
+  padding: 7px 14px;
+  font-size: 13px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  color: var(--text2);
+  cursor: pointer;
+  font-family: 'Pretendard', sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  transition: all 0.18s;
+}
+.style-opt.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+
+/* 카드 섹션 구분 */
+.card-divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+/* 홈 탭 */
+/* ───── 홈 카드 시스템 ───── */
+.hc-section { display: flex; flex-direction: column; gap: 16px; padding: 20px 20px 100px; }
+
+/* STEP 1 연동 카드 */
+.hc-step1 {
+  background: linear-gradient(135deg, var(--brand-bg), rgba(241,128,145,.08));
+  border: 1.5px solid rgba(241,128,145,.25);
+  border-radius: var(--r-xl);
+  padding: 28px 24px;
+}
+.hc-step-label {
+  font-size: 10px; font-weight: 700; color: #F18091;
+  letter-spacing: 0.14em; margin-bottom: 10px;
+}
+.hc-title {
+  font-size: 20px; font-weight: 800; color: var(--text);
+  letter-spacing: -0.04em; margin-bottom: 8px;
+}
+.hc-desc {
+  font-size: 13px; color: var(--text3); line-height: 1.65; margin-bottom: 24px;
+}
+.hc-btn-primary {
+  width: 100%; height: 52px; background: var(--brand); color: #fff;
+  border: none; border-radius: var(--r-md); font-size: 15px; font-weight: 700;
+  cursor: pointer; letter-spacing: -0.02em;
+  transition: transform 0.1s, opacity 0.1s;
+  touch-action: manipulation;
+}
+.hc-btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+.hc-btn-ghost {
+  margin-top: 14px; width: 100%; background: transparent; border: none;
+  font-size: 13px; color: var(--text3); cursor: pointer;
+  text-decoration: underline; padding: 4px 0;
+}
+
+/* 미리보기 샘플 카드 */
+.hc-preview {
+  background: #fff; border-radius: 20px;
+  border: 1px solid var(--border);
+  padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+.hc-preview-label {
+  font-size: 10px; font-weight: 700; color: var(--text3);
+  letter-spacing: 0.08em; margin-bottom: 12px;
+}
+.hc-preview-text {
+  font-size: 13px; color: var(--text2); line-height: 1.8;
+}
+.hc-preview-hash {
+  margin-top: 10px; font-size: 11px; color: var(--accent2); line-height: 1.7;
+}
+
+/* 메인 CTA 카드 (연동 후) */
+.hc-main-cta {
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  border-radius: var(--r-xl); padding: 28px 24px;
+  display: flex; align-items: center; gap: 16px;
+  cursor: pointer; touch-action: manipulation;
+  box-shadow: var(--shadow-brand);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.hc-main-cta:active { transform: scale(0.985); box-shadow: 0 4px 16px rgba(241,128,145,0.3); }
+.hc-cta-eyebrow {
+  font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.7);
+  letter-spacing: 0.06em; margin-bottom: 6px;
+}
+.hc-cta-title {
+  font-size: 22px; font-weight: 800; color: #fff;
+  letter-spacing: -0.04em; margin-bottom: 6px;
+}
+.hc-cta-sub {
+  font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.5;
+}
+
+/* 말투 카드 (연동 후) */
+#personaDash {
+  background: #fff; border-radius: 20px;
+  border: 1px solid var(--border);
+  padding: 22px 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+.pd-title {
+  font-size: 10px; font-weight: 700; color: var(--text3);
+  letter-spacing: 0.08em; margin-bottom: 14px;
+}
+
+/* PWA 설치 카드 */
+.hc-pwa {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 20px; padding: 18px 20px;
+  display: flex; align-items: center; gap: 14px;
+}
+.hc-pwa-icon { font-size: 28px; flex-shrink: 0; }
+.hc-pwa-text { font-size: 13px; color: var(--text2); line-height: 1.65; }
+.hc-pwa-text strong { color: var(--accent); font-weight: 700; }
+
+.home-cards { display: flex; flex-direction: column; gap: 12px; }
+.home-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.1s;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.05);
+}
+.home-card:active { transform: scale(0.99); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.home-card-icon { font-size: 28px; flex-shrink: 0; }
+.home-card-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 3px; letter-spacing: -0.02em; }
+.home-card-desc { font-size: 12px; color: var(--text3); line-height: 1.5; }
+.home-card-arrow { margin-left: auto; color: var(--text3); font-size: 18px; flex-shrink: 0; }
+
+
+/* 인스타 연동 카드 */
+.insta-connect-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 18px;
+  margin-top: 16px;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.05);
+}
+.btn-insta {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Pretendard', sans-serif;
+  letter-spacing: -0.02em;
+  border: none;
+  border-radius: 20px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+.btn-insta:active { opacity: 0.8; }
+.btn-insta.connected { background: #3DAA72; color: #fff; }
+.btn-insta.outline { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
+
+/* 로그인화면 */
+.lock-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 20px;
+}
+.lock-overlay.hidden { display: none; }
+.lock-title { font-family: 'Pretendard', sans-serif; font-size: 26px; font-weight: 700; color: var(--accent); margin-bottom: 6px; letter-spacing: -0.04em; }
+.lock-sub { font-size: 12px; color: var(--text3); margin-bottom: 36px; letter-spacing: 0.05em; }
+.login-input {
+  width: 100%; max-width: 300px; font-size: 15px; letter-spacing: -0.02em;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 16px;
+  color: var(--text); padding: 15px 18px; outline: none; margin-bottom: 10px;
+  font-family: 'Pretendard', sans-serif; font-weight: 400;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+}
+.login-input:focus { border-color: var(--accent); }
+.login-error { width: 100%; max-width: 300px; font-size: 13px; color: #E05555; margin-bottom: 10px; display: none; text-align: center; font-weight: 500; }
+.pin-btn {
+  width: 100%; max-width: 300px; padding: 17px;
+  background: var(--accent); border: none; border-radius: 20px;
+  color: #fff; font-size: 16px; font-weight: 600; cursor: pointer;
+  font-family: 'Pretendard', sans-serif; letter-spacing: -0.02em;
+}
+.pin-btn:disabled { opacity: 0.5; }
+
+/* ───── 온보딩 ───── */
+.ob-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 32px 24px;
+}
+.ob-overlay.hidden { display: none; }
+
+.ob-dots {
+  display: flex; gap: 6px; margin-bottom: 40px;
+}
+.ob-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--border2); transition: all 0.3s;
+}
+.ob-dot.active { width: 20px; border-radius: 3px; background: var(--accent); }
+
+.ob-step { display: none; width: 100%; max-width: 320px; text-align: center; }
+.ob-step.active { display: block; }
+
+.ob-emoji { font-size: 52px; margin-bottom: 20px; line-height: 1; }
+.ob-title {
+  font-size: 24px; font-weight: 700; color: var(--text);
+  letter-spacing: -0.04em; line-height: 1.35; margin-bottom: 10px;
+}
+.ob-sub { font-size: 14px; color: var(--text2); line-height: 1.6; margin-bottom: 32px; }
+
+/* 2x2 샵 그리드 */
+.ob-shop-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-bottom: 32px;
+}
+.ob-shop-card {
+  background: var(--bg2); border: 2px solid var(--border);
+  border-radius: 20px; padding: 22px 12px; cursor: pointer;
+  transition: all 0.2s; position: relative;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+}
+.ob-shop-card:active { transform: scale(0.97); }
+.ob-shop-card.selected { border-color: var(--accent); background: rgba(241,128,145,0.06); }
+.ob-shop-card.disabled {
+  opacity: 0.38; cursor: not-allowed; pointer-events: none;
+}
+.ob-shop-icon { font-size: 32px; margin-bottom: 8px; }
+.ob-shop-name { font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+.ob-shop-badge {
+  position: absolute; top: 10px; right: 10px;
+  font-size: 10px; font-weight: 600; color: var(--text3);
+  background: var(--bg3); border-radius: 6px; padding: 2px 7px;
+  letter-spacing: 0;
+}
+
+/* 밑줄 입력 (Step 3) */
+.ob-underline-wrap { width: 100%; max-width: 280px; margin: 0 auto 32px; }
+.ob-underline-input {
+  width: 100%; background: transparent;
+  border: none; border-bottom: 2px solid var(--accent);
+  border-radius: 0; outline: none;
+  font-size: 22px; font-weight: 700; color: var(--text);
+  text-align: center; padding: 8px 0;
+  font-family: 'Pretendard', sans-serif; letter-spacing: -0.03em;
+}
+.ob-underline-input::placeholder { color: var(--text3); font-weight: 400; font-size: 18px; }
+
+/* 완료 화면 */
+.ob-complete-name {
+  color: var(--accent); font-weight: 700;
+}
+
+.ob-btn {
+  width: 100%; max-width: 320px; padding: 18px;
+  background: var(--accent); border: none; border-radius: 20px;
+  color: #fff; font-size: 16px; font-weight: 700;
+  font-family: 'Pretendard', sans-serif; letter-spacing: -0.02em;
+  cursor: pointer; transition: opacity 0.2s, transform 0.1s;
+}
+.ob-btn:active { opacity: 0.85; transform: scale(0.98); }
+.ob-btn.secondary {
+  background: transparent; color: var(--accent);
+  border: 2px solid var(--accent); margin-top: 12px;
+}
+
+/* 홈 질문 카드 */
+.home-question-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 22px 20px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(241,128,145,0.08);
+}
+.home-question-text {
+  font-size: 17px; font-weight: 700; color: var(--text);
+  letter-spacing: -0.03em; line-height: 1.4; margin-bottom: 14px;
+}
+
+/* ───── 헤더 페르소나 ───── */
+.header-persona {
+  display: none; align-items: center; gap: 6px; flex-shrink: 1; min-width: 0;
+}
+.profile-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--brand-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; color: var(--accent2);
+  overflow: hidden; flex-shrink: 0;
+  border: 1px solid rgba(241,128,145,0.2);
+}
+.header-shop-name {
+  font-size: 12px; font-weight: 800; color: var(--text);
+}
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.header-persona-texts { text-align: right; min-width: 0; flex: 1; }
+.persona-status-name {
+    font-size: 10px; font-weight: 600; color: var(--accent);
+    letter-spacing: -0.02em; line-height: 1.3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.persona-status-sub  {
+    font-size: 9px; color: var(--text2); /* 더 진함 */
+    letter-spacing: -0.01em; margin-top: 1px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+@media (max-width: 350px) {
+    .header-persona-texts { display: none; }
+}
+
+/* ───── 캡션 로딩 팝업 (슬롯머신) ───── */
+#captionLoadingPopup {
+  position: fixed; inset: 0; z-index: 5000;
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+#captionLoadingPopup .cl-card {
+  background: #fff; border-radius: 28px;
+  padding: 32px 24px 28px; max-width: 320px; width: 100%; text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.08); border: 1px solid rgba(241,128,145,0.15);
+}
+#clMsg {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  margin-bottom: 20px; min-height: 22px; letter-spacing: -0.02em;
+}
+/* 슬롯머신 */
+.slot-machine {
+  display: flex; gap: 6px; justify-content: center; margin-bottom: 16px;
+}
+.slot-reel { flex: 1; position: relative; }
+.slot-window {
+  height: 44px; overflow: hidden;
+  background: rgba(241,128,145,0.06);
+  border: 1.5px solid rgba(241,128,145,0.2);
+  border-radius: 12px; position: relative;
+}
+.slot-window::before, .slot-window::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 14px; z-index: 2; pointer-events: none;
+}
+.slot-window::before { top: 0; background: linear-gradient(to bottom, rgba(255,255,255,0.95), transparent); }
+.slot-window::after  { bottom: 0; background: linear-gradient(to top, rgba(255,255,255,0.95), transparent); }
+.slot-strip {
+  display: flex; flex-direction: column; align-items: center;
+}
+.slot-item {
+  height: 44px; display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: var(--accent2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding: 0 6px; letter-spacing: -0.02em; flex-shrink: 0;
+  max-width: 100%; box-sizing: border-box;
+}
+.slot-locked {
+  display: none; position: absolute; inset: 0; z-index: 3;
+  background: linear-gradient(135deg, rgba(241,128,145,0.15), rgba(241,128,145,0.06));
+  border: 1.5px solid rgba(241,128,145,0.45);
+  border-radius: 12px;
+  align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800; color: var(--accent2);
+  padding: 0 4px; text-align: center;
+  animation: slotLockPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes slotLockPop {
+  from { transform: scale(0.6); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.slot-locked.active { display: flex; }
+#clHint {
+  font-size: 11px; color: var(--text3); letter-spacing: -0.01em;
+}
+
+/* ───── T-200 P2 · 홈 리프레시 신규 클래스 ───── */
+
+.greet { margin-bottom: 4px; }
+.greet h1 {
+  font-size: 26px; font-weight: 800; margin: 0 0 22px;
+  letter-spacing: -.4px; color: var(--text);
+}
+
+.status-line { font-size: 14px; color: var(--text-muted); margin: 0 0 14px; font-weight: 500; }
+.status-line b { color: var(--brand); font-weight: 700; }
+
+.cta-main {
+  display: flex; align-items: center; gap: 16px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  color: #fff; padding: 24px; border-radius: var(--r-xl);
+  box-shadow: var(--shadow-brand); border: 0; width: 100%;
+  cursor: pointer; text-align: left; transition: transform .12s; margin-bottom: 28px;
+  font-family: 'Pretendard', sans-serif; touch-action: manipulation;
+}
+.cta-main:active { transform: scale(.985); }
+.cta-icon {
+  width: 52px; height: 52px; flex-shrink: 0;
+  background: rgba(255,255,255,.22); border-radius: var(--r-md);
+  display: flex; align-items: center; justify-content: center;
+}
+.cta-text { flex: 1; min-width: 0; }
+.cta-title { font-size: 18px; font-weight: 700; line-height: 1.3; margin: 0 0 4px; }
+.cta-sub { font-size: 13px; opacity: .92; margin: 0; }
+.cta-arrow {
+  width: 36px; height: 36px; border-radius: 999px;
+  background: rgba(255,255,255,.22); display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0;
+}
+
+.sec { margin-bottom: 24px; }
+.sec-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; padding: 0 2px;
+}
+.home-sec-title {
+  font-size: 15px; font-weight: 700; margin: 0;
+  color: var(--text-muted); letter-spacing: -0.02em;
+}
+.sec-more {
+  font-size: 13px; color: var(--text-subtle); background: 0; border: 0;
+  cursor: pointer; padding: 4px 6px;
+  display: flex; align-items: center; gap: 2px;
+  font-family: 'Pretendard', sans-serif;
+}
+
+.resume-card {
+  display: flex; align-items: center; gap: 14px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 12px; margin-bottom: 8px; box-shadow: var(--shadow-sm);
+  cursor: pointer; transition: transform .1s;
+}
+.resume-card:active { transform: scale(.99); }
+.resume-thumb {
+  width: 56px; height: 56px; border-radius: var(--r-sm); flex-shrink: 0; overflow: hidden;
+}
+.resume-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.resume-text { flex: 1; min-width: 0; }
+.resume-title {
+  font-size: 14px; font-weight: 600; margin: 0 0 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);
+}
+.resume-sub { font-size: 12px; color: var(--text-subtle); margin: 0; display: flex; gap: 8px; align-items: center; }
+.resume-badge {
+  background: var(--brand-bg); color: var(--brand);
+  padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+}
+.resume-empty {
+  font-size: 13px; color: var(--text-subtle); text-align: center; padding: 24px 0; margin: 0;
+}
+
+.hc-preview-icon {
+  width: 32px; height: 32px; border-radius: var(--r-sm); flex-shrink: 0;
+  background: var(--brand-bg); color: var(--brand);
+  display: flex; align-items: center; justify-content: center;
+}
+

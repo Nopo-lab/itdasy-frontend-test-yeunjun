@@ -1,0 +1,61 @@
+{
+  "_meta": {
+    "version": "draft-2026-04-16-v2",
+    "source": "Phase 1-A-1 기획 확정 (2차)",
+    "philosophy": "카드는 3축 조합의 라벨일 뿐. 구체 디테일은 원장님이 자유 텍스트(special_context)로 추가. 업종 차이는 UserIdentity.category로 자동 주입.",
+    "axes": {
+      "Q1_situation": ["시술완성", "후기감사"],
+      "Q2_customer": ["신규", "단골"],
+      "Q3_photo": ["완성샷", "전후비교"]
+    },
+    "combinations": 8,
+    "total_cards": 8,
+    "notes": [
+      "업종 무관 범용 구조 — 네일/붙임머리/속눈썹/메이크업 모두 동일 카드 사용",
+      "AI 프롬프트 조립: fingerprint + axes + category(업종) + special_context(자유텍스트) → 캡션 생성",
+      "말투분석 팝업(Phase 1-A) + 캡션 생성 탭(Phase 1-F) 양쪽에서 재사용"
+    ]
+  },
+  "cards": [
+    {
+      "combo_id": "complete_new_photo",
+      "axes": { "situation": "시술완성", "customer": "신규", "photo": "완성샷" },
+      "label": "첫 손님 완성샷 자랑"
+    },
+    {
+      "combo_id": "complete_new_compare",
+      "axes": { "situation": "시술완성", "customer": "신규", "photo": "전후비교" },
+      "label": "첫 손님 전후 변화"
+    },
+    {
+      "combo_id": "complete_regular_photo",
+      "axes": { "situation": "시술완성", "customer": "단골", "photo": "완성샷" },
+      "label": "단골 완성샷 자랑"
+    },
+    {
+      "combo_id": "complete_regular_compare",
+      "axes": { "situation": "시술완성", "customer": "단골", "photo": "전후비교" },
+      "label": "단골 전후 변화"
+    },
+    {
+      "combo_id": "thanks_new_photo",
+      "axes": { "situation": "후기감사", "customer": "신규", "photo": "완성샷" },
+      "label": "첫 손님 후기 감사"
+    },
+    {
+      "combo_id": "thanks_new_compare",
+      "axes": { "situation": "후기감사", "customer": "신규", "photo": "전후비교" },
+      "label": "첫 손님 전후 후기"
+    },
+    {
+      "combo_id": "thanks_regular_photo",
+      "axes": { "situation": "후기감사", "customer": "단골", "photo": "완성샷" },
+      "label": "단골 감사 후기"
+    },
+    {
+      "combo_id": "thanks_regular_compare",
+      "axes": { "situation": "후기감사", "customer": "단골", "photo": "전후비교" },
+      "label": "단골 장기 변화 후기"
+    }
+  ]
+}

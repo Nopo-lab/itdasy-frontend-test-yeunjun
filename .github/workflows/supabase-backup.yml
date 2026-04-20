@@ -1,0 +1,76 @@
+name: Supabase Daily Backup
+
+# 매일 UTC 18:00 (한국 03:00) 운영 + 스테이징 두 DB를 pg_dump → artifact 저장
+# 필요 secrets:
+#   SUPABASE_PROD_DB_URL     : 운영 (beauty-platform)
+#   SUPABASE_STAGING_DB_URL  : 스테이징 (itdasy-staging)
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Install postgresql-client v17 (Supabase Postgres 17 호환)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          sudo sh /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Prepare backup directory
+        run: |
+          mkdir -p backup
+          TS=$(date -u +%Y%m%d_%H%M)
+          echo "BACKUP_TS=$TS" >> $GITHUB_ENV
+
+      - name: Dump production DB (beauty-platform)
+        env:
+          DB_URL: ${{ secrets.SUPABASE_PROD_DB_URL }}
+        shell: bash
+        run: |
+          set -eo pipefail
+          if [ -z "$DB_URL" ]; then
+            echo "::warning::SUPABASE_PROD_DB_URL 미설정 — 운영 백업 건너뜀"
+            exit 0
+          fi
+          FILE="backup/itdasy_PROD_${BACKUP_TS}.sql.gz"
+          /usr/lib/postgresql/17/bin/pg_dump --no-owner --no-acl --format=plain "$DB_URL" | gzip > "$FILE"
+          ls -lh "$FILE"
+          if [ $(stat -c%s "$FILE") -lt 1024 ]; then
+            echo "::error::PROD 덤프 파일이 너무 작습니다 (빈 백업). 1KB 이상이어야 정상."
+            exit 1
+          fi
+
+      - name: Dump staging DB (itdasy-staging)
+        env:
+          DB_URL: ${{ secrets.SUPABASE_STAGING_DB_URL }}
+        shell: bash
+        run: |
+          set -eo pipefail
+          if [ -z "$DB_URL" ]; then
+            echo "::warning::SUPABASE_STAGING_DB_URL 미설정 — 스테이징 백업 건너뜀"
+            exit 0
+          fi
+          FILE="backup/itdasy_STAGING_${BACKUP_TS}.sql.gz"
+          /usr/lib/postgresql/17/bin/pg_dump --no-owner --no-acl --format=plain "$DB_URL" | gzip > "$FILE"
+          ls -lh "$FILE"
+          if [ $(stat -c%s "$FILE") -lt 1024 ]; then
+            echo "::error::STAGING 덤프 파일이 너무 작습니다 (빈 백업). 1KB 이상이어야 정상."
+            exit 1
+          fi
+
+      - name: Backup summary
+        run: |
+          echo "=== 백업 완료 ==="
+          ls -lh backup/ | tail -5
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup-${{ env.BACKUP_TS }}
+          path: backup/*.sql.gz
+          retention-days: 30

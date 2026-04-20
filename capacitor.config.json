@@ -1,0 +1,54 @@
+{
+  "appId": "com.nopolab.itdasy",
+  "appName": "잇데이 스튜디오",
+  "webDir": "www",
+  "server": {
+    "url": "https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/",
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "allowNavigation": [
+      "nopo-lab.github.io",
+      "itdasy260417-staging-production.up.railway.app",
+      "itdasy260417-production.up.railway.app",
+      "api.instagram.com",
+      "www.instagram.com",
+      "graph.instagram.com",
+      "www.facebook.com",
+      "accountscenter.instagram.com",
+      "accountscenter.meta.com"
+    ]
+  },
+  "ios": {
+    "contentInset": "always",
+    "scrollEnabled": true,
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "launchAutoHide": true,
+      "backgroundColor": "#1A0C10",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#1A0C10",
+      "overlaysWebView": false
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "Camera": {
+      "resultType": "base64",
+      "quality": 85
+    },
+    "App": {
+      "urlScheme": "itdasy"
+    }
+  }
+}

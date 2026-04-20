@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#F2F4F6" />
+<title>잇데이 프로토타입 v2 · 홈 단순화 + 글만쓰기 인라인</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:root {
+  --brand: #F18091; --brand-strong: #E5586E; --brand-bg: #FFF1F3;
+  --bg: #F2F4F6; --surface: #FFF; --surface-2: #F7F8FA;
+  --text: #191F28; --text-muted: #4E5968; --text-subtle: #8B95A1;
+  --border: rgba(0,0,0,.07); --border-strong: rgba(0,0,0,.14);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.06);
+  --shadow-brand: 0 8px 24px rgba(241,128,145,.30);
+  --r-sm: 8px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px;
+}
+[data-theme="dark"] {
+  --brand: #F18091; --brand-strong: #FF99AC; --brand-bg: rgba(241,128,145,.10);
+  --bg: #0B0E13; --surface: #16191F; --surface-2: #1F232B;
+  --text: #ECEEF1; --text-muted: #B0B4BB; --text-subtle: #8E929A;
+  --border: rgba(255,255,255,.08); --border-strong: rgba(255,255,255,.16);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.30);
+  --shadow-brand: 0 8px 24px rgba(241,128,145,.40);
+}
+html, body { margin: 0; background: var(--bg); color: var(--text);
+  font-family: 'Pretendard Variable','Pretendard', -apple-system, sans-serif; line-height: 1.5; }
+.phone { max-width: 420px; margin: 0 auto; min-height: 100vh; padding-bottom: 96px; }
+
+/* 헤더 */
+.hd { position: sticky; top: 0; z-index: 10; background: var(--bg);
+  padding: 14px 20px 10px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border); }
+.hd-left { display: flex; align-items: center; gap: 10px; }
+.avatar { width: 38px; height: 38px; border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 15px; }
+.hd-shop { font-size: 16px; font-weight: 700; line-height: 1.2; }
+.hd-meta { font-size: 12px; color: var(--text-subtle); margin-top: 2px; }
+.hd-icon-btn { width: 40px; height: 40px; border-radius: var(--r-md);
+  border: 0; background: transparent; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.hd-icon-btn:hover { background: var(--surface-2); }
+
+main { padding: 24px 20px 20px; display: none; }
+main.active { display: block; animation: fadeIn .25s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* 홈: 한 줄 상태 + 큰 CTA + 이어하기 */
+.status-line { font-size: 14px; color: var(--text-muted); margin: 0 0 14px; font-weight: 500; }
+.status-line b { color: var(--brand); font-weight: 700; }
+.greet h1 { font-size: 26px; font-weight: 800; margin: 0 0 22px; letter-spacing: -.4px; }
+
+.cta-main { display: flex; align-items: center; gap: 16px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  color: #fff; padding: 24px; border-radius: var(--r-xl);
+  box-shadow: var(--shadow-brand); border: 0; width: 100%;
+  cursor: pointer; text-align: left; transition: transform .12s; margin-bottom: 28px; }
+.cta-main:active { transform: scale(.985); }
+.cta-icon { width: 52px; height: 52px; flex-shrink: 0;
+  background: rgba(255,255,255,.22); border-radius: var(--r-md);
+  display: flex; align-items: center; justify-content: center; }
+.cta-text { flex: 1; min-width: 0; }
+.cta-title { font-size: 18px; font-weight: 700; line-height: 1.3; margin: 0 0 4px; }
+.cta-sub { font-size: 13px; opacity: .92; margin: 0; }
+.cta-arrow { width: 36px; height: 36px; border-radius: 999px;
+  background: rgba(255,255,255,.22); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+.sec { margin-bottom: 24px; }
+.sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 0 2px; }
+.sec-title { font-size: 15px; font-weight: 700; margin: 0; color: var(--text-muted); }
+.sec-more { font-size: 13px; color: var(--text-subtle); background: 0; border: 0; cursor: pointer;
+  padding: 4px 6px; display: flex; align-items: center; gap: 2px; }
+
+/* 이어하기 — 홈의 유일한 리스트. 세로 카드 최대 2개 */
+.resume-card { display: flex; align-items: center; gap: 14px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 12px; margin-bottom: 8px; box-shadow: var(--shadow-sm);
+  cursor: pointer; transition: transform .1s; }
+.resume-card:active { transform: scale(.99); }
+.resume-thumb { width: 56px; height: 56px; border-radius: var(--r-sm); flex-shrink: 0;
+  overflow: hidden; position: relative; }
+.resume-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.resume-text { flex: 1; min-width: 0; }
+.resume-title { font-size: 14px; font-weight: 600; margin: 0 0 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.resume-sub { font-size: 12px; color: var(--text-subtle); margin: 0;
+  display: flex; gap: 8px; align-items: center; }
+.resume-badge { background: var(--brand-bg); color: var(--brand);
+  padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.resume-arrow { color: var(--text-subtle); }
+
+/* 만들기 — 드롭존 + 인라인 글만쓰기 토글 */
+.dropzone { border: 2px dashed var(--border-strong); border-radius: var(--r-lg);
+  padding: 48px 20px; text-align: center; background: var(--surface);
+  margin-bottom: 12px; cursor: pointer; transition: border-color .2s, background .2s; }
+.dropzone:hover { border-color: var(--brand); background: var(--brand-bg); }
+.dropzone-icon { width: 60px; height: 60px; margin: 0 auto 14px; border-radius: 999px;
+  background: var(--brand-bg); color: var(--brand);
+  display: flex; align-items: center; justify-content: center; }
+.dropzone-title { font-size: 17px; font-weight: 700; margin: 0 0 4px; }
+.dropzone-sub { font-size: 13px; color: var(--text-subtle); margin: 0; }
+
+.inline-link { display: block; text-align: center; background: 0; border: 0;
+  color: var(--text-muted); font-size: 14px; font-weight: 500; padding: 14px;
+  cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: var(--border-strong); width: 100%;
+  font-family: inherit; }
+.inline-link:hover { color: var(--brand); text-decoration-color: var(--brand); }
+
+/* 글만쓰기 인라인 모드 */
+.text-only-mode { display: none; }
+.text-only-mode.active { display: block; }
+.make-default { display: block; }
+.make-default.hidden { display: none; }
+
+.text-editor { background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 18px; margin-bottom: 14px;
+  box-shadow: var(--shadow-sm); }
+.text-editor textarea { width: 100%; min-height: 160px; border: 0; outline: 0;
+  resize: none; font-family: inherit; font-size: 15px; line-height: 1.6;
+  color: var(--text); background: transparent; padding: 0; }
+.text-editor textarea::placeholder { color: var(--text-subtle); }
+.text-editor-foot { display: flex; justify-content: space-between; align-items: center;
+  padding-top: 12px; border-top: 1px solid var(--border); margin-top: 12px; }
+.text-editor-hint { font-size: 12px; color: var(--text-subtle); margin: 0; }
+.back-link { background: 0; border: 0; color: var(--text-muted); cursor: pointer;
+  font-size: 13px; padding: 6px 10px; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 4px; margin-bottom: 10px; }
+.back-link:hover { color: var(--brand); }
+
+/* 일반 카드 / 공용 */
+.card { background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 16px; margin-bottom: 10px; box-shadow: var(--shadow-sm); }
+.menu-row { display: flex; align-items: center; gap: 14px; padding: 16px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md);
+  margin-bottom: 8px; cursor: pointer; transition: background .15s; }
+.menu-row:hover { background: var(--surface-2); }
+.menu-icon { width: 40px; height: 40px; border-radius: var(--r-sm); flex-shrink: 0;
+  background: var(--brand-bg); color: var(--brand);
+  display: flex; align-items: center; justify-content: center; }
+.menu-text { flex: 1; }
+.menu-title { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+.menu-sub { font-size: 12px; color: var(--text-subtle); margin: 0; }
+.menu-arrow { color: var(--text-subtle); }
+
+/* 내 샵 프로필 + 최근발행 */
+.shop-profile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 24px 20px; text-align: center; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
+.shop-avatar-big { width: 80px; height: 80px; border-radius: 999px; margin: 0 auto 12px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 30px; box-shadow: var(--shadow-brand); }
+.shop-name { font-size: 19px; font-weight: 800; margin: 0 0 4px; }
+.shop-handle { font-size: 13px; color: var(--text-subtle); margin: 0 0 16px; }
+.shop-stats { display: flex; gap: 24px; justify-content: center; }
+.shop-stat-num { font-size: 17px; font-weight: 700; color: var(--text); }
+.shop-stat-lbl { font-size: 11px; color: var(--text-subtle); margin-top: 2px; }
+
+.post-item { display: flex; gap: 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 12px; margin-bottom: 8px; box-shadow: var(--shadow-sm);
+  cursor: pointer; transition: transform .1s; }
+.post-item:active { transform: scale(.99); }
+.post-thumb { width: 56px; height: 56px; border-radius: var(--r-sm); flex-shrink: 0;
+  overflow: hidden; }
+.post-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.post-text { flex: 1; min-width: 0; }
+.post-cap { font-size: 13px; color: var(--text); margin: 0 0 4px; line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.post-meta { font-size: 11px; color: var(--text-subtle); margin: 0;
+  display: flex; gap: 12px; align-items: center; }
+.m-stat { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; user-select: none; }
+.m-stat.liked { color: var(--brand); font-weight: 600; }
+.m-stat.liked svg { fill: var(--brand); stroke: var(--brand); }
+
+/* 하단 네비 */
+.bn { position: fixed; bottom: 0; left: 0; right: 0;
+  max-width: 420px; margin: 0 auto; background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  padding: 6px 0 calc(6px + env(safe-area-inset-bottom)); z-index: 20; }
+.bn-btn { background: 0; border: 0; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 8px 4px; color: var(--text-subtle); font-size: 11px; font-weight: 500;
+  transition: color .15s; }
+.bn-btn.active { color: var(--brand); font-weight: 700; }
+.bn-btn:active { transform: scale(.92); }
+
+/* 다크 토글 */
+.theme-toggle { position: fixed; top: 14px; right: 14px; z-index: 100;
+  width: 44px; height: 44px; border-radius: 999px;
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: var(--shadow-md); }
+@media (min-width: 460px) { .theme-toggle { right: calc(50% - 230px); } }
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()" aria-label="라이트/다크">
+  <svg id="ic-theme" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+</button>
+
+<div class="phone">
+
+  <header class="hd">
+    <div class="hd-left">
+      <div class="avatar">미</div>
+      <div>
+        <div class="hd-shop">미라네일샵</div>
+        <div class="hd-meta">@miranail_official</div>
+      </div>
+    </div>
+    <button class="hd-icon-btn" aria-label="알림">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </button>
+  </header>
+
+  <!-- ──────── 홈 (A2: 한 줄 상태 + 큰 CTA + 이어하기) ──────── -->
+  <main id="t-home" class="active">
+    <section class="greet">
+      <p class="status-line">오늘 발행 대기 <b>2개</b> · 작성중 <b>1개</b></p>
+      <h1>사진 한 장이면<br/>끝나요.</h1>
+    </section>
+    <button class="cta-main" onclick="goTab('make')">
+      <div class="cta-icon">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </div>
+      <div class="cta-text">
+        <p class="cta-title">오늘 시술 사진 올리기</p>
+        <p class="cta-sub">AI가 글까지 자동으로</p>
+      </div>
+      <div class="cta-arrow">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </button>
+
+    <section class="sec">
+      <div class="sec-head">
+        <h2 class="sec-title">이어하기</h2>
+        <button class="sec-more" onclick="goTab('finish')">전체<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+      </div>
+      <div id="resume-list"></div>
+    </section>
+  </main>
+
+  <!-- ──────── 만들기 (B3: 드롭존 + 인라인 글만쓰기) ──────── -->
+  <main id="t-make">
+    <div class="make-default" id="make-default">
+      <section class="greet">
+        <h1>새 포스트</h1>
+        <p class="status-line">사진을 올리면 글까지 자동으로.</p>
+      </section>
+      <div class="dropzone" onclick="alert('실제 앱: 사진 선택 창이 열려요')">
+        <div class="dropzone-icon">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <p class="dropzone-title">시술 사진 올리기</p>
+        <p class="dropzone-sub">최대 20장 · JPG/PNG</p>
+      </div>
+      <button class="inline-link" onclick="showTextOnly()">사진 없이 글만 쓸래요</button>
+    </div>
+
+    <div class="text-only-mode" id="text-only-mode">
+      <button class="back-link" onclick="hideTextOnly()">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        뒤로
+      </button>
+      <section class="greet">
+        <h1>글만 쓰기</h1>
+        <p class="status-line">어떤 내용을 쓰고 싶으세요?</p>
+      </section>
+      <div class="text-editor">
+        <textarea id="text-input" placeholder="예) 오늘 웨딩 시즌 맞이 특별 이벤트 안내 글 써줘. 30% 할인, 이번 주까지만." oninput="updateHint()"></textarea>
+        <div class="text-editor-foot">
+          <p class="text-editor-hint" id="text-hint">간단히 한 줄만 적어도 돼요</p>
+          <span style="font-size:11px;color:var(--text-subtle);" id="text-count">0자</span>
+        </div>
+      </div>
+      <button class="cta-main" style="margin:0;padding:18px;">
+        <div class="cta-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+        <div class="cta-text"><p class="cta-title">AI로 글 만들기</p></div>
+        <div class="cta-arrow"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </button>
+    </div>
+  </main>
+
+  <!-- ──────── AI 추천 ──────── -->
+  <main id="t-ai">
+    <section class="greet">
+      <h1>AI 추천</h1>
+      <p class="status-line">완성도 높은 글부터 골라봤어요.</p>
+    </section>
+    <div id="ai-list"></div>
+  </main>
+
+  <!-- ──────── 마무리 ──────── -->
+  <main id="t-finish">
+    <section class="greet">
+      <h1>마무리</h1>
+      <p class="status-line">인스타에 올리기만 하면 끝.</p>
+    </section>
+    <div class="card" style="background:linear-gradient(135deg,var(--brand-bg),var(--surface));">
+      <p style="font-size:13px;color:var(--text-subtle);margin:0 0 6px;">발행 준비 완료</p>
+      <p style="font-size:22px;font-weight:800;margin:0 0 12px;">3개</p>
+      <button class="cta-main" style="margin:0;padding:16px;">
+        <div class="cta-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+        <div class="cta-text"><p class="cta-title">한 번에 발행하기</p></div>
+        <div class="cta-arrow"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </button>
+    </div>
+    <div id="finish-list"></div>
+  </main>
+
+  <!-- ──────── 내 샵 (최근발행 이동) ──────── -->
+  <main id="t-shop">
+    <div class="shop-profile">
+      <div class="shop-avatar-big">미</div>
+      <p class="shop-name">미라네일샵</p>
+      <p class="shop-handle">@miranail_official</p>
+      <div class="shop-stats">
+        <div><div class="shop-stat-num">42</div><div class="shop-stat-lbl">발행</div></div>
+        <div><div class="shop-stat-num">8</div><div class="shop-stat-lbl">대기</div></div>
+        <div><div class="shop-stat-num">1.2k</div><div class="shop-stat-lbl">팔로워</div></div>
+      </div>
+    </div>
+    <section class="sec">
+      <div class="sec-head"><h2 class="sec-title">최근 발행</h2>
+        <button class="sec-more">전체<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+      </div>
+      <div id="recent-list"></div>
+    </section>
+    <div id="shop-menu"></div>
+  </main>
+
+  <!-- 하단 네비 -->
+  <nav class="bn">
+    <button class="bn-btn active" data-tab="home" onclick="goTab('home',this)">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12L12 3l9 9"/><path d="M5 10v10h14V10"/></svg>
+      <span>홈</span>
+    </button>
+    <button class="bn-btn" data-tab="make" onclick="goTab('make',this)">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <span>만들기</span>
+    </button>
+    <button class="bn-btn" data-tab="ai" onclick="goTab('ai',this)">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      <span>AI추천</span>
+    </button>
+    <button class="bn-btn" data-tab="finish" onclick="goTab('finish',this)">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <span>마무리</span>
+    </button>
+    <button class="bn-btn" data-tab="shop" onclick="goTab('shop',this)">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-6h15L21 9"/><path d="M4 9v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+      <span>내 샵</span>
+    </button>
+  </nav>
+
+</div>
+
+<script>
+const photos = {
+  p1: 'https://picsum.photos/seed/itdasy_n01/400/400',
+  p2: 'https://picsum.photos/seed/itdasy_n02/400/400',
+  p3: 'https://picsum.photos/seed/itdasy_n03/400/400',
+  p5: 'https://picsum.photos/seed/itdasy_n05/400/400',
+  p6: 'https://picsum.photos/seed/itdasy_n06/400/400',
+};
+
+// 이어하기 — 홈은 최대 2개만
+const resume = [
+  { img: photos.p1, title: '핑크 글리터 네일', sub: '2장 · 오늘', badge: '작성중' },
+  { img: photos.p2, title: '웨딩 시즌 네일',   sub: '1장 · 어제', badge: '글 완성' },
+];
+document.getElementById('resume-list').innerHTML = resume.map(r => `
+  <div class="resume-card">
+    <div class="resume-thumb"><img src="${r.img}" alt="" loading="lazy" /></div>
+    <div class="resume-text">
+      <p class="resume-title">${r.title}</p>
+      <p class="resume-sub"><span class="resume-badge">${r.badge}</span><span>${r.sub}</span></p>
+    </div>
+    <div class="resume-arrow"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>`).join('');
+
+// 최근 발행 (내 샵 탭으로 이동)
+const recent = [
+  { img: photos.p5, cap: '"오늘 첫 손님은 봄맞이 핑크 글리터 네일이에요 💕 손끝까지 봄이..."', date: '04.18', likes: 24, cmts: 3 },
+  { img: photos.p6, cap: '"심플함의 미학 ✨ 누드 베이지에 골드 라인 한 줄로 포인트"', date: '04.17', likes: 18, cmts: 5 },
+  { img: photos.p3, cap: '"젤 케어는 한 달에 한 번. 건강한 손톱이 예쁜 네일의 시작"', date: '04.15', likes: 32, cmts: 7 },
+];
+const heartSvg = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+const msgSvg   = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+document.getElementById('recent-list').innerHTML = recent.map(r => `
+  <div class="post-item">
+    <div class="post-thumb"><img src="${r.img}" alt="" loading="lazy" /></div>
+    <div class="post-text">
+      <p class="post-cap">${r.cap}</p>
+      <p class="post-meta">
+        <span>${r.date}</span>
+        <span class="m-stat" onclick="toggleLike(this,${r.likes})">${heartSvg}<span>${r.likes}</span></span>
+        <span class="m-stat">${msgSvg}${r.cmts}</span>
+      </p>
+    </div>
+  </div>`).join('');
+
+// AI추천
+document.getElementById('ai-list').innerHTML = resume.concat([{img:photos.p3,title:'젤 케어',sub:'3장 · 어제',badge:'편집중'}]).map(w => `
+  <div class="card" style="display:flex;gap:12px;padding:12px;align-items:center;">
+    <div class="post-thumb"><img src="${w.img}" alt="" loading="lazy" /></div>
+    <div style="flex:1;min-width:0;">
+      <p style="font-size:14px;font-weight:600;margin:0 0 2px;">${w.title}</p>
+      <p style="font-size:12px;color:var(--text-subtle);margin:0 0 6px;">완성도 ${85 + Math.floor(Math.random()*10)}%</p>
+      <p style="font-size:11px;color:var(--brand);margin:0;font-weight:600;">${w.badge}</p>
+    </div>
+    <button class="hd-icon-btn" aria-label="추천 적용"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+  </div>`).join('');
+
+// 마무리
+document.getElementById('finish-list').innerHTML = '<p style="font-size:13px;color:var(--text-subtle);margin:20px 0 10px;font-weight:500;">발행 대기 중인 글</p>' +
+  resume.map(w => `
+  <div class="post-item">
+    <div class="post-thumb"><img src="${w.img}" alt="" loading="lazy" /></div>
+    <div class="post-text">
+      <p class="post-cap" style="font-weight:600;">${w.title}</p>
+      <p class="post-meta"><span>${w.sub}</span><span style="color:var(--brand);font-weight:600;">${w.badge}</span></p>
+    </div>
+  </div>`).join('');
+
+// 내 샵 메뉴
+const menus = [
+  { ic:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>', t:'인스타 연결', s:'@miranail_official 연결됨' },
+  { ic:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>', t:'알림 설정', s:'푸시 · 발행 완료 알림' },
+  { ic:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>', t:'플랜 · 결제', s:'무료 플랜 · 이번달 12회' },
+  { ic:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', t:'고객 지원', s:'문의 · 도움말' },
+];
+document.getElementById('shop-menu').innerHTML = menus.map(m => `
+  <div class="menu-row">
+    <div class="menu-icon">${m.ic}</div>
+    <div class="menu-text"><p class="menu-title">${m.t}</p>${m.s ? `<p class="menu-sub">${m.s}</p>` : ''}</div>
+    <div class="menu-arrow"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>`).join('');
+
+// 탭 전환
+function goTab(name, btn) {
+  document.querySelectorAll('main').forEach(m => m.classList.remove('active'));
+  document.getElementById('t-' + name).classList.add('active');
+  document.querySelectorAll('.bn-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else document.querySelector(`.bn-btn[data-tab="${name}"]`).classList.add('active');
+  if (name === 'make') hideTextOnly();
+  window.scrollTo(0, 0);
+}
+
+// 좋아요 토글
+function toggleLike(el, base) {
+  el.classList.toggle('liked');
+  el.querySelector('span').textContent = el.classList.contains('liked') ? base + 1 : base;
+}
+
+// 글만쓰기 인라인 전환
+function showTextOnly() {
+  document.getElementById('make-default').classList.add('hidden');
+  document.getElementById('text-only-mode').classList.add('active');
+  setTimeout(() => document.getElementById('text-input').focus(), 100);
+}
+function hideTextOnly() {
+  document.getElementById('make-default').classList.remove('hidden');
+  document.getElementById('text-only-mode').classList.remove('active');
+}
+function updateHint() {
+  const t = document.getElementById('text-input').value;
+  document.getElementById('text-count').textContent = t.length + '자';
+}
+
+// 다크 토글
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+  html.dataset.theme = next;
+  document.querySelector('meta[name=theme-color]').setAttribute('content', next === 'dark' ? '#0B0E13' : '#F2F4F6');
+  document.getElementById('ic-theme').innerHTML = next === 'dark'
+    ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+    : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+}
+</script>
+
+</body>
+</html>

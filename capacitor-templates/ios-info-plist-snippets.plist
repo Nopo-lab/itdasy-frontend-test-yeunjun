@@ -1,0 +1,50 @@
+<!--
+  iOS Info.plist 권한 설명문구 템플릿
+  위치: ios/App/App/Info.plist (Capacitor 생성 후)
+  아래 <key>/<string> 쌍을 Info.plist 최상위 <dict> 안에 추가할 것.
+
+  ⚠ Apple 심사에서 권한 설명문이 비어있거나 "Access needed" 같은 영문 일반 문구이면
+     Guideline 5.1.1(ii) "Data Use" 위반으로 반려됨. 한국 앱이면 한국어 필수.
+-->
+
+<key>NSCameraUsageDescription</key>
+<string>시술 사진을 촬영하여 AI 캡션 생성에 활용합니다. 촬영된 사진은 원장님 계정에만 저장됩니다.</string>
+
+<key>NSPhotoLibraryUsageDescription</key>
+<string>앨범에서 시술 사진을 불러와 캡션/누끼 편집에 활용합니다. 접근한 사진은 임시로만 사용되며 외부로 공유되지 않습니다.</string>
+
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>AI가 합성한 이미지를 앨범에 저장합니다.</string>
+
+<key>NSUserNotificationsUsageDescription</key>
+<string>예약 발행 완료·리마인더 알림을 위해 사용됩니다. 언제든지 설정에서 끌 수 있습니다.</string>
+
+<!-- iOS 14+ App Tracking Transparency — 현재 트래킹 안 하지만 SDK가 요구할 경우 대비 -->
+<key>NSUserTrackingUsageDescription</key>
+<string>잇데이는 사용자를 추적하지 않습니다. 이 설정은 OS 정책상 표시될 수 있으나 실제 수집은 없습니다.</string>
+
+<!-- Background modes: Push 알림 수신 -->
+<key>UIBackgroundModes</key>
+<array>
+    <string>remote-notification</string>
+</array>
+
+<!-- LSApplicationQueriesSchemes: 인스타 앱/Safari로 OAuth 플로우 후 복귀 -->
+<key>LSApplicationQueriesSchemes</key>
+<array>
+    <string>instagram</string>
+    <string>instagram-stories</string>
+</array>
+
+<!-- Custom URL Scheme: 딥링크 (OAuth 콜백) -->
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleURLName</key>
+        <string>com.nopolab.itdasy</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>itdasy</string>
+        </array>
+    </dict>
+</array>

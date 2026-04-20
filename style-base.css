@@ -1,0 +1,304 @@
+/* Itdasy Studio - Main Stylesheet */
+
+:root {
+  /* ── 새 디자인 토큰 (T-200 P1) ── */
+  --brand: #F18091; --brand-strong: #E5586E; --brand-bg: #FFF1F3;
+  --bg: #F2F4F6; --surface: #FFFFFF; --surface-2: #F7F8FA;
+  --text: #191F28; --text-muted: #4E5968; --text-subtle: #8B95A1;
+  --border: rgba(0,0,0,.07); --border-strong: rgba(0,0,0,.14);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.06);
+  --shadow-brand: 0 8px 24px rgba(241,128,145,.30);
+  --r-sm: 8px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px;
+
+  /* ── 레거시 alias (P2~P6 에서 점진 이행) ── */
+  --bg2: var(--surface);
+  --bg3: var(--surface-2);
+  --accent: var(--brand);
+  --accent2: var(--brand-strong);
+  --accent3: var(--brand-bg);
+  --text2: var(--text-muted);
+  --text3: var(--text-subtle);
+  --border2: var(--border-strong);
+  --gold: #d4a853; /* 사용처 1곳, 추후 판단 */
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+/* 드래그 요소 텍스트 선택 방지 */
+[data-draggable], [data-slot-id], [data-ai-card], [data-finish-slot],
+.carousel-track, .photo-strip, .slot-strip, img {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden; /* 가로 스크롤 절대 방지 */
+}
+
+/* 모바일 글씨 중구난방 방지 (전문화된 타이포그래피) */
+h1, h2, h3 { letter-spacing: -0.04em; }
+p { word-break: keep-all; }
+
+
+/* 헤더 */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(242,244,246,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 0.5px solid var(--border);
+  padding: 16px 20px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  font-family: 'Pretendard', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.04em;
+  flex-shrink: 0;
+}
+.logo span { color: var(--text3); font-size: 10px; display: block; font-family: 'Pretendard'; font-weight: 400; letter-spacing: 0.05em; margin-top: 1px; }
+
+@media (max-width: 380px) {
+  .logo { font-size: 18px; }
+  .logo span { display: none; }
+  .app-header { padding: 12px 16px; }
+}
+
+/* 탭 네비 */
+.nav {
+  display: flex;
+  gap: 0;
+  padding: 0 20px;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--bg2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* iOS Safari 하단 툴바와 충돌 방지 — sticky/fixed 배치 기반 앱에선 필수 */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav::-webkit-scrollbar { display: none; }
+.nav-btn {
+  flex-shrink: 0;
+  /* Apple HIG 권장 44pt 터치 영역 — 기존 28pt에서 상향 */
+  min-height: 48px;
+  padding: 14px 20px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text3);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Pretendard', sans-serif;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
+
+/* 탭 컨텐츠 — 하단 safe-area 보정 */
+.tab {
+  display: none;
+  padding: 24px 20px calc(120px + env(safe-area-inset-bottom));
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.22s ease-out, transform 0.22s ease-out;
+  will-change: opacity, transform;
+}
+.tab.active {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+  animation: tabFadeIn 0.22s ease-out;
+}
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 버튼 탭 시 미세 축소 피드백 (모든 버튼 공통) */
+button:active:not([disabled]) {
+  transform: scale(0.96);
+  transition: transform 0.08s ease-out;
+}
+
+/* 줄임: transform 가속 버튼에만 */
+.nav-btn:active, .btn-main:active, .hc-btn-ghost:active, .frame-action-btn:active,
+.plan-action-btn:active, .tc-btn:active, .tag-chip:active {
+  transform: scale(0.94);
+}
+
+/* 섹션 타이틀 */
+.sec-title {
+  font-family: 'Pretendard', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+  letter-spacing: -0.03em;
+}
+.sec-sub { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.6; }
+
+/* 입력 요소 */
+label { font-size: 13px; font-weight: 500; color: var(--text2); display: block; margin-bottom: 6px; letter-spacing: -0.02em; }
+textarea, input[type=text] {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: 'Pretendard', sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  padding: 12px 14px;
+  outline: none;
+  transition: border 0.2s;
+  resize: none;
+}
+textarea:focus, input[type=text]:focus { border-color: var(--accent); }
+
+/* 태그 선택 */
+.tag-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 18px; }
+.tag {
+  padding: 7px 14px;
+  font-size: 13px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: 'Pretendard', sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.tag.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tag .tag-delete {
+  display: none;
+  margin-left: 4px;
+  padding: 0 3px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0.6;
+  line-height: 1;
+}
+.tag:hover .tag-delete, .tag.on .tag-delete { display: inline; }
+.tag.tag-add {
+  border-style: dashed;
+  border-color: rgba(241,128,145,0.4);
+  background: transparent;
+  color: var(--accent2);
+}
+
+/* 메인 버튼 */
+.btn-main {
+  width: 100%;
+  padding: 16px;
+  background: var(--accent);
+  border: none;
+  border-radius: 20px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: 'Pretendard', sans-serif;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  margin-top: 6px;
+}
+.btn-main:active { transform: scale(0.98); opacity: 0.85; }
+.btn-main:disabled { opacity: 0.4; }
+
+/* 결과 박스 */
+.result-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 18px;
+  margin-top: 18px;
+  display: none;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+.result-box.show { display: block; }
+.result-caption { font-size: 14px; line-height: 1.9; color: var(--text); white-space: pre-wrap; font-family: 'Pretendard', sans-serif; letter-spacing: -0.01em; }
+.result-hash { font-size: 13px; color: var(--accent2); line-height: 1.9; margin-top: 12px; }
+.result-actions { display: flex; gap: 8px; margin-top: 12px; }
+.btn-copy {
+  flex: 1;
+  padding: 11px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--text2);
+  font-size: 13px;
+  font-family: 'Pretendard', sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.btn-copy:active { background: var(--border); }
+
+/* 팝업 공통 (NEW) */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease;
+}
+.popup-content {
+  background: var(--bg);
+  border-radius: 32px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  transform: scale(0.95);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  opacity: 0;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* 스피너 */
+.spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+

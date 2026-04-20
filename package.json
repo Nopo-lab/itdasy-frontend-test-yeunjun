@@ -1,0 +1,41 @@
+{
+  "name": "itdasy-app",
+  "version": "0.1.0",
+  "description": "잇데이 스튜디오 iOS/Android 앱 (Capacitor 래핑)",
+  "private": true,
+  "scripts": {
+    "cap:sync": "cap sync",
+    "cap:open:ios": "cap open ios",
+    "cap:open:android": "cap open android",
+    "cap:run:ios": "cap run ios",
+    "cap:run:android": "cap run android",
+    "lint": "eslint 'app-*.js' 'js/**/*.js' --max-warnings=0 || eslint 'app-*.js' 'js/**/*.js'",
+    "lint:fix": "eslint 'app-*.js' 'js/**/*.js' --fix && stylelint '*.css' --fix",
+    "lint:css": "stylelint '*.css'",
+    "test": "jest --passWithNoTests",
+    "gc": "node scripts/gc-weekly.js",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/app": "^6.0.3",
+    "@capacitor/camera": "^6.1.0",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/dialog": "^6.0.3",
+    "@capacitor/haptics": "^6.0.3",
+    "@capacitor/ios": "^6.1.2",
+    "@capacitor/push-notifications": "^6.0.3",
+    "@capacitor/share": "^6.0.3",
+    "@capacitor/splash-screen": "^6.0.2",
+    "@capacitor/status-bar": "^6.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2",
+    "eslint": "^8.57.0",
+    "stylelint": "^16.2.1",
+    "stylelint-config-standard": "^36.0.0",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2",
+    "jest": "^29.7.0"
+  }
+}

@@ -1,0 +1,162 @@
+/* ───── 다크모드 (2026-04-20 강제 override 버전) ─────
+   기존 inline style 이 많아 CSS 변수만으로는 안 먹힘.
+   html[data-theme="dark"] 상태에서 !important 로 강제. */
+
+/* 라이트 강제 */
+html[data-theme="light"] { color-scheme: light; }
+
+/* 다크 — system 또는 manual */
+html[data-theme="dark"], html[data-theme="dark"] body {
+  color-scheme: dark;
+
+  /* ── 새 다크 토큰 (T-200 P1) ── */
+  --brand: #F18091; --brand-strong: #FF99AC; --brand-bg: rgba(241,128,145,.10);
+  --bg: #0B0E13; --surface: #16191F; --surface-2: #1F232B;
+  --text: #ECEEF1; --text-muted: #B0B4BB; --text-subtle: #8E929A;
+  --border: rgba(255,255,255,.08); --border-strong: rgba(255,255,255,.16);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.30);
+  --shadow-brand: 0 8px 24px rgba(241,128,145,.40);
+
+  /* ── 레거시 alias (라이트와 동일 매핑) ── */
+  --bg2: var(--surface);
+  --bg3: var(--surface-2);
+  --accent: var(--brand);
+  --accent2: var(--brand-strong);
+  --text2: var(--text-muted);
+  --text3: var(--text-subtle);
+  --border2: var(--border-strong);
+
+  background: #0B0E13 !important;
+  color: #ECEEF1 !important;
+}
+
+html[data-theme="dark"] body {
+  background: #0B0E13 !important;
+  color: #ECEEF1 !important;
+}
+
+/* 탭·카드·팝업 전체 강제 어둡게 */
+html[data-theme="dark"] .tab,
+html[data-theme="dark"] .hc-card,
+html[data-theme="dark"] .pf-upload-card,
+html[data-theme="dark"] .input-card,
+html[data-theme="dark"] .insta-frame,
+html[data-theme="dark"] .popup-content,
+html[data-theme="dark"] .bottom-sheet,
+html[data-theme="dark"] #planPopup > div,
+html[data-theme="dark"] #_samplePopup > div,
+html[data-theme="dark"] #analyzeResultPopup,
+html[data-theme="dark"] #captionLoadingPopup,
+html[data-theme="dark"] #onboardingCaptionPopup,
+html[data-theme="dark"] #slotPopup,
+html[data-theme="dark"] #welcomeOverlay,
+html[data-theme="dark"] #analyzeOverlay {
+  background: #1A1C22 !important;
+  color: #ECEEF1 !important;
+}
+
+/* inline style 로 background:#fff 박힌 요소들 강제 */
+html[data-theme="dark"] [style*="background:#fff"],
+html[data-theme="dark"] [style*="background: #fff"],
+html[data-theme="dark"] [style*="background:white"],
+html[data-theme="dark"] [style*="background: white"],
+html[data-theme="dark"] [style*="background:#FFF"],
+html[data-theme="dark"] [style*="background: #FFFFFF"] {
+  background: #1A1C22 !important;
+}
+
+/* inline style 배경색 그라데이션 중 흰색 베이스 완화 */
+html[data-theme="dark"] [style*="linear-gradient(135deg,#fff"] {
+  background: #1A1C22 !important;
+}
+
+/* 텍스트 색 — 흰 배경 가정한 짙은 텍스트 보정 */
+html[data-theme="dark"] [style*="color:#1a"],
+html[data-theme="dark"] [style*="color: #1a"],
+html[data-theme="dark"] [style*="color:#000"],
+html[data-theme="dark"] [style*="color: #000"],
+html[data-theme="dark"] [style*="color:#333"],
+html[data-theme="dark"] [style*="color: #333"],
+html[data-theme="dark"] [style*="color:#555"],
+html[data-theme="dark"] [style*="color: #555"],
+html[data-theme="dark"] [style*="color:var(--text)"],
+html[data-theme="dark"] [style*="color: var(--text)"] {
+  color: #ECEEF1 !important;
+}
+
+/* 회색 텍스트 */
+html[data-theme="dark"] [style*="color:#888"],
+html[data-theme="dark"] [style*="color: #888"],
+html[data-theme="dark"] [style*="color:#999"],
+html[data-theme="dark"] [style*="color: #999"],
+html[data-theme="dark"] [style*="color:#aaa"],
+html[data-theme="dark"] [style*="color: #bbb"] {
+  color: #B0B4BB !important;
+}
+
+/* 입력 필드 */
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select {
+  background: #262930 !important;
+  color: #ECEEF1 !important;
+  border-color: rgba(255,255,255,0.12) !important;
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+  color: #6A6E76 !important;
+}
+
+/* 헤더 */
+html[data-theme="dark"] header,
+html[data-theme="dark"] .header,
+html[data-theme="dark"] [style*="position:sticky"] {
+  background: #1A1C22 !important;
+  border-bottom-color: rgba(255,255,255,0.05) !important;
+}
+
+/* 네비게이션 바 */
+html[data-theme="dark"] nav {
+  background: #1A1C22 !important;
+  border-top-color: rgba(255,255,255,0.06) !important;
+}
+
+html[data-theme="dark"] .nav-btn {
+  color: #B0B4BB !important;
+}
+html[data-theme="dark"] .nav-btn.active {
+  color: #F18091 !important;
+}
+
+/* 토스트 */
+html[data-theme="dark"] .copy-toast {
+  background: rgba(30,34,41,0.95) !important;
+  color: #ECEEF1 !important;
+}
+
+/* 구분선 */
+html[data-theme="dark"] hr,
+html[data-theme="dark"] [style*="border-top:1px solid var(--border)"],
+html[data-theme="dark"] [style*="border-bottom:1px solid var(--border)"] {
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+/* 이미지·아이콘은 반전 안 함 (원본 유지) */
+html[data-theme="dark"] img,
+html[data-theme="dark"] svg,
+html[data-theme="dark"] video,
+html[data-theme="dark"] canvas {
+  filter: none;
+}
+
+/* ───── 시스템 다크 (저장값 없을 때 자동) ───── */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]):not([data-theme="dark"]) {
+    color-scheme: dark;
+  }
+  html:not([data-theme="light"]):not([data-theme="dark"]) body {
+    background: #0F1014;
+    color: #ECEEF1;
+  }
+}

@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+# husky pre-commit — 커밋 직전 자동 검증
+# 설치: npm install -D husky lint-staged 후 npm run prepare 1회 실행
+#
+# 실패 시 커밋 차단. 급한 경우 git commit --no-verify 로 우회 가능 (AGENTS.md §2 허용)
+# 단, 우회 시 다음 PR 리뷰에서 해명 필요.
+
+npx lint-staged

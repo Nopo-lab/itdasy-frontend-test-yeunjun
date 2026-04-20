@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+# package-lock.json 는 커밋 (재현 가능 빌드)
+
+# Capacitor native projects (native source는 별도 브랜치 또는 별 레포 관리 권장.
+# 여기선 설정만 git 포함하고 빌드 산출물은 제외)
+ios/App/build/
+ios/App/Pods/
+ios/App/App.xcworkspace/xcuserdata/
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+
+# macOS
+.DS_Store
+
+# 내부 기획 자료 (공개 레포 공개 방지)
+잇데이_스튜디오_프로젝트_자료.pdf
+*.pdf
+
+# 로컬 업로드 폴더 (샌드박스 전용, 레포에 올리지 않음)
+mnt/

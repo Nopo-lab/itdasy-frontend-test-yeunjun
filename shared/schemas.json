@@ -1,0 +1,1984 @@
+{
+  "version": "2026-04-16",
+  "endpoints": {
+    "PUT /persona/identity": {
+      "request": {
+        "$defs": {
+          "ServiceEntry": {
+            "description": "대표 서비스 항목 (프론트 Q2 스펙).",
+            "properties": {
+              "category": {
+                "maxLength": 50,
+                "minLength": 1,
+                "title": "Category",
+                "type": "string"
+              },
+              "sub_services": {
+                "default": [],
+                "items": {
+                  "type": "string"
+                },
+                "title": "Sub Services",
+                "type": "array"
+              }
+            },
+            "required": [
+              "category"
+            ],
+            "title": "ServiceEntry",
+            "type": "object"
+          }
+        },
+        "description": "정체성 설문 Upsert 요청 — 프론트 Q1-Q9 스펙 (null 전송 시 기존 값 유지).",
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "extension",
+                  "nail"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Category"
+          },
+          "shop_name_intro": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Shop Name Intro"
+          },
+          "services": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/ServiceEntry"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Services"
+          },
+          "target_audience": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Target Audience"
+          },
+          "tone_preference": {
+            "anyOf": [
+              {
+                "maxLength": 30,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tone Preference"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Location"
+          },
+          "nicknames": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Nicknames"
+          },
+          "signature_vocab": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Signature Vocab"
+          },
+          "personality_line": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Personality Line"
+          },
+          "free_note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Free Note"
+          }
+        },
+        "title": "IdentityUpsertRequest",
+        "type": "object"
+      },
+      "response": {
+        "$defs": {
+          "ServiceEntry": {
+            "description": "대표 서비스 항목 (프론트 Q2 스펙).",
+            "properties": {
+              "category": {
+                "maxLength": 50,
+                "minLength": 1,
+                "title": "Category",
+                "type": "string"
+              },
+              "sub_services": {
+                "default": [],
+                "items": {
+                  "type": "string"
+                },
+                "title": "Sub Services",
+                "type": "array"
+              }
+            },
+            "required": [
+              "category"
+            ],
+            "title": "ServiceEntry",
+            "type": "object"
+          }
+        },
+        "description": "정체성 설문 응답 — 프론트 Q1-Q9 스펙.",
+        "properties": {
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "shop_name_intro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Name Intro"
+          },
+          "services": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/ServiceEntry"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Services"
+          },
+          "target_audience": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Audience"
+          },
+          "tone_preference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tone Preference"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "nicknames": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nicknames"
+          },
+          "signature_vocab": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signature Vocab"
+          },
+          "personality_line": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personality Line"
+          },
+          "free_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Note"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "category",
+          "shop_name_intro",
+          "services",
+          "target_audience",
+          "tone_preference",
+          "location",
+          "nicknames",
+          "signature_vocab",
+          "personality_line",
+          "free_note",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "IdentityOut",
+        "type": "object"
+      }
+    },
+    "GET /persona/identity": {
+      "response": {
+        "$defs": {
+          "ServiceEntry": {
+            "description": "대표 서비스 항목 (프론트 Q2 스펙).",
+            "properties": {
+              "category": {
+                "maxLength": 50,
+                "minLength": 1,
+                "title": "Category",
+                "type": "string"
+              },
+              "sub_services": {
+                "default": [],
+                "items": {
+                  "type": "string"
+                },
+                "title": "Sub Services",
+                "type": "array"
+              }
+            },
+            "required": [
+              "category"
+            ],
+            "title": "ServiceEntry",
+            "type": "object"
+          }
+        },
+        "description": "정체성 설문 응답 — 프론트 Q1-Q9 스펙.",
+        "properties": {
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "shop_name_intro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Name Intro"
+          },
+          "services": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/ServiceEntry"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Services"
+          },
+          "target_audience": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Audience"
+          },
+          "tone_preference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tone Preference"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "nicknames": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nicknames"
+          },
+          "signature_vocab": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signature Vocab"
+          },
+          "personality_line": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personality Line"
+          },
+          "free_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Note"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "category",
+          "shop_name_intro",
+          "services",
+          "target_audience",
+          "tone_preference",
+          "location",
+          "nicknames",
+          "signature_vocab",
+          "personality_line",
+          "free_note",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "IdentityOut",
+        "type": "object"
+      }
+    },
+    "GET /persona/identity/status": {
+      "response": {
+        "description": "정체성 설문 완성도 응답.",
+        "properties": {
+          "completed_required": {
+            "title": "Completed Required",
+            "type": "boolean"
+          },
+          "required_filled": {
+            "title": "Required Filled",
+            "type": "integer"
+          },
+          "optional_filled": {
+            "title": "Optional Filled",
+            "type": "integer"
+          },
+          "missing_required": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Required",
+            "type": "array"
+          }
+        },
+        "required": [
+          "completed_required",
+          "required_filled",
+          "optional_filled",
+          "missing_required"
+        ],
+        "title": "IdentityStatusResponse",
+        "type": "object"
+      }
+    },
+    "POST /persona/consent": {
+      "request_single": {
+        "description": "PIPA 동의 요청 (단건, 하위호환).",
+        "properties": {
+          "consent_type": {
+            "enum": [
+              "pipa_collect",
+              "ai_processing"
+            ],
+            "title": "Consent Type",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          },
+          "agreed": {
+            "title": "Agreed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "consent_type",
+          "version",
+          "agreed"
+        ],
+        "title": "ConsentRequest",
+        "type": "object"
+      },
+      "request_bulk": {
+        "description": "PIPA 동의 요청 (bulk, 프론트 스펙).",
+        "properties": {
+          "pipa_collect": {
+            "title": "Pipa Collect",
+            "type": "boolean"
+          },
+          "ai_processing": {
+            "title": "Ai Processing",
+            "type": "boolean"
+          },
+          "versions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Versions",
+            "type": "object"
+          }
+        },
+        "required": [
+          "pipa_collect",
+          "ai_processing",
+          "versions"
+        ],
+        "title": "ConsentBulkRequest",
+        "type": "object"
+      },
+      "response": {
+        "description": "PIPA 동의 응답.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "consent_type": {
+            "title": "Consent Type",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          },
+          "agreed": {
+            "title": "Agreed",
+            "type": "boolean"
+          },
+          "agreed_at": {
+            "format": "date-time",
+            "title": "Agreed At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "consent_type",
+          "version",
+          "agreed",
+          "agreed_at"
+        ],
+        "title": "ConsentOut",
+        "type": "object"
+      }
+    },
+    "GET /persona/consent": {
+      "response": {
+        "$defs": {
+          "ConsentBulkStatus": {
+            "description": "PIPA 동의 상태 요약 (bulk).",
+            "properties": {
+              "pipa_collect": {
+                "title": "Pipa Collect",
+                "type": "boolean"
+              },
+              "ai_processing": {
+                "title": "Ai Processing",
+                "type": "boolean"
+              },
+              "all_agreed": {
+                "title": "All Agreed",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "pipa_collect",
+              "ai_processing",
+              "all_agreed"
+            ],
+            "title": "ConsentBulkStatus",
+            "type": "object"
+          },
+          "ConsentOut": {
+            "description": "PIPA 동의 응답.",
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "integer"
+              },
+              "consent_type": {
+                "title": "Consent Type",
+                "type": "string"
+              },
+              "version": {
+                "title": "Version",
+                "type": "string"
+              },
+              "agreed": {
+                "title": "Agreed",
+                "type": "boolean"
+              },
+              "agreed_at": {
+                "format": "date-time",
+                "title": "Agreed At",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "consent_type",
+              "version",
+              "agreed",
+              "agreed_at"
+            ],
+            "title": "ConsentOut",
+            "type": "object"
+          }
+        },
+        "description": "동의 목록 응답.",
+        "properties": {
+          "consents": {
+            "items": {
+              "$ref": "#/$defs/ConsentOut"
+            },
+            "title": "Consents",
+            "type": "array"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ConsentBulkStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "consents"
+        ],
+        "title": "ConsentListResponse",
+        "type": "object"
+      }
+    },
+    "POST /persona/posts/ingest/manual": {
+      "request": {
+        "$defs": {
+          "PostIngestManualItem": {
+            "description": "수동 포스트 적재 아이템.",
+            "properties": {
+              "external_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "External Id"
+              },
+              "content": {
+                "minLength": 1,
+                "title": "Content",
+                "type": "string"
+              },
+              "timestamp": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Timestamp"
+              },
+              "category": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "extension",
+                      "nail",
+                      "hair",
+                      "makeup",
+                      "skincare"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Category"
+              }
+            },
+            "required": [
+              "content"
+            ],
+            "title": "PostIngestManualItem",
+            "type": "object"
+          }
+        },
+        "description": "수동 포스트 적재 요청.",
+        "properties": {
+          "posts": {
+            "items": {
+              "$ref": "#/$defs/PostIngestManualItem"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Posts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "posts"
+        ],
+        "title": "PostIngestManualRequest",
+        "type": "object"
+      },
+      "response": {
+        "description": "포스트 적재 응답.",
+        "properties": {
+          "inserted": {
+            "title": "Inserted",
+            "type": "integer"
+          },
+          "skipped_duplicates": {
+            "title": "Skipped Duplicates",
+            "type": "integer"
+          },
+          "skipped_empty": {
+            "title": "Skipped Empty",
+            "type": "integer"
+          },
+          "total_after": {
+            "title": "Total After",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "inserted",
+          "skipped_duplicates",
+          "skipped_empty",
+          "total_after"
+        ],
+        "title": "PostIngestResponse",
+        "type": "object"
+      }
+    },
+    "POST /persona/posts/ingest/instagram": {
+      "request": {
+        "description": "Instagram 포스트 적재 요청.",
+        "properties": {
+          "limit": {
+            "default": 100,
+            "maximum": 300,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "title": "PostIngestInstagramRequest",
+        "type": "object"
+      },
+      "response": {
+        "description": "포스트 적재 응답.",
+        "properties": {
+          "inserted": {
+            "title": "Inserted",
+            "type": "integer"
+          },
+          "skipped_duplicates": {
+            "title": "Skipped Duplicates",
+            "type": "integer"
+          },
+          "skipped_empty": {
+            "title": "Skipped Empty",
+            "type": "integer"
+          },
+          "total_after": {
+            "title": "Total After",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "inserted",
+          "skipped_duplicates",
+          "skipped_empty",
+          "total_after"
+        ],
+        "title": "PostIngestResponse",
+        "type": "object"
+      }
+    },
+    "GET /persona/posts": {
+      "response": {
+        "$defs": {
+          "PastPostOut": {
+            "description": "과거 포스트 응답.",
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "integer"
+              },
+              "ig_media_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Ig Media Id"
+              },
+              "content": {
+                "title": "Content",
+                "type": "string"
+              },
+              "source": {
+                "title": "Source",
+                "type": "string"
+              },
+              "category": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Category"
+              },
+              "timestamp": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Timestamp"
+              },
+              "created_at": {
+                "format": "date-time",
+                "title": "Created At",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "ig_media_id",
+              "content",
+              "source",
+              "category",
+              "timestamp",
+              "created_at"
+            ],
+            "title": "PastPostOut",
+            "type": "object"
+          }
+        },
+        "description": "포스트 목록 응답.",
+        "properties": {
+          "posts": {
+            "items": {
+              "$ref": "#/$defs/PastPostOut"
+            },
+            "title": "Posts",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "posts",
+          "total"
+        ],
+        "title": "PostListResponse",
+        "type": "object"
+      }
+    },
+    "POST /persona/signature-blocks": {
+      "request": {
+        "description": "서명 블록 생성 요청.",
+        "properties": {
+          "label": {
+            "default": "",
+            "maxLength": 50,
+            "title": "Label",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "position": {
+            "default": "bottom",
+            "enum": [
+              "top",
+              "bottom"
+            ],
+            "title": "Position",
+            "type": "string"
+          },
+          "is_default": {
+            "default": true,
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "source": {
+            "default": "manual",
+            "enum": [
+              "detected",
+              "manual"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "detected_frequency": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Detected Frequency"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "SignatureBlockCreate",
+        "type": "object"
+      },
+      "response": {
+        "description": "서명 블록 응답.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "detected_frequency": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detected Frequency"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "content",
+          "position",
+          "is_default",
+          "active",
+          "source",
+          "detected_frequency",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SignatureBlockOut",
+        "type": "object"
+      }
+    },
+    "GET /persona/signature-blocks": {
+      "response_item": {
+        "description": "서명 블록 응답.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "detected_frequency": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detected Frequency"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "content",
+          "position",
+          "is_default",
+          "active",
+          "source",
+          "detected_frequency",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SignatureBlockOut",
+        "type": "object"
+      }
+    },
+    "POST /persona/signature-blocks/detect": {
+      "response": {
+        "$defs": {
+          "SignatureCandidate": {
+            "description": "서명 블록 후보 — detector 결과.",
+            "properties": {
+              "content": {
+                "title": "Content",
+                "type": "string"
+              },
+              "frequency": {
+                "title": "Frequency",
+                "type": "number"
+              },
+              "suggested_position": {
+                "enum": [
+                  "top",
+                  "bottom"
+                ],
+                "title": "Suggested Position",
+                "type": "string"
+              }
+            },
+            "required": [
+              "content",
+              "frequency",
+              "suggested_position"
+            ],
+            "title": "SignatureCandidate",
+            "type": "object"
+          }
+        },
+        "description": "서명 블록 탐지 결과.",
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/$defs/SignatureCandidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "source_post_count": {
+            "title": "Source Post Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "candidates",
+          "source_post_count"
+        ],
+        "title": "SignatureDetectResponse",
+        "type": "object"
+      }
+    },
+    "POST /persona/fingerprint/extract": {
+      "response": {
+        "description": "지문 추출 응답.",
+        "properties": {
+          "extracted": {
+            "title": "Extracted",
+            "type": "boolean"
+          },
+          "source_post_count": {
+            "title": "Source Post Count",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Message"
+          }
+        },
+        "required": [
+          "extracted",
+          "source_post_count",
+          "version"
+        ],
+        "title": "FingerprintExtractResponse",
+        "type": "object"
+      }
+    },
+    "GET /persona/fingerprint": {
+      "response": {
+        "description": "지문 조회 응답.",
+        "properties": {
+          "sentence_length_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentence Length Mean"
+          },
+          "sentence_length_std": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentence Length Std"
+          },
+          "post_char_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Char Mean"
+          },
+          "post_char_std": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Char Std"
+          },
+          "emoji_density": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emoji Density"
+          },
+          "emoji_top5": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emoji Top5"
+          },
+          "vocab_top20": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vocab Top20"
+          },
+          "ending_patterns": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ending Patterns"
+          },
+          "punctuation_density": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Punctuation Density"
+          },
+          "line_break_density": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Break Density"
+          },
+          "hashtag_density": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hashtag Density"
+          },
+          "source_post_count": {
+            "title": "Source Post Count",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          },
+          "extracted_at": {
+            "format": "date-time",
+            "title": "Extracted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sentence_length_mean",
+          "sentence_length_std",
+          "post_char_mean",
+          "post_char_std",
+          "emoji_density",
+          "emoji_top5",
+          "vocab_top20",
+          "ending_patterns",
+          "punctuation_density",
+          "line_break_density",
+          "hashtag_density",
+          "source_post_count",
+          "version",
+          "extracted_at"
+        ],
+        "title": "FingerprintOut",
+        "type": "object"
+      }
+    },
+    "GET /persona/fewshot": {
+      "response": {
+        "$defs": {
+          "FewshotPostOut": {
+            "description": "Few-shot용 간소화된 포스트 응답.",
+            "properties": {
+              "caption": {
+                "title": "Caption",
+                "type": "string"
+              },
+              "category": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Category"
+              },
+              "created_at": {
+                "format": "date-time",
+                "title": "Created At",
+                "type": "string"
+              }
+            },
+            "required": [
+              "caption",
+              "category",
+              "created_at"
+            ],
+            "title": "FewshotPostOut",
+            "type": "object"
+          }
+        },
+        "description": "Few-shot 포스트 목록 응답.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "posts": {
+            "items": {
+              "$ref": "#/$defs/FewshotPostOut"
+            },
+            "title": "Posts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "posts"
+        ],
+        "title": "FewshotResponse",
+        "type": "object"
+      }
+    },
+    "POST /persona/generate": {
+      "request": {
+        "description": "캡션 생성 요청.",
+        "properties": {
+          "photo_context": {
+            "description": "사진 설명/상황",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Photo Context",
+            "type": "string"
+          },
+          "extra_notes": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "추가 요청사항",
+            "title": "Extra Notes"
+          },
+          "category": {
+            "description": "시술 카테고리",
+            "enum": [
+              "extension",
+              "nail"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "length_tier": {
+            "default": "medium",
+            "description": "글 길이",
+            "enum": [
+              "short",
+              "medium",
+              "long"
+            ],
+            "title": "Length Tier",
+            "type": "string"
+          },
+          "tone_override": {
+            "anyOf": [
+              {
+                "enum": [
+                  "plain",
+                  "normal",
+                  "ornate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "말투 오버라이드 (None=identity 기본값)",
+            "title": "Tone Override"
+          }
+        },
+        "required": [
+          "photo_context",
+          "category"
+        ],
+        "title": "GenerateRequest",
+        "type": "object"
+      },
+      "response": {
+        "description": "캡션 생성 응답.",
+        "properties": {
+          "caption": {
+            "title": "Caption",
+            "type": "string"
+          },
+          "signature_block_ids_used": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Signature Block Ids Used",
+            "type": "array"
+          },
+          "cached_tokens": {
+            "default": 0,
+            "title": "Cached Tokens",
+            "type": "integer"
+          },
+          "input_tokens": {
+            "default": 0,
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "output_tokens": {
+            "default": 0,
+            "title": "Output Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "caption"
+        ],
+        "title": "GenerateResponse",
+        "type": "object"
+      }
+    },
+    "PATCH /persona/generation_logs/{log_id}": {
+      "request": {
+        "description": "생성 로그 편집 요청 — 편집된 최종본 저장.",
+        "properties": {
+          "final_text": {
+            "maxLength": 3000,
+            "minLength": 1,
+            "title": "Final Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "final_text"
+        ],
+        "title": "GenerationLogPatchRequest",
+        "type": "object"
+      }
+    },
+    "POST /persona/fingerprint/refresh": {
+      "response": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "source_post_count": {
+            "type": "integer"
+          },
+          "post_char_mean": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  },
+  "models": {
+    "ServiceEntry": {
+      "description": "대표 서비스 항목 (프론트 Q2 스펙).",
+      "properties": {
+        "category": {
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "sub_services": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Sub Services",
+          "type": "array"
+        }
+      },
+      "required": [
+        "category"
+      ],
+      "title": "ServiceEntry",
+      "type": "object"
+    },
+    "PostIngestManualItem": {
+      "description": "수동 포스트 적재 아이템.",
+      "properties": {
+        "external_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "External Id"
+        },
+        "content": {
+          "minLength": 1,
+          "title": "Content",
+          "type": "string"
+        },
+        "timestamp": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timestamp"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "enum": [
+                "extension",
+                "nail",
+                "hair",
+                "makeup",
+                "skincare"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "title": "PostIngestManualItem",
+      "type": "object"
+    },
+    "SignatureCandidate": {
+      "description": "서명 블록 후보 — detector 결과.",
+      "properties": {
+        "content": {
+          "title": "Content",
+          "type": "string"
+        },
+        "frequency": {
+          "title": "Frequency",
+          "type": "number"
+        },
+        "suggested_position": {
+          "enum": [
+            "top",
+            "bottom"
+          ],
+          "title": "Suggested Position",
+          "type": "string"
+        }
+      },
+      "required": [
+        "content",
+        "frequency",
+        "suggested_position"
+      ],
+      "title": "SignatureCandidate",
+      "type": "object"
+    },
+    "PastPostOut": {
+      "description": "과거 포스트 응답.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "ig_media_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Ig Media Id"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Category"
+        },
+        "timestamp": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Timestamp"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ig_media_id",
+        "content",
+        "source",
+        "category",
+        "timestamp",
+        "created_at"
+      ],
+      "title": "PastPostOut",
+      "type": "object"
+    },
+    "FewshotPostOut": {
+      "description": "Few-shot용 간소화된 포스트 응답.",
+      "properties": {
+        "caption": {
+          "title": "Caption",
+          "type": "string"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Category"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "caption",
+        "category",
+        "created_at"
+      ],
+      "title": "FewshotPostOut",
+      "type": "object"
+    },
+    "CaptionOut": {
+      "description": "Gemini 응답 스키마 (Structured Output용).",
+      "properties": {
+        "caption": {
+          "description": "생성된 캡션 본문",
+          "title": "Caption",
+          "type": "string"
+        }
+      },
+      "required": [
+        "caption"
+      ],
+      "title": "CaptionOut",
+      "type": "object"
+    },
+    "GeminiPersonaAnalysis": {
+      "description": "Gemini /instagram/analyze 응답 스키마 — Structured Output용.",
+      "properties": {
+        "tone_summary": {
+          "title": "Tone Summary",
+          "type": "string"
+        },
+        "tone_features": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tone Features",
+          "type": "array"
+        },
+        "emojis": {
+          "title": "Emojis",
+          "type": "string"
+        },
+        "hashtags": {
+          "title": "Hashtags",
+          "type": "string"
+        },
+        "fixed_footer": {
+          "title": "Fixed Footer",
+          "type": "string"
+        },
+        "best_post_traits": {
+          "title": "Best Post Traits",
+          "type": "string"
+        },
+        "style_summary": {
+          "title": "Style Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tone_summary",
+        "tone_features",
+        "emojis",
+        "hashtags",
+        "fixed_footer",
+        "best_post_traits",
+        "style_summary"
+      ],
+      "title": "GeminiPersonaAnalysis",
+      "type": "object"
+    }
+  },
+  "enums": {
+    "category": [
+      "extension",
+      "nail",
+      "hair",
+      "makeup",
+      "skincare"
+    ],
+    "consent_type": [
+      "pipa_collect",
+      "ai_processing"
+    ],
+    "signature_position": [
+      "top",
+      "bottom"
+    ],
+    "signature_source": [
+      "detected",
+      "manual"
+    ],
+    "post_source": [
+      "instagram",
+      "manual"
+    ],
+    "length_tier": [
+      "short",
+      "medium",
+      "long"
+    ],
+    "tone_override": [
+      "plain",
+      "normal",
+      "ornate"
+    ]
+  }
+}

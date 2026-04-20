@@ -1,0 +1,200 @@
+/* ───── 인스타 프레임 결과 ───── */
+.insta-frame {
+  display: none;
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid rgba(241,128,145,0.18);
+  border-radius: 24px;
+  margin-top: 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(241,128,145,0.10), 0 2px 8px rgba(0,0,0,0.05);
+}
+.insta-frame.show { display: block; }
+.insta-frame-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px 11px;
+  border-bottom: 0.5px solid rgba(241,128,145,0.12);
+}
+.frame-avatar-ring {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
+  padding: 2px; flex-shrink: 0;
+}
+.frame-avatar-inner {
+  width: 100%; height: 100%; border-radius: 50%;
+  background: var(--bg2); overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: var(--accent);
+}
+.frame-avatar-inner img { width: 100%; height: 100%; object-fit: cover; }
+.insta-frame-handle { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+.insta-frame-meta   { font-size: 10px; color: var(--text3); margin-top: 1px; }
+.insta-frame-body   { padding: 16px 16px 8px; }
+.insta-caption-text { font-size: 13.5px; line-height: 1.9; color: var(--text); white-space: pre-wrap; font-family: 'Pretendard', sans-serif; letter-spacing: -0.01em; }
+.insta-hashtag-text { font-size: 12px; color: var(--accent2); line-height: 1.85; margin-top: 10px; word-break: break-word; }
+.insta-frame-actions {
+  display: flex;
+  border-top: 0.5px solid rgba(241,128,145,0.12);
+  margin-top: 6px;
+}
+.frame-action-btn {
+  flex: 1; padding: 15px 10px;
+  font-size: 13px; font-weight: 600;
+  font-family: 'Pretendard', sans-serif; letter-spacing: -0.02em;
+  border: none; background: transparent; cursor: pointer;
+  transition: background 0.15s; color: var(--text2);
+}
+.frame-action-btn + .frame-action-btn { border-left: 0.5px solid rgba(241,128,145,0.12); }
+.frame-action-btn.primary { color: var(--accent); }
+.frame-action-btn:active { background: rgba(241,128,145,0.07); }
+
+/* ───── 복사 토스트 (포지션·폰트 통일, safe-area 대응) ───── */
+.copy-toast {
+  position: fixed;
+  /* nav(하단) 바로 위에 뜨도록 safe-area까지 감안 */
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: rgba(25,31,40,0.92);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  padding: 13px 24px;
+  border-radius: 30px;
+  font-size: 14px;  /* 13 → 14 상향 */
+  font-weight: 500;
+  font-family: 'Pretendard', sans-serif;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.28s cubic-bezier(0.34,1.56,0.64,1);
+  z-index: 9998;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  max-width: calc(100vw - 32px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.copy-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ───── 본문 기본 폰트 15px 상향 (40대 이상 가독성) ───── */
+body { font-size: 15px; line-height: 1.55; }
+
+/* ───── 피드백 #3,#4,#7,#9: 팝업을 화면 중앙에 (bottom sheet → center modal) ───── */
+#planPopup, #_storyPopup, #_samplePopup, #quickActionPopup, #captionPreviewOverlay {
+  align-items: center !important;
+}
+/* 하단 고정 팝업들(설정시트 등)은 유지하되 max-height 제한 */
+#_storyPopup > div, #_samplePopup > div {
+  max-height: 82vh !important;
+  border-radius: 24px !important;
+  margin: 0 14px !important;
+}
+/* 슬롯 편집 팝업: 바텀 툴바가 뷰포트 밖으로 나가지 않도록 */
+#slotToolbar {
+  bottom: calc(env(safe-area-inset-bottom) + 0px) !important;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+}
+#slotPopupBody {
+  padding-bottom: calc(120px + env(safe-area-inset-bottom)) !important;
+}
+/* 배경/요소 하단 패널도 safe-area 반영 */
+#bgPanel > div, #elementPanel > div, #templatePanel > div, #reviewPanel > div {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+}
+
+/* ───── 스플래시 스크린 ───── */
+#splashScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #F2F4F6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  pointer-events: none; /* 하위 화면 클릭 차단은 visibility로 */
+  transition: opacity 0.3s ease;
+}
+#splashScreen.fade-out {
+  opacity: 0;
+}
+.spl-logo {
+  font-size: 52px;
+  font-weight: 800;
+  color: #F18091;
+  letter-spacing: -0.04em;
+  opacity: 0;
+  transform: translateY(18px);
+  animation: splLogoIn 0.45s cubic-bezier(0.34,1.56,0.64,1) 0.3s forwards;
+}
+.spl-sub {
+  font-size: 11px;
+  color: #8B95A1;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  margin-top: 6px;
+  opacity: 0;
+  animation: splFadeIn 0.4s ease 0.6s forwards;
+}
+.spl-ribbon {
+  font-size: 28px;
+  margin-top: 28px;
+  opacity: 0;
+  animation: splFadeIn 0.3s ease 0.6s forwards,
+             splBounce 0.7s cubic-bezier(0.36,0.07,0.19,0.97) 0.6s infinite;
+}
+.spl-progress-wrap {
+  width: 160px;
+  height: 3px;
+  background: rgba(241,128,145,0.15);
+  border-radius: 2px;
+  margin-top: 20px;
+  overflow: hidden;
+  opacity: 0;
+  animation: splFadeIn 0.3s ease 0.9s forwards;
+}
+.spl-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #F18091;
+  border-radius: 2px;
+  animation: splProgress 1.2s cubic-bezier(0.4,0,0.2,1) 0.9s forwards;
+}
+.spl-slogan {
+  font-size: 12px;
+  color: #8B95A1;
+  margin-top: 24px;
+  letter-spacing: -0.02em;
+  opacity: 0;
+  animation: splFadeIn 0.5s ease 1.5s forwards;
+}
+@keyframes splLogoIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes splFadeIn {
+  to { opacity: 1; }
+}
+@keyframes splBounce {
+  0%, 100% { transform: translateY(0); }
+  30%       { transform: translateY(-8px); }
+  60%       { transform: translateY(-3px); }
+}
+@keyframes splProgress {
+  to { width: 100%; }
+}
+
+/* 스플래시 중 메인 콘텐츠 숨김 */
+body.splashing > *:not(#splashScreen) {
+  opacity: 0;
+}
+
+/* ───── Additional inline styles from line 1560-1568 ───── */
+@keyframes fadeInUp {
+  from { opacity:0; transform:translateY(20px); }
+  to { opacity:1; transform:translateY(0); }
+}
+.animate-popup-in {
+  animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}

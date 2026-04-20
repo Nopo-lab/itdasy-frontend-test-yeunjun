@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>오프라인 — 잇데이 스튜디오</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Pretendard', -apple-system, sans-serif;
+    background: linear-gradient(180deg, #1a0c10 0%, #3d1a22 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    max-width: 360px;
+    width: 100%;
+    text-align: center;
+  }
+  .emoji { font-size: 56px; margin-bottom: 20px; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+  p { font-size: 14px; color: rgba(255,255,255,0.72); line-height: 1.7; margin-bottom: 24px; }
+  button {
+    padding: 14px 28px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #f18091, #ff9aa8);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button:active { transform: scale(0.98); }
+  .small { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="emoji">📡</div>
+  <h1>연결이 끊어졌어요</h1>
+  <p>잇데이 스튜디오를 사용하려면 인터넷 연결이 필요해요.<br>Wi-Fi나 모바일 데이터를 확인해주세요.</p>
+  <button onclick="location.reload()">다시 시도</button>
+  <div class="small">최근 본 페이지는 일부 캐시로 제공될 수 있어요.</div>
+</div>
+</body>
+</html>

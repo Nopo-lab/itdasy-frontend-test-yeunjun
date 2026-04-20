@@ -1,0 +1,61 @@
+<!--
+  AndroidManifest.xml 권한·메타 템플릿
+  위치: android/app/src/main/AndroidManifest.xml (Capacitor 생성 후)
+
+  ⚠ Google Play 심사에서 사용 이유가 불명확한 권한 요청은 반려 사유.
+     각 권한의 "사용 목적"을 Play Console의 Data Safety 폼에도 동일하게 기재할 것.
+-->
+
+<!-- 매니페스트 루트 <manifest> 바로 아래에 추가 -->
+<!-- 인터넷 (필수, Capacitor 기본 포함됨) -->
+<uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+<!-- 카메라 -->
+<uses-permission android:name="android.permission.CAMERA"/>
+<uses-feature android:name="android.hardware.camera" android:required="false"/>
+
+<!-- 사진 앨범 (API 32 이하) -->
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+
+<!-- 사진 앨범 (API 33+) — 세분화된 미디어 권한 -->
+<uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+
+<!-- FCM Push Notifications (API 33+ 필수) -->
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+<!-- 진동 (알림 수신 시 햅틱) -->
+<uses-permission android:name="android.permission.VIBRATE"/>
+
+<!-- Wake lock (FCM이 기기 깨울 때) -->
+<uses-permission android:name="android.permission.WAKE_LOCK"/>
+
+
+<!-- <application> 태그 내부에 추가할 metadata 및 intent-filter -->
+<!-- Deep Link (OAuth 콜백) — <activity android:name=".MainActivity"> 내부 -->
+<intent-filter android:autoVerify="true">
+    <action android:name="android.intent.action.VIEW"/>
+    <category android:name="android.intent.category.DEFAULT"/>
+    <category android:name="android.intent.category.BROWSABLE"/>
+    <data android:scheme="itdasy" android:host="callback"/>
+</intent-filter>
+
+<!-- 웹 OAuth 리다이렉트 (nopo-lab.github.io로 돌아올 때 앱으로 연결) -->
+<intent-filter android:autoVerify="true">
+    <action android:name="android.intent.action.VIEW"/>
+    <category android:name="android.intent.category.DEFAULT"/>
+    <category android:name="android.intent.category.BROWSABLE"/>
+    <data android:scheme="https" android:host="nopo-lab.github.io" android:pathPrefix="/itdasy-frontend"/>
+</intent-filter>
+
+
+<!-- FCM Service — Firebase Messaging SDK 추가 시 자동 삽입될 것. 없으면 수동 추가: -->
+<!--
+<service
+    android:name=".FcmService"
+    android:exported="false">
+    <intent-filter>
+        <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+    </intent-filter>
+</service>
+-->
