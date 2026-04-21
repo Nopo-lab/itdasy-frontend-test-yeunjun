@@ -213,6 +213,10 @@
 #settingsCard {
   position: relative; z-index: 1;
   width: 100%; max-width: 480px;
+  max-height: 88vh;            /* 상단 잘림 방지 */
+  overflow-y: auto;            /* 내부 스크롤 */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   background: #fff;
   border-radius: 28px 28px 0 0;
   padding: 12px 0 calc(24px + env(safe-area-inset-bottom));
@@ -220,6 +224,7 @@
   transform: translateY(100%);
   transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
 }
+#settingsCard::-webkit-scrollbar { width: 0; }
 #settingsCard.open { transform: translateY(0); }
 .sheet-handle {
   width: 36px; height: 4px; border-radius: 2px;

@@ -365,20 +365,33 @@
       💬 고객센터
       <span id="supportUnreadBadge" style="display:none;margin-left:8px;background:#f18091;color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;"></span>
     </button>
-    <button class="sheet-row" onclick="toggleHapticSetting(); updateHapticToggleLabel();">
-      📳 진동 <span id="hapticToggleStatus" style="margin-left:8px;font-size:12px;color:var(--accent);">켜짐</span>
-    </button>
-    <button class="sheet-row" onclick="window.cycleTheme && window.cycleTheme();">
-      🌙 화면 <span id="themeLabel" style="margin-left:8px;font-size:12px;color:var(--accent);">자동</span>
-    </button>
-    <button class="sheet-row" onclick="window.cycleFontSize && window.cycleFontSize();">
-      🔠 글씨 크기 <span id="fontSizeLabel" style="margin-left:8px;font-size:12px;color:var(--accent);">보통</span>
+    <button class="sheet-row" data-haptic="medium" onclick="closeSettings(); window.openReferral && window.openReferral();"
+            style="background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,215,0,0.04));border:1px solid rgba(255,179,71,0.3);font-weight:700;">
+      🎁 친구 초대 <span style="font-size:10px;color:#888;font-weight:400;margin-left:4px;">1명당 3개월 무료</span>
     </button>
     <button class="sheet-row" data-haptic="light" onclick="closeSettings(); runInstagramDiagnose();">
       🔧 인스타 연동 진단
     </button>
     <button class="sheet-row" data-haptic="light" onclick="closeSettings(); testMetaWithImgur();">
       🧪 Meta 외부 URL 테스트
+    </button>
+
+    <div class="sheet-sep"></div>
+    <div style="padding:6px 20px 8px;font-size:11px;font-weight:800;color:var(--text3);letter-spacing:1.5px;">앱 설정</div>
+    <button class="sheet-row" onclick="toggleHapticSetting(); updateHapticToggleLabel();">
+      📳 진동 <span id="hapticToggleStatus" style="margin-left:auto;font-size:12px;color:var(--accent);font-weight:700;">켜짐</span>
+    </button>
+    <button class="sheet-row" onclick="window.cycleTheme && window.cycleTheme();">
+      🌙 화면 <span id="themeLabel" style="margin-left:auto;font-size:12px;color:var(--accent);font-weight:700;">자동</span>
+    </button>
+    <button class="sheet-row" onclick="window.cycleFontSize && window.cycleFontSize();">
+      🔠 글씨 크기 <span id="fontSizeLabel" style="margin-left:auto;font-size:12px;color:var(--accent);font-weight:700;">보통</span>
+    </button>
+
+    <div class="sheet-sep"></div>
+
+    <button class="sheet-row" data-haptic="light" onclick="closeSettings(); window.openGrowthStory && window.openGrowthStory();">
+      🎉 월간 성장 리포트 <span style="margin-left:auto;font-size:11px;color:#888;">공유 이미지</span>
     </button>
 
     <div class="sheet-sep"></div>
@@ -1353,6 +1366,8 @@
 <script src="app-calendar-view.js"></script>
 <script src="app-voice-input.js"></script>
 <script src="app-biometric.js"></script>
+<script src="app-referral.js"></script>
+<script src="app-growth-story.js"></script>
 <!-- T-327 · Sentry 에러 모니터링 -->
 <script>window.SENTRY_DSN_FE = "https://b3732869f4b445bc7a73a5e4cbacc4ed@o4511236563992576.ingest.us.sentry.io/4511236579852288";</script>
 <script src="https://browser.sentry-cdn.com/7.100.0/bundle.min.js" crossorigin="anonymous"></script>
