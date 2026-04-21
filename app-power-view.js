@@ -483,7 +483,7 @@
     }
   }
 
-  // ── 엑셀 AI 임포트 ─────────────────────────────────────
+  // ── 엑셀 AI 임포트 v2 — 위저드 모달 ───────────────────
   async function _handleExcelFile(file) {
     if (!file) return;
     const kindMap = { customer: 'customer', booking: 'booking', revenue: 'revenue' };
@@ -492,34 +492,17 @@
       if (window.showToast) window.showToast('이 탭은 엑셀 임포트 미지원 (고객/예약/매출만 가능)');
       return;
     }
-    if (window.showToast) window.showToast('📄 파일 분석 중…');
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('kind', kind);
-      const auth = AUTH();
-      delete auth['Content-Type'];
-      const res = await fetch(API() + '/imports/preview', { method: 'POST', headers: auth, body: fd });
-      const prev = await res.json();
-      if (!res.ok) throw new Error(prev.detail || 'preview 실패');
-      const mapping = prev.detected_mapping || {};
-      const jobId = prev.job_id;
-      const total = prev.total_rows || 0;
-      if (!confirm(`AI 가 ${total}행 감지. 자동 매핑: ${JSON.stringify(mapping, null, 2)}\n\n이대로 가져올까요?`)) {
-        return;
-      }
-      const commitRes = await fetch(API() + '/imports/commit', {
-        method: 'POST',
-        headers: { ...AUTH(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: jobId, mapping }),
+    if (window.ImportWizard && typeof window.ImportWizard.open === 'function') {
+      window.ImportWizard.open({
+        file, kind,
+        onDone: async () => {
+          data[currentTab] = await _fetchTab(currentTab);
+          await _renderTab(true);
+          if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
+        },
       });
-      const cm = await commitRes.json();
-      if (!commitRes.ok) throw new Error(cm.detail || 'commit 실패');
-      if (window.showToast) window.showToast(`✅ ${cm.imported}건 가져왔어요 (실패 ${cm.failed})`);
-      data[currentTab] = await _fetchTab(currentTab);
-      await _renderTab(true);
-    } catch (e) {
-      if (window.showToast) window.showToast('임포트 실패: ' + e.message);
+    } else {
+      if (window.showToast) window.showToast('임포트 위저드 스크립트 미로드');
     }
   }
 

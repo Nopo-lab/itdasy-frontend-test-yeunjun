@@ -97,10 +97,14 @@
   function _renderActionBubble(action, historyIdx, status) {
     if (!action || !action.kind) return '';
     const kindBadge = {
-      create_booking: { icon: '📅', label: '예약 추가', color: '#F18091' },
-      create_revenue: { icon: '💰', label: '매출 기록', color: '#388e3c' },
+      create_booking:  { icon: '📅', label: '예약 추가', color: '#F18091' },
+      create_revenue:  { icon: '💰', label: '매출 기록', color: '#388e3c' },
       create_customer: { icon: '👤', label: '고객 등록', color: '#4ECDC4' },
-      create_nps: { icon: '⭐', label: 'NPS 기록', color: '#FFD700' },
+      create_nps:      { icon: '⭐', label: 'NPS 기록', color: '#FFD700' },
+      update_booking:  { icon: '✏️', label: '예약 수정', color: '#A78BFA' },
+      cancel_booking:  { icon: '🗑', label: '예약 취소', color: '#DC3545' },
+      reschedule_booking: { icon: '🔄', label: '예약 시간 변경', color: '#0288D1' },
+      generate_bulk_message: { icon: '📋', label: '단체 메시지 초안', color: '#FF8A5C' },
     }[action.kind] || { icon: '✓', label: action.kind, color: '#666' };
 
     if (status === 'done') {
@@ -158,7 +162,17 @@
       const d = await res.json();
       msg.action_status = 'done';
       _renderHistory();
-      _history.push({ role: 'assistant', text: d.message || '✓ 완료했어요' });
+      // Phase 6.3 — bulk_message 는 클립보드 복사 처리
+      if (d.kind === 'generate_bulk_message' && d.message_draft) {
+        try {
+          if (navigator.clipboard) await navigator.clipboard.writeText(d.message_draft);
+          _history.push({ role: 'assistant', text: '📋 초안을 클립보드에 복사했어요. 카톡·문자에 붙여넣으세요.\n\n---\n' + d.message_draft });
+        } catch (e) {
+          _history.push({ role: 'assistant', text: '초안 작성됨:\n\n' + d.message_draft });
+        }
+      } else {
+        _history.push({ role: 'assistant', text: d.message || '✓ 완료했어요' });
+      }
       _renderHistory();
       if (window.hapticSuccess) window.hapticSuccess();
       if (window.Dashboard?.refresh) window.Dashboard.refresh(true);

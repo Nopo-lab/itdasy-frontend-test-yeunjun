@@ -593,6 +593,7 @@
 
     // 고객 대시보드 진입 전에 고객 이름 가져오기 위해 reverse lookup 필요하진 않음
     body.innerHTML = `
+      <div id="dashKiller"></div>
       <div id="dashToday"></div>
       <div id="dashAutoBA"></div>
       <div id="dashBirthday"></div>
@@ -606,6 +607,11 @@
     `;
     _bindEvents();
     _animateCounts(body);
+
+    // Phase 6.3 Lane F — AI 킬러 위젯
+    if (window.KillerWidgets && typeof window.KillerWidgets.render === 'function') {
+      window.KillerWidgets.render('dashKiller').catch(() => {});
+    }
 
     // 오늘의 브리핑 카드 (#킬러 1) — dashToday 슬롯
     if (window.TodayBrief && typeof window.TodayBrief.render === 'function') {
