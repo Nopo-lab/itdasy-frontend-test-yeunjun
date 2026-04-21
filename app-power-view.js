@@ -38,7 +38,20 @@
     { key: 'inventory', icon: '📦', label: '재고',     hue: 150 },
     { key: 'nps',       icon: '⭐', label: 'NPS',      hue: 45  },
     { key: 'service',   icon: '💅', label: '시술',     hue: 320 },
-    { key: 'more',      icon: '📎', label: '기타',     hue: 200 },
+  ];
+
+  // 햄버거 메뉴 항목 (파워뷰 탭이 아닌 별도 모듈 진입)
+  const MENU_ITEMS = [
+    { icon: '📅', label: '예약 캘린더',  hint: '월/주/일 + 드래그',    fn: 'openCalendarView' },
+    { icon: '🤖', label: 'AI 비서',      hint: '말 한 줄로 실행',      fn: 'openAssistant' },
+    { icon: '🎤', label: '음성 기록',    hint: '말하면 자동 저장',     fn: 'openVoice' },
+    { icon: '🎀', label: '스토리 만들기', hint: 'AI 1080×1920',        fn: 'openStory' },
+    { icon: '🎬', label: '영상 만들기',  hint: '비포/애프터 릴스',     fn: 'openVideo' },
+    { icon: '⭐', label: '네이버 리뷰',  hint: '수동 기록·분석',       fn: 'openNaverReviews' },
+    { icon: '📥', label: '이전 도우미',  hint: '엑셀·사진·카톡',       fn: 'openMigration' },
+    { icon: '📑', label: '월간 리포트',  hint: '한 달 요약',           fn: 'openReport' },
+    { icon: '🔔', label: '알림',         hint: '오늘 브리핑·위험',     fn: 'openNotifications' },
+    { icon: '⚙️', label: '설정',         hint: '샵·인스타·사업자',     fn: 'openSettings' },
   ];
 
   // ── 스타일 주입 (한 번만) ──────────────────────────────
@@ -386,51 +399,56 @@
     return out;
   }
 
-  function _renderMoreTab() {
-    const body = document.getElementById('pv-body');
-    if (!body) return;
-    const entries = [
-      { icon: '📅', label: '예약 캘린더 뷰', hint: '월/주/일 + 드래그 리스케줄', fn: 'openCalendarView' },
-      { icon: '⭐', label: '네이버 리뷰',    hint: '리뷰 수동 기록·분석',       fn: 'openNaverReviews' },
-      { icon: '🎬', label: '영상 만들기',    hint: '비포/애프터 릴스 자동',       fn: 'openVideo' },
-      { icon: '🎀', label: '스토리 만들기',  hint: 'AI 스토리 1080×1920',         fn: 'openStory' },
-      { icon: '📥', label: '이전 도우미',    hint: '엑셀/사진/카톡 불러오기',     fn: 'openMigration' },
-      { icon: '📑', label: '월간 리포트',    hint: '한 달 요약 + 인사이트',       fn: 'openReport' },
-      { icon: '🤖', label: 'AI 비서',        hint: '말 한 줄로 실행',             fn: 'openAssistant' },
-      { icon: '🎤', label: '음성 기록',      hint: '말하면 자동 저장',            fn: 'openVoice' },
-      { icon: '🔔', label: '알림',           hint: '오늘 브리핑·이탈 위험',       fn: 'openNotifications' },
-      { icon: '⚙️', label: '설정',           hint: '샵 · 인스타 · 사업자 정보',   fn: 'openSettings' },
-    ];
-    body.innerHTML = `
-      <div style="padding:20px;overflow:auto;">
-        <div style="font-size:12px;color:#888;margin-bottom:12px;font-weight:700;">📎 빠른 실행 — 탭으로 바로 열기</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;">
-          ${entries.map(e => `
-            <button data-pv-fn="${e.fn}" style="padding:14px 12px;border:1px solid #eee;border-radius:14px;background:#fff;cursor:pointer;text-align:left;transition:all 0.15s;">
-              <div style="font-size:22px;margin-bottom:6px;">${e.icon}</div>
-              <div style="font-size:13px;font-weight:800;color:#222;margin-bottom:2px;">${e.label}</div>
-              <div style="font-size:11px;color:#888;line-height:1.4;">${e.hint}</div>
+  function _openMenuDrawer() {
+    const o = document.createElement('div');
+    o.id = 'pv-menu-drawer';
+    o.style.cssText = `position:fixed;inset:0;z-index:10002;background:rgba(20,8,16,0.55);backdrop-filter:blur(6px);animation:pvFadeIn 0.2s ease;display:flex;justify-content:flex-end;`;
+    o.innerHTML = `
+      <div style="width:100%;max-width:320px;height:100%;background:#fff;display:flex;flex-direction:column;box-shadow:-8px 0 40px rgba(0,0,0,0.25);animation:pvMenuSlideIn 0.25s cubic-bezier(0.22,1,0.36,1);">
+        <style>@keyframes pvMenuSlideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}</style>
+        <div style="display:flex;align-items:center;padding:18px 20px;border-bottom:1px solid #eee;background:#fafafa;">
+          <div style="font-size:15px;font-weight:900;flex:1;color:#222;">📂 전체 메뉴</div>
+          <button id="pv-menu-close" style="width:32px;height:32px;border:none;border-radius:10px;background:#eee;cursor:pointer;font-size:14px;">✕</button>
+        </div>
+        <div style="flex:1;overflow:auto;padding:10px 0;">
+          ${MENU_ITEMS.map(e => `
+            <button data-pv-menu-fn="${e.fn}" style="display:flex;align-items:center;gap:14px;width:100%;padding:14px 20px;border:none;background:transparent;cursor:pointer;text-align:left;transition:background 0.12s;">
+              <div style="font-size:24px;width:44px;height:44px;border-radius:12px;background:#FEF4F5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${e.icon}</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:800;color:#222;margin-bottom:2px;">${e.label}</div>
+                <div style="font-size:11px;color:#888;line-height:1.4;">${e.hint}</div>
+              </div>
+              <div style="color:#ccc;font-size:14px;">›</div>
             </button>
           `).join('')}
         </div>
+        <div style="padding:14px 20px;border-top:1px solid #eee;background:#fafafa;font-size:11px;color:#aaa;text-align:center;">
+          잇데이 · 와이투두(Y2do)
+        </div>
       </div>
     `;
-    body.querySelectorAll('[data-pv-fn]').forEach(b => {
+    document.body.appendChild(o);
+    const close = () => o.remove();
+    o.addEventListener('click', (e) => { if (e.target === o) close(); });
+    o.querySelector('#pv-menu-close').addEventListener('click', close);
+    o.querySelectorAll('[data-pv-menu-fn]').forEach(b => {
       b.addEventListener('click', () => {
-        const fn = b.getAttribute('data-pv-fn');
+        const fn = b.getAttribute('data-pv-menu-fn');
+        close();
         if (typeof window[fn] === 'function') {
           if (window.hapticLight) window.hapticLight();
           closePowerView();
-          setTimeout(() => window[fn](), 120);
+          setTimeout(() => window[fn](), 140);
         }
       });
+      b.addEventListener('mouseenter', () => { b.style.background = '#fafafa'; });
+      b.addEventListener('mouseleave', () => { b.style.background = 'transparent'; });
     });
   }
 
   async function _renderTab(skipFetch) {
     const body = document.getElementById('pv-body');
     if (!body) return;
-    if (currentTab === 'more') { _renderMoreTab(); return; }
     const schema = SCHEMAS[currentTab];
 
     // 즉시 스켈레톤 표시 (부드러운 로딩)
@@ -497,7 +515,7 @@
 
     body.innerHTML = `
       ${datalistHtml}
-      <div class="pv-qadd">
+      <div class="pv-qadd" data-voice-root>
         ${fieldsHtml}
         <button class="pv-btn-stack" id="pv-stack-btn" title="목록에 쌓아두고 나중에 일괄 저장" style="padding:11px 12px;background:#fff;border:1.5px solid #F18091;color:#D95F70;border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 0.15s;">⊕ 쌓기</button>
         <button class="pv-btn-add" id="pv-add-btn">즉시 추가 <span class="pv-kbd">↵</span></button>
@@ -845,6 +863,9 @@
             <span class="pv-title-icon">⛶</span>
             <span>파워뷰 — 빠른 입력</span>
           </div>
+          <button id="pv-menu-btn" class="pv-close" aria-label="전체 메뉴" title="전체 메뉴" style="margin-right:6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+          </button>
           <button class="pv-close" onclick="window.closePowerView()" aria-label="닫기">✕</button>
         </div>
         <div class="pv-tabs">${tabHtml}</div>
@@ -863,6 +884,8 @@
     });
 
     _bindTabs();
+    const menuBtn = document.getElementById('pv-menu-btn');
+    if (menuBtn) menuBtn.addEventListener('click', _openMenuDrawer);
     _renderTab();
   }
 

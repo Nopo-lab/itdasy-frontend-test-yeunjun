@@ -17,9 +17,10 @@
   function _inject(input) {
     if (input.dataset.voiceInjected) return;
     if (input.hasAttribute('data-no-voice')) return;
+    // opt-in 방식: 명시적으로 data-voice 가 붙은 필드 또는 부모에 붙은 필드에만 적용
+    if (!input.hasAttribute('data-voice') && !input.closest('[data-voice-root]')) return;
     if (input.type === 'password' || input.type === 'hidden' || input.type === 'date' ||
         input.type === 'time' || input.type === 'number' || input.type === 'email') return;
-    // 한국어 텍스트/메모 류 추정
     if (input.tagName === 'INPUT' && input.type && input.type !== 'text' && input.type !== '') return;
 
     input.dataset.voiceInjected = '1';

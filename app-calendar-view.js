@@ -106,25 +106,34 @@
     const events = await _fetchBookings();
     const root = document.getElementById('cal-root');
     root.innerHTML = '';
+    // 모바일 감지 → 초기 뷰 `timeGridDay` 로 (주간 뷰는 좁음)
+    const isMobile = window.innerWidth < 680;
     _calendar = new FullCalendar.Calendar(root, {
-      initialView: 'timeGridWeek',
+      initialView: isMobile ? 'timeGridDay' : 'timeGridWeek',
       locale: 'ko',
       firstDay: 0,
       slotMinTime: '09:00:00',
       slotMaxTime: '22:00:00',
+      slotDuration: '00:30:00',
+      slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
       allDaySlot: false,
       height: 'auto',
+      expandRows: true,
       nowIndicator: true,
       editable: true,
       selectable: true,
+      selectMirror: true,
+      longPressDelay: 200,
       eventResizableFromStart: false,
+      dayHeaderFormat: { weekday: 'short', day: 'numeric' },
       headerToolbar: {
         left: 'prev,next today',
         center: 'title',
-        right: 'dayGridMonth,timeGridWeek,timeGridDay',
+        right: isMobile ? 'timeGridDay,timeGridWeek' : 'dayGridMonth,timeGridWeek,timeGridDay',
       },
       buttonText: { today: '오늘', month: '월', week: '주', day: '일' },
       events,
+      noEventsContent: '예약이 없어요. 빈 시간을 탭해서 추가해 보세요.',
       select: (info) => {
         if (window.openBooking) {
           // 기본 예약 시트 열고 날짜/시간 미리 채우기 위해 전역 힌트 저장

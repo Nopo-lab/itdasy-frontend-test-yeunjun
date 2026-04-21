@@ -317,7 +317,8 @@
           <button type="button" id="bfCustomerPick" style="padding:10px 14px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:12px;">👤 선택</button>
         </div>
         <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">서비스</label>
-        <input id="bfService" value="${_esc(existing?.service_name||'')}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;" placeholder="속눈썹 풀세트" maxlength="50" />
+        <input id="bfService" list="bfServiceDatalist" value="${_esc(existing?.service_name||'')}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;" placeholder="속눈썹 풀세트 (자주 쓴 시술 자동 추천)" maxlength="50" autocomplete="off" />
+        <datalist id="bfServiceDatalist"></datalist>
         <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">메모</label>
         <textarea id="bfMemo" rows="2" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font-family:inherit;resize:vertical;" maxlength="200">${_esc(existing?.memo||'')}</textarea>
         <div id="bfConflict" style="display:none;font-size:12px;color:#c00;margin-bottom:8px;padding:8px;background:rgba(220,0,0,0.06);border-radius:6px;">⚠️ 이 시간에 이미 예약이 있어요</div>
@@ -343,6 +344,22 @@
         ` : ''}
       </div>
     `;
+
+    // 자주 쓴 시술 datalist 채우기 (ServiceTemplate + 최근 매출)
+    (async () => {
+      const dl = grid.querySelector('#bfServiceDatalist');
+      if (!dl) return;
+      const names = new Set();
+      try {
+        const res = await fetch(window.API + '/services', { headers: window.authHeader() });
+        if (res.ok) { const d = await res.json(); (d.items||[]).forEach(s => s.name && names.add(s.name)); }
+      } catch(_){}
+      try {
+        const res2 = await fetch(window.API + '/revenue?period=month', { headers: window.authHeader() });
+        if (res2.ok) { const d = await res2.json(); (d.items||[]).forEach(r => r.service_name && names.add(r.service_name)); }
+      } catch(_){}
+      dl.innerHTML = Array.from(names).slice(0, 50).map(n => `<option value="${_esc(n)}"></option>`).join('');
+    })();
 
     let customer_id = existing?.customer_id || null;
     grid.querySelector('#bfCustomerPick').addEventListener('click', async () => {

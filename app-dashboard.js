@@ -73,18 +73,30 @@
     sheet.id = 'dashboardSheet';
     sheet.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;background:linear-gradient(180deg,#F8F5F7 0%,#F2F4F6 100%);';
     sheet.innerHTML = `
-      <div style="height:100%;display:flex;flex-direction:column;padding-top:max(12px,env(safe-area-inset-top));">
-        <header style="display:flex;align-items:center;gap:10px;padding:14px 18px 8px;">
-          <div style="width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,#F18091,#FF6B9D);display:flex;align-items:center;justify-content:center;font-size:18px;">📊</div>
+      <style>
+        @keyframes dashShine { 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
+        .dash-hero-h {
+          background:linear-gradient(110deg,#F18091 0%,#FF9AA8 40%,#FFC3C8 55%,#F18091 100%);
+          background-size:200% auto;
+          animation:dashShine 12s linear infinite;
+          -webkit-background-clip:text;background-clip:text;
+          -webkit-text-fill-color:transparent;
+        }
+        .dash-glow { filter:drop-shadow(0 6px 16px rgba(241,128,145,0.35)); }
+        #dashBody::-webkit-scrollbar { width:0; }
+      </style>
+      <div style="height:100%;display:flex;flex-direction:column;padding-top:max(12px,env(safe-area-inset-top));background:linear-gradient(180deg,#FAF7F8 0%,#F5F5F7 60%);">
+        <header style="display:flex;align-items:center;gap:12px;padding:16px 20px 10px;">
+          <div class="dash-glow" style="width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#F18091,#D95F70);display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;">✨</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:18px;font-weight:800;line-height:1.1;">대시보드</div>
-            <div id="dashGreet" style="font-size:11px;color:#888;margin-top:2px;">안녕하세요, 원장님 👋</div>
+            <div style="font-size:11px;color:#888;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">ITDASY</div>
+            <div id="dashGreet" class="dash-hero-h" style="font-size:20px;font-weight:900;line-height:1.15;letter-spacing:-0.4px;">안녕하세요, 원장님 👋</div>
           </div>
-          <button id="dashBell" style="position:relative;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.04);border:none;font-size:16px;cursor:pointer;margin-right:4px;" aria-label="알림">
+          <button id="dashBell" style="position:relative;width:40px;height:40px;border-radius:14px;background:#fff;border:1px solid #eee;font-size:16px;cursor:pointer;margin-right:4px;box-shadow:0 2px 6px rgba(0,0,0,0.04);" aria-label="알림">
             🔔
-            <span id="dashBellBadge" style="display:none;position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#dc3545;color:#fff;font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center;">0</span>
+            <span id="dashBellBadge" style="display:none;position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#F18091;color:#fff;font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(241,128,145,0.4);">0</span>
           </button>
-          <button onclick="closeDashboard()" style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.04);border:none;font-size:18px;cursor:pointer;" aria-label="닫기">✕</button>
+          <button onclick="closeDashboard()" style="width:40px;height:40px;border-radius:14px;background:#fff;border:1px solid #eee;font-size:16px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.04);" aria-label="닫기">✕</button>
         </header>
         <div id="dashBody" style="flex:1;overflow-y:auto;padding:8px 16px 24px;padding-bottom:max(80px,env(safe-area-inset-bottom));"></div>
         <!-- 스토리 자동 생성 FAB -->
@@ -144,16 +156,17 @@
       { key: 'booking',  icon: '📅', label: '예정 예약',  value: stats.upcoming_bookings, format: 'unit', unit: '건', sub: '다가오는 일정',       color: '#A78BFA,#8B5CF6', pvTab: 'booking' },
     ];
 
-    const cardHtml = cards.map(c => `
-      <div style="padding:16px;border-radius:18px;background:#fff;box-shadow:0 4px 16px rgba(0,0,0,0.06);position:relative;overflow:hidden;">
-        <div style="position:absolute;top:-12px;right:-12px;width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,${c.color});opacity:0.18;"></div>
-        <button data-pv-open="${c.pvTab}" title="크게 보기 + 빠른 입력" aria-label="확대" style="position:absolute;top:8px;right:8px;width:28px;height:28px;border:none;border-radius:8px;background:rgba(255,255,255,0.85);backdrop-filter:blur(4px);cursor:pointer;font-size:13px;color:#666;display:flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,0.08);">⛶</button>
+    const cardHtml = cards.map((c, i) => `
+      <div class="dash-hero-card" style="padding:18px 16px 16px;border-radius:20px;background:linear-gradient(180deg,#ffffff 0%,#fbfbfd 100%);box-shadow:0 6px 24px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.04);position:relative;overflow:hidden;transition:transform 0.15s cubic-bezier(0.2,0.9,0.3,1), box-shadow 0.15s;border:1px solid rgba(0,0,0,0.03);">
+        <div style="position:absolute;top:-22px;right:-22px;width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,${c.color});opacity:0.14;filter:blur(4px);"></div>
+        <div style="position:absolute;top:-14px;right:10px;width:24px;height:60px;background:linear-gradient(180deg,rgba(255,255,255,0.5),transparent);transform:rotate(25deg);"></div>
+        <button data-pv-open="${c.pvTab}" title="크게 보기 + 빠른 입력" aria-label="확대" style="position:absolute;top:10px;right:10px;width:28px;height:28px;border:none;border-radius:9px;background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:pointer;font-size:12px;color:#555;display:flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,0.1);transition:all 0.15s;">⛶</button>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;position:relative;">
-          <span style="font-size:16px;">${c.icon}</span>
-          <span style="font-size:11px;color:#666;font-weight:700;">${c.label}</span>
+          <span style="font-size:15px;">${c.icon}</span>
+          <span style="font-size:11px;color:#888;font-weight:800;letter-spacing:-0.2px;">${c.label}</span>
         </div>
-        <div class="dash-count" data-value="${c.value ?? 0}" data-format="${c.format}" data-unit="${c.unit || ''}" style="font-size:26px;font-weight:900;color:#1a1a1a;line-height:1.1;letter-spacing:-0.5px;">—</div>
-        <div style="font-size:10px;color:#999;margin-top:4px;">${_esc(c.sub)}</div>
+        <div class="dash-count" data-value="${c.value ?? 0}" data-format="${c.format}" data-unit="${c.unit || ''}" style="font-size:28px;font-weight:900;color:#1a1a1a;line-height:1.05;letter-spacing:-0.8px;">—</div>
+        <div style="font-size:10.5px;color:#999;margin-top:6px;font-weight:600;">${_esc(c.sub)}</div>
       </div>
     `).join('');
 
@@ -635,9 +648,9 @@
     document.body.style.overflow = 'hidden';
     // 인사말 — 시간대별
     const h = new Date().getHours();
-    const greet = h < 6 ? '새벽까지 수고 많으세요' : h < 12 ? '좋은 아침이에요' : h < 18 ? '오후도 화이팅' : '오늘도 고생하셨어요';
+    const greet = h < 6 ? '새벽 수고 많으세요' : h < 12 ? '좋은 아침이에요' : h < 14 ? '점심 맛있게 드셨어요?' : h < 18 ? '오후도 화이팅' : h < 22 ? '오늘도 고생하셨어요' : '편히 쉬세요';
     const greetEl = sheet.querySelector('#dashGreet');
-    if (greetEl) greetEl.textContent = greet + ' 👋';
+    if (greetEl) greetEl.textContent = greet;
     await _loadAndRender();
   };
 
