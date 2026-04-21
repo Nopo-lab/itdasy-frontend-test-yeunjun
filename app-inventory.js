@@ -32,7 +32,7 @@
     catch (_) { return []; }
   }
   function _saveOffline(list) {
-    try { localStorage.setItem(OFFLINE_KEY, JSON.stringify(list)); } catch (_) {}
+    try { localStorage.setItem(OFFLINE_KEY, JSON.stringify(list)); } catch (_) { /* storage full — ignore */ }
   }
 
   async function _api(method, path, body) {
@@ -131,21 +131,23 @@
     if (sheet) return sheet;
     sheet = document.createElement('div');
     sheet.id = 'inventorySheet';
-    sheet.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;background:rgba(0,0,0,0.4);';
+    sheet.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;flex-direction:column;';
+    sheet.classList.add('dt-overlay');
     sheet.innerHTML = `
-      <div style="position:absolute;inset:auto 0 0 0;background:var(--bg,#fff);border-radius:20px 20px 0 0;max-height:90vh;display:flex;flex-direction:column;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom));">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <strong style="font-size:18px;">재고</strong>
-          <span id="invLowBadge" style="display:none;font-size:11px;padding:2px 8px;border-radius:4px;background:#dc3545;color:#fff;font-weight:700;"></span>
-          <span id="invOfflineBadge" style="display:none;font-size:10px;padding:2px 6px;border-radius:4px;background:#f2c94c;color:#333;">오프라인</span>
-          <button onclick="closeInventory()" style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;" aria-label="닫기">✕</button>
-        </div>
-        <div id="inventoryList" style="flex:1;overflow-y:auto;min-height:140px;"></div>
-        <button id="inventoryAddBtn" style="margin-top:10px;padding:12px;border:none;border-radius:10px;background:var(--accent,#F18091);color:#fff;font-weight:700;font-size:15px;cursor:pointer;">+ 소모품 추가</button>
+      <header class="dt-hdr">
+        <button class="dt-back" onclick="closeInventory()" aria-label="뒤로"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <h1 class="dt-title">재고</h1>
+        <span id="invLowBadge" class="dt-offline-badge" style="background:var(--danger);"></span>
+        <span id="invOfflineBadge" class="dt-offline-badge">오프라인</span>
+      </header>
+      <div class="dt-body">
+        <div id="inventoryList"></div>
       </div>
+      <footer class="dt-footer">
+        <button id="inventoryAddBtn" class="btn-primary" style="flex:1;">+ 소모품 추가</button>
+      </footer>
     `;
     document.body.appendChild(sheet);
-    sheet.addEventListener('click', (e) => { if (e.target === sheet) closeInventory(); });
     sheet.querySelector('#inventoryAddBtn').addEventListener('click', () => _openAddForm());
     return sheet;
   }
@@ -165,7 +167,7 @@
 
     const listEl = sheet.querySelector('#inventoryList');
     if (!_items.length) {
-      listEl.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa;font-size:13px;">아직 소모품이 없어요. 아래 버튼으로 추가해 주세요.</div>';
+      listEl.innerHTML = '<div class="dt-empty">아직 소모품이 없어요. 아래 버튼으로 추가해 주세요.</div>';
       return;
     }
     // 부족한 것 위로 정렬
@@ -175,24 +177,23 @@
       if (aLow !== bLow) return aLow ? -1 : 1;
       return (a.name || '').localeCompare(b.name || '');
     });
-    listEl.innerHTML = sorted.map(x => {
+    listEl.innerHTML = '<div class="dt-list">' + sorted.map(x => {
       const isLow = (x.quantity || 0) <= (x.threshold || 0);
       return `
-        <div data-inv-id="${x.id}" style="padding:12px 8px;border-bottom:1px solid #eee;${isLow ? 'background:rgba(220,53,69,0.04);' : ''}">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <strong style="font-size:14px;">${_esc(x.name)}</strong>
-            ${isLow ? '<span style="font-size:9px;padding:1px 5px;background:#dc3545;color:#fff;border-radius:3px;font-weight:700;">부족</span>' : ''}
-            <span style="font-size:12px;color:#666;margin-left:auto;">임계 ${x.threshold}${_esc(x.unit||'개')}</span>
+        <div class="dt-list-it" data-inv-id="${x.id}" style="${isLow ? 'background:rgba(220,53,69,0.04);' : ''}cursor:default;">
+          <div class="dt-list-it__main">
+            <p class="dt-list-it__title">${_esc(x.name)}${isLow ? ' <span style="font-size:9px;padding:1px 5px;background:var(--danger);color:#fff;border-radius:3px;font-weight:700;">부족</span>' : ''}</p>
+            <p class="dt-list-it__sub">임계 ${x.threshold}${_esc(x.unit||'개')}</p>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
-            <button data-inv-delta="-1" data-inv-target="${x.id}" style="width:36px;height:36px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:18px;">−</button>
-            <strong style="flex:1;text-align:center;font-size:20px;color:${isLow ? '#dc3545' : 'var(--accent,#F18091)'};">${x.quantity || 0}<span style="font-size:12px;color:#888;margin-left:4px;">${_esc(x.unit||'개')}</span></strong>
-            <button data-inv-delta="1" data-inv-target="${x.id}" style="width:36px;height:36px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:18px;">+</button>
-            <button data-inv-edit="${x.id}" style="padding:8px 12px;border:1px solid #eee;border-radius:8px;background:#fff;cursor:pointer;font-size:11px;">⚙</button>
+          <div class="dt-stepper">
+            <button class="dt-stepper__btn" data-inv-delta="-1" data-inv-target="${x.id}" type="button">−</button>
+            <span class="dt-stepper__val${isLow ? ' dt-stepper__val--low' : ''}">${x.quantity || 0}<span style="font-size:12px;font-weight:400;color:var(--text-subtle);margin-left:4px;">${_esc(x.unit||'개')}</span></span>
+            <button class="dt-stepper__btn" data-inv-delta="1" data-inv-target="${x.id}" type="button">+</button>
+            <button data-inv-edit="${x.id}" class="btn-secondary" style="padding:8px 10px;" type="button">⚙</button>
           </div>
         </div>
       `;
-    }).join('');
+    }).join('') + '</div>';
     listEl.querySelectorAll('[data-inv-delta]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const d = parseInt(btn.dataset.invDelta, 10);
@@ -216,26 +217,16 @@
     if (!sheet) return;
     const listEl = sheet.querySelector('#inventoryList');
     listEl.innerHTML = `
-      <div style="padding:4px;">
-        <button onclick="window._inventoryBack()" style="background:none;border:none;font-size:13px;color:#888;margin-bottom:10px;cursor:pointer;">← 목록</button>
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">이름 *</label>
-        <input id="ifName" value="${_esc(existing?.name||'')}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;" placeholder="네일팁 / 젤 / 접착제" maxlength="50" />
-        <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <div style="flex:1;">
-            <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">현재 수량</label>
-            <input id="ifQty" type="number" inputmode="numeric" value="${existing?.quantity ?? 0}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;" />
-          </div>
-          <div style="width:80px;">
-            <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">단위</label>
-            <input id="ifUnit" value="${_esc(existing?.unit||'개')}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;" maxlength="10" />
-          </div>
-        </div>
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">부족 알림 임계치</label>
-        <input id="ifThreshold" type="number" inputmode="numeric" value="${existing?.threshold ?? 5}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;" />
-        <div style="display:flex;gap:8px;">
-          <button type="button" id="ifSave" style="flex:1;padding:12px;border:none;border-radius:8px;background:var(--accent,#F18091);color:#fff;font-weight:700;cursor:pointer;font-size:15px;">${existing ? '수정' : '추가'}</button>
-          ${existing ? '<button type="button" id="ifDelete" style="padding:12px 16px;border:1px solid #eee;border-radius:8px;background:#fff;color:#c00;cursor:pointer;">삭제</button>' : ''}
-        </div>
+      <button onclick="window._inventoryBack()" class="dt-back" style="margin-bottom:12px;" aria-label="뒤로"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="dt-field-row"><label class="dt-field-lbl">이름 *</label><input id="ifName" class="dt-field" value="${_esc(existing?.name||'')}" placeholder="네일팁 / 젤 / 접착제" maxlength="50" /></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <div style="flex:1;"><label class="dt-field-lbl">현재 수량</label><input id="ifQty" type="number" inputmode="numeric" class="dt-field" value="${existing?.quantity ?? 0}" /></div>
+        <div style="width:80px;"><label class="dt-field-lbl">단위</label><input id="ifUnit" class="dt-field" value="${_esc(existing?.unit||'개')}" maxlength="10" /></div>
+      </div>
+      <div class="dt-field-row"><label class="dt-field-lbl">부족 알림 임계치</label><input id="ifThreshold" type="number" inputmode="numeric" class="dt-field" value="${existing?.threshold ?? 5}" /></div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button type="button" id="ifSave" class="btn-primary" style="flex:1;">${existing ? '수정' : '추가'}</button>
+        ${existing ? '<button type="button" id="ifDelete" class="btn-secondary" style="color:var(--danger);">삭제</button>' : ''}
       </div>
     `;
     listEl.querySelector('#ifSave').addEventListener('click', async () => {
@@ -290,21 +281,22 @@
 
   window.openInventory = async function () {
     const sheet = _ensureSheet();
-    sheet.style.display = 'block';
+    sheet.style.display = 'flex';
+    sheet.classList.add('dt-shown');
     document.body.style.overflow = 'hidden';
     const listEl = sheet.querySelector('#inventoryList');
-    listEl.innerHTML = '<div style="padding:30px;text-align:center;color:#aaa;">불러오는 중…</div>';
+    listEl.innerHTML = '<div class="dt-loading">불러오는 중…</div>';
     try {
       await list();
       _rerender();
     } catch (e) {
-      listEl.innerHTML = '<div style="padding:30px;text-align:center;color:#c00;">불러오기 실패</div>';
+      listEl.innerHTML = '<div class="dt-error">불러오기 실패</div>';
     }
   };
 
   window.closeInventory = function () {
     const sheet = document.getElementById('inventorySheet');
-    if (sheet) sheet.style.display = 'none';
+    if (sheet) { sheet.style.display = 'none'; sheet.classList.remove('dt-shown'); }
     document.body.style.overflow = '';
   };
 

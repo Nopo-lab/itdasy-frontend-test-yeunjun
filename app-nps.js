@@ -26,7 +26,7 @@
     catch (_) { return []; }
   }
   function _saveOffline(list) {
-    try { localStorage.setItem(OFFLINE_KEY, JSON.stringify(list)); } catch (_) {}
+    try { localStorage.setItem(OFFLINE_KEY, JSON.stringify(list)); } catch (_) { /* storage full — ignore */ }
   }
 
   async function _api(method, path, body) {
@@ -91,7 +91,7 @@
     }
     const created = await _api('POST', '/nps', data);
     _items.unshift(created);
-    try { _stats = await _api('GET', '/nps/stats'); } catch (_) {}
+    try { _stats = await _api('GET', '/nps/stats'); } catch (_) { /* ignore */ }
     return created;
   }
 
@@ -105,7 +105,7 @@
     }
     await _api('DELETE', '/nps/' + id);
     _items = _items.filter(i => i.id !== id);
-    try { _stats = await _api('GET', '/nps/stats'); } catch (_) {}
+    try { _stats = await _api('GET', '/nps/stats'); } catch (_) { /* ignore */ }
     return { ok: true };
   }
 
@@ -115,63 +115,57 @@
     if (sheet) return sheet;
     sheet = document.createElement('div');
     sheet.id = 'npsSheet';
-    sheet.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;background:rgba(0,0,0,0.4);';
+    sheet.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;flex-direction:column;';
+    sheet.classList.add('dt-overlay');
     sheet.innerHTML = `
-      <div style="position:absolute;inset:auto 0 0 0;background:var(--bg,#fff);border-radius:20px 20px 0 0;max-height:90vh;display:flex;flex-direction:column;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom));">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <strong style="font-size:18px;">고객 만족도 (NPS)</strong>
-          <span id="npsOfflineBadge" style="display:none;font-size:10px;padding:2px 6px;border-radius:4px;background:#f2c94c;color:#333;">오프라인</span>
-          <button onclick="closeNps()" style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;" aria-label="닫기">✕</button>
-        </div>
+      <header class="dt-hdr">
+        <button class="dt-back" onclick="closeNps()" aria-label="뒤로"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <h1 class="dt-title">고객 만족도 (NPS)</h1>
+        <span id="npsOfflineBadge" class="dt-offline-badge">오프라인</span>
+      </header>
+      <div class="dt-body">
         <div id="npsStats"></div>
-        <div id="npsList" style="flex:1;overflow-y:auto;min-height:120px;"></div>
-        <button id="npsAddBtn" style="margin-top:10px;padding:12px;border:none;border-radius:10px;background:var(--accent,#F18091);color:#fff;font-weight:700;font-size:15px;cursor:pointer;">+ 응답 입력</button>
+        <div id="npsList"></div>
       </div>
+      <footer class="dt-footer">
+        <button id="npsAddBtn" class="btn-primary" style="flex:1;">+ 응답 입력</button>
+      </footer>
     `;
     document.body.appendChild(sheet);
-    sheet.addEventListener('click', (e) => { if (e.target === sheet) closeNps(); });
     sheet.querySelector('#npsAddBtn').addEventListener('click', _openAddForm);
     return sheet;
   }
 
   function _renderStats(s) {
     if (!s || s.total === 0) {
-      return '<div style="padding:14px;background:#fafafa;border-radius:10px;margin-bottom:10px;text-align:center;color:#aaa;font-size:13px;">아직 응답 없음</div>';
+      return '<div class="dt-empty" style="padding:14px;">아직 응답 없음</div>';
     }
-    const scoreColor = s.score >= 50 ? '#388e3c' : s.score >= 0 ? '#f57c00' : '#dc3545';
     return `
-      <div style="padding:14px;background:linear-gradient(135deg,rgba(241,128,145,0.08),rgba(241,128,145,0.02));border-radius:12px;margin-bottom:10px;">
-        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;">
-          <strong style="font-size:28px;color:${scoreColor};">${s.score}</strong>
-          <span style="font-size:11px;color:#888;">NPS 점수 (100 만점 · ${s.total}명)</span>
+      <div class="dt-nps-hero">
+        <div>
+          <div class="dt-nps-hero__label">NPS 점수 · ${s.total}명</div>
+          <div class="dt-nps-hero__score">${s.score}</div>
+          <div class="dt-nps-hero__pills">
+            <div class="dt-nps-pill">😍 추천 ${s.promoters}</div>
+            <div class="dt-nps-pill">😐 중립 ${s.passives}</div>
+            <div class="dt-nps-pill">😞 비추 ${s.detractors}</div>
+          </div>
         </div>
-        <div style="display:flex;gap:6px;font-size:11px;">
-          <span style="flex:1;padding:6px 8px;background:rgba(76,175,80,0.1);color:#388e3c;border-radius:6px;text-align:center;">😍 추천 ${s.promoters}</span>
-          <span style="flex:1;padding:6px 8px;background:rgba(255,193,7,0.1);color:#f57c00;border-radius:6px;text-align:center;">😐 중립 ${s.passives}</span>
-          <span style="flex:1;padding:6px 8px;background:rgba(220,53,69,0.1);color:#dc3545;border-radius:6px;text-align:center;">😞 비추 ${s.detractors}</span>
-        </div>
-        <div style="font-size:11px;color:#666;margin-top:6px;">평균 평점 ${s.avg_rating}/10</div>
       </div>
     `;
   }
 
   function _renderRow(r) {
     const face = r.rating >= 9 ? '😍' : r.rating >= 7 ? '😐' : '😞';
-    const color = r.rating >= 9 ? '#388e3c' : r.rating >= 7 ? '#f57c00' : '#dc3545';
     const t = new Date(r.responded_at || r.created_at);
     const date = `${t.getMonth() + 1}/${t.getDate()}`;
     return `
-      <div style="padding:10px 6px;border-bottom:1px solid #eee;display:flex;gap:10px;align-items:flex-start;">
-        <span style="font-size:22px;">${face}</span>
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:baseline;gap:6px;">
-            <strong style="color:${color};font-size:16px;">${r.rating}</strong>
-            ${r.customer_name ? `<span style="font-size:12px;color:#666;">· ${_esc(r.customer_name)}</span>` : ''}
-            <span style="margin-left:auto;font-size:11px;color:#999;">${date}</span>
-          </div>
-          ${r.comment ? `<div style="font-size:12px;color:#666;margin-top:2px;line-height:1.4;">${_esc(r.comment)}</div>` : ''}
+      <div class="dt-list-it" style="cursor:default;">
+        <div class="dt-list-it__main">
+          <p class="dt-list-it__title">${face} <strong>${r.rating}</strong>${r.customer_name ? ` · ${_esc(r.customer_name)}` : ''}<span style="float:right;font-size:11px;font-weight:400;color:var(--text-subtle);">${date}</span></p>
+          ${r.comment ? `<p class="dt-list-it__sub">${_esc(r.comment)}</p>` : ''}
         </div>
-        <button data-del="${r.id}" style="background:none;border:none;color:#c00;font-size:14px;cursor:pointer;padding:4px;">🗑</button>
+        <button data-del="${r.id}" class="dt-back" style="color:var(--danger);" type="button" aria-label="삭제"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
       </div>
     `;
   }
@@ -183,10 +177,10 @@
     sheet.querySelector('#npsOfflineBadge').style.display = _isOffline ? 'inline-block' : 'none';
     const listEl = sheet.querySelector('#npsList');
     if (!_items.length) {
-      listEl.innerHTML = '<div style="padding:30px;text-align:center;color:#aaa;font-size:13px;">아직 응답이 없어요</div>';
+      listEl.innerHTML = '<div class="dt-empty">아직 응답이 없어요</div>';
       return;
     }
-    listEl.innerHTML = _items.map(_renderRow).join('');
+    listEl.innerHTML = '<div class="dt-list">' + _items.map(_renderRow).join('') + '</div>';
     listEl.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', () => _deleteEntry(btn.dataset.del)));
   }
 
@@ -195,19 +189,15 @@
     if (!sheet) return;
     const listEl = sheet.querySelector('#npsList');
     listEl.innerHTML = `
-      <div style="padding:4px;">
-        <button onclick="window._npsBack()" style="background:none;border:none;font-size:13px;color:#888;margin-bottom:10px;cursor:pointer;">← 목록</button>
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">추천 점수 (0~10) *</label>
-        <input id="nfRating" type="range" min="0" max="10" value="8" style="width:100%;margin-bottom:4px;" />
-        <div id="nfRatingLabel" style="text-align:center;font-size:32px;font-weight:800;color:var(--accent,#F18091);margin-bottom:10px;">8</div>
-        <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">
-          <input id="nfCustomerName" readonly style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;background:#fafafa;" placeholder="고객 (선택)" />
-          <button type="button" id="nfCustomerPick" style="padding:10px 14px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:12px;">👤 선택</button>
-        </div>
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">코멘트 (선택)</label>
-        <textarea id="nfComment" rows="3" maxlength="500" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font-family:inherit;resize:vertical;"></textarea>
-        <button type="button" id="nfSave" style="width:100%;padding:12px;border:none;border-radius:8px;background:var(--accent,#F18091);color:#fff;font-weight:700;cursor:pointer;font-size:15px;">저장</button>
+      <button onclick="window._npsBack()" class="dt-back" style="margin-bottom:12px;" aria-label="뒤로"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="dt-field-row"><label class="dt-field-lbl">추천 점수 (0~10) *</label><input id="nfRating" type="range" min="0" max="10" value="8" style="width:100%;margin-bottom:4px;" /></div>
+      <div id="nfRatingLabel" style="text-align:center;font-size:32px;font-weight:800;color:var(--brand);margin-bottom:10px;">8</div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:12px;">
+        <input id="nfCustomerName" readonly class="dt-field" style="flex:1;" placeholder="고객 (선택)" />
+        <button type="button" id="nfCustomerPick" class="btn-secondary">👤 선택</button>
       </div>
+      <div class="dt-field-row"><label class="dt-field-lbl">코멘트 (선택)</label><textarea id="nfComment" class="dt-field" rows="3" maxlength="500"></textarea></div>
+      <button type="button" id="nfSave" class="btn-primary" style="width:100%;margin-top:8px;">저장</button>
     `;
     const ratingEl = document.getElementById('nfRating');
     const labelEl = document.getElementById('nfRatingLabel');
@@ -252,21 +242,22 @@
 
   window.openNps = async function () {
     const sheet = _ensureSheet();
-    sheet.style.display = 'block';
+    sheet.style.display = 'flex';
+    sheet.classList.add('dt-shown');
     document.body.style.overflow = 'hidden';
     const listEl = sheet.querySelector('#npsList');
-    listEl.innerHTML = '<div style="padding:30px;text-align:center;color:#aaa;">불러오는 중…</div>';
+    listEl.innerHTML = '<div class="dt-loading">불러오는 중…</div>';
     try {
       await list();
       _rerender();
     } catch (e) {
-      listEl.innerHTML = '<div style="padding:30px;text-align:center;color:#c00;">불러오기 실패</div>';
+      listEl.innerHTML = '<div class="dt-error">불러오기 실패</div>';
     }
   };
 
   window.closeNps = function () {
     const sheet = document.getElementById('npsSheet');
-    if (sheet) sheet.style.display = 'none';
+    if (sheet) { sheet.style.display = 'none'; sheet.classList.remove('dt-shown'); }
     document.body.style.overflow = '';
   };
 

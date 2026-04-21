@@ -27,7 +27,7 @@
     catch (_) { return []; }
   }
   function _saveOffline(list) {
-    try { localStorage.setItem(OFFLINE_KEY, JSON.stringify(list)); } catch (_) {}
+    try { localStorage.setItem(OFFLINE_KEY, JSON.stringify(list)); } catch (_) { /* storage full — ignore */ }
   }
 
   async function _api(method, path, body) {
@@ -121,21 +121,23 @@
     if (sheet) return sheet;
     sheet = document.createElement('div');
     sheet.id = 'naverReviewSheet';
-    sheet.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;background:rgba(0,0,0,0.4);';
+    sheet.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;flex-direction:column;';
+    sheet.classList.add('dt-overlay');
     sheet.innerHTML = `
-      <div style="position:absolute;inset:auto 0 0 0;background:var(--bg,#fff);border-radius:20px 20px 0 0;max-height:90vh;display:flex;flex-direction:column;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom));">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <strong style="font-size:18px;">네이버 리뷰</strong>
-          <span id="naverOfflineBadge" style="display:none;font-size:10px;padding:2px 6px;border-radius:4px;background:#f2c94c;color:#333;">오프라인</span>
-          <button onclick="closeNaverReviews()" style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;" aria-label="닫기">✕</button>
-        </div>
-        <div style="font-size:11px;color:#888;margin-bottom:10px;line-height:1.5;">네이버 플레이스에서 받은 리뷰를 직접 복사해서 저장하세요. 자동 크롤링은 약관상 제한됩니다.</div>
-        <div id="naverList" style="flex:1;overflow-y:auto;min-height:120px;"></div>
-        <button id="naverAddBtn" style="margin-top:10px;padding:12px;border:none;border-radius:10px;background:var(--accent,#F18091);color:#fff;font-weight:700;font-size:15px;cursor:pointer;">+ 리뷰 추가</button>
+      <header class="dt-hdr">
+        <button class="dt-back" onclick="closeNaverReviews()" aria-label="뒤로"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <h1 class="dt-title">네이버 리뷰</h1>
+        <span id="naverOfflineBadge" class="dt-offline-badge">오프라인</span>
+      </header>
+      <div class="dt-body">
+        <p style="font-size:11px;color:var(--text-subtle);margin:0 0 10px;line-height:1.5;">네이버 플레이스에서 받은 리뷰를 직접 복사해서 저장하세요. 자동 크롤링은 약관상 제한됩니다.</p>
+        <div id="naverList"></div>
       </div>
+      <footer class="dt-footer">
+        <button id="naverAddBtn" class="btn-primary" style="flex:1;">+ 리뷰 추가</button>
+      </footer>
     `;
     document.body.appendChild(sheet);
-    sheet.addEventListener('click', (e) => { if (e.target === sheet) closeNaverReviews(); });
     sheet.querySelector('#naverAddBtn').addEventListener('click', () => _openAddForm());
     return sheet;
   }
@@ -146,20 +148,18 @@
     sheet.querySelector('#naverOfflineBadge').style.display = _isOffline ? 'inline-block' : 'none';
     const listEl = sheet.querySelector('#naverList');
     if (!_items.length) {
-      listEl.innerHTML = '<div style="padding:30px;text-align:center;color:#aaa;font-size:13px;">아직 저장된 리뷰가 없어요</div>';
+      listEl.innerHTML = '<div class="dt-empty">아직 저장된 리뷰가 없어요</div>';
       return;
     }
-    listEl.innerHTML = _items.map(r => `
-      <div data-id="${r.id}" style="padding:12px 8px;border-bottom:1px solid #eee;cursor:pointer;">
-        <div style="display:flex;align-items:baseline;gap:6px;">
-          <span style="color:#FFB800;letter-spacing:-1px;">${_starLine(r.rating)}</span>
-          <strong style="font-size:13px;">${_esc(r.author_name||'익명')}</strong>
-          ${r.visited_at ? `<span style="font-size:10px;color:#888;">${_esc(r.visited_at)}</span>` : ''}
-          <span style="margin-left:auto;font-size:10px;color:#bbb;">${new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
+    listEl.innerHTML = '<div class="dt-list">' + _items.map(r => `
+      <button class="dt-list-it" data-id="${r.id}" type="button">
+        <div class="dt-list-it__main">
+          <p class="dt-list-it__title"><span style="color:#FFB800;">${_starLine(r.rating)}</span> ${_esc(r.author_name||'익명')}${r.visited_at ? ` <span style="font-size:10px;font-weight:400;color:var(--text-subtle);">${_esc(r.visited_at)}</span>` : ''}</p>
+          ${r.content ? `<p class="dt-list-it__sub">${_esc(r.content).slice(0, 80)}${r.content.length > 80 ? '…' : ''}</p>` : ''}
         </div>
-        ${r.content ? `<div style="font-size:12px;color:#555;margin-top:4px;line-height:1.5;max-height:4em;overflow:hidden;">${_esc(r.content).slice(0, 200)}${r.content.length > 200 ? '…' : ''}</div>` : ''}
-      </div>
-    `).join('');
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    `).join('') + '</div>';
     listEl.querySelectorAll('[data-id]').forEach(row => row.addEventListener('click', () => _openAddForm(row.dataset.id)));
   }
 
@@ -169,31 +169,17 @@
     if (!sheet) return;
     const listEl = sheet.querySelector('#naverList');
     listEl.innerHTML = `
-      <div style="padding:4px;">
-        <button onclick="window._naverBack()" style="background:none;border:none;font-size:13px;color:#888;margin-bottom:10px;cursor:pointer;">← 목록</button>
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">네이버 리뷰 URL (선택)</label>
-        <input id="nrUrl" value="${_esc(existing?.review_url||'')}" placeholder="https://pcmap.place.naver.com/..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font-size:12px;" maxlength="500" />
-        <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <div style="flex:1;">
-            <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">작성자</label>
-            <input id="nrAuthor" value="${_esc(existing?.author_name||'')}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;" maxlength="50" />
-          </div>
-          <div style="width:100px;">
-            <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">평점</label>
-            <select id="nrRating" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;">
-              <option value="">없음</option>
-              ${[5,4,3,2,1].map(n => `<option value="${n}" ${existing?.rating === n ? 'selected' : ''}>${'★'.repeat(n)}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">방문일 (YYYY-MM-DD)</label>
-        <input id="nrVisited" type="date" value="${_esc(existing?.visited_at||'')}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;" />
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">리뷰 내용 *</label>
-        <textarea id="nrContent" rows="4" maxlength="2000" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font-family:inherit;resize:vertical;" placeholder="네이버에서 복사한 리뷰 본문">${_esc(existing?.content||'')}</textarea>
-        <div style="display:flex;gap:8px;">
-          <button type="button" id="nrSave" style="flex:1;padding:12px;border:none;border-radius:8px;background:var(--accent,#F18091);color:#fff;font-weight:700;cursor:pointer;font-size:15px;">${existing ? '수정' : '저장'}</button>
-          ${existing ? '<button type="button" id="nrDelete" style="padding:12px 16px;border:1px solid #eee;border-radius:8px;background:#fff;color:#c00;cursor:pointer;">삭제</button>' : ''}
-        </div>
+      <button onclick="window._naverBack()" class="dt-back" style="margin-bottom:12px;" aria-label="뒤로"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="dt-field-row"><label class="dt-field-lbl">네이버 리뷰 URL (선택)</label><input id="nrUrl" class="dt-field" value="${_esc(existing?.review_url||'')}" placeholder="https://pcmap.place.naver.com/..." maxlength="500" /></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <div style="flex:1;"><label class="dt-field-lbl">작성자</label><input id="nrAuthor" class="dt-field" value="${_esc(existing?.author_name||'')}" maxlength="50" /></div>
+        <div style="width:100px;"><label class="dt-field-lbl">평점</label><select id="nrRating" class="dt-field"><option value="">없음</option>${[5,4,3,2,1].map(n => `<option value="${n}" ${existing?.rating === n ? 'selected' : ''}>${'★'.repeat(n)}</option>`).join('')}</select></div>
+      </div>
+      <div class="dt-field-row"><label class="dt-field-lbl">방문일 (YYYY-MM-DD)</label><input id="nrVisited" type="date" class="dt-field" value="${_esc(existing?.visited_at||'')}" /></div>
+      <div class="dt-field-row"><label class="dt-field-lbl">리뷰 내용 *</label><textarea id="nrContent" class="dt-field" rows="4" maxlength="2000" placeholder="네이버에서 복사한 리뷰 본문">${_esc(existing?.content||'')}</textarea></div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button type="button" id="nrSave" class="btn-primary" style="flex:1;">${existing ? '수정' : '저장'}</button>
+        ${existing ? '<button type="button" id="nrDelete" class="btn-secondary" style="color:var(--danger);">삭제</button>' : ''}
       </div>
     `;
     listEl.querySelector('#nrSave').addEventListener('click', async () => {
@@ -228,21 +214,22 @@
 
   window.openNaverReviews = async function () {
     const sheet = _ensureSheet();
-    sheet.style.display = 'block';
+    sheet.style.display = 'flex';
+    sheet.classList.add('dt-shown');
     document.body.style.overflow = 'hidden';
     const listEl = sheet.querySelector('#naverList');
-    listEl.innerHTML = '<div style="padding:30px;text-align:center;color:#aaa;">불러오는 중…</div>';
+    listEl.innerHTML = '<div class="dt-loading">불러오는 중…</div>';
     try {
       await list();
       _rerender();
     } catch (e) {
-      listEl.innerHTML = '<div style="padding:30px;text-align:center;color:#c00;">불러오기 실패</div>';
+      listEl.innerHTML = '<div class="dt-error">불러오기 실패</div>';
     }
   };
 
   window.closeNaverReviews = function () {
     const sheet = document.getElementById('naverReviewSheet');
-    if (sheet) sheet.style.display = 'none';
+    if (sheet) { sheet.style.display = 'none'; sheet.classList.remove('dt-shown'); }
     document.body.style.overflow = '';
   };
 

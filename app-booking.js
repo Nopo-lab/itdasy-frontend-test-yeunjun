@@ -172,24 +172,24 @@
     if (sheet) return sheet;
     sheet = document.createElement('div');
     sheet.id = 'bookingSheet';
-    sheet.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;background:rgba(0,0,0,0.4);';
+    sheet.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;flex-direction:column;';
+    sheet.classList.add('dt-overlay');
     sheet.innerHTML = `
-      <div style="position:absolute;inset:auto 0 0 0;background:var(--bg,#fff);border-radius:20px 20px 0 0;max-height:92vh;display:flex;flex-direction:column;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom));">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <strong style="font-size:18px;">예약</strong>
-          <span id="bookingOfflineBadge" style="display:none;font-size:10px;padding:2px 6px;border-radius:4px;background:#f2c94c;color:#333;">오프라인</span>
-          <button onclick="closeBooking()" style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;" aria-label="닫기">✕</button>
-        </div>
-        <div id="bookingNav" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"></div>
-        <div id="bookingGrid" style="flex:1;overflow:auto;"></div>
-        <div style="display:flex;gap:8px;margin-top:10px;">
-          <button id="bookingCalBtn" data-open="calendar-view" style="flex:1;padding:12px;border:1px solid #ddd;border-radius:10px;background:#fff;color:#555;font-weight:700;font-size:14px;cursor:pointer;">📅 캘린더 뷰</button>
-          <button id="bookingAddBtn" style="flex:1;padding:12px;border:none;border-radius:10px;background:var(--accent,#F18091);color:#fff;font-weight:700;font-size:15px;cursor:pointer;">+ 예약 추가</button>
-        </div>
+      <header class="dt-hdr">
+        <button class="dt-back" onclick="closeBooking()" aria-label="뒤로"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <h1 class="dt-title">예약</h1>
+        <span id="bookingOfflineBadge" class="dt-offline-badge">오프라인</span>
+      </header>
+      <div id="bookingNav" style="padding:8px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);flex-shrink:0;"></div>
+      <div class="dt-body" style="padding-top:8px;">
+        <div id="bookingGrid"></div>
       </div>
+      <footer class="dt-footer">
+        <button id="bookingCalBtn" data-open="calendar-view" class="btn-secondary" style="flex:1;">캘린더 뷰</button>
+        <button id="bookingAddBtn" class="btn-primary" style="flex:1;">+ 예약 추가</button>
+      </footer>
     `;
     document.body.appendChild(sheet);
-    sheet.addEventListener('click', (e) => { if (e.target === sheet) closeBooking(); });
     sheet.querySelector('#bookingAddBtn').addEventListener('click', () => _openAddForm());
     return sheet;
   }
@@ -228,12 +228,12 @@
         .filter(b => _dayKey(new Date(b.starts_at)) === key)
         .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
       return `
-        <div style="border-bottom:1px solid #eee;padding:10px 4px;${isToday ? 'background:rgba(241,128,145,0.04);' : ''}">
-          <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;">
-            <strong style="font-size:13px;color:${isToday ? 'var(--accent,#F18091)' : '#333'};">${dayLabels[i]} ${d.getDate()}</strong>
-            <span style="font-size:11px;color:#999;">${dayBookings.length}건</span>
+        <div style="border-bottom:1px solid var(--border);padding:10px 0;${isToday ? 'background:rgba(241,128,145,0.04);' : ''}">
+          <div style="display:flex;align-items:baseline;gap:8px;margin:0 0 6px 4px;">
+            <strong style="font-size:13px;color:${isToday ? 'var(--brand)' : 'var(--text)'};">${dayLabels[i]} ${d.getDate()}</strong>
+            <span style="font-size:11px;color:var(--text-subtle);">${dayBookings.length}건</span>
           </div>
-          ${dayBookings.length ? dayBookings.map(b => _renderBookingRow(b)).join('') : '<div style="font-size:12px;color:#bbb;padding:4px 4px;">예약 없음</div>'}
+          ${dayBookings.length ? '<div class="dt-list">' + dayBookings.map(b => _renderBookingRow(b)).join('') + '</div>' : '<div class="dt-empty" style="padding:8px 4px;">예약 없음</div>'}
         </div>
       `;
     }).join('');
@@ -248,14 +248,13 @@
     const e = new Date(b.ends_at);
     const hhmm = (d) => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     return `
-      <div data-booking-id="${b.id}" style="padding:8px;margin-bottom:4px;background:#fff;border:1px solid #eee;border-radius:8px;cursor:pointer;">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span style="font-size:12px;color:var(--accent,#F18091);font-weight:700;">${hhmm(s)}–${hhmm(e)}</span>
-          ${b.customer_name ? `<span style="font-size:13px;font-weight:700;">${_esc(b.customer_name)}</span>` : '<span style="font-size:12px;color:#999;">이름 없음</span>'}
-          ${b.service_name ? `<span style="font-size:11px;color:#666;">· ${_esc(b.service_name)}</span>` : ''}
+      <button class="dt-list-it" data-booking-id="${b.id}" type="button">
+        <div class="dt-list-it__main">
+          <p class="dt-list-it__title"><span style="color:var(--brand);">${hhmm(s)}–${hhmm(e)}</span> ${b.customer_name ? _esc(b.customer_name) : '<span style="color:var(--text-subtle);">이름 없음</span>'}${b.service_name ? ` · <span style="font-weight:400;">${_esc(b.service_name)}</span>` : ''}</p>
+          <p class="dt-list-it__sub">${b.memo ? _esc(b.memo).slice(0,50) : ''}</p>
         </div>
-        ${b.memo ? `<div style="font-size:11px;color:#888;margin-top:2px;">${_esc(b.memo).slice(0,50)}</div>` : ''}
-      </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
     `;
   }
 
@@ -294,54 +293,36 @@
     const defEnd   = existing ? _fmt(new Date(existing.ends_at))   : (pendingEnd   ? _fmt(pendingEnd)   : slots[2]);
 
     grid.innerHTML = `
-      <div style="padding:4px;">
-        <button onclick="window._bookingBack()" style="background:none;border:none;font-size:13px;color:#888;margin-bottom:10px;cursor:pointer;">← 주간 뷰</button>
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">날짜 *</label>
-        <input id="bfDate" type="date" value="${dateStr}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;" />
-        <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <div style="flex:1;">
-            <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">시작 *</label>
-            <select id="bfStart" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;">
-              ${slots.map(t => `<option value="${t}" ${t === defStart ? 'selected' : ''}>${t}</option>`).join('')}
-            </select>
-          </div>
-          <div style="flex:1;">
-            <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">종료 *</label>
-            <select id="bfEnd" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;">
-              ${slots.map(t => `<option value="${t}" ${t === defEnd ? 'selected' : ''}>${t}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">
-          <input id="bfCustomerName" readonly style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;background:#fafafa;" placeholder="고객 (선택)" value="${_esc(existing?.customer_name||'')}" />
-          <button type="button" id="bfCustomerPick" style="padding:10px 14px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:12px;">👤 선택</button>
-        </div>
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">서비스</label>
-        <input id="bfService" list="bfServiceDatalist" value="${_esc(existing?.service_name||'')}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;" placeholder="속눈썹 풀세트 (자주 쓴 시술 자동 추천)" maxlength="50" autocomplete="off" />
-        <datalist id="bfServiceDatalist"></datalist>
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">메모</label>
-        <textarea id="bfMemo" rows="2" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font-family:inherit;resize:vertical;" maxlength="200">${_esc(existing?.memo||'')}</textarea>
-        <div id="bfConflict" style="display:none;font-size:12px;color:#c00;margin-bottom:8px;padding:8px;background:rgba(220,0,0,0.06);border-radius:6px;">⚠️ 이 시간에 이미 예약이 있어요</div>
-        <div style="display:flex;gap:8px;">
-          <button type="button" id="bfSave" style="flex:1;padding:12px;border:none;border-radius:8px;background:var(--accent,#F18091);color:#fff;font-weight:700;cursor:pointer;font-size:15px;">${existing ? '수정' : '저장'}</button>
-          ${existing ? `<button type="button" id="bfDelete" style="padding:12px 16px;border:1px solid #eee;border-radius:8px;background:#fff;color:#c00;cursor:pointer;">삭제</button>` : ''}
-        </div>
-        ${existing && existing.status !== 'completed' ? `
-          <button type="button" id="bfComplete" style="width:100%;margin-top:10px;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,#388e3c,#2e7d32);color:#fff;font-weight:800;cursor:pointer;font-size:14px;box-shadow:0 4px 14px rgba(56,142,60,0.3);">
-            🎀 시술 완료 · 매출·NPS 한 번에 기록
-          </button>
-        ` : ''}
-        ${existing ? `
-          <div style="margin-top:12px;padding-top:12px;border-top:1px dashed #eee;">
-            <div style="font-size:11px;color:#888;margin-bottom:8px;font-weight:700;">예약 상태</div>
-            <div style="display:flex;gap:6px;">
-              <button type="button" data-bf-status="confirmed" style="flex:1;padding:8px;border:1px solid ${existing.status==='confirmed'?'#F18091':'#ddd'};background:${existing.status==='confirmed'?'#FEF4F5':'#fff'};color:${existing.status==='confirmed'?'#D95F70':'#666'};border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;">📅 예정</button>
-              <button type="button" data-bf-status="completed" style="flex:1;padding:8px;border:1px solid ${existing.status==='completed'?'#388e3c':'#ddd'};background:${existing.status==='completed'?'#E8F5E9':'#fff'};color:${existing.status==='completed'?'#1B5E20':'#666'};border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;">✅ 완료</button>
-              <button type="button" data-bf-status="cancelled" style="flex:1;padding:8px;border:1px solid ${existing.status==='cancelled'?'#C62828':'#ddd'};background:${existing.status==='cancelled'?'#FFEBEE':'#fff'};color:${existing.status==='cancelled'?'#B71C1C':'#666'};border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;">❌ 취소</button>
-            </div>
-          </div>
-        ` : ''}
+      <button onclick="window._bookingBack()" class="dt-back" style="margin-bottom:12px;" aria-label="뒤로"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="dt-field-row"><label class="dt-field-lbl">날짜 *</label><input id="bfDate" type="date" class="dt-field" value="${dateStr}" /></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <div style="flex:1;"><label class="dt-field-lbl">시작 *</label><select id="bfStart" class="dt-field">${slots.map(t => `<option value="${t}" ${t === defStart ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div style="flex:1;"><label class="dt-field-lbl">종료 *</label><select id="bfEnd" class="dt-field">${slots.map(t => `<option value="${t}" ${t === defEnd ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
       </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:12px;">
+        <input id="bfCustomerName" readonly class="dt-field" style="flex:1;" placeholder="고객 (선택)" value="${_esc(existing?.customer_name||'')}" />
+        <button type="button" id="bfCustomerPick" class="btn-secondary">👤 선택</button>
+      </div>
+      <div class="dt-field-row"><label class="dt-field-lbl">서비스</label><input id="bfService" list="bfServiceDatalist" class="dt-field" value="${_esc(existing?.service_name||'')}" placeholder="속눈썹 풀세트" maxlength="50" autocomplete="off" /><datalist id="bfServiceDatalist"></datalist></div>
+      <div class="dt-field-row"><label class="dt-field-lbl">메모</label><textarea id="bfMemo" class="dt-field" rows="2" maxlength="200">${_esc(existing?.memo||'')}</textarea></div>
+      <div id="bfConflict" class="dt-conflict">⚠️ 이 시간에 이미 예약이 있어요</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button type="button" id="bfSave" class="btn-primary" style="flex:1;">${existing ? '수정' : '저장'}</button>
+        ${existing ? `<button type="button" id="bfDelete" class="btn-secondary" style="color:var(--danger);">삭제</button>` : ''}
+      </div>
+      ${existing && existing.status !== 'completed' ? `
+        <button type="button" id="bfComplete" class="main-cta" style="width:100%;margin-bottom:10px;">🎀 시술 완료 · 매출·NPS 한 번에 기록</button>
+      ` : ''}
+      ${existing ? `
+        <div style="margin-top:4px;padding-top:12px;border-top:1px dashed var(--border);">
+          <div style="font-size:11px;color:var(--text-subtle);margin-bottom:8px;font-weight:700;">예약 상태</div>
+          <div class="dt-status-row">
+            <button type="button" data-bf-status="confirmed" class="dt-status-btn${existing.status==='confirmed'?' dt-status-btn--confirmed':''}">📅 예정</button>
+            <button type="button" data-bf-status="completed" class="dt-status-btn${existing.status==='completed'?' dt-status-btn--completed':''}">✅ 완료</button>
+            <button type="button" data-bf-status="cancelled" class="dt-status-btn${existing.status==='cancelled'?' dt-status-btn--cancelled':''}">❌ 취소</button>
+          </div>
+        </div>
+      ` : ''}
     `;
 
     // 자주 쓴 시술 datalist 채우기 (ServiceTemplate + 최근 매출)
@@ -468,7 +449,8 @@
 
   window.openBooking = async function (date) {
     const sheet = _ensureSheet();
-    sheet.style.display = 'block';
+    sheet.style.display = 'flex';
+    sheet.classList.add('dt-shown');
     document.body.style.overflow = 'hidden';
     if (date) _anchorDate = _startOfWeek(new Date(date));
     await _loadAndRender();
@@ -476,7 +458,7 @@
 
   window.closeBooking = function () {
     const sheet = document.getElementById('bookingSheet');
-    if (sheet) sheet.style.display = 'none';
+    if (sheet) { sheet.style.display = 'none'; sheet.classList.remove('dt-shown'); }
     document.body.style.overflow = '';
   };
 

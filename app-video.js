@@ -37,7 +37,7 @@
       if (res.ok) {
         _capability = { ..._capability, ...(await res.json()) };
       }
-    } catch (_) {}
+    } catch (_) { /* ignore */ }
     _capabilityChecked = true;
     return _capability;
   }
@@ -47,19 +47,17 @@
     if (sheet) return sheet;
     sheet = document.createElement('div');
     sheet.id = 'videoSheet';
-    sheet.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;background:rgba(0,0,0,0.4);';
+    sheet.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;flex-direction:column;';
+    sheet.classList.add('dt-overlay');
     sheet.innerHTML = `
-      <div style="position:absolute;inset:auto 0 0 0;background:var(--bg,#fff);border-radius:20px 20px 0 0;max-height:94vh;display:flex;flex-direction:column;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom));">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <strong style="font-size:18px;">🎬 영상 만들기</strong>
-          <span id="videoBadge" style="font-size:10px;padding:2px 6px;border-radius:4px;"></span>
-          <button onclick="closeVideo()" style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;" aria-label="닫기">✕</button>
-        </div>
-        <div id="videoBody" style="flex:1;overflow-y:auto;"></div>
-      </div>
+      <header class="dt-hdr">
+        <button class="dt-back" onclick="closeVideo()" aria-label="뒤로"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <h1 class="dt-title">영상 만들기</h1>
+        <span id="videoBadge" style="font-size:10px;padding:2px 6px;border-radius:4px;"></span>
+      </header>
+      <div class="dt-body" id="videoBody"></div>
     `;
     document.body.appendChild(sheet);
-    sheet.addEventListener('click', (e) => { if (e.target === sheet) closeVideo(); });
     return sheet;
   }
 
@@ -294,7 +292,7 @@
     fd.append('transition_seconds', _trans);
     fd.append('transition', _transition);
 
-    let url, ok;
+    let url;
     try {
       if (_mode === 'beforeafter') {
         fd.append('before', _slots[0].file);
@@ -378,7 +376,7 @@
       try {
         await navigator.share({ files: [file], title: '잇데이 영상' });
         return;
-      } catch (_) {}
+      } catch (_) { /* web share failed — fall through to download */ }
     }
 
     // 최후 폴백 — 다운로드 후 안내
@@ -392,12 +390,14 @@
 
   window.openVideo = async function () {
     _ensureSheet();
-    document.getElementById('videoSheet').style.display = 'block';
+    const vSheet = document.getElementById('videoSheet');
+    vSheet.style.display = 'flex';
+    vSheet.classList.add('dt-shown');
     document.body.style.overflow = 'hidden';
 
     const badge = document.getElementById('videoBadge');
     const body = document.getElementById('videoBody');
-    body.innerHTML = '<div style="padding:30px;text-align:center;color:#aaa;">서버 확인 중…</div>';
+    body.innerHTML = '<div class="dt-loading">서버 확인 중…</div>';
 
     const cap = await _checkCapability();
     _transition = (cap.transitions && cap.transitions[0]) || 'fade';
@@ -419,7 +419,7 @@
 
   window.closeVideo = function () {
     const sheet = document.getElementById('videoSheet');
-    if (sheet) sheet.style.display = 'none';
+    if (sheet) { sheet.style.display = 'none'; sheet.classList.remove('dt-shown'); }
     document.body.style.overflow = '';
   };
 
