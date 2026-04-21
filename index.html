@@ -226,6 +226,12 @@
     <button class="sheet-row" onclick="toggleHapticSetting(); updateHapticToggleLabel();">
       📳 진동 <span id="hapticToggleStatus" style="margin-left:8px;font-size:12px;color:var(--accent);">켜짐</span>
     </button>
+    <button class="sheet-row" onclick="window.cycleTheme && window.cycleTheme();">
+      🌙 화면 <span id="themeLabel" style="margin-left:8px;font-size:12px;color:var(--accent);">자동</span>
+    </button>
+    <button class="sheet-row" onclick="window.cycleFontSize && window.cycleFontSize();">
+      🔠 글씨 크기 <span id="fontSizeLabel" style="margin-left:8px;font-size:12px;color:var(--accent);">보통</span>
+    </button>
     <button class="sheet-row" data-haptic="light" onclick="closeSettings(); runInstagramDiagnose();">
       🔧 인스타 연동 진단
     </button>

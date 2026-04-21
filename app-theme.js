@@ -48,14 +48,45 @@
     const next = MODES[(MODES.indexOf(cur) + 1) % MODES.length];
     localStorage.setItem(STORAGE_KEY, next);
     _applyTheme(next);
+    _syncLabels();
     if (typeof window.showToast === 'function') {
       window.showToast(`${ICONS[next]} ${LABELS[next]} 모드`);
     }
   };
 
+  // Phase 7 T-334 — 설정 메뉴 버튼과 연결
+  window.cycleTheme = window.toggleTheme;
+
+  // T-334 — 큰 글씨 모드
+  const FS_MODES = ['normal', 'large', 'xl'];
+  const FS_LABELS = { normal: '보통', large: '크게', xl: '아주 크게' };
+  const FS_KEY = 'itdasy_fontsize';
+  function _curFS() { return localStorage.getItem(FS_KEY) || 'normal'; }
+  function _applyFS(mode) {
+    const html = document.documentElement;
+    if (mode === 'normal') html.removeAttribute('data-fontsize');
+    else html.setAttribute('data-fontsize', mode);
+  }
+  window.cycleFontSize = function () {
+    const cur = _curFS();
+    const next = FS_MODES[(FS_MODES.indexOf(cur) + 1) % FS_MODES.length];
+    try { localStorage.setItem(FS_KEY, next); } catch(_){}
+    _applyFS(next);
+    _syncLabels();
+    if (typeof window.showToast === 'function') window.showToast(`🔠 글씨 ${FS_LABELS[next]}`);
+  };
+  _applyFS(_curFS());
+
+  function _syncLabels() {
+    const tl = document.getElementById('themeLabel');
+    if (tl) tl.textContent = LABELS[_current()];
+    const fl = document.getElementById('fontSizeLabel');
+    if (fl) fl.textContent = FS_LABELS[_curFS()];
+  }
+
   // 최초 로드 시 저장된 테마 적용
   _applyTheme(_current());
 
   // DOM ready 때 버튼 아이콘 반영 (초기에 body 없을 수 있음)
-  document.addEventListener('DOMContentLoaded', () => _applyTheme(_current()));
+  document.addEventListener('DOMContentLoaded', () => { _applyTheme(_current()); _syncLabels(); });
 })();

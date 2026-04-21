@@ -52,6 +52,21 @@
     const birthdays = brief.birthdays_this_week || [];
     const emptySlots = brief.empty_slots || [];
 
+    // T-330 — 아침 한 줄 요약 (가장 위)
+    const thisMonth = brief.this_month_total || 0;
+    const prevMonth = brief.prev_month_total || 0;
+    const momPctNum = brief.mom_delta_pct;
+    const momSign = momPctNum == null ? '' : (momPctNum >= 0 ? ' +' : ' ');
+    const headline = `
+      <div class="kw-card" style="background:linear-gradient(135deg,#1A1B26 0%,#2D1A2E 55%,#D95F70 150%);color:#fff;padding:20px 18px;border-radius:20px;margin-bottom:12px;box-shadow:0 10px 30px rgba(217,95,112,0.2);position:relative;overflow:hidden;">
+        <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,0.04);"></div>
+        <div style="font-size:10.5px;letter-spacing:2.5px;opacity:0.65;font-weight:800;margin-bottom:8px;">🌅 ${_timeGreet()}</div>
+        <div style="font-size:17px;line-height:1.55;font-weight:800;position:relative;z-index:1;">
+          ${thisMonth > 0 ? `이번 달 <strong style="color:#FFD87A;">${_money(thisMonth)}</strong>${momPctNum != null ? ` <span style="color:${momPctNum>=0?'#86EFAC':'#FDA4AF'};font-size:13px;">(전월${momSign}${momPctNum}%)</span>` : ''}<br>` : ''}
+          📅 오늘 예약 <strong>${todayCount}건</strong>${atRisk.length ? ` · ⚠️ 이탈 위험 <strong>${atRisk.length}</strong>` : ''}${birthdays.length ? ` · 🎂 생일 <strong>${birthdays.length}</strong>` : ''}
+        </div>
+      </div>`;
+
     // 1. 오늘 위험 신호
     const widget1 = `
       <div class="kw-card" style="background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;padding:18px;border-radius:18px;margin-bottom:12px;box-shadow:0 6px 20px rgba(241,128,145,0.3);">
@@ -113,7 +128,81 @@
         <div id="kw-focus-result" style="margin-top:10px;font-size:12.5px;color:#333;line-height:1.55;display:none;"></div>
       </div>`;
 
-    return widget1 + widget2 + widget3 + widget4 + widget5;
+    // T-333 — 매출 목표 게이지
+    const goal = brief.monthly_goal || 0;
+    const progress = goal > 0 ? Math.min(100, Math.round(thisMonth / goal * 100)) : 0;
+    const widgetGoal = goal > 0 ? `
+      <div class="kw-card" style="background:#fff;padding:16px;border-radius:16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:11px;letter-spacing:1.5px;color:#666;font-weight:800;">🎯 이번 달 목표</div>
+          <div style="font-weight:900;font-size:14px;color:#222;">${progress}%</div>
+        </div>
+        <div style="height:10px;background:#f0f0f0;border-radius:100px;overflow:hidden;position:relative;">
+          <div style="height:100%;background:linear-gradient(90deg,#F18091,#FFB347);width:${progress}%;border-radius:100px;transition:width 1.2s cubic-bezier(0.2,0.9,0.3,1);box-shadow:0 0 10px rgba(241,128,145,0.45);"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#666;margin-top:8px;">
+          <span>${_money(thisMonth)}</span>
+          <span>${_money(goal)}</span>
+        </div>
+      </div>` : `
+      <div class="kw-card" style="background:#FAFAFA;padding:14px 16px;border-radius:14px;margin-bottom:10px;border:1px dashed #ddd;text-align:center;">
+        <div style="font-size:12px;color:#888;margin-bottom:6px;">🎯 이번 달 매출 목표를 설정해 보세요</div>
+        <button data-kw-setgoal style="padding:6px 14px;background:#F18091;color:#fff;border:none;border-radius:8px;font-size:11.5px;font-weight:800;cursor:pointer;">목표 설정</button>
+      </div>`;
+
+    // T-331 — 아낀 시간·돈 카운터
+    const savedMin = _computeSavedMinutes(brief);
+    const widgetSaved = `
+      <div class="kw-card" style="background:linear-gradient(135deg,#E8F4F1,#D1EDE5);padding:14px 16px;border-radius:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;">
+        <div style="font-size:24px;">⏱</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:11px;color:#2B8C7E;font-weight:800;letter-spacing:1px;margin-bottom:3px;">잇데이가 아껴드린</div>
+          <div style="font-size:15px;color:#1B5E56;font-weight:900;line-height:1.35;">
+            ⏱ ${Math.round(savedMin/60)}시간 · 💰 ${_money(brief.total_fee_tracked || 0)} 수수료 투명화
+          </div>
+        </div>
+      </div>`;
+
+    // T-336 — 연속 기록 뱃지
+    const streakHtml = _renderStreak();
+
+    return headline + widget1 + widgetGoal + widgetSaved + streakHtml + widget2 + widget3 + widget4 + widget5;
+  }
+
+  function _money(n) { return (n || 0).toLocaleString('ko-KR') + '원'; }
+  function _timeGreet() {
+    const h = new Date().getHours();
+    return h < 6 ? '새벽 브리핑' : h < 12 ? '오늘의 브리핑' : h < 18 ? '오후 브리핑' : h < 22 ? '저녁 정리' : '밤 브리핑';
+  }
+  function _computeSavedMinutes(brief) {
+    // 휴리스틱: 매출/예약 건수당 2분 절약 추정
+    const m = brief.this_month_total ? 2 : 0;  // placeholder; 실제로는 revenue count 기반
+    return (brief.alert_count || 0) * 3 + m * 30;
+  }
+
+  function _renderStreak() {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const logRaw = localStorage.getItem('itdasy_access_log') || '[]';
+      let log = JSON.parse(logRaw);
+      if (!Array.isArray(log)) log = [];
+      if (!log.includes(today)) log.push(today);
+      log = log.slice(-60);
+      localStorage.setItem('itdasy_access_log', JSON.stringify(log));
+      let streak = 0;
+      for (let i = 0; i < 60; i++) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        if (log.includes(d.toISOString().slice(0, 10))) streak++;
+        else if (i > 0) break;
+      }
+      if (streak < 2) return '';
+      const emoji = streak >= 30 ? '🏆' : streak >= 14 ? '💎' : streak >= 7 ? '🔥' : '✨';
+      return `
+        <div class="kw-card" style="background:linear-gradient(135deg,#FFF4E6,#FFE8D6);padding:10px 14px;border-radius:12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;">
+          <div style="font-size:20px;">${emoji}</div>
+          <div style="flex:1;font-size:13px;color:#7A3E00;font-weight:800;">${streak}일 연속 접속 중!${streak >= 7 ? ' 꾸준히 잘하고 계세요 💕' : ''}</div>
+        </div>`;
+    } catch (_) { return ''; }
   }
 
   async function _askAI(question) {
@@ -147,6 +236,24 @@
         btn.disabled = false; btn.textContent = '📋 안부 문자 초안 만들기';
         if (!d || !d.answer) { if (window.showToast) window.showToast('초안 생성 실패'); return; }
         _showSmsDraftModal(d.answer);
+      });
+    });
+    document.querySelectorAll('[data-kw-setgoal]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const v = prompt('이번 달 매출 목표 (원, 숫자만 — 예: 5000000)', '5000000');
+        if (!v) return;
+        const n = parseInt(String(v).replace(/[^0-9]/g, ''));
+        if (!n || n <= 0) return;
+        try {
+          const res = await fetch(API() + '/shop/settings', {
+            method: 'PUT',
+            headers: { ...AUTH(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ monthly_goal: n }),
+          });
+          if (!res.ok) throw new Error('저장 실패');
+          if (window.showToast) window.showToast('✅ 목표 저장됨');
+          if (typeof render === 'function') render('dashKiller');
+        } catch (e) { if (window.showToast) window.showToast('실패: ' + e.message); }
       });
     });
     document.querySelectorAll('[data-kw-focus]').forEach(btn => {

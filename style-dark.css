@@ -160,3 +160,22 @@ html[data-theme="dark"] canvas {
     color: #ECEEF1;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   T-334 · 큰 글씨 모드 (2026-04-22)
+   50대+ 원장님 접근성
+   ═══════════════════════════════════════════════════════ */
+html[data-fontsize="large"] {
+  font-size: 17px;  /* 기본 16 → 17, 전체 rem 기반 확대 */
+}
+html[data-fontsize="large"] body { font-size: 17px; }
+html[data-fontsize="large"] button,
+html[data-fontsize="large"] input,
+html[data-fontsize="large"] textarea,
+html[data-fontsize="large"] select {
+  font-size: max(17px, 1.05em);
+}
+html[data-fontsize="xl"] {
+  font-size: 19px;
+}
+html[data-fontsize="xl"] body { font-size: 19px; }
