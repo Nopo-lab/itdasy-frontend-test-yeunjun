@@ -140,25 +140,34 @@
     </div>`;
   }
 
+  // 단일 document-level 위임 (한 번만 등록)
+  let _delegationBound = false;
+  let _sendInFlight = false;
   function _bindActionButtons() {
-    document.querySelectorAll('[data-action-run]').forEach(btn => {
-      btn.addEventListener('click', () => _runAction(parseInt(btn.dataset.actionRun, 10)));
-    });
-    document.querySelectorAll('[data-action-cancel]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = parseInt(btn.dataset.actionCancel, 10);
+    if (_delegationBound) return;
+    _delegationBound = true;
+    document.addEventListener('click', (e) => {
+      const run = e.target.closest('[data-action-run]');
+      if (run && document.getElementById('asstBody')?.contains(run)) {
+        _runAction(parseInt(run.dataset.actionRun, 10));
+        return;
+      }
+      const cancel = e.target.closest('[data-action-cancel]');
+      if (cancel && document.getElementById('asstBody')?.contains(cancel)) {
+        const idx = parseInt(cancel.dataset.actionCancel, 10);
         if (_history[idx]) { _history[idx].action_status = 'cancelled'; _history[idx].action = null; }
         _renderHistory();
-      });
-    });
-    // 연관 질문 클릭 — 인풋에 넣고 즉시 전송
-    document.querySelectorAll('[data-suggest]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const q = btn.getAttribute('data-suggest');
+        return;
+      }
+      const sug = e.target.closest('[data-suggest]');
+      const sheet = document.getElementById('assistantSheet');
+      if (sug && sheet && sheet.contains(sug)) {
+        if (_sendInFlight) return;  // 중복 방지
+        const q = sug.getAttribute('data-suggest');
         const input = document.getElementById('asstInput');
         if (input) { input.value = q; _send(); }
-      });
-    });
+      }
+    }, false);
   }
 
   async function _runAction(idx) {
@@ -204,19 +213,18 @@
   function _renderSuggest() {
     const el = document.getElementById('asstSuggest');
     if (!el) return;
+    // data-suggest 만 두고 클릭은 document 위임 (중복 방지)
     el.innerHTML = SUGGESTIONS.map(s => `
       <button data-suggest="${_esc(s)}" style="padding:8px 12px;border:1px solid #ddd;border-radius:100px;background:#fff;cursor:pointer;font-size:11px;color:#555;white-space:nowrap;">${_esc(s)}</button>
     `).join('');
-    el.querySelectorAll('[data-suggest]').forEach(btn => btn.addEventListener('click', () => {
-      document.getElementById('asstInput').value = btn.dataset.suggest;
-      _send();
-    }));
   }
 
   async function _send() {
+    if (_sendInFlight) return;  // 중복 송신 방지
     const input = document.getElementById('asstInput');
     const q = input.value.trim();
     if (!q) return;
+    _sendInFlight = true;
     input.value = '';
     _history.push({ role: 'user', text: q });
     _history.push({ role: 'loading', text: '' });
@@ -246,6 +254,8 @@
       _history = _history.filter(m => m.role !== 'loading');
       _history.push({ role: 'assistant', text: '잠시 연결이 불안정해요. 다시 시도해 주세요. (' + e.message + ')' });
       _renderHistory();
+    } finally {
+      _sendInFlight = false;
     }
   }
 

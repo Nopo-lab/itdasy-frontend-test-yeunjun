@@ -266,25 +266,57 @@ document.getElementById('obShopNameInput').addEventListener('keydown', e => {
 });
 
 function getToken() {
-  const t = localStorage.getItem(_TOKEN_KEY);
-  if (!t) return null;
   try {
-    const payload = JSON.parse(atob(t.split('.')[1]));
-    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-      localStorage.removeItem(_TOKEN_KEY);
-      return null;
-    }
-  } catch { return null; }
-  return t;
+    const t = localStorage.getItem(_TOKEN_KEY);
+    if (!t) return null;
+    try {
+      const payload = JSON.parse(atob(t.split('.')[1]));
+      if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+        localStorage.removeItem(_TOKEN_KEY);
+        return null;
+      }
+    } catch { return null; }
+    return t;
+  } catch (_) { return null; }  // iOS Private 모드 SecurityError 방어
 }
 function setToken(t) {
-  if (t === null || t === undefined) {
-    localStorage.removeItem(_TOKEN_KEY);
-  } else {
-    localStorage.setItem(_TOKEN_KEY, t);
-  }
+  try {
+    if (t === null || t === undefined) {
+      localStorage.removeItem(_TOKEN_KEY);
+    } else {
+      localStorage.setItem(_TOKEN_KEY, t);
+    }
+  } catch (_) {}  // 용량 초과/시크릿 모드 조용히 무시
 }
-function authHeader() { return { 'Authorization': 'Bearer ' + getToken(), 'ngrok-skip-browser-warning': 'true' }; }
+function authHeader() {
+  const t = getToken();
+  return t ? { 'Authorization': 'Bearer ' + t, 'ngrok-skip-browser-warning': 'true' }
+           : { 'ngrok-skip-browser-warning': 'true' };
+}
+
+// 전역 fetch 래퍼 — 401 감지 시 자동 로그아웃 + 네트워크 에러 친근 처리
+(function _installFetchInterceptor(){
+  if (window._fetchPatched) return;
+  window._fetchPatched = true;
+  const _origFetch = window.fetch.bind(window);
+  window.fetch = async function(input, init) {
+    try {
+      const res = await _origFetch(input, init);
+      if (res.status === 401 && getToken()) {
+        // 토큰 만료 — 조용히 정리하고 로그인 재유도
+        setToken(null);
+        const msg = document.getElementById('sessionExpiredMsg');
+        if (msg) msg.style.display = 'block';
+        const lock = document.getElementById('lockOverlay');
+        if (lock) lock.classList.remove('hidden');
+      }
+      return res;
+    } catch (err) {
+      // 네트워크 오류 (오프라인·DNS·CORS) — 원본 그대로 throw. 호출부에서 개별 처리.
+      throw err;
+    }
+  };
+})();
 
 function getMyUserId() {
   try {
@@ -426,13 +458,16 @@ async function logout() {
 
 
 // 로그인
+let _loginInFlight = false;
 async function login() {
+  if (_loginInFlight) return;
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
   const btn = document.getElementById('loginBtn');
   const errEl = document.getElementById('loginError');
   errEl.style.display = 'none';
   if (!email || !password) { errEl.textContent = '이메일과 비밀번호를 입력해주세요.'; errEl.style.display = 'block'; return; }
+  _loginInFlight = true;
   btn.textContent = '로그인 중...'; btn.disabled = true;
   try {
     const res = await fetch(API + '/auth/login', {
@@ -450,10 +485,26 @@ async function login() {
     // T-317 — 생체 인증 등록 제안 (한 번만)
     _offerBiometricEnroll(data.access_token);
   } catch(e) {
-    errEl.textContent = e.message;
+    errEl.textContent = _friendlyErr(e, '로그인 실패');
     errEl.style.display = 'block';
+  } finally {
+    btn.textContent = '로그인'; btn.disabled = false;
+    _loginInFlight = false;
   }
-  btn.textContent = '로그인'; btn.disabled = false;
+}
+
+// 네트워크/타임아웃 등 친근한 에러 메시지
+function _friendlyErr(e, fallback) {
+  const m = String(e && e.message || e || '').toLowerCase();
+  if (m.includes('failed to fetch') || m.includes('networkerror') || m.includes('network')) {
+    return '인터넷 연결을 확인해 주세요.';
+  }
+  if (m.includes('timeout')) return '응답이 지연되고 있어요. 잠시 후 다시 시도해 주세요.';
+  if (m.includes('401')) return '로그인이 필요해요.';
+  if (m.includes('403')) return '권한이 없어요.';
+  if (m.includes('429')) return '잠시 후 다시 시도해 주세요.';
+  if (m.includes('500') || m.includes('502') || m.includes('503')) return '서버가 잠깐 불안정해요. 다시 시도해 주세요.';
+  return e && e.message ? e.message : (fallback || '문제가 생겼어요.');
 }
 
 // T-317 — 생체 인증 등록 제안 (최초 1회만)
@@ -489,7 +540,10 @@ async function _tryBiometricLogin() {
 }
 
 // 회원가입
+let _signupInFlight = false;
 async function signup() {
+  if (_signupInFlight) return;
+  _signupInFlight = true;
   const name = document.getElementById('signupName').value.trim();
   const email = document.getElementById('signupEmail').value.trim();
   const password = document.getElementById('signupPassword').value;
@@ -527,10 +581,12 @@ async function signup() {
     checkOnboarding();
     checkInstaStatus(true);
   } catch (e) {
-    errEl.textContent = e.message;
+    errEl.textContent = _friendlyErr(e, '가입 실패');
     errEl.style.display = 'block';
+  } finally {
+    btn.textContent = '회원가입'; btn.disabled = false;
+    _signupInFlight = false;
   }
-  btn.textContent = '회원가입'; btn.disabled = false;
 }
 
 function _toggleSignup(show) {
@@ -555,8 +611,21 @@ function _toggleSignup(show) {
 
 // ===== 앱 초기화 (모든 모듈 로드 후 실행) =====
 window.addEventListener('load', function() {
-  // Enter 키 로그인
-  document.getElementById('loginPassword').addEventListener('keydown', e => { if(e.key === 'Enter') login(); });
+  // Enter 키 로그인 (IME 조합 중 무시)
+  const loginPw = document.getElementById('loginPassword');
+  if (loginPw) loginPw.addEventListener('keydown', e => {
+    if (e.isComposing || e.keyCode === 229) return;
+    if (e.key === 'Enter') login();
+  });
+
+  // 비밀번호 보기 토글
+  const pwToggle = document.getElementById('loginPwToggle');
+  if (pwToggle) pwToggle.addEventListener('click', () => {
+    const inp = document.getElementById('loginPassword');
+    if (!inp) return;
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    pwToggle.textContent = inp.type === 'password' ? '👁' : '🙈';
+  });
 
   // 회원가입 전환 — document 위임 (타이밍 무관)
   document.addEventListener('click', (e) => {

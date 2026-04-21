@@ -258,3 +258,111 @@ body { overscroll-behavior-y: contain; }
 
 /* textarea resize 버튼 iOS 안 나오지만 Android 로는 나옴 — 통일 */
 textarea { resize: vertical; min-height: 60px; }
+
+/* ═══════════════════════════════════════════════════════
+   T-329 · UI/UX 애니메이션 전역 개선 (2026-04-22)
+   ═══════════════════════════════════════════════════════ */
+
+/* 1. 이징 변수 통일 */
+:root {
+  --ease-out-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-snappy: cubic-bezier(0.2, 0.9, 0.3, 1);
+  --ease-in-out-mild: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 2. 기본 트랜지션 — 부드러운 인터랙션 */
+button, .btn, a.btn, [role="button"], .chip, .sheet-row,
+input, textarea, select {
+  transition-property: transform, box-shadow, background-color, color, border-color, opacity;
+  transition-duration: 0.18s;
+  transition-timing-function: var(--ease-in-out-mild);
+}
+
+/* 3. 활성 버튼 — 살짝 눌리는 팝 */
+button:active:not(:disabled), .btn:active, .sheet-row:active {
+  transform: scale(0.96);
+  transition-duration: 0.08s;
+}
+
+/* 4. 카드 hover lift (터치 기기는 미동작이라 데스크톱만 영향) */
+@media (hover: hover) {
+  .dash-hero-card:hover,
+  .kw-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+  }
+}
+
+/* 5. 시트/모달 등장 — 밑에서 솟아오르면서 fade */
+@keyframes sheet-pop-in {
+  0% { opacity: 0; transform: translateY(24px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.sheet-pop-in, #dashboardSheet[style*="display: block"] > *,
+#powerViewOverlay, #supportChatModal, #bookingSheet,
+#customerSheet, #revenueSheet, #inventorySheet, #npsSheet {
+  /* 기존 구조 훼손 없이 들어가는 시트에만 */
+}
+
+/* 6. 스크롤 부드럽게 */
+html, body, * { scroll-behavior: smooth; }
+html, body { -webkit-overflow-scrolling: touch; }
+
+/* 7. 리스트 stagger — 최근 활동 · 고객 목록 등 */
+@keyframes list-fade-slide {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stagger-list > * { animation: list-fade-slide 0.4s var(--ease-out-smooth) backwards; }
+.stagger-list > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger-list > *:nth-child(2) { animation-delay: 0.06s; }
+.stagger-list > *:nth-child(3) { animation-delay: 0.1s; }
+.stagger-list > *:nth-child(4) { animation-delay: 0.14s; }
+.stagger-list > *:nth-child(5) { animation-delay: 0.18s; }
+.stagger-list > *:nth-child(n+6) { animation-delay: 0.22s; }
+
+/* 8. 숫자 카운트업 - 깜빡임 덜 */
+.dash-count { transition: color 0.3s var(--ease-in-out-mild); }
+
+/* 9. 스켈레톤 부드럽게 */
+@keyframes sk-shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
+  background-size: 200px 100%;
+  animation: sk-shimmer 1.4s infinite linear;
+  border-radius: 8px;
+}
+
+/* 10. 핑크 강조 버튼 glow pulse (CTA 용) */
+@keyframes pink-glow-pulse {
+  0%, 100% { box-shadow: 0 6px 20px rgba(241,128,145,0.35); }
+  50%      { box-shadow: 0 8px 28px rgba(241,128,145,0.55); }
+}
+.pink-glow { animation: pink-glow-pulse 3s ease-in-out infinite; }
+
+/* 11. 햅틱과 맞춘 미세 진동 (탭 순간 스케일 bounce) */
+@keyframes tap-bounce {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+.tap-bounce:active { animation: tap-bounce 0.18s var(--ease-out-snappy); }
+
+/* 12. 포커스 링 — 접근성 유지하면서 덜 거슬리게 */
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 2px solid rgba(241,128,145,0.5);
+  outline-offset: 2px;
+}
+button:focus:not(:focus-visible) { outline: none; }
+
+/* 13. reduce-motion 존중 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

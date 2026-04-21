@@ -54,8 +54,11 @@
   </div>
 
   <div style="margin-bottom:20px; font-size:13px; color:var(--accent); font-weight:600; display:none;" id="sessionExpiredMsg">⚠️ 로그인 세션이 만료되었습니다. 다시 로그인해주세요.</div>
-  <input type="email" class="login-input" id="loginEmail" placeholder="이메일" autocomplete="email">
-  <input type="password" class="login-input" id="loginPassword" placeholder="비밀번호" autocomplete="current-password">
+  <input type="email" class="login-input" id="loginEmail" placeholder="이메일" autocomplete="email" inputmode="email">
+  <div style="position:relative;width:100%;margin-bottom:10px;">
+    <input type="password" class="login-input" id="loginPassword" placeholder="비밀번호" autocomplete="current-password" style="margin-bottom:0;padding-right:44px;">
+    <button type="button" id="loginPwToggle" aria-label="비밀번호 보기" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:none;background:transparent;cursor:pointer;font-size:15px;color:#888;">👁</button>
+  </div>
   <div class="login-error" id="loginError"></div>
   <button class="pin-btn" id="loginBtn">로그인</button>
   <div style="margin-top:16px;text-align:center;font-size:13px;color:var(--text3);">
