@@ -162,13 +162,36 @@
       .pv-drop-inner{color:#fff;text-align:center;font-size:18px;font-weight:800;padding:30px;
         border:3px dashed rgba(255,255,255,0.5);border-radius:20px;}
 
+      /* §5.4 Chip 탭 */
+      .pv-chip-bar{display:flex;padding:8px 12px;gap:6px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border,#eee);background:var(--surface,#fff);flex-shrink:0;}
+      .pv-chip-bar::-webkit-scrollbar{display:none;}
+      .pv-chip{padding:6px 14px;border:1.5px solid var(--border-strong,#d0d0d0);border-radius:100px;background:transparent;font-size:12.5px;font-weight:700;color:var(--text-subtle,#888);cursor:pointer;white-space:nowrap;transition:all 0.15s;font-family:Pretendard,sans-serif;}
+      .pv-chip.active{background:var(--brand,#F18091);border-color:var(--brand,#F18091);color:#fff;}
+      .pv-chip:hover:not(.active){border-color:var(--brand,#F18091);color:var(--brand,#F18091);}
+      /* AI 가져오기 pill */
+      .pv-ai-pill{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:100px;font-size:12px;font-weight:700;cursor:pointer;font-family:Pretendard,sans-serif;transition:opacity 0.15s;flex-shrink:0;}
+      .pv-ai-pill:hover{opacity:0.88;}
+      /* 저장상태 칩 */
+      .pv-save-chip{padding:4px 10px;border-radius:100px;font-size:11px;font-weight:700;background:var(--surface-raised,#f2f2f2);color:var(--text-subtle,#888);display:none;}
+      .pv-save-chip.saved{background:#E8F5E9;color:#2E7D32;display:inline-block;}
+      /* 셀 선택/편집 */
+      .pv-table tbody td{border-right:1px solid var(--border,#f2f2f2);}
+      .pv-table tbody td:last-child{border-right:none;}
+      .pv-cell-sel{border:1.5px solid var(--brand,#F18091) !important;background:rgba(241,128,145,0.08) !important;}
+      /* §5.8 Bottom sheet */
+      @keyframes pvSheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+      .pv-sheet{position:fixed;inset:0;z-index:10002;background:rgba(20,8,16,0.55);backdrop-filter:blur(6px);display:flex;align-items:flex-end;animation:pvFadeIn 0.2s ease;}
+      .pv-sheet-inner{width:100%;max-height:80vh;background:var(--surface,#fff);border-radius:24px 24px 0 0;overflow:hidden;display:flex;flex-direction:column;animation:pvSheetUp 0.3s cubic-bezier(0.22,1,0.36,1);padding-bottom:env(safe-area-inset-bottom,0px);}
+      /* Dark mode 대응 */
+      [data-theme="dark"] .pv-dialog{background:var(--surface,#1c1c1e);color:var(--text,#f5f5f7);}
+      [data-theme="dark"] .pv-header,[data-theme="dark"] .pv-chip-bar,[data-theme="dark"] .pv-sheet-inner{background:var(--surface,#1c1c1e);}
+      [data-theme="dark"] .pv-table tbody tr:hover{background:var(--surface-raised,#2c2c2e);}
       /* 모바일 */
       @media (max-width:720px){
         #power-view-overlay{padding:8px !important;}
         .pv-dialog{border-radius:20px;max-height:96vh;}
         .pv-header{padding:12px 14px;}
         .pv-title{font-size:15px;}
-        .pv-tab{padding:12px 12px;font-size:12.5px;}
         .pv-qadd{padding:12px 14px;}
         .pv-table thead th{padding:9px 12px;font-size:10.5px;}
         .pv-table tbody td{padding:10px 12px;font-size:12.5px;}
@@ -438,29 +461,26 @@
   function _openMenuDrawer() {
     const o = document.createElement('div');
     o.id = 'pv-menu-drawer';
-    o.style.cssText = `position:fixed;inset:0;z-index:10002;background:rgba(20,8,16,0.55);backdrop-filter:blur(6px);animation:pvFadeIn 0.2s ease;display:flex;justify-content:flex-end;`;
+    o.className = 'pv-sheet';
     o.innerHTML = `
-      <div style="width:100%;max-width:320px;height:100%;background:#fff;display:flex;flex-direction:column;box-shadow:-8px 0 40px rgba(0,0,0,0.25);animation:pvMenuSlideIn 0.25s cubic-bezier(0.22,1,0.36,1);">
-        <style>@keyframes pvMenuSlideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}</style>
-        <div style="display:flex;align-items:center;padding:18px 20px;border-bottom:1px solid #eee;background:#fafafa;">
-          <div style="font-size:15px;font-weight:900;flex:1;color:#222;">📂 전체 메뉴</div>
-          <button id="pv-menu-close" style="width:32px;height:32px;border:none;border-radius:10px;background:#eee;cursor:pointer;font-size:14px;">✕</button>
+      <div class="pv-sheet-inner">
+        <div style="display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border,#eee);">
+          <div style="font-size:15px;font-weight:900;flex:1;color:var(--text,#222);">메뉴</div>
+          <button id="pv-menu-close" style="width:32px;height:32px;border:none;border-radius:10px;background:var(--surface-raised,#eee);cursor:pointer;font-size:14px;color:var(--text,#555);">✕</button>
         </div>
-        <div style="flex:1;overflow:auto;padding:10px 0;">
+        <div class="list-menu" style="flex:1;overflow:auto;">
           ${MENU_ITEMS.map(e => `
-            <button data-pv-menu-fn="${e.fn}" style="display:flex;align-items:center;gap:14px;width:100%;padding:14px 20px;border:none;background:transparent;cursor:pointer;text-align:left;transition:background 0.12s;">
-              <div style="font-size:24px;width:44px;height:44px;border-radius:12px;background:#FEF4F5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${e.icon}</div>
-              <div style="flex:1;min-width:0;">
-                <div style="font-size:14px;font-weight:800;color:#222;margin-bottom:2px;">${e.label}</div>
-                <div style="font-size:11px;color:#888;line-height:1.4;">${e.hint}</div>
+            <button class="list-menu__item" data-pv-menu-fn="${e.fn}">
+              <div class="list-menu__icon-box" style="font-size:20px;background:var(--brand-bg,#FEF4F5);">${e.icon}</div>
+              <div class="list-menu__body">
+                <div class="list-menu__title">${e.label}</div>
+                <div class="list-menu__sub">${e.hint}</div>
               </div>
-              <div style="color:#ccc;font-size:14px;">›</div>
+              <div class="list-menu__right"><svg class="ic" aria-hidden="true"><use href="#ic-chevron-right"/></svg></div>
             </button>
           `).join('')}
         </div>
-        <div style="padding:14px 20px;border-top:1px solid #eee;background:#fafafa;font-size:11px;color:#aaa;text-align:center;">
-          잇데이 · 와이투두(Y2do)
-        </div>
+        <div style="padding:12px 20px;border-top:1px solid var(--border,#eee);font-size:11px;color:var(--text-subtle,#aaa);text-align:center;">잇데이 · 와이투두(Y2do)</div>
       </div>
     `;
     document.body.appendChild(o);
@@ -477,8 +497,6 @@
           setTimeout(() => window[fn](), 140);
         }
       });
-      b.addEventListener('mouseenter', () => { b.style.background = '#fafafa'; });
-      b.addEventListener('mouseleave', () => { b.style.background = 'transparent'; });
     });
   }
 
@@ -564,7 +582,11 @@
       </div>
       ${pendingHtml}
       <div class="pv-toolbar">
-        <input class="pv-search" id="pv-search" data-no-voice placeholder="검색 (⌘K)" value="${_esc(searchKW)}" />
+        <div style="position:relative;flex:1;max-width:280px;">
+          <svg class="ic" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#999;" aria-hidden="true"><use href="#ic-search"/></svg>
+          <input class="pv-search" id="pv-search" data-no-voice placeholder="검색 (⌘K)" value="${_esc(searchKW)}" style="padding-left:32px;padding-right:${searchKW ? '32px' : '12px'};" />
+          ${searchKW ? `<button id="pv-search-clear" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;padding:2px;color:#aaa;" aria-label="검색 지우기"><svg class="ic" aria-hidden="true"><use href="#ic-x"/></svg></button>` : ''}
+        </div>
         <label class="pv-excel" for="pv-excel-file" title="엑셀/CSV AI 임포트">
           📥 엑셀 불러오기
           <input type="file" id="pv-excel-file" accept=".csv,.xlsx,.xls" style="display:none;" />
@@ -836,12 +858,9 @@
         }, 180);
       });
     }
-    const fileInput = document.getElementById('pv-excel-file');
-    if (fileInput) {
-      fileInput.addEventListener('change', (e) => {
-        const f = e.target.files && e.target.files[0];
-        if (f) _handleExcelFile(f);
-      });
+    const clearBtn = document.getElementById('pv-search-clear');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => { searchKW = ''; _renderTab(true); });
     }
     // 탭별 badge 업데이트
     TABS.forEach(t => {
@@ -868,6 +887,16 @@
         _renderTab();
       });
     });
+    // AI import pill in header
+    const aiBtn = document.getElementById('pv-ai-import-btn');
+    if (aiBtn) {
+      aiBtn.addEventListener('click', () => {
+        const fi = document.createElement('input');
+        fi.type = 'file'; fi.accept = '.csv,.xlsx,.xls'; fi.style.display = 'none';
+        fi.addEventListener('change', (e) => { const f = e.target.files[0]; if (f) _handleExcelFile(f); fi.remove(); });
+        document.body.appendChild(fi); fi.click();
+      });
+    }
   }
 
   function _escListener(e) {
@@ -896,28 +925,27 @@
       padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));
     `;
 
-    const tabHtml = TABS.map(t => `
-      <button class="pv-tab ${t.key === currentTab ? 'active' : ''}" data-pv-tab="${t.key}">
-        <span>${t.icon}</span>
-        <span>${t.label}</span>
-        <span class="pv-tab-badge" data-pv-tab-badge="${t.key}" style="display:none;">0</span>
-        <span class="pv-tab-underline"></span>
-      </button>
+    const chipHtml = TABS.map(t => `
+      <button class="pv-chip ${t.key === currentTab ? 'active' : ''}" data-pv-tab="${t.key}">${t.icon} ${t.label}</button>
     `).join('');
 
     overlay.innerHTML = `
       <div class="pv-dialog" style="align-self:center;">
         <div class="pv-header">
-          <div class="pv-title">
-            <span class="pv-title-icon">⛶</span>
-            <span>파워뷰 — 빠른 입력</span>
-          </div>
-          <button id="pv-menu-btn" class="pv-close" aria-label="전체 메뉴" title="전체 메뉴" style="margin-right:6px;">
+          <button class="pv-close" onclick="window.closePowerView()" aria-label="닫기" title="닫기" style="margin-right:4px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="pv-title" style="flex:1;">빠른 입력</div>
+          <span class="pv-save-chip" id="pv-save-chip">저장 완료</span>
+          <button class="pv-ai-pill" id="pv-ai-import-btn" title="AI로 엑셀 가져오기">
+            <svg class="ic" width="14" height="14" aria-hidden="true"><use href="#ic-upload"/></svg>
+            AI로 가져오기
+          </button>
+          <button id="pv-menu-btn" class="pv-close" aria-label="전체 메뉴" title="전체 메뉴" style="margin-left:6px;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
           </button>
-          <button class="pv-close" onclick="window.closePowerView()" aria-label="닫기">✕</button>
         </div>
-        <div class="pv-tabs">${tabHtml}</div>
+        <div class="pv-chip-bar">${chipHtml}</div>
         <div class="pv-body" id="pv-body"></div>
       </div>
     `;

@@ -92,16 +92,33 @@
     document.body.style.overflow = '';
   }
 
-  function _shell(innerHtml, stepLabel) {
+  const STEPS = ['파일 선택', '열 매핑', '미리보기', '완료'];
+
+  function _progressDots(activeIdx) {
+    return `<div style="display:flex;align-items:center;gap:0;padding:14px 20px 10px;border-bottom:1px solid var(--border,#eee);">
+      ${STEPS.map((label, i) => `
+        <div style="display:flex;align-items:center;flex:1;min-width:0;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${i < activeIdx ? 'var(--brand,#F18091)' : i === activeIdx ? 'var(--brand,#F18091)' : 'var(--border-strong,#ddd)'};background:${i < activeIdx ? 'var(--brand,#F18091)' : i === activeIdx ? 'var(--brand-bg,#FEF4F5)' : 'transparent'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:${i < activeIdx ? '#fff' : i === activeIdx ? 'var(--brand,#F18091)' : 'var(--text-subtle,#bbb)'};">${i < activeIdx ? '✓' : i + 1}</div>
+            <div style="font-size:10px;font-weight:700;color:${i === activeIdx ? 'var(--brand,#F18091)' : 'var(--text-subtle,#aaa)'};white-space:nowrap;">${label}</div>
+          </div>
+          ${i < STEPS.length - 1 ? `<div style="flex:1;height:2px;background:${i < activeIdx ? 'var(--brand,#F18091)' : 'var(--border,#eee)'};margin:0 4px;margin-bottom:16px;"></div>` : ''}
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  function _shell(innerHtml, stepIdx) {
     const o = document.createElement('div');
     o.id = OVERLAY;
     o.style.cssText = `position:fixed;inset:0;z-index:10000;background:rgba(20,8,16,0.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;animation:pvFadeIn 0.2s ease;`;
     o.innerHTML = `
-      <div style="width:100%;max-width:720px;max-height:92vh;background:#fff;border-radius:20px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:pvSlideUp 0.3s cubic-bezier(0.22,1,0.36,1);">
-        <div style="display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid #eee;background:#fafafa;">
-          <div style="font-size:15px;font-weight:900;color:#222;flex:1;">📥 AI 엑셀 임포트 — ${_esc(stepLabel)}</div>
-          <button id="iw-close" style="width:32px;height:32px;border:none;border-radius:10px;background:#eee;cursor:pointer;font-size:14px;">✕</button>
+      <div style="width:100%;max-width:600px;max-height:92vh;background:var(--surface,#fff);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:pvSlideUp 0.3s cubic-bezier(0.22,1,0.36,1);">
+        <div style="display:flex;align-items:center;padding:14px 18px 0;border-bottom:none;">
+          <div style="font-size:15px;font-weight:900;color:var(--text,#222);flex:1;">AI 엑셀 임포트</div>
+          <button id="iw-close" style="width:32px;height:32px;border:none;border-radius:10px;background:var(--surface-raised,#eee);cursor:pointer;font-size:14px;color:var(--text,#555);">✕</button>
         </div>
+        ${_progressDots(stepIdx)}
         <div id="iw-body" style="flex:1;overflow:auto;padding:18px;">${innerHtml}</div>
       </div>
     `;
@@ -112,15 +129,43 @@
     o.querySelector('#iw-close').addEventListener('click', _close);
   }
 
-  // Step 1: 분석 중 (로딩)
+  // Step 1: 파일 선택 (drop zone)
+  function _showStep1() {
+    const uploadSvg = `<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>`;
+    _shell(`
+      <div style="text-align:center;padding:8px 0 16px;">
+        <div id="iw-dropzone" style="border:2px dashed var(--border-strong,#d0d0d0);border-radius:16px;padding:40px 20px;cursor:pointer;transition:border-color 0.15s;background:var(--surface-raised,#fafafa);">
+          <div style="color:var(--text-subtle,#aaa);margin-bottom:12px;">${uploadSvg}</div>
+          <div style="font-size:15px;font-weight:800;color:var(--text,#222);margin-bottom:6px;">엑셀 / CSV 파일을 여기에 놓거나</div>
+          <button id="iw-file-pick" style="padding:10px 24px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:100px;font-weight:800;font-size:13px;cursor:pointer;margin-top:4px;">파일 선택</button>
+          <input type="file" id="iw-file-input" accept=".csv,.xlsx,.xls" style="display:none;" />
+          <div style="margin-top:12px;font-size:11px;color:var(--text-subtle,#aaa);">CSV · XLSX · XLS 지원 · 고객/예약/매출 탭만 가능</div>
+        </div>
+        ${state.file ? `<div style="margin-top:14px;padding:10px 16px;background:var(--surface-raised,#f2f2f2);border-radius:10px;display:flex;align-items:center;gap:10px;text-align:left;">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div style="flex:1;font-size:12.5px;font-weight:700;color:var(--text,#333);">${_esc(state.file.name)}</div>
+          <button id="iw-start" style="padding:8px 18px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:100px;font-weight:800;font-size:12px;cursor:pointer;">분석 시작</button>
+        </div>` : ''}
+      </div>
+    `, 0);
+    const zone = document.getElementById('iw-dropzone');
+    const fileInput = document.getElementById('iw-file-input');
+    document.getElementById('iw-file-pick')?.addEventListener('click', () => fileInput.click());
+    fileInput?.addEventListener('change', (e) => { const f = e.target.files[0]; if (f) { state.file = f; _showStep1(); } });
+    zone?.addEventListener('dragover', (e) => { e.preventDefault(); zone.style.borderColor = 'var(--brand,#F18091)'; });
+    zone?.addEventListener('dragleave', () => { zone.style.borderColor = ''; });
+    zone?.addEventListener('drop', (e) => { e.preventDefault(); zone.style.borderColor = ''; const f = e.dataTransfer.files[0]; if (f) { state.file = f; _showStep1(); } });
+    document.getElementById('iw-start')?.addEventListener('click', _analyze);
+  }
+
   function _showLoading() {
     _shell(`
       <div style="padding:40px 20px;text-align:center;">
-        <div style="width:48px;height:48px;border:4px solid #eee;border-top-color:#F18091;border-radius:50%;margin:0 auto 16px;animation:pvSpin 0.8s linear infinite;"></div>
-        <div style="font-size:14px;font-weight:700;color:#333;margin-bottom:6px;">AI가 엑셀 분석 중…</div>
-        <div style="font-size:12px;color:#888;">컬럼명·샘플 데이터를 해석해서 매핑을 제안해요.</div>
+        <div style="width:48px;height:48px;border:4px solid #eee;border-top-color:var(--brand,#F18091);border-radius:50%;margin:0 auto 16px;animation:pvSpin 0.8s linear infinite;"></div>
+        <div style="font-size:14px;font-weight:700;color:var(--text,#333);margin-bottom:6px;">AI가 엑셀 분석 중…</div>
+        <div style="font-size:12px;color:var(--text-subtle,#888);">컬럼명·샘플 데이터를 해석해서 매핑을 제안해요.</div>
       </div>
-    `, '1/4 분석');
+    `, 1);
   }
 
   async function _analyze() {
@@ -146,8 +191,8 @@
       _shell(`
         <div style="padding:30px;text-align:center;color:#c62828;">
           <div style="font-size:14px;margin-bottom:12px;">❌ ${_esc(e.message)}</div>
-          <button id="iw-retry" style="padding:10px 18px;background:#F18091;color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">다시 시도</button>
-        </div>`, '오류');
+          <button id="iw-retry" style="padding:10px 18px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">다시 시도</button>
+        </div>`, 1);
       document.getElementById('iw-retry')?.addEventListener('click', _analyze);
     }
   }
@@ -167,11 +212,13 @@
         headers.map(h => `<option value="${_esc(h)}" ${h === current ? 'selected' : ''}>${_esc(h)}</option>`)
       ).join('');
       return `
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fafafa;border-radius:10px;margin-bottom:6px;">
-          <div style="flex:0 0 140px;font-size:12.5px;font-weight:700;color:#333;">${_esc(label)}</div>
-          <select data-map-field="${field}" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:12.5px;">${options}</select>
+        <button class="list-menu__item" style="width:100%;cursor:default;">
+          <div class="list-menu__body">
+            <div class="list-menu__title" style="font-size:12px;">${_esc(label)}</div>
+          </div>
+          <select data-map-field="${field}" style="padding:6px 10px;border:1px solid var(--border-strong,#ddd);border-radius:8px;font-size:12px;background:var(--surface,#fff);color:var(--text,#333);">${options}</select>
           ${confBadge}
-        </div>`;
+        </button>`;
     }).join('');
 
     const extras = a.extras || [];
@@ -202,10 +249,10 @@
       </div>` : ''}
 
       <div style="display:flex;gap:8px;justify-content:space-between;margin-top:14px;">
-        <button id="iw-back" style="padding:10px 16px;background:#eee;border:none;border-radius:10px;font-weight:700;cursor:pointer;">취소</button>
-        <button id="iw-next" style="padding:10px 20px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(241,128,145,0.3);">다음 →</button>
+        <button id="iw-back" style="padding:10px 16px;background:var(--surface-raised,#eee);border:none;border-radius:10px;font-weight:700;cursor:pointer;color:var(--text,#333);">← 이전</button>
+        <button id="iw-next" style="padding:10px 20px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">다음 →</button>
       </div>
-    `, '2/4 매핑');
+    `, 1);
 
     document.querySelectorAll('[data-map-field]').forEach(sel => {
       sel.addEventListener('change', (e) => {
@@ -225,36 +272,29 @@
     document.getElementById('iw-next').addEventListener('click', () => { state._step = 3; _saveState(); _showStep3(); });
   }
 
-  // Step 3: 중복 정책
-  function _showStep3() {
+  // Step 3: 미리보기 (처음 3행)
+  function _showPreview() {
     const a = state.analysis;
-    const dups = a.duplicates || [];
-
-    const rowsHtml = dups.length ? dups.slice(0, 50).map(d => {
-      const row = d.row_data || {};
-      const summary = Object.entries(row).slice(0, 3).map(([k, v]) => `<span style="color:#888;">${_esc(k)}:</span> ${_esc(v)}`).join(' · ');
-      const current = state.dup[String(d.row_idx)] || state.dup.default || 'new_row';
-      return `
-        <div style="padding:10px 12px;background:#fafafa;border-radius:10px;margin-bottom:6px;">
-          <div style="font-size:11px;color:#888;margin-bottom:4px;">행 ${d.row_idx}</div>
-          <div style="font-size:12.5px;color:#333;margin-bottom:6px;line-height:1.4;">${summary}</div>
-          <div style="font-size:11px;color:#D95F70;margin-bottom:8px;">⚠️ 기존: <strong>${_esc(d.existing_name || ('ID ' + d.existing_id))}</strong>${d.existing_phone ? ` (${_esc(d.existing_phone)})` : ''}</div>
-          <div style="display:flex;gap:5px;">
-            ${['skip','overwrite','new_row'].map(p => `
-              <label style="flex:1;cursor:pointer;">
-                <input type="radio" name="dup-${d.row_idx}" value="${p}" ${current === p ? 'checked' : ''} data-dup-row="${d.row_idx}" style="display:none;">
-                <div class="iw-pol" data-sel="${current === p ? '1' : '0'}" style="padding:7px;text-align:center;border:1.5px solid ${current === p ? '#F18091' : '#ddd'};background:${current === p ? '#FEF4F5' : '#fff'};color:${current === p ? '#D95F70' : '#666'};border-radius:8px;font-size:11px;font-weight:700;transition:all 0.15s;">
-                  ${p === 'skip' ? '건너뛰기' : p === 'overwrite' ? '덮어쓰기' : '새로 추가'}
-                </div>
-              </label>
-            `).join('')}
-          </div>
-        </div>`;
-    }).join('') : `<div style="padding:30px;text-align:center;color:#2B8C7E;font-size:13.5px;font-weight:700;">✨ 중복 없음 — 바로 반영할 수 있어요!</div>`;
+    const previewRows = (a.preview_rows || a.sample_rows || []).slice(0, 3);
+    const mappedFields = Object.entries(state.mapping).filter(([, col]) => col);
+    const cardsHtml = previewRows.length ? previewRows.map((row, i) => `
+      <div style="background:var(--surface-raised,#fafafa);border:1px solid var(--border,#eee);border-radius:12px;padding:12px 14px;">
+        <div style="font-size:10px;font-weight:800;color:var(--text-subtle,#aaa);margin-bottom:8px;">행 ${i + 1}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;">
+          ${mappedFields.map(([field, col]) => `
+            <div><div style="font-size:10px;color:var(--text-subtle,#888);margin-bottom:2px;">${_esc(col)}</div>
+            <div style="font-size:12.5px;font-weight:700;color:var(--text,#222);">${_esc(String(row[col] ?? '—'))}</div></div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('') : `<div style="padding:24px;text-align:center;color:var(--text-subtle,#aaa);font-size:13px;">미리보기 데이터 없음</div>`;
 
     _shell(`
-      <div style="font-size:13px;color:#555;margin-bottom:14px;line-height:1.6;">
-        ${dups.length ? `<strong>${dups.length}개 행</strong>이 기존 데이터와 겹쳐요. 어떻게 처리할까요?` : '중복 감지 결과를 확인하세요.'}
+      <div style="font-size:13px;color:var(--text-subtle,#555);margin-bottom:12px;">총 <strong>${a.total_rows || '?'}행</strong> 중 처음 3행 미리보기예요.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">${cardsHtml}</div>
+      <div style="display:flex;gap:8px;justify-content:space-between;">
+        <button id="iw-back" style="padding:10px 16px;background:var(--surface-raised,#eee);border:none;border-radius:10px;font-weight:700;cursor:pointer;color:var(--text,#333);">← 이전</button>
+        <button id="iw-commit" style="padding:10px 20px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">반영하기 →</button>
       </div>
 
       ${dups.length ? `
@@ -298,10 +338,10 @@
   async function _commit() {
     _shell(`
       <div style="padding:40px 20px;text-align:center;">
-        <div style="width:48px;height:48px;border:4px solid #eee;border-top-color:#F18091;border-radius:50%;margin:0 auto 16px;animation:pvSpin 0.8s linear infinite;"></div>
-        <div style="font-size:14px;font-weight:700;color:#333;">반영 중…</div>
+        <div style="width:48px;height:48px;border:4px solid var(--border,#eee);border-top-color:var(--brand,#F18091);border-radius:50%;margin:0 auto 16px;animation:pvSpin 0.8s linear infinite;"></div>
+        <div style="font-size:14px;font-weight:700;color:var(--text,#333);">반영 중…</div>
       </div>
-    `, '4/4 반영');
+    `, 3);
     try {
       const res = await fetch(API() + '/imports/ai/commit', {
         method: 'POST',
@@ -325,7 +365,7 @@
           <div style="font-size:11.5px;color:#888;margin-bottom:14px;line-height:1.6;">
             매핑·정책 설정은 자동으로 저장됐어요.<br>지금 재시도하거나 잠시 뒤 다시 열어도 이어할 수 있습니다.
           </div>
-          <button id="iw-retry" style="padding:10px 18px;background:#F18091;color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">재시도</button>
+          <button id="iw-retry" style="padding:10px 18px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">재시도</button>
         </div>`, '오류');
       document.getElementById('iw-retry')?.addEventListener('click', _commit);
     }
@@ -333,23 +373,21 @@
 
   function _showDone(d) {
     _shell(`
-      <div style="padding:24px 14px;text-align:center;">
-        <div style="font-size:48px;margin-bottom:10px;">✅</div>
-        <div style="font-size:17px;font-weight:900;color:#222;margin-bottom:6px;">반영 완료</div>
-        <div style="font-size:13px;color:#555;line-height:1.7;margin-bottom:18px;">
-          새로 추가 <strong style="color:#2B8C7E;">${d.imported || 0}건</strong> ·
-          덮어씀 <strong style="color:#1565C0;">${d.overwritten || 0}건</strong> ·
-          건너뜀 <strong style="color:#888;">${d.skipped || 0}건</strong>
-          ${d.failed ? ` · 실패 <strong style="color:#C62828;">${d.failed}건</strong>` : ''}
+      <div style="padding:8px 0;">
+        <div class="banner banner--info" role="status" style="margin-bottom:16px;border-radius:12px;">
+          <span style="flex:1;font-size:13.5px;font-weight:800;">반영 완료</span>
+          <span style="font-size:12px;opacity:0.85;">
+            추가 ${d.imported || 0}건 · 덮어씀 ${d.overwritten || 0}건 · 건너뜀 ${d.skipped || 0}건${d.failed ? ` · 실패 ${d.failed}건` : ''}
+          </span>
         </div>
         ${d.errors && d.errors.length ? `
-          <details style="text-align:left;padding:10px 14px;background:#FFEBEE;border-radius:10px;font-size:11.5px;color:#C62828;margin-bottom:14px;">
+          <details style="padding:10px 14px;background:#FFEBEE;border-radius:10px;font-size:11.5px;color:#C62828;margin-bottom:14px;">
             <summary style="cursor:pointer;font-weight:700;">실패 상세</summary>
             <div style="margin-top:6px;white-space:pre-wrap;">${_esc(d.errors.join('\n'))}</div>
           </details>` : ''}
-        <button id="iw-close-done" style="padding:12px 30px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border:none;border-radius:12px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(241,128,145,0.35);">닫기</button>
+        <button id="iw-close-done" style="width:100%;padding:13px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;">닫기</button>
       </div>
-    `, '완료');
+    `, 3);
     document.getElementById('iw-close-done').addEventListener('click', () => {
       _close();
       if (typeof state.onDone === 'function') state.onDone(d);
