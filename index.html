@@ -30,6 +30,7 @@
 <link rel="stylesheet" href="css/icons.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/patterns.css">
+<link rel="stylesheet" href="css/screens/home.css">
 <link rel="stylesheet" href="style.css?v=20260420">
 </head>
 <body>
@@ -158,6 +159,17 @@
   <symbol id="ic-bell" viewBox="0 0 24 24">
     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
     <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+  </symbol>
+  <!-- P1: 브랜드 로더 (Pull-to-Refresh 전용 8선 별형) -->
+  <symbol id="ic-brand-loader" viewBox="0 0 24 24">
+    <line x1="12" y1="2" x2="12" y2="6"/>
+    <line x1="12" y1="18" x2="12" y2="22"/>
+    <line x1="4.22" y1="4.22" x2="7.05" y2="7.05"/>
+    <line x1="16.95" y1="16.95" x2="19.78" y2="19.78"/>
+    <line x1="2" y1="12" x2="6" y2="12"/>
+    <line x1="18" y1="12" x2="22" y2="12"/>
+    <line x1="4.22" y1="19.78" x2="7.05" y2="16.95"/>
+    <line x1="16.95" y1="7.05" x2="19.78" y2="4.22"/>
   </symbol>
 </svg>
 
@@ -300,7 +312,7 @@
 
 <!-- Pull-to-Refresh 바 -->
 <div id="ptrBar">
-  <span id="ptrEmoji">🎀</span>
+  <span id="ptrEmoji" style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;"><svg class="ic ic--md" style="transform-origin:center" aria-hidden="true"><use href="#ic-brand-loader"/></svg></span>
   <span id="ptrLabel">당겨서 새로고침</span>
 </div>
 
@@ -315,7 +327,7 @@
       <div class="profile-avatar" id="headerAvatar">잇</div>
     </div>
     <button id="planBadge" data-haptic="light" onclick="if(typeof openPlanPopup==='function')openPlanPopup();" style="padding:6px 12px;border-radius:8px;font-size:11px;font-weight:800;background:#e0e0e0;color:#888;cursor:pointer;min-height:32px;display:inline-flex;align-items:center;border:none;">Free</button>
-    <button id="themeToggleBtn" data-haptic="light" onclick="if(typeof toggleTheme==='function')toggleTheme();" aria-label="다크모드 전환" title="화면 모드 전환" style="background:none;border:none;padding:4px;cursor:pointer;min-width:36px;min-height:36px;font-size:18px;">🌗</button>
+    <button id="themeToggleBtn" data-haptic="light" onclick="if(typeof toggleTheme==='function')toggleTheme();" aria-label="다크모드 전환" title="화면 모드 전환" style="background:none;border:none;padding:4px;cursor:pointer;min-width:36px;min-height:36px;display:inline-flex;align-items:center;justify-content:center;"><svg class="ic ic--md" aria-hidden="true"><use id="themeToggleIcon" href="#ic-moon"/></svg></button>
     <button class="btn-settings" onclick="openSettings()" aria-label="설정">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F18091" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
         <path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/>
@@ -497,35 +509,62 @@
   <!-- ── 연동 후 상태 ── -->
   <div id="homePostConnect" class="hc-section" style="display:none;">
 
-    <section class="greet">
-      <p class="status-line">오늘 발행 대기 <b id="statCaptions">0</b>개 · 작성중 <b id="statPosts">0</b>개</p>
-      <h1>사진 올리시면 끝나요.</h1>
-    </section>
+    <!-- §5.1 Hero Card — 이번달 브리핑 (app-power-view.js가 데이터 채움) -->
+    <div class="hero-card" id="homeHeroCard">
+      <div class="hero-card__deco"></div>
+      <div class="hero-card__label">이번달 브리핑</div>
+      <div class="hero-card__value" id="heroMonthRevenue">집계 중</div>
+      <div class="hero-card__stats">
+        <div class="hero-card__stat">
+          <div class="hero-card__stat-v" id="heroMomPct">—</div>
+          <div class="hero-card__stat-l">전월 대비</div>
+        </div>
+        <div class="hero-card__stat">
+          <div class="hero-card__stat-v" id="heroTodayBookings">—</div>
+          <div class="hero-card__stat-l">오늘 예약</div>
+        </div>
+        <div class="hero-card__stat">
+          <div class="hero-card__stat-v" id="heroRiskCount">—</div>
+          <div class="hero-card__stat-l">위험 신호</div>
+        </div>
+      </div>
+    </div>
 
-    <button class="cta-main" onclick="goWorkshopUpload()" data-haptic="light">
-      <div class="cta-icon">
-        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+    <!-- §5.2 Main CTA — 새 포스트 만들기 -->
+    <button class="main-cta home-new-post-cta home-new-post-cta--pulse" id="homeNewPostCta" onclick="goCaption()" data-haptic="light">
+      <div class="main-cta__icon">
+        <svg class="ic ic--md" aria-hidden="true"><use href="#ic-edit-3"/></svg>
       </div>
-      <div class="cta-text">
-        <p class="cta-title">시술 사진 올리기</p>
-        <p class="cta-sub">글은 AI가 써드려요</p>
+      <div>
+        <div class="main-cta__title">새 포스트 만들기</div>
+        <div class="main-cta__sub">사진 올리면 AI가 글까지</div>
       </div>
-      <div class="cta-arrow">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      <div class="main-cta__arrow">
+        <svg class="ic" aria-hidden="true"><use href="#ic-chevron-right"/></svg>
       </div>
     </button>
 
-    <section class="sec">
-      <div class="sec-head">
-        <h2 class="home-sec-title">이어하기</h2>
-        <button class="sec-more" onclick="showTab('finish', document.querySelectorAll('.nav-btn')[4])" data-haptic="light">
-          전체<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
+    <!-- §5.3 Killer Widgets 가로 스크롤 (app-killer-widgets.js가 채움) -->
+    <div>
+      <div class="sec-head" style="padding:0 2px;margin-bottom:10px;">
+        <h2 class="home-sec-title">오늘 집중할 것</h2>
       </div>
-      <div id="resume-list">
-        <p class="resume-empty">이어할 작업이 없어요</p>
+      <div id="homeKillerWidgets" class="kw-scroll">
+        <!-- KillerWidgets.renderRow('homeKillerWidgets') -->
       </div>
-    </section>
+    </div>
+
+    <!-- 이어하기 섹션 (app-gallery.js renderHomeResume() 가 채움) -->
+    <div id="resume-section" style="display:none;"></div>
+
+    <!-- 내일 예약 §5.5 List Menu (app-power-view.js renderHomeHeroCard() 가 채움) -->
+    <div id="homeTomorrowSched" style="display:none;"></div>
+
+    <!-- statCaptions / statPosts — 기존 JS 호환용 (숨김) -->
+    <div style="display:none;" aria-hidden="true">
+      <span id="statCaptions">0</span>
+      <span id="statPosts">0</span>
+    </div>
 
     <div id="personaDash" style="display:none;"><div id="personaContent"></div></div>
 

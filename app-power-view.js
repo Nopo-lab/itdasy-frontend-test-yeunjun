@@ -950,6 +950,67 @@
   window.openPowerView = openPowerView;
   window.closePowerView = closePowerView;
 
+  // ── 홈 히어로 카드 렌더링 (P1) ────────────────────────
+  function renderHomeHeroCard(brief) {
+    if (!brief) return;
+
+    const rev = document.getElementById('heroMonthRevenue');
+    const mom = document.getElementById('heroMomPct');
+    const bookings = document.getElementById('heroTodayBookings');
+    const risk = document.getElementById('heroRiskCount');
+
+    if (rev) {
+      const amount = brief.this_month_total || 0;
+      rev.textContent = amount > 0
+        ? (amount >= 10000
+          ? Math.round(amount / 10000) + '만원'
+          : amount.toLocaleString('ko-KR') + '원')
+        : '—';
+    }
+    if (mom) {
+      const pct = brief.mom_delta_pct;
+      mom.textContent = pct != null ? (pct >= 0 ? '+' + pct : String(pct)) + '%' : '—';
+    }
+    if (bookings) {
+      const cnt = (brief.today_bookings || []).length;
+      bookings.textContent = cnt + '건';
+    }
+    if (risk) {
+      const cnt = (brief.at_risk || []).length;
+      risk.textContent = cnt > 0 ? cnt + '명' : '없음';
+    }
+
+    // 내일 예약 §5.5 List Menu (today_bookings 데이터로 축약 표시)
+    const schedEl = document.getElementById('homeTomorrowSched');
+    const upcoming = brief.today_bookings || [];
+    if (schedEl && upcoming.length > 0) {
+      schedEl.style.display = '';
+      schedEl.innerHTML = `
+        <div class="sec-head" style="padding:0 2px;margin-bottom:10px;">
+          <h2 class="home-sec-title">오늘 예약<span style="font-weight:500;font-size:12px;color:var(--text-subtle);margin-left:6px;">${upcoming.length}건</span></h2>
+        </div>
+        <div class="list-menu">
+          ${upcoming.slice(0, 3).map(b => `
+            <div class="list-menu__item">
+              <div class="list-menu__icon-box list-menu__icon-box--neutral">
+                <svg class="ic" aria-hidden="true"><use href="#ic-calendar"/></svg>
+              </div>
+              <div class="list-menu__body">
+                <div class="list-menu__title">${_esc(b.customer_name || '예약')}</div>
+                <div class="list-menu__sub">${_esc(b.service_name || '')}${b.time ? ' · ' + _esc(b.time) : ''}</div>
+              </div>
+              <div class="list-menu__right">
+                <svg class="ic ic--xs" aria-hidden="true"><use href="#ic-chevron-right"/></svg>
+              </div>
+            </div>`).join('')}
+        </div>`;
+    } else if (schedEl) {
+      schedEl.style.display = 'none';
+    }
+  }
+
+  window.renderHomeHeroCard = renderHomeHeroCard;
+
   // 전역 이벤트 위임
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-pv-open]');

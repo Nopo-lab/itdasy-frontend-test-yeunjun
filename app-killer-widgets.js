@@ -311,7 +311,7 @@
     o.querySelector('#kw-sms-close').addEventListener('click', () => o.remove());
     o.querySelector('#kw-sms-cancel').addEventListener('click', () => o.remove());
     o.querySelector('#kw-sms-copy').addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(document.getElementById('kw-sms-text').value); if (window.showToast) window.showToast('✅ 복사됨'); } catch(e) {}
+      try { await navigator.clipboard.writeText(document.getElementById('kw-sms-text').value); if (window.showToast) window.showToast('✅ 복사됨'); } catch(e) { /* ignore */ }
     });
 
     // 대상 고객 리스트 로드 → 각 전화번호로 SMS 링크 생성
@@ -343,7 +343,7 @@
 
   const ORDER_KEY = 'itdasy_widget_order_v1';
   function _loadOrder() { try { return JSON.parse(localStorage.getItem(ORDER_KEY) || '[]'); } catch(e){ return []; } }
-  function _saveOrder(arr) { try { localStorage.setItem(ORDER_KEY, JSON.stringify(arr)); } catch(e){} }
+  function _saveOrder(arr) { try { localStorage.setItem(ORDER_KEY, JSON.stringify(arr)); } catch(e){ /* ignore */ } }
 
   function _applyOrder(container) {
     const order = _loadOrder();
@@ -364,7 +364,7 @@
       el.setAttribute('draggable', 'true');
       el.addEventListener('dragstart', (e) => {
         dragEl = el; el.style.opacity = '0.5';
-        try { e.dataTransfer.effectAllowed = 'move'; } catch(_){}
+        try { e.dataTransfer.effectAllowed = 'move'; } catch(_){ /* ignore */ }
       });
       el.addEventListener('dragend', () => {
         if (dragEl) dragEl.style.opacity = '';
@@ -395,5 +395,64 @@
     _enableDrag(el);
   }
 
-  window.KillerWidgets = { render };
+  // P1 — 홈 탭 가로 스크롤 카드 5종
+  function _rowCard(icCls, icSvg, tag, tagCls, t, s, cta) {
+    return `<button class="kw" type="button">
+      <div class="kw-top">
+        <div class="kw-ic ${icCls}">${icSvg}</div>
+        <span class="kw-tag ${tagCls}">${_esc(tag)}</span>
+      </div>
+      <p class="kw-t">${_esc(t)}</p>
+      <p class="kw-s">${_esc(s)}</p>
+      <div class="kw-foot"><span>${_esc(cta)}</span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><polyline points="9 18 15 12 9 6"/></svg></div>
+    </button>`;
+  }
+
+  function _buildRowCards(brief) {
+    if (!brief) {
+      return `<div style="padding:8px 4px;color:var(--text-subtle);font-size:12px;">데이터를 불러오지 못했어요</div>`;
+    }
+    const atRisk = brief.at_risk || [];
+    const momPct = brief.mom_delta_pct;
+    const emptySlots = brief.empty_slots || [];
+    const alertSvg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+    const trendSvg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`;
+    const couponSvg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>`;
+    const clockSvg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+    const focusSvg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`;
+
+    const c1 = _rowCard('warn', alertSvg, '위험', 'warn',
+      atRisk.length ? `이탈 임박 ${atRisk.length}명` : '이탈 위험 없음',
+      atRisk.length ? atRisk.slice(0, 2).map(a => _esc(a.name)).join(', ') + (atRisk.length > 2 ? ' 외' : '') : '모든 고객 방문 정상이에요',
+      '지금 보내기');
+    const c2 = _rowCard(momPct != null && momPct >= 10 ? 'ok' : '', trendSvg,
+      '매출', momPct != null && momPct >= 10 ? 'ok' : '',
+      momPct != null ? `이번 주 매출 ${momPct >= 0 ? '+' : ''}${momPct}%` : '매출 집계 중',
+      brief.this_month_total ? (brief.this_month_total).toLocaleString('ko-KR') + '원 누적' : '데이터 없음',
+      '포스트 만들기');
+    const c3 = _rowCard('', couponSvg, '쿠폰', '',
+      '슬로우데이 쿠폰 초안',
+      emptySlots.length ? `빈슬롯 ${emptySlots.length}개 — 쿠폰 AI가 써놨어요` : '빈 슬롯 없음',
+      '확인하기');
+    const c4 = _rowCard('', clockSvg, '빈슬롯', '',
+      emptySlots.length ? `${emptySlots[0].from || '—'}~${emptySlots[0].to || '—'} 비어요` : '빈 슬롯 없음',
+      emptySlots.length ? `${emptySlots.length}개 슬롯 · 단골에게 알려봐요` : '오늘 일정이 꽉 찼어요',
+      '메시지 보내기');
+    const c5 = _rowCard('', focusSvg, '집중', '',
+      '오늘 꼭 할 3가지',
+      '캡션 만들기 · 예약 확인 · 재료 체크',
+      'AI에게 묻기');
+
+    return c1 + c2 + c3 + c4 + c5;
+  }
+
+  async function renderRow(containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const brief = await _fetchBrief();
+    el.innerHTML = _buildRowCards(brief);
+    if (window.renderHomeHeroCard) window.renderHomeHeroCard(brief);
+  }
+
+  window.KillerWidgets = { render, renderRow };
 })();

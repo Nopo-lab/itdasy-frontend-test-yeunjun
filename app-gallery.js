@@ -140,6 +140,58 @@ let _previewPhotoIdx = 0;        // 미리보기 팝업 현재 사진 인덱스
 let _baMode         = false;     // 비포/애프터 모드 활성화 여부
 
 // ═══════════════════════════════════════════════════════
+// 홈 탭 — 이어하기 섹션 렌더링 (P1)
+// ═══════════════════════════════════════════════════════
+async function renderHomeResume() {
+  const section = document.getElementById('resume-section');
+  if (!section) return;
+
+  let slots = _slots;
+  if (!slots || !slots.length) {
+    try { slots = await loadSlotsFromDB(); } catch (_e) { slots = []; }
+  }
+
+  const active = slots.filter(s => s.status !== 'published' && (s.photos || []).length > 0);
+  if (!active.length) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = '';
+  section.innerHTML = `
+    <div class="sec-head" style="padding:0 2px;margin-bottom:10px;">
+      <h2 class="home-sec-title">이어하기<span style="font-weight:500;font-size:12px;color:var(--text-subtle);margin-left:6px;">${active.length}개</span></h2>
+      <button class="sec-more" onclick="showTab('finish', document.querySelectorAll('.nav-btn')[4])" data-haptic="light" style="font-size:12px;color:var(--brand);">
+        전체<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+    <div class="list-menu">
+      ${active.slice(0, 3).map(slot => {
+        const thumb = slot.photos && slot.photos[0];
+        const imgSrc = thumb ? (thumb.editedDataUrl || thumb.dataUrl || '') : '';
+        const badgeText = slot.caption ? '글 완성' : (slot.photos && slot.photos.length ? '사진 ' + slot.photos.length + '장' : '작성중');
+        return `
+        <div class="list-menu__item" onclick="if(typeof openSlotEditor==='function')openSlotEditor('${slot.id}')" style="cursor:pointer;">
+          <div class="list-menu__icon-box" style="${imgSrc ? 'padding:0;overflow:hidden;' : ''}">
+            ${imgSrc
+              ? `<img src="${imgSrc}" alt="" style="width:36px;height:36px;object-fit:cover;display:block;" loading="lazy">`
+              : `<svg class="ic" aria-hidden="true"><use href="#ic-image"/></svg>`}
+          </div>
+          <div class="list-menu__body">
+            <div class="list-menu__title">${slot.label || '제목 없음'}</div>
+            <div class="list-menu__sub">${badgeText}</div>
+          </div>
+          <div class="list-menu__right">
+            <svg class="ic ic--xs" aria-hidden="true"><use href="#ic-chevron-right"/></svg>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+window.renderHomeResume = renderHomeResume;
+
+// ═══════════════════════════════════════════════════════
 // 홈 탭 퀵액션
 // ═══════════════════════════════════════════════════════
 function goWorkshopUpload() {
@@ -234,7 +286,7 @@ async function handleGalleryUpload(input) {
   if (_slots.length === 0 && toAdd.length > 0) {
     const slot = { id: _uid(), label: '손님 1', order: 0, photos: [], caption: '', hashtags: '', status: 'open', instagramPublished: false, deferredAt: null, createdAt: Date.now() };
     _slots.push(slot);
-    try { await saveSlotToDB(slot); } catch(_e) {}
+    try { await saveSlotToDB(slot); } catch(_e) { /* ignore */ }
   }
 
   _renderPhotoGrid();
@@ -256,7 +308,7 @@ async function _handleDropZoneDrop(e) {
 async function resetWorkshop() {
   if (!confirm('전체 초기화할까요?\n모든 사진과 슬롯이 삭제됩니다.')) return;
   for (const slot of _slots) {
-    try { await deleteSlotFromDB(slot.id); } catch(_e) {}
+    try { await deleteSlotFromDB(slot.id); } catch(_e) { /* ignore */ }
   }
   _photos = []; _slots = [];
   _selectedIds.clear(); _popupSelIds.clear();
@@ -411,7 +463,7 @@ async function _addSlotInPopup() {
   const num = _slots.length + 1;
   const slot = { id: _uid(), label: `손님 ${num}`, order: num - 1, photos: [], caption: '', hashtags: '', status: 'open', instagramPublished: false, deferredAt: null, createdAt: Date.now() };
   _slots.push(slot);
-  try { await saveSlotToDB(slot); } catch(_e) {}
+  try { await saveSlotToDB(slot); } catch(_e) { /* ignore */ }
   _renderAssignPopup();
 }
 
@@ -426,7 +478,7 @@ async function _deleteSlotInPopup(slotId) {
     });
   }
   _slots = _slots.filter(s => s.id !== slotId);
-  try { await deleteSlotFromDB(slotId); } catch(_e) {}
+  try { await deleteSlotFromDB(slotId); } catch(_e) { /* ignore */ }
   // 슬롯 번호 재정렬
   _renumberSlots();
   _renderAssignPopup();
@@ -455,7 +507,7 @@ async function _renumberSlots() {
     slot.order = i;
   });
   for (const slot of _slots) {
-    try { await saveSlotToDB(slot); } catch(_e) {}
+    try { await saveSlotToDB(slot); } catch(_e) { /* ignore */ }
   }
 }
 
@@ -528,7 +580,7 @@ async function deleteSlot(slotId, e) {
     });
   }
   _slots = _slots.filter(s => s.id !== slotId);
-  try { await deleteSlotFromDB(slotId); } catch(_e) {}
+  try { await deleteSlotFromDB(slotId); } catch(_e) { /* ignore */ }
   // 슬롯 번호 재정렬
   await _renumberSlots();
   _renderSlotCards();
@@ -679,7 +731,7 @@ async function saveAndCloseSlotPopup() {
   const slot = _slots.find(s => s.id === _popupSlotId);
   if (slot) {
     slot.status = 'done';
-    try { await saveSlotToDB(slot); } catch(_e) {}
+    try { await saveSlotToDB(slot); } catch(_e) { /* ignore */ }
   }
   closeSlotPopup();
   _renderCompletionBanner();
@@ -869,7 +921,7 @@ async function unassignPopupPhoto(photoId, e) {
   }
   slot.photos = slot.photos.filter(p => p.id !== photoId);
   _popupSelIds.delete(photoId);
-  try { await saveSlotToDB(slot); } catch(_e) {}
+  try { await saveSlotToDB(slot); } catch(_e) { /* ignore */ }
   _renderPopupPhotoGrid(slot);
   showToast('배정 취소됨 — 미배정 사진으로 돌아갔어요');
 }
@@ -884,7 +936,7 @@ async function addPhotosToPopup(input) {
     _photos.push({ id, file, dataUrl });
   }
   input.value = '';
-  try { await saveSlotToDB(slot); } catch(_e) {}
+  try { await saveSlotToDB(slot); } catch(_e) { /* ignore */ }
   _renderPopupPhotoGrid(slot);
 }
 
@@ -939,7 +991,7 @@ async function _bulkApplyBA() {
   // AFTER 사진 숨김 처리 + 연결 ID 저장 (되돌리기용)
   before.baAfterRefId = afterId;
   after.hidden = true;
-  try { await saveSlotToDB(slot); } catch(_e) {}
+  try { await saveSlotToDB(slot); } catch(_e) { /* ignore */ }
   if (progress) progress.style.display = 'none';
   _popupSelIds.clear();
   _renderPopupPhotoGrid(slot);
@@ -958,7 +1010,7 @@ async function restoreBAPhoto(baPhotoId) {
   baPhoto.mode = 'original';
   baPhoto.editedDataUrl = null;
   baPhoto.baAfterRefId = null;
-  try { await saveSlotToDB(slot); } catch(_e) {}
+  try { await saveSlotToDB(slot); } catch(_e) { /* ignore */ }
   _renderPopupPhotoGrid(slot);
   showToast('원본 2장으로 복원됐어요');
 }
@@ -993,7 +1045,7 @@ async function _bulkDeletePopup() {
   if (!slot || !_popupSelIds.size) return;
   if (!confirm(`선택한 ${_popupSelIds.size}장을 삭제할까요?`)) return;
   slot.photos = slot.photos.filter(p => !_popupSelIds.has(p.id));
-  try { await saveSlotToDB(slot); } catch(_e) {}
+  try { await saveSlotToDB(slot); } catch(_e) { /* ignore */ }
   _popupSelIds.clear();
   _renderPopupPhotoGrid(slot);
   _renderSlotCards();

@@ -9,8 +9,8 @@
 
   const STORAGE_KEY = 'itdasy_theme';
   const MODES = ['system', 'light', 'dark'];
-  const ICONS = { system: '🌗', light: '☀️', dark: '🌙' };
   const LABELS = { system: '시스템', light: '라이트', dark: '다크' };
+  const ICON_HREFS = { system: '#ic-moon', light: '#ic-sun', dark: '#ic-moon' };
 
   function _current() {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -37,7 +37,8 @@
   function _updateButton(mode) {
     const btn = document.getElementById('themeToggleBtn');
     if (btn) {
-      btn.textContent = ICONS[mode];
+      const use = document.getElementById('themeToggleIcon');
+      if (use) use.setAttribute('href', ICON_HREFS[mode]);
       btn.setAttribute('aria-label', `화면 모드: ${LABELS[mode]} (탭하면 전환)`);
       btn.setAttribute('title', `${LABELS[mode]} 모드`);
     }
@@ -50,7 +51,7 @@
     _applyTheme(next);
     _syncLabels();
     if (typeof window.showToast === 'function') {
-      window.showToast(`${ICONS[next]} ${LABELS[next]} 모드`);
+      window.showToast(`${LABELS[next]} 모드`);
     }
   };
 
@@ -70,7 +71,7 @@
   window.cycleFontSize = function () {
     const cur = _curFS();
     const next = FS_MODES[(FS_MODES.indexOf(cur) + 1) % FS_MODES.length];
-    try { localStorage.setItem(FS_KEY, next); } catch(_){}
+    try { localStorage.setItem(FS_KEY, next); } catch(_){ /* ignore */ }
     _applyFS(next);
     _syncLabels();
     if (typeof window.showToast === 'function') window.showToast(`🔠 글씨 ${FS_LABELS[next]}`);

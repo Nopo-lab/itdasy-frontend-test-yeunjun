@@ -1,0 +1,154 @@
+/* ── Itdasy Design System v1 · screens/home.css ─────────────────
+   홈 탭 전용 레이아웃 (P1) */
+
+/* ── §5.3 Killer Widget Row (홈 탭 가로 스크롤) ─────────── */
+.kw-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 0 12px;
+  margin: 0 -20px;
+  padding-left: 20px;
+  padding-right: 20px;
+  scrollbar-width: none;
+}
+
+.kw-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.kw {
+  flex-shrink: 0;
+  width: 172px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 14px;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.2s;
+  text-align: left;
+  font-family: Pretendard, sans-serif;
+}
+
+.kw:active {
+  transform: scale(.98);
+}
+
+.kw-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.kw-ic {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-bg);
+  color: var(--brand);
+}
+
+.kw-ic.warn {
+  background: rgba(239,68,68,.10);
+  color: #b91c1c;
+}
+
+.kw-ic.ok {
+  background: rgba(22,181,94,.10);
+  color: #0d8f49;
+}
+
+.kw-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.kw-tag.warn {
+  background: rgba(239,68,68,.10);
+  color: #b91c1c;
+}
+
+.kw-tag.ok {
+  background: rgba(22,181,94,.10);
+  color: #0d8f49;
+}
+
+.kw-t {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 3px;
+}
+
+.kw-s {
+  font-size: 11px;
+  color: var(--text-subtle);
+  margin: 0;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.kw-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--brand);
+  font-weight: 700;
+}
+
+/* ── 홈 new-post CTA (main-cta 보조) ────────────────────── */
+.home-new-post-cta {
+  border-color: var(--brand);
+  box-shadow: 0 2px 8px rgba(241,128,145,.12);
+}
+
+/* pink-glow-pulse 1회 — 첫 진입 강조 */
+@keyframes home-glow-once {
+  0% { box-shadow: 0 2px 8px rgba(241,128,145,.12), 0 0 0 0 rgba(241,128,145,.4); }
+  60% { box-shadow: 0 2px 8px rgba(241,128,145,.12), 0 0 0 12px rgba(241,128,145,0); }
+  100% { box-shadow: 0 2px 8px rgba(241,128,145,.12), 0 0 0 0 rgba(241,128,145,0); }
+}
+
+.home-new-post-cta--pulse {
+  animation: home-glow-once 2s ease 1;
+}
+
+/* ── 홈 히어로 카드 보조값 (hero-card base는 patterns.css) ─ */
+.home-hero__stat-trend {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  background: rgba(255,255,255,.22);
+  letter-spacing: -0.2px;
+}
+
+/* ── 내일 예약 섹션 ─────────────────────────────────────── */
+.home-sched-empty {
+  padding: 16px 0;
+  font-size: 13px;
+  color: var(--text-subtle);
+  text-align: center;
+}
+
+/* prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .home-new-post-cta--pulse {
+    animation: none;
+  }
+}
