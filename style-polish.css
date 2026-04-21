@@ -198,3 +198,20 @@ body.splashing > *:not(#splashScreen) {
 .animate-popup-in {
   animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
+
+/* ═══════════════════════════════════════════════════════
+   Phase 6.3 — 버튼 전체 즉각 반응 개선 (2026-04-21)
+   active 시 스케일 다운 + 트랜지션 짧게. 단, 입력창/텍스트 영역 제외.
+   ═══════════════════════════════════════════════════════ */
+button, [role="button"], .btn, a.btn, .chip {
+  transition: transform 0.1s cubic-bezier(0.3,0,0.2,1), box-shadow 0.12s ease, background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+button:active:not(:disabled),
+[role="button"]:active,
+.btn:active,
+a.btn:active,
+.chip:active {
+  transform: scale(0.96);
+}
+button:disabled { opacity: 0.6; cursor: not-allowed; }

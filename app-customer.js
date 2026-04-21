@@ -369,7 +369,8 @@
         `).join('');
         listEl.querySelectorAll('[data-pick-id]').forEach(row => {
           row.addEventListener('click', () => {
-            const c = items.find(x => x.id === row.dataset.pickId);
+            const pickedId = row.dataset.pickId;
+            const c = items.find(x => String(x.id) === String(pickedId));
             close(c ? { id: c.id, name: c.name } : null);
           });
         });

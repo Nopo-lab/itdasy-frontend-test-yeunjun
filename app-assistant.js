@@ -112,6 +112,7 @@
       cancel_booking:  { icon: '🗑', label: '예약 취소', color: '#DC3545' },
       reschedule_booking: { icon: '🔄', label: '예약 시간 변경', color: '#0288D1' },
       update_customer: { icon: '✏️', label: '고객 정보 수정', color: '#4ECDC4' },
+      upsert_inventory: { icon: '📦', label: '재고 추가', color: '#2B8C7E' },
       generate_bulk_message: { icon: '📋', label: '단체 메시지 초안', color: '#FF8A5C' },
     }[action.kind] || { icon: '✓', label: action.kind, color: '#666' };
 
