@@ -31,6 +31,7 @@
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/patterns.css">
 <link rel="stylesheet" href="css/screens/home.css">
+<link rel="stylesheet" href="css/screens/dashboard.css">
 <link rel="stylesheet" href="style.css?v=20260420">
 </head>
 <body>
@@ -353,10 +354,19 @@
     </div>
 
     <!-- 메뉴 -->
-    <!-- 샵 운영 대시보드 (고객·예약·매출·재고·NPS·네이버리뷰·영상·임포트·인사이트 통합 진입점) -->
-    <button class="sheet-row" data-haptic="medium" onclick="closeSettings(); if(typeof openDashboard==='function')openDashboard();"
-            style="background:linear-gradient(135deg,rgba(241,128,145,0.12),rgba(241,128,145,0.04));border:1px solid rgba(241,128,145,0.25);margin-bottom:4px;font-weight:700;">
-      📊 대시보드 <span style="font-size:10px;color:#888;font-weight:400;margin-left:4px;">고객·예약·매출·재고 한 곳에서</span>
+    <!-- 샵 운영 대시보드 진입점 (P2 §5.5 menu style) -->
+    <button class="db-menu-it" data-haptic="medium" onclick="closeSettings(); if(typeof openDashboard==='function')openDashboard();"
+            style="margin-bottom:4px;border-radius:var(--r-md);border:1px solid var(--border);">
+      <div class="db-menu__ic db-menu__ic--pink">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
+      </div>
+      <div class="db-menu__tx">
+        <p class="db-menu__t">대시보드</p>
+        <p class="db-menu__s">고객·예약·매출·재고 한 곳에서</p>
+      </div>
+      <span class="db-menu__arr">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </span>
     </button>
     <button class="sheet-row" onclick="closeSettings(); connectInstagram();">인스타 다시 연결하기</button>
     <button class="sheet-row" onclick="closeSettings(); runPersonaAnalyze();">내 말투 새로 분석하기</button>
