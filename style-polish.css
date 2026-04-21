@@ -215,3 +215,46 @@ a.btn:active,
   transform: scale(0.96);
 }
 button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ═══════════════════════════════════════════════════════
+   T-324 · iOS Safari / WebKit 호환성 (2026-04-22)
+   ═══════════════════════════════════════════════════════ */
+
+/* 100vh 버그 — iOS Safari 에서 주소창 포함되면 잘림 */
+:root { --vh: 1vh; }
+.full-height { min-height: calc(var(--vh, 1vh) * 100); }
+@supports (-webkit-touch-callout: none) {
+  .full-height { min-height: -webkit-fill-available; }
+}
+
+/* input zoom 방지 — iOS Safari 는 font-size < 16px 시 자동 줌 */
+input[type="text"], input[type="email"], input[type="password"],
+input[type="number"], input[type="tel"], input[type="search"],
+input[type="url"], textarea, select {
+  font-size: max(16px, 1em);
+}
+
+/* 모멘텀 스크롤 */
+.scroll-momentum, [data-scroll] { -webkit-overflow-scrolling: touch; }
+
+/* position:sticky 수직 스크롤 컨테이너 필수 */
+.sticky-top { position: -webkit-sticky; position: sticky; top: 0; }
+
+/* tap highlight 제거 */
+button, a, [role="button"] { -webkit-tap-highlight-color: transparent; }
+
+/* safe-area 전역 유틸 */
+.safe-top { padding-top: env(safe-area-inset-top, 0); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0); }
+
+/* iOS 는 backdrop-filter prefix 필요 */
+.backdrop-blur { -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+
+/* date/time input 중앙정렬 (기본은 iOS 는 왼쪽) */
+input[type="date"], input[type="time"] { -webkit-appearance: none; appearance: none; text-align: left; }
+
+/* 탭 시 overscroll 방지 */
+body { overscroll-behavior-y: contain; }
+
+/* textarea resize 버튼 iOS 안 나오지만 Android 로는 나옴 — 통일 */
+textarea { resize: vertical; min-height: 60px; }

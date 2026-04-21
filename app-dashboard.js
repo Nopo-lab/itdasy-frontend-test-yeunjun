@@ -35,14 +35,34 @@
     return Math.round(diff / 30) + '개월 전';
   }
 
-  async function _apiGet(path) {
+  // T-326 — sessionStorage 캐시 (1분 내 재호출 즉시 반환, 네트워크 로딩 지연 해소)
+  const _CACHE_TTL = 60 * 1000;
+  function _cacheKey(path) { return 'dash_cache::' + path; }
+  function _getCached(path) {
+    try {
+      const raw = sessionStorage.getItem(_cacheKey(path));
+      if (!raw) return null;
+      const { t, v } = JSON.parse(raw);
+      if (Date.now() - t > _CACHE_TTL) return null;
+      return v;
+    } catch (_) { return null; }
+  }
+  function _setCached(path, v) {
+    try { sessionStorage.setItem(_cacheKey(path), JSON.stringify({ t: Date.now(), v })); } catch(_){}
+  }
+
+  async function _apiGet(path, opts) {
     if (!window.API || !window.authHeader) throw new Error('no-auth');
     const auth = window.authHeader();
     if (!auth?.Authorization) throw new Error('no-token');
+    const cached = (opts && opts.force) ? null : _getCached(path);
+    if (cached) return cached;
     const res = await fetch(window.API + path, { headers: auth });
     if (res.status === 404 || res.status === 501) throw new Error('endpoint-missing');
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    return await res.json();
+    const data = await res.json();
+    _setCached(path, data);
+    return data;
   }
 
   // ── 시트 DOM ──────────────────────────────────────────

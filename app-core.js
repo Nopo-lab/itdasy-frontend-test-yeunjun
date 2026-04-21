@@ -545,6 +545,14 @@ function _toggleSignup(show) {
   }
 }
 
+// T-324 — iOS Safari 100vh 동적 계산
+(function _setVH() {
+  const set = () => document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
+  set();
+  window.addEventListener('resize', set, { passive: true });
+  window.addEventListener('orientationchange', () => setTimeout(set, 250));
+})();
+
 // ===== 앱 초기화 (모든 모듈 로드 후 실행) =====
 window.addEventListener('load', function() {
   // Enter 키 로그인
