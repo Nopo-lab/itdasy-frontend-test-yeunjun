@@ -1,20 +1,19 @@
 /* ─────────────────────────────────────────────────────────────
-   다크모드 토글 — 3단계 순환: 시스템 → 라이트 → 다크 → 시스템 ...
-   - localStorage: itdasy_theme = 'system' | 'light' | 'dark'
+   다크모드 토글 — 2단계 순환: 라이트 ↔ 다크
+   - localStorage: itdasy_theme = 'light' | 'dark'
    - body[data-theme] 속성 사용, CSS 에서 `[data-theme="dark"]` 선택자로 적용
-   - 시스템 모드에서는 prefers-color-scheme 미디어쿼리 활용
    ──────────────────────────────────────────────────────────── */
 (function () {
   'use strict';
 
   const STORAGE_KEY = 'itdasy_theme';
-  const MODES = ['system', 'light', 'dark'];
-  const LABELS = { system: '시스템', light: '라이트', dark: '다크' };
-  const ICON_HREFS = { system: '#ic-moon', light: '#ic-sun', dark: '#ic-moon' };
+  const MODES = ['light', 'dark'];
+  const LABELS = { light: '라이트', dark: '다크' };
+  const ICON_HREFS = { light: '#ic-sun', dark: '#ic-moon' };
 
   function _current() {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return MODES.includes(saved) ? saved : 'system';
+    return MODES.includes(saved) ? saved : 'light';
   }
 
   function _applyTheme(mode) {
@@ -23,13 +22,9 @@
     if (mode === 'dark') {
       html.setAttribute('data-theme', 'dark');
       body?.setAttribute('data-theme', 'dark');
-    } else if (mode === 'light') {
+    } else {
       html.setAttribute('data-theme', 'light');
       body?.setAttribute('data-theme', 'light');
-    } else {
-      // system — data-theme 제거하면 prefers-color-scheme 미디어쿼리만 동작
-      html.removeAttribute('data-theme');
-      body?.removeAttribute('data-theme');
     }
     _updateButton(mode);
   }
