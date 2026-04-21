@@ -1,0 +1,72 @@
+/* ── Itdasy Design System v1 · tokens.css ──────────────────────────
+   Source: 09_디자인시스템_v1.md §1 · §2 · §3
+   이 파일이 유일한 토큰 원천(SSOT). style-base.css :root 는 alias만 유지. */
+
+:root {
+  /* §1 컬러 — 라이트 */
+  --brand:         #F18091;
+  --brand-strong:  #E5586E;
+  --brand-bg:      #FFF1F3;
+  --bg:            #F2F4F6;
+  --frame:         #E8ECF1;
+  --surface:       #FFF;
+  --surface-2:     #F7F8FA;
+  --text:          #191F28;
+  --text-muted:    #4E5968;
+  --text-subtle:   #8B95A1;
+  --border:        rgba(0,0,0,.07);
+  --border-strong: rgba(0,0,0,.14);
+  --ok:     #16B55E;
+  --warn:   #F59E0B;
+  --danger: #EF4444;
+
+  /* §3 반경 */
+  --r-sm:   8px;
+  --r-md:   14px;
+  --r-lg:   20px;
+  --r-xl:   28px;
+  --r-pill: 999px;
+
+  /* §3 간격 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* §3 그림자 */
+  --shadow-sm:    0 2px 8px rgba(0,0,0,.04);
+  --shadow-md:    0 8px 24px rgba(0,0,0,.08);
+  --shadow-brand: 0 10px 24px rgba(241,128,145,.30);
+  --shadow-xl:    0 24px 60px rgba(0,0,0,.18);
+
+  /* §3 전역 */
+  --stroke: 2;
+}
+
+/* §1 컬러 — 다크 (디자인시스템 v1 정의) */
+html[data-theme="dark"] {
+  --brand:         #FF8CA0;
+  --brand-strong:  #FFA8B8;
+  --brand-bg:      rgba(255,140,160,.14);
+  --bg:            #0E1218;
+  --frame:         #252B35;
+  --surface:       #1A1F27;
+  --surface-2:     #242A33;
+  --text:          #F3F5F7;
+  --text-muted:    #C7CCD3;
+  --text-subtle:   #8B93A0;
+  --border:        rgba(255,255,255,.10);
+  --border-strong: rgba(255,255,255,.20);
+  --shadow-md:    0 8px 24px rgba(0,0,0,.30);
+  --shadow-brand: 0 10px 24px rgba(255,140,160,.35);
+}
+
+/* §4 SVG 전역 기본값 — Lucide 라인 스타일 */
+svg {
+  stroke-width: var(--stroke);
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

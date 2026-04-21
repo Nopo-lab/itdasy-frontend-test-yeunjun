@@ -1,0 +1,48 @@
+/* ── Itdasy Design System v1 · icons.css ───────────────────────────
+   §4 아이콘 규칙: Lucide 라인 SVG, <use href="#ic-xxx"> 형태 사용 */
+
+/* SVG 스프라이트 숨김 */
+#icon-sprite {
+  display: none;
+}
+
+/* 아이콘 래퍼 — 기본 크기 18px (§4: 기본) */
+.ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+}
+
+/* 크기 variants — §4: 히어로 14px / 기본 18px(default) / 탭 24px */
+.ic--xs {
+  width: 14px;
+  height: 14px;
+}
+
+.ic--md {
+  width: 24px;
+  height: 24px;
+}
+
+.ic--lg {
+  width: 32px;
+  height: 32px;
+}
+
+/* <svg> 자식이 부모 크기를 꽉 채우도록 */
+.ic svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* 아이콘 색상 helpers */
+.ic--brand  { color: var(--brand); }
+.ic--muted  { color: var(--text-muted); }
+.ic--subtle { color: var(--text-subtle); }
+.ic--ok     { color: var(--ok); }
+.ic--warn   { color: var(--warn); }
+.ic--danger { color: var(--danger); }

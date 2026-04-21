@@ -1,0 +1,276 @@
+/* ── Itdasy Design System v1 · patterns.css ────────────────────────
+   §5 복합 패턴 (Hero, List Menu, Empty State, Tab Bar 등) */
+
+/* ── §5.1 Hero Card ────────────────────────────────────────────── */
+.hero-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  padding: 18px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  box-shadow: var(--shadow-brand);
+  color: #fff;
+}
+
+.hero-card__deco {
+  position: absolute;
+  top: -24px;
+  right: -24px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.10);
+  pointer-events: none;
+}
+
+.hero-card__label {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: .85;
+}
+
+.hero-card__value {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  line-height: 1.2;
+}
+
+.hero-card__stats {
+  display: flex;
+  gap: 0;
+  border-top: 1px solid rgba(255,255,255,.2);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.hero-card__stat {
+  flex: 1;
+  text-align: center;
+}
+
+.hero-card__stat + .hero-card__stat {
+  border-left: 1px solid rgba(255,255,255,.15);
+}
+
+.hero-card__stat-v {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.hero-card__stat-l {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: .80;
+  margin-top: 2px;
+}
+
+/* ── §5.5 List Menu ────────────────────────────────────────────── */
+.list-menu {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.list-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--border);
+}
+
+.list-menu__item:last-child {
+  border-bottom: none;
+}
+
+.list-menu__item:active {
+  background: var(--surface-2);
+}
+
+.list-menu__icon-box {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-bg);
+  color: var(--brand);
+}
+
+.list-menu__icon-box--neutral {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.list-menu__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-menu__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.list-menu__sub {
+  font-size: 12px;
+  color: var(--text-subtle);
+  margin-top: 1px;
+}
+
+.list-menu__right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── §5.7 Empty State ──────────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.empty-state__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-lg);
+  background: var(--brand-bg);
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.empty-state__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+
+.empty-state__desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  line-height: 1.6;
+}
+
+.empty-state__cta {
+  margin-top: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: var(--r-pill);
+  background: var(--brand);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.1s;
+}
+
+.empty-state__cta:active {
+  transform: scale(.975);
+  opacity: .9;
+}
+
+/* ── §5.16 Tab Bar ─────────────────────────────────────────────── */
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr 1fr 72px 1fr 1fr;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 200;
+}
+
+.tab-bar__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 4px 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  transition: color 0.15s;
+  min-height: 56px;
+  position: relative;
+}
+
+.tab-bar__btn.active {
+  color: var(--brand);
+}
+
+/* active dot */
+.tab-bar__btn.active::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+
+/* 중앙 FAB (글쓰기) — 확정 2026-04-22 */
+.tab-bar__fab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  gap: 4px;
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tab-bar__fab-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  box-shadow: var(--shadow-brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -8px;
+  color: #fff;
+  transition: transform 0.1s;
+}
+
+.tab-bar__fab:active .tab-bar__fab-circle {
+  transform: scale(.94);
+}
+
+.tab-bar__fab.active .tab-bar__fab-circle {
+  outline: 2px solid var(--brand-bg);
+  outline-offset: 2px;
+}
