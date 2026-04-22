@@ -411,6 +411,10 @@
     </div>
 
     <button class="sheet-row muted" onclick="closeSettings(); localReset();">앱 전체 초기화</button>
+    <button class="sheet-row" id="exportDataBtn" style="color:#0a7b3e;font-weight:700;">📦 내 데이터 내보내기 (CSV·JSON)</button>
+    <div style="padding:0 16px 6px;font-size:11px;color:#999;line-height:1.6;">
+      GDPR Art. 20 · CCPA · PIPA 제35조 — 내가 입력한 전체 데이터를 기계 판독 가능 형식으로 다운로드.
+    </div>
     <button class="sheet-row danger" id="logoutBtn">로그아웃</button>
 
     <div class="sheet-sep"></div>
@@ -1409,13 +1413,19 @@
 <script src="app-referral.js"></script>
 <script src="app-growth-story.js"></script>
 <script src="app-content-report.js"></script>
-<!-- T-327 · Sentry 에러 모니터링 -->
+<script src="app-cookie-consent.js"></script>
+<script src="app-data-export.js"></script>
+<!-- T-327 · Sentry 에러 모니터링 (T-351: GDPR 동의 기반 활성화) -->
 <script>window.SENTRY_DSN_FE = "https://b3732869f4b445bc7a73a5e4cbacc4ed@o4511236563992576.ingest.us.sentry.io/4511236579852288";</script>
 <script src="https://browser.sentry-cdn.com/7.100.0/bundle.min.js" crossorigin="anonymous"></script>
 <script>
 (function() {
   var dsn = window.SENTRY_DSN_FE || '';
   if (!dsn || !window.Sentry) return;
+  // T-351 — GDPR/ePrivacy: 동의 없인 Sentry 비활성. EU 사용자는 opt-in 필수.
+  var consent = window.itdasyConsent && typeof window.itdasyConsent.isAnalyticsAllowed === 'function'
+    ? window.itdasyConsent.isAnalyticsAllowed() : true;
+  if (!consent) return;
   try {
     window.Sentry.init({
       dsn: dsn,

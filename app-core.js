@@ -1101,6 +1101,9 @@ window.authHeader = authHeader;
       if (typeof closeSettings === 'function') closeSettings();
       if (typeof openDeleteAccountModal === 'function') openDeleteAccountModal();
     });
+    on('exportDataBtn', () => {
+      if (typeof openDataExport === 'function') openDataExport();
+    });
     on('fullResetBtn', () => typeof fullReset === 'function' && fullReset());
 
     // 플랜 팝업
