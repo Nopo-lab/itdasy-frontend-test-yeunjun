@@ -512,21 +512,21 @@
     <span class="tab-bar__label">홈</span>
   </button>
   <button type="button" class="tab-bar__btn" data-tab="workshop" role="tab" data-haptic="light"
-          onclick="showTab('workshop',this); initWorkshopTab()" aria-label="작업실 탭">
+          onclick="showTab('workshop',this); if(typeof initWorkshopTab==='function')initWorkshopTab();" aria-label="작업실 탭">
     <svg class="tab-bar__icon" width="24" height="24"><use href="#ic-layers"/></svg>
     <span class="tab-bar__label">작업실</span>
   </button>
   <button type="button" class="tab-bar__fab" data-tab="caption" data-haptic="light"
-          onclick="showTab('caption',this); initCaptionSlotPicker(); if(typeof renderCaptionKeywordTags==='function')renderCaptionKeywordTags();" aria-label="글쓰기">
+          onclick="showTab('caption',this); if(typeof initCaptionSlotPicker==='function')initCaptionSlotPicker(); if(typeof renderCaptionKeywordTags==='function')renderCaptionKeywordTags();" aria-label="글쓰기">
     <svg width="26" height="26"><use href="#ic-edit-3"/></svg>
   </button>
   <button type="button" class="tab-bar__btn" data-tab="dashboard" role="tab" data-haptic="light"
-          onclick="showTab('dashboard',this); initDashboardTab()" aria-label="대시보드 탭">
+          onclick="showTab('dashboard',this); if(typeof initDashboardTab==='function')initDashboardTab();" aria-label="대시보드 탭">
     <svg class="tab-bar__icon" width="24" height="24"><use href="#ic-bar-chart-3"/></svg>
     <span class="tab-bar__label">대시보드</span>
   </button>
   <button type="button" class="tab-bar__btn" data-tab="finish" role="tab" data-haptic="light"
-          onclick="showTab('finish',this); initFinishTab()" aria-label="마무리 탭">
+          onclick="showTab('finish',this); if(typeof initFinishTab==='function')initFinishTab();" aria-label="마무리 탭">
     <svg class="tab-bar__icon" width="24" height="24"><use href="#ic-check-circle"/></svg>
     <span class="tab-bar__label">마무리</span>
   </button>
