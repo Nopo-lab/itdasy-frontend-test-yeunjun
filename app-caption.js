@@ -646,37 +646,6 @@ async function _doGenerateCaption(scenario, closePopup) {
   }
 }
 
-// ===== 마스터: 인스타 자동 발행 (1단계: 프리뷰 열기) =====
-function publishToInstagram() {
-  if (!getToken()) {
-    showToast("홈 탭에서 인스타 연동을 먼저 진행해주세요");
-    return;
-  }
-
-  const canvas = document.getElementById('baCanvas');
-  // 편집 가능한 textarea 값 우선, 없으면 생성된 캡션 사용
-  const editedCaption = document.getElementById('publishCaptionPreview').value.trim();
-  const caption = document.getElementById('captionText').value;
-  const hash = document.getElementById('captionHash').value;
-  const hasCaption = caption && !caption.includes("생성된 글이 여기에 나타납니다");
-
-  const finalText = editedCaption || (hasCaption ? caption + "\n\n" + hash : '(글 없이 사진만 올라갑니다)');
-
-  // 팝업 채우기
-  const shopName = localStorage.getItem('shop_name') || '사장님';
-  document.getElementById('previewShopName').textContent = shopName;
-  document.getElementById('previewFinalCaption').textContent = finalText;
-  document.getElementById('previewFinalImg').src = canvas.toDataURL('image/png');
-  document.getElementById('previewAvatar').innerHTML = document.getElementById('headerAvatar').innerHTML;
-
-  // 팝업 열기
-  const pop = document.getElementById('publishPreviewPopup');
-  pop.style.display = 'flex';
-  setTimeout(() => {
-    pop.querySelector('.popup-content').style.transform = 'scale(1)';
-    pop.querySelector('.popup-content').style.opacity = '1';
-  }, 10);
-}
 
 function closePublishPreview() {
   const pop = document.getElementById('publishPreviewPopup');
@@ -821,134 +790,10 @@ function flashBtn(btn, msg) {
   setTimeout(() => btn.textContent = orig, 1500);
 }
 
-// ===== Before/After =====
-const imgs = { before: null, after: null };
 
-function loadImage(input, side) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const img = new Image();
-    img.onload = () => {
-      imgs[side] = img;
-      const preview = document.getElementById(side + 'Preview');
-      const area = document.getElementById(side + 'Area');
-      preview.src = e.target.result;
-      preview.style.display = 'block';
-      area.style.display = 'none';
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
 
-function renderBA() {
-  if (!imgs.before || !imgs.after) {
-    showToast('Before, After 사진을 모두 선택해주세요');
-    return;
-  }
-  const layout = document.querySelector('.style-opts .style-opt.on[data-v]') ?
-    document.querySelectorAll('.style-opts .style-opt.on')[0].dataset.v : 'side';
-  const wm = document.querySelectorAll('.style-opts .style-opt.on')[1]?.dataset.v || 'wm1';
 
-  const canvas = document.getElementById('baCanvas');
-  const ctx = canvas.getContext('2d');
 
-  let W, H;
-  if (layout === 'side' || layout === 'square') {
-    W = 1080; H = 1080;
-  } else {
-    W = 1080; H = 1350;
-  }
-  canvas.width = W; canvas.height = H;
-  canvas.style.display = 'block';
-
-  ctx.fillStyle = '#0f0608';
-  ctx.fillRect(0, 0, W, H);
-
-  function drawCropped(img, x, y, w, h) {
-    const scale = Math.max(w / img.width, h / img.height);
-    const sw = w / scale, sh = h / scale;
-    const sx = (img.width - sw) / 2, sy = (img.height - sh) / 2;
-    ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
-  }
-
-  const PAD = 6;
-  if (layout === 'side' || layout === 'square') {
-    const hw = (W - PAD * 3) / 2;
-    const ih = H - PAD * 2 - 80;
-    drawCropped(imgs.before, PAD, PAD, hw, ih);
-    drawCropped(imgs.after, PAD * 2 + hw, PAD, hw, ih);
-    // 라벨
-    const ly = ih + PAD + 10;
-    drawLabel(ctx, 'BEFORE', PAD + hw / 2, ly, W);
-    drawLabel(ctx, 'AFTER ✨', PAD * 2 + hw + hw / 2, ly, W);
-  } else {
-    const hh = (H - PAD * 3 - 80) / 2;
-    drawCropped(imgs.before, PAD, PAD, W - PAD * 2, hh);
-    drawCropped(imgs.after, PAD, PAD * 2 + hh, W - PAD * 2, hh);
-    drawLabel(ctx, 'BEFORE', W / 2, hh + PAD + 14, W);
-    drawLabel(ctx, 'AFTER ✨', W / 2, hh * 2 + PAD * 2 + 14, W);
-  }
-
-  // 워터마크
-  if (wm !== 'wm0') {
-    const wmText = wm === 'wm1' ? '🎀 @itdasy' : '잇데이 붙임머리';
-    ctx.fillStyle = 'rgba(232,160,176,0.9)';
-    ctx.font = '500 28px "Noto Sans KR", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(wmText, W / 2, H - 22);
-  }
-
-  // 인스타 발행 미리보기 세팅 (캡션 + 해시태그 합체)
-  const c = document.getElementById('captionText').value;
-  const h = document.getElementById('captionHash').value;
-  const previewArea = document.getElementById('publishConfirmArea');
-  const previewInput = document.getElementById('publishCaptionPreview');
-
-  if (c && !c.includes("생성된 글이 여기에 나타납니다")) {
-      previewInput.value = c + "\n\n" + h;
-      previewArea.style.display = 'block';
-  } else {
-      previewArea.style.display = 'block';
-      previewInput.value = '⚠️ 아직 글을 만들지 않으셨어요.\n\n사진만 올라갑니다. 첫 번째 탭에서 글을 먼저 만드시는 걸 추천드려요!';
-  }
-
-  document.getElementById('publishArea').style.display = 'block';
-}
-
-function resetBA() {
-  imgs.before = null; imgs.after = null;
-  document.getElementById('beforePreview').style.display = 'none';
-  document.getElementById('afterPreview').style.display = 'none';
-  document.getElementById('beforeArea').style.display = 'block';
-  document.getElementById('afterArea').style.display = 'block';
-  document.getElementById('baCanvas').style.display = 'none';
-  document.getElementById('saveBtn').style.display = 'none';
-  document.getElementById('resetBaBtn').style.display = 'none';
-  document.getElementById('publishConfirmArea').style.display = 'none';
-  document.getElementById('publishArea').style.display = 'none';
-  document.querySelectorAll('#tab-ba input[type=file]').forEach(i => i.value = '');
-}
-
-function drawLabel(ctx, text, x, y, W) {
-  ctx.fillStyle = 'rgba(15,6,8,0.7)';
-  ctx.roundRect(x - 70, y - 22, 140, 34, 17);
-  ctx.fill();
-  ctx.fillStyle = '#f0e8ea';
-  ctx.font = '500 18px "Noto Sans KR", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(text, x, y);
-}
-
-function saveCanvas() {
-  const canvas = document.getElementById('baCanvas');
-  const a = document.createElement('a');
-  a.download = 'itdasy_ba_' + Date.now() + '.jpg';
-  a.href = canvas.toDataURL('image/jpeg', 0.92);
-  a.click();
-}
 
 function createConfetti() {
   const c = document.createElement('div');
