@@ -505,6 +505,37 @@
   </div>
 </div>
 
+<!-- AI 비서 플로팅 FAB — 우측 하단 항상 떠있음. 설정 시트에서 숨김 가능. -->
+<button
+  id="assistantFab"
+  onclick="if(typeof openAssistant==='function')openAssistant()"
+  data-haptic="light"
+  aria-label="AI 비서"
+  style="
+    position: fixed;
+    right: 16px;
+    bottom: calc(80px + env(safe-area-inset-bottom));
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #F18091, #D95F70);
+    color: #fff;
+    font-size: 26px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(241, 128, 145, 0.45), 0 2px 6px rgba(0,0,0,0.1);
+    z-index: 250;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  "
+  onmouseover="this.style.transform='scale(1.08)'"
+  onmouseout="this.style.transform='scale(1)'"
+  onmousedown="this.style.transform='scale(0.94)'"
+  onmouseup="this.style.transform='scale(1.08)'"
+>🤖</button>
+
 <nav class="tab-bar" id="nav" role="tablist" aria-label="메인 네비게이션">
   <button type="button" class="tab-bar__btn active" data-tab="home" role="tab" aria-selected="true"
           onclick="showTab('home',this)" aria-label="홈 탭">

@@ -192,6 +192,23 @@
       const d = await res.json();
       msg.action_status = 'done';
       _renderHistory();
+
+      // 파워뷰 sessionStorage 캐시 무효화 — 챗봇으로 추가한 데이터가 바로 보이도록
+      const _invalidateTabs = {
+        create_customer: ['customer'],
+        create_booking: ['booking', 'customer'],
+        create_revenue: ['revenue', 'customer'],
+        create_nps: ['nps', 'customer'],
+        update_customer: ['customer'],
+        update_booking: ['booking'],
+        cancel_booking: ['booking'],
+        reschedule_booking: ['booking'],
+        upsert_inventory: ['inventory'],
+      }[d.kind] || [];
+      _invalidateTabs.forEach(t => {
+        try { sessionStorage.removeItem('pv_cache::' + t); } catch (_e) { /* ignore */ }
+      });
+
       // Phase 6.3 — bulk_message 는 클립보드 복사 처리
       if (d.kind === 'generate_bulk_message' && d.message_draft) {
         try {
