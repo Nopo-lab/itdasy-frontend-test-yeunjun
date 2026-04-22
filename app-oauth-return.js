@@ -39,7 +39,7 @@
         }
 
         // 홈 탭으로 유도 (선택)
-        const homeTabBtn = document.querySelector('[data-tab="home"], button[onclick*="switchTab(\'home\'"]');
+        const homeTabBtn = document.querySelector('.tab-bar__btn[data-tab="home"]');
         if (homeTabBtn) homeTabBtn.click();
       } else if (u.searchParams.get('error')) {
         const err = u.searchParams.get('error');
