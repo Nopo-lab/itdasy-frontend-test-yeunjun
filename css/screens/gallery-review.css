@@ -102,8 +102,8 @@
   padding: 6px 10px 0;
 }
 
-.rv-stars { display: flex; gap: 2px; }
-.rv-star  { color: var(--gold); font-size: 11px; }
+.rv-stars { display: flex; gap: 2px; align-items: center; }
+.rv-star  { width: 16px; height: 16px; fill: var(--gold); stroke: none; flex-shrink: 0; }
 
 .rv-card-date { font-size: 10px; color: var(--text3); }
 

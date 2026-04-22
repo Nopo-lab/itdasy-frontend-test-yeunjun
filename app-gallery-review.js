@@ -71,11 +71,7 @@ function _renderReviewPanel() {
           <div class="rv-sticker-card">
             <img src="${s}" class="rv-sticker-img">
             <div class="rv-card-meta">
-              <div class="rv-stars">
-                <span class="rv-star">★</span><span class="rv-star">★</span>
-                <span class="rv-star">★</span><span class="rv-star">★</span>
-                <span class="rv-star">★</span>
-              </div>
+              <div class="rv-stars">${'<svg class="rv-star" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-star"/></svg>'.repeat(5)}</div>
               <span class="rv-card-date">방금</span>
             </div>
             <div class="rv-sticker-actions">
