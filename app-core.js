@@ -413,6 +413,68 @@ function handle401() {
   document.getElementById('sessionExpiredMsg').style.display = 'block';
 }
 
+// ──────────────────────────────────────────────
+// 계정 탈퇴 (Apple Guideline 5.1.1(ix) 필수)
+// ──────────────────────────────────────────────
+function openDeleteAccountModal() {
+  const modal = document.getElementById('deleteAccountModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  const input = document.getElementById('deleteAccountConfirmInput');
+  if (input) { input.value = ''; setTimeout(() => input.focus(), 100); }
+  const err = document.getElementById('deleteAccountError');
+  if (err) err.style.display = 'none';
+}
+
+function closeDeleteAccountModal() {
+  const modal = document.getElementById('deleteAccountModal');
+  if (modal) modal.style.display = 'none';
+}
+
+let _deleteAccountInFlight = false;
+async function confirmDeleteAccount() {
+  if (_deleteAccountInFlight) return;
+  const input = document.getElementById('deleteAccountConfirmInput');
+  const err = document.getElementById('deleteAccountError');
+  const btn = document.getElementById('deleteAccountConfirmBtn');
+  const v = (input?.value || '').trim();
+  if (v !== '탈퇴') {
+    if (err) { err.textContent = '"탈퇴" 두 글자를 정확히 입력해주세요.'; err.style.display = 'block'; }
+    return;
+  }
+  // 마지막 한번 더 확인
+  if (!(await nativeConfirm('최종 확인', '정말로 계정을 영구 삭제합니다. 이 작업은 되돌릴 수 없습니다. 계속할까요?'))) return;
+
+  _deleteAccountInFlight = true;
+  if (btn) { btn.textContent = '삭제 중...'; btn.disabled = true; }
+  try {
+    const res = await fetch(`${API_BASE}/auth/delete-account`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `삭제 실패 (${res.status})`);
+    }
+    // 세션·캐시 전면 삭제
+    setToken(null);
+    try { localStorage.clear(); } catch (e) {}
+    if ('caches' in window) {
+      try {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      } catch (e) {}
+    }
+    alert('계정이 완전히 삭제되었습니다. 이용해 주셔서 감사합니다.');
+    location.href = 'index.html';
+  } catch (e) {
+    if (err) { err.textContent = e.message || '삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'; err.style.display = 'block'; }
+    if (btn) { btn.textContent = '영구 삭제'; btn.disabled = false; }
+  } finally {
+    _deleteAccountInFlight = false;
+  }
+}
+
 async function logout() {
   if (!(await nativeConfirm("확인", "로그아웃 하시겠습니까? 세션과 캐시가 모두 초기화됩니다."))) return;
 
@@ -1034,6 +1096,10 @@ window.authHeader = authHeader;
     on('logoutBtn', () => {
       if (typeof closeSettings === 'function') closeSettings();
       if (typeof logout === 'function') logout();
+    });
+    on('deleteAccountBtn', () => {
+      if (typeof closeSettings === 'function') closeSettings();
+      if (typeof openDeleteAccountModal === 'function') openDeleteAccountModal();
     });
     on('fullResetBtn', () => typeof fullReset === 'function' && fullReset());
 

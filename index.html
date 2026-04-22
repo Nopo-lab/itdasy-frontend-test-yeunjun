@@ -412,6 +412,46 @@
 
     <button class="sheet-row muted" onclick="closeSettings(); localReset();">앱 전체 초기화</button>
     <button class="sheet-row danger" id="logoutBtn">로그아웃</button>
+
+    <div class="sheet-sep"></div>
+
+    <button class="sheet-row" id="deleteAccountBtn" style="color:#b00020;font-weight:700;">🗑 계정 탈퇴 (모든 데이터 영구 삭제)</button>
+    <div style="padding:0 16px 6px;font-size:11px;color:#999;line-height:1.6;">
+      탈퇴 시 고객·예약·매출·사진 등 모든 데이터가 복구 불가능하게 삭제됩니다.<br>
+      문의: <a href="mailto:contact@itdasy.com" style="color:#888;">contact@itdasy.com</a>
+    </div>
+  </div>
+</div>
+
+<!-- ───── 계정 탈퇴 2단계 확인 모달 (Apple 5.1.1(ix) 준수) ───── -->
+<div id="deleteAccountModal" style="display:none;position:fixed;inset:0;z-index:9900;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;max-width:420px;width:100%;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.25);">
+    <div style="padding:20px 20px 14px;background:linear-gradient(135deg,#fef2f2,#fee2e2);border-bottom:1px solid #fecaca;">
+      <div style="font-size:20px;font-weight:800;color:#b00020;letter-spacing:-0.3px;">⚠️ 계정 탈퇴 확인</div>
+      <div style="font-size:12px;color:#7a1f1f;margin-top:4px;line-height:1.5;">이 작업은 되돌릴 수 없습니다.</div>
+    </div>
+    <div style="padding:18px 20px;font-size:13px;color:#333;line-height:1.7;">
+      <strong>탈퇴 시 다음 데이터가 영구 삭제됩니다:</strong>
+      <ul style="margin:8px 0 14px;padding-left:20px;color:#555;">
+        <li>고객·예약·매출 기록 전부</li>
+        <li>업로드한 사진·포트폴리오</li>
+        <li>AI 생성 캡션·분석 데이터</li>
+        <li>인스타그램 연결 정보 및 토큰</li>
+        <li>결제·구독 내역 (법정 보존 의무 기간 제외)</li>
+      </ul>
+      <div style="background:#f7f7f9;padding:10px 12px;border-radius:8px;font-size:12px;color:#666;margin-bottom:14px;">
+        계속하려면 아래에 <strong style="color:#b00020;">탈퇴</strong> 두 글자를 입력해주세요.
+      </div>
+      <input type="text" id="deleteAccountConfirmInput" placeholder="탈퇴" autocomplete="off"
+        style="width:100%;padding:12px 14px;border:2px solid #fecaca;border-radius:10px;font-size:14px;outline:none;box-sizing:border-box;">
+      <div id="deleteAccountError" style="display:none;margin-top:8px;font-size:12px;color:#b00020;"></div>
+    </div>
+    <div style="display:flex;gap:8px;padding:0 20px 20px;">
+      <button type="button" onclick="closeDeleteAccountModal()"
+        style="flex:1;padding:12px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#555;font-size:14px;font-weight:600;cursor:pointer;">취소</button>
+      <button type="button" id="deleteAccountConfirmBtn" onclick="confirmDeleteAccount()"
+        style="flex:1;padding:12px;border-radius:10px;border:none;background:#b00020;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">영구 삭제</button>
+    </div>
   </div>
 </div>
 
@@ -1368,6 +1408,7 @@
 <script src="app-biometric.js"></script>
 <script src="app-referral.js"></script>
 <script src="app-growth-story.js"></script>
+<script src="app-content-report.js"></script>
 <!-- T-327 · Sentry 에러 모니터링 -->
 <script>window.SENTRY_DSN_FE = "https://b3732869f4b445bc7a73a5e4cbacc4ed@o4511236563992576.ingest.us.sentry.io/4511236579852288";</script>
 <script src="https://browser.sentry-cdn.com/7.100.0/bundle.min.js" crossorigin="anonymous"></script>
