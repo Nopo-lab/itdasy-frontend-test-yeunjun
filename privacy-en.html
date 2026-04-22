@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Itdasy — Privacy Policy</title>
+<style>
+  body { font-family: 'Pretendard', -apple-system, sans-serif; background:#fcfcfc; color:#333; line-height:1.7; padding:20px; }
+  .container { max-width:820px; margin:0 auto; background:#fff; padding:40px; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.05); }
+  h1 { font-size:24px; font-weight:700; color:#fd1d1d; margin-bottom:8px; text-align:center; }
+  .meta { text-align:center; color:#888; font-size:12px; margin-bottom:24px; }
+  .lang-switch { text-align:center; margin-bottom:20px; font-size:12px; color:#888; }
+  .lang-switch a { color:#fd1d1d; text-decoration:none; margin:0 6px; }
+  h2 { font-size:18px; font-weight:600; color:#222; margin-top:32px; border-bottom:1px solid #eee; padding-bottom:8px; }
+  p, li, td { font-size:14px; color:#444; }
+  .highlight { background:#fff0f5; font-weight:bold; padding:2px 4px; border-radius:4px; }
+  table { width:100%; border-collapse:collapse; margin-top:8px; }
+  th, td { border:1px solid #ddd; padding:8px; text-align:left; vertical-align:top; }
+  th { background:#fafafa; font-weight:600; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Itdasy Privacy Policy</h1>
+  <p class="meta">Effective: April 22, 2026 · Last Updated: April 22, 2026</p>
+  <p class="lang-switch"><a href="privacy.html">한국어</a> · <strong>English</strong></p>
+
+  <p>Y2do (hereafter "the Company" or "we"), the operator of the "Itdasy" service (hereafter "the Service"), respects your privacy and complies with applicable data protection laws including the Korean Personal Information Protection Act (PIPA), the EU General Data Protection Regulation (GDPR), and the California Consumer Privacy Act (CCPA).</p>
+
+  <h2>1. Information We Collect</h2>
+  <table>
+    <tr><th>Category</th><th>Data Items</th><th>Collection Point</th></tr>
+    <tr><td>Account</td><td>Email, password (hashed), name</td><td>Sign-up</td></tr>
+    <tr><td>Access logs</td><td>IP address, access timestamp, browser user-agent</td><td>Login attempts and API calls (security)</td></tr>
+    <tr><td>Shop profile</td><td>Shop name, type, address, phone number, profile picture</td><td>When entered in settings</td></tr>
+    <tr><td>Instagram integration</td><td>Instagram handle, access token (Fernet-encrypted at rest), past posts (up to 30 for tone analysis)</td><td>OAuth connection</td></tr>
+    <tr><td>Image processing</td><td>Uploaded photos (may include treatment/skin images), object coordinates for background removal, face bounding boxes (if Gemini Vision face detection is used)</td><td>Image upload</td></tr>
+    <tr><td>Caption generation</td><td>User-entered keywords, persona tone settings</td><td>Caption requests</td></tr>
+    <tr><td>Payment</td><td>Subscription plan, payment history. Card details are handled directly by Apple/Google in-app purchase systems — we do not store card numbers.</td><td>Paid subscription</td></tr>
+  </table>
+
+  <h2>2. How We Use Information</h2>
+  <ul>
+    <li>Account identification, authentication, password reset</li>
+    <li>Personalized caption generation (persona tone, hashtag, emoji extraction)</li>
+    <li>AI image processing — background removal, composite generation</li>
+    <li>Instagram post analysis and publishing assistance</li>
+    <li>Subscription management and payment history (as required by Korean e-commerce law)</li>
+    <li>Fraud prevention and security incident response (IP logging)</li>
+  </ul>
+
+  <h2>3. Data Retention</h2>
+  <table>
+    <tr><th>Category</th><th>Retention Period</th></tr>
+    <tr><td>Account data</td><td>Until account deletion (immediate, on request)</td></tr>
+    <tr><td>Payment history</td><td>5 years (Korean Electronic Commerce Act)</td></tr>
+    <tr><td>Access logs</td><td>90 days</td></tr>
+    <tr><td>Instagram tokens</td><td>Until user revokes or 60 days of inactivity (auto-expiry)</td></tr>
+    <tr><td>Uploaded images</td><td>Until user deletes, or 90 days after account deletion</td></tr>
+  </table>
+
+  <h2>4. Third-Party Data Sharing and Processing</h2>
+  <p>We use the following subprocessors under strict data processing agreements:</p>
+  <table>
+    <tr><th>Processor</th><th>Purpose</th><th>Data Shared</th><th>Region</th></tr>
+    <tr><td>Google LLC (Gemini AI)</td><td>AI caption generation, image analysis</td><td>User-entered keywords, pseudonymized customer references, uploaded images for vision tasks</td><td>United States</td></tr>
+    <tr><td>Replicate, Inc.</td><td>Background removal (AI)</td><td>Uploaded images only</td><td>United States</td></tr>
+    <tr><td>Remove.bg (Kaleido AI)</td><td>Background removal fallback</td><td>Uploaded images only</td><td>European Union</td></tr>
+    <tr><td>Meta Platforms (Instagram Graph API)</td><td>Instagram post publishing</td><td>Generated captions and images published to user's own Instagram account</td><td>United States</td></tr>
+    <tr><td>Resend</td><td>Transactional emails (password reset)</td><td>Email address only</td><td>United States</td></tr>
+    <tr><td>Supabase</td><td>Database and file storage</td><td>All user data (encrypted at rest)</td><td>Asia-Pacific (Seoul)</td></tr>
+    <tr><td>Railway</td><td>Backend hosting</td><td>All user data in transit</td><td>United States (us-east4)</td></tr>
+    <tr><td>Sentry (optional, opt-out)</td><td>Crash reporting</td><td>Anonymized crash traces, no user data</td><td>United States</td></tr>
+  </table>
+  <p><span class="highlight">Cross-border transfer consent</span> is obtained at signup. You may withdraw consent by deleting your account.</p>
+
+  <h2>5. Data Deletion</h2>
+  <ul>
+    <li>You may delete your account at any time via <strong>Settings → Logout → Delete Account</strong> in the app, or by calling <code>DELETE /auth/delete-account</code>.</li>
+    <li>Account deletion triggers immediate erasure of personal data. Items retained by legal obligation (e.g., payment records for 5 years) are anonymized.</li>
+    <li>Meta's data deletion callback endpoint: <a href="https://itdasy260417-production.up.railway.app/instagram/data-deletion">here</a></li>
+  </ul>
+
+  <h2>6. Your Rights</h2>
+  <ul>
+    <li><strong>Access</strong> — Request a copy of your data (<code>GET /auth/export</code> in-app).</li>
+    <li><strong>Rectification</strong> — Edit your profile in Settings.</li>
+    <li><strong>Erasure</strong> — Delete your account (as described in §5).</li>
+    <li><strong>Data portability</strong> — Export in JSON format (<code>GET /auth/export</code>).</li>
+    <li><strong>Objection / Restriction</strong> — Contact <a href="mailto:contact@itdasy.com">contact@itdasy.com</a>.</li>
+    <li><strong>EU users</strong> — You may lodge a complaint with your local supervisory authority.</li>
+    <li><strong>California users</strong> — You have the right to know, delete, and opt-out of sale (we do not sell personal data).</li>
+  </ul>
+
+  <h2>7. Security Measures</h2>
+  <ul>
+    <li>TLS 1.3 encryption for all data in transit (HSTS enforced)</li>
+    <li>Passwords hashed with bcrypt</li>
+    <li>Instagram access tokens encrypted with Fernet (AES-128-CBC + HMAC-SHA256)</li>
+    <li>Supabase Postgres encryption at rest</li>
+    <li>Role-based access control; only authorized engineers can query the database</li>
+    <li>IP-based rate limiting on login (10 attempts per 5 minutes)</li>
+  </ul>
+
+  <h2>8. AI-Generated Content</h2>
+  <ul>
+    <li>Captions and images generated by AI are provided on a best-effort basis. Users must review and verify accuracy before publishing.</li>
+    <li>The Company is not liable for damages arising from publication of AI-generated content that violates local advertising, medical, or food safety laws.</li>
+    <li>Under Korean law, works generated solely by AI without meaningful human authorship may have limited copyright protection. Users acknowledge this limitation.</li>
+  </ul>
+
+  <h2>9. Cookies and Local Storage</h2>
+  <p>We use <code>localStorage</code> for authentication tokens and user preferences (no third-party tracking cookies). You may clear these via browser settings or by logging out.</p>
+
+  <h2>10. Data Protection Officer (DPO)</h2>
+  <p>For privacy inquiries:</p>
+  <ul>
+    <li><strong>Name</strong>: Yeonjun Kang (CEO)</li>
+    <li><strong>Email</strong>: <a href="mailto:contact@itdasy.com">contact@itdasy.com</a></li>
+    <li><strong>Business</strong>: Y2do, Registration No. 179-36-01681</li>
+    <li><strong>Address</strong>: 6F Room 603-J257, 1068 Hyohaeng-ro, Hwaseong-si, Gyeonggi-do 18405, South Korea</li>
+  </ul>
+
+  <h2>11. Changes to This Policy</h2>
+  <ul>
+    <li>Material changes will be announced in-app and via email at least 7 days in advance (30 days for changes adverse to users).</li>
+    <li>Continued use after the effective date constitutes acceptance.</li>
+  </ul>
+
+  <p style="text-align:center; margin-top:40px; font-size:12px; color:#888;">© 2026 Y2do · This Privacy Policy is effective from April 22, 2026.</p>
+</div>
+</body>
+</html>
