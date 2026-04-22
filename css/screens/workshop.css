@@ -13,7 +13,6 @@
   border-radius: var(--r-lg);
   padding: 10px;
   user-select: none;
-  user-select: none;
   position: relative;
   transition: border-color 0.15s;
 }
@@ -150,17 +149,33 @@
 /* ══ Step4: 패널 바텀시트 껍데기 ════════════════════════════════ */
 
 .ws-panel {
-  display: none;
+  display: flex;
   position: fixed;
   inset: 0;
   z-index: 9100;
   background: rgba(0, 0, 0, 0.5);
   align-items: flex-end;
   justify-content: center;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+  transition: opacity .22s ease, transform .22s ease, visibility 0s linear .22s;
 }
 
 .ws-panel--open {
-  display: flex;
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  transition: opacity .22s ease, transform .22s ease, visibility 0s linear 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-panel,
+  .ws-panel--open {
+    transition: none;
+  }
 }
 
 .ws-panel__sheet {
