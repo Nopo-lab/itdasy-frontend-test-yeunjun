@@ -303,7 +303,7 @@ function authHeader() {
       if (typeof window.showToast === 'function') {
         window.showToast('서버 연결이 불안정해요. 자동으로 다시 시도 중...');
       }
-    } catch(e){}
+    } catch (_) { /* ignore */ }
     clearTimeout(_reconnectToastTimer);
     _reconnectToastTimer = setTimeout(() => { window.__itdasyReconnectShown = false; }, 8000);
   }
@@ -508,12 +508,12 @@ async function confirmDeleteAccount() {
     }
     // 세션·캐시 전면 삭제
     setToken(null);
-    try { localStorage.clear(); } catch (e) {}
+    try { localStorage.clear(); } catch (_) { /* ignore */ }
     if ('caches' in window) {
       try {
         const keys = await caches.keys();
         await Promise.all(keys.map(k => caches.delete(k)));
-      } catch (e) {}
+      } catch (_) { /* ignore */ }
     }
     alert('계정이 완전히 삭제되었습니다. 이용해 주셔서 감사합니다.');
     location.href = 'index.html';
@@ -841,6 +841,11 @@ function closeQuickAction() {
 
 // 탭 전환
 function showTab(id, btn) {
+  // P3.1 #2: .tab 바깥 요소 잔존 방지
+  if (typeof closeSlotPopup === 'function') closeSlotPopup();
+  const sg = document.getElementById('_nextSlotGuide');
+  if (sg) sg.style.display = 'none';
+
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const target = document.getElementById('tab-' + id);
