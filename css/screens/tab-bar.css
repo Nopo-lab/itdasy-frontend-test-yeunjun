@@ -1,0 +1,104 @@
+/* ── §5.16 rev2 하단 탭바 — P3.2 ──────────────────────────────────
+   의존: tokens.css (vars)
+   마크업: index.html <nav class="tab-bar"> (홈/작업실/글쓰기 FAB/대시보드/마무리)
+   활성 클래스: .is-active (과도기 .active 병행 — Commit 5에서 단일화)
+   ────────────────────────────────────────────────────────────── */
+
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr 1fr 72px 1fr 1fr;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 200;
+}
+
+.tab-bar__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 4px 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  transition: color 0.15s;
+  min-height: 56px;
+  position: relative;
+  font-family: inherit;
+}
+
+.tab-bar__icon {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+  fill: none;
+}
+
+.tab-bar__label {
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* 활성 상태 — is-active(신규) + active(과도기) 병행 */
+.tab-bar__btn.is-active,
+.tab-bar__btn.active {
+  color: var(--brand);
+}
+
+.tab-bar__btn.is-active::before,
+.tab-bar__btn.active::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+
+/* 중앙 FAB (글쓰기) */
+.tab-bar__fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin: -12px auto 0;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  box-shadow: var(--shadow-brand);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.1s;
+  place-self: center center;
+}
+
+.tab-bar__fab:active {
+  transform: scale(.94);
+}
+
+.tab-bar__fab.is-active,
+.tab-bar__fab.active {
+  outline: 2px solid var(--brand-bg);
+  outline-offset: 2px;
+}
+
+.tab-bar__fab svg {
+  stroke: currentColor;
+  fill: none;
+}
+
+/* 다크모드 — 토큰이 자동 적용되지만 border-top 가시성 보강 */
+html[data-theme="dark"] .tab-bar {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}

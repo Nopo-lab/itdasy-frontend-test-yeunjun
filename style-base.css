@@ -100,53 +100,12 @@ p {
   }
 }
 
-/* 탭 네비 */
-.nav {
-  display: flex;
-  gap: 0;
-  padding: 0 20px;
-  border-bottom: 0.5px solid var(--border);
-  background: var(--bg2);
-  overflow-x: auto;
-  scrollbar-width: none;
+/* 탭 네비는 하단 탭바(css/screens/tab-bar.css)로 이관 — P3.2 */
 
-  /* iOS Safari 하단 툴바와 충돌 방지 — sticky/fixed 배치 기반 앱에선 필수 */
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.nav::-webkit-scrollbar {
-  display: none;
-}
-
-.nav-btn {
-  flex-shrink: 0;
-
-  /* Apple HIG 권장 44pt 터치 영역 — 기존 28pt에서 상향 */
-  min-height: 48px;
-  padding: 14px 20px;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text3);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: Pretendard, sans-serif;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-}
-
-.nav-btn.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-  font-weight: 700;
-}
-
-/* 탭 컨텐츠 — 하단 safe-area 보정 */
+/* 탭 컨텐츠 — 하단 safe-area + 탭바 높이 보정 */
 .tab {
   display: none;
-  padding: 24px 20px calc(120px + env(safe-area-inset-bottom));
+  padding: 24px 20px calc(88px + env(safe-area-inset-bottom));
   opacity: 0;
   transform: translateY(6px);
   transition: opacity 0.22s ease-out, transform 0.22s ease-out;
