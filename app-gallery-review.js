@@ -62,17 +62,44 @@ function closeReviewPanel() {
 function _renderReviewPanel() {
   const body = document.getElementById('reviewPanelBody');
   if (!body) return;
-  body.innerHTML = `
-    <div style="margin-bottom:16px;">
-      <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;">📸 리뷰 스크린샷 업로드</div>
-      <div style="text-align:center;padding:20px;border:2px dashed var(--border);border-radius:14px;cursor:pointer;background:var(--bg2);" onclick="document.getElementById('reviewUploadInput').click()">
-        <div style="font-size:32px;margin-bottom:8px;">📱</div>
-        <div style="font-size:13px;color:var(--text2);font-weight:600;">네이버/카톡 리뷰 캡처 올리기</div>
+
+  const stickerHtml = _reviewStickerCache.length ? `
+    <div class="rv-section">
+      <div class="rv-section-label">📸 업로드된 리뷰 (탭해서 선택)</div>
+      <div class="rv-sticker-grid">
+        ${_reviewStickerCache.map((s, i) => `
+          <div class="rv-sticker-card">
+            <img src="${s}" class="rv-sticker-img">
+            <div class="rv-card-meta">
+              <div class="rv-stars">
+                <span class="rv-star">★</span><span class="rv-star">★</span>
+                <span class="rv-star">★</span><span class="rv-star">★</span>
+                <span class="rv-star">★</span>
+              </div>
+              <span class="rv-card-date">방금</span>
+            </div>
+            <div class="rv-sticker-actions">
+              <button class="btn-secondary" onclick="selectReviewSticker(${i})">전체 사용</button>
+              <button class="btn-primary" onclick="selectReviewTextOnly(${i})">텍스트만</button>
+            </div>
+          </div>
+        `).join('')}
       </div>
-      <input type="file" id="reviewUploadInput" accept="image/*" style="display:none;" onchange="handleReviewUpload(this)">
     </div>
-    <div id="reviewExtractResult" style="display:none;margin-bottom:16px;"></div>
-    ${_reviewStickerCache.length ? `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;">📸 업로드된 리뷰 (탭해서 선택)</div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">${_reviewStickerCache.map((s,i) => `<div style="border-radius:12px;overflow:hidden;border:1.5px solid var(--border);"><img src="${s}" style="width:100%;display:block;"><div style="display:flex;gap:4px;padding:6px;"><button onclick="selectReviewSticker(${i})" style="flex:1;padding:6px;border:none;border-radius:8px;background:var(--bg3);font-size:11px;font-weight:700;cursor:pointer;">전체 사용</button><button onclick="selectReviewTextOnly(${i})" style="flex:1;padding:6px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">텍스트만</button></div></div>`).join('')}</div></div>` : ''}
+  ` : '';
+
+  body.innerHTML = `
+    <div class="rv-section">
+      <div class="rv-section-label">📸 리뷰 스크린샷 업로드</div>
+      <div class="rv-upload-zone" onclick="document.getElementById('reviewUploadInput').click()">
+        <div class="rv-upload-icon">📱</div>
+        <div class="rv-upload-text">네이버/카톡 리뷰 캡처 올리기</div>
+      </div>
+      <input type="file" id="reviewUploadInput" accept="image/*" class="rv-file-input"
+             onchange="handleReviewUpload(this)">
+    </div>
+    <div id="reviewExtractResult" class="rv-extract-result"></div>
+    ${stickerHtml}
   `;
 }
 
@@ -81,19 +108,22 @@ async function handleReviewUpload(input) {
   if (!file) return;
   const resultDiv = document.getElementById('reviewExtractResult');
   resultDiv.style.display = 'block';
-  resultDiv.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text3);">스크린샷 준비 중... ✨</div>`;
+  resultDiv.innerHTML = `<div class="rv-loading">스크린샷 준비 중... ✨</div>`;
   try {
     const rawUrl = await _fileToDataUrl(file);
     const dataUrl = await _smartCropScreenshot(rawUrl);
     _reviewStickerCache.unshift(dataUrl);
     if (_reviewStickerCache.length > 6) _reviewStickerCache.pop();
-    resultDiv.innerHTML = `<div style="background:var(--bg2);border:1.5px solid var(--border);border-radius:14px;padding:14px;text-align:center;">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">업로드된 리뷰 스크린샷</div>
-      <img src="${dataUrl}" style="max-width:100%;max-height:200px;border-radius:10px;object-fit:contain;">
-    </div>`;
+    resultDiv.innerHTML = `
+      <div class="rv-screenshot-preview">
+        <div class="rv-screenshot-label">업로드된 리뷰 스크린샷</div>
+        <img src="${dataUrl}" class="rv-screenshot-img">
+      </div>`;
     _renderReviewPanel();
     showToast('스크린샷이 추가됐어요! 아래에서 선택해 사진에 붙이세요 ✨');
-  } catch(e) { resultDiv.innerHTML = `<div style="color:#dc3545;">업로드 실패: ${e.message}</div>`; }
+  } catch(e) {
+    resultDiv.innerHTML = `<div class="rv-error">업로드 실패: ${e.message}</div>`;
+  }
   input.value = '';
 }
 
@@ -113,7 +143,49 @@ function _openReviewEditor(photo) {
   const editor = document.getElementById('reviewEditor');
   const canvas = document.getElementById('reviewEditorCanvas');
   editor.classList.add('ws-editor--open');
-  canvas.innerHTML = `<div id="reviewEditWrap" style="position:relative;width:90%;max-width:400px;aspect-ratio:1/1;"><img src="${photo.editedDataUrl || photo.dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;"><img id="reviewOverlay" src="${_reviewEditState.stickerImg}" style="position:absolute;left:${_reviewEditState.x}%;top:${_reviewEditState.y}%;transform:translate(-50%,-50%);width:${_reviewEditState.scale}%;opacity:${_reviewEditState.opacity/100};pointer-events:none;"></div>`;
+
+  // 헤더: inline style → rv-editor-hdr 클래스
+  const hdr = editor.children[0];
+  if (hdr) {
+    hdr.removeAttribute('style');
+    hdr.className = 'rv-editor-hdr';
+    const cancelBtn = hdr.children[0];
+    const titleDiv  = hdr.children[1];
+    const saveBtn   = hdr.children[2];
+    if (cancelBtn) { cancelBtn.removeAttribute('style'); cancelBtn.className = 'rv-editor-cancel'; }
+    if (titleDiv)  { titleDiv.removeAttribute('style');  titleDiv.className  = 'rv-editor-title'; }
+    if (saveBtn)   { saveBtn.removeAttribute('style');   saveBtn.className   = 'rv-editor-save'; }
+  }
+
+  // 캔버스: inline style → CSS (#reviewEditorCanvas)
+  canvas.removeAttribute('style');
+
+  // 툴바: inline style → rv-toolbar 클래스
+  const toolbar = editor.children[2];
+  if (toolbar && !toolbar.classList.contains('rv-toolbar')) {
+    toolbar.removeAttribute('style');
+    toolbar.className = 'rv-toolbar';
+    const scaleRow = toolbar.children[0];
+    if (scaleRow) {
+      scaleRow.removeAttribute('style');
+      scaleRow.className = 'rv-scale-row';
+      const label = scaleRow.children[0];
+      const range = scaleRow.children[1];
+      const val   = scaleRow.children[2];
+      if (label) { label.removeAttribute('style'); label.className = 'rv-scale-label'; }
+      if (range) { range.removeAttribute('style'); }
+      if (val)   { val.removeAttribute('style');   val.className   = 'rv-scale-val'; }
+    }
+    const hint = toolbar.children[1];
+    if (hint) { hint.removeAttribute('style'); hint.className = 'rv-hint'; }
+  }
+
+  canvas.innerHTML = `
+    <div id="reviewEditWrap" class="rv-edit-wrap">
+      <img src="${photo.editedDataUrl || photo.dataUrl}" class="rv-edit-base">
+      <img id="reviewOverlay" src="${_reviewEditState.stickerImg}" class="rv-edit-overlay"
+           style="left:${_reviewEditState.x}%;top:${_reviewEditState.y}%;width:${_reviewEditState.scale}%;opacity:${_reviewEditState.opacity/100};">
+    </div>`;
   document.getElementById('reviewScale').value = _reviewEditState.scale;
   document.getElementById('reviewScaleVal').textContent = _reviewEditState.scale + '%';
   _setupReviewDrag();
