@@ -1,0 +1,11 @@
+/* English localization — Info.plist values override */
+
+"CFBundleDisplayName" = "Itdasy";
+
+"NSCameraUsageDescription" = "Take photos of treatments or capture screens from other apps.";
+"NSPhotoLibraryUsageDescription" = "Access your photo library to select treatment photos for portfolio and Instagram posts.";
+"NSPhotoLibraryAddUsageDescription" = "Save AI-generated story images to your photo library.";
+"NSMicrophoneUsageDescription" = "Use microphone for voice-based quick recording of customers, revenue, and bookings.";
+"NSFaceIDUsageDescription" = "Use Face ID for fast login without typing your password.";
+"NSContactsUsageDescription" = "Import existing contacts to migrate into your Itdasy customer list (optional).";
+"NSUserTrackingUsageDescription" = "Itdasy does not track users.";
