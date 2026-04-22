@@ -820,9 +820,15 @@
 
 
 
-<!-- AI 추천 탭 -->
-<div class="tab" id="tab-ai-suggest">
-  <!-- initAiRecommendTab()이 이 영역을 렌더링합니다 -->
+<!-- 대시보드 탭 (T-403 + 기존 #tab-ai-suggest 흡수) -->
+<div class="tab" id="tab-dashboard">
+  <!-- 대시보드 지표 렌더링 타겟 — Commit 4 initDashboardTab() -->
+  <div id="dashboardMetrics"></div>
+
+  <!-- AI 추천 섹션 (ID 유지: initAiRecommendTab / app-gallery-finish 호환) -->
+  <div id="tab-ai-suggest">
+    <!-- initAiRecommendTab()이 이 영역을 렌더링합니다 -->
+  </div>
 </div>
 
 <!-- 포트폴리오 탭 (P3.3 legacy: 탭바 진입점 없음, 직접 네비게이션 경유만 사용) -->
