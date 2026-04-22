@@ -1,0 +1,187 @@
+/* ── Itdasy 갤러리 패널 공용 · P3-B · 2026-04-22 ─────────────
+   bg / template / element 3패널 내부 그리드·카드 스타일.
+   의존: tokens.css (vars), components.css (btn-primary, chip)
+   로드: G3 합류 시 index.html에 <link> 추가 필요
+   ─────────────────────────────────────────────────────────── */
+
+/* ── 섹션 ─────────────────────────────────────────────────── */
+.gp-section {
+  margin-bottom: 16px;
+}
+
+.gp-section-lbl {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-subtle);
+  margin: 0 0 10px;
+}
+
+/* ── 썸네일 그리드 ─────────────────────────────────────────── */
+.gp-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.gp-grid--3 { grid-template-columns: repeat(3, 1fr); }
+.gp-grid--4 { grid-template-columns: repeat(4, 1fr); }
+
+/* ── 카드 ─────────────────────────────────────────────────── */
+.gp-card {
+  position: relative;
+  cursor: pointer;
+}
+
+.gp-card__thumb {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  transition: border-color .15s;
+}
+
+.gp-card__thumb:hover { border-color: var(--brand); }
+
+.gp-card__thumb--sel { border: 3px solid var(--brand); }
+
+/* 잇데이 기본 텍스트 요소 — 브랜드 배경 */
+.gp-card__thumb--brand {
+  background: var(--brand-bg);
+  border-color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 요소/로고 카드 — 회색 배경 + contain */
+.gp-card__thumb--fit {
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gp-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.gp-card__thumb--brand img,
+.gp-card__thumb--fit img {
+  width: 90%;
+  height: auto;
+  object-fit: contain;
+}
+
+.gp-card__name {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 4px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 배지 버튼 (즐겨찾기 / 삭제) ─────────────────────────── */
+.gp-fav-btn,
+.gp-del-btn {
+  position: absolute;
+  top: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+.gp-fav-btn {
+  left: 4px;
+  background: rgba(255, 255, 255, .9);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.gp-del-btn {
+  right: 4px;
+  background: rgba(220, 53, 69, .9);
+  color: #fff;
+}
+
+/* ── 추가 카드 ─────────────────────────────────────────────── */
+.gp-add-card { cursor: pointer; }
+
+.gp-add-card__thumb {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-md);
+  border: 1.5px dashed var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: var(--text-subtle);
+  transition: border-color .15s;
+}
+
+.gp-add-card__thumb:hover { border-color: var(--brand); }
+
+/* ── 정보 배너 (선택 사진 수) ─────────────────────────────── */
+.gp-info-banner {
+  padding: 12px;
+  border-radius: var(--r-md);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gp-info-banner--empty {
+  background: var(--surface-2);
+  color: var(--text-subtle);
+}
+
+.gp-info-banner--active {
+  background: var(--brand-bg);
+  color: var(--brand-strong);
+}
+
+/* ── 템플릿 저장 섹션 ──────────────────────────────────────── */
+.gp-save-section {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.gp-save-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.gp-field {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-strong);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  font-family: inherit;
+}
+
+.gp-field:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+
+.gp-save-row .btn-primary {
+  width: auto;
+  height: 40px;
+  padding: 0 14px;
+  font-size: 12px;
+  flex-shrink: 0;
+}

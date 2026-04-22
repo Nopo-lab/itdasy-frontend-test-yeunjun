@@ -41,7 +41,6 @@ function _renderBgPanel() {
   const favIds = _loadFavBgs();
   const allBgs = [...DEFAULT_BACKGROUNDS, ...userBgs];
 
-  // 즐겨찾기 상단, 나머지 아래
   const favBgs = allBgs.filter(b => favIds.includes(b.id));
   const otherBgs = allBgs.filter(b => !favIds.includes(b.id));
 
@@ -49,44 +48,35 @@ function _renderBgPanel() {
     const isSelected = _selectedBgId === bg.id;
     const isUser = bg.type === 'user';
     const preview = bg.imageData
-      ? `<img src="${bg.imageData}" style="width:100%;height:100%;object-fit:cover;">`
+      ? `<img src="${bg.imageData}" alt="${bg.name}">`
       : `<div style="width:100%;height:100%;background:${bg.gradient || bg.color};"></div>`;
-
     return `
-      <div onclick="selectBg('${bg.id}')" style="position:relative;cursor:pointer;">
-        <div style="aspect-ratio:1/1;border-radius:12px;overflow:hidden;border:${isSelected ? '3px solid var(--accent)' : '1.5px solid var(--border)'};">
-          ${preview}
-        </div>
-        <div style="font-size:10px;color:var(--text2);text-align:center;margin-top:4px;font-weight:600;">${bg.name}</div>
-        <!-- 즐겨찾기 토글 -->
-        <button onclick="toggleFavBg('${bg.id}',event)" style="position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;border:none;background:rgba(255,255,255,0.9);font-size:12px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.15);">${isFav ? '⭐' : '☆'}</button>
-        ${isUser ? `<button onclick="deleteUserBg('${bg.id}',event)" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:none;background:rgba(255,255,255,0.9);color:#dc3545;font-size:14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.15);">×</button>` : ''}
-      </div>
-    `;
+      <div class="gp-card" onclick="selectBg('${bg.id}')">
+        <div class="gp-card__thumb${isSelected ? ' gp-card__thumb--sel' : ''}">${preview}</div>
+        <div class="gp-card__name">${bg.name}</div>
+        <button class="gp-fav-btn" onclick="toggleFavBg('${bg.id}',event)" aria-label="${isFav ? '즐겨찾기 해제' : '즐겨찾기 추가'}">${isFav ? '⭐' : '☆'}</button>
+        ${isUser ? `<button class="gp-del-btn" onclick="deleteUserBg('${bg.id}',event)" aria-label="삭제">×</button>` : ''}
+      </div>`;
   };
 
   body.innerHTML = `
     ${favBgs.length ? `
-      <div style="margin-bottom:16px;">
-        <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;">⭐ 즐겨찾기</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
-          ${favBgs.map(bg => renderCard(bg, true)).join('')}
-        </div>
-      </div>
-    ` : ''}
-    <div style="margin-bottom:16px;">
-      <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;">🎨 배경 선택</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+      <div class="gp-section">
+        <p class="gp-section-lbl">⭐ 즐겨찾기</p>
+        <div class="gp-grid gp-grid--4">${favBgs.map(bg => renderCard(bg, true)).join('')}</div>
+      </div>` : ''}
+    <div class="gp-section">
+      <p class="gp-section-lbl">🎨 배경 선택</p>
+      <div class="gp-grid gp-grid--4">
         ${otherBgs.map(bg => renderCard(bg, false)).join('')}
-        <!-- 추가 버튼 -->
-        <div onclick="addUserBg()" style="cursor:pointer;">
-          <div style="aspect-ratio:1/1;border-radius:12px;border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--text3);">+</div>
-          <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px;">추가</div>
+        <div class="gp-add-card" onclick="addUserBg()">
+          <div class="gp-add-card__thumb">+</div>
+          <div class="gp-card__name">추가</div>
         </div>
       </div>
     </div>
     <input type="file" id="bgUploadInput" accept="image/*" style="display:none;" onchange="handleBgUpload(this)">
-    <button onclick="applySelectedBg()" style="width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:14px;font-weight:800;cursor:pointer;">선택한 배경 적용하기</button>
+    <button onclick="applySelectedBg()" class="btn-primary">선택한 배경 적용하기</button>
   `;
 }
 
