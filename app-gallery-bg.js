@@ -298,28 +298,31 @@ function _renderTemplatePanel() {
   const renderCard = (tpl, isUser) => {
     const bg = allBgs.find(b => b.id === tpl.bgId) || allBgs[0];
     const preview = bg.imageData
-      ? `<img src="${bg.imageData}" style="width:100%;height:100%;object-fit:cover;">`
+      ? `<img src="${bg.imageData}" alt="${tpl.name}">`
       : `<div style="width:100%;height:100%;background:${bg.gradient || bg.color};"></div>`;
     return `
-      <div style="position:relative;cursor:pointer;" onclick="applyTemplate('${tpl.id}')">
-        <div style="aspect-ratio:1/1;border-radius:12px;overflow:hidden;border:1.5px solid var(--border);">${preview}</div>
-        <div style="font-size:10px;color:var(--text2);text-align:center;margin-top:4px;font-weight:600;">${tpl.name}</div>
-        ${isUser ? `<button onclick="deleteTemplate('${tpl.id}',event)" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(220,53,69,0.9);color:#fff;font-size:12px;cursor:pointer;">×</button>` : ''}
-      </div>
-    `;
+      <div class="gp-card" onclick="applyTemplate('${tpl.id}')">
+        <div class="gp-card__thumb">${preview}</div>
+        <div class="gp-card__name">${tpl.name}</div>
+        ${isUser ? `<button class="gp-del-btn" onclick="deleteTemplate('${tpl.id}',event)" aria-label="삭제">×</button>` : ''}
+      </div>`;
   };
 
   body.innerHTML = `
-    ${userTemplates.length ? `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;">💾 내 템플릿</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">${userTemplates.map(t => renderCard(t, true)).join('')}</div></div>` : ''}
-    <div style="margin-bottom:16px;">
-      <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;">📐 기본 템플릿 (${shopType})</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">${defaultForShop.map(t => renderCard(t, false)).join('')}</div>
+    ${userTemplates.length ? `
+      <div class="gp-section">
+        <p class="gp-section-lbl">💾 내 템플릿</p>
+        <div class="gp-grid gp-grid--3">${userTemplates.map(t => renderCard(t, true)).join('')}</div>
+      </div>` : ''}
+    <div class="gp-section">
+      <p class="gp-section-lbl">📐 기본 템플릿 (${shopType})</p>
+      <div class="gp-grid gp-grid--3">${defaultForShop.map(t => renderCard(t, false)).join('')}</div>
     </div>
-    <div style="border-top:1px solid var(--border);padding-top:16px;">
-      <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;">현재 설정을 템플릿으로 저장</div>
-      <div style="display:flex;gap:8px;">
-        <input type="text" id="newTemplateName" placeholder="템플릿 이름" style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--border);font-size:13px;">
-        <button onclick="saveCurrentAsTemplate()" style="padding:10px 16px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:12px;font-weight:700;cursor:pointer;">저장</button>
+    <div class="gp-save-section">
+      <p class="gp-section-lbl">현재 설정을 템플릿으로 저장</p>
+      <div class="gp-save-row">
+        <input type="text" id="newTemplateName" placeholder="템플릿 이름" class="gp-field">
+        <button onclick="saveCurrentAsTemplate()" class="btn-primary">저장</button>
       </div>
     </div>
   `;
