@@ -685,6 +685,11 @@
       <svg class="ic" aria-hidden="true" style="color:#D95F70;"><use href="#ic-chevron-right"/></svg>
     </button>
 
+    <!-- Wave 2b — "더보기" 토글. 기본 접힘, 사용자 탭하면 하위 섹션 펼침. -->
+    <button id="homeMoreToggle" type="button" onclick="(function(b){var m=document.getElementById('homeMore');if(!m)return;var hidden=m.style.display==='none';m.style.display=hidden?'':'none';b.textContent=hidden?'접기 ▲':'더보기 ▼';try{localStorage.setItem('home_more_open',hidden?'1':'0')}catch(_){}})(this)" style="display:block;width:100%;margin:6px 0 10px;padding:10px;background:transparent;border:1px dashed #E5E1DC;border-radius:10px;color:#888;font-size:13px;cursor:pointer;">더보기 ▼</button>
+
+    <div id="homeMore" style="display:none;">
+
     <!-- §5.3 Killer Widgets 가로 스크롤 (app-killer-widgets.js가 채움) -->
     <div>
       <div class="sec-head" style="padding:0 2px;margin-bottom:10px;">
@@ -722,6 +727,18 @@
     <div id="cbt1ResetArea" style="display:none; text-align:center; padding:4px 0;">
       <button id="fullResetBtn" style="background:transparent; border:1px dashed var(--border-strong); border-radius:10px; padding:8px 18px; font-size:13px; color:var(--text-subtle); cursor:pointer;">처음부터 시작하기 (CBT 전용)</button>
     </div>
+
+    </div><!-- #homeMore 닫는 태그 -->
+
+    <script>
+      // Wave 2b — 로컬스토리지 기억 복원
+      (function(){
+        try{
+          var open=localStorage.getItem('home_more_open')==='1';
+          if(open){var m=document.getElementById('homeMore');var b=document.getElementById('homeMoreToggle');if(m){m.style.display='';}if(b){b.textContent='접기 ▲';}}
+        }catch(_){/* ignore */}
+      })();
+    </script>
 
   </div>
 
