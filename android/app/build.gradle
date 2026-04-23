@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.nopolab.itdasy"
+    namespace "com.y2do.itdasy"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.nopolab.itdasy"
+        applicationId "com.y2do.itdasy"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -16,10 +16,23 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
+    // Google Play 소유권 인증·정식 배포용 서명 설정
+    // 환경변수 ITDASY_KEYSTORE_* 로 비번 주입 (gradle 에 하드코딩 금지 — git 노출 방지)
+    signingConfigs {
+        release {
+            def keystorePath = System.getenv("ITDASY_KEYSTORE") ?: (System.getProperty("user.home") + "/itdasy-release.jks")
+            storeFile file(keystorePath)
+            storePassword System.getenv("ITDASY_STORE_PASS") ?: ""
+            keyAlias System.getenv("ITDASY_KEY_ALIAS") ?: "itdasy"
+            keyPassword System.getenv("ITDASY_KEY_PASS") ?: ""
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
 }
