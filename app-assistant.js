@@ -15,6 +15,35 @@
     '제일 잘 팔리는 시술 뭐야?',
   ];
 
+  // 액션 카테고리 메타 (아이콘 · 라벨 · 색상)
+  const CATEGORY = {
+    create_customer:       { icon: '👤', label: '고객 추가', color: '#4ECDC4' },
+    update_customer:       { icon: '✏️', label: '고객 수정', color: '#4ECDC4' },
+    create_revenue:        { icon: '💰', label: '매출 기록', color: '#388e3c' },
+    create_booking:        { icon: '📅', label: '예약 추가', color: '#F18091' },
+    update_booking:        { icon: '✏️', label: '예약 수정', color: '#A78BFA' },
+    cancel_booking:        { icon: '❌', label: '예약 취소', color: '#DC3545' },
+    reschedule_booking:    { icon: '🔄', label: '예약 변경', color: '#0288D1' },
+    create_expense:        { icon: '💸', label: '지출 기록', color: '#E07A5F' },
+    upsert_inventory:      { icon: '📦', label: '재고 입고', color: '#2B8C7E' },
+    create_nps:            { icon: '⭐', label: '후기', color: '#FFD700' },
+    generate_bulk_message: { icon: '💬', label: '메시지', color: '#FF8A5C' },
+  };
+  function _catMeta(kind) {
+    return CATEGORY[kind] || { icon: '✓', label: kind || '작업', color: '#666' };
+  }
+  // actions[] 을 kind 순서대로 그룹핑 (첫 등장 순서 유지)
+  function _groupActions(actions) {
+    const order = [];
+    const map = {};
+    (actions || []).forEach((a, i) => {
+      if (!a || !a.kind) return;
+      if (!map[a.kind]) { map[a.kind] = []; order.push(a.kind); }
+      map[a.kind].push({ action: a, skipped: false, status: 'pending', origIdx: i });
+    });
+    return order.map(k => ({ kind: k, items: map[k], expanded: false, bulkProgress: null }));
+  }
+
   let _history = [];  // [{role, text}]
   // v1.1 Multi-turn — localStorage 에 session_id 유지 (앱 재시작해도 대화 기억)
   let _sessionId = null;
@@ -184,6 +213,7 @@
       }
       if (m.role === 'assistant') {
         const actionHtml = m.action ? _renderActionBubble(m.action, idx, m.action_status) : '';
+        const groupsHtml = (m.action_groups && m.action_groups.length) ? _renderActionGroups(m.action_groups, idx) : '';
         const fallbackHtml = m.fallback ? _renderFallbackCard(m.fallback, idx, m.fallback_status) : '';
         const relatedHtml = (m.related && m.related.length) ? `
           <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;">
@@ -198,6 +228,7 @@
                 style="background:transparent;border:none;cursor:pointer;font-size:10px;color:#bbb;padding:2px 4px;">🚩 신고</button>
             </div>
             ${actionHtml}
+            ${groupsHtml}
             ${fallbackHtml}
             ${relatedHtml}
           </div>
@@ -252,6 +283,165 @@
         <button data-action-run="${historyIdx}" style="flex:2;padding:9px;border:none;border-radius:8px;background:${kindBadge.color};color:#fff;font-weight:800;cursor:pointer;font-size:12px;">추가하기 ✓</button>
         <button data-action-cancel="${historyIdx}" style="flex:1;padding:9px;border:1px solid #eee;border-radius:8px;background:#fff;color:#888;cursor:pointer;font-size:12px;">취소</button>
       </div>
+    </div>`;
+  }
+
+  // 액션 그룹 내 한 행을 사람이 읽을 수 있게 1줄로 요약
+  function _summarizeItem(action) {
+    const p = (action && action.payload) || {};
+    const parts = [];
+    if (p.customer_name || p.name) parts.push(p.customer_name || p.name);
+    if (p.customer_phone || p.phone) parts.push(p.customer_phone || p.phone);
+    if (p.service_name) parts.push(p.service_name);
+    if (p.amount) parts.push(Number(p.amount).toLocaleString() + '원');
+    if (p.starts_at) {
+      try {
+        const d = new Date(p.starts_at);
+        parts.push((d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + '시');
+      } catch (_e) { void _e; }
+    }
+    if (p.memo) parts.push(String(p.memo).slice(0, 20));
+    if (!parts.length && action && action.confirmation_text) return action.confirmation_text;
+    return parts.join(' · ') || (action && action.kind) || '';
+  }
+
+  // 카테고리별로 묶인 액션 카드 렌더 (2건 이상일 때 사용)
+  function _renderActionGroups(groups, historyIdx) {
+    if (!groups || !groups.length) return '';
+    return groups.map((g, gIdx) => _renderActionGroup(g, historyIdx, gIdx)).join('');
+  }
+
+  function _renderActionGroup(group, historyIdx, gIdx) {
+    const meta = _catMeta(group.kind);
+    const total = group.items.length;
+    const done = group.items.filter(it => it.status === 'done').length;
+    const skipped = group.items.filter(it => it.skipped).length;
+    const remaining = total - done - skipped;
+    const allDone = total > 0 && (done + skipped) >= total && done > 0;
+
+    // 전부 완료된 경우 — 축소된 성공 카드
+    if (allDone) {
+      const label = skipped
+        ? `✅ ${meta.label} ${done}건 추가됨 (${skipped}건 제외)`
+        : `✅ ${meta.label} ${done}건 모두 추가됨`;
+      return `<div style="margin-top:6px;padding:12px;background:linear-gradient(135deg,hsl(145,45%,94%),hsl(145,45%,98%));border-radius:14px;border-left:3px solid hsl(145,50%,40%);">
+        <div style="font-size:13px;font-weight:800;color:hsl(145,50%,30%);">${_esc(label)}</div>
+      </div>`;
+    }
+
+    const headerLine = group.bulkProgress
+      ? `<div style="font-size:11px;color:${meta.color};font-weight:700;margin-top:2px;">진행 중 · ${group.bulkProgress.current}/${group.bulkProgress.total} 완료</div>`
+      : (done || skipped
+          ? `<div style="font-size:11px;color:#888;margin-top:2px;">완료 ${done} · 제외 ${skipped} · 남음 ${remaining}</div>`
+          : '');
+
+    const header = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span style="font-size:18px;">${meta.icon}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:800;color:#222;">${_esc(meta.label)} <span style="color:${meta.color};">(${total}건)</span></div>
+          ${headerLine}
+        </div>
+      </div>`;
+
+    const controls = `
+      <div style="display:flex;gap:6px;">
+        <button data-group-toggle="${historyIdx}:${gIdx}" style="flex:1;padding:9px;border:1px solid ${meta.color};border-radius:10px;background:#fff;color:${meta.color};font-weight:800;cursor:pointer;font-size:12px;">
+          ${group.expanded ? '📝 접기' : '📝 수정하기'}
+        </button>
+        <button data-group-runall="${historyIdx}:${gIdx}" ${group.bulkProgress ? 'disabled' : ''} style="flex:2;padding:9px;border:none;border-radius:10px;background:${meta.color};color:#fff;font-weight:800;cursor:${group.bulkProgress ? 'not-allowed' : 'pointer'};font-size:12px;opacity:${group.bulkProgress ? 0.6 : 1};">
+          ${group.bulkProgress ? `진행 중 ${group.bulkProgress.current}/${group.bulkProgress.total}` : (done + skipped > 0 ? `✓ 남은 ${remaining}개 추가` : '✓ 전체 추가')}
+        </button>
+      </div>`;
+
+    let listHtml = '';
+    if (group.expanded) {
+      const rows = group.items.map((it, iIdx) => _renderGroupRow(it, historyIdx, gIdx, iIdx, meta)).join('');
+      listHtml = `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed hsl(220,15%,88%);display:flex;flex-direction:column;gap:8px;">${rows}</div>
+        <div style="height:10px;"></div>`;
+    }
+
+    return `<div style="margin-top:6px;padding:12px;background:#fff;border:1px solid ${meta.color};border-radius:14px;">
+      ${header}
+      ${listHtml}
+      ${controls}
+    </div>`;
+  }
+
+  function _renderGroupRow(it, historyIdx, gIdx, iIdx, meta) {
+    const key = `${historyIdx}:${gIdx}:${iIdx}`;
+    const p = (it.action && it.action.payload) || {};
+
+    if (it.status === 'done') {
+      return `<div style="padding:9px 10px;border-radius:10px;background:hsl(145,45%,96%);border:1px solid hsl(145,45%,85%);font-size:12px;color:hsl(145,50%,30%);font-weight:700;">
+        ✓ ${_esc(_summarizeItem(it.action))}
+      </div>`;
+    }
+    if (it.status === 'failed') {
+      return `<div style="padding:9px 10px;border-radius:10px;background:hsl(0,70%,96%);border:1px solid hsl(0,70%,85%);">
+        <div style="font-size:12px;color:hsl(0,70%,40%);font-weight:700;margin-bottom:6px;">✗ 실패 — ${_esc(_summarizeItem(it.action))}</div>
+        <button data-row-run="${key}" style="padding:6px 10px;border:1px solid ${meta.color};border-radius:8px;background:#fff;color:${meta.color};font-size:11px;font-weight:700;cursor:pointer;">다시 시도</button>
+      </div>`;
+    }
+    if (it.skipped) {
+      return `<div style="padding:9px 10px;border-radius:10px;background:#f5f5f5;border:1px dashed #ccc;opacity:0.55;display:flex;align-items:center;gap:8px;">
+        <div style="flex:1;font-size:12px;color:#888;text-decoration:line-through;">${iIdx + 1}. ${_esc(_summarizeItem(it.action))}</div>
+        <button data-row-unskip="${key}" style="padding:5px 9px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#666;font-size:11px;font-weight:700;cursor:pointer;">되돌리기</button>
+      </div>`;
+    }
+
+    // pending · editing
+    const editing = it.editing === true;
+    const summary = _summarizeItem(it.action);
+    const rowHead = `<div style="font-size:12px;color:#222;font-weight:700;">${iIdx + 1}. ${_esc(summary)}</div>`;
+
+    // 편집 가능 필드 (있는 것만 보여주기)
+    const editFields = [];
+    const addField = (field, label, val) => {
+      if (val === undefined) return;
+      editFields.push(`
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="width:50px;font-size:10px;color:#888;font-weight:700;">${label}</span>
+          <input data-row-field="${key}:${field}" value="${_esc(val == null ? '' : val)}" style="flex:1;padding:6px 8px;border:1px solid hsl(220,15%,85%);border-radius:8px;font-size:11px;background:#fff;" />
+        </div>`);
+    };
+    if (editing) {
+      if ('customer_name' in p || 'name' in p) addField('customer_name', '이름', p.customer_name ?? p.name);
+      if ('customer_phone' in p || 'phone' in p) addField('customer_phone', '전화', p.customer_phone ?? p.phone);
+      if ('service_name' in p) addField('service_name', '시술', p.service_name);
+      if ('amount' in p) addField('amount', '금액', p.amount);
+      if ('starts_at' in p) addField('starts_at', '시작', p.starts_at);
+      if ('memo' in p) addField('memo', '메모', p.memo);
+      if (!editFields.length) {
+        // fallback: 확인 문구만 고치게
+        editFields.push(`
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="width:50px;font-size:10px;color:#888;font-weight:700;">내용</span>
+            <input data-row-field="${key}:confirmation_text" value="${_esc(it.action.confirmation_text || '')}" style="flex:1;padding:6px 8px;border:1px solid hsl(220,15%,85%);border-radius:8px;font-size:11px;" />
+          </div>`);
+      }
+    }
+
+    const buttons = editing
+      ? `<div style="display:flex;gap:6px;margin-top:4px;">
+          <button data-row-save="${key}" style="flex:1;padding:7px;border:none;border-radius:8px;background:${meta.color};color:#fff;font-weight:700;cursor:pointer;font-size:11px;">저장</button>
+          <button data-row-editcancel="${key}" style="flex:1;padding:7px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#666;font-weight:700;cursor:pointer;font-size:11px;">취소</button>
+        </div>`
+      : `<div style="display:flex;gap:6px;margin-top:4px;">
+          <button data-row-run="${key}" style="flex:1;padding:7px;border:none;border-radius:8px;background:${meta.color};color:#fff;font-weight:700;cursor:pointer;font-size:11px;">✓ 추가</button>
+          <button data-row-edit="${key}" style="flex:1;padding:7px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#555;font-weight:700;cursor:pointer;font-size:11px;">✏️ 편집</button>
+          <button data-row-skip="${key}" style="flex:1;padding:7px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#888;font-weight:700;cursor:pointer;font-size:11px;">🗑 제외</button>
+        </div>`;
+
+    const status = it.status === 'running'
+      ? `<div style="font-size:10px;color:${meta.color};font-weight:700;margin-top:2px;">⏳ 저장 중…</div>`
+      : '';
+
+    return `<div style="padding:9px 10px;border-radius:10px;background:hsl(340,100%,99%);border:1px solid hsl(340,30%,92%);display:flex;flex-direction:column;gap:6px;">
+      ${rowHead}
+      ${status}
+      ${editing ? `<div style="display:flex;flex-direction:column;gap:4px;">${editFields.join('')}</div>` : ''}
+      ${buttons}
     </div>`;
   }
 
@@ -418,7 +608,154 @@
         _submitFallback(parseInt(fb.dataset.fallbackIdx, 10), fb.dataset.fallbackIntent);
         return;
       }
+      // 그룹 카드 — 접기·펴기
+      const tgl = e.target.closest('[data-group-toggle]');
+      if (tgl && document.getElementById('asstBody')?.contains(tgl)) {
+        const [hi, gi] = tgl.dataset.groupToggle.split(':').map(n => parseInt(n, 10));
+        const g = _history[hi] && _history[hi].action_groups && _history[hi].action_groups[gi];
+        if (g) { g.expanded = !g.expanded; _renderHistory(); }
+        return;
+      }
+      // 그룹 카드 — 전체(남은) 추가
+      const runAll = e.target.closest('[data-group-runall]');
+      if (runAll && document.getElementById('asstBody')?.contains(runAll)) {
+        const [hi, gi] = runAll.dataset.groupRunall.split(':').map(n => parseInt(n, 10));
+        _runGroupAll(hi, gi);
+        return;
+      }
+      // 행 — 단일 실행
+      const rowRun = e.target.closest('[data-row-run]');
+      if (rowRun && document.getElementById('asstBody')?.contains(rowRun)) {
+        const [hi, gi, ii] = rowRun.dataset.rowRun.split(':').map(n => parseInt(n, 10));
+        _runGroupRow(hi, gi, ii);
+        return;
+      }
+      // 행 — 편집 모드 진입
+      const rowEdit = e.target.closest('[data-row-edit]');
+      if (rowEdit && document.getElementById('asstBody')?.contains(rowEdit)) {
+        const [hi, gi, ii] = rowEdit.dataset.rowEdit.split(':').map(n => parseInt(n, 10));
+        const it = _history[hi]?.action_groups?.[gi]?.items?.[ii];
+        if (it) { it.editing = true; _renderHistory(); }
+        return;
+      }
+      // 행 — 편집 취소
+      const rowCancel = e.target.closest('[data-row-editcancel]');
+      if (rowCancel && document.getElementById('asstBody')?.contains(rowCancel)) {
+        const [hi, gi, ii] = rowCancel.dataset.rowEditcancel.split(':').map(n => parseInt(n, 10));
+        const it = _history[hi]?.action_groups?.[gi]?.items?.[ii];
+        if (it) { it.editing = false; _renderHistory(); }
+        return;
+      }
+      // 행 — 편집 저장
+      const rowSave = e.target.closest('[data-row-save]');
+      if (rowSave && document.getElementById('asstBody')?.contains(rowSave)) {
+        const [hi, gi, ii] = rowSave.dataset.rowSave.split(':').map(n => parseInt(n, 10));
+        const it = _history[hi]?.action_groups?.[gi]?.items?.[ii];
+        if (it) {
+          const key = `${hi}:${gi}:${ii}`;
+          const body = document.getElementById('asstBody');
+          if (body) {
+            const inputs = body.querySelectorAll(`[data-row-field^="${key}:"]`);
+            inputs.forEach(inp => {
+              const parts = inp.getAttribute('data-row-field').split(':');
+              const field = parts.slice(3).join(':');
+              if (field === 'confirmation_text') {
+                it.action.confirmation_text = inp.value;
+              } else {
+                if (!it.action.payload) it.action.payload = {};
+                let v = inp.value;
+                if (field === 'amount') { const n = parseInt(String(v).replace(/[^\d]/g, ''), 10); v = isNaN(n) ? null : n; }
+                it.action.payload[field] = v === '' ? null : v;
+              }
+            });
+          }
+          it.editing = false;
+          _renderHistory();
+        }
+        return;
+      }
+      // 행 — 제외 · 되돌리기
+      const rowSkip = e.target.closest('[data-row-skip]');
+      if (rowSkip && document.getElementById('asstBody')?.contains(rowSkip)) {
+        const [hi, gi, ii] = rowSkip.dataset.rowSkip.split(':').map(n => parseInt(n, 10));
+        const it = _history[hi]?.action_groups?.[gi]?.items?.[ii];
+        if (it) { it.skipped = true; it.editing = false; _renderHistory(); }
+        return;
+      }
+      const rowUnskip = e.target.closest('[data-row-unskip]');
+      if (rowUnskip && document.getElementById('asstBody')?.contains(rowUnskip)) {
+        const [hi, gi, ii] = rowUnskip.dataset.rowUnskip.split(':').map(n => parseInt(n, 10));
+        const it = _history[hi]?.action_groups?.[gi]?.items?.[ii];
+        if (it) { it.skipped = false; _renderHistory(); }
+        return;
+      }
     }, false);
+  }
+
+  // 캐시 무효화 + data-changed 이벤트 (단일 액션 실행 후 공통 로직)
+  function _invalidateCachesFor(kind) {
+    const _invalidateKinds = {
+      create_customer: ['customer', 'customers'],
+      create_booking: ['booking', 'bookings', 'customer', 'customers'],
+      create_revenue: ['revenue', 'customer', 'customers'],
+      create_nps: ['nps', 'customer', 'customers'],
+      update_customer: ['customer', 'customers'],
+      update_booking: ['booking', 'bookings'],
+      cancel_booking: ['booking', 'bookings'],
+      reschedule_booking: ['booking', 'bookings'],
+      upsert_inventory: ['inventory'],
+      create_expense: ['expense', 'expenses'],
+    }[kind] || [];
+    _invalidateKinds.forEach(k => {
+      try { sessionStorage.removeItem('pv_cache::' + k); } catch (_e) { void _e; }
+      try { localStorage.removeItem('pv_cache::' + k); } catch (_e) { void _e; }
+      if (k === 'bookings' || k === 'booking') {
+        try {
+          for (let i = sessionStorage.length - 1; i >= 0; i--) {
+            const key = sessionStorage.key(i);
+            if (key && key.startsWith('pv_cache::booking')) sessionStorage.removeItem(key);
+          }
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('pv_cache::booking')) localStorage.removeItem(key);
+          }
+        } catch (_e) { void _e; }
+      }
+      if (k === 'customer' || k === 'customers') {
+        try {
+          for (let i = sessionStorage.length - 1; i >= 0; i--) {
+            const key = sessionStorage.key(i);
+            if (key && key.startsWith('pv_cache::customer')) sessionStorage.removeItem(key);
+          }
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('pv_cache::customer')) localStorage.removeItem(key);
+          }
+        } catch (_e) { void _e; }
+      }
+    });
+    try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind } })); } catch (_e) { void _e; }
+  }
+
+  // 순수 실행기 — action 객체만 받아 POST, 결과 반환. UI 갱신은 호출자가.
+  async function _executeAction(action) {
+    const res = await fetch(window.API + '/assistant/execute', {
+      method: 'POST',
+      headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: action.kind, payload: action.payload || {} }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'HTTP ' + res.status);
+    }
+    const d = await res.json();
+    _invalidateCachesFor(d.kind || action.kind);
+    if (d.kind === 'generate_bulk_message' && d.message_draft) {
+      try {
+        if (navigator.clipboard) await navigator.clipboard.writeText(d.message_draft);
+      } catch (_e) { void _e; }
+    }
+    return d;
   }
 
   async function _runAction(idx) {
@@ -427,73 +764,11 @@
     msg.action_status = 'running';
     _renderHistory();
     try {
-      const res = await fetch(window.API + '/assistant/execute', {
-        method: 'POST',
-        headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: msg.action.kind, payload: msg.action.payload || {} }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || 'HTTP ' + res.status);
-      }
-      const d = await res.json();
+      const d = await _executeAction(msg.action);
       msg.action_status = 'done';
       _renderHistory();
-
-      // 프론트 SWR + PowerView 캐시 전부 무효화 (단수·복수 · session·local 모두)
-      const _invalidateKinds = {
-        create_customer: ['customer', 'customers'],
-        create_booking: ['booking', 'bookings', 'customer', 'customers'],
-        create_revenue: ['revenue', 'customer', 'customers'],
-        create_nps: ['nps', 'customer', 'customers'],
-        update_customer: ['customer', 'customers'],
-        update_booking: ['booking', 'bookings'],
-        cancel_booking: ['booking', 'bookings'],
-        reschedule_booking: ['booking', 'bookings'],
-        upsert_inventory: ['inventory'],
-      }[d.kind] || [];
-      _invalidateKinds.forEach(k => {
-        // 단수(powerview) + 복수(SWR) 키 모두 제거
-        try { sessionStorage.removeItem('pv_cache::' + k); } catch (_e) { void _e; }
-        try { localStorage.removeItem('pv_cache::' + k); } catch (_e) { void _e; }
-        // bookings 는 날짜 범위별 키 scan 삭제
-        if (k === 'bookings' || k === 'booking') {
-          try {
-            for (let i = sessionStorage.length - 1; i >= 0; i--) {
-              const key = sessionStorage.key(i);
-              if (key && key.startsWith('pv_cache::booking')) sessionStorage.removeItem(key);
-            }
-            for (let i = localStorage.length - 1; i >= 0; i--) {
-              const key = localStorage.key(i);
-              if (key && key.startsWith('pv_cache::booking')) localStorage.removeItem(key);
-            }
-          } catch (_e) { void _e; }
-        }
-        // customer 는 id 별 dashboard 캐시도 scan 삭제 (pv_cache::customer:{id}:dashboard)
-        if (k === 'customer' || k === 'customers') {
-          try {
-            for (let i = sessionStorage.length - 1; i >= 0; i--) {
-              const key = sessionStorage.key(i);
-              if (key && key.startsWith('pv_cache::customer')) sessionStorage.removeItem(key);
-            }
-            for (let i = localStorage.length - 1; i >= 0; i--) {
-              const key = localStorage.key(i);
-              if (key && key.startsWith('pv_cache::customer')) localStorage.removeItem(key);
-            }
-          } catch (_e) { void _e; }
-        }
-      });
-      // 오픈된 시트가 있으면 데이터 새로고침 신호 전파
-      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: d.kind } })); } catch (_e) { void _e; }
-
-      // Phase 6.3 — bulk_message 는 클립보드 복사 처리
       if (d.kind === 'generate_bulk_message' && d.message_draft) {
-        try {
-          if (navigator.clipboard) await navigator.clipboard.writeText(d.message_draft);
-          _history.push({ role: 'assistant', text: '📋 초안을 클립보드에 복사했어요. 카톡·문자에 붙여넣으세요.\n\n---\n' + d.message_draft });
-        } catch (e) {
-          _history.push({ role: 'assistant', text: '초안 작성됨:\n\n' + d.message_draft });
-        }
+        _history.push({ role: 'assistant', text: '📋 초안을 클립보드에 복사했어요. 카톡·문자에 붙여넣으세요.\n\n---\n' + d.message_draft });
       } else {
         _history.push({ role: 'assistant', text: d.message || '✓ 완료했어요' });
       }
@@ -505,6 +780,61 @@
       _renderHistory();
       _history.push({ role: 'assistant', text: '실패: ' + (window._humanError ? window._humanError(e) : e.message) });
       _renderHistory();
+    }
+  }
+
+  // 그룹 카드 — 단일 행 실행
+  async function _runGroupRow(historyIdx, gIdx, iIdx) {
+    const msg = _history[historyIdx];
+    const group = msg && msg.action_groups && msg.action_groups[gIdx];
+    const it = group && group.items && group.items[iIdx];
+    if (!it || it.status === 'done' || it.status === 'running' || it.skipped) return;
+    it.status = 'running';
+    _renderHistory();
+    try {
+      await _executeAction(it.action);
+      it.status = 'done';
+      _renderHistory();
+      if (window.hapticSuccess) window.hapticSuccess();
+      if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
+    } catch (e) {
+      it.status = 'failed';
+      it.errorMsg = window._humanError ? window._humanError(e) : e.message;
+      _renderHistory();
+    }
+  }
+
+  // 그룹 카드 — 전체(남은) 행 순차 실행
+  async function _runGroupAll(historyIdx, gIdx) {
+    const msg = _history[historyIdx];
+    const group = msg && msg.action_groups && msg.action_groups[gIdx];
+    if (!group || group.bulkProgress) return;
+    const targets = group.items
+      .map((it, i) => ({ it, i }))
+      .filter(({ it }) => !it.skipped && it.status !== 'done' && it.status !== 'running');
+    if (!targets.length) return;
+    group.bulkProgress = { current: 0, total: targets.length };
+    _renderHistory();
+    let okCount = 0;
+    for (const { it } of targets) {
+      it.status = 'running';
+      _renderHistory();
+      try {
+        await _executeAction(it.action);
+        it.status = 'done';
+        okCount++;
+      } catch (e) {
+        it.status = 'failed';
+        it.errorMsg = window._humanError ? window._humanError(e) : e.message;
+      }
+      group.bulkProgress.current++;
+      _renderHistory();
+    }
+    group.bulkProgress = null;
+    _renderHistory();
+    if (okCount > 0) {
+      if (window.hapticSuccess) window.hapticSuccess();
+      if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
     }
   }
 
@@ -639,17 +969,9 @@
         msg.action_status = 'pending';
         _history.push(msg);
       } else if (actionsList.length > 1) {
+        // 카테고리별 그룹 카드 (2건 이상)
+        msg.action_groups = _groupActions(actionsList);
         _history.push(msg);
-        actionsList.forEach((act, idx) => {
-          _history.push({
-            role: 'assistant',
-            text: act.confirmation_text || `${idx + 1}/${actionsList.length} ${act.kind}`,
-            action: act,
-            action_status: 'pending',
-            action_batch_idx: idx,
-            action_batch_total: actionsList.length,
-          });
-        });
       } else {
         _history.push(msg);
       }
@@ -727,18 +1049,9 @@
         msg.action_status = 'pending';
         _history.push(msg);
       } else if (actionsList.length > 1) {
-        // 복수 액션: 답변 + 각 액션을 별도 버블로
+        // 복수 액션: 카테고리별 그룹 카드로 묶어서 표시
+        msg.action_groups = _groupActions(actionsList);
         _history.push(msg);
-        actionsList.forEach((act, idx) => {
-          _history.push({
-            role: 'assistant',
-            text: act.confirmation_text || `${idx + 1}/${actionsList.length} ${act.kind}`,
-            action: act,
-            action_status: 'pending',
-            action_batch_idx: idx,
-            action_batch_total: actionsList.length,
-          });
-        });
       } else {
         _history.push(msg);
       }
