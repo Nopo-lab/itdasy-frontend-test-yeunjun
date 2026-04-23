@@ -1,0 +1,315 @@
+/* ── 예약 캘린더 오버레이 (T-D1) ── 네임스페이스: .cv- / .cal- */
+
+/* === Overlay === */
+.cal-overlay-wrap {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 350;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.cal-sheet {
+  width: 100%;
+  max-width: 520px;
+  height: 92vh;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.cal-sheet-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.cal-month-label {
+  font-size: 16px;
+  font-weight: 700;
+  flex: 1;
+  text-align: center;
+}
+.cal-nav-btn,
+.cal-close-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface-2);
+  cursor: pointer;
+  color: var(--text);
+}
+.cal-view-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 2px;
+}
+.cal-view-toggle button {
+  border: none;
+  background: transparent;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--text-subtle);
+}
+.cal-view-toggle button.active {
+  background: var(--surface);
+  color: var(--text);
+}
+.cal-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* === Month view === */
+.cv-wk-hdr {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 0 8px;
+}
+.cv-wk-hdr div {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-subtle);
+  padding: 4px 0;
+}
+.cv-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  padding: 6px;
+}
+.cv-cell {
+  aspect-ratio: 1 / 1.75;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0 4px;
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  transition: background .15s;
+  overflow: hidden;
+}
+.cv-cell:hover {
+  background: var(--surface-2);
+}
+.cv-cell.other {
+  opacity: .28;
+}
+.cv-cell.today .cv-num {
+  background: var(--brand);
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-weight: 700;
+}
+.cv-num {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 24px;
+  text-align: center;
+  width: 100%;
+}
+.cv-cell.sun .cv-num {
+  color: var(--danger);
+}
+.cv-cell.sat .cv-num {
+  color: var(--info);
+}
+.cv-cell.holiday .cv-num {
+  color: var(--danger);
+}
+.cv-holiday-name {
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--danger);
+  margin-top: -2px;
+  line-height: 1;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.cv-mini-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  width: 100%;
+  margin-top: 3px;
+  min-width: 0;
+}
+.cv-mini-card {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 1px 3px 1px 7px;
+  border-radius: 0;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+  max-width: 100%;
+  box-sizing: border-box;
+  letter-spacing: -0.3px;
+}
+.cv-mini-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--brand);
+}
+.cv-mini-more {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text-subtle);
+  padding: 1px 4px;
+}
+
+/* === Day view === */
+.cv-wk-chip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px 12px;
+}
+.cv-wk-chip button {
+  flex-shrink: 0;
+  width: 44px;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+  color: var(--text);
+}
+.cv-wk-chip button.active {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+.cv-d-hd {
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  margin: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cv-d-slot {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px dashed var(--border);
+}
+.cv-d-time {
+  width: 62px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-subtle);
+}
+.cv-d-card {
+  flex: 1;
+  position: relative;
+  padding: 6px 8px 6px 11px;
+  border-radius: 0;
+  overflow: hidden;
+}
+.cv-d-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--card-clr, var(--brand));
+}
+.cv-mini-card::before {
+  background: var(--card-clr, var(--brand));
+}
+.cv-d-empty {
+  color: var(--text-subtle);
+  font-size: 12px;
+  padding: 12px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+  margin: 6px 12px;
+}
+
+/* === 버튼형 슬롯 (클릭 가능) === */
+.cv-d-slot--btn {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px dashed var(--border);
+  cursor: pointer;
+  font-family: inherit;
+}
+.cv-d-slot--btn:active {
+  background: var(--surface-2);
+}
+
+/* === + 예약 추가 버튼 === */
+.cv-d-add {
+  display: block;
+  width: calc(100% - 28px);
+  margin: 12px 14px;
+  padding: 10px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: none;
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+}
+
+/* === 예약 폼 === */
+.cv-form-wrap {
+  padding: 16px;
+}
+.cv-form-back {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 16px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  padding: 4px 0;
+  font-family: inherit;
+}
