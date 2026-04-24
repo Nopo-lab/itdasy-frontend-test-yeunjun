@@ -212,7 +212,7 @@
         </div>`;
       }
       if (m.role === 'assistant') {
-        const actionHtml = m.action ? _renderActionBubble(m.action, idx, m.action_status) : '';
+        const actionHtml = m.action ? _renderActionBubble(m.action, idx, m.action_status, m.edit_mode === true) : '';
         const groupsHtml = (m.action_groups && m.action_groups.length) ? _renderActionGroups(m.action_groups, idx) : '';
         const fallbackHtml = m.fallback ? _renderFallbackCard(m.fallback, idx, m.fallback_status) : '';
         const relatedHtml = (m.related && m.related.length) ? `
@@ -247,7 +247,7 @@
     _bindActionButtons();
   }
 
-  function _renderActionBubble(action, historyIdx, status) {
+  function _renderActionBubble(action, historyIdx, status, editing) {
     if (!action || !action.kind) return '';
     const kindBadge = {
       create_booking:  { icon: '📅', label: '예약 추가', color: '#F18091' },
@@ -258,6 +258,7 @@
       cancel_booking:  { icon: '🗑', label: '예약 취소', color: '#DC3545' },
       reschedule_booking: { icon: '🔄', label: '예약 시간 변경', color: '#0288D1' },
       update_customer: { icon: '✏️', label: '고객 정보 수정', color: '#4ECDC4' },
+      create_expense:  { icon: '💸', label: '지출 기록', color: '#E07A5F' },
       upsert_inventory: { icon: '📦', label: '재고 추가', color: '#2B8C7E' },
       generate_bulk_message: { icon: '📋', label: '단체 메시지 초안', color: '#FF8A5C' },
     }[action.kind] || { icon: '✓', label: action.kind, color: '#666' };
@@ -272,7 +273,46 @@
         <div style="font-size:11px;font-weight:700;color:#dc3545;">실패 — 다시 말씀해 주세요</div>
       </div>`;
     }
-    // pending
+
+    // 편집 모드 — 필드 인라인 수정
+    if (editing) {
+      const p = action.payload || {};
+      const editFields = [];
+      const addField = (field, label, val) => {
+        if (val === undefined) return;
+        editFields.push(`
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="width:52px;font-size:11px;color:hsl(220,10%,50%);font-weight:700;">${label}</span>
+            <input data-single-field="${historyIdx}:${field}" value="${_esc(val == null ? '' : val)}" style="flex:1;padding:7px 10px;border:1px solid hsl(220,15%,85%);border-radius:10px;font-size:12px;background:#fff;" />
+          </div>`);
+      };
+      if ('customer_name' in p || 'name' in p) addField('customer_name', '이름', p.customer_name ?? p.name);
+      if ('customer_phone' in p || 'phone' in p) addField('customer_phone', '전화', p.customer_phone ?? p.phone);
+      if ('service_name' in p) addField('service_name', '시술', p.service_name);
+      if ('amount' in p) addField('amount', '금액', p.amount);
+      if ('starts_at' in p) addField('starts_at', '시작', p.starts_at);
+      if ('memo' in p) addField('memo', '메모', p.memo);
+      if (!editFields.length) {
+        editFields.push(`
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="width:52px;font-size:11px;color:hsl(220,10%,50%);font-weight:700;">내용</span>
+            <input data-single-field="${historyIdx}:confirmation_text" value="${_esc(action.confirmation_text || '')}" style="flex:1;padding:7px 10px;border:1px solid hsl(220,15%,85%);border-radius:10px;font-size:12px;" />
+          </div>`);
+      }
+      return `<div style="margin-top:6px;padding:12px;background:#fff;border:1px solid ${kindBadge.color};border-radius:12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+          <span style="font-size:14px;">${kindBadge.icon}</span>
+          <span style="font-size:11px;font-weight:700;color:${kindBadge.color};">${kindBadge.label} · 편집 모드</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">${editFields.join('')}</div>
+        <div style="display:flex;gap:6px;">
+          <button data-action-save="${historyIdx}" style="flex:1;padding:9px;border:none;border-radius:8px;background:${kindBadge.color};color:#fff;font-weight:800;cursor:pointer;font-size:12px;">💾 저장</button>
+          <button data-action-editcancel="${historyIdx}" style="flex:1;padding:9px;border:1px solid #eee;border-radius:8px;background:#fff;color:#888;cursor:pointer;font-size:12px;">취소</button>
+        </div>
+      </div>`;
+    }
+
+    // pending (기본)
     return `<div style="margin-top:6px;padding:12px;background:#fff;border:1px solid ${kindBadge.color};border-radius:12px;">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
         <span style="font-size:14px;">${kindBadge.icon}</span>
@@ -280,6 +320,7 @@
       </div>
       <div style="font-size:13px;color:#222;font-weight:600;margin-bottom:10px;line-height:1.5;">${_esc(action.confirmation_text || '')}</div>
       <div style="display:flex;gap:6px;">
+        <button data-action-edit="${historyIdx}" style="flex:1;padding:9px;border:1px solid ${kindBadge.color};border-radius:8px;background:#fff;color:${kindBadge.color};font-weight:700;cursor:pointer;font-size:12px;">✏️ 수정</button>
         <button data-action-run="${historyIdx}" style="flex:2;padding:9px;border:none;border-radius:8px;background:${kindBadge.color};color:#fff;font-weight:800;cursor:pointer;font-size:12px;">추가하기 ✓</button>
         <button data-action-cancel="${historyIdx}" style="flex:1;padding:9px;border:1px solid #eee;border-radius:8px;background:#fff;color:#888;cursor:pointer;font-size:12px;">취소</button>
       </div>
@@ -541,14 +582,8 @@
       }
       msg.fallback_status = 'done';
       _renderHistory();
-      // SWR 캐시 무효화 + data-changed 이벤트 (기존 _runAction 과 동일한 동작)
-      try {
-        ['customer', 'customers', 'revenue', 'booking', 'bookings'].forEach(k => {
-          try { sessionStorage.removeItem('pv_cache::' + k); } catch (_e) { void _e; }
-          try { localStorage.removeItem('pv_cache::' + k); } catch (_e) { void _e; }
-        });
-        window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: kindKey } }));
-      } catch (_e) { void _e; }
+      // SWR 캐시 무효화 + data-changed 이벤트 (단일 액션과 동일 로직 재사용)
+      try { _invalidateCachesFor(kindKey); } catch (_e) { void _e; }
       _history.push({ role: 'assistant', text: '✓ 저장했어요' });
       _renderHistory();
       if (window.hapticSuccess) window.hapticSuccess();
@@ -576,8 +611,66 @@
       const cancel = e.target.closest('[data-action-cancel]');
       if (cancel && document.getElementById('asstBody')?.contains(cancel)) {
         const idx = parseInt(cancel.dataset.actionCancel, 10);
-        if (_history[idx]) { _history[idx].action_status = 'cancelled'; _history[idx].action = null; }
+        if (_history[idx]) { _history[idx].action_status = 'cancelled'; _history[idx].action = null; _history[idx].edit_mode = false; }
         _renderHistory();
+        return;
+      }
+      // 단일 액션 — 편집 모드 진입
+      const singleEdit = e.target.closest('[data-action-edit]');
+      if (singleEdit && document.getElementById('asstBody')?.contains(singleEdit)) {
+        const idx = parseInt(singleEdit.dataset.actionEdit, 10);
+        const msg = _history[idx];
+        if (msg && msg.action) {
+          // 원본 payload 백업 (취소 시 복원용)
+          if (!msg.action_orig_payload) {
+            try { msg.action_orig_payload = JSON.parse(JSON.stringify(msg.action.payload || {})); }
+            catch (_e) { msg.action_orig_payload = {}; }
+          }
+          msg.edit_mode = true;
+          _renderHistory();
+        }
+        return;
+      }
+      // 단일 액션 — 편집 저장
+      const singleSave = e.target.closest('[data-action-save]');
+      if (singleSave && document.getElementById('asstBody')?.contains(singleSave)) {
+        const idx = parseInt(singleSave.dataset.actionSave, 10);
+        const msg = _history[idx];
+        if (msg && msg.action) {
+          const body = document.getElementById('asstBody');
+          if (body) {
+            const inputs = body.querySelectorAll(`[data-single-field^="${idx}:"]`);
+            inputs.forEach(inp => {
+              const parts = inp.getAttribute('data-single-field').split(':');
+              const field = parts.slice(1).join(':');
+              if (field === 'confirmation_text') {
+                msg.action.confirmation_text = inp.value;
+              } else {
+                if (!msg.action.payload) msg.action.payload = {};
+                let v = inp.value;
+                if (field === 'amount') { const n = parseInt(String(v).replace(/[^\d]/g, ''), 10); v = isNaN(n) ? null : n; }
+                msg.action.payload[field] = v === '' ? null : v;
+              }
+            });
+          }
+          msg.edit_mode = false;
+          _renderHistory();
+        }
+        return;
+      }
+      // 단일 액션 — 편집 취소 (원본 복원)
+      const singleEditCancel = e.target.closest('[data-action-editcancel]');
+      if (singleEditCancel && document.getElementById('asstBody')?.contains(singleEditCancel)) {
+        const idx = parseInt(singleEditCancel.dataset.actionEditcancel, 10);
+        const msg = _history[idx];
+        if (msg && msg.action) {
+          if (msg.action_orig_payload) {
+            try { msg.action.payload = JSON.parse(JSON.stringify(msg.action_orig_payload)); }
+            catch (_e) { void _e; }
+          }
+          msg.edit_mode = false;
+          _renderHistory();
+        }
         return;
       }
       const sug = e.target.closest('[data-suggest]');
@@ -694,22 +787,25 @@
 
   // 캐시 무효화 + data-changed 이벤트 (단일 액션 실행 후 공통 로직)
   function _invalidateCachesFor(kind) {
+    // 각 kind 가 건드리는 SWR 키 목록 (app-core.js 의 실제 키와 일치해야 함)
+    // pv_cache::customers · pv_cache::bookings_all · pv_cache::revenue · pv_cache::inventory · pv_cache::today
     const _invalidateKinds = {
-      create_customer: ['customer', 'customers'],
-      create_booking: ['booking', 'bookings', 'customer', 'customers'],
-      create_revenue: ['revenue', 'customer', 'customers'],
+      create_customer: ['customer', 'customers', 'today'],
+      create_booking: ['booking', 'bookings', 'bookings_all', 'customer', 'customers', 'today'],
+      create_revenue: ['revenue', 'revenues', 'customer', 'customers', 'today', 'dashboard'],
       create_nps: ['nps', 'customer', 'customers'],
       update_customer: ['customer', 'customers'],
-      update_booking: ['booking', 'bookings'],
-      cancel_booking: ['booking', 'bookings'],
-      reschedule_booking: ['booking', 'bookings'],
+      update_booking: ['booking', 'bookings', 'bookings_all', 'today'],
+      cancel_booking: ['booking', 'bookings', 'bookings_all', 'today'],
+      reschedule_booking: ['booking', 'bookings', 'bookings_all', 'today'],
       upsert_inventory: ['inventory'],
-      create_expense: ['expense', 'expenses'],
+      create_expense: ['expense', 'expenses', 'revenue', 'today', 'dashboard'],
     }[kind] || [];
     _invalidateKinds.forEach(k => {
       try { sessionStorage.removeItem('pv_cache::' + k); } catch (_e) { void _e; }
       try { localStorage.removeItem('pv_cache::' + k); } catch (_e) { void _e; }
-      if (k === 'bookings' || k === 'booking') {
+      // booking 은 날짜별 variants 도 싹쓸이
+      if (k === 'bookings' || k === 'booking' || k === 'bookings_all') {
         try {
           for (let i = sessionStorage.length - 1; i >= 0; i--) {
             const key = sessionStorage.key(i);
@@ -721,6 +817,7 @@
           }
         } catch (_e) { void _e; }
       }
+      // customer 는 id 별 variants 도 싹쓸이
       if (k === 'customer' || k === 'customers') {
         try {
           for (let i = sessionStorage.length - 1; i >= 0; i--) {
@@ -733,8 +830,25 @@
           }
         } catch (_e) { void _e; }
       }
+      // expense 관련 키도 전부 제거
+      if (k === 'expense' || k === 'expenses') {
+        try {
+          for (let i = sessionStorage.length - 1; i >= 0; i--) {
+            const key = sessionStorage.key(i);
+            if (key && key.startsWith('pv_cache::expense')) sessionStorage.removeItem(key);
+          }
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('pv_cache::expense')) localStorage.removeItem(key);
+          }
+        } catch (_e) { void _e; }
+      }
     });
-    try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind } })); } catch (_e) { void _e; }
+    try {
+      window.dispatchEvent(new CustomEvent('itdasy:data-changed', {
+        detail: { kind, mutation_kind: kind },
+      }));
+    } catch (_e) { void _e; }
   }
 
   // 순수 실행기 — action 객체만 받아 POST, 결과 반환. UI 갱신은 호출자가.
