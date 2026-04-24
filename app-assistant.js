@@ -7,6 +7,12 @@
 (function () {
   'use strict';
 
+  // 2026-04-24 — Lucide SVG 아이콘 헬퍼 (이모지 대체용)
+  // 기존 index.html 의 <symbol id="ic-XXX"> 스프라이트 참조.
+  function _svg(id, size = 14) {
+    return `<svg width="${size}" height="${size}" style="vertical-align:-2px;" aria-hidden="true"><use href="#${id}"/></svg>`;
+  }
+
   const SUGGESTIONS = [
     '이번 주 매출 어때?',
     '김서연 2시 예약 추가',
@@ -39,21 +45,22 @@
   }
 
   // 액션 카테고리 메타 (아이콘 · 라벨 · 색상)
+  // 2026-04-24 — icon 필드는 Lucide sprite id. 렌더 시 _svg(icon, 18) 로 삽입.
   const CATEGORY = {
-    create_customer:       { icon: '👤', label: '고객 추가', color: '#4ECDC4' },
-    update_customer:       { icon: '✏️', label: '고객 수정', color: '#4ECDC4' },
-    create_revenue:        { icon: '💰', label: '매출 기록', color: '#388e3c' },
-    create_booking:        { icon: '📅', label: '예약 추가', color: '#F18091' },
-    update_booking:        { icon: '✏️', label: '예약 수정', color: '#A78BFA' },
-    cancel_booking:        { icon: '❌', label: '예약 취소', color: '#DC3545' },
-    reschedule_booking:    { icon: '🔄', label: '예약 변경', color: '#0288D1' },
-    create_expense:        { icon: '💸', label: '지출 기록', color: '#E07A5F' },
-    upsert_inventory:      { icon: '📦', label: '재고 입고', color: '#2B8C7E' },
-    create_nps:            { icon: '⭐', label: '후기', color: '#FFD700' },
-    generate_bulk_message: { icon: '💬', label: '메시지', color: '#FF8A5C' },
+    create_customer:       { icon: 'ic-user',            label: '고객 추가', color: '#4ECDC4' },
+    update_customer:       { icon: 'ic-edit-3',          label: '고객 수정', color: '#4ECDC4' },
+    create_revenue:        { icon: 'ic-dollar-sign',     label: '매출 기록', color: '#388e3c' },
+    create_booking:        { icon: 'ic-calendar',        label: '예약 추가', color: '#F18091' },
+    update_booking:        { icon: 'ic-edit-3',          label: '예약 수정', color: '#A78BFA' },
+    cancel_booking:        { icon: 'ic-x',               label: '예약 취소', color: '#DC3545' },
+    reschedule_booking:    { icon: 'ic-refresh-cw',      label: '예약 변경', color: '#0288D1' },
+    create_expense:        { icon: 'ic-credit-card',     label: '지출 기록', color: '#E07A5F' },
+    upsert_inventory:      { icon: 'ic-package',         label: '재고 입고', color: '#2B8C7E' },
+    create_nps:            { icon: 'ic-star',            label: '후기', color: '#FFD700' },
+    generate_bulk_message: { icon: 'ic-message-square',  label: '메시지', color: '#FF8A5C' },
   };
   function _catMeta(kind) {
-    return CATEGORY[kind] || { icon: '✓', label: kind || '작업', color: '#666' };
+    return CATEGORY[kind] || { icon: 'ic-check', label: kind || '작업', color: '#666' };
   }
   // actions[] 을 kind 순서대로 그룹핑 (첫 등장 순서 유지)
   function _groupActions(actions) {
@@ -145,18 +152,18 @@
     sheet.innerHTML = `
       <div style="position:absolute;inset:auto 0 0 0;background:var(--bg,#fff);border-radius:20px 20px 0 0;height:88vh;display:flex;flex-direction:column;padding:16px;padding-bottom:max(12px,env(safe-area-inset-bottom));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <span style="font-size:22px;">🤖</span>
+          <span style="display:inline-flex;align-items:center;color:#7C3AED;">${_svg('ic-bot', 22)}</span>
           <strong style="font-size:17px;">AI 비서</strong>
           <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(139,92,246,0.15);color:#7C3AED;font-weight:700;">베타</span>
-          <button onclick="closeAssistant()" style="margin-left:auto;background:rgba(0,0,0,0.05);border:none;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;">✕</button>
+          <button onclick="closeAssistant()" aria-label="닫기" title="닫기" style="margin-left:auto;background:rgba(0,0,0,0.05);border:none;width:32px;height:32px;border-radius:50%;color:#555;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">${_svg('ic-x', 16)}</button>
         </div>
         <div id="asstBody" style="flex:1;overflow-y:auto;padding:4px;"></div>
         <div id="asstSuggest" style="display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding:4px 0;"></div>
         <div id="asstTypeahead" style="display:none;gap:6px;overflow-x:auto;margin-top:6px;padding:2px 0;"></div>
         <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
-          <button id="asstPhoto" aria-label="사진 업로드" title="사진 업로드" style="flex-shrink:0;width:44px;height:44px;border:1px solid hsl(340,78%,85%);border-radius:14px;background:hsl(340,100%,98%);color:hsl(350,60%,40%);cursor:pointer;font-size:20px;padding:0;transition:background 0.15s;">📸</button>
+          <button id="asstPhoto" aria-label="사진 업로드" title="사진 업로드" style="flex-shrink:0;width:44px;height:44px;border:1px solid hsl(340,78%,85%);border-radius:14px;background:hsl(340,100%,98%);color:hsl(350,60%,40%);cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;transition:background 0.15s;">${_svg('ic-camera', 20)}</button>
           <input id="asstInput" placeholder="샵 관련해서 물어보세요…" maxlength="300" style="flex:1;padding:12px;border:1px solid #ddd;border-radius:14px;font-size:14px;min-width:0;" />
-          <button id="asstSend" style="flex-shrink:0;padding:12px 18px;border:none;border-radius:14px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;cursor:pointer;font-weight:800;">보내기</button>
+          <button id="asstSend" style="flex-shrink:0;padding:12px 18px;border:none;border-radius:14px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;cursor:pointer;font-weight:800;display:inline-flex;align-items:center;gap:6px;">${_svg('ic-send', 14)} 보내기</button>
         </div>
         <input id="asstCamera" type="file" accept="image/*" capture="environment" style="display:none;" />
         <input id="asstGallery" type="file" accept="image/*" style="display:none;" />
@@ -221,7 +228,7 @@
     if (!_history.length) {
       body.innerHTML = `
         <div style="padding:30px 20px;text-align:center;">
-          <div style="font-size:40px;margin-bottom:10px;">🤖</div>
+          <div style="display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:rgba(139,92,246,0.12);color:#7C3AED;margin-bottom:10px;">${_svg('ic-bot', 32)}</div>
           <div style="font-size:14px;color:#555;line-height:1.6;">안녕하세요 원장님 👋<br>궁금한 건 물어보고, 할 일은 맡겨주세요.<br><span style="font-size:11px;color:#888;">예: "김서연 2시 예약 추가" · "매출 5만원 카드"</span></div>
         </div>
       `;
@@ -247,12 +254,12 @@
             ${m.related.map(q => `<button data-suggest="${_esc(q)}" style="padding:5px 10px;border:1px solid #E2D6F7;border-radius:100px;background:#F7F2FD;cursor:pointer;font-size:11px;color:#6B21A8;white-space:nowrap;font-weight:700;transition:all 0.12s;">💬 ${_esc(q)}</button>`).join('')}
           </div>` : '';
         return `<div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;">
-          <div style="width:28px;height:28px;border-radius:50%;background:rgba(139,92,246,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;">🤖</div>
+          <div style="width:28px;height:28px;border-radius:50%;background:rgba(139,92,246,0.15);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#7C3AED;">${_svg('ic-bot', 16)}</div>
           <div style="max-width:85%;min-width:0;">
             <div style="padding:10px 14px;background:#fff;border:1px solid rgba(0,0,0,0.06);border-radius:16px 16px 16px 4px;font-size:13px;line-height:1.6;color:#222;white-space:pre-wrap;">${_esc(m.text)}</div>
             <div style="margin-top:3px;padding-left:4px;">
               <button data-report-ai="chat_answer" data-snippet="${_esc(m.text).replace(/"/g,'&quot;')}" data-source="/assistant/chat" aria-label="AI 답변 신고"
-                style="background:transparent;border:none;cursor:pointer;font-size:10px;color:#bbb;padding:2px 4px;">🚩 신고</button>
+                style="background:transparent;border:none;cursor:pointer;font-size:10px;color:#bbb;padding:2px 4px;display:inline-flex;align-items:center;gap:3px;">${_svg('ic-flag', 11)} 신고</button>
             </div>
             ${dupHtml}
             ${actionHtml}
@@ -264,7 +271,7 @@
       }
       // loading
       return `<div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;">
-        <div style="width:28px;height:28px;border-radius:50%;background:rgba(139,92,246,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;">🤖</div>
+        <div style="width:28px;height:28px;border-radius:50%;background:rgba(139,92,246,0.15);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#7C3AED;">${_svg('ic-bot', 16)}</div>
         <div style="padding:10px 14px;background:#fff;border:1px solid rgba(0,0,0,0.06);border-radius:16px;">
           <span style="display:inline-block;animation:asstDots 1.4s infinite;font-size:20px;color:#bbb;">···</span>
         </div>
@@ -310,14 +317,14 @@
             ${_categoryOptionsHtml(cat)}
           </select>
           <button data-${delAttr}="${keyPrefix}:${i}" aria-label="품목 삭제" title="품목 삭제"
-            style="padding:0;border:1px solid hsl(0,60%,85%);border-radius:8px;background:hsl(0,70%,98%);color:hsl(0,60%,45%);cursor:pointer;font-size:${sz.fs};height:100%;">🗑</button>
+            style="padding:0;border:1px solid hsl(0,60%,85%);border-radius:8px;background:hsl(0,70%,98%);color:hsl(0,60%,45%);cursor:pointer;font-size:${sz.fs};height:100%;display:inline-flex;align-items:center;justify-content:center;">${_svg('ic-trash-2', compact ? 12 : 13)}</button>
         </div>`;
     }).join('');
     const emptyHint = list.length ? '' : `<div style="font-size:11px;color:#999;padding:6px 2px;">품목이 없어요. 아래 버튼으로 추가하세요.</div>`;
     return `
       <div style="display:flex;flex-direction:column;gap:${sz.gap};">${rows}${emptyHint}</div>
       <button data-${addAttr}="${keyPrefix}"
-        style="margin-top:6px;padding:7px 10px;border:1px dashed ${color};border-radius:8px;background:#fff;color:${color};font-size:${sz.fs};font-weight:700;cursor:pointer;">➕ 품목 추가</button>`;
+        style="margin-top:6px;padding:7px 10px;border:1px dashed ${color};border-radius:8px;background:#fff;color:${color};font-size:${sz.fs};font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">${_svg('ic-plus', 12)} 품목 추가</button>`;
   }
 
   // ─── 중복 의심 경고 카드 (영수증·주문내역 여러 장 업로드 시) ───
@@ -331,7 +338,7 @@
       const reason = w.reason || '비슷한 내용을 최근에 기록했어요';
       return `
         <div style="margin:6px 0;padding:10px 12px;background:#FFF7ED;border:1px solid #FDBA74;border-radius:12px;">
-          <div style="font-size:12px;font-weight:700;color:#C2410C;margin-bottom:6px;">⚠️ 중복 의심</div>
+          <div style="font-size:12px;font-weight:700;color:#C2410C;margin-bottom:6px;display:inline-flex;align-items:center;gap:4px;">${_svg('ic-alert-triangle', 12)} 중복 의심</div>
           <div style="font-size:12px;color:#7C2D12;line-height:1.5;">${_esc(reason)}</div>
           <div style="display:flex;gap:6px;margin-top:8px;">
             <button data-dup-proceed="${historyIdx}:${wi}" style="flex:1;padding:7px;border:1px solid #C2410C;border-radius:8px;background:#fff;color:#C2410C;cursor:pointer;font-size:11px;">그래도 추가</button>
@@ -344,23 +351,24 @@
 
   function _renderActionBubble(action, historyIdx, status, editing) {
     if (!action || !action.kind) return '';
+    // 2026-04-24 — icon 은 Lucide sprite id (문자열), 렌더 시 _svg() 로 변환
     const kindBadge = {
-      create_booking:  { icon: '📅', label: '예약 추가', color: '#F18091' },
-      create_revenue:  { icon: '💰', label: '매출 기록', color: '#388e3c' },
-      create_customer: { icon: '👤', label: '고객 등록', color: '#4ECDC4' },
-      create_nps:      { icon: '⭐', label: 'NPS 기록', color: '#FFD700' },
-      update_booking:  { icon: '✏️', label: '예약 수정', color: '#A78BFA' },
-      cancel_booking:  { icon: '🗑', label: '예약 취소', color: '#DC3545' },
-      reschedule_booking: { icon: '🔄', label: '예약 시간 변경', color: '#0288D1' },
-      update_customer: { icon: '✏️', label: '고객 정보 수정', color: '#4ECDC4' },
-      create_expense:  { icon: '💸', label: '지출 기록', color: '#E07A5F' },
-      upsert_inventory: { icon: '📦', label: '재고 추가', color: '#2B8C7E' },
-      generate_bulk_message: { icon: '📋', label: '단체 메시지 초안', color: '#FF8A5C' },
-    }[action.kind] || { icon: '✓', label: action.kind, color: '#666' };
+      create_booking:  { icon: 'ic-calendar',       label: '예약 추가',       color: '#F18091' },
+      create_revenue:  { icon: 'ic-dollar-sign',    label: '매출 기록',       color: '#388e3c' },
+      create_customer: { icon: 'ic-user',           label: '고객 등록',       color: '#4ECDC4' },
+      create_nps:      { icon: 'ic-star',           label: 'NPS 기록',        color: '#FFD700' },
+      update_booking:  { icon: 'ic-edit-3',         label: '예약 수정',       color: '#A78BFA' },
+      cancel_booking:  { icon: 'ic-trash-2',        label: '예약 취소',       color: '#DC3545' },
+      reschedule_booking: { icon: 'ic-refresh-cw',  label: '예약 시간 변경',  color: '#0288D1' },
+      update_customer: { icon: 'ic-edit-3',         label: '고객 정보 수정',  color: '#4ECDC4' },
+      create_expense:  { icon: 'ic-credit-card',    label: '지출 기록',       color: '#E07A5F' },
+      upsert_inventory: { icon: 'ic-package',       label: '재고 추가',       color: '#2B8C7E' },
+      generate_bulk_message: { icon: 'ic-message-square', label: '단체 메시지 초안', color: '#FF8A5C' },
+    }[action.kind] || { icon: 'ic-check', label: action.kind, color: '#666' };
 
     if (status === 'done') {
       return `<div style="margin-top:6px;padding:10px 12px;background:linear-gradient(135deg,rgba(76,175,80,0.12),rgba(76,175,80,0.02));border-radius:12px;border-left:3px solid #388e3c;">
-        <div style="font-size:11px;font-weight:700;color:#388e3c;">✓ 완료</div>
+        <div style="font-size:11px;font-weight:700;color:#388e3c;display:inline-flex;align-items:center;gap:4px;">${_svg('ic-check', 12)} 완료</div>
       </div>`;
     }
     if (status === 'failed') {
@@ -451,13 +459,13 @@
 
       return `<div style="margin-top:6px;padding:12px;background:#fff;border:1px solid ${kindBadge.color};border-radius:12px;">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-          <span style="font-size:14px;">${kindBadge.icon}</span>
+          <span style="display:inline-flex;align-items:center;color:${kindBadge.color};">${_svg(kindBadge.icon, 14)}</span>
           <span style="font-size:11px;font-weight:700;color:${kindBadge.color};">${kindBadge.label} · 편집 모드</span>
         </div>
         ${editFields.length ? `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">${editFields.join('')}</div>` : ''}
         ${itemsHtml}
         <div style="display:flex;gap:6px;margin-top:10px;">
-          <button data-action-save="${historyIdx}" style="flex:1;padding:9px;border:none;border-radius:8px;background:${kindBadge.color};color:#fff;font-weight:800;cursor:pointer;font-size:12px;">💾 저장</button>
+          <button data-action-save="${historyIdx}" style="flex:1;padding:9px;border:none;border-radius:8px;background:${kindBadge.color};color:#fff;font-weight:800;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:5px;">${_svg('ic-save', 13)} 저장</button>
           <button data-action-editcancel="${historyIdx}" style="flex:1;padding:9px;border:1px solid #eee;border-radius:8px;background:#fff;color:#888;cursor:pointer;font-size:12px;">취소</button>
         </div>
       </div>`;
@@ -466,13 +474,13 @@
     // pending (기본)
     return `<div style="margin-top:6px;padding:12px;background:#fff;border:1px solid ${kindBadge.color};border-radius:12px;">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-        <span style="font-size:14px;">${kindBadge.icon}</span>
+        <span style="display:inline-flex;align-items:center;color:${kindBadge.color};">${_svg(kindBadge.icon, 14)}</span>
         <span style="font-size:11px;font-weight:700;color:${kindBadge.color};">${kindBadge.label}</span>
       </div>
       <div style="font-size:13px;color:#222;font-weight:600;margin-bottom:10px;line-height:1.5;">${_esc(action.confirmation_text || '')}</div>
       <div style="display:flex;gap:6px;">
-        <button data-action-edit="${historyIdx}" style="flex:1;padding:9px;border:1px solid ${kindBadge.color};border-radius:8px;background:#fff;color:${kindBadge.color};font-weight:700;cursor:pointer;font-size:12px;">✏️ 수정</button>
-        <button data-action-run="${historyIdx}" style="flex:2;padding:9px;border:none;border-radius:8px;background:${kindBadge.color};color:#fff;font-weight:800;cursor:pointer;font-size:12px;">추가하기 ✓</button>
+        <button data-action-edit="${historyIdx}" style="flex:1;padding:9px;border:1px solid ${kindBadge.color};border-radius:8px;background:#fff;color:${kindBadge.color};font-weight:700;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:5px;">${_svg('ic-edit-3', 13)} 수정</button>
+        <button data-action-run="${historyIdx}" style="flex:2;padding:9px;border:none;border-radius:8px;background:${kindBadge.color};color:#fff;font-weight:800;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:5px;">추가하기 ${_svg('ic-check', 13)}</button>
         <button data-action-cancel="${historyIdx}" style="flex:1;padding:9px;border:1px solid #eee;border-radius:8px;background:#fff;color:#888;cursor:pointer;font-size:12px;">취소</button>
       </div>
     </div>`;
@@ -514,10 +522,10 @@
     // 전부 완료된 경우 — 축소된 성공 카드
     if (allDone) {
       const label = skipped
-        ? `✅ ${meta.label} ${done}건 추가됨 (${skipped}건 제외)`
-        : `✅ ${meta.label} ${done}건 모두 추가됨`;
+        ? `${meta.label} ${done}건 추가됨 (${skipped}건 제외)`
+        : `${meta.label} ${done}건 모두 추가됨`;
       return `<div style="margin-top:6px;padding:12px;background:linear-gradient(135deg,hsl(145,45%,94%),hsl(145,45%,98%));border-radius:14px;border-left:3px solid hsl(145,50%,40%);">
-        <div style="font-size:13px;font-weight:800;color:hsl(145,50%,30%);">${_esc(label)}</div>
+        <div style="font-size:13px;font-weight:800;color:hsl(145,50%,30%);display:inline-flex;align-items:center;gap:6px;">${_svg('ic-check-circle', 14)} ${_esc(label)}</div>
       </div>`;
     }
 
@@ -529,20 +537,22 @@
 
     const header = `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        <span style="font-size:18px;">${meta.icon}</span>
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:${meta.color}22;color:${meta.color};">${_svg(meta.icon, 16)}</span>
         <div style="flex:1;min-width:0;">
           <div style="font-size:13px;font-weight:800;color:#222;">${_esc(meta.label)} <span style="color:${meta.color};">(${total}건)</span></div>
           ${headerLine}
         </div>
       </div>`;
 
+    const toggleIcon = group.expanded ? _svg('ic-chevron-down', 13) : _svg('ic-edit-3', 13);
+    const runIcon = _svg('ic-check', 13);
     const controls = `
       <div style="display:flex;gap:6px;">
-        <button data-group-toggle="${historyIdx}:${gIdx}" style="flex:1;padding:9px;border:1px solid ${meta.color};border-radius:10px;background:#fff;color:${meta.color};font-weight:800;cursor:pointer;font-size:12px;">
-          ${group.expanded ? '📝 접기' : '📝 수정하기'}
+        <button data-group-toggle="${historyIdx}:${gIdx}" style="flex:1;padding:9px;border:1px solid ${meta.color};border-radius:10px;background:#fff;color:${meta.color};font-weight:800;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:5px;">
+          ${toggleIcon} ${group.expanded ? '접기' : '수정하기'}
         </button>
-        <button data-group-runall="${historyIdx}:${gIdx}" ${group.bulkProgress ? 'disabled' : ''} style="flex:2;padding:9px;border:none;border-radius:10px;background:${meta.color};color:#fff;font-weight:800;cursor:${group.bulkProgress ? 'not-allowed' : 'pointer'};font-size:12px;opacity:${group.bulkProgress ? 0.6 : 1};">
-          ${group.bulkProgress ? `진행 중 ${group.bulkProgress.current}/${group.bulkProgress.total}` : (done + skipped > 0 ? `✓ 남은 ${remaining}개 추가` : '✓ 전체 추가')}
+        <button data-group-runall="${historyIdx}:${gIdx}" ${group.bulkProgress ? 'disabled' : ''} style="flex:2;padding:9px;border:none;border-radius:10px;background:${meta.color};color:#fff;font-weight:800;cursor:${group.bulkProgress ? 'not-allowed' : 'pointer'};font-size:12px;opacity:${group.bulkProgress ? 0.6 : 1};display:inline-flex;align-items:center;justify-content:center;gap:5px;">
+          ${group.bulkProgress ? `진행 중 ${group.bulkProgress.current}/${group.bulkProgress.total}` : (done + skipped > 0 ? `${runIcon} 남은 ${remaining}개 추가` : `${runIcon} 전체 추가`)}
         </button>
       </div>`;
 
@@ -566,8 +576,8 @@
       const origIdxSet = new Set(group.items.map(it => it.origIdx));
       const hits = duplicateWarnings.filter(w => !w.dismissed && origIdxSet.has(w.action_index));
       if (hits.length) {
-        dupBannerHtml = `<div style="margin-bottom:8px;padding:8px 10px;background:#FFF7ED;border:1px solid #FDBA74;border-radius:10px;font-size:11px;color:#C2410C;font-weight:700;">
-          ⚠️ 중복 의심 ${hits.length}건 — '수정하기' 눌러서 확인하세요
+        dupBannerHtml = `<div style="margin-bottom:8px;padding:8px 10px;background:#FFF7ED;border:1px solid #FDBA74;border-radius:10px;font-size:11px;color:#C2410C;font-weight:700;display:inline-flex;align-items:center;gap:5px;">
+          ${_svg('ic-alert-triangle', 12)} 중복 의심 ${hits.length}건 — '수정하기' 눌러서 확인하세요
         </div>`;
       }
     }
@@ -585,13 +595,13 @@
     const p = (it.action && it.action.payload) || {};
 
     if (it.status === 'done') {
-      return `<div style="padding:9px 10px;border-radius:10px;background:hsl(145,45%,96%);border:1px solid hsl(145,45%,85%);font-size:12px;color:hsl(145,50%,30%);font-weight:700;">
-        ✓ ${_esc(_summarizeItem(it.action))}
+      return `<div style="padding:9px 10px;border-radius:10px;background:hsl(145,45%,96%);border:1px solid hsl(145,45%,85%);font-size:12px;color:hsl(145,50%,30%);font-weight:700;display:inline-flex;align-items:center;gap:5px;width:100%;box-sizing:border-box;">
+        ${_svg('ic-check', 12)} <span>${_esc(_summarizeItem(it.action))}</span>
       </div>`;
     }
     if (it.status === 'failed') {
       return `<div style="padding:9px 10px;border-radius:10px;background:hsl(0,70%,96%);border:1px solid hsl(0,70%,85%);">
-        <div style="font-size:12px;color:hsl(0,70%,40%);font-weight:700;margin-bottom:6px;">✗ 실패 — ${_esc(_summarizeItem(it.action))}</div>
+        <div style="font-size:12px;color:hsl(0,70%,40%);font-weight:700;margin-bottom:6px;display:inline-flex;align-items:center;gap:5px;">${_svg('ic-x', 12)} <span>실패 — ${_esc(_summarizeItem(it.action))}</span></div>
         <button data-row-run="${key}" style="padding:6px 10px;border:1px solid ${meta.color};border-radius:8px;background:#fff;color:${meta.color};font-size:11px;font-weight:700;cursor:pointer;">다시 시도</button>
       </div>`;
     }
@@ -680,17 +690,17 @@
 
     const buttons = editing
       ? `<div style="display:flex;gap:6px;margin-top:4px;">
-          <button data-row-save="${key}" style="flex:1;padding:7px;border:none;border-radius:8px;background:${meta.color};color:#fff;font-weight:700;cursor:pointer;font-size:11px;">저장</button>
+          <button data-row-save="${key}" style="flex:1;padding:7px;border:none;border-radius:8px;background:${meta.color};color:#fff;font-weight:700;cursor:pointer;font-size:11px;display:inline-flex;align-items:center;justify-content:center;gap:4px;">${_svg('ic-save', 12)} 저장</button>
           <button data-row-editcancel="${key}" style="flex:1;padding:7px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#666;font-weight:700;cursor:pointer;font-size:11px;">취소</button>
         </div>`
       : `<div style="display:flex;gap:6px;margin-top:4px;">
-          <button data-row-run="${key}" style="flex:1;padding:7px;border:none;border-radius:8px;background:${meta.color};color:#fff;font-weight:700;cursor:pointer;font-size:11px;">✓ 추가</button>
-          <button data-row-edit="${key}" style="flex:1;padding:7px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#555;font-weight:700;cursor:pointer;font-size:11px;">✏️ 편집</button>
-          <button data-row-skip="${key}" style="flex:1;padding:7px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#888;font-weight:700;cursor:pointer;font-size:11px;">🗑 제외</button>
+          <button data-row-run="${key}" style="flex:1;padding:7px;border:none;border-radius:8px;background:${meta.color};color:#fff;font-weight:700;cursor:pointer;font-size:11px;display:inline-flex;align-items:center;justify-content:center;gap:4px;">${_svg('ic-check', 12)} 추가</button>
+          <button data-row-edit="${key}" style="flex:1;padding:7px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#555;font-weight:700;cursor:pointer;font-size:11px;display:inline-flex;align-items:center;justify-content:center;gap:4px;">${_svg('ic-edit-3', 12)} 편집</button>
+          <button data-row-skip="${key}" style="flex:1;padding:7px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#888;font-weight:700;cursor:pointer;font-size:11px;display:inline-flex;align-items:center;justify-content:center;gap:4px;">${_svg('ic-trash-2', 12)} 제외</button>
         </div>`;
 
     const status = it.status === 'running'
-      ? `<div style="font-size:10px;color:${meta.color};font-weight:700;margin-top:2px;">⏳ 저장 중…</div>`
+      ? `<div style="font-size:10px;color:${meta.color};font-weight:700;margin-top:2px;">저장 중…</div>`
       : '';
 
     return `<div style="padding:9px 10px;border-radius:10px;background:hsl(340,100%,99%);border:1px solid hsl(340,30%,92%);display:flex;flex-direction:column;gap:6px;">
@@ -728,9 +738,9 @@
       ${row('금액', 'amount', extract.amount, '50000')}
       ${row('시간', 'time', extract.time, '내일 2시')}
       <div style="display:flex;gap:6px;margin-top:10px;">
-        <button data-fallback-intent="customer" data-fallback-idx="${historyIdx}" style="flex:1;padding:9px;border:none;border-radius:10px;background:hsl(175,55%,50%);color:#fff;font-weight:800;cursor:pointer;font-size:11px;">👤 고객 추가</button>
-        <button data-fallback-intent="revenue" data-fallback-idx="${historyIdx}" style="flex:1;padding:9px;border:none;border-radius:10px;background:hsl(145,50%,40%);color:#fff;font-weight:800;cursor:pointer;font-size:11px;">💰 매출 기록</button>
-        <button data-fallback-intent="booking" data-fallback-idx="${historyIdx}" style="flex:1;padding:9px;border:none;border-radius:10px;background:hsl(350,75%,60%);color:#fff;font-weight:800;cursor:pointer;font-size:11px;">📅 예약 추가</button>
+        <button data-fallback-intent="customer" data-fallback-idx="${historyIdx}" style="flex:1;padding:9px;border:none;border-radius:10px;background:hsl(175,55%,50%);color:#fff;font-weight:800;cursor:pointer;font-size:11px;display:inline-flex;align-items:center;justify-content:center;gap:4px;">${_svg('ic-user', 12)} 고객 추가</button>
+        <button data-fallback-intent="revenue" data-fallback-idx="${historyIdx}" style="flex:1;padding:9px;border:none;border-radius:10px;background:hsl(145,50%,40%);color:#fff;font-weight:800;cursor:pointer;font-size:11px;display:inline-flex;align-items:center;justify-content:center;gap:4px;">${_svg('ic-dollar-sign', 12)} 매출 기록</button>
+        <button data-fallback-intent="booking" data-fallback-idx="${historyIdx}" style="flex:1;padding:9px;border:none;border-radius:10px;background:hsl(350,75%,60%);color:#fff;font-weight:800;cursor:pointer;font-size:11px;display:inline-flex;align-items:center;justify-content:center;gap:4px;">${_svg('ic-calendar', 12)} 예약 추가</button>
       </div>
     </div>`;
   }
@@ -1347,8 +1357,8 @@
     box.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.45);display:flex;align-items:flex-end;justify-content:center;';
     box.innerHTML = `
       <div style="width:100%;max-width:460px;background:#fff;border-radius:20px 20px 0 0;padding:12px 12px max(12px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;">
-        <button data-photo-choice="camera" style="padding:16px;border:none;border-radius:14px;background:hsl(340,100%,98%);color:hsl(350,60%,40%);font-size:15px;font-weight:700;cursor:pointer;text-align:center;">📷 사진 찍기</button>
-        <button data-photo-choice="gallery" style="padding:16px;border:none;border-radius:14px;background:hsl(340,100%,98%);color:hsl(350,60%,40%);font-size:15px;font-weight:700;cursor:pointer;text-align:center;">🖼️ 갤러리에서</button>
+        <button data-photo-choice="camera" style="padding:16px;border:none;border-radius:14px;background:hsl(340,100%,98%);color:hsl(350,60%,40%);font-size:15px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;">${_svg('ic-camera', 18)} 사진 찍기</button>
+        <button data-photo-choice="gallery" style="padding:16px;border:none;border-radius:14px;background:hsl(340,100%,98%);color:hsl(350,60%,40%);font-size:15px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;">${_svg('ic-image-plus', 18)} 갤러리에서</button>
         <button data-photo-choice="cancel" style="padding:14px;border:none;border-radius:14px;background:#f2f2f2;color:#666;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;">취소</button>
       </div>
     `;

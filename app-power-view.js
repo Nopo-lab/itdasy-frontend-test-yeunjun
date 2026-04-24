@@ -21,13 +21,14 @@
   function _esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch])); }
   function _krw(n) { return (n || 0).toLocaleString('ko-KR') + '원'; }
 
+  // 2026-04-24 — icon 은 Lucide sprite id (렌더 시 <svg><use href="#..."/></svg> 로 변환)
   const TABS = [
-    { key: 'customer',  icon: '👥', label: '고객',  hue: 350 },
-    { key: 'booking',   icon: '📅', label: '예약',  hue: 260 },
-    { key: 'revenue',   icon: '💰', label: '매출',  hue: 20  },
-    { key: 'inventory', icon: '📦', label: '재고',  hue: 150 },
-    { key: 'nps',       icon: '⭐', label: 'NPS',   hue: 45  },
-    { key: 'service',   icon: '💅', label: '시술',  hue: 320 },
+    { key: 'customer',  icon: 'ic-users',       label: '고객',  hue: 350 },
+    { key: 'booking',   icon: 'ic-calendar',    label: '예약',  hue: 260 },
+    { key: 'revenue',   icon: 'ic-dollar-sign', label: '매출',  hue: 20  },
+    { key: 'inventory', icon: 'ic-package',     label: '재고',  hue: 150 },
+    { key: 'nps',       icon: 'ic-star',        label: 'NPS',   hue: 45  },
+    { key: 'service',   icon: 'ic-scissors',    label: '시술',  hue: 320 },
   ];
 
   const MENU_ITEMS = [
@@ -506,7 +507,11 @@
     } catch (e) {
       if (window.showToast) window.showToast('실패: ' + (window._humanError ? window._humanError(e) : e.message));
     } finally {
-      if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerHTML = '💾'; }
+      if (btn) {
+        btn.disabled = false;
+        btn.style.opacity = '';
+        btn.innerHTML = `<svg width="13" height="13" aria-hidden="true"><use href="#ic-save"/></svg>`;
+      }
     }
   }
 
@@ -552,8 +557,8 @@
     const btn = document.getElementById('pv-edit-toggle');
     if (btn) {
       btn.innerHTML = next
-        ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 완료`
-        : `✏️ 편집`;
+        ? `<svg width="14" height="14" aria-hidden="true"><use href="#ic-check"/></svg> 완료`
+        : `<svg width="14" height="14" aria-hidden="true"><use href="#ic-edit-3"/></svg> 편집`;
       btn.setAttribute('aria-pressed', String(next));
       btn.style.background = next
         ? 'linear-gradient(135deg, hsl(150, 55%, 55%), hsl(150, 60%, 45%))'
@@ -613,7 +618,7 @@
     ].join('');
 
     const chipHtml = TABS.map(t =>
-      `<button class="chip ${t.key === _state.currentTab ? 'chip--active' : ''}" data-pv-tab="${t.key}">${t.icon} ${t.label}<span class="pv-tab-badge" data-pv-tab-badge="${t.key}" style="display:none;"></span></button>`
+      `<button class="chip ${t.key === _state.currentTab ? 'chip--active' : ''}" data-pv-tab="${t.key}"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;" aria-hidden="true"><use href="#${t.icon}"/></svg>${t.label}<span class="pv-tab-badge" data-pv-tab-badge="${t.key}" style="display:none;"></span></button>`
     ).join('');
 
     overlay.innerHTML = `
@@ -631,7 +636,7 @@
           <button id="pv-menu-btn" class="pv-close" aria-label="전체 메뉴" title="전체 메뉴" style="margin-left:6px;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
           </button>
-          <button id="pv-edit-toggle" class="pv-edit-toggle" aria-label="편집 모드 토글" aria-pressed="false" title="전체 행 편집 모드" style="margin-left:6px;padding:8px 12px;border:none;border-radius:14px;background:linear-gradient(135deg, hsl(350, 75%, 72%), hsl(350, 70%, 60%));color:#fff;font-weight:800;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;box-shadow:0 2px 6px rgba(241,128,145,0.28);transition:all 0.15s;">✏️ 편집</button>
+          <button id="pv-edit-toggle" class="pv-edit-toggle" aria-label="편집 모드 토글" aria-pressed="false" title="전체 행 편집 모드" style="margin-left:6px;padding:8px 12px;border:none;border-radius:14px;background:linear-gradient(135deg, hsl(350, 75%, 72%), hsl(350, 70%, 60%));color:#fff;font-weight:800;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;box-shadow:0 2px 6px rgba(241,128,145,0.28);transition:all 0.15s;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-edit-3"/></svg> 편집</button>
         </div>
         <div class="pv-chip-bar">${chipHtml}</div>
         <div class="pv-body" id="pv-body"></div>

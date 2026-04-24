@@ -248,13 +248,13 @@
           return `<td><input data-pv-edit="${r.id}:${f.key}" type="${f.type || 'text'}" value="${_esc(shown)}"${ph} style="width:100%;padding:7px 9px;border:1.5px solid hsl(350, 60%, 88%);border-radius:10px;font-size:12.5px;background:#fff;box-sizing:border-box;" /></td>`;
         }).join('');
         const actionCell = `<td style="text-align:right;white-space:nowrap;">
-          <button data-pv-row-save="${r.id}" title="저장" style="border:none;background:linear-gradient(135deg, hsl(350, 75%, 72%), hsl(350, 70%, 60%));color:#fff;cursor:pointer;font-size:13px;padding:6px 9px;border-radius:10px;margin-right:4px;font-weight:800;">💾</button>
-          <button data-pv-row-delete="${r.id}" title="삭제" style="border:1.5px solid #f0c0c0;background:#fff;color:#C62828;cursor:pointer;font-size:13px;padding:5px 8px;border-radius:10px;font-weight:700;">🗑</button>
+          <button data-pv-row-save="${r.id}" aria-label="저장" title="저장" style="border:none;background:linear-gradient(135deg, hsl(350, 75%, 72%), hsl(350, 70%, 60%));color:#fff;cursor:pointer;padding:6px 9px;border-radius:10px;margin-right:4px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;"><svg width="13" height="13" aria-hidden="true"><use href="#ic-save"/></svg></button>
+          <button data-pv-row-delete="${r.id}" aria-label="삭제" title="삭제" style="border:1.5px solid #f0c0c0;background:#fff;color:#C62828;cursor:pointer;padding:5px 8px;border-radius:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;"><svg width="13" height="13" aria-hidden="true"><use href="#ic-trash-2"/></svg></button>
         </td>`;
         return `<tr data-id="${r.id}" class="pv-row-editing">${editCells}${actionCell}</tr>`;
       }
       const cells = schema.row(r).map(c => `<td>${c}</td>`).join('');
-      return `<tr data-id="${r.id}">${cells}<td style="text-align:right;"><button class="pv-row-edit" data-edit-id="${r.id}" title="수정" style="border:none;background:transparent;cursor:pointer;font-size:13px;color:#888;padding:4px 8px;border-radius:6px;transition:all 0.12s;">✎</button></td></tr>`;
+      return `<tr data-id="${r.id}">${cells}<td style="text-align:right;"><button class="pv-row-edit" data-edit-id="${r.id}" aria-label="수정" title="수정" style="border:none;background:transparent;cursor:pointer;color:#888;padding:4px 8px;border-radius:6px;transition:all 0.12s;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-edit-3"/></svg></button></td></tr>`;
     }).join('');
 
     const pendingList = state.pending[state.currentTab] || [];
