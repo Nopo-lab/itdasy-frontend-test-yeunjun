@@ -3,7 +3,7 @@
 //  CACHE_VERSION = 날짜(YYYYMMDD) + 빌드번호
 //  배포할 때마다 이 값만 올리면 구 캐시 자동 삭제
 // ─────────────────────────────────────────────
-const CACHE_VERSION = '20260420-v21';
+const CACHE_VERSION = '20260424-v22';
 const CACHE_NAME    = `itdasy-${CACHE_VERSION}`;
 
 // SW 기준 상대경로 — 호스팅 경로 바뀌어도 자동 동작
