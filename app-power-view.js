@@ -15,6 +15,7 @@
     data: { customer: [], booking: [], revenue: [], inventory: [], nps: [], service: [] },
     searchKW: '',
     pending: { customer: [], booking: [], revenue: [], inventory: [], nps: [], service: [] },
+    editMode: false,
   };
 
   function _esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch])); }
@@ -59,6 +60,12 @@
         (r.memo || '').slice(0, 30) || '—',
         `${r.visit_count || 0}회`,
       ],
+      editFields: [
+        { key: 'name',  type: 'text' },
+        { key: 'phone', type: 'tel' },
+        { key: 'memo',  type: 'text' },
+        { key: 'visit_count', type: 'text', readonly: true, format: (r) => `${r.visit_count || 0}회` },
+      ],
       search: (r, kw) => (r.name + ' ' + (r.phone || '') + ' ' + (r.memo || '')).toLowerCase().includes(kw),
       empty: { icon: '👥', title: '아직 고객이 없어요', desc: '위 입력 행에 이름·전화만 적고 Enter 로 추가하세요.' },
       qadd: {
@@ -78,6 +85,13 @@
         _esc(r.service_name || '—'),
         `<span style="color:#666;font-variant-numeric:tabular-nums;">${(r.starts_at || '').replace('T', ' ').slice(0, 16)}</span>`,
         `<span style="padding:3px 9px;border-radius:100px;background:#E8F4F1;color:#2B8C7E;font-size:11px;font-weight:700;">${_esc(r.status || 'confirmed')}</span>`,
+      ],
+      editFields: [
+        { key: 'customer_name', type: 'text' },
+        { key: 'service_name',  type: 'text' },
+        { key: 'starts_at',     type: 'text', placeholder: 'YYYY-MM-DD HH:MM',
+          transform: (v) => (v || '').replace('T', ' ').slice(0, 16) },
+        { key: 'status',        type: 'text' },
       ],
       search: (r, kw) => ((r.customer_name || '') + ' ' + (r.service_name || '') + ' ' + (r.starts_at || '')).toLowerCase().includes(kw),
       empty: { icon: '📅', title: '예정된 예약이 없어요', desc: '시간 형식: 2026-04-22 14:00' },
@@ -112,6 +126,14 @@
         `<span style="padding:3px 9px;border-radius:100px;background:#FEF4F5;color:#D95F70;font-size:11px;font-weight:700;">${_esc(r.method || '—')}</span>`,
         `<span style="color:#2B8C7E;font-weight:700;">${r.net_amount != null ? _krw(r.net_amount) : _krw(r.amount)}</span>`,
       ],
+      editFields: [
+        { key: 'customer_name', type: 'text' },
+        { key: 'service_name',  type: 'text' },
+        { key: 'amount',        type: 'number' },
+        { key: 'method',        type: 'text', placeholder: 'card|cash|transfer' },
+        { key: 'net_amount',    type: 'text', readonly: true,
+          format: (r) => _krw(r.net_amount != null ? r.net_amount : r.amount) },
+      ],
       search: (r, kw) => ((r.customer_name || '') + ' ' + (r.service_name || '') + ' ' + (r.method || '')).toLowerCase().includes(kw),
       empty: { icon: '💰', title: '매출 기록이 없어요', desc: '카드는 3.4% 수수료가 자동 차감돼서 실 수령액이 바로 보여요.' },
       qadd: {
@@ -144,6 +166,14 @@
             : `<span style="padding:3px 9px;border-radius:100px;background:#E8F5E9;color:#2E7D32;font-size:11px;font-weight:700;">🟢 정상</span>`,
         ];
       },
+      editFields: [
+        { key: 'name',      type: 'text' },
+        { key: 'quantity',  type: 'number' },
+        { key: 'unit',      type: 'text' },
+        { key: 'threshold', type: 'number' },
+        { key: '_status',   type: 'text', readonly: true,
+          format: (r) => ((r.quantity || 0) < (r.threshold || 0)) ? '🔴 부족' : '🟢 정상' },
+      ],
       search: (r, kw) => ((r.name || '') + ' ' + (r.category || '')).toLowerCase().includes(kw),
       empty: { icon: '📦', title: '재고가 비어있어요', desc: '임계보다 적어지면 자동 부족 경고 뜹니다.' },
       qadd: {
@@ -170,6 +200,13 @@
         `<span style="color:#888;font-size:11px;">${_esc(r.source || 'manual')}</span>`,
         `<span style="color:#888;font-variant-numeric:tabular-nums;">${(r.responded_at || '').slice(0, 10) || '—'}</span>`,
       ],
+      editFields: [
+        { key: 'rating',  type: 'number' },
+        { key: 'comment', type: 'text' },
+        { key: 'source',  type: 'text' },
+        { key: 'responded_at', type: 'text', readonly: true,
+          format: (r) => (r.responded_at || '').slice(0, 10) || '—' },
+      ],
       search: (r, kw) => ((r.comment || '') + ' ' + (r.source || '') + ' ' + r.rating).toLowerCase().includes(kw),
       empty: { icon: '⭐', title: 'NPS 후기가 없어요', desc: '0~10점 만족도 질문의 답을 기록해요.' },
       qadd: {
@@ -188,6 +225,12 @@
         `<span style="font-weight:700;">${_krw(r.default_price)}</span>`,
         `<span style="color:#666;">${r.default_duration_min || 0}분</span>`,
         `<span style="padding:3px 9px;border-radius:100px;background:#F3E8FF;color:#6B21A8;font-size:11px;font-weight:700;">${_esc(r.category || 'etc')}</span>`,
+      ],
+      editFields: [
+        { key: 'name',                 type: 'text' },
+        { key: 'default_price',        type: 'number' },
+        { key: 'default_duration_min', type: 'number' },
+        { key: 'category',             type: 'text' },
       ],
       search: (r, kw) => ((r.name || '') + ' ' + (r.category || '')).toLowerCase().includes(kw),
       empty: { icon: '💅', title: '시술 프리셋이 없어요', desc: '자주 하는 시술 등록해두면 원탭 기록 가능.' },
@@ -383,6 +426,152 @@
     } catch (e) { if (window.showToast) window.showToast('실패: ' + (window._humanError ? window._humanError(e) : e.message)); }
   }
 
+  // ── 엔드포인트 경로 (편집/삭제 공통) ────────────────
+  const _ROW_PATHS = {
+    customer:  (id) => `/customers/${id}`,
+    booking:   (id) => `/bookings/${id}`,
+    revenue:   (id) => `/revenue/${id}`,
+    inventory: (id) => `/inventory/${id}`,
+    nps:       (id) => `/nps/${id}`,
+    service:   (id) => `/services/${id}`,
+  };
+
+  // ── 숫자/날짜 전처리 (PATCH 전 형변환) ──────────────
+  function _coercePatch(tab, row, patch) {
+    if ('amount' in patch) patch.amount = parseInt(patch.amount) || 0;
+    if ('quantity' in patch) patch.quantity = parseInt(patch.quantity) || 0;
+    if ('threshold' in patch) patch.threshold = parseInt(patch.threshold) || 0;
+    if ('rating' in patch) patch.rating = parseInt(patch.rating) || 0;
+    if ('default_price' in patch) patch.default_price = parseInt(patch.default_price) || 0;
+    if ('default_duration_min' in patch) patch.default_duration_min = parseInt(patch.default_duration_min) || 60;
+    if ('starts_at' in patch && patch.starts_at) {
+      const s = String(patch.starts_at).replace(' ', 'T');
+      const start = new Date(s);
+      if (isNaN(start)) throw new Error('시간 형식 오류 (예: 2026-04-22 14:00)');
+      patch.starts_at = start.toISOString();
+      if (tab === 'booking' && row.starts_at && row.ends_at) {
+        const dur = new Date(row.ends_at) - new Date(row.starts_at);
+        patch.ends_at = new Date(start.getTime() + dur).toISOString();
+      }
+    }
+    return patch;
+  }
+
+  // ── 편집 모드: 행 저장 ──────────────────────────────
+  async function _saveInlineRow(rowId) {
+    const tab = _state.currentTab;
+    const row = (_state.data[tab] || []).find(r => String(r.id) === String(rowId));
+    if (!row) return;
+    const schema = SCHEMAS[tab];
+    const inputs = document.querySelectorAll(`#power-view-overlay [data-pv-edit^="${rowId}:"]`);
+    const patch = {};
+    inputs.forEach(el => {
+      const key = el.getAttribute('data-pv-edit').split(':')[1];
+      const f = (schema.editFields || []).find(x => x.key === key);
+      if (!f || f.readonly) return;
+      const curVal = row[key] == null ? '' : String(row[key]);
+      const newVal = el.value;
+      if (newVal !== curVal && !(newVal === '' && row[key] == null)) {
+        patch[key] = newVal;
+      }
+    });
+    if (!Object.keys(patch).length) {
+      if (window.showToast) window.showToast('변경 없음');
+      return;
+    }
+    const btn = document.querySelector(`[data-pv-row-save="${rowId}"]`);
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.innerHTML = '…'; }
+    try {
+      _coercePatch(tab, row, patch);
+      const res = await fetch(API() + _ROW_PATHS[tab](row.id), {
+        method: 'PATCH',
+        headers: { ...AUTH(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg = (typeof err.detail === 'string' ? err.detail : err.detail?.message) || res.statusText;
+        throw new Error(msg);
+      }
+      if (window.hapticSuccess) window.hapticSuccess();
+      const chip = document.getElementById('pv-save-chip');
+      if (chip) {
+        chip.textContent = '저장 완료';
+        chip.classList.add('pv-save-chip--show');
+        setTimeout(() => chip.classList.remove('pv-save-chip--show'), 1400);
+      }
+      _state.data[tab] = await _fetchTab(tab, false);
+      await window._PVRender.renderTab(true);
+      if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
+    } catch (e) {
+      if (window.showToast) window.showToast('실패: ' + (window._humanError ? window._humanError(e) : e.message));
+    } finally {
+      if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerHTML = '💾'; }
+    }
+  }
+
+  // ── 편집 모드: 행 삭제 ──────────────────────────────
+  async function _deleteInlineRow(rowId) {
+    const tab = _state.currentTab;
+    const row = (_state.data[tab] || []).find(r => String(r.id) === String(rowId));
+    if (!row) return;
+    const label = row.name || row.customer_name || row.service_name || `#${row.id}`;
+    let confirmed = false;
+    if (typeof window._confirm2 === 'function') {
+      try { confirmed = await window._confirm2(`"${label}" 삭제할까요? 복구 불가.`); }
+      catch (_e) { confirmed = false; }
+    } else {
+      confirmed = window.confirm(`"${label}" 삭제할까요?`);
+    }
+    if (!confirmed) return;
+    try {
+      const res = await fetch(API() + _ROW_PATHS[tab](row.id), {
+        method: 'DELETE',
+        headers: AUTH(),
+      });
+      if (!res.ok && res.status !== 204) {
+        const err = await res.json().catch(() => ({}));
+        const msg = (typeof err.detail === 'string' ? err.detail : err.detail?.message) || res.statusText;
+        throw new Error(msg);
+      }
+      if (window.hapticSuccess) window.hapticSuccess();
+      if (window.showToast) window.showToast('🗑 삭제됨');
+      _state.data[tab] = (_state.data[tab] || []).filter(r => String(r.id) !== String(rowId));
+      try { sessionStorage.removeItem(_cacheKey(tab)); } catch (_e) { /* ignore */ }
+      await window._PVRender.renderTab(true);
+      if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
+    } catch (e) {
+      if (window.showToast) window.showToast('삭제 실패: ' + (window._humanError ? window._humanError(e) : e.message));
+    }
+  }
+
+  // ── 편집 모드 토글 ──────────────────────────────────
+  function _toggleEditMode(force) {
+    const next = (typeof force === 'boolean') ? force : !_state.editMode;
+    _state.editMode = next;
+    const btn = document.getElementById('pv-edit-toggle');
+    if (btn) {
+      btn.innerHTML = next
+        ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 완료`
+        : `✏️ 편집`;
+      btn.setAttribute('aria-pressed', String(next));
+      btn.style.background = next
+        ? 'linear-gradient(135deg, hsl(150, 55%, 55%), hsl(150, 60%, 45%))'
+        : 'linear-gradient(135deg, hsl(350, 75%, 72%), hsl(350, 70%, 60%))';
+      btn.style.color = '#fff';
+    }
+    if (!next) {
+      const chip = document.getElementById('pv-save-chip');
+      if (chip) {
+        chip.textContent = '완료됨';
+        chip.classList.add('pv-save-chip--show');
+        setTimeout(() => chip.classList.remove('pv-save-chip--show'), 1200);
+      }
+    }
+    if (window.hapticLight) window.hapticLight();
+    if (window._PVRender) window._PVRender.renderTab(true);
+  }
+
   // ── 크로스 파일 인터페이스 ───────────────────────────
   window._PVInt = {
     SCHEMAS, TABS, MENU_ITEMS,
@@ -392,6 +581,9 @@
     submitQuickAdd: _submitQuickAdd,
     flushBatch: _flushBatch,
     editRow: _editRow,
+    saveInlineRow: _saveInlineRow,
+    deleteInlineRow: _deleteInlineRow,
+    toggleEditMode: _toggleEditMode,
   };
 
   // ── 키보드 단축키 ────────────────────────────────────
@@ -439,6 +631,7 @@
           <button id="pv-menu-btn" class="pv-close" aria-label="전체 메뉴" title="전체 메뉴" style="margin-left:6px;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
           </button>
+          <button id="pv-edit-toggle" class="pv-edit-toggle" aria-label="편집 모드 토글" aria-pressed="false" title="전체 행 편집 모드" style="margin-left:6px;padding:8px 12px;border:none;border-radius:14px;background:linear-gradient(135deg, hsl(350, 75%, 72%), hsl(350, 70%, 60%));color:#fff;font-weight:800;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;box-shadow:0 2px 6px rgba(241,128,145,0.28);transition:all 0.15s;">✏️ 편집</button>
         </div>
         <div class="pv-chip-bar">${chipHtml}</div>
         <div class="pv-body" id="pv-body"></div>
@@ -475,6 +668,8 @@
       pvRender.bindTabs();
       const menuBtn = document.getElementById('pv-menu-btn');
       if (menuBtn) menuBtn.addEventListener('click', pvRender.openMenuDrawer);
+      const editBtn = document.getElementById('pv-edit-toggle');
+      if (editBtn) editBtn.addEventListener('click', () => _toggleEditMode());
       pvRender.renderTab();
     }
   }
@@ -485,6 +680,7 @@
     o.classList.add('closing');
     document.removeEventListener('keydown', _escListener);
     document.body.style.overflow = '';
+    _state.editMode = false;
     setTimeout(() => { o.remove(); }, 200);
   }
 

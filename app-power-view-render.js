@@ -232,8 +232,27 @@
       <datalist id="pv-dl-${key}">${items.map(v => `<option value="${_esc(v)}"></option>`).join('')}</datalist>
     `).join('');
 
-    const headers = schema.headers.map(h => `<th>${_esc(h)}</th>`).join('') + `<th style="width:56px;"></th>`;
+    const editMode = !!state.editMode;
+    const actionColWidth = editMode ? 88 : 56;
+    const headers = schema.headers.map(h => `<th>${_esc(h)}</th>`).join('') + `<th style="width:${actionColWidth}px;"></th>`;
     const rowsHtml = list.map(r => {
+      if (editMode && Array.isArray(schema.editFields)) {
+        const editCells = schema.editFields.map(f => {
+          if (f.readonly) {
+            const txt = typeof f.format === 'function' ? f.format(r) : (r[f.key] == null ? '—' : String(r[f.key]));
+            return `<td><span style="color:#888;font-size:12px;">${_esc(txt)}</span></td>`;
+          }
+          const raw = r[f.key];
+          const shown = typeof f.transform === 'function' ? f.transform(raw) : (raw == null ? '' : String(raw));
+          const ph = f.placeholder ? ` placeholder="${_esc(f.placeholder)}"` : '';
+          return `<td><input data-pv-edit="${r.id}:${f.key}" type="${f.type || 'text'}" value="${_esc(shown)}"${ph} style="width:100%;padding:7px 9px;border:1.5px solid hsl(350, 60%, 88%);border-radius:10px;font-size:12.5px;background:#fff;box-sizing:border-box;" /></td>`;
+        }).join('');
+        const actionCell = `<td style="text-align:right;white-space:nowrap;">
+          <button data-pv-row-save="${r.id}" title="저장" style="border:none;background:linear-gradient(135deg, hsl(350, 75%, 72%), hsl(350, 70%, 60%));color:#fff;cursor:pointer;font-size:13px;padding:6px 9px;border-radius:10px;margin-right:4px;font-weight:800;">💾</button>
+          <button data-pv-row-delete="${r.id}" title="삭제" style="border:1.5px solid #f0c0c0;background:#fff;color:#C62828;cursor:pointer;font-size:13px;padding:5px 8px;border-radius:10px;font-weight:700;">🗑</button>
+        </td>`;
+        return `<tr data-id="${r.id}" class="pv-row-editing">${editCells}${actionCell}</tr>`;
+      }
       const cells = schema.row(r).map(c => `<td>${c}</td>`).join('');
       return `<tr data-id="${r.id}">${cells}<td style="text-align:right;"><button class="pv-row-edit" data-edit-id="${r.id}" title="수정" style="border:none;background:transparent;cursor:pointer;font-size:13px;color:#888;padding:4px 8px;border-radius:6px;transition:all 0.12s;">✎</button></td></tr>`;
     }).join('');
@@ -312,7 +331,7 @@
   // ── 이벤트 바인딩 ───────────────────────────────────────
   function _bindBody() {
     const state = window._PVState;
-    const { submitQuickAdd, flushBatch, editRow } = window._PVInt;
+    const { submitQuickAdd, flushBatch, editRow, saveInlineRow, deleteInlineRow } = window._PVInt;
 
     const addBtn = document.getElementById('pv-add-btn');
     if (addBtn) addBtn.addEventListener('click', submitQuickAdd);
@@ -333,8 +352,27 @@
       b.addEventListener('click', (e) => { e.stopPropagation(); editRow(b.getAttribute('data-edit-id')); });
     });
 
-    // 관계형 뷰 — 고객 탭 행 클릭 시 고객 대시보드(매출·예약·NPS 통합) 오픈
-    if (state.currentTab === 'customer') {
+    // 편집 모드: 인라인 저장 / 삭제
+    document.querySelectorAll('[data-pv-row-save]').forEach(b => {
+      b.addEventListener('click', (e) => { e.stopPropagation(); saveInlineRow(b.getAttribute('data-pv-row-save')); });
+    });
+    document.querySelectorAll('[data-pv-row-delete]').forEach(b => {
+      b.addEventListener('click', (e) => { e.stopPropagation(); deleteInlineRow(b.getAttribute('data-pv-row-delete')); });
+    });
+    // 편집 input 에서 Enter = 저장
+    document.querySelectorAll('[data-pv-edit]').forEach(el => {
+      el.addEventListener('keydown', (e) => {
+        if (e.isComposing || e.keyCode === 229) return;
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const id = el.getAttribute('data-pv-edit').split(':')[0];
+          saveInlineRow(id);
+        }
+      });
+    });
+
+    // 관계형 뷰 — 고객 탭 행 클릭 시 고객 대시보드(매출·예약·NPS 통합) 오픈 (편집 모드 제외)
+    if (state.currentTab === 'customer' && !state.editMode) {
       document.querySelectorAll('#pv-tbody tr[data-id]').forEach(tr => {
         tr.style.cursor = 'pointer';
         tr.addEventListener('click', () => {
