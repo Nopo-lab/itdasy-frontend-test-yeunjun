@@ -1200,7 +1200,9 @@
     }
   }
 
-  // 그룹 카드 — 전체(남은) 행 순차 실행
+  // 그룹 카드 — 전체(남은) 행 병렬 실행 (concurrency 5)
+  // 순차 실행(이전): N건 × 2초 = 2N초 대기
+  // 병렬 실행(현재): 5건 동시, N/5 × 2초 = 0.4N 초 — 약 5배 빠름
   async function _runGroupAll(historyIdx, gIdx) {
     const msg = _history[historyIdx];
     const group = msg && msg.action_groups && msg.action_groups[gIdx];
@@ -1210,21 +1212,25 @@
       .filter(({ it }) => !it.skipped && it.status !== 'done' && it.status !== 'running');
     if (!targets.length) return;
     group.bulkProgress = { current: 0, total: targets.length };
+    // 모두 running 상태로 한번에 표시 → 사용자가 '동시 진행' 체감
+    targets.forEach(({ it }) => { it.status = 'running'; });
     _renderHistory();
     let okCount = 0;
-    for (const { it } of targets) {
-      it.status = 'running';
-      _renderHistory();
-      try {
-        await _executeAction(it.action);
-        it.status = 'done';
-        okCount++;
-      } catch (e) {
-        it.status = 'failed';
-        it.errorMsg = window._humanError ? window._humanError(e) : e.message;
-      }
-      group.bulkProgress.current++;
-      _renderHistory();
+    const CONCURRENCY = 5;  // Railway/DB 부담 방지 · 5건씩 묶어서
+    for (let i = 0; i < targets.length; i += CONCURRENCY) {
+      const batch = targets.slice(i, i + CONCURRENCY);
+      await Promise.all(batch.map(async ({ it }) => {
+        try {
+          await _executeAction(it.action);
+          it.status = 'done';
+          okCount++;
+        } catch (e) {
+          it.status = 'failed';
+          it.errorMsg = window._humanError ? window._humanError(e) : e.message;
+        }
+        group.bulkProgress.current++;
+        _renderHistory();
+      }));
     }
     group.bulkProgress = null;
     _renderHistory();
