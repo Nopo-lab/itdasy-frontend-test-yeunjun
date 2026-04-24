@@ -306,4 +306,19 @@
     get isOffline() { return _isOffline; },
     get lowStockCount() { return _lowStockCount(); },
   };
+
+  // Wave D3 (2026-04-24) — 챗봇·외부 데이터 변경 감지 → 시트 열려 있으면 즉시 재로드
+  if (typeof window !== 'undefined' && !window._inventoryDataListenerInit) {
+    window._inventoryDataListenerInit = true;
+    window.addEventListener('itdasy:data-changed', async (e) => {
+      const k = (e && e.detail && e.detail.kind) || '';
+      if (!k) return;
+      if (k === 'upsert_inventory' || k.indexOf('inventor') !== -1) {
+        const sheet = document.getElementById('inventorySheet');
+        if (sheet && sheet.style.display !== 'none') {
+          try { await list(); _rerender(); } catch (_err) { void _err; }
+        }
+      }
+    });
+  }
 })();

@@ -459,7 +459,9 @@
     window.addEventListener('itdasy:data-changed', async (e) => {
       const k = (e && e.detail && e.detail.kind) || '';
       if (!k) return;
-      if (k === 'create_revenue' || k === 'update_revenue' || k.indexOf('revenue') !== -1) {
+      // Wave D3 (2026-04-24) — 매출/지출 변동 모두 여기서 재로드 (매출 탭에 지출 섹션도 함께 노출)
+      if (k === 'create_revenue' || k === 'update_revenue' || k === 'create_expense' ||
+          k.indexOf('revenue') !== -1 || k.indexOf('expense') !== -1) {
         const sheet = document.getElementById('revenueSheet');
         if (sheet && sheet.style.display !== 'none' && typeof _loadAndRender === 'function') {
           try { await _loadAndRender(); } catch (_err) { void _err; }

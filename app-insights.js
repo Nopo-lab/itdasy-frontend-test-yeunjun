@@ -448,4 +448,23 @@
     if (!ids.length) return;
     _openBulkModal(ids.slice(0, 10));
   });
+
+  // Wave D3 (2026-04-24) — 챗봇·외부 데이터 변경 감지 → 인사이트 시트 열려 있으면 재로드
+  // 이탈 예측·매출 예측·쿠폰 추천은 매출/예약/NPS 데이터에 전부 영향 받음
+  if (typeof window !== 'undefined' && !window._insightsDataListenerInit) {
+    window._insightsDataListenerInit = true;
+    window.addEventListener('itdasy:data-changed', async (e) => {
+      const k = (e && e.detail && e.detail.kind) || '';
+      if (!k) return;
+      // 인사이트에 영향 주는 kind: 매출·예약·NPS·고객·지출 전부
+      const affects = ['create_revenue', 'update_revenue', 'create_booking', 'update_booking',
+                       'cancel_booking', 'reschedule_booking', 'create_nps', 'create_customer',
+                       'update_customer', 'create_expense'];
+      if (!affects.includes(k)) return;
+      const sheet = document.getElementById('insightsSheet');
+      if (sheet && sheet.style.display !== 'none') {
+        try { await _loadAndRender(); } catch (_err) { void _err; }
+      }
+    });
+  }
 })();

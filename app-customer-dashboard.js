@@ -266,8 +266,12 @@
     });
   }
 
+  // 현재 열려 있는 고객 id 기억 (data-changed 이벤트 시 재로드용)
+  let _currentCustomerId = null;
+
   window.openCustomerDashboard = async function (id) {
     if (!id) return;
+    _currentCustomerId = id;
     _ensureSheet();
     const sheet = document.getElementById('customerDashSheet');
     sheet.style.display = 'block';
@@ -307,5 +311,26 @@
     const sheet = document.getElementById('customerDashSheet');
     if (sheet) sheet.style.display = 'none';
     document.body.style.overflow = '';
+    _currentCustomerId = null;
   };
+
+  // Wave D3 (2026-04-24) — 챗봇·외부 데이터 변경 감지 → 고객 상세 대시보드 재로드
+  // customer_id 지정 없어도 전체 영향 가능 (매출/예약/NPS 는 고객 dashboard 의 stats 에 영향)
+  if (typeof window !== 'undefined' && !window._customerDashboardDataListenerInit) {
+    window._customerDashboardDataListenerInit = true;
+    window.addEventListener('itdasy:data-changed', async (e) => {
+      if (!_currentCustomerId) return;
+      const k = (e && e.detail && e.detail.kind) || '';
+      if (!k) return;
+      const affects = ['update_customer', 'create_revenue', 'update_revenue', 'create_booking',
+                       'update_booking', 'cancel_booking', 'reschedule_booking', 'create_nps'];
+      if (!affects.includes(k)) return;
+      const sheet = document.getElementById('customerDashSheet');
+      if (!sheet || sheet.style.display === 'none') return;
+      try {
+        // 현재 열린 dashboard 다시 로드
+        await window.openCustomerDashboard(_currentCustomerId);
+      } catch (_err) { void _err; }
+    });
+  }
 })();

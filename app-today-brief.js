@@ -92,14 +92,38 @@
     });
   }
 
+  // 마지막으로 render 된 컨테이너 기억 (re-render 용)
+  let _lastContainerId = null;
+
   window.TodayBrief = {
     async render(containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
+      _lastContainerId = containerId;
       const d = await _fetchBrief();
       if (!d) return;
       container.innerHTML = _render(d);
       _bind(container);
     },
   };
+
+  // Wave D3 (2026-04-24) — 챗봇·외부 데이터 변경 감지 → 홈 탭이 보이면 즉시 재렌더
+  // 모든 mutation kind 가 today_brief 데이터(매출/예약/재고/생일/이탈)에 영향을 줄 수 있으므로 광범위 매칭
+  if (typeof window !== 'undefined' && !window._todayBriefDataListenerInit) {
+    window._todayBriefDataListenerInit = true;
+    window.addEventListener('itdasy:data-changed', async () => {
+      if (!_lastContainerId) return;
+      const container = document.getElementById(_lastContainerId);
+      if (!container) return;
+      // 홈 탭이 활성 상태인지 확인 (tab-home 에 .active 있으면 보이는 상태)
+      const homeTab = document.getElementById('tab-home');
+      if (!homeTab || !homeTab.classList.contains('active')) return;
+      try {
+        const d = await _fetchBrief();
+        if (!d) return;
+        container.innerHTML = _render(d);
+        _bind(container);
+      } catch (_err) { void _err; }
+    });
+  }
 })();
