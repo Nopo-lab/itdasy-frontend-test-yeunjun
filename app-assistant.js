@@ -236,7 +236,11 @@
       }
       if (m.role === 'assistant') {
         const actionHtml = m.action ? _renderActionBubble(m.action, idx, m.action_status, m.edit_mode === true) : '';
-        const groupsHtml = (m.action_groups && m.action_groups.length) ? _renderActionGroups(m.action_groups, idx) : '';
+        const groupsHtml = (m.action_groups && m.action_groups.length) ? _renderActionGroups(m.action_groups, idx, m.duplicate_warnings) : '';
+        // 단일 액션일 때 — action_index 0 경고만. group 은 내부에서 렌더하므로 여기서는 제외.
+        const dupHtml = (m.action && m.duplicate_warnings && m.duplicate_warnings.length)
+          ? _renderDuplicateWarnings(idx, m.duplicate_warnings, 0)
+          : '';
         const fallbackHtml = m.fallback ? _renderFallbackCard(m.fallback, idx, m.fallback_status) : '';
         const relatedHtml = (m.related && m.related.length) ? `
           <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;">
@@ -250,6 +254,7 @@
               <button data-report-ai="chat_answer" data-snippet="${_esc(m.text).replace(/"/g,'&quot;')}" data-source="/assistant/chat" aria-label="AI 답변 신고"
                 style="background:transparent;border:none;cursor:pointer;font-size:10px;color:#bbb;padding:2px 4px;">🚩 신고</button>
             </div>
+            ${dupHtml}
             ${actionHtml}
             ${groupsHtml}
             ${fallbackHtml}
@@ -313,6 +318,28 @@
       <div style="display:flex;flex-direction:column;gap:${sz.gap};">${rows}${emptyHint}</div>
       <button data-${addAttr}="${keyPrefix}"
         style="margin-top:6px;padding:7px 10px;border:1px dashed ${color};border-radius:8px;background:#fff;color:${color};font-size:${sz.fs};font-weight:700;cursor:pointer;">➕ 품목 추가</button>`;
+  }
+
+  // ─── 중복 의심 경고 카드 (영수증·주문내역 여러 장 업로드 시) ───
+  // warnings: [{action_index, reason, prev, confidence, dismissed}]
+  // 특정 action_index 에 해당하는 경고만 필터해서 렌더. 없으면 빈 문자열.
+  function _renderDuplicateWarnings(historyIdx, warnings, filterActionIdx) {
+    if (!Array.isArray(warnings) || !warnings.length) return '';
+    const rendered = warnings.map((w, wi) => {
+      if (w.dismissed) return '';
+      if (filterActionIdx != null && w.action_index !== filterActionIdx) return '';
+      const reason = w.reason || '비슷한 내용을 최근에 기록했어요';
+      return `
+        <div style="margin:6px 0;padding:10px 12px;background:#FFF7ED;border:1px solid #FDBA74;border-radius:12px;">
+          <div style="font-size:12px;font-weight:700;color:#C2410C;margin-bottom:6px;">⚠️ 중복 의심</div>
+          <div style="font-size:12px;color:#7C2D12;line-height:1.5;">${_esc(reason)}</div>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <button data-dup-proceed="${historyIdx}:${wi}" style="flex:1;padding:7px;border:1px solid #C2410C;border-radius:8px;background:#fff;color:#C2410C;cursor:pointer;font-size:11px;">그래도 추가</button>
+            <button data-dup-skip="${historyIdx}:${wi}" style="flex:1;padding:7px;border:none;border-radius:8px;background:#C2410C;color:#fff;cursor:pointer;font-size:11px;">건너뛰기</button>
+          </div>
+        </div>`;
+    }).filter(Boolean).join('');
+    return rendered;
   }
 
   function _renderActionBubble(action, historyIdx, status, editing) {
@@ -471,12 +498,12 @@
   }
 
   // 카테고리별로 묶인 액션 카드 렌더 (2건 이상일 때 사용)
-  function _renderActionGroups(groups, historyIdx) {
+  function _renderActionGroups(groups, historyIdx, duplicateWarnings) {
     if (!groups || !groups.length) return '';
-    return groups.map((g, gIdx) => _renderActionGroup(g, historyIdx, gIdx)).join('');
+    return groups.map((g, gIdx) => _renderActionGroup(g, historyIdx, gIdx, duplicateWarnings)).join('');
   }
 
-  function _renderActionGroup(group, historyIdx, gIdx) {
+  function _renderActionGroup(group, historyIdx, gIdx, duplicateWarnings) {
     const meta = _catMeta(group.kind);
     const total = group.items.length;
     const done = group.items.filter(it => it.status === 'done').length;
@@ -521,13 +548,33 @@
 
     let listHtml = '';
     if (group.expanded) {
-      const rows = group.items.map((it, iIdx) => _renderGroupRow(it, historyIdx, gIdx, iIdx, meta)).join('');
+      const rows = group.items.map((it, iIdx) => {
+        const rowHtml = _renderGroupRow(it, historyIdx, gIdx, iIdx, meta);
+        // 이 아이템의 원래 action 인덱스 (it.origIdx) 에 해당하는 중복 경고만 앞에 붙임
+        const warnHtml = (it.origIdx != null && !it.skipped && it.status !== 'done')
+          ? _renderDuplicateWarnings(historyIdx, duplicateWarnings, it.origIdx)
+          : '';
+        return `${warnHtml}${rowHtml}`;
+      }).join('');
       listHtml = `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed hsl(220,15%,88%);display:flex;flex-direction:column;gap:8px;">${rows}</div>
         <div style="height:10px;"></div>`;
     }
 
+    // 접힌 상태에서도 그룹 내 액션에 해당하는 중복 의심 개수 표시 (배너)
+    let dupBannerHtml = '';
+    if (!group.expanded && Array.isArray(duplicateWarnings) && duplicateWarnings.length) {
+      const origIdxSet = new Set(group.items.map(it => it.origIdx));
+      const hits = duplicateWarnings.filter(w => !w.dismissed && origIdxSet.has(w.action_index));
+      if (hits.length) {
+        dupBannerHtml = `<div style="margin-bottom:8px;padding:8px 10px;background:#FFF7ED;border:1px solid #FDBA74;border-radius:10px;font-size:11px;color:#C2410C;font-weight:700;">
+          ⚠️ 중복 의심 ${hits.length}건 — '수정하기' 눌러서 확인하세요
+        </div>`;
+      }
+    }
+
     return `<div style="margin-top:6px;padding:12px;background:#fff;border:1px solid ${meta.color};border-radius:14px;">
       ${header}
+      ${dupBannerHtml}
       ${listHtml}
       ${controls}
     </div>`;
@@ -956,6 +1003,47 @@
         _submitFallback(parseInt(fb.dataset.fallbackIdx, 10), fb.dataset.fallbackIntent);
         return;
       }
+      // 중복 의심 — "그래도 추가" (경고 카드 제거, action 은 그대로 실행 가능)
+      const dupProceed = e.target.closest('[data-dup-proceed]');
+      if (dupProceed && document.getElementById('asstBody')?.contains(dupProceed)) {
+        const [hi, wi] = dupProceed.dataset.dupProceed.split(':').map(n => parseInt(n, 10));
+        const msg = _history[hi];
+        if (msg && Array.isArray(msg.duplicate_warnings) && msg.duplicate_warnings[wi]) {
+          msg.duplicate_warnings[wi].dismissed = true;
+          _renderHistory();
+        }
+        return;
+      }
+      // 중복 의심 — "건너뛰기" (해당 action_index 를 skipped 로 마크, 경고도 제거)
+      const dupSkip = e.target.closest('[data-dup-skip]');
+      if (dupSkip && document.getElementById('asstBody')?.contains(dupSkip)) {
+        const [hi, wi] = dupSkip.dataset.dupSkip.split(':').map(n => parseInt(n, 10));
+        const msg = _history[hi];
+        if (msg && Array.isArray(msg.duplicate_warnings) && msg.duplicate_warnings[wi]) {
+          const warn = msg.duplicate_warnings[wi];
+          const targetIdx = warn.action_index;
+          warn.dismissed = true;
+          // 단일 액션: action 제거 + 상태 cancelled
+          if (msg.action && targetIdx === 0) {
+            msg.action_status = 'cancelled';
+            msg.action = null;
+            msg.edit_mode = false;
+          }
+          // 그룹 액션: origIdx 매칭되는 item 을 skipped 로 마크
+          if (Array.isArray(msg.action_groups)) {
+            msg.action_groups.forEach(g => {
+              (g.items || []).forEach(it => {
+                if (it && it.origIdx === targetIdx) {
+                  it.skipped = true;
+                  it.editing = false;
+                }
+              });
+            });
+          }
+          _renderHistory();
+        }
+        return;
+      }
       // 그룹 카드 — 접기·펴기
       const tgl = e.target.closest('[data-group-toggle]');
       if (tgl && document.getElementById('asstBody')?.contains(tgl)) {
@@ -1366,6 +1454,10 @@
       if (Array.isArray(d.related_questions) && d.related_questions.length) {
         msg.related = d.related_questions.slice(0, 3);
       }
+      // 중복 거래 경고 (영수증·주문내역 여러 장 업로드 대응)
+      if (Array.isArray(d.duplicate_warnings) && d.duplicate_warnings.length) {
+        msg.duplicate_warnings = d.duplicate_warnings.map(w => ({ ...w, dismissed: false }));
+      }
       if (actionsList.length === 1) {
         msg.action = actionsList[0];
         msg.action_status = 'pending';
@@ -1443,6 +1535,10 @@
       const msg = { role: 'assistant', text: d.answer || '답을 만들지 못했어요.' };
       if (Array.isArray(d.related_questions) && d.related_questions.length) {
         msg.related = d.related_questions.slice(0, 3);
+      }
+      // 중복 거래 경고 (영수증·주문내역 여러 장 업로드 대응)
+      if (Array.isArray(d.duplicate_warnings) && d.duplicate_warnings.length) {
+        msg.duplicate_warnings = d.duplicate_warnings.map(w => ({ ...w, dismissed: false }));
       }
 
       if (actionsList.length === 1) {
