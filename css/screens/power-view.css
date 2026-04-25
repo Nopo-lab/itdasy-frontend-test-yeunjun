@@ -67,10 +67,12 @@
   to { transform: none; }
 }
 
-#power-view-overlay { animation: pvFadeIn .25s cubic-bezier(.2,.9,.3,1); }
-#power-view-overlay.closing { animation: pvFadeOut .2s ease; }
-#power-view-overlay .pv-dialog { animation: pvSlideUp .32s cubic-bezier(.22,1,.36,1); }
-#power-view-overlay.closing .pv-dialog { animation: pvSlideDown .2s ease; }
+/* 2026-04-24 perf — 오버레이 등장 0.25s → 0.10s, 다이얼로그 0.32s → 0.14s
+   체감 즉각 표시 + 닫기는 짧게 0.12s */
+#power-view-overlay { animation: pvFadeIn .10s ease-out; }
+#power-view-overlay.closing { animation: pvFadeOut .12s ease; }
+#power-view-overlay .pv-dialog { animation: pvSlideUp .14s cubic-bezier(.22,1,.36,1); }
+#power-view-overlay.closing .pv-dialog { animation: pvSlideDown .12s ease; }
 
 .pv-dialog {
   background: var(--surface, #fff);
@@ -210,7 +212,9 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: pvTabSlide .3s ease;
+
+  /* 2026-04-24 perf — 0.3s → 0.10s. 탭 전환 즉각 반영 */
+  animation: pvTabSlide .10s ease-out;
 }
 
 .pv-qadd {

@@ -30,6 +30,20 @@
   let _curYear, _curMonth, _curView = 'month', _curDate = new Date();
   let _mappedCache = [];
 
+  // 2026-04-24 perf — 인접 월 프리페치 캐시 (key: "YYYY-M") TTL 5분
+  const _monthCache = new Map();
+  const _MONTH_CACHE_TTL_MS = 5 * 60 * 1000;
+  function _mkey(y, m) { return y + '-' + m; }
+  function _readMonthCache(y, m) {
+    const v = _monthCache.get(_mkey(y, m));
+    if (!v) return null;
+    if (Date.now() - v.t > _MONTH_CACHE_TTL_MS) { _monthCache.delete(_mkey(y, m)); return null; }
+    return v.d;
+  }
+  function _writeMonthCache(y, m, mapped) {
+    _monthCache.set(_mkey(y, m), { t: Date.now(), d: mapped });
+  }
+
   // === 헬퍼 ===
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
@@ -65,11 +79,35 @@
   }
 
   async function _loadMonth(year, month) {
+    const cached = _readMonthCache(year, month);
+    if (cached) {
+      _updateOfflineBadge();
+      // 백그라운드 갱신 (stale-while-revalidate)
+      setTimeout(() => { _refreshMonth(year, month); }, 50);
+      return cached;
+    }
+    return _refreshMonth(year, month);
+  }
+
+  async function _refreshMonth(year, month) {
     const from = new Date(year, month - 1, 1).toISOString();
     const to   = new Date(year, month, 0, 23, 59, 59).toISOString();
     const items = await window.Booking.list(from, to);
     _updateOfflineBadge();
-    return _mapItems(items);
+    const mapped = _mapItems(items);
+    _writeMonthCache(year, month, mapped);
+    return mapped;
+  }
+
+  // 2026-04-24 perf — 인접 ±1 월 백그라운드 프리페치
+  function _prefetchAdjacent(year, month) {
+    const next = (m, dy) => { let nm = m + dy, ny = year; if (nm < 1) { nm = 12; ny--; } else if (nm > 12) { nm = 1; ny++; } return [ny, nm]; };
+    [-1, 1].forEach(dy => {
+      const [y, m] = next(month, dy);
+      if (_readMonthCache(y, m)) return;
+      // 비동기 백그라운드 — 실패 무시
+      _refreshMonth(y, m).catch(() => { /* ignore */ });
+    });
   }
 
   // === 월 그리드 ===
@@ -365,17 +403,44 @@ ${isEdit ? `
   }
 
   // === 월 네비 ===
+  // 2026-04-24 perf — 캐시 적중 시 즉시 렌더, 아니면 빈 그리드 표시 후 백그라운드 fetch
   async function _prevMonth() {
     _curMonth--;
     if (_curMonth < 1) { _curMonth = 12; _curYear--; }
-    _mappedCache = await _loadMonth(_curYear, _curMonth);
+    const cached = _readMonthCache(_curYear, _curMonth);
+    if (cached) {
+      _mappedCache = cached;
+      _renderMonth(_curYear, _curMonth, _mappedCache);
+      _prefetchAdjacent(_curYear, _curMonth);
+      // 백그라운드 갱신
+      _refreshMonth(_curYear, _curMonth).then(fresh => {
+        if (_curYear && _curMonth) { _mappedCache = fresh; _renderMonth(_curYear, _curMonth, fresh); }
+      }).catch(() => {});
+      return;
+    }
+    // 미캐시 — 빈 셀로 즉시 페이지 전환 (체감 즉시)
+    _renderMonth(_curYear, _curMonth, []);
+    _mappedCache = await _refreshMonth(_curYear, _curMonth);
     _renderMonth(_curYear, _curMonth, _mappedCache);
+    _prefetchAdjacent(_curYear, _curMonth);
   }
   async function _nextMonth() {
     _curMonth++;
     if (_curMonth > 12) { _curMonth = 1; _curYear++; }
-    _mappedCache = await _loadMonth(_curYear, _curMonth);
+    const cached = _readMonthCache(_curYear, _curMonth);
+    if (cached) {
+      _mappedCache = cached;
+      _renderMonth(_curYear, _curMonth, _mappedCache);
+      _prefetchAdjacent(_curYear, _curMonth);
+      _refreshMonth(_curYear, _curMonth).then(fresh => {
+        if (_curYear && _curMonth) { _mappedCache = fresh; _renderMonth(_curYear, _curMonth, fresh); }
+      }).catch(() => {});
+      return;
+    }
+    _renderMonth(_curYear, _curMonth, []);
+    _mappedCache = await _refreshMonth(_curYear, _curMonth);
     _renderMonth(_curYear, _curMonth, _mappedCache);
+    _prefetchAdjacent(_curYear, _curMonth);
   }
 
   // === 전역 onclick 핸들러 ===

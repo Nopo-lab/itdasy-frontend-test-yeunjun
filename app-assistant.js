@@ -148,7 +148,8 @@
     if (sheet) return sheet;
     sheet = document.createElement('div');
     sheet.id = 'assistantSheet';
-    sheet.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;background:rgba(0,0,0,0.5);';
+    // 2026-04-24 perf — opacity 트랜지션 추가 (display:none → opacity 페이드 0.10s)
+    sheet.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;background:rgba(0,0,0,0.5);opacity:0;pointer-events:none;transition:opacity 0.10s ease-out;';
     sheet.innerHTML = `
       <div style="position:absolute;inset:auto 0 0 0;background:var(--bg,#fff);border-radius:20px 20px 0 0;height:88vh;display:flex;flex-direction:column;padding:16px;padding-bottom:max(12px,env(safe-area-inset-bottom));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
@@ -165,8 +166,8 @@
           <input id="asstInput" placeholder="샵 관련해서 물어보세요…" maxlength="300" style="flex:1;padding:12px;border:1px solid #ddd;border-radius:14px;font-size:14px;min-width:0;" />
           <button id="asstSend" style="flex-shrink:0;padding:12px 18px;border:none;border-radius:14px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;cursor:pointer;font-weight:800;display:inline-flex;align-items:center;gap:6px;">${_svg('ic-send', 14)} 보내기</button>
         </div>
-        <input id="asstCamera" type="file" accept="image/*" capture="environment" style="display:none;" />
-        <input id="asstGallery" type="file" accept="image/*" style="display:none;" />
+        <input id="asstCamera" type="file" accept="image/*" capture="environment" multiple style="display:none;" />
+        <input id="asstGallery" type="file" accept="image/*" multiple style="display:none;" />
       </div>
     `;
     document.body.appendChild(sheet);
@@ -176,14 +177,14 @@
     sheet.querySelector('#asstPhoto').addEventListener('click', _openPhotoSheet);
     // 숨겨진 file input 선택 시 업로드 실행
     sheet.querySelector('#asstCamera').addEventListener('change', (e) => {
-      const f = e.target.files && e.target.files[0];
+      const fs = e.target.files ? Array.from(e.target.files) : [];
       e.target.value = '';  // 같은 파일 재선택 허용
-      if (f) _uploadPhoto(f);
+      if (fs.length) _uploadPhotos(fs);
     });
     sheet.querySelector('#asstGallery').addEventListener('change', (e) => {
-      const f = e.target.files && e.target.files[0];
+      const fs = e.target.files ? Array.from(e.target.files) : [];
       e.target.value = '';
-      if (f) _uploadPhoto(f);
+      if (fs.length) _uploadPhotos(fs);
     });
     sheet.querySelector('#asstInput').addEventListener('keydown', (e) => {
       // 한글 IME 조합 중 Enter 무시 (마지막 글자 중복/누락 방지)
@@ -1628,14 +1629,28 @@
     document.body.appendChild(box);
   }
 
+  // 단일 파일 호환 래퍼 (옛 호출자 대응)
   async function _uploadPhoto(file) {
+    return _uploadPhotos(file);
+  }
+
+  async function _uploadPhotos(files) {
     if (_sendInFlight) return;
+    // 단일 파일·FileList·배열 모두 허용
+    if (!files) return;
+    if (!Array.isArray(files)) {
+      files = (files && typeof files.length === 'number') ? Array.from(files) : [files];
+    }
+    files = files.filter(Boolean).slice(0, 10);  // 최대 10장
+    if (files.length === 0) return;
+
     _sendInFlight = true;
     const input = document.getElementById('asstInput');
     const question = (input && input.value.trim()) || '';
     if (input) input.value = '';
+    const N = files.length;
 
-    // 썸네일 data URL (플레이스홀더 버블용)
+    // 첫 장 썸네일만 (UI 간결)
     let thumbUrl = '';
     try {
       thumbUrl = await new Promise((resolve) => {
@@ -1643,48 +1658,53 @@
           const r = new FileReader();
           r.onload = () => resolve(r.result || '');
           r.onerror = () => resolve('');
-          r.readAsDataURL(file);
+          r.readAsDataURL(files[0]);
         } catch (_e) { resolve(''); }
       });
     } catch (_e) { void _e; }
 
-    // 플레이스홀더 메시지 (썸네일 + 업로드중 표시)
-    const placeholderText = question ? question : '사진 업로드 중…';
+    // 플레이스홀더 메시지
+    const baseText = question || (N > 1 ? ('사진 ' + N + '장 업로드 중…') : '사진 업로드 중…');
+    const placeholderText = (N > 1 && question) ? (question + ' (외 ' + (N - 1) + '장 함께)') : baseText;
     _history.push({ role: 'user', text: placeholderText, thumb: thumbUrl });
     _history.push({ role: 'loading', text: '' });
     _renderHistory();
 
     try {
-      // 압축 (helper 없으면 원본)
-      let blob = file;
-      try {
-        if (typeof window.compressImageForUpload === 'function') {
-          blob = await window.compressImageForUpload(file, 1024, 0.85);
-        }
-      } catch (_e) { blob = file; }
-
-      // 이름·확장자는 실제 blob.type 에 맞춰서 (HEIC·압축 결과 대응)
-      const actualType = (blob && blob.type) || 'image/jpeg';
-      const ext = actualType.includes('png') ? '.png'
-        : actualType.includes('webp') ? '.webp'
-        : actualType.includes('heic') ? '.heic'
-        : '.jpg';
-      const safeName = (blob.name && /\.(jpg|jpeg|png|webp|heic|heif)$/i.test(blob.name))
-        ? blob.name
-        : 'photo' + ext;
+      // 각 파일 압축 (병렬). helper 없거나 실패하면 원본
+      const compressed = await Promise.all(files.map(async (f) => {
+        try {
+          if (typeof window.compressImageForUpload === 'function') {
+            return await window.compressImageForUpload(f, 1024, 0.85);
+          }
+        } catch (_e) { void _e; }
+        return f;
+      }));
 
       const fd = new FormData();
-      fd.append('image', blob, safeName);
+      compressed.forEach((blob, i) => {
+        const actualType = (blob && blob.type) || 'image/jpeg';
+        const ext = actualType.includes('png') ? '.png'
+          : actualType.includes('webp') ? '.webp'
+          : actualType.includes('heic') ? '.heic'
+          : '.jpg';
+        const safeName = (blob.name && /\.(jpg|jpeg|png|webp|heic|heif)$/i.test(blob.name))
+          ? blob.name
+          : ('photo' + (i + 1) + ext);
+        fd.append('images', blob, safeName);
+      });
       // 빈 question 도 항상 전송 (백엔드 Form 이 키 존재를 기대)
       fd.append('question', question || '');
       if (_sessionId) fd.append('session_id', String(_sessionId));
 
       const auth = (window.authHeader && window.authHeader()) || {};
       const ctrl = new AbortController();
-      const timeoutId = setTimeout(() => ctrl.abort(), 60000); // Gemini Vision 느림 · 60초
+      // 다중 이미지: 장당 60초 + 여유 버퍼. 최대 180초.
+      const timeoutMs = Math.min(60000 + 30000 * Math.max(0, N - 1), 180000);
+      const timeoutId = setTimeout(() => ctrl.abort(), timeoutMs);
       let res;
       try {
-        res = await fetch(window.API + '/assistant/ask/image', {
+        res = await fetch(window.API + '/assistant/ask/images', {
           method: 'POST',
           headers: auth.Authorization ? { Authorization: auth.Authorization } : {},
           body: fd,
@@ -1693,7 +1713,7 @@
       } catch (fetchErr) {
         clearTimeout(timeoutId);
         if (fetchErr.name === 'AbortError') {
-          throw new Error('분석이 60초 넘게 걸려요. 더 작은 사진으로 다시 시도해주세요');
+          throw new Error('분석이 너무 오래 걸려요. 사진 수를 줄이거나 더 작은 사진으로 시도해주세요');
         }
         throw new Error('서버 연결 실패 — 인터넷 확인 후 다시 시도해주세요');
       }
@@ -1833,14 +1853,32 @@
 
   window.openAssistant = function () {
     _ensureSheet();
-    document.getElementById('assistantSheet').style.display = 'block';
+    const sheet = document.getElementById('assistantSheet');
+    // 2026-04-24 perf — DOM 미리 준비 + opacity 페이드 (display 토글 → opacity 토글)
+    sheet.style.display = 'block';
+    // 다음 프레임에 페이드 인
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      sheet.style.opacity = '1';
+      sheet.style.pointerEvents = 'auto';
+    }));
     document.body.style.overflow = 'hidden';
     _renderHistory();
-    setTimeout(() => document.getElementById('asstInput')?.focus(), 100);
+    setTimeout(() => document.getElementById('asstInput')?.focus(), 60);
   };
   window.closeAssistant = function () {
     const sheet = document.getElementById('assistantSheet');
-    if (sheet) sheet.style.display = 'none';
+    if (sheet) {
+      sheet.style.opacity = '0';
+      sheet.style.pointerEvents = 'none';
+      setTimeout(() => { sheet.style.display = 'none'; }, 90);
+    }
     document.body.style.overflow = '';
   };
+
+  // 2026-04-24 perf — 앱 idle 시 시트 DOM 미리 생성. 첫 탭 latency 0.3s+ → ~0.05s
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(() => { try { _ensureSheet(); } catch (_e) { /* ignore */ } }, { timeout: 3000 });
+  } else {
+    setTimeout(() => { try { _ensureSheet(); } catch (_e) { /* ignore */ } }, 1500);
+  }
 })();

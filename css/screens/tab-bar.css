@@ -32,10 +32,14 @@
   color: var(--text-subtle);
   font-size: 10px;
   font-weight: 600;
-  transition: color 0.15s;
+
+  /* 2026-04-24 perf — 색상 0.15s → 0.08s */
+  transition: color 0.08s ease-out;
   min-height: 56px;
   position: relative;
   font-family: inherit;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .tab-bar__icon {
@@ -79,8 +83,12 @@
   box-shadow: var(--shadow-brand);
   color: #fff;
   cursor: pointer;
-  transition: transform 0.1s;
+
+  /* 2026-04-24 perf — 0.1s → 0.05s */
+  transition: transform 0.05s ease-out;
   place-self: center center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .tab-bar__fab:active {
@@ -117,7 +125,7 @@ html[data-theme="dark"] .tab-bar {
   font-family: inherit;
   text-align: left;
   color: var(--text);
-  transition: transform .1s;
+  transition: transform .05s ease-out;
   margin-bottom: 8px;
 }
 

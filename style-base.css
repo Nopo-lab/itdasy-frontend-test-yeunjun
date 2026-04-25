@@ -22,6 +22,17 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* iOS 300ms 탭 지연 제거 + 탭 하이라이트 제거 — 인터랙티브 요소 전역
+   체감 속도 0.3s 단축 효과 (iOS Safari 16+) */
+button, a, [role="button"], [data-haptic],
+.tab-bar__btn, .tab-bar__fab, .chip, .tag,
+input[type="button"], input[type="submit"],
+input[type="checkbox"], input[type="radio"],
+select, label[for] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* 드래그 요소 텍스트 선택 방지 */
 [data-draggable], [data-slot-id], [data-ai-card], [data-finish-slot],
 .carousel-track, .photo-strip, .slot-strip, img {
@@ -103,12 +114,14 @@ p {
 /* 탭 네비는 하단 탭바(css/screens/tab-bar.css)로 이관 — P3.2 */
 
 /* 탭 컨텐츠 — 하단 safe-area + 탭바 여유 (FAB 는 탭바 옆 빈 공간에 위치해서 콘텐츠 안 겹침) */
+
+/* 2026-04-24 perf — 탭 페이드 0.22s → 0.08s. 전환 체감을 즉각으로. */
 .tab {
   display: none;
   padding: 24px 20px calc(100px + env(safe-area-inset-bottom));
   opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 0.22s ease-out, transform 0.22s ease-out;
+  transform: translateY(4px);
+  transition: opacity 0.08s ease-out, transform 0.08s ease-out;
   will-change: opacity, transform;
 }
 
@@ -116,13 +129,13 @@ p {
   display: block;
   opacity: 1;
   transform: translateY(0);
-  animation: tabFadeIn 0.22s ease-out;
+  animation: tabFadeIn 0.08s ease-out;
 }
 
 @keyframes tabFadeIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
 
   to {
@@ -131,10 +144,11 @@ p {
   }
 }
 
-/* 버튼 탭 시 미세 축소 피드백 (모든 버튼 공통) */
+/* 버튼 탭 시 미세 축소 피드백 (모든 버튼 공통)
+   2026-04-24 perf — 0.08s → 0.04s. :active 응답성 향상. */
 button:active:not([disabled]) {
-  transform: scale(0.96);
-  transition: transform 0.08s ease-out;
+  transform: scale(0.94);
+  transition: transform 0.04s ease-out;
 }
 
 /* 줄임: transform 가속 버튼에만 */
@@ -182,7 +196,7 @@ textarea, input[type="text"] {
   letter-spacing: -0.02em;
   padding: 12px 14px;
   outline: none;
-  transition: border 0.2s;
+  transition: border 0.12s;
   resize: none;
 }
 
@@ -255,12 +269,12 @@ textarea:focus, input[type="text"]:focus {
   font-family: Pretendard, sans-serif;
   letter-spacing: -0.02em;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s;
+  transition: opacity 0.12s, transform 0.05s;
   margin-top: 6px;
 }
 
 .btn-main:active {
-  transform: scale(0.98);
+  transform: scale(0.96);
   opacity: 0.85;
 }
 
@@ -324,7 +338,7 @@ textarea:focus, input[type="text"]:focus {
   background: var(--border);
 }
 
-/* 팝업 공통 (NEW) */
+/* 팝업 공통 (NEW) — 2026-04-24 perf 0.3s → 0.14s */
 .popup-overlay {
   position: fixed;
   inset: 0;
@@ -335,7 +349,7 @@ textarea:focus, input[type="text"]:focus {
   justify-content: center;
   padding: 20px;
   z-index: 2000;
-  animation: fadeIn 0.3s ease;
+  animation: fadeIn 0.14s ease;
 }
 
 .popup-content {
@@ -348,7 +362,7 @@ textarea:focus, input[type="text"]:focus {
   position: relative;
   box-shadow: 0 20px 60px rgba(0,0,0,0.15);
   transform: scale(0.95);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity 0.14s ease-out, transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
   opacity: 0;
 }
 
