@@ -26,14 +26,13 @@
   /* iOS 하단바 도망 방지 — GPU 레이어 분리 + 뷰포트 변화에 안정적 고정 */
   will-change: transform;
   backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
   contain: layout style;       /* 자식 :active 시 부모 layout shift 방지 */
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
 /* 가로형 / 키보드 올라온 상태(높이 매우 낮음) — 탭바 숨겨서 클릭 오작동 방지 */
-@media (max-height: 460px) and (orientation: portrait) {
+@media (height <= 460px) and (orientation: portrait) {
   .tab-bar { display: none; }
 }
 

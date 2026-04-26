@@ -957,6 +957,18 @@ async function regenerateCaption(overrides = {}) {
     _capAiDraft = data.caption || '';
     _lastLogId = data.log_id || null;
     if (ta) { ta.value = _capAiDraft; _capAutoGrow(ta); }
+    // 재생성 결과도 슬롯에 반영 + status 갱신
+    if (typeof _captionSlotId !== 'undefined' && _captionSlotId && typeof _slots !== 'undefined') {
+      const slot = _slots.find(s => s.id === _captionSlotId);
+      if (slot) {
+        slot.caption = _capAiDraft;
+        if (_capAiDraft && _capAiDraft.trim()) {
+          slot.status = 'done';
+          slot.completedAt = slot.completedAt || Date.now();
+        }
+        if (typeof saveSlotToDB === 'function') saveSlotToDB(slot).catch(() => {});
+      }
+    }
     _renderCaptionActionBar(_capAiDraft, '');
   } catch (e) {
     showToast('네트워크 오류. 다시 시도해주세요');

@@ -27,8 +27,37 @@
     cancelled: 'var(--text-subtle)',
   };
 
+  // === 시술별 컬러 팔레트 (Pastel pink 톤 — 잇데이 정체성) ===
+  // 키워드 매칭 기반. 시술명에 키워드가 포함되면 해당 색상 사용.
+  const SERVICE_COLORS = {
+    eyelash: { bg: '#FFE4E9', border: '#F18091' }, // 속눈썹 — 연핑크
+    nail:    { bg: '#FFD7BA', border: '#E89B6E' }, // 네일 — 살구
+    hair:    { bg: '#FFCFE2', border: '#E78AB1' }, // 붙임머리 — 분홍
+    perm:    { bg: '#E8D5F2', border: '#A87BC8' }, // 펌 — 라일락
+    cut:     { bg: '#D4F1E0', border: '#7ABF95' }, // 커트 — 민트
+    makeup:  { bg: '#FFF4D6', border: '#D9B95A' }, // 메이크업 — 연노랑
+    skin:    { bg: '#D6ECFF', border: '#6FA8D9' }, // 피부/관리 — 연파랑
+    _default:{ bg: '#FFE0E6', border: '#F18091' }, // 기본 — 잇데이 핑크
+  };
+
+  function _colorForService(svc) {
+    if (!svc) return SERVICE_COLORS._default;
+    const s = String(svc).toLowerCase();
+    if (s.includes('속눈썹') || s.includes('래쉬') || s.includes('lash') || s.includes('연장')) return SERVICE_COLORS.eyelash;
+    if (s.includes('네일') || s.includes('젤') || s.includes('nail') || s.includes('패디')) return SERVICE_COLORS.nail;
+    if (s.includes('붙임') || s.includes('익스텐션') || s.includes('extension')) return SERVICE_COLORS.hair;
+    if (s.includes('펌') || s.includes('perm')) return SERVICE_COLORS.perm;
+    if (s.includes('커트') || s.includes('컷') || s.includes('cut')) return SERVICE_COLORS.cut;
+    if (s.includes('메이크') || s.includes('makeup') || s.includes('mua')) return SERVICE_COLORS.makeup;
+    if (s.includes('피부') || s.includes('관리') || s.includes('스킨') || s.includes('skin') || s.includes('왁싱')) return SERVICE_COLORS.skin;
+    return SERVICE_COLORS._default;
+  }
+
   let _curYear, _curMonth, _curView = 'month', _curDate = new Date();
   let _mappedCache = [];
+
+  // 시간표 픽셀 단위
+  const TT_HOUR_PX = 60;
 
   // === 헬퍼 ===
   function _esc(s) {
