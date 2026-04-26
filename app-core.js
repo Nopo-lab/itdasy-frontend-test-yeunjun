@@ -533,6 +533,13 @@ async function logout() {
   // 세션 관련 키만 삭제 (온보딩 등 설정 유지)
   [_TOKEN_KEY, 'itdasy_token', 'itdasy_consented', 'itdasy_consented_at', 'itdasy_latest_analysis'].forEach(k => localStorage.removeItem(k));
 
+  // [2026-04-26] 갤러리 IndexedDB 도 같이 비움 — 다음 사용자한테 새는 거 차단 (Meta 심사 블로커)
+  try {
+    if (typeof clearGalleryDB === 'function') {
+      await clearGalleryDB();
+    }
+  } catch (e) { /* IDB clear best-effort */ }
+
   // 2. 서비스 워커 캐시 강제 삭제
   if ('caches' in window) {
     try {

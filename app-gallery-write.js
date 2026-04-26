@@ -334,6 +334,19 @@ async function doPublishFromCaption() {
 
   if (!photos.length) { showToast('연결된 사진이 없어요. 작업실 슬롯을 먼저 선택해주세요.'); return; }
 
+  // [2026-04-26 / Meta 심사 대응] 인스타 발행 전 명시적 사용자 확인.
+  const _confirmMsg = '정말 인스타 피드에 올릴까요?\n발행 후엔 바로 공개돼요.';
+  let _confirmed = false;
+  try {
+    if (typeof nativeConfirm === 'function') {
+      _confirmed = await nativeConfirm('인스타 발행', _confirmMsg);
+    } else {
+      _confirmed = window.confirm(_confirmMsg);
+    }
+  } catch (_) { _confirmed = window.confirm(_confirmMsg); }
+  if (!_confirmed) return;
+
+
   const pop = document.getElementById('_captionPubPreviewPop');
   if (pop) pop.style.display = 'none';
 
