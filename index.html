@@ -1207,7 +1207,8 @@
       완료
     </button>
   </header>
-  <div id="slotPopupBody" class="dt-body" style="padding-bottom:calc(120px + env(safe-area-inset-bottom));"></div>
+  <!-- 2026-04-24 — 툴바(배경/B/A/요소) 키워지면서 본문 스크롤 여유도 함께 확대 (FAB+안드로이드 nav 가려짐 방지) -->
+  <div id="slotPopupBody" class="dt-body" style="padding-bottom:calc(220px + env(safe-area-inset-bottom));"></div>
   <!-- 하단 도구바 (ws-toolbar) -->
   <div id="slotToolbar" class="ws-toolbar">
     <button onclick="openBgPanel()" class="ws-toolbar__btn" aria-label="배경">

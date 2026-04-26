@@ -896,13 +896,16 @@ function showTab(id, btn) {
   window.scrollTo(0, 0);
   document.body.scrollTop = 0;
   document.documentElement.scrollTop = 0;
-  // Phase 8 A2 — 홈 탭 활성화 시 TodayBrief + AI 제안 위젯 렌더
+  // 홈 탭 활성화 시 통합 카드 렌더 (Task 5: TodayBrief 가 AI 제안까지 함께 그림)
   if (id === 'home') {
     if (window.TodayBrief && typeof window.TodayBrief.render === 'function') {
       try { window.TodayBrief.render('home-today-brief'); } catch (_e) { /* ignore */ }
     }
-    if (window.AISuggestions && typeof window.AISuggestions.render === 'function') {
-      try { window.AISuggestions.render('home-ai-suggestions'); } catch (_e) { /* ignore */ }
+  }
+  // 내샵관리 탭 활성화 시 대시보드 렌더 (Task 6: 이번달 브리핑 흡수)
+  if (id === 'dashboard') {
+    if (typeof window.initDashboardTab === 'function') {
+      try { window.initDashboardTab(); } catch (_e) { /* ignore */ }
     }
   }
 }

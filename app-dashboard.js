@@ -82,38 +82,75 @@
     chevRight: '<path d="M9 18l6-6-6-6"/>',
   };
 
-  // ── Hero 카드 ─────────────────────────────────────────
-  function _heroSection(stats, lastMonthAmount, retData, custList) {
-    const momPct = lastMonthAmount > 0
-      ? Math.round(((stats.month_amount - lastMonthAmount) / lastMonthAmount) * 100)
+  // ── 기간 라벨 / 비교 라벨 ─────────────────────────────
+  function _periodLabel(p) {
+    return ({ today: '오늘', week: '이번주', month: '이번달' })[p] || '이번달';
+  }
+  function _periodDeltaLabel(p) {
+    // 같은 기간 단위 직전 비교 (예: 오늘=어제, 이번주=지난주, 이번달=지난달)
+    return ({ today: '어제 대비', week: '지난주 대비', month: '지난달 대비' })[p] || '지난달 대비';
+  }
+
+  // ── Hero 카드 (Task 6: '이번달 브리핑' 흡수, Task 7: 기간 토글 연동) ─────
+  function _heroSection(stats, prevAmount, retData, custList, briefData, period) {
+    const periodAmount = stats.period_amount != null ? stats.period_amount : stats.month_amount;
+    const deltaPct = prevAmount > 0
+      ? Math.round(((periodAmount - prevAmount) / prevAmount) * 100)
       : null;
-    const momStr = momPct != null
-      ? `지난달 대비 ${momPct >= 0 ? '+' : ''}${momPct}%`
-      : '지난달 비교 대기 중';
-    const deltaIcon = momPct == null || momPct >= 0 ? IC.trendUp : IC.trendDown;
+    const deltaStr = deltaPct != null
+      ? `${_periodDeltaLabel(period)} ${deltaPct >= 0 ? '+' : ''}${deltaPct}%`
+      : `${_periodDeltaLabel(period)} 대기 중`;
+    const deltaIcon = deltaPct == null || deltaPct >= 0 ? IC.trendUp : IC.trendDown;
 
-    // 신규 고객: 이번달 생성된 고객 수
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+    // 신규 고객: 기간 시작점부터 생성된 고객 수
+    const now = new Date();
+    let rangeStart;
+    if (period === 'today') {
+      rangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    } else if (period === 'week') {
+      const d = new Date(now); d.setDate(now.getDate() - now.getDay());
+      d.setHours(0,0,0,0);
+      rangeStart = d.getTime();
+    } else {
+      rangeStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    }
     const newCustomers = (custList.items || []).filter(c =>
-      c.created_at && new Date(c.created_at).getTime() >= monthStart
+      c.created_at && new Date(c.created_at).getTime() >= rangeStart
     ).length;
-    const newCustStr = newCustomers > 0 ? newCustomers + '명' : custList.total > 0 ? '—' : '—';
+    const newCustStr = newCustomers > 0 ? newCustomers + '명' : '—';
 
-    // 재방문: retention rate
+    // 재방문: retention rate (전체 기준 — 기간 의존 X)
     const retRate = retData && retData.summary && retData.summary.retention_rate != null
       ? Math.round(retData.summary.retention_rate) + '%'
       : '—';
+
+    // ── 브리핑 미니 라인 (오늘 예약 / 위험 신호) — 흡수된 hero-card 내용 ──
+    const todayBookings = briefData && briefData.upcoming_count != null ? briefData.upcoming_count : null;
+    const atRisk = briefData && briefData.at_risk_count != null ? briefData.at_risk_count : null;
+
+    const briefRow = (todayBookings != null || atRisk != null) ? `
+      <div class="db-hero__brief" style="display:flex;gap:10px;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.18);">
+        <div class="db-hero__mini" style="flex:1;">
+          <p class="db-hero__mini-lbl">오늘 예약</p>
+          <p class="db-hero__mini-val">${todayBookings != null ? todayBookings + '건' : '—'}</p>
+        </div>
+        <div class="db-hero__mini" style="flex:1;">
+          <p class="db-hero__mini-lbl">위험 신호</p>
+          <p class="db-hero__mini-val">${atRisk != null ? (atRisk > 0 ? atRisk + '명' : '없음') : '—'}</p>
+        </div>
+      </div>
+    ` : '';
 
     return `
       <div class="db-hero">
         <div class="db-hero__lbl">
           ${_ic(IC.dollar, 14)}
-          이번달 매출
+          ${_esc(_periodLabel(period))} 브리핑
         </div>
-        <p class="db-hero__val">${_formatKRWShort(stats.month_amount)}원</p>
+        <p class="db-hero__val">${_formatKRWShort(periodAmount)}원</p>
         <span class="db-hero__delta">
           ${_ic(deltaIcon, 14)}
-          ${_esc(momStr)}
+          ${_esc(deltaStr)}
         </span>
         <div class="db-hero__row">
           <div class="db-hero__mini">
@@ -125,21 +162,49 @@
             <p class="db-hero__mini-val">${_esc(retRate)}</p>
           </div>
         </div>
+        ${briefRow}
+      </div>
+    `;
+  }
+
+  // ── 기간 토글 (Task 7: 오늘 / 이번주 / 이번달) ─────────
+  function _periodToggle(active) {
+    const opts = [
+      { key: 'today', label: '오늘' },
+      { key: 'week',  label: '이번주' },
+      { key: 'month', label: '이번달' },
+    ];
+    return `
+      <div class="period-toggle" role="tablist" aria-label="기간 선택"
+           style="display:inline-flex;gap:4px;padding:4px;background:var(--surface-2);border-radius:14px;">
+        ${opts.map(o => `
+          <button type="button" data-period="${o.key}"
+                  class="${active === o.key ? 'active' : ''}"
+                  style="border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:${active === o.key ? '700' : '500'};
+                         padding:6px 12px;border-radius:10px;
+                         background:${active === o.key ? 'linear-gradient(135deg,#F18091,#E96A7E)' : 'transparent'};
+                         color:${active === o.key ? '#fff' : 'var(--text)'};
+                         transition:background .15s ease,color .15s ease;">
+            ${o.label}
+          </button>
+        `).join('')}
       </div>
     `;
   }
 
   // ── 주요 지표 2×2 ─────────────────────────────────────
-  function _metricsGrid(stats, momPct, inventory) {
+  function _metricsGrid(stats, deltaPct, inventory, period) {
     const lowStock = inventory && inventory.items
       ? (inventory.items || []).filter(i => i.quantity != null && i.threshold != null && i.quantity <= i.threshold).length
       : null;
     const invVal = lowStock != null ? (lowStock > 0 ? lowStock + '종 부족' : '재고 정상') : '재고 현황';
     const invSubCls = lowStock != null && lowStock > 0 ? 'db-wid__sub--down' : '';
 
-    const momStr = momPct != null ? (momPct >= 0 ? '+' : '') + momPct + '% MoM' : 'MoM —';
-    const momCls = momPct == null ? '' : momPct >= 0 ? 'db-wid__sub--up' : 'db-wid__sub--down';
-    const momIcon = momPct == null || momPct >= 0 ? IC.trendUp : IC.trendDown;
+    const periodTag = ({ today: 'DoD', week: 'WoW', month: 'MoM' })[period] || 'MoM';
+    const deltaStr = deltaPct != null ? (deltaPct >= 0 ? '+' : '') + deltaPct + '% ' + periodTag : periodTag + ' —';
+    const deltaCls = deltaPct == null ? '' : deltaPct >= 0 ? 'db-wid__sub--up' : 'db-wid__sub--down';
+    const deltaIcon = deltaPct == null || deltaPct >= 0 ? IC.trendUp : IC.trendDown;
+    const periodAmount = stats.period_amount != null ? stats.period_amount : stats.month_amount;
 
     return `
       <div class="db-grid2">
@@ -148,8 +213,8 @@
             <div class="db-wid__ic">${_ic(IC.chart)}</div>
             <span class="db-wid__ttl">매출관리</span>
           </div>
-          <p class="db-wid__val">${_formatKRWShort(stats.month_amount)}원</p>
-          <span class="db-wid__sub ${momCls}">${_ic(momIcon, 12)} ${_esc(momStr)}</span>
+          <p class="db-wid__val">${_formatKRWShort(periodAmount)}원</p>
+          <span class="db-wid__sub ${deltaCls}">${_ic(deltaIcon, 12)} ${_esc(deltaStr)}</span>
         </button>
         <button class="db-wid" data-metric="customer">
           <div class="db-wid__top">
@@ -236,16 +301,18 @@
   }
 
   // ── 집계 로직 ──────────────────────────────────────────
-  function _aggregateStats(monthRows, todayRows, customersCount, bookings) {
+  function _aggregateStats(monthRows, todayRows, periodRows, customersCount, bookings) {
     const today_amount = (todayRows || []).reduce((s, r) => s + (r.amount || 0), 0);
     const today_count = (todayRows || []).length;
     const month_amount = (monthRows || []).reduce((s, r) => s + (r.amount || 0), 0);
+    const period_amount = (periodRows || []).reduce((s, r) => s + (r.amount || 0), 0);
     const now = Date.now();
     const upcoming_bookings = (bookings || []).filter(b => new Date(b.starts_at).getTime() >= now).length;
     return {
       today_amount,
       today_count,
       month_amount,
+      period_amount,
       customer_count: customersCount,
       upcoming_bookings,
     };
@@ -277,20 +344,17 @@
       });
     });
 
-    // 기간 필터 칩
-    const periodChip = sheet.querySelector('#dashPeriodChip');
-    if (periodChip) {
-      periodChip.addEventListener('click', () => {
+    // 기간 토글 (Task 7: 클릭 시 브리핑·매출·신규고객 모두 해당 기간으로 갱신)
+    sheet.querySelectorAll('.period-toggle [data-period]').forEach(btn => {
+      btn.addEventListener('click', async () => {
         if (window.hapticLight) window.hapticLight();
-        // 기간 전환 (이번달 → 이번주 → 오늘 → 이번달)
-        const periods = ['이번달', '이번주', '오늘'];
-        const current = localStorage.getItem('itdasy_dashboard_period') || '이번달';
-        const next = periods[(periods.indexOf(current) + 1) % periods.length];
-        localStorage.setItem('itdasy_dashboard_period', next);
-        const lbl = sheet.querySelector('#dashPeriodLabel');
-        if (lbl) lbl.textContent = next;
+        const next = btn.dataset.period;  // 'today' | 'week' | 'month'
+        const cur = localStorage.getItem('itdasy_dashboard_period_key') || 'month';
+        if (next === cur) return;
+        localStorage.setItem('itdasy_dashboard_period_key', next);
+        await _loadAndRender();
       });
-    }
+    });
   }
 
   // ── 5분 메모리 캐시 + 백그라운드 prefetch ──────────────────
@@ -312,54 +376,76 @@
 
   // 앱 부팅 시점에 미리 한 번 (유휴 타이밍)
   async function prefetch() {
-    const paths = ['/revenue?period=month', '/revenue?period=today', '/customers', '/bookings', '/retention/at-risk', '/revenue/forecast', '/coupons/suggest', '/today/brief'];
+    const paths = ['/revenue?period=month', '/revenue?period=week', '/revenue?period=today', '/revenue?period=lastmonth', '/customers', '/bookings', '/retention/at-risk', '/revenue/forecast', '/coupons/suggest', '/today/brief'];
     await Promise.all(paths.map(p => _cachedGet(p).catch(() => null)));
   }
   // 외부 노출 — 부팅 훅에서 호출
   window.Dashboard = window.Dashboard || {};
   window.Dashboard.prefetch = prefetch;
 
+  // ── 기간 키 저장/조회 (Task 7) ─────────────────────────
+  function _getPeriod() {
+    const v = localStorage.getItem('itdasy_dashboard_period_key');
+    if (v === 'today' || v === 'week' || v === 'month') return v;
+    // 레거시 라벨 마이그레이션 ('이번달'/'이번주'/'오늘')
+    const legacy = localStorage.getItem('itdasy_dashboard_period');
+    if (legacy === '오늘')  { localStorage.setItem('itdasy_dashboard_period_key', 'today'); return 'today'; }
+    if (legacy === '이번주') { localStorage.setItem('itdasy_dashboard_period_key', 'week');  return 'week'; }
+    return 'month';
+  }
+  // 기간별 비교(prev) endpoint — 백엔드가 lastmonth 만 제공하면 month 외 기간은 null delta 로 graceful degrade
+  function _prevPeriodPath(period) {
+    if (period === 'month') return '/revenue?period=lastmonth';
+    if (period === 'week')  return '/revenue?period=lastweek';
+    if (period === 'today') return '/revenue?period=yesterday';
+    return null;
+  }
+
   async function _loadAndRender() {
     const body = _getBody();
     if (!body) return;
     _renderLoading();
 
+    const period = _getPeriod();
+    const prevPath = _prevPeriodPath(period);
+
     // 병렬 + 캐시 — 실패는 모두 graceful degrade
-    const [monthRev, lastMonthRev, todayRev, custList, bookList, ret, inventory, naverData] = await Promise.all([
+    // brief 는 period 파라미터를 함께 전달 (백엔드가 무시하면 today 기준으로 fallback)
+    const [monthRev, prevRev, todayRev, periodRev, custList, bookList, ret, inventory, naverData, briefData] = await Promise.all([
       _cachedGet('/revenue?period=month').catch(() => ({ items: [] })),
-      _cachedGet('/revenue?period=lastmonth').catch(() => ({ items: [] })),
+      prevPath ? _cachedGet(prevPath).catch(() => ({ items: [] })) : Promise.resolve({ items: [] }),
       _cachedGet('/revenue?period=today').catch(() => ({ items: [] })),
+      _cachedGet('/revenue?period=' + period).catch(() => ({ items: [] })),
       _cachedGet('/customers').catch(() => ({ total: 0, items: [] })),
       _cachedGet('/bookings').catch(() => ({ items: [] })),
       _cachedGet('/retention/at-risk').catch(() => null),
       _cachedGet('/inventory').catch(() => null),
       _cachedGet('/naver-reviews/summary').catch(() => null),
+      _cachedGet('/today/brief?period=' + period).catch(() => null),
     ]);
 
     const stats = _aggregateStats(
       monthRev.items || [],
       todayRev.items || [],
+      periodRev.items || [],
       custList.total != null ? custList.total : (custList.items || []).length,
       bookList.items || [],
     );
 
-    const lastMonthAmount = (lastMonthRev.items || []).reduce((s, r) => s + (r.amount || 0), 0);
-    const momPct = lastMonthAmount > 0
-      ? Math.round(((stats.month_amount - lastMonthAmount) / lastMonthAmount) * 100)
+    const prevAmount = (prevRev.items || []).reduce((s, r) => s + (r.amount || 0), 0);
+    const periodAmount = stats.period_amount;
+    const deltaPct = prevAmount > 0
+      ? Math.round(((periodAmount - prevAmount) / prevAmount) * 100)
       : null;
 
-    const stored = localStorage.getItem('itdasy_dashboard_period') || '이번달';
     body.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <h2 style="font-size:20px;font-weight:700;margin:0;color:var(--text);">대시보드</h2>
-        <button id="dashPeriodChip" class="chip" aria-label="기간 선택" style="border:none;cursor:pointer;font-family:inherit;font-size:12px;display:inline-flex;align-items:center;gap:4px;padding:6px 10px;background:var(--surface-2);border-radius:16px;color:var(--text);">
-          <span id="dashPeriodLabel">${_esc(stored)}</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <h2 style="font-size:20px;font-weight:700;margin:0;color:var(--text);">내샵관리</h2>
+        ${_periodToggle(period)}
       </div>
-      ${_heroSection(stats, lastMonthAmount, ret, custList)}
+      ${_heroSection(stats, prevAmount, ret, custList, briefData, period)}
       <div class="db-sec"><h2>주요 지표</h2><span class="db-sec__hint">탭해서 상세보기</span></div>
-      ${_metricsGrid(stats, momPct, inventory)}
+      ${_metricsGrid(stats, deltaPct, inventory, period)}
       <div class="db-sec"><h2>데이터 &amp; 인사이트</h2></div>
       ${_dataInsightsList(naverData)}
     `;
