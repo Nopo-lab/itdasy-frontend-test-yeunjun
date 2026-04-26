@@ -172,40 +172,6 @@ function renderDetailedPopup(data) {
     `;
 }
 
-async function runInstagramDiagnose() {
-  try {
-    if (window.showToast) window.showToast('진단 중... 5초');
-    const res = await fetch(API + '/instagram/diagnose', { headers: authHeader() });
-    const d = await res.json();
-
-    const lines = [];
-    lines.push(`결과: ${d.ok ? '✅ 정상' : '❌ 문제 발견'}`);
-    lines.push('');
-    lines.push(d.diagnosis || '(진단 메시지 없음)');
-    if (d.handle) lines.push('');
-    if (d.handle) lines.push(`계정: ${d.handle}`);
-    if (d.expires_at) lines.push(`토큰 만료: ${new Date(d.expires_at).toLocaleDateString('ko-KR')}`);
-    if (d.checks?.me?.account_type) lines.push(`계정 타입: ${d.checks.me.account_type}`);
-    if (d.checks?.me?.followers_count !== undefined) lines.push(`팔로워: ${d.checks.me.followers_count}`);
-    if (d.checks?.permissions) lines.push(`권한: ${d.checks.permissions.join(', ')}`);
-
-    const msg = lines.join('\n');
-    if (typeof nativeAlert === 'function') {
-      await nativeAlert('인스타 연동 진단', msg);
-    } else {
-      alert(msg);
-    }
-    // 에러 있으면 한 번 더 콘솔에 전체 JSON 출력 (개발 도구에서 확인 가능)
-    if (!d.ok) console.error('[IG DIAGNOSE]', d);
-  } catch (e) {
-    if (typeof nativeAlert === 'function') {
-      await nativeAlert('진단 실패', e.message || '네트워크 오류');
-    }
-  }
-}
-window.runInstagramDiagnose = runInstagramDiagnose;
-
-
 async function reAnalyzePersona() {
   if (await nativeConfirm("확인", '최신 게시물들을 바탕으로 말투와 성과 비결을 다시 분석하시겠습니까?')) {
     runPersonaAnalyze();

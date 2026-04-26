@@ -133,32 +133,6 @@
     );
   };
 
-  // Meta 가 Supabase URL 을 못 받는지, 외부 URL 이면 받는지 판정
-  window.testMetaWithImgur = async function () {
-    if (!window.API || !window.authHeader) {
-      window.showDebug('테스트', '로그인 필요');
-      return;
-    }
-    // 1:1 정사각 JPEG, 공개 접근 가능, 1080x1080 — IG 요구 스펙 충족
-    const testUrl = 'https://picsum.photos/id/237/1080/1080.jpg';
-    window.showDebug('Meta 테스트 중...', `외부 URL: ${testUrl}\n→ Meta 가 이 URL 을 받아들이는지 확인 중`);
-    try {
-      const r = await fetch(
-        window.API + '/instagram/test-publish-url?image_url=' + encodeURIComponent(testUrl),
-        { method: 'POST', headers: window.authHeader() }
-      );
-      const d = await r.json();
-      window.showDebug('Meta 외부 URL 테스트', {
-        ...d,
-        conclusion: d.ok
-          ? '✅ 외부 URL 은 성공 → Supabase 호스트가 Meta 에서 차단됨 (우리 측 호스팅 문제)'
-          : '❌ 외부 URL 도 실패 → 계정/토큰/Meta 측 문제 (Facebook Page 연동 필요할 수 있음)',
-      });
-    } catch (e) {
-      window.showDebug('테스트 실패', { error: String(e) });
-    }
-  };
-
   // 인스타 업로드 실패 시 자동 팝업 띄우는 헬퍼
   window.showPublishFailure = async function (httpStatus, responseBody) {
     const info = {
