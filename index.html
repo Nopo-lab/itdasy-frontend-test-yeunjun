@@ -484,7 +484,8 @@
 
     <!-- 메뉴 -->
     <!-- 대시보드 진입점은 하단 탭바로 이관 — P3.2 -->
-    <button class="sheet-row" onclick="closeSettings(); connectInstagram();">인스타 다시 연결하기</button>
+    <button class="sheet-row" onclick="closeSettings(); connectInstagram();">인스타 연동하기 / 다시 연결</button>
+    <button class="sheet-row" onclick="closeSettings(); disconnectInstagram();" style="color:var(--danger);">인스타 연동 해제</button>
     <button class="sheet-row" onclick="closeSettings(); runPersonaAnalyze();">내 말투 새로 분석하기</button>
     <button class="sheet-row" onclick="closeSettings(); resetShopSetup();">샵 정보 다시 설정하기</button>
     <button class="sheet-row" data-haptic="light" onclick="closeSettings(); openSupportChat();">
