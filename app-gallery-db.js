@@ -98,3 +98,20 @@ async function deleteSlotFromDB(id) {
     tx.onerror    = () => reject(tx.error);
   });
 }
+
+// [2026-04-26] 계정 격리 — 로그아웃·계정 전환 시 갤러리 IndexedDB 전체 폐기.
+// 이전 사용자의 작업실 사진이 다음 사용자에게 노출되는 누수 방지 (메타 심사 대응).
+async function clearGalleryDB() {
+  try {
+    if (_gdb) { try { _gdb.close(); } catch (_) {} _gdb = null; }
+    return await new Promise((resolve) => {
+      try {
+        const req = indexedDB.deleteDatabase(_GDB_NAME);
+        req.onsuccess = () => resolve(true);
+        req.onerror   = () => resolve(false);
+        req.onblocked = () => resolve(false);
+      } catch (_) { resolve(false); }
+    });
+  } catch (_) { return false; }
+}
+window.clearGalleryDB = clearGalleryDB;

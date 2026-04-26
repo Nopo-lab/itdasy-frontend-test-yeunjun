@@ -241,6 +241,12 @@ async function showOnboardingCaptionPopup() {
       const d = await res.json();
       ta.value = d.caption.trim();
     } else {
+      // [2026-04-26] 무음 실패 금지 — 사용자한테 명시적으로 알림 (Meta 심사 블로커)
+      const errMsg = (await res.text().catch(() => '')) || `HTTP ${res.status}`;
+      console.warn('[caption] 생성 실패:', errMsg);
+      if (typeof showToast === 'function') {
+        showToast('AI 캡션 생성 실패 — 잠시 후 다시 시도해주세요', 'error');
+      }
       ta.value = '직접 평소 쓰시는 말투로 한 문단 입력해주시면 학습할게요!';
     }
   } catch(e) {

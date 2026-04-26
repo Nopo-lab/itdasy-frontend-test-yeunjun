@@ -683,6 +683,13 @@ async function logout() {
     try { localStorage.removeItem(k); } catch (_e) { void _e; }
   });
 
+  // [2026-04-26] 갤러리 IndexedDB 도 같이 비움 — 다음 사용자한테 새는 거 차단 (Meta 심사 블로커)
+  try {
+    if (typeof clearGalleryDB === 'function') {
+      await clearGalleryDB();
+    }
+  } catch (e) { /* IDB clear best-effort */ }
+
   // 2. 서비스 워커 캐시 강제 삭제
   if ('caches' in window) {
     try {
