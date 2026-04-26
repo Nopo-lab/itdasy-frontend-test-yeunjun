@@ -253,11 +253,8 @@ async function runPersonaAnalyze() {
       // 분석 완료 팝업 자동 오픈
       renderDetailedPopup({ raw_analysis: raw, persona: p });
       document.getElementById('analyzeResultPopup').style.display = 'block';
-      // 말투 분석 직후 → 3카드 설문(테스트 메시지 작성) 자동 오픈
-      // 사용자가 [좋아요, 시작할게요] 버튼으로 분석 팝업 닫은 다음 노출되도록 약간 딜레이
-      if (typeof window.openPersonaSurveyModal === 'function') {
-        setTimeout(() => window.openPersonaSurveyModal(), 800);
-      }
+      // [2026-04-24] 말투 테스트 자동 트리거 제거 — 사용자가 설정 메뉴에서 명시적 호출
+      // window.openPersonaSurveyModal() 함수 자체는 app-persona-survey.js 에 그대로 남아있음
     }, 800);
 
   } catch(e) {

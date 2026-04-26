@@ -93,13 +93,9 @@
         const homeTabBtn = document.querySelector('.tab-bar__btn[data-tab="home"]');
         if (homeTabBtn) homeTabBtn.click();
 
-        // 인스타 연동 직후 → 분석된 말투가 있으면 3카드 설문 자동 오픈
-        // (분석 안 끝났으면 popup 내부에서 "진행 중" 안내 화면 노출)
-        setTimeout(() => {
-          if (typeof window.openPersonaSurveyModal === 'function') {
-            window.openPersonaSurveyModal();
-          }
-        }, 1200);
+        // [2026-04-24] OAuth 콜백 직후 말투 테스트 자동 오픈 제거
+        // window.openPersonaSurveyModal() 함수는 app-persona-survey.js 에 남아있음.
+        // 사용자가 설정 메뉴 등에서 명시적으로 트리거하면 그대로 작동.
       } else if (u.searchParams.get('error')) {
         const err = u.searchParams.get('error');
         if (window.showToast) window.showToast('연동 실패: ' + err);

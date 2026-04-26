@@ -768,7 +768,7 @@ window.startKakaoLogin = async function () {
 (function _fixTabBarOnKeyboard() {
   const nav = document.getElementById('nav');
   if (!nav) return;
-  
+
   const hideNav = () => { nav.style.display = 'none'; };
   const showNav = () => { nav.style.display = ''; };
 
@@ -777,7 +777,7 @@ window.startKakaoLogin = async function () {
     const t = e.target.tagName;
     if (t === 'INPUT' || t === 'TEXTAREA' || e.target.isContentEditable) hideNav();
   });
-  
+
   document.addEventListener('focusout', (e) => {
     // 키보드가 내려가면서 focusout될 때 약간의 딜레이 후 복구 (다른 입력창으로 이동할 수 있으므로)
     setTimeout(() => {
@@ -787,6 +787,35 @@ window.startKakaoLogin = async function () {
       }
     }, 100);
   });
+})();
+
+// 2026-04-24 — iOS Safari 하단 탭바 jump 방지 (Task 5)
+//   원인: URL 바 자동숨김 + 키보드로 visual viewport 가 변할 때 position:fixed bottom
+//         이 layout viewport 와 visual viewport 차이로 점프함. 클릭 시 좌표가 틀어져
+//         재클릭이 빗나간다는 사용자 보고.
+//   해법: visualViewport 변화량을 --tab-bar-bottom CSS var 로 실시간 보정.
+//         지원되지 않는 브라우저는 CSS 폴백(safe-area + 14px) 사용.
+(function _stabilizeTabBarOnIOS() {
+  if (!window.visualViewport) return;  // 안드로이드 Chrome 도 대부분 지원
+  const vv = window.visualViewport;
+  const root = document.documentElement;
+  const BASE = 14;  // px — CSS 와 동일
+  let raf = 0;
+  const update = () => {
+    raf = 0;
+    // visual viewport 가 layout viewport 보다 작아진 만큼(키보드/URL바) 보정
+    const offset = (window.innerHeight - vv.height - vv.offsetTop) | 0;
+    // 안전영역 + 기본 14px + 보정값
+    root.style.setProperty(
+      '--tab-bar-bottom',
+      `calc(${BASE}px + env(safe-area-inset-bottom, 0px) + ${Math.max(0, offset)}px)`
+    );
+  };
+  const schedule = () => { if (!raf) raf = requestAnimationFrame(update); };
+  vv.addEventListener('resize', schedule, { passive: true });
+  vv.addEventListener('scroll', schedule, { passive: true });
+  window.addEventListener('orientationchange', () => setTimeout(update, 250), { passive: true });
+  update();
 })();
 
 // ===== 앱 초기화 (모든 모듈 로드 후 실행) =====

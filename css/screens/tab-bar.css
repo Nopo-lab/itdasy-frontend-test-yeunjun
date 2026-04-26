@@ -5,12 +5,13 @@
    ────────────────────────────────────────────────────────────── */
 
 .tab-bar {
-  /* 2026-04-24 — 정중앙 정렬 (안드로이드/iOS 공통). FAB 은 별도 우측 하단(드래그 가능). */
+  /* 2026-04-24 — 정중앙 정렬 (안드로이드/iOS 공통). FAB 은 별도 우측 하단(드래그 가능).
+     iOS jump fix: --tab-bar-bottom 을 app-core.js 의 visualViewport 핸들러가 동적 갱신.
+     없을 때는 safe-area + 14px 폴백. */
   position: fixed;
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  bottom: var(--tab-bar-bottom, calc(14px + env(safe-area-inset-bottom, 0px)));
   left: 50%;
-  transform: translate3d(-50%, 0, 0);
-  transform: translate3d(-50%, 0, 0);  /* iOS Safari 호환 */
+  transform: translate3d(-50%, 0, 0);  /* iOS Safari GPU 레이어 분리 */
   width: calc(100% - 28px);   /* 좌우 14px 마진 */
   max-width: 460px;           /* 가로 화면·태블릿 대응 */
   background: var(--surface);
@@ -25,8 +26,15 @@
   /* iOS 하단바 도망 방지 — GPU 레이어 분리 + 뷰포트 변화에 안정적 고정 */
   will-change: transform;
   backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  contain: layout style;       /* 자식 :active 시 부모 layout shift 방지 */
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* 가로형 / 키보드 올라온 상태(높이 매우 낮음) — 탭바 숨겨서 클릭 오작동 방지 */
+@media (max-height: 460px) and (orientation: portrait) {
+  .tab-bar { display: none; }
 }
 
 .tab-bar__btn {

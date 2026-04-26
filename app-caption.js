@@ -399,18 +399,39 @@ function _capAutoGrow(ta) {
 }
 
 function _capSchedulePatch(text) {
-  if (!_lastLogId) return;
+  // 백엔드 PATCH는 _lastLogId 있을 때만, 슬롯 로컬 동기화는 항상 시도
   clearTimeout(_capPatchTimer);
   _capPatchTimer = setTimeout(() => _capPatchLog(text), 800);
 }
 
 async function _capPatchLog(text) {
-  if (!_lastLogId || !text.trim()) return;
+  const trimmed = (text || '').trim();
+
+  // 1) 슬롯 로컬 동기화 — 사용자가 직접 글 쓰면 슬롯에 저장하고 마무리 탭에서 인식되게
+  try {
+    if (typeof _captionSlotId !== 'undefined' && _captionSlotId && typeof _slots !== 'undefined') {
+      const slot = _slots.find(s => s.id === _captionSlotId);
+      if (slot) {
+        slot.caption = text || '';
+        const haEl = document.getElementById('captionHash');
+        if (haEl) slot.hashtags = haEl.value || '';
+        if (trimmed) {
+          slot.status = 'done';
+          slot.completedAt = slot.completedAt || Date.now();
+        }
+        if (typeof saveSlotToDB === 'function') {
+          try { await saveSlotToDB(slot); } catch (_e) { /* IndexedDB 일시 실패 무시 */ }
+        }
+      }
+    }
+  } catch (_e) { /* 슬롯 동기화 실패해도 PATCH는 시도 */ }
+
+  // 2) 백엔드 generation_log PATCH — log_id 있을 때만
+  if (!_lastLogId || !trimmed) return;
   // edited_amount: 글자 차이 % (간단 추정)
   const pct = _capAiDraft
     ? Math.round(Math.abs(text.length - _capAiDraft.length) / Math.max(_capAiDraft.length, 1) * 100)
     : 0;
-  const micro = document.getElementById('captionEditMicro');
   const pctEl = document.getElementById('captionEditPct');
   if (pctEl) pctEl.textContent = pct > 0 ? `${pct}% 수정됨` : '';
 
@@ -645,18 +666,45 @@ async function _doGenerateCaption(scenario, closePopup) {
         if (slot) {
           slot.caption = finalCaption;
           slot.hashtags = hashes;
+          // 캡션 생성되면 슬롯 자동으로 '완료' 상태로 — 마무리 탭에서 인식되도록
+          if (finalCaption && finalCaption.trim()) {
+            slot.status = 'done';
+            slot.completedAt = slot.completedAt || Date.now();
+          }
           if (typeof saveSlotToDB === 'function') saveSlotToDB(slot).catch(() => {});
         }
       }
 
       _renderCaptionActionBar(finalCaption, hashes);
       if (btn) { btn.innerHTML = '만들기 ✨'; btn.disabled = false; }
+
+      // [2026-04-24] 캡션 렌더 후 미리보기 프레임으로 스크롤 — 사용자 시선 유도
+      const frame = document.getElementById('captionResult');
+      if (frame && typeof frame.scrollIntoView === 'function') {
+        setTimeout(() => frame.scrollIntoView({ behavior: 'smooth', block: 'center' }), 120);
+      }
     });
   } catch(e) {
-    if (e.message === '401') return; // _personaFetch가 401 처리
+    if (e && e.message === '401') return; // _personaFetch가 401 처리
+    // [2026-04-24] 명확한 에러 진단 — '일시적 오류' 일괄 표시 제거
+    console.error('[caption.generate] 실패:', e);
+    const raw = (e && (e.message || e.toString())) || '';
+    let userMsg = '캡션 만들기 실패. 잠시 후 다시 시도해주세요.';
+    if (/Failed to fetch|NetworkError|TypeError/i.test(raw)) {
+      userMsg = '네트워크 연결 확인 후 다시 시도해주세요.';
+    } else if (/timeout/i.test(raw)) {
+      userMsg = 'AI 응답이 지연되고 있어요. 잠시 후 다시 시도해주세요.';
+    } else if (/identity_incomplete/i.test(raw)) {
+      userMsg = '사장님 프로필을 먼저 완성해주세요.';
+    } else if (/insufficient_posts|fingerprint_missing/i.test(raw)) {
+      userMsg = '인스타 게시물 5개 이상 연동 후 가능합니다.';
+    } else if (/HTTP 5\d\d/i.test(raw)) {
+      userMsg = '서버가 잠깐 불안정해요. 1분 후 다시 시도해주세요.';
+    }
     hideCaptionLoader(false, () => {
       closePopup();
-      showToast('일시적 오류. 다시 시도해주세요.');
+      // 미리보기 textarea 비어있어도 placeholder 살아남도록 둠
+      showToast(userMsg);
     });
   }
 }

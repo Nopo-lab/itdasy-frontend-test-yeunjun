@@ -102,15 +102,15 @@
 
 /* ══ Step3: 슬롯 편집 툴바 ════════════════════════════════════ */
 
-/* 2026-04-24 — 옵션 버튼(배경/B/A/요소) 이 안드로이드 하단 네비(48px) + 챗봇 FAB(74px) 에
-   가려지지 않도록 padding-bottom 을 120px + safe-area 로 확대 */
+/* 2026-04-24 — 슬롯 편집 옵션 툴바(배경/B/A/요소).
+   #slotPopup 이 fixed 오버레이로 승격됐으므로 absolute 가 팝업 기준으로 동작.
+   padding-bottom 은 안전영역 + 14px 만 (style-polish.css 가 #slotToolbar 에 추가 확장). */
 .ws-toolbar {
   position: absolute;
   bottom: 0; left: 0; right: 0;
   background: var(--surface);
   border-top: 1px solid var(--border);
-  padding: 8px 10px;
-  padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+  padding: 8px 10px calc(14px + env(safe-area-inset-bottom, 0px));
   display: flex;
   gap: 6px;
   z-index: 2;

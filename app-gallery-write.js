@@ -128,25 +128,32 @@ function _initPeekCarousel(id, total) {
 // 글쓰기 탭 — 슬롯 픽커
 // ═══════════════════════════════════════════════════════
 function initCaptionSlotPicker() {
-  const doneSlots = _slots.filter(s => s.status === 'done' && s.photos.length > 0);
+  // 사진이 있는 슬롯 모두 노출 (상태 무관). 글쓰기 진입은 사진만 있어도 가능해야 함.
+  const usableSlots = _slots.filter(s => (s.photos || []).filter(p => !p.hidden).length > 0);
   const container = document.getElementById('captionSlotPicker');
   if (!container) return;
 
   // 키워드 태그 렌더링
   if (typeof renderCaptionKeywordTags === 'function') renderCaptionKeywordTags();
 
-  if (!doneSlots.length) { container.style.display = 'none'; return; }
+  if (!usableSlots.length) { container.style.display = 'none'; return; }
   container.style.display = 'block';
   container.innerHTML = `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 14px;">
       <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px;">작업실 슬롯 <span style="font-size:10px;color:var(--text3);font-weight:400;">— 탭하면 사진이 연결돼요</span></div>
       <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;" id="captionSlotCards">
-        ${doneSlots.map(slot => {
-          const thumb = slot.photos.filter(p => !p.hidden)[0];
+        ${usableSlots.map(slot => {
+          const thumb = (slot.photos || []).filter(p => !p.hidden)[0];
           if (!thumb) return '';
+          const hasCaption = !!(slot.caption && slot.caption.trim());
+          const isDone = slot.status === 'done' || hasCaption;
+          const badge = isDone ? '✓' : '';
           return `
             <div id="csPick_${slot.id}" onclick="loadSlotForCaption('${slot.id}')" style="flex-shrink:0;width:64px;cursor:pointer;text-align:center;">
-              <img src="${thumb.editedDataUrl || thumb.dataUrl}" style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:2px solid transparent;transition:border-color 0.2s;" id="csThumb_${slot.id}">
+              <div style="position:relative;">
+                <img src="${thumb.editedDataUrl || thumb.dataUrl}" style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:2px solid transparent;transition:border-color 0.2s;" id="csThumb_${slot.id}">
+                ${badge ? `<div style="position:absolute;top:-4px;right:-4px;background:#4caf50;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;border:2px solid #fff;">${badge}</div>` : ''}
+              </div>
               <div style="font-size:9px;color:var(--text2);margin-top:3px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${slot.label}</div>
             </div>
           `;
@@ -170,7 +177,7 @@ async function loadSlotForCaption(slotId) {
   if (pickedThumb) pickedThumb.style.borderColor = 'var(--accent)';
 
   // 보이는 사진만 (hidden 제외)
-  const visPhotos = slot.photos.filter(p => !p.hidden);
+  const visPhotos = (slot.photos || []).filter(p => !p.hidden);
 
   // 사진 피크 캐러셀 표시
   const strip = document.getElementById('captionSlotPhotoStrip');
@@ -185,6 +192,19 @@ async function loadSlotForCaption(slotId) {
   } else if (strip) {
     strip.style.display = 'none';
   }
+
+  // 슬롯에 이미 저장된 캡션이 있으면 텍스트영역에 채워서 이어쓰기 가능하게
+  const ta = document.getElementById('captionText');
+  const haTa = document.getElementById('captionHash');
+  if (ta && slot.caption) {
+    ta.value = slot.caption;
+    if (typeof _capAutoGrow === 'function') _capAutoGrow(ta);
+  } else if (ta) {
+    // 다른 슬롯으로 전환 시 이전 캡션이 남지 않도록 비움
+    ta.value = '';
+    if (typeof _capAutoGrow === 'function') _capAutoGrow(ta);
+  }
+  if (haTa) haTa.value = slot.hashtags || '';
 
   showToast(`${slot.label} 연결됐어요 ✅`);
 

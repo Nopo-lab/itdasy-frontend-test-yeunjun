@@ -22,8 +22,11 @@ async function initFinishTab() {
 }
 
 function _renderFinishTab(root, galleryItems = []) {
-  const doneSlots   = _slots.filter(s => s.status === 'done' && s.photos.length > 0 && !s.instagramPublished);
-  const incompleteN = _slots.filter(s => !s.instagramPublished && (s.status !== 'done' || !s.photos.length)).length;
+  // '완료' 인정 기준: status === 'done' OR 캡션이 채워진 슬롯
+  // 사용자가 캡션만 직접 써도 마무리 탭에 노출되도록 (status 미설정 레거시 슬롯 대응)
+  const isComplete = s => (s.status === 'done' || !!(s.caption && String(s.caption).trim()));
+  const doneSlots   = _slots.filter(s => isComplete(s) && s.photos.length > 0 && !s.instagramPublished);
+  const incompleteN = _slots.filter(s => !s.instagramPublished && (!isComplete(s) || !s.photos.length)).length;
 
   if (!_slots.length) {
     root.innerHTML = `
