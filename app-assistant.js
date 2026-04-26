@@ -265,9 +265,26 @@
     }
     body.innerHTML = _history.map((m, idx) => {
       if (m.role === 'user') {
-        const thumbHtml = m.thumb ? `<img src="${_esc(m.thumb)}" alt="업로드 사진" style="max-width:160px;max-height:160px;border-radius:12px;margin-bottom:6px;display:block;object-fit:cover;" />` : '';
+        // 2026-04-26 픽스 — N장 모두 썸네일 그리드로 표시 (클릭 시 라이트박스)
+        // 구버전 호환: m.photos 없고 m.thumb 만 있으면 1장으로 간주
+        const photoArr = (Array.isArray(m.photos) && m.photos.length)
+          ? m.photos
+          : (m.thumb ? [m.thumb] : []);
+        let photosHtml = '';
+        if (photoArr.length === 1) {
+          // 1장이면 큰 썸네일 (기존 UX 유지)
+          photosHtml = `<img data-asst-photo="${idx}:0" src="${_esc(photoArr[0])}" alt="업로드 사진" style="max-width:180px;max-height:180px;border-radius:12px;margin-bottom:6px;display:block;object-fit:cover;cursor:zoom-in;" />`;
+        } else if (photoArr.length > 1) {
+          // 2장 이상 — 80×80 그리드. 4장 넘으면 wrap (자동 줄바꿈)
+          const cells = photoArr.map((u, i) => `
+            <div style="position:relative;width:80px;height:80px;border-radius:10px;overflow:hidden;flex-shrink:0;cursor:zoom-in;background:rgba(255,255,255,0.1);"
+              data-asst-photo="${idx}:${i}">
+              <img src="${_esc(u)}" alt="업로드 사진 ${i + 1}" style="width:100%;height:100%;object-fit:cover;display:block;" />
+            </div>`).join('');
+          photosHtml = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;max-width:280px;">${cells}</div>`;
+        }
         return `<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-          <div style="max-width:80%;padding:10px 14px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border-radius:16px 16px 4px 16px;font-size:13px;line-height:1.5;">${thumbHtml}${_esc(m.text)}</div>
+          <div style="max-width:85%;padding:10px 14px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border-radius:16px 16px 4px 16px;font-size:13px;line-height:1.5;">${photosHtml}${_esc(m.text)}</div>
         </div>`;
       }
       if (m.role === 'assistant') {
@@ -1145,6 +1162,17 @@
     if (_delegationBound) return;
     _delegationBound = true;
     document.addEventListener('click', (e) => {
+      // 2026-04-26 픽스 — 업로드 사진 썸네일 클릭 → 라이트박스
+      const photoEl = e.target.closest('[data-asst-photo]');
+      if (photoEl && document.getElementById('asstBody')?.contains(photoEl)) {
+        const [hi, pi] = photoEl.dataset.asstPhoto.split(':').map(n => parseInt(n, 10));
+        const msg = _history[hi];
+        const photos = (msg && Array.isArray(msg.photos) && msg.photos.length)
+          ? msg.photos
+          : (msg && msg.thumb ? [msg.thumb] : []);
+        if (photos.length) _openLightbox(photos, pi || 0);
+        return;
+      }
       const run = e.target.closest('[data-action-run]');
       if (run && document.getElementById('asstBody')?.contains(run)) {
         _runAction(parseInt(run.dataset.actionRun, 10));
@@ -1732,6 +1760,101 @@
     document.body.appendChild(box);
   }
 
+  // ─── 📷 라이트박스 (업로드한 사진 클릭 시 큰 화면) ────────────
+  // 2026-04-26 추가 — N장 사진을 좌우 화살표로 둘러보기.
+  // 배경 어둡게 + ESC/배경 클릭 닫기 + 화살표 키 네비.
+  let _lightboxState = null;
+  function _openLightbox(photos, startIdx) {
+    if (!photos || !photos.length) return;
+    // 이미 열려있으면 무시
+    if (document.getElementById('asstLightbox')) return;
+
+    _lightboxState = { photos, idx: Math.max(0, Math.min(startIdx || 0, photos.length - 1)) };
+
+    const overlay = document.createElement('div');
+    overlay.id = 'asstLightbox';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10500;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom);opacity:0;transition:opacity 0.15s ease-out;';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-label', '업로드 사진 보기');
+
+    const renderInner = () => {
+      const s = _lightboxState;
+      if (!s) return;
+      const cur = s.photos[s.idx] || '';
+      const counter = `${s.idx + 1} / ${s.photos.length}`;
+      const hasPrev = s.idx > 0;
+      const hasNext = s.idx < s.photos.length - 1;
+      overlay.innerHTML = `
+        <button data-lightbox-close aria-label="닫기" title="닫기"
+          style="position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+          ${_svg('ic-x', 20)}
+        </button>
+        <div style="position:absolute;top:max(18px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.85);font-size:13px;font-weight:700;background:rgba(0,0,0,0.4);padding:6px 12px;border-radius:14px;">${counter}</div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;max-width:100%;overflow:hidden;">
+          <img src="${_esc(cur)}" alt="업로드 사진 ${s.idx + 1}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;" />
+        </div>
+        ${hasPrev ? `<button data-lightbox-prev aria-label="이전 사진" title="이전 사진"
+          style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">${_svg('ic-chevron-left', 22)}</button>` : ''}
+        ${hasNext ? `<button data-lightbox-next aria-label="다음 사진" title="다음 사진"
+          style="position:absolute;right:12px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">${_svg('ic-chevron-right', 22)}</button>` : ''}
+      `;
+    };
+    renderInner();
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+
+    const close = () => {
+      try { document.removeEventListener('keydown', onKey); } catch (_e) { void _e; }
+      try { overlay.style.opacity = '0'; } catch (_e) { void _e; }
+      setTimeout(() => { try { overlay.remove(); } catch (_e) { void _e; } }, 150);
+      _lightboxState = null;
+    };
+    const next = () => {
+      if (!_lightboxState) return;
+      if (_lightboxState.idx < _lightboxState.photos.length - 1) {
+        _lightboxState.idx += 1;
+        renderInner();
+      }
+    };
+    const prev = () => {
+      if (!_lightboxState) return;
+      if (_lightboxState.idx > 0) {
+        _lightboxState.idx -= 1;
+        renderInner();
+      }
+    };
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target.closest('[data-lightbox-close]')) { close(); return; }
+      if (e.target.closest('[data-lightbox-next]')) { next(); return; }
+      if (e.target.closest('[data-lightbox-prev]')) { prev(); return; }
+      // 배경(이미지·버튼 외) 클릭 시 닫기
+      if (e.target === overlay) close();
+    });
+
+    // 키보드 네비
+    const onKey = (ev) => {
+      if (ev.key === 'Escape') close();
+      else if (ev.key === 'ArrowRight') next();
+      else if (ev.key === 'ArrowLeft') prev();
+    };
+    document.addEventListener('keydown', onKey);
+
+    // 모바일 swipe (좌우)
+    let touchStartX = null;
+    overlay.addEventListener('touchstart', (e) => {
+      if (e.touches && e.touches.length === 1) touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+    overlay.addEventListener('touchend', (e) => {
+      if (touchStartX == null) return;
+      const dx = (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : touchStartX) - touchStartX;
+      touchStartX = null;
+      if (Math.abs(dx) < 40) return;
+      if (dx < 0) next(); else prev();
+    }, { passive: true });
+  }
+
   // 단일 파일 호환 래퍼 (옛 호출자 대응)
   async function _uploadPhoto(file) {
     return _uploadPhotos(file);
@@ -1753,23 +1876,41 @@
     if (input) input.value = '';
     const N = files.length;
 
-    // 첫 장 썸네일만 (UI 간결)
-    let thumbUrl = '';
+    // 2026-04-26 픽스 — 보낸 사진 N장 모두 보관 (썸네일 그리드 + 라이트박스용)
+    // 메모리 보호: 각 이미지 max 800px 로 dataURL 화 (미리보기 전용)
+    let photoUrls = [];
     try {
-      thumbUrl = await new Promise((resolve) => {
+      photoUrls = await Promise.all(files.map(async (f) => {
         try {
-          const r = new FileReader();
-          r.onload = () => resolve(r.result || '');
-          r.onerror = () => resolve('');
-          r.readAsDataURL(files[0]);
-        } catch (_e) { resolve(''); }
-      });
-    } catch (_e) { void _e; }
+          if (typeof window.compressImageForUpload === 'function') {
+            // 미리보기는 가벼운 800px·0.75 품질로 (10장 × ~80KB ≈ 800KB)
+            const small = await window.compressImageForUpload(f, 800, 0.75);
+            return await new Promise((resolve) => {
+              const r = new FileReader();
+              r.onload = () => resolve(r.result || '');
+              r.onerror = () => resolve('');
+              r.readAsDataURL(small);
+            });
+          }
+        } catch (_e) { void _e; }
+        // fallback: 원본 그대로 (helper 부재 시)
+        return await new Promise((resolve) => {
+          try {
+            const r = new FileReader();
+            r.onload = () => resolve(r.result || '');
+            r.onerror = () => resolve('');
+            r.readAsDataURL(f);
+          } catch (_e) { resolve(''); }
+        });
+      }));
+      photoUrls = photoUrls.filter(Boolean);
+    } catch (_e) { photoUrls = []; }
 
     // 플레이스홀더 메시지
     const baseText = question || (N > 1 ? ('사진 ' + N + '장 업로드 중…') : '사진 업로드 중…');
     const placeholderText = (N > 1 && question) ? (question + ' (외 ' + (N - 1) + '장 함께)') : baseText;
-    _history.push({ role: 'user', text: placeholderText, thumb: thumbUrl });
+    // thumb 은 호환성 위해 유지 (구버전 메시지 렌더용). photos 는 신규 그리드용.
+    _history.push({ role: 'user', text: placeholderText, thumb: photoUrls[0] || '', photos: photoUrls });
     _history.push({ role: 'loading', text: '' });
     _renderHistory();
 
@@ -1954,6 +2095,39 @@
     }
   }
 
+  // [2026-04-26] 멀티 디바이스 동기화 — 서버에서 최근 세션 messages 로드.
+  // 폰·컴 다른 디바이스에서 같은 user 로 들어왔을 때도 같은 대화방.
+  let _historyLoadedFromServer = false;
+  async function _loadServerHistory(force = false) {
+    if (_historyLoadedFromServer && !force) return;
+    try {
+      const res = await fetch(window.API + '/assistant/session/current', {
+        headers: { ...authHeader() },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.session_id) {
+        _sessionId = data.session_id;
+        try { localStorage.setItem('assistant_session_id', String(_sessionId)); } catch (_) {}
+      }
+      // 서버 messages 가 비어있지 않으면 _history 덮어쓰기 (서버가 진실원천)
+      if (Array.isArray(data?.messages) && data.messages.length) {
+        _history = data.messages.map(m => ({
+          role: m.role || 'assistant',
+          text: m.text || '',
+          // 서버는 photos 보관 안 함 — 디바이스 간 사진 미리보기는 보내는 디바이스에서만
+        }));
+      }
+      _historyLoadedFromServer = true;
+      _renderHistory();
+    } catch (_e) { /* offline 등 — 기존 _history 유지 */ }
+  }
+  // "데이터 동기화" 버튼 / focus 복귀 시 강제 새로고침
+  window.addEventListener('itdasy:data-changed', () => {
+    _historyLoadedFromServer = false;
+    _loadServerHistory(true);
+  });
+
   window.openAssistant = function () {
     _ensureSheet();
     const sheet = document.getElementById('assistantSheet');
@@ -1966,6 +2140,8 @@
     }));
     document.body.style.overflow = 'hidden';
     _renderHistory();
+    // 첫 오픈 시 서버 history 동기화 (백그라운드, 즉시 렌더에 영향 X)
+    _loadServerHistory();
     setTimeout(() => document.getElementById('asstInput')?.focus(), 60);
   };
   window.closeAssistant = function () {
