@@ -313,3 +313,26 @@
   padding: 4px 0;
   font-family: inherit;
 }
+
+/* ── 캘린더 스켈레톤 (로딩 중) ── */
+.cv-cell--sk { pointer-events: none; }
+.cv-sk-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--surface-2, #F2F2F7);
+  animation: cv-sk-pulse 1.3s ease-in-out infinite;
+}
+@keyframes cv-sk-pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+/* ── 월 뷰 예약 추가 FAB ── */
+.cv-fab {
+  position: sticky; bottom: 16px;
+  display: block; margin: 16px auto 8px;
+  padding: 13px 28px;
+  background: linear-gradient(135deg, #F18091, #D95F70);
+  color: #fff; font-size: 15px; font-weight: 800;
+  border: none; border-radius: 999px; cursor: pointer;
+  box-shadow: 0 6px 20px rgba(241,128,145,0.4);
+  transition: transform 0.12s;
+  letter-spacing: -0.2px;
+}
+.cv-fab:active { transform: scale(0.96); }

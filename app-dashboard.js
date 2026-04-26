@@ -83,7 +83,7 @@
   };
 
   // ── Hero 카드 ─────────────────────────────────────────
-  function _heroSection(stats, lastMonthAmount, retData, npsStats, custList) {
+  function _heroSection(stats, lastMonthAmount, retData, custList) {
     const momPct = lastMonthAmount > 0
       ? Math.round(((stats.month_amount - lastMonthAmount) / lastMonthAmount) * 100)
       : null;
@@ -102,11 +102,6 @@
     // 재방문: retention rate
     const retRate = retData && retData.summary && retData.summary.retention_rate != null
       ? Math.round(retData.summary.retention_rate) + '%'
-      : '—';
-
-    // NPS 점수
-    const npsScore = npsStats && npsStats.score != null
-      ? (npsStats.score >= 0 ? '+' : '') + npsStats.score
       : '—';
 
     return `
@@ -128,10 +123,6 @@
           <div class="db-hero__mini">
             <p class="db-hero__mini-lbl">재방문</p>
             <p class="db-hero__mini-val">${_esc(retRate)}</p>
-          </div>
-          <div class="db-hero__mini">
-            <p class="db-hero__mini-lbl">NPS</p>
-            <p class="db-hero__mini-val">${_esc(npsScore)}</p>
           </div>
         </div>
       </div>
@@ -155,7 +146,7 @@
         <button class="db-wid" data-metric="revenue">
           <div class="db-wid__top">
             <div class="db-wid__ic">${_ic(IC.chart)}</div>
-            <span class="db-wid__ttl">매출</span>
+            <span class="db-wid__ttl">매출관리</span>
           </div>
           <p class="db-wid__val">${_formatKRWShort(stats.month_amount)}원</p>
           <span class="db-wid__sub ${momCls}">${_ic(momIcon, 12)} ${_esc(momStr)}</span>
@@ -163,7 +154,7 @@
         <button class="db-wid" data-metric="customer">
           <div class="db-wid__top">
             <div class="db-wid__ic">${_ic(IC.users)}</div>
-            <span class="db-wid__ttl">고객</span>
+            <span class="db-wid__ttl">고객관리</span>
           </div>
           <p class="db-wid__val">${stats.customer_count}명</p>
           <span class="db-wid__sub">등록 고객</span>
@@ -171,7 +162,7 @@
         <button class="db-wid" data-metric="booking">
           <div class="db-wid__top">
             <div class="db-wid__ic">${_ic(IC.calendar)}</div>
-            <span class="db-wid__ttl">예약</span>
+            <span class="db-wid__ttl">예약관리</span>
           </div>
           <p class="db-wid__val">${stats.upcoming_bookings}건</p>
           <span class="db-wid__sub">예정 예약</span>
@@ -179,7 +170,7 @@
         <button class="db-wid" data-metric="inventory">
           <div class="db-wid__top">
             <div class="db-wid__ic">${_ic(IC.box)}</div>
-            <span class="db-wid__ttl">재고</span>
+            <span class="db-wid__ttl">재고관리</span>
           </div>
           <p class="db-wid__val">${_esc(invVal)}</p>
           <span class="db-wid__sub ${invSubCls}">${lowStock != null && lowStock > 0 ? '재주문 필요' : '재고 관리'}</span>
@@ -188,40 +179,14 @@
     `;
   }
 
-  // ── 바로가기 4버튼 ─────────────────────────────────────
-  function _quickActionsRow() {
-    const actions = [
-      { icon: IC.userPlus, label: '고객등록', fn: 'openCustomers' },
-      { icon: IC.calPlus,  label: '예약',     fn: 'openBooking' },
-      { icon: IC.card,     label: '매출입력', fn: 'openRevenue' },
-      { icon: IC.check,    label: '재고체크', fn: 'openInventory' },
-    ];
-    return `
-      <div class="db-qrow">
-        ${actions.map(a => `
-          <button class="db-qa" data-qa="${_esc(a.fn)}">
-            <span class="db-qa__ic">${_ic(a.icon, 20)}</span>
-            <span class="db-qa__t">${_esc(a.label)}</span>
-          </button>
-        `).join('')}
-      </div>
-    `;
-  }
-
   // ── 데이터 & 인사이트 리스트 ─────────────────────────────
-  function _insightItems(npsStats, naverData) {
-    const npsCount = npsStats && npsStats.count > 0;
-    const npsBadge = npsCount ? '<span class="db-badge db-badge--ok">활성</span>' : '';
-    const npsSub = npsCount
-      ? `이번달 응답 ${npsStats.count}건 · 점수 ${npsStats.score >= 0 ? '+' : ''}${npsStats.score}`
-      : 'NPS 설문 관리';
+  function _insightItems(naverData) {
     const naverPending = naverData && naverData.pending_reply > 0 ? naverData.pending_reply : null;
     const naverBadge = naverPending ? `<span class="db-badge db-badge--warn">답변 ${naverPending}</span>` : '';
     const naverSub = naverData && naverData.avg_score
       ? `신규 ${naverData.new_count || 0}건 · 평균 ${naverData.avg_score}점`
       : '네이버 리뷰 관리';
     return [
-      { ic: IC.msg,      pink: true,  label: 'NPS 설문',      sub: npsSub,                            badge: npsBadge,                               fn: 'openNps' },
       { ic: IC.star,     pink: true,  label: '네이버 리뷰',   sub: naverSub,                          badge: naverBadge,                              fn: 'openNaverReviews' },
       { ic: IC.video,    pink: false, label: '영상 리포트',   sub: '릴스/쇼츠 분석',                  badge: '',                                     fn: 'openVideo' },
       { ic: IC.upload,   pink: false, label: '데이터 불러오기', sub: '엑셀/CSV · 전자영수증 연동',    badge: '',                                     fn: 'openImport' },
@@ -229,8 +194,8 @@
     ];
   }
 
-  function _dataInsightsList(npsStats, naverData) {
-    const items = _insightItems(npsStats, naverData);
+  function _dataInsightsList(naverData) {
+    const items = _insightItems(naverData);
     return `
       <div class="db-menu">
         ${items.map(it => `
@@ -266,9 +231,6 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
         ${[0,1,2,3].map(() => '<div class="db-skel" style="height:96px;border-radius:14px;"></div>').join('')}
       </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:20px;">
-        ${[0,1,2,3].map(() => '<div class="db-skel" style="height:68px;border-radius:8px;"></div>').join('')}
-      </div>
       <div class="db-skel" style="height:280px;border-radius:14px;"></div>
     `;
   }
@@ -294,25 +256,15 @@
     const sheet = document.getElementById('tab-dashboard');
     if (!sheet) return;
 
-    // 주요 지표 2×2 → 파워뷰 (예약 위젯은 캘린더 뷰)
+    // 주요 지표 2×2 → 각 독립 허브로 라우팅
     sheet.querySelectorAll('[data-metric]').forEach(btn => {
       btn.addEventListener('click', () => {
         if (window.hapticLight) window.hapticLight();
         const tab = btn.dataset.metric;
-        if (tab === 'booking') {
-          if (typeof window.openCalendarView === 'function') window.openCalendarView();
-        } else {
-          if (typeof window.openPowerView === 'function') window.openPowerView(tab);
-        }
-      });
-    });
-
-    // 바로가기 4버튼
-    sheet.querySelectorAll('[data-qa]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (window.hapticMedium) window.hapticMedium();
-        const fn = btn.dataset.qa;
-        if (typeof window[fn] === 'function') window[fn]();
+        if      (tab === 'booking')   { if (typeof window.openCalendarView  === 'function') window.openCalendarView(); }
+        else if (tab === 'revenue')   { if (typeof window.openRevenueHub    === 'function') window.openRevenueHub(); }
+        else if (tab === 'inventory') { if (typeof window.openInventoryHub  === 'function') window.openInventoryHub(); }
+        else if (tab === 'customer')  { if (typeof window.openCustomerHub   === 'function') window.openCustomerHub(); }
       });
     });
 
@@ -373,14 +325,13 @@
     _renderLoading();
 
     // 병렬 + 캐시 — 실패는 모두 graceful degrade
-    const [monthRev, lastMonthRev, todayRev, custList, bookList, ret, npsStats, inventory, naverData] = await Promise.all([
+    const [monthRev, lastMonthRev, todayRev, custList, bookList, ret, inventory, naverData] = await Promise.all([
       _cachedGet('/revenue?period=month').catch(() => ({ items: [] })),
       _cachedGet('/revenue?period=lastmonth').catch(() => ({ items: [] })),
       _cachedGet('/revenue?period=today').catch(() => ({ items: [] })),
       _cachedGet('/customers').catch(() => ({ total: 0, items: [] })),
       _cachedGet('/bookings').catch(() => ({ items: [] })),
       _cachedGet('/retention/at-risk').catch(() => null),
-      _cachedGet('/nps/stats').catch(() => null),
       _cachedGet('/inventory').catch(() => null),
       _cachedGet('/naver-reviews/summary').catch(() => null),
     ]);
@@ -406,13 +357,11 @@
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
         </button>
       </div>
-      ${_heroSection(stats, lastMonthAmount, ret, npsStats, custList)}
+      ${_heroSection(stats, lastMonthAmount, ret, custList)}
       <div class="db-sec"><h2>주요 지표</h2><span class="db-sec__hint">탭해서 상세보기</span></div>
       ${_metricsGrid(stats, momPct, inventory)}
-      <div class="db-sec"><h2>바로가기</h2></div>
-      ${_quickActionsRow()}
       <div class="db-sec"><h2>데이터 &amp; 인사이트</h2></div>
-      ${_dataInsightsList(npsStats, naverData)}
+      ${_dataInsightsList(naverData)}
     `;
 
     _bindEvents();

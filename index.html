@@ -32,6 +32,7 @@
 <link rel="stylesheet" href="css/patterns.css">
 <link rel="stylesheet" href="css/screens/home.css">
 <link rel="stylesheet" href="css/screens/power-view.css">
+<link rel="stylesheet" href="css/screens/hubs.css">
 <link rel="stylesheet" href="css/screens/dashboard.css">
 <link rel="stylesheet" href="css/screens/details.css">
 <link rel="stylesheet" href="css/screens/workshop.css">
@@ -39,7 +40,7 @@
 <link rel="stylesheet" href="css/screens/gallery-review.css">
 <link rel="stylesheet" href="css/screens/tab-bar.css">
 <link rel="stylesheet" href="css/screens/calendar.css">
-<link rel="stylesheet" href="style.css?v=20260420">
+<link rel="stylesheet" href="style.css?v=20260424">
 </head>
 <body>
 
@@ -64,6 +65,9 @@
   <symbol id="ic-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
     <polyline points="22 4 12 14.01 9 11.01"/>
+  </symbol>
+  <symbol id="ic-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="15 18 9 12 15 6"/>
   </symbol>
   <symbol id="ic-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <polyline points="9 18 15 12 9 6"/>
@@ -192,6 +196,13 @@
     <path d="M18 17V9"/>
     <path d="M13 17V5"/>
     <path d="M8 17v-3"/>
+  </symbol>
+  <symbol id="ic-store" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/>
+    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+    <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/>
+    <path d="M2 7h20"/>
+    <path d="M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7"/>
   </symbol>
   <symbol id="ic-wand-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/>
@@ -792,9 +803,9 @@
     <svg width="24" height="24"><use href="#ic-wand-sparkles"/></svg>
   </button>
   <button type="button" class="tab-bar__btn" data-tab="dashboard"
-          onclick="showTab('dashboard',this); if(typeof initDashboardTab==='function')initDashboardTab();" aria-label="대시보드 탭">
-    <svg class="tab-bar__icon"><use href="#ic-bar-chart-3"/></svg>
-    <span class="tab-bar__label">대시보드</span>
+          onclick="showTab('dashboard',this); if(typeof initDashboardTab==='function')initDashboardTab();" aria-label="내 샵 관리 탭">
+    <svg class="tab-bar__icon"><use href="#ic-store"/></svg>
+    <span class="tab-bar__label">내 샵 관리</span>
   </button>
 </nav>
 
@@ -1421,7 +1432,6 @@
 <script src="app-gallery-review.js"></script>
 <script src="app-gallery-write.js"></script>
 <script src="app-gallery-finish.js"></script>
-<script src="app-story-template.js"></script>
 <script src="app-sample-captions.js"></script>
 <script src="app-push.js"></script>
 <script src="app-oauth-return.js"></script>
@@ -1446,28 +1456,23 @@
 <script src="app-auto-ba.js"></script>
 <script src="app-today-brief.js"></script>
 <script src="app-birthday.js"></script>
-<script src="app-notifications.js"></script>
 <script src="app-assistant.js"></script>
 <script src="app-dm-autoreply.js"></script>
-<!-- Wave C3: Tesseract.js OCR 프리뷰 (영수증 스캔 시 lazy-load 됨 — 초기 로드 시 다운로드 안 함)
-     첫 사용 시 korean .traineddata 약 15MB 다운로드 → 캐시 됨. iOS Safari 16+ 지원, 구버전은 조용히 skip -->
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <script src="app-receipt-scan.js"></script>
-<script src="app-waiting-list.js"></script>
-<script src="app-public-link.js"></script>
-<script src="app-booking-approval.js"></script>
 <script src="app-ai-suggestions.js"></script>
-<script src="app-automation.js"></script>
-<script src="app-nl-query.js"></script>
-<script src="app-migration-wizard.js"></script>
 <script src="app-report.js"></script>
-<script src="app-story.js"></script>
 <script src="app-empty-state.js"></script>
 <script src="app-service-templates.js"></script>
 <script src="app-power-view.js"></script>
 <script src="app-power-view-render.js"></script>
 <script src="app-import-wizard.js"></script>
 <script src="app-killer-widgets.js"></script>
+<script src="app-autocomplete.js"></script>
+<script src="app-revenue-hub.js"></script>
+<script src="app-revenue-report.js"></script>
+<script src="app-inventory-hub.js"></script>
+<script src="app-customer-hub.js"></script>
+<script src="app-customer-sync.js"></script>
 <script src="app-calendar-view.js"></script>
 <!-- app-voice-input.js 제거 — 전역 🎤 버튼 자동주입 비활성 (2026-04-23) -->
 <script src="app-biometric.js"></script>

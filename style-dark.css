@@ -78,21 +78,35 @@ html[data-theme="dark"] [style*="color:#000"],
 html[data-theme="dark"] [style*="color: #000"],
 html[data-theme="dark"] [style*="color:#333"],
 html[data-theme="dark"] [style*="color: #333"],
+html[data-theme="dark"] [style*="color:#444"],
+html[data-theme="dark"] [style*="color: #444"],
+html[data-theme="dark"] [style*="color:#4E"],
+html[data-theme="dark"] [style*="color:#4e"],
 html[data-theme="dark"] [style*="color:#555"],
 html[data-theme="dark"] [style*="color: #555"],
+html[data-theme="dark"] [style*="color:#3C3C"],
+html[data-theme="dark"] [style*="color:#3c3c"],
 html[data-theme="dark"] [style*="color:var(--text)"],
 html[data-theme="dark"] [style*="color: var(--text)"] {
   color: #ECEEF1 !important;
 }
 
 /* 회색 텍스트 */
+html[data-theme="dark"] [style*="color:#666"],
+html[data-theme="dark"] [style*="color: #666"],
+html[data-theme="dark"] [style*="color:#777"],
+html[data-theme="dark"] [style*="color: #777"],
 html[data-theme="dark"] [style*="color:#888"],
 html[data-theme="dark"] [style*="color: #888"],
 html[data-theme="dark"] [style*="color:#999"],
 html[data-theme="dark"] [style*="color: #999"],
+html[data-theme="dark"] [style*="color:#8E8E"],
+html[data-theme="dark"] [style*="color:#8e8e"],
 html[data-theme="dark"] [style*="color:#aaa"],
+html[data-theme="dark"] [style*="color: #aaa"],
+html[data-theme="dark"] [style*="color:#bbb"],
 html[data-theme="dark"] [style*="color: #bbb"] {
-  color: #B0B4BB !important;
+  color: #C0C4CC !important;
 }
 
 /* 입력 필드 */
@@ -209,3 +223,88 @@ html[data-fontsize="xl"] body { font-size: 19px; }
 html[data-theme="dark"] .tab-bar {
   box-shadow: 0 8px 24px rgba(0,0,0,.35);
 }
+
+/* ─── 앱 상단 헤더 다크모드 ─── */
+html[data-theme="dark"] .app-header {
+  background: #0D1017 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom-color: rgba(255,255,255,0.06) !important;
+}
+
+html[data-theme="dark"] #planBadge {
+  background: #2A2D35 !important;
+  color: #A8AEBA !important;
+}
+
+/* ─── 허브 다크모드 (T-383a/b T-400 T-410) ─── */
+html[data-theme="dark"] .hub-overlay,
+html[data-theme="dark"] .rr-overlay {
+  background: #16191F !important;
+  color: #ECEEF1 !important;
+}
+
+html[data-theme="dark"] .hub-header {
+  background: rgba(22,25,31,0.92) !important;
+  border-bottom-color: rgba(255,255,255,0.08) !important;
+}
+
+html[data-theme="dark"] .hub-back   { color: #ECEEF1 !important; }
+html[data-theme="dark"] .hub-title  { color: #ECEEF1 !important; }
+
+html[data-theme="dark"] .hub-qadd {
+  background: #1F232B !important;
+  border-bottom-color: rgba(255,255,255,0.06) !important;
+}
+
+html[data-theme="dark"] .hub-sec-hd  { color: #B0B4BB !important; border-top-color: rgba(255,255,255,0.06) !important; }
+html[data-theme="dark"] .hub-sec-count { color: #A8AEBA !important; }
+html[data-theme="dark"] .hub-empty-title { color: #C0C4CC !important; }
+html[data-theme="dark"] .hub-empty-desc  { color: #A8AEBA !important; }
+
+/* 매출 허브 */
+html[data-theme="dark"] .rh-row { border-bottom-color: rgba(255,255,255,0.06) !important; }
+html[data-theme="dark"] .rh-row:active,
+html[data-theme="dark"] .rh-row.editing { background: #1F232B !important; }
+html[data-theme="dark"] .rh-amount { color: #ECEEF1 !important; }
+
+/* 재고 허브 */
+html[data-theme="dark"] .ih-ok-row { border-bottom-color: rgba(255,255,255,0.06) !important; }
+html[data-theme="dark"] .ih-ok-row:active { background: #1F232B !important; }
+html[data-theme="dark"] .ih-low-card {
+  background: rgba(198,40,40,0.14) !important;
+  border-color: rgba(198,40,40,0.3) !important;
+  border-left-color: #EF4444 !important;
+}
+html[data-theme="dark"] .ih-stepper { background: #1F232B !important; }
+html[data-theme="dark"] .ih-step    { color: #ECEEF1 !important; }
+
+/* 고객 허브 */
+html[data-theme="dark"] .ch-row { border-bottom-color: rgba(255,255,255,0.06) !important; }
+html[data-theme="dark"] .ch-row:active { background: #1F232B !important; }
+html[data-theme="dark"] .ch-name { color: #ECEEF1 !important; }
+html[data-theme="dark"] .ch-sub        { color: #C0C4CC !important; }
+html[data-theme="dark"] .ch-phone-tail { color: #A8AEBA !important; }
+html[data-theme="dark"] .ch-sub-dot    { color: #5A5E66 !important; }
+html[data-theme="dark"] .ch-add-panel  { background: #1F232B !important; }
+
+/* 재고 허브 추가 */
+html[data-theme="dark"] .ih-item-name { color: #ECEEF1 !important; }
+html[data-theme="dark"] .ih-item-meta { color: #A8AEBA !important; }
+html[data-theme="dark"] .ih-ok-meta   { color: #A8AEBA !important; }
+html[data-theme="dark"] .ih-qty       { color: #ECEEF1 !important; }
+
+/* 매출 리포트 */
+html[data-theme="dark"] .rr-segment    { background: #1F232B !important; }
+html[data-theme="dark"] .rr-seg-btn    { color: #C0C4CC !important; }
+html[data-theme="dark"] .rr-seg-btn--active {
+  background: #16191F !important; color: #ECEEF1 !important;
+}
+html[data-theme="dark"] .rr-total   { color: #ECEEF1 !important; }
+html[data-theme="dark"] .rr-lbl     { color: #A8AEBA !important; }
+html[data-theme="dark"] .rr-sub     { color: #C0C4CC !important; }
+html[data-theme="dark"] .rr-rank    { color: #A8AEBA !important; }
+html[data-theme="dark"] .rr-name    { color: #ECEEF1 !important; }
+html[data-theme="dark"] .rr-sub     { color: #B0B4BB !important; }
+html[data-theme="dark"] .rr-top-row { border-bottom-color: rgba(255,255,255,0.06) !important; }
+html[data-theme="dark"] .rr-name    { color: #ECEEF1 !important; }

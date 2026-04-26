@@ -11,6 +11,8 @@
 
   let _items    = [];
   let _isOffline = false;
+  const _cache = {};
+  const CACHE_TTL = 60000;
 
   function _uuid() {
     if (crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -46,6 +48,11 @@
   }
 
   async function list(fromISO, toISO) {
+    const key = (fromISO || '') + '|' + (toISO || '');
+    const hit = _cache[key];
+    if (hit && Date.now() - hit.t < CACHE_TTL) {
+      _items = hit.items; return _items;
+    }
     const qs = new URLSearchParams();
     if (fromISO) qs.set('from', fromISO);
     if (toISO)   qs.set('to',   toISO);
@@ -53,6 +60,7 @@
       const d = await _api('GET', '/bookings?' + qs);
       _isOffline = false;
       _items = d.items || [];
+      _cache[key] = { t: Date.now(), items: _items };
       return _items;
     } catch (e) {
       if (e.message !== 'endpoint-missing' && e.message !== 'no-token') throw e;

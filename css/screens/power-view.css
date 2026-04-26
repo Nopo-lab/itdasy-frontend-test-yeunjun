@@ -475,30 +475,6 @@
   border-radius: 20px;
 }
 
-/* §5.8 Bottom sheet */
-.pv-sheet {
-  position: fixed;
-  inset: 0;
-  z-index: 10002;
-  background: rgba(20,8,16,.55);
-  backdrop-filter: blur(6px);
-  display: flex;
-  align-items: flex-end;
-  animation: pvFadeIn .2s ease;
-}
-
-.pv-sheet-inner {
-  width: 100%;
-  max-height: 80vh;
-  background: var(--surface, #fff);
-  border-radius: 24px 24px 0 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  animation: pvSheetUp .3s cubic-bezier(.22,1,.36,1);
-  padding-bottom: env(safe-area-inset-bottom, 0);
-}
-
 @media (width <= 720px) {
   #power-view-overlay { padding: 8px !important; }
 

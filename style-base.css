@@ -71,11 +71,15 @@ p {
   z-index: 100;
   background: rgba(242,244,246,0.92);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-bottom: 0.5px solid var(--border);
   padding: 16px 20px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+[data-theme="dark"] .app-header {
+  background: rgba(14,18,24,0.92);
 }
 
 .logo {

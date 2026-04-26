@@ -1,8 +1,8 @@
 /* ─────────────────────────────────────────────────────────────
    시술 완료 액션 번들 (#3 · 2026-04-20)
 
-   예약 '완료' 처리 시 매출·NPS 를 한 팝업에서 바로 기록.
-   별도 예약·매출·NPS 시트를 돌아다닐 필요 없음.
+   예약 '완료' 처리 시 매출을 한 팝업에서 바로 기록.
+   별도 예약·매출 시트를 돌아다닐 필요 없음.
 
    공개 API:
    - CompleteFlow.startFromBooking(booking)   예약 완료 → 번들 팝업
@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  let _ctx = null;  // { customer_id, customer_name, service_name, amount, method, nps_rating, memo, booking_id }
+  let _ctx = null;  // { customer_id, customer_name, service_name, amount, method, memo, booking_id }
 
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
@@ -83,17 +83,6 @@
         </div>
       </div>
 
-      <!-- NPS 슬라이더 -->
-      <div style="padding:14px;background:#fafafa;border-radius:12px;margin-bottom:12px;">
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#666;margin-bottom:8px;">
-          ⭐ 만족도 (선택) <span id="cfNpsLabel" style="margin-left:auto;font-size:16px;font-weight:800;color:var(--accent,#F18091);">— </span>
-        </label>
-        <input id="cfNps" type="range" min="0" max="10" value="" style="width:100%;" />
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:#999;margin-top:2px;">
-          <span>0 😞</span><span>5 😐</span><span>10 😍</span>
-        </div>
-      </div>
-
       <!-- 메모 -->
       <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">📝 메모 (선택)</label>
       <textarea id="cfMemo" rows="2" maxlength="200" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;resize:vertical;font-family:inherit;"></textarea>
@@ -104,15 +93,6 @@
         <button id="cfSave" style="flex:2;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;cursor:pointer;font-weight:800;font-size:15px;">한 번에 기록 ✓</button>
       </div>
     `;
-
-    // NPS 라벨 업데이트
-    const npsEl = document.getElementById('cfNps');
-    const npsLab = document.getElementById('cfNpsLabel');
-    npsEl.addEventListener('input', () => {
-      const v = parseInt(npsEl.value, 10);
-      const face = v >= 9 ? '😍' : v >= 7 ? '😐' : '😞';
-      npsLab.textContent = v + ' ' + face;
-    });
 
     document.getElementById('cfSkip').addEventListener('click', _skipAndComplete);
     document.getElementById('cfSave').addEventListener('click', _saveAll);
@@ -135,10 +115,6 @@
     const amount = parseInt(document.getElementById('cfAmount').value, 10);
     const method = document.getElementById('cfMethod').value;
     const memo = document.getElementById('cfMemo').value.trim() || null;
-    const npsEl = document.getElementById('cfNps');
-    const npsRaw = npsEl.value;
-    const rating = npsRaw === '' ? null : parseInt(npsRaw, 10);
-    const hasNps = rating !== null && !Number.isNaN(rating);
 
     if (!amount || amount < 1) {
       if (window.showToast) window.showToast('금액을 입력해 주세요');
@@ -149,28 +125,19 @@
     btn.disabled = true;
     btn.textContent = '저장 중…';
 
-    // 병렬 3개 (예약완료 처리 · 매출 기록 · NPS)
-    const tasks = [];
-    tasks.push(_markBookingCompleted());
-    tasks.push(_apiPost('/revenue', {
-      amount, method,
-      service_name: _ctx.service_name || null,
-      customer_id: _ctx.customer_id || null,
-      customer_name: _ctx.customer_name || null,
-      memo,
-    }));
-    if (hasNps) {
-      tasks.push(_apiPost('/nps', {
-        rating,
-        customer_id: _ctx.customer_id || null,
-        source: 'manual',
-      }));
-    }
-
     try {
-      await Promise.all(tasks);
+      await Promise.all([
+        _markBookingCompleted(),
+        _apiPost('/revenue', {
+          amount, method,
+          service_name: _ctx.service_name || null,
+          customer_id: _ctx.customer_id || null,
+          customer_name: _ctx.customer_name || null,
+          memo,
+        }),
+      ]);
       if (window.hapticSuccess) window.hapticSuccess();
-      if (window.showToast) window.showToast(hasNps ? '✨ 매출·NPS 한 번에 기록!' : '✨ 매출 기록 완료!');
+      if (window.showToast) window.showToast('✨ 매출 기록 완료!');
       closeCompleteFlow();
       if (window.Dashboard?.refresh) window.Dashboard.refresh();
     } catch (e) {

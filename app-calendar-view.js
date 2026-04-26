@@ -30,20 +30,6 @@
   let _curYear, _curMonth, _curView = 'month', _curDate = new Date();
   let _mappedCache = [];
 
-  // 2026-04-24 perf — 인접 월 프리페치 캐시 (key: "YYYY-M") TTL 5분
-  const _monthCache = new Map();
-  const _MONTH_CACHE_TTL_MS = 5 * 60 * 1000;
-  function _mkey(y, m) { return y + '-' + m; }
-  function _readMonthCache(y, m) {
-    const v = _monthCache.get(_mkey(y, m));
-    if (!v) return null;
-    if (Date.now() - v.t > _MONTH_CACHE_TTL_MS) { _monthCache.delete(_mkey(y, m)); return null; }
-    return v.d;
-  }
-  function _writeMonthCache(y, m, mapped) {
-    _monthCache.set(_mkey(y, m), { t: Date.now(), d: mapped });
-  }
-
   // === 헬퍼 ===
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
@@ -79,35 +65,11 @@
   }
 
   async function _loadMonth(year, month) {
-    const cached = _readMonthCache(year, month);
-    if (cached) {
-      _updateOfflineBadge();
-      // 백그라운드 갱신 (stale-while-revalidate)
-      setTimeout(() => { _refreshMonth(year, month); }, 50);
-      return cached;
-    }
-    return _refreshMonth(year, month);
-  }
-
-  async function _refreshMonth(year, month) {
     const from = new Date(year, month - 1, 1).toISOString();
     const to   = new Date(year, month, 0, 23, 59, 59).toISOString();
     const items = await window.Booking.list(from, to);
     _updateOfflineBadge();
-    const mapped = _mapItems(items);
-    _writeMonthCache(year, month, mapped);
-    return mapped;
-  }
-
-  // 2026-04-24 perf — 인접 ±1 월 백그라운드 프리페치
-  function _prefetchAdjacent(year, month) {
-    const next = (m, dy) => { let nm = m + dy, ny = year; if (nm < 1) { nm = 12; ny--; } else if (nm > 12) { nm = 1; ny++; } return [ny, nm]; };
-    [-1, 1].forEach(dy => {
-      const [y, m] = next(month, dy);
-      if (_readMonthCache(y, m)) return;
-      // 비동기 백그라운드 — 실패 무시
-      _refreshMonth(y, m).catch(() => { /* ignore */ });
-    });
+    return _mapItems(items);
   }
 
   // === 월 그리드 ===
@@ -166,8 +128,13 @@
     DAY_NAMES.forEach(d => { h += '<div>' + d + '</div>'; });
     h += '</div><div class="cv-cal-grid">'
       + _renderMonthCells(year, month, byDay, firstDow, lastDate, today)
-      + '</div>';
+      + '</div>'
+      + '<button class="cv-fab" id="cv-fab-add">＋ 예약 추가</button>';
     body.innerHTML = h;
+    body.querySelector('#cv-fab-add').addEventListener('click', () => {
+      _curDate = new Date();
+      _openForm(_curDate, null);
+    });
   }
 
   // === 일 뷰 ===
@@ -321,13 +288,16 @@ ${isEdit ? `
         memo:          body.querySelector('#bfMemo').value.trim()      || null,
       };
       try {
-        if (existing) await window.Booking.update(existing.id, payload);
-        else          await window.Booking.create(payload);
+        if (existing) {
+          await window.Booking.update(existing.id, payload);
+        } else {
+          await window.Booking.create(payload);
+          window.dispatchEvent(new CustomEvent('booking:created', { detail: { customer_name: payload.customer_name, customer_id: payload.customer_id || null } }));
+        }
         if (window.hapticLight) window.hapticLight();
         if (window.showToast) window.showToast(existing ? '수정 완료' : '예약 추가 완료');
         if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
-        // 2026-04-24 perf — 쓰기 직후 fresh fetch 강제
-        _mappedCache = await _refreshMonth(_curYear, _curMonth);
+        _mappedCache = await _loadMonth(_curYear, _curMonth);
         _renderDay(date || _curDate, _mappedCache);
       } catch (err) {
         console.warn('[cal] save 실패:', err);
@@ -344,7 +314,7 @@ ${isEdit ? `
         if (window.hapticLight) window.hapticLight();
         if (window.showToast) window.showToast('삭제 완료');
         if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
-        _mappedCache = await _refreshMonth(_curYear, _curMonth);
+        _mappedCache = await _loadMonth(_curYear, _curMonth);
         _renderDay(date || _curDate, _mappedCache);
       } catch (_) { if (window.showToast) window.showToast('삭제 실패'); }
     });
@@ -366,7 +336,7 @@ ${isEdit ? `
           if (window.hapticLight) window.hapticLight();
           if (window.showToast) window.showToast(`✅ 상태를 '${STATUS_LABEL[newStatus]}'로 변경했어요`);
           if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
-          _mappedCache = await _refreshMonth(_curYear, _curMonth);
+          _mappedCache = await _loadMonth(_curYear, _curMonth);
           _renderDay(date || _curDate, _mappedCache);
         } catch (_) { if (window.showToast) window.showToast('상태 변경 실패'); }
       });
@@ -403,45 +373,39 @@ ${isEdit ? `
     else                  _renderDay(_curDate, _mappedCache);
   }
 
+  // === 인접 월 미리 캐싱 ===
+  function _prefetch(year, month) {
+    const from = new Date(year, month - 1, 1).toISOString();
+    const to   = new Date(year, month, 0, 23, 59, 59).toISOString();
+    window.Booking.list(from, to).catch(() => {});
+  }
+  function _prefetchNeighbors() {
+    let py = _curYear, pm = _curMonth - 1;
+    if (pm < 1)  { pm = 12; py--; }
+    let ny = _curYear, nm = _curMonth + 1;
+    if (nm > 12) { nm = 1;  ny++; }
+    _prefetch(py, pm);
+    _prefetch(ny, nm);
+  }
+
   // === 월 네비 ===
-  // 2026-04-24 perf — 캐시 적중 시 즉시 렌더, 아니면 빈 그리드 표시 후 백그라운드 fetch
   async function _prevMonth() {
     _curMonth--;
     if (_curMonth < 1) { _curMonth = 12; _curYear--; }
-    const cached = _readMonthCache(_curYear, _curMonth);
-    if (cached) {
-      _mappedCache = cached;
-      _renderMonth(_curYear, _curMonth, _mappedCache);
-      _prefetchAdjacent(_curYear, _curMonth);
-      // 백그라운드 갱신
-      _refreshMonth(_curYear, _curMonth).then(fresh => {
-        if (_curYear && _curMonth) { _mappedCache = fresh; _renderMonth(_curYear, _curMonth, fresh); }
-      }).catch(() => {});
-      return;
-    }
-    // 미캐시 — 빈 셀로 즉시 페이지 전환 (체감 즉시)
-    _renderMonth(_curYear, _curMonth, []);
-    _mappedCache = await _refreshMonth(_curYear, _curMonth);
+    const lbl = _label(); if (lbl) lbl.textContent = _curYear + '년 ' + _curMonth + '월';
+    const body = _body(); if (body) body.innerHTML = _skeletonMonth();
+    _mappedCache = await _loadMonth(_curYear, _curMonth);
     _renderMonth(_curYear, _curMonth, _mappedCache);
-    _prefetchAdjacent(_curYear, _curMonth);
+    _prefetchNeighbors();
   }
   async function _nextMonth() {
     _curMonth++;
     if (_curMonth > 12) { _curMonth = 1; _curYear++; }
-    const cached = _readMonthCache(_curYear, _curMonth);
-    if (cached) {
-      _mappedCache = cached;
-      _renderMonth(_curYear, _curMonth, _mappedCache);
-      _prefetchAdjacent(_curYear, _curMonth);
-      _refreshMonth(_curYear, _curMonth).then(fresh => {
-        if (_curYear && _curMonth) { _mappedCache = fresh; _renderMonth(_curYear, _curMonth, fresh); }
-      }).catch(() => {});
-      return;
-    }
-    _renderMonth(_curYear, _curMonth, []);
-    _mappedCache = await _refreshMonth(_curYear, _curMonth);
+    const lbl = _label(); if (lbl) lbl.textContent = _curYear + '년 ' + _curMonth + '월';
+    const body = _body(); if (body) body.innerHTML = _skeletonMonth();
+    _mappedCache = await _loadMonth(_curYear, _curMonth);
     _renderMonth(_curYear, _curMonth, _mappedCache);
-    _prefetchAdjacent(_curYear, _curMonth);
+    _prefetchNeighbors();
   }
 
   // === 전역 onclick 핸들러 ===
@@ -456,6 +420,18 @@ ${isEdit ? `
   window._calSwitchView = _switchView;
   window._calPrevMonth  = _prevMonth;
   window._calNextMonth  = _nextMonth;
+
+  // === 스켈레톤 ===
+  function _skeletonMonth() {
+    const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+    let h = '<div class="cv-wk-hdr">';
+    DAY_NAMES.forEach(d => { h += '<div>' + d + '</div>'; });
+    h += '</div><div class="cv-cal-grid">';
+    for (let i = 0; i < 35; i++)
+      h += '<div class="cv-cell cv-cell--sk"><div class="cv-sk-num"></div></div>';
+    h += '</div>';
+    return h;
+  }
 
   // === 진입점 ===
   window.openCalendarView = async function () {
@@ -489,23 +465,10 @@ ${isEdit ? `
     o.addEventListener('click', e => { if (e.target === o) _close(); });
     document.body.appendChild(o);
     document.body.style.overflow = 'hidden';
-    // 2026-04-24 perf — 캐시 적중이면 즉시 그리드 렌더, 아니면 빈 그리드 먼저 그려서 체감 latency 0
-    const cached = _readMonthCache(_curYear, _curMonth);
-    if (cached) {
-      _mappedCache = cached;
-      _renderMonth(_curYear, _curMonth, _mappedCache);
-      _prefetchAdjacent(_curYear, _curMonth);
-      // 백그라운드 갱신
-      _refreshMonth(_curYear, _curMonth).then(fresh => {
-        _mappedCache = fresh;
-        if (_overlay()) _renderMonth(_curYear, _curMonth, fresh);
-      }).catch(() => {});
-    } else {
-      _renderMonth(_curYear, _curMonth, []);
-      _mappedCache = await _refreshMonth(_curYear, _curMonth);
-      if (_overlay()) _renderMonth(_curYear, _curMonth, _mappedCache);
-      _prefetchAdjacent(_curYear, _curMonth);
-    }
+    o.querySelector('.cal-body').innerHTML = _skeletonMonth();
+    _mappedCache = await _loadMonth(_curYear, _curMonth);
+    _renderMonth(_curYear, _curMonth, _mappedCache);
+    _prefetchNeighbors();
   };
 
   // 대시보드 바로가기 · 파워뷰 · 외부 호출 호환
