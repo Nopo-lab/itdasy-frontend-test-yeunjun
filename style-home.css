@@ -404,13 +404,42 @@
 }
 
 .profile-avatar {
+  /* 가입방법 배지 위치 기준 */
+  position: relative;
   width: 34px; height: 34px; border-radius: 50%;
   background: var(--brand-bg);
   display: flex; align-items: center; justify-content: center;
   font-size: 13px; font-weight: 800; color: var(--accent2);
-  overflow: hidden; flex-shrink: 0;
+  overflow: visible; flex-shrink: 0;
   border: 1px solid rgba(241,128,145,0.2);
 }
+/* 아바타 안의 이미지/이니셜만 잘리도록 inner clip */
+.profile-avatar > img,
+.profile-avatar > .profile-avatar__initial {
+  width: 100%; height: 100%; object-fit: cover;
+  border-radius: 50%; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── 가입 방법 배지 (우상단 코너 점) ── */
+.profile-avatar__provider {
+  position: absolute;
+  right: -2px; top: -2px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #FFB6C1;          /* 기본: email (잇데이 핑크) */
+  border: 2px solid var(--card, #fff);
+  box-sizing: content-box;
+  pointer-events: auto;
+  cursor: help;
+  display: block;
+  /* 살짝 그림자로 떠 있는 느낌 */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+}
+.profile-avatar__provider[data-provider="google"] { background: #4285F4; }
+.profile-avatar__provider[data-provider="kakao"]  { background: #FEE500; }
+.profile-avatar__provider[data-provider="apple"]  { background: #000; }
+.profile-avatar__provider[data-provider="email"]  { background: #FFB6C1; }
 
 .header-shop-name {
   font-size: 12px; font-weight: 800; color: var(--text);

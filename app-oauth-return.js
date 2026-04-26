@@ -64,6 +64,16 @@
       localStorage.setItem('itdasy_token::' + keySuffix, token);
     } catch (_e) { void _e; }
 
+    // 다른 사용자 토큰일 수 있으니 user_id 비교 → 캐시 정리 + 가입방법 배지 동기화
+    // (window.applyNewSession 이 정의된 뒤에만 동작; reload 후에는 자동 로직이 다시 동작)
+    try {
+      if (typeof window.applyNewSession === 'function') {
+        // 비동기지만 reload 전에 캐시 정리·배지 저장이 끝나도록 await
+        // (실패해도 reload 는 진행)
+        window.applyNewSession(token).catch(() => {});
+      }
+    } catch (_e) { void _e; }
+
     if (window.showToast) window.showToast('✓ ' + provider + ' 로그인 완료!');
     // 토큰 반영을 위해 앱 새로고침
     setTimeout(() => { window.location.reload(); }, 300);

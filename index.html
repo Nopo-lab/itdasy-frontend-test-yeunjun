@@ -454,7 +454,10 @@
   <div style="display:flex; align-items:center; gap:8px;">
     <span id="headerShopName" style="display:none;">사장님</span>
     <div class="header-persona" id="headerPersona">
-      <div class="profile-avatar" id="headerAvatar">잇</div>
+      <div class="profile-avatar" id="headerAvatar">
+        <span class="profile-avatar__initial">잇</span>
+        <span class="profile-avatar__provider" id="headerProviderBadge" data-provider="email" title="잇데이 계정으로 가입" aria-label="가입 방법: 잇데이"></span>
+      </div>
     </div>
     <button id="planBadge" data-haptic="light" onclick="if(typeof openPlanPopup==='function')openPlanPopup();" style="padding:6px 12px;border-radius:8px;font-size:11px;font-weight:800;background:#e0e0e0;color:#888;cursor:pointer;min-height:32px;display:inline-flex;align-items:center;border:none;">Free</button>
     <button id="themeToggleBtn" data-haptic="light" onclick="if(typeof toggleTheme==='function')toggleTheme();" aria-label="다크모드 전환" title="화면 모드 전환" style="background:none;border:none;padding:4px;cursor:pointer;min-width:36px;min-height:36px;display:inline-flex;align-items:center;justify-content:center;"><svg class="ic ic--md" aria-hidden="true"><use id="themeToggleIcon" href="#ic-moon"/></svg></button>
