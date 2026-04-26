@@ -455,10 +455,15 @@
         const hits = search(q);
         if (!hits.length) {
           if (trimmed) {
-            // 검색어 있는데 결과 0건 → 즉석 신규 추가 UI 노출
-            listEl.innerHTML = `<div style="padding:24px 12px;text-align:center;color:#888;font-size:13px;">'${_esc(trimmed)}' 고객을 찾을 수 없어요</div>`;
+            // 검색어 있는데 결과 0건 → 즉석 신규 추가 UI 노출 + 1탭 버튼
+            listEl.innerHTML = `
+              <div style="padding:18px 12px 12px;text-align:center;color:#888;font-size:13px;">'${_esc(trimmed)}' 고객을 찾을 수 없어요</div>
+              <button data-pick-quick-add style="display:block;width:100%;padding:14px;margin:0 0 10px;border:none;border-radius:14px;background:linear-gradient(135deg,#F18091,#E96A7E);color:#fff;font-weight:700;font-size:14px;cursor:pointer;">+ 새 고객으로 '${_esc(trimmed)}' 추가</button>
+            `;
             createRow.style.display = 'block';
             newNameEl.value = trimmed;
+            const quickBtn = listEl.querySelector('[data-pick-quick-add]');
+            if (quickBtn) quickBtn.addEventListener('click', () => onCreate());
           } else {
             listEl.innerHTML = '<div style="padding:30px;text-align:center;color:#aaa;font-size:13px;">' +
               (items.length ? '이름·연락처로 검색해 주세요' : '등록된 고객이 없어요. 아래에서 바로 추가할 수 있어요.') +

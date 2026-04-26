@@ -322,8 +322,17 @@ ${isEdit ? `
           window.dispatchEvent(new CustomEvent('booking:created', { detail: { customer_name: payload.customer_name, customer_id: payload.customer_id || null } }));
         }
         if (window.hapticLight) window.hapticLight();
-        const custLabel = payload.customer_name ? ` (${payload.customer_name})` : '';
-        if (window.showToast) window.showToast(existing ? '수정 완료' + custLabel : '✅ 예약 추가 완료' + custLabel);
+        // T-D 토스트: ✓ {name}님 {date} {time} 예약 추가됨
+        const _name = payload.customer_name || '';
+        const _date = d || '';
+        const _time = s || '';
+        const _addToast = _name
+          ? `✓ ${_name}님 ${_date} ${_time} 예약 추가됨`
+          : `✓ ${_date} ${_time} 예약 추가됨`;
+        const _editToast = _name
+          ? `✓ ${_name}님 ${_date} ${_time} 예약 수정됨`
+          : `✓ ${_date} ${_time} 예약 수정됨`;
+        if (window.showToast) window.showToast(existing ? _editToast : _addToast);
         if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
         _mappedCache = await _loadMonth(_curYear, _curMonth);
         _renderDay(date || _curDate, _mappedCache);
