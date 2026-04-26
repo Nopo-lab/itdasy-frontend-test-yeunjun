@@ -181,29 +181,6 @@
     return h + '</div>';
   }
 
-  function _buildDaySlots(date, mapped) {
-    const dayItems = mapped.filter(m => m.d === date.getDate());
-    const dayLabel  = date.getFullYear() + '년 ' + (date.getMonth() + 1) + '월 ' + date.getDate() + '일';
-    let h = '<div class="cv-d-hd">'
-      + '<span style="font-size:14px;font-weight:700">' + dayLabel + '</span>'
-      + '<span style="font-size:12px;color:var(--text-subtle)">' + dayItems.length + '건</span>'
-      + '</div>';
-    if (!dayItems.length) {
-      h += '<div class="cv-d-empty">예약이 없어요</div>';
-    } else {
-      dayItems.forEach(it => {
-        const clr = STATUS_CLR[it.status] || 'var(--brand)';
-        h += '<button class="cv-d-slot cv-d-slot--btn" data-booking-id="' + _esc(it.id) + '">';
-        h += '<div class="cv-d-time">' + it.t + ' · ' + it.dur + '분</div>';
-        h += '<div class="cv-d-card" style="--card-clr:' + clr + '">'
-          + '<div style="font-size:13px;font-weight:700">' + _esc(it.cust) + '</div>';
-        if (it.svc) h += '<div style="font-size:11px;color:var(--text-subtle)">' + _esc(it.svc) + '</div>';
-        h += '</div></button>';
-      });
-    }
-    return h + '<button class="cv-d-add" id="cv-add-btn">+ 예약 추가</button>';
-  }
-
   function _renderDay(date, mapped) {
     const body = _body(); if (!body) return;
     body.innerHTML = _buildChipStrip(date) + _buildTimetableDay(date, mapped);

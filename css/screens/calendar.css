@@ -336,3 +336,197 @@
   letter-spacing: -0.2px;
 }
 .cv-fab:active { transform: scale(0.96); }
+
+/* ─────────────────────────────────────────────────────────
+   📅 시간표 (Timetable) — 일간 / 주간 뷰
+   학교 시간표 스타일: Y축=시간, X축=일자, 컬러 블록
+   잇데이 정체성: Pastel pink, border-radius 14px
+   ───────────────────────────────────────────────────────── */
+.cv-tt-scroll {
+  margin: 8px 12px 12px;
+  border: 1px solid var(--border, #f0f0f0);
+  border-radius: 14px;
+  background: #fff;
+  overflow: auto;
+  max-height: calc(100vh - 280px);
+  -webkit-overflow-scrolling: touch;
+}
+.cv-tt-grid {
+  display: grid;
+  position: relative;
+}
+.cv-tt-grid--day {
+  grid-template-columns: 48px 1fr;
+}
+.cv-tt-grid--week {
+  grid-template-columns: 48px repeat(7, minmax(80px, 1fr));
+  min-width: 600px;
+}
+
+/* 시간 축 (Y) */
+.cv-tt-axis {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border, #f0f0f0);
+  background: #fafafa;
+}
+.cv-tt-hr {
+  height: 60px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #999;
+  padding: 4px 6px 0 0;
+  text-align: right;
+  border-bottom: 1px dashed #f0f0f0;
+  box-sizing: border-box;
+}
+
+/* 일자 컬럼 (X) */
+.cv-tt-col {
+  position: relative;
+  border-right: 1px solid #f5f5f5;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 29px,
+    rgba(0, 0, 0, 0.03) 29px,
+    rgba(0, 0, 0, 0.03) 30px,
+    transparent 30px,
+    transparent 59px,
+    #eee 59px,
+    #eee 60px
+  );
+}
+.cv-tt-col:last-child {
+  border-right: none;
+}
+.cv-tt-col.is-today {
+  background-color: rgba(241, 128, 145, 0.04);
+}
+
+/* 빈 슬롯 (클릭 시 새 예약) */
+.cv-tt-slot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.cv-tt-slot:hover {
+  background: rgba(241, 128, 145, 0.08);
+}
+.cv-tt-slot:active {
+  background: rgba(241, 128, 145, 0.16);
+}
+
+/* 예약 블록 (컬러 박스) */
+.cv-tt-block {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  border-radius: 8px;
+  padding: 4px 6px;
+  font-size: 11px;
+  color: #444;
+  cursor: pointer;
+  border: none;
+  border-left: 3px solid var(--brand, #F18091);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: transform 0.06s ease-out, box-shadow 0.12s;
+  text-align: left;
+  font-family: inherit;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  box-sizing: border-box;
+}
+.cv-tt-block:active {
+  transform: scale(0.97);
+}
+.cv-tt-block:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+.cv-tt-block strong {
+  font-weight: 700;
+  font-size: 12px;
+  color: #333;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cv-tt-block .cv-tt-svc {
+  font-size: 10px;
+  color: #666;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cv-tt-block .cv-tt-time {
+  font-size: 9px;
+  color: #999;
+  margin-top: auto;
+}
+.cv-tt-block.is-dim {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+/* 주간 뷰 — 요일 헤더 */
+.cv-tt-day-hdrs {
+  display: grid;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #fff;
+  border-bottom: 1px solid var(--border, #eee);
+}
+.cv-tt-day-hdrs--week {
+  grid-template-columns: 48px repeat(7, minmax(80px, 1fr));
+}
+.cv-tt-day-hdr-spacer {
+  border-right: 1px solid var(--border, #f0f0f0);
+  background: #fafafa;
+}
+.cv-tt-day-hdr {
+  text-align: center;
+  padding: 8px 4px;
+  font-size: 11px;
+  border-right: 1px solid #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.cv-tt-day-hdr:last-child {
+  border-right: none;
+}
+.cv-tt-day-hdr .cv-tt-dow {
+  font-weight: 600;
+  color: #777;
+  font-size: 10px;
+}
+.cv-tt-day-hdr .cv-tt-dnum {
+  font-weight: 700;
+  font-size: 14px;
+  color: #333;
+}
+.cv-tt-day-hdr.today {
+  background: rgba(241, 128, 145, 0.08);
+}
+.cv-tt-day-hdr.today .cv-tt-dnum {
+  color: var(--brand, #F18091);
+}
+.cv-tt-day-hdr.today .cv-tt-dow {
+  color: var(--brand, #F18091);
+}
+.cv-tt-day-hdr.sun .cv-tt-dnum,
+.cv-tt-day-hdr.sun .cv-tt-dow {
+  color: var(--danger, #DC3545);
+}
+.cv-tt-day-hdr.sat .cv-tt-dnum,
+.cv-tt-day-hdr.sat .cv-tt-dow {
+  color: var(--info, #4A90E2);
+}
