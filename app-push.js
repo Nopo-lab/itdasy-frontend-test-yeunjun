@@ -104,7 +104,7 @@
         body: JSON.stringify({ token: savedToken }),
       });
       localStorage.removeItem('itdasy_push_token');
-    } catch (_) {}
+    } catch (_) { void 0; }
   }
 
   window.initPushNotifications = initPush;

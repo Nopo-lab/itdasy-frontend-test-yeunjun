@@ -29,7 +29,7 @@
     } catch (_) { return null; }
   }
   function _writeCache(d) {
-    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), d })); } catch (_) {}
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), d })); } catch (_) { void 0; }
   }
 
   /* ── fetch ─────────────────────────────────────────────────── */

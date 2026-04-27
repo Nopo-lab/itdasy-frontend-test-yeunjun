@@ -302,9 +302,7 @@ html[data-theme="dark"] .rr-seg-btn--active {
 }
 html[data-theme="dark"] .rr-total   { color: #ECEEF1 !important; }
 html[data-theme="dark"] .rr-lbl     { color: #A8AEBA !important; }
-html[data-theme="dark"] .rr-sub     { color: #C0C4CC !important; }
+html[data-theme="dark"] .rr-sub     { color: #B0B4BB !important; }
 html[data-theme="dark"] .rr-rank    { color: #A8AEBA !important; }
 html[data-theme="dark"] .rr-name    { color: #ECEEF1 !important; }
-html[data-theme="dark"] .rr-sub     { color: #B0B4BB !important; }
 html[data-theme="dark"] .rr-top-row { border-bottom-color: rgba(255,255,255,0.06) !important; }
-html[data-theme="dark"] .rr-name    { color: #ECEEF1 !important; }

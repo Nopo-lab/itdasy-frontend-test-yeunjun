@@ -7,7 +7,7 @@
 //    - /api/, /auth/, /data-export/  → network-first (항상 최신)
 //    - app-*.js, *.css, *.html       → cache-first + 백그라운드 revalidate
 // ─────────────────────────────────────────────
-const CACHE_VERSION = '20260426-v24';
+const CACHE_VERSION = '20260427-v25';
 const CACHE_NAME    = `itdasy-${CACHE_VERSION}`;
 const API_CACHE_NAME = `itdasy-api-${CACHE_VERSION}`;
 
@@ -43,7 +43,16 @@ const STATIC_ASSETS = [
   './app-caption.js',
   './app-portfolio.js',
   './app-ai.js',
-  './app-gallery.js',
+  './app-gallery-utils.js',
+  './app-gallery-db.js',
+  './app-gallery-workshop.js',
+  './app-gallery-assign.js',
+  './app-gallery-slot-editor.js',
+  './app-gallery-bg.js',
+  './app-gallery-element.js',
+  './app-gallery-review.js',
+  './app-gallery-write.js',
+  './app-gallery-finish.js',
   './manifest.json',
   './offline.html',
   'https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&family=Noto+Sans+KR:wght@300;400;500&display=swap',

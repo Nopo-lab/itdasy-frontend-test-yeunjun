@@ -135,10 +135,26 @@
     return { ok: true };
   }
 
+  // [2026-04-26] 메모리 캐시 무효화 — 챗봇 등 외부 mutation 발생 시 호출
+  function _invalidateCache() {
+    for (const k in _cache) delete _cache[k];
+  }
+
   window.Booking = {
     list, create, update, remove, hasConflict,
     shopHours: _shopHours,
+    _invalidateCache,
     get _items()    { return _items; },
     get isOffline() { return _isOffline; },
   };
+
+  // 외부 mutation (챗봇·다른 디바이스) 시 메모리 캐시 즉시 무효화 → 다음 list() 가 fresh
+  if (typeof window !== 'undefined' && !window._bookingApiDataListenerInit) {
+    window._bookingApiDataListenerInit = true;
+    window.addEventListener('itdasy:data-changed', (e) => {
+      const kind = e && e.detail && e.detail.kind;
+      if (kind && !/(booking|force_sync|focus_sync|online_restore)/.test(kind)) return;
+      _invalidateCache();
+    });
+  }
 })();

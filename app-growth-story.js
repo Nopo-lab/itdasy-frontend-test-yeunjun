@@ -154,7 +154,7 @@
         if (!blob) return;
         const file = new File([blob], `itdasy_${report.year}_${report.month}.png`, { type: 'image/png' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try { await navigator.share({ files: [file], title: '잇데이 월간 리포트' }); return; } catch(_){}
+          try { await navigator.share({ files: [file], title: '잇데이 월간 리포트' }); return; } catch (_) { void 0; }
         }
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href = url;

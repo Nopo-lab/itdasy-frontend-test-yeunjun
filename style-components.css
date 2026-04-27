@@ -407,7 +407,7 @@
   flex:1; border-radius: 12px; padding:12px 8px; text-align:center;
   cursor: pointer; border: 2px dashed; position: relative; transition: all 0.15s;
 }
-.caption-photo-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; font-size:0; }
+.caption-photo-zone input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; font-size:0; }
 .caption-photo-zone.before { border-color: rgba(100,149,237,0.4); background: rgba(100,149,237,0.05); }
 .caption-photo-zone.after  { border-color: rgba(241,128,145,0.35); background: rgba(241,128,145,0.04); }
 .caption-photo-zone.has-img { border-style: solid; }
@@ -467,4 +467,3 @@
   transition: opacity .15s, transform .15s;
 }
 .ws-assign-btn:active { transform: scale(.96); opacity: .85; }
-

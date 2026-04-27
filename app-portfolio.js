@@ -421,7 +421,7 @@ async function loadBgAssets() {
     if (!res.ok) return;
     _bgAssets = await res.json();
     renderBgStoreGrid();
-  } catch(e) {}
+  } catch (e) { void 0; }
 }
 
 function renderBgStoreGrid() {
@@ -473,7 +473,7 @@ async function deleteBgAsset(id, el) {
   try {
     const res = await fetch(API + '/background/' + id, { method: 'DELETE', headers: authHeader() });
     if (res.ok) { el.remove(); _bgAssets = _bgAssets.filter(a => a.id !== id); showToast('삭제됐어요'); }
-  } catch(e) {}
+  } catch (e) { void 0; }
 }
 
 
@@ -499,7 +499,7 @@ async function detectFaceAfterEdit(imageBlob) {
       _detectedFaces = data.faces;
       document.getElementById('faceBlurWrap').style.display = 'block';
     }
-  } catch(e) {}
+  } catch (e) { void 0; }
 }
 
 

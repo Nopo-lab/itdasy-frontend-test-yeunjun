@@ -478,9 +478,13 @@
     });
   }
 
+  // 마지막 render 컨테이너들 — data-changed 시 즉시 재렌더용
+  const _lastRendered = { full: null, row: null };
+
   async function render(containerId) {
     const el = document.getElementById(containerId);
     if (!el) return;
+    _lastRendered.full = containerId;
     el.innerHTML = `<div style="padding:16px 0;color:#aaa;font-size:12px;">AI 브리핑 불러오는 중…</div>`;
     const brief = await _fetchBrief();
     el.innerHTML = _renderWidgets(brief);
@@ -539,10 +543,25 @@
   async function renderRow(containerId) {
     const el = document.getElementById(containerId);
     if (!el) return;
+    _lastRendered.row = containerId;
     const brief = await _fetchBrief();
     el.innerHTML = _buildRowCards(brief);
     if (window.renderHomeHeroCard) window.renderHomeHeroCard(brief);
   }
 
   window.KillerWidgets = { render, renderRow };
+
+  // [2026-04-26] 매출/예약/재고 추가 시 brief 재페치 → 이번달 누적·MoM 즉시 반영
+  if (typeof window !== 'undefined' && !window._killerWidgetsDataListenerInit) {
+    window._killerWidgetsDataListenerInit = true;
+    window.addEventListener('itdasy:data-changed', async () => {
+      // 홈 탭이 활성일 때만 재렌더 (불필요 fetch 방지)
+      const homeTab = document.getElementById('tab-home');
+      if (!homeTab || !homeTab.classList.contains('active')) return;
+      try {
+        if (_lastRendered.row) await renderRow(_lastRendered.row);
+        if (_lastRendered.full) await render(_lastRendered.full);
+      } catch (_e) { void _e; }
+    });
+  }
 })();

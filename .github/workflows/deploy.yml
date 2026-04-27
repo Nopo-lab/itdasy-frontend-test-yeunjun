@@ -17,13 +17,19 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Auto-bump Service Worker CACHE_VERSION to commit SHA
-        # 매 배포마다 CACHE_VERSION 을 자동으로 업데이트 → 개발자가 깜빡해도 옛 캐시 자동 무효화
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Auto-bump app build version to commit SHA
+        # 매 배포마다 SW/JS/HTML 빌드 버전을 함께 업데이트 → 구 캐시 자동 무효화
         run: |
           TS=$(date -u +'%Y%m%d-%H%M')
           SHA=${GITHUB_SHA::7}
           NEW_VERSION="${TS}-${SHA}"
-          echo "🔄 Bumping CACHE_VERSION → ${NEW_VERSION}"
+          echo "🔄 Bumping app build → ${NEW_VERSION}"
           if [ -f sw.js ]; then
             sed -i.bak -E "s|const CACHE_VERSION = '[^']*';|const CACHE_VERSION = '${NEW_VERSION}';|" sw.js
             rm -f sw.js.bak
@@ -32,6 +38,12 @@ jobs:
           else
             echo "⚠️ sw.js not found · 스킵"
           fi
+          sed -i.bak -E "s|window.APP_BUILD = '[^']*';|window.APP_BUILD = '${NEW_VERSION}';|" app-core.js
+          rm -f app-core.js.bak
+          sed -i.bak -E "s|window.__LATEST_BUILD__ = '[^']*';|window.__LATEST_BUILD__ = '${NEW_VERSION}';|" index.html
+          rm -f index.html.bak
+      - name: Smoke check
+        run: npm run smoke
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -32,7 +32,7 @@
               <span style="color:#888;">집계 중...</span>
             </div>
             <div style="font-size:12px;color:#666;line-height:1.6;margin-bottom:10px;">
-              포함: 회원·샵·고객·예약·매출·재고·후기·포트폴리오·동의 기록·결제 내역.<br>
+              포함: 고객·예약·매출·재고.<br>
               제외: 비밀번호·토큰·제3자(Apple/Google/Meta) 보유 데이터.
             </div>
             <div id="__dx_error" style="display:none;margin-top:8px;font-size:12px;color:#b00020;"></div>
@@ -61,13 +61,10 @@
       if (!res.ok) throw new Error(`(${res.status})`);
       const data = await res.json();
       box.innerHTML = `
-        • 고객: <strong>${data.customers || 0}</strong>명<br>
-        • 예약: <strong>${data.bookings || 0}</strong>건<br>
-        • 매출: <strong>${data.revenue_records || 0}</strong>건<br>
-        • 재고: <strong>${data.inventory || 0}</strong>항목<br>
-        • 후기: <strong>${data.nps_records || 0}</strong>건<br>
-        • 포트폴리오: <strong>${data.portfolio || 0}</strong>장<br>
-        • 과거 게시글: <strong>${data.past_posts || 0}</strong>건
+        • 고객: <strong>${data.customers || data['고객'] || 0}</strong>명<br>
+        • 예약: <strong>${data.bookings || data['예약'] || 0}</strong>건<br>
+        • 매출: <strong>${data.revenue_records || data['매출'] || 0}</strong>건<br>
+        • 재고: <strong>${data.inventory || data['재고'] || 0}</strong>항목
       `;
     } catch (e) {
       box.innerHTML = `<span style="color:#b00020;">집계 실패 — 네트워크를 확인해 주세요.</span>`;

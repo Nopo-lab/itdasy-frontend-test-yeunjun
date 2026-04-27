@@ -113,7 +113,7 @@
       _currentPlan = (d.plan || 'free').toLowerCase();
       _updateActionButton();
       _updatePlanBadgeUI(_currentPlan);
-    } catch (_) {}
+    } catch (_) { void 0; }
   }
 
   function _updatePlanBadgeUI(plan) {

@@ -26,7 +26,7 @@
     catch (_) { return new Set(); }
   }
   function _saveDismissed(set) {
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify([...set])); } catch (_) {}
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify([...set])); } catch (_) { void 0; }
   }
 
   /**

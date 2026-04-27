@@ -78,7 +78,7 @@
 .copy-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ───── 본문 기본 폰트 15px 상향 (40대 이상 가독성) ───── */
-body { font-size: 15px; line-height: 1.55; }
+body { font-size: 15px; line-height: 1.55; overscroll-behavior-y: contain; }
 
 /* ───── 피드백 #3,#4,#7,#9: 팝업을 화면 중앙에 (bottom sheet → center modal) ───── */
 #planPopup, #_storyPopup, #_samplePopup, #quickActionPopup, #captionPreviewOverlay {
@@ -237,7 +237,6 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
    ═══════════════════════════════════════════════════════ */
 
 /* 100vh 버그 — iOS Safari 에서 주소창 포함되면 잘림 */
-:root { --vh: 1vh; }
 .full-height { min-height: calc(var(--vh, 1vh) * 100); }
 @supports (-webkit-touch-callout: none) {
   .full-height { min-height: -webkit-fill-available; }
@@ -269,9 +268,6 @@ button, a, [role="button"] { -webkit-tap-highlight-color: transparent; }
 /* date/time input 중앙정렬 (기본은 iOS 는 왼쪽) */
 input[type="date"], input[type="time"] { -webkit-appearance: none; appearance: none; text-align: left; }
 
-/* 탭 시 overscroll 방지 */
-body { overscroll-behavior-y: contain; }
-
 /* textarea resize 버튼 iOS 안 나오지만 Android 로는 나옴 — 통일 */
 textarea { resize: vertical; min-height: 60px; }
 
@@ -281,6 +277,7 @@ textarea { resize: vertical; min-height: 60px; }
 
 /* 1. 이징 변수 통일 */
 :root {
+  --vh: 1vh;
   --ease-out-smooth: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-snappy: cubic-bezier(0.2, 0.9, 0.3, 1);
   --ease-in-out-mild: cubic-bezier(0.4, 0, 0.2, 1);

@@ -87,6 +87,8 @@
     customer:  { url: '/customers',            key: 'pv_cache::customers' },
     revenue:   { url: '/revenue?period=month', key: 'pv_cache::revenue' },
     inventory: { url: '/inventory',            key: 'pv_cache::inventory' },
+    service:   { url: '/services',             key: 'pv_cache::service' },
+    nps:       { url: '/nps',                  key: 'pv_cache::nps' },
   };
   function _bookingRange() {
     const now = Date.now();
@@ -94,11 +96,13 @@
     const t = new Date(now + 90 * 24 * 3600 * 1000).toISOString();
     return `/bookings?from=${encodeURIComponent(f)}&to=${encodeURIComponent(t)}`;
   }
+  // 캘린더는 좁은 범위(현재월) 캐시도 채워둠 — Booking.list 가 같은 키 형식 쓰진 않지만
+  // SWR 'pv_cache::bookings_all' 가 calendar _loadMonth 의 fallback 으로 활용됨.
 
   // hover/touch 리스너 — 위임 방식. tab-bar 버튼 + 자주 쓰는 nav 트리거
   function _bindHoverPrefetch() {
     const handler = (ev) => {
-      const t = ev.target && ev.target.closest && ev.target.closest('[data-prefetch], .tab-bar__btn, .tab-bar__fab, [data-tab], [onclick*="openCustomerSheet"], [onclick*="openRevenue"], [onclick*="openInventorySheet"], [onclick*="openBookingSheet"], [onclick*="goCaption"]');
+      const t = ev.target && ev.target.closest && ev.target.closest('[data-prefetch], .tab-bar__btn, .tab-bar__fab, [data-tab], [data-metric], [data-pv-open], [data-open="calendar-view"], [onclick*="openCustomerSheet"], [onclick*="openRevenue"], [onclick*="openInventorySheet"], [onclick*="openBookingSheet"], [onclick*="openCalendarView"], [onclick*="openPowerView"], [onclick*="openShopManagement"], [onclick*="openManagementHub"], [onclick*="goCaption"]');
       if (!t) return;
       // 명시적 data-prefetch="customer,revenue" 가 우선
       const explicit = t.getAttribute && t.getAttribute('data-prefetch');
@@ -115,12 +119,37 @@
         _prefetch(PREFETCH_MAP[tab].url, PREFETCH_MAP[tab].key);
         return;
       }
+      // 대시보드 KPI 카드 (data-metric) — 클릭 시 해당 허브 열림
+      const metric = t.getAttribute && t.getAttribute('data-metric');
+      if (metric) {
+        if (metric === 'booking')        _prefetch(_bookingRange(), 'pv_cache::bookings_all');
+        else if (PREFETCH_MAP[metric])   _prefetch(PREFETCH_MAP[metric].url, PREFETCH_MAP[metric].key);
+        return;
+      }
+      // 파워뷰 탭 직행 (data-pv-open="customer|booking|revenue|...")
+      const pvTab = t.getAttribute && t.getAttribute('data-pv-open');
+      if (pvTab) {
+        if (pvTab === 'booking')        _prefetch(_bookingRange(), 'pv_cache::bookings_all');
+        else if (PREFETCH_MAP[pvTab])   _prefetch(PREFETCH_MAP[pvTab].url, PREFETCH_MAP[pvTab].key);
+        return;
+      }
+      // 캘린더 뷰 직행
+      if (t.getAttribute && t.getAttribute('data-open') === 'calendar-view') {
+        _prefetch(_bookingRange(), 'pv_cache::bookings_all');
+        return;
+      }
       // onclick 휴리스틱
       const oc = (t.getAttribute && t.getAttribute('onclick')) || '';
       if (oc.includes('openCustomerSheet'))  _prefetch(PREFETCH_MAP.customer.url, PREFETCH_MAP.customer.key);
       if (oc.includes('openRevenue'))        _prefetch(PREFETCH_MAP.revenue.url,  PREFETCH_MAP.revenue.key);
       if (oc.includes('openInventorySheet')) _prefetch(PREFETCH_MAP.inventory.url, PREFETCH_MAP.inventory.key);
-      if (oc.includes('openBookingSheet'))   _prefetch(_bookingRange(), 'pv_cache::bookings_all');
+      if (oc.includes('openBookingSheet') || oc.includes('openCalendarView')) _prefetch(_bookingRange(), 'pv_cache::bookings_all');
+      if (oc.includes('openPowerView')) {
+        // openPowerView('customer') 같이 첫 인자로 탭이 오면 가능한 한 매칭
+        const m = oc.match(/openPowerView\(\s*['"]([a-z]+)['"]/i);
+        if (m && PREFETCH_MAP[m[1]]) _prefetch(PREFETCH_MAP[m[1]].url, PREFETCH_MAP[m[1]].key);
+        else _prefetch(PREFETCH_MAP.customer.url, PREFETCH_MAP.customer.key);
+      }
     };
     document.addEventListener('mouseenter', handler, true);
     document.addEventListener('touchstart', handler, { passive: true, capture: true });
@@ -128,6 +157,7 @@
   }
 
   // 1-D. Critical path 캐시 워밍 — DOMContentLoaded 후 1초
+  // 파워뷰·캘린더·매출 등 자주 진입하는 화면의 데이터를 백그라운드에서 미리 채움.
   function _criticalPathWarm() {
     setTimeout(() => {
       const auth = window.authHeader && window.authHeader();
@@ -136,9 +166,32 @@
       _prefetch('/customers',            'pv_cache::customers');
       _prefetch('/revenue?period=month', 'pv_cache::revenue');
       _prefetch('/inventory',            'pv_cache::inventory');
+      _prefetch('/services',             'pv_cache::service');
       _prefetch(_bookingRange(),         'pv_cache::bookings_all');
     }, 1000);
   }
+
+  // ============================================================
+  // 1-E. Performance 측정 헬퍼 — 시트 열림 시간 (개발 모드에서만)
+  //   사용: window._perfMark('powerview:open:start') / window._perfMark('powerview:open:end')
+  //   localStorage.setItem('itdasy_perf_log', '1') 활성화
+  // ============================================================
+  function _perfMark(label) {
+    try {
+      if (typeof performance === 'undefined' || !performance.mark) return;
+      performance.mark('itdasy:' + label);
+      if (label.endsWith(':end') && _safeGet('itdasy_perf_log') === '1') {
+        const start = label.replace(':end', ':start');
+        try {
+          const m = performance.measure(label.replace(':end', ''), 'itdasy:' + start, 'itdasy:' + label);
+          if (m && typeof m.duration === 'number') {
+            console.log('[itdasy-perf]', label.replace(':end', ''), m.duration.toFixed(2), 'ms');
+          }
+        } catch (_) { /* mark 가 없을 수 있음 */ }
+      }
+    } catch (_) { /* ignore */ }
+  }
+  window._perfMark = _perfMark;
 
   window._perfPrefetch = _prefetch;
 

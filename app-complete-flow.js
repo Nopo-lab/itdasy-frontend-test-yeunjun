@@ -108,7 +108,7 @@
 
   async function _markBookingCompleted() {
     if (!_ctx.booking_id) return;
-    try { await _apiPatch('/bookings/' + _ctx.booking_id, { status: 'completed' }); } catch (_) {}
+    try { await _apiPatch('/bookings/' + _ctx.booking_id, { status: 'completed' }); } catch (_) { void 0; }
   }
 
   async function _saveAll() {

@@ -285,9 +285,9 @@
     if (!_listening) return;
     _listening = false;
     if (window.hapticLight) window.hapticLight();
-    try { _recognition?.stop(); } catch (_) {}
-    try { _mediaRecorder?.stop(); } catch (_) {}
-    try { _stream?.getTracks().forEach(t => t.stop()); } catch (_) {}
+    try { _recognition?.stop(); } catch (_) { void 0; }
+    try { _mediaRecorder?.stop(); } catch (_) { void 0; }
+    try { _stream?.getTracks().forEach(t => t.stop()); } catch (_) { void 0; }
 
     _renderParsing();
     await new Promise(r => setTimeout(r, 300));  // MediaRecorder ondataavailable 완료 대기
@@ -350,9 +350,9 @@
   window.closeVoice = function () {
     if (_listening) {
       _listening = false;
-      try { _recognition?.stop(); } catch (_) {}
-      try { _mediaRecorder?.stop(); } catch (_) {}
-      try { _stream?.getTracks().forEach(t => t.stop()); } catch (_) {}
+      try { _recognition?.stop(); } catch (_) { void 0; }
+      try { _mediaRecorder?.stop(); } catch (_) { void 0; }
+      try { _stream?.getTracks().forEach(t => t.stop()); } catch (_) { void 0; }
     }
     const sheet = document.getElementById('voiceSheet');
     if (sheet) sheet.style.display = 'none';

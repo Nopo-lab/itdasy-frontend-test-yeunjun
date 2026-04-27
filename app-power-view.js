@@ -644,6 +644,7 @@
 
   // ── open / close ─────────────────────────────────────
   function openPowerView(tabKey) {
+    if (typeof window._perfMark === 'function') window._perfMark('powerview:open:start');
     _injectStyles();
     if (tabKey && SCHEMAS[tabKey]) _state.currentTab = tabKey;
     _state.searchKW = '';
@@ -714,6 +715,7 @@
       if (editBtn) editBtn.addEventListener('click', () => _toggleEditMode());
       pvRender.renderTab();
     }
+    if (typeof window._perfMark === 'function') window._perfMark('powerview:open:end');
   }
 
   function closePowerView() {
@@ -728,6 +730,42 @@
 
   window.openPowerView = openPowerView;
   window.closePowerView = closePowerView;
+
+  // [2026-04-26] 챗봇·외부 mutation → 현재 탭 캐시 비우고 시트 열려있으면 즉시 재로드
+  if (typeof window !== 'undefined' && !window._powerViewDataListenerInit) {
+    window._powerViewDataListenerInit = true;
+    // mutation kind → 영향받는 탭 매핑
+    const _kindToTabs = (kind) => {
+      const k = String(kind || '');
+      const tabs = [];
+      if (/customer/.test(k)) tabs.push('customer');
+      if (/booking/.test(k))  tabs.push('booking');
+      if (/revenue/.test(k))  tabs.push('revenue');
+      if (/inventor/.test(k)) tabs.push('inventory');
+      if (/nps/.test(k))      tabs.push('nps');
+      if (/service/.test(k))  tabs.push('service');
+      if (!tabs.length) return ['customer', 'booking', 'revenue', 'inventory', 'nps', 'service'];
+      return tabs;
+    };
+    window.addEventListener('itdasy:data-changed', async (e) => {
+      const kind = e && e.detail && e.detail.kind;
+      const affected = _kindToTabs(kind);
+      // 모든 영향받는 탭의 SWR 캐시 클리어 (다음 진입 시 fresh)
+      affected.forEach(t => {
+        try { sessionStorage.removeItem(_cacheKey(t)); } catch (_e) { void _e; }
+      });
+      // 시트 열려있고 현재 탭이 영향받으면 즉시 재로드
+      const overlay = document.getElementById(OVERLAY_ID);
+      if (!overlay) return;
+      if (!affected.includes(_state.currentTab)) return;
+      try {
+        _state.data[_state.currentTab] = await _fetchTab(_state.currentTab, false);
+        if (window._PVRender && window._PVRender.renderTab) {
+          window._PVRender.renderTab(true);
+        }
+      } catch (_e) { void _e; }
+    });
+  }
 
   // T-383 에서 실구현 예정. 현재는 기존 월간리포트로 연결.
   window.openRevenueReport = function() {

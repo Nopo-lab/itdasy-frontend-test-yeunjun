@@ -83,7 +83,7 @@
   }
 
   function _clearState() {
-    try { localStorage.removeItem(LS_KEY); } catch(e){}
+    try { localStorage.removeItem(LS_KEY); } catch (e) { void 0; }
   }
 
   function _close() {

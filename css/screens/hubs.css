@@ -4,10 +4,11 @@
    ──────────────────────────────────────────────────────────── */
 
 /* ── 허브 공통 ─────────────────────────────────────────────── */
+/* [2026-04-26] 시트 진입 애니메이션 단축 — fade 0.22→0.10s, slide 0.3→0.16s */
 .hub-backdrop {
   position: fixed; inset: 0; z-index: 899;
   background: rgba(0,0,0,0.45);
-  animation: hub-fade-in 0.22s ease;
+  animation: hub-fade-in 0.10s ease;
 }
 @keyframes hub-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes hub-slide-up {
@@ -15,13 +16,13 @@
   to   { transform: translateY(0); }
 }
 .hub-overlay {
-  position: fixed; left: 0; right: 0; bottom: 0; top: 52px;
+  position: fixed; inset: 52px 0 0;
   z-index: 900; background: #fff; overflow-y: auto;
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -6px 32px rgba(0,0,0,0.18);
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  animation: hub-slide-up 0.3s cubic-bezier(0.32,0.72,0,1);
+  animation: hub-slide-up 0.16s cubic-bezier(0.32,0.72,0,1);
 }
 .hub-overlay::before, .rr-overlay::before {
   content: ''; display: block;
@@ -163,12 +164,12 @@
 
 /* ── 매출 리포트 ────────────────────────────────────────────── */
 .rr-overlay {
-  position: fixed; left: 0; right: 0; bottom: 0; top: 52px;
+  position: fixed; inset: 52px 0 0;
   z-index: 910; background: #fff; overflow-y: auto;
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -6px 32px rgba(0,0,0,0.22);
   overscroll-behavior: contain;
-  animation: hub-slide-up 0.3s cubic-bezier(0.32,0.72,0,1);
+  animation: hub-slide-up 0.16s cubic-bezier(0.32,0.72,0,1);
 }
 .rr-seg-wrap { display: flex; justify-content: center; padding: 16px 16px 0; }
 .rr-segment {
@@ -217,9 +218,11 @@
   padding: 10px 20px; border: none; border-radius: 12px;
   background: #D95F70; color: #fff; font-weight: 700; font-size: 14px; cursor: pointer;
 }
-.rr-sk { height: 16px; background: #F2F2F7; border-radius: 6px; margin: 8px 20px; }
+.rr-sk {
+  height: 16px; background: #F2F2F7; border-radius: 6px; margin: 8px 20px;
+  animation: sk-pulse 1.2s ease-in-out infinite;
+}
 @keyframes sk-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-.rr-sk { animation: sk-pulse 1.2s ease-in-out infinite; }
 
 /* ── 재고 허브 ─────────────────────────────────────────────── */
 .ih-low-hd {

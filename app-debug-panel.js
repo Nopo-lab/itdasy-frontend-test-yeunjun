@@ -40,7 +40,7 @@
       const text = args.map(_serialize).join(' ');
       LOG_BUF.push({ t: new Date().toISOString().slice(11, 19), lvl: level, msg: text.slice(0, 2000) });
       while (LOG_BUF.length > MAX_LOGS) LOG_BUF.shift();
-    } catch (_) {}
+    } catch (_) { void 0; }
   }
   console.error = function () { _push('E', [...arguments]); _origErr(...arguments); };
   console.warn  = function () { _push('W', [...arguments]); _origWarn(...arguments); };
@@ -51,7 +51,7 @@
       if (typeof first === 'string' && /\[(PUBLISH|INSTAGRAM|NUKKI|PUBLISH-FILE|SUPPORT)/.test(first)) {
         _push('L', [...arguments]);
       }
-    } catch (_) {}
+    } catch (_) { void 0; }
     _origLog(...arguments);
   };
   window.addEventListener('error', (e) => _push('E', ['[window.error]', e.message, e.filename + ':' + e.lineno]));
@@ -90,7 +90,7 @@
           document.execCommand('copy'); document.body.removeChild(ta);
         }
         if (window.showToast) window.showToast('복사됐어요');
-      } catch (_) {}
+      } catch (_) { void 0; }
     });
     return m;
   }

@@ -30,7 +30,7 @@
     } catch (_) { return null; }
   }
   function _writeCache(d) {
-    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), d })); } catch (_) {}
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), d })); } catch (_) { void 0; }
   }
 
   /* ── fetch ─────────────────────────────────────────────────── */
@@ -366,4 +366,18 @@
     refresh:     async () => { sessionStorage.removeItem(CACHE_KEY); await _fetch(); _render(); },
     focusInput:  () => document.querySelector(`#${OID} [data-field="customer_name"]`)?.focus(),
   };
+
+  // [2026-04-26] 챗봇·외부에서 매출 추가/수정 → 캐시 비우고 시트 열려있으면 즉시 재로드
+  if (typeof window !== 'undefined' && !window._revenueHubDataListenerInit) {
+    window._revenueHubDataListenerInit = true;
+    window.addEventListener('itdasy:data-changed', async (e) => {
+      try { sessionStorage.removeItem(CACHE_KEY); } catch (_e) { void _e; }
+      const kind = e && e.detail && e.detail.kind;
+      // 매출 관련 mutation 만 즉시 재로드 (옵티미스틱 + 외부 추가 모두 커버)
+      if (kind && !/(revenue|expense|customer|booking|force_sync|focus_sync|online_restore)/.test(kind)) return;
+      // 시트 열려있을 때만 재페치 (불필요한 네트워크 방지)
+      if (!document.getElementById(OID)) return;
+      try { await _fetch(); _render(); } catch (_e) { void _e; }
+    });
+  }
 })();

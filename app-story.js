@@ -115,7 +115,7 @@
       btn.textContent = '🎤';
       document.getElementById('storyMicStatus').textContent = _interimText ? '✓ 받아쓰기 완료' : '';
     };
-    try { _recognition.start(); } catch (_) {}
+    try { _recognition.start(); } catch (_) { void 0; }
   }
 
   async function _generate() {
@@ -386,10 +386,10 @@
             reader.readAsDataURL(blob);
             return;
           }
-        } catch (_) {}
+        } catch (_) { void 0; }
       }
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], title: '잇데이 스토리' }); return; } catch (_) {}
+        try { await navigator.share({ files: [file], title: '잇데이 스토리' }); return; } catch (_) { void 0; }
       }
       // 폴백: 다운로드
       const url = URL.createObjectURL(blob);
@@ -417,6 +417,6 @@
     const sheet = document.getElementById('storySheet');
     if (sheet) sheet.style.display = 'none';
     document.body.style.overflow = '';
-    try { _recognition?.stop(); } catch (_) {}
+    try { _recognition?.stop(); } catch (_) { void 0; }
   };
 })();

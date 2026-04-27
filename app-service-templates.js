@@ -14,7 +14,7 @@
   let _cache = [];
 
   function _token() {
-    return localStorage.getItem('itdasy_token::staging') || localStorage.getItem('itdasy_token') || '';
+    return (typeof window.getToken === 'function') ? window.getToken() : '';
   }
 
   async function loadServiceTemplates() {

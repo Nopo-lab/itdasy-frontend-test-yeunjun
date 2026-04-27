@@ -2416,7 +2416,7 @@
       const data = await res.json();
       if (data && data.session_id) {
         _sessionId = data.session_id;
-        try { localStorage.setItem('assistant_session_id', String(_sessionId)); } catch (_) {}
+        try { localStorage.setItem('assistant_session_id', String(_sessionId)); } catch (_) { void 0; }
       }
       // 서버 messages 가 비어있지 않으면 _history 덮어쓰기 (서버가 진실원천)
       // [2026-04-26 A8 픽스] 단, 로컬에 진행중 action_groups/action 가 있는 메시지는

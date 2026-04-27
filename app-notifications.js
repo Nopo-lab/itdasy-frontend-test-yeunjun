@@ -39,10 +39,10 @@
   }
 
   async function _markRead(id) {
-    try { await fetch(window.API + '/notifications/' + id + '/read', { method: 'PATCH', headers: window.authHeader() }); } catch (_) {}
+    try { await fetch(window.API + '/notifications/' + id + '/read', { method: 'PATCH', headers: window.authHeader() }); } catch (_) { void 0; }
   }
   async function _markAllRead() {
-    try { await fetch(window.API + '/notifications/read-all', { method: 'PATCH', headers: window.authHeader() }); } catch (_) {}
+    try { await fetch(window.API + '/notifications/read-all', { method: 'PATCH', headers: window.authHeader() }); } catch (_) { void 0; }
   }
 
   function _ensureSheet() {
@@ -126,7 +126,7 @@
     if (d && Array.isArray(d.items)) {
       // 신규 알림 도착 시 햅틱
       if (d.items.length > _items.length && window.hapticLight) {
-        try { window.hapticLight(); } catch (_) {}
+        try { window.hapticLight(); } catch (_) { void 0; }
       }
       _items = d.items;
       _updateBadge();

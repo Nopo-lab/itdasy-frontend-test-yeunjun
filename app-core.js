@@ -368,8 +368,8 @@ async function applyNewSession(newToken, opts) {
     if (res && res.ok) {
       const me = await res.json();
       if (me) {
-        try { if (me.email) localStorage.setItem('last_login_email', me.email); } catch (_) {}
-        try { if (me.oauth_provider) localStorage.setItem('user_oauth_provider', me.oauth_provider); } catch (_) {}
+        try { if (me.email) localStorage.setItem('last_login_email', me.email); } catch (_) { void 0; }
+        try { if (me.oauth_provider) localStorage.setItem('user_oauth_provider', me.oauth_provider); } catch (_) { void 0; }
         if (typeof window.applyOAuthProviderBadge === 'function') {
           window.applyOAuthProviderBadge();
         }
@@ -382,7 +382,7 @@ window.applyNewSession = applyNewSession;
 // 헤더 아바타에 가입방법 배지 색·툴팁 적용
 function applyOAuthProviderBadge() {
   let prov = 'email';
-  try { prov = localStorage.getItem('user_oauth_provider') || 'email'; } catch (_) {}
+  try { prov = localStorage.getItem('user_oauth_provider') || 'email'; } catch (_) { void 0; }
   const allow = new Set(['email', 'google', 'kakao', 'apple']);
   if (!allow.has(prov)) prov = 'email';
   const el = document.getElementById('headerProviderBadge');
@@ -661,7 +661,7 @@ async function confirmDeleteAccount() {
   _deleteAccountInFlight = true;
   if (btn) { btn.textContent = '삭제 중...'; btn.disabled = true; }
   try {
-    const res = await fetch(`${API_BASE}/auth/delete-account`, {
+    const res = await fetch(`${API}/auth/delete-account`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${getToken()}` },
     });
@@ -1236,7 +1236,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260426-v24';
+window.APP_BUILD = '20260427-v25';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;

@@ -71,21 +71,21 @@
     o.querySelector('#ref-close').addEventListener('click', () => o.remove());
 
     o.querySelector('#ref-copy-code').addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(code); if (window.showToast) window.showToast('✅ 코드 복사됨'); } catch(_){}
+      try { await navigator.clipboard.writeText(code); if (window.showToast) window.showToast('✅ 코드 복사됨'); } catch (_) { void 0; }
     });
 
     o.querySelector('#ref-share-link').addEventListener('click', async () => {
       const text = `잇데이 ★ 1인샵 AI 비서. 제 코드 ${code} 쓰시면 무료 기간 더 드려요.`;
       if (navigator.share) {
-        try { await navigator.share({ title: '잇데이 초대', text, url: signupUrl }); return; } catch(_){}
+        try { await navigator.share({ title: '잇데이 초대', text, url: signupUrl }); return; } catch (_) { void 0; }
       }
-      try { await navigator.clipboard.writeText(text + ' ' + signupUrl); if (window.showToast) window.showToast('✅ 초대 링크 복사됨'); } catch(_){}
+      try { await navigator.clipboard.writeText(text + ' ' + signupUrl); if (window.showToast) window.showToast('✅ 초대 링크 복사됨'); } catch (_) { void 0; }
     });
 
     o.querySelector('#ref-share-kakao').addEventListener('click', async () => {
       // 카카오톡 공유 SDK 없이: 텍스트 클립보드 + 카카오톡 자동 실행
       const text = `잇데이 가입 시 제 코드 ${code} 넣으세요 (무료 기간 연장)\n${signupUrl}`;
-      try { await navigator.clipboard.writeText(text); } catch(_){}
+      try { await navigator.clipboard.writeText(text); } catch (_) { void 0; }
       if (window.showToast) window.showToast('📋 복사됨 — 카톡 친구 대화방에 붙여넣기');
       // 기본 SMS/카톡 체인
       setTimeout(() => { window.location.href = 'sms:?body=' + encodeURIComponent(text); }, 300);

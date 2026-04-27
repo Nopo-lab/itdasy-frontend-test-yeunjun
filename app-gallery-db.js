@@ -103,7 +103,7 @@ async function deleteSlotFromDB(id) {
 // 이전 사용자의 작업실 사진이 다음 사용자에게 노출되는 누수 방지 (메타 심사 대응).
 async function clearGalleryDB() {
   try {
-    if (_gdb) { try { _gdb.close(); } catch (_) {} _gdb = null; }
+    if (_gdb) { try { _gdb.close(); } catch (_) { void 0; } _gdb = null; }
     return await new Promise((resolve) => {
       try {
         const req = indexedDB.deleteDatabase(_GDB_NAME);

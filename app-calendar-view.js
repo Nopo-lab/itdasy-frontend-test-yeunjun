@@ -658,6 +658,7 @@ ${isEdit ? `
 
   // === 진입점 ===
   window.openCalendarView = async function () {
+    if (typeof window._perfMark === 'function') window._perfMark('calendar:open:start');
     const existing = _overlay(); if (existing) existing.remove();
     const now  = new Date();
     _curYear   = now.getFullYear();
@@ -702,6 +703,7 @@ ${isEdit ? `
     _mappedCache = await _loadMonth(_curYear, _curMonth);
     _renderMonth(_curYear, _curMonth, _mappedCache);
     _prefetchNeighbors();
+    if (typeof window._perfMark === 'function') window._perfMark('calendar:open:end');
   };
 
   // 대시보드 바로가기 · 파워뷰 · 외부 호출 호환
@@ -718,5 +720,25 @@ ${isEdit ? `
     e.preventDefault(); e.stopPropagation();
     window.openCalendarView();
   }, true);
+
+  // [2026-04-26] 챗봇·외부에서 예약 생성/수정/취소 → 캘린더 열려있으면 현재 뷰 즉시 재로드
+  if (typeof window !== 'undefined' && !window._calendarViewDataListenerInit) {
+    window._calendarViewDataListenerInit = true;
+    window.addEventListener('itdasy:data-changed', async (e) => {
+      const kind = e && e.detail && e.detail.kind;
+      // booking 관련만 + force/online 동기화 신호 처리
+      if (kind && !/(booking|force_sync|focus_sync|online_restore)/.test(kind)) return;
+      // booking-api 메모리 캐시도 무효화 (외부에서 못 건드리는 _cache)
+      try { if (window.Booking && typeof window.Booking._invalidateCache === 'function') window.Booking._invalidateCache(); } catch (_e) { void _e; }
+      // 캘린더 시트 열려있을 때만 재로드
+      if (!_overlay()) return;
+      try {
+        _mappedCache = await _loadMonth(_curYear, _curMonth);
+        if (_curView === 'month')      _renderMonth(_curYear, _curMonth, _mappedCache);
+        else if (_curView === 'week')  _renderWeek(_curDate, _mappedCache);
+        else                           _renderDay(_curDate, _mappedCache);
+      } catch (_e) { void _e; }
+    });
+  }
 
 })();

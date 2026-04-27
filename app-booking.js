@@ -93,12 +93,12 @@
   function _writeSWRAll(items) {
     const payload = JSON.stringify({ t: Date.now(), d: items });
     try { localStorage.setItem(_SWR_ALL_KEY, payload); } catch (_e) {
-      try { sessionStorage.setItem(_SWR_ALL_KEY, payload); } catch (_e2) {}
+      try { sessionStorage.setItem(_SWR_ALL_KEY, payload); } catch (_e2) { void 0; }
     }
   }
   function _clearSWR() {
-    try { localStorage.removeItem(_SWR_ALL_KEY); } catch (_e) {}
-    try { sessionStorage.removeItem(_SWR_ALL_KEY); } catch (_e) {}
+    try { localStorage.removeItem(_SWR_ALL_KEY); } catch (_e) { void 0; }
+    try { sessionStorage.removeItem(_SWR_ALL_KEY); } catch (_e) { void 0; }
     // 구버전 키도 청소
     try {
       for (let i = sessionStorage.length - 1; i >= 0; i--) {
@@ -109,7 +109,7 @@
         const k = localStorage.key(i);
         if (k && k.startsWith('pv_cache::booking')) localStorage.removeItem(k);
       }
-    } catch (_e) {}
+    } catch (_e) { void 0; }
   }
 
   async function _fetchAllBookings() {
@@ -149,7 +149,7 @@
         _clearSWR();
         const sheet = document.getElementById('bookingSheet');
         if (sheet && sheet.style.display !== 'none') {
-          try { await _fetchAllBookings(); _rerender && _rerender(); } catch (_e) {}
+          try { await _fetchAllBookings(); _rerender && _rerender(); } catch (_e) { void 0; }
         }
       }
     });
