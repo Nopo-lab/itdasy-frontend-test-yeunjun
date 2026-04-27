@@ -621,24 +621,11 @@ async function _doGenerateCaption(scenario, closePopup) {
   if (typeof window._assertSpec === 'function') window._assertSpec('POST /persona/generate', payload);
 
   try {
-    const res = await _personaFetch('POST', '/persona/generate', payload);
-    const data = await res.json();
-
-    if (!res.ok) {
-      const code = data.code || data.detail || '';
-      const msg = _CAP_ERR_MSG[code] || '캡션 생성에 실패했습니다. 다시 시도해주세요.';
-      hideCaptionLoader(false, () => {
-        closePopup();
-        // [2026-04-26] identity_incomplete / insufficient_posts 는 백엔드에서 더 이상 막지 않음.
-        // 구버전 백엔드에 떨어진 경우만 안내. 강제 온보딩 팝업은 띄우지 않음.
-        if (code.startsWith('consent_missing')) {
-          showToast('AI 처리 동의가 필요합니다');
-          return;
-        }
-        showToast(msg);
-      });
-      return;
-    }
+    // [2026-04-26 픽스] _personaFetch는 이미 파싱된 JSON을 반환한다.
+    // 기존 코드는 res.json() 을 한 번 더 호출해서 TypeError 가 나면서 '잠시 후 다시 시도'
+    // 폴백 토스트가 떴다. 본질적인 캡션 생성 실패 메시지를 사용자에게 정확히 노출하기 위해
+    // 직접 data 로 받는다. (HTTP 에러는 _personaFetch 내부에서 throw → catch 블록에서 처리)
+    const data = await _personaFetch('POST', '/persona/generate', payload);
 
     const finalCaption = data.caption || '';
     const hashes = ''; // TD-020: 해시태그 미반환 — 추후 추가 예정
@@ -697,10 +684,24 @@ async function _doGenerateCaption(scenario, closePopup) {
   } catch(e) {
     if (e && e.message === '401') return; // _personaFetch가 401 처리
     // [2026-04-24] 명확한 에러 진단 — '일시적 오류' 일괄 표시 제거
-    console.error('[caption.generate] 실패:', e);
+    // [2026-04-26] raw 메시지를 항상 console.error 로 남겨 개발자 디버깅 가능하게.
+    console.error('[caption.generate] 실패 raw:', e);
     const raw = (e && (e.message || e.toString())) || '';
-    let userMsg = '캡션 만들기 실패. 잠시 후 다시 시도해주세요.';
-    if (/Failed to fetch|NetworkError|TypeError/i.test(raw)) {
+
+    // [2026-04-26] quota_exceeded:caption:<limit> 패턴 처리 — 한도 안내
+    const quotaMatch = raw.match(/quota_exceeded:caption(?::(\d+))?/i);
+    let userMsg;
+    if (quotaMatch) {
+      const limit = quotaMatch[1] || '3';
+      userMsg = `오늘 캡션 한도(${limit}회) 다 쓰셨어요. 내일 다시 시도하거나 Pro 로 업그레이드해 주세요.`;
+    } else if (/quota_exceeded/i.test(raw)) {
+      userMsg = '오늘 사용 한도를 다 쓰셨어요. 내일 다시 시도해 주세요.';
+    } else if (/^캡션 생성 실패/.test(raw)) {
+      // 백엔드가 명시한 정확한 원인을 그대로 노출 (디버그 용이)
+      userMsg = raw;
+    } else if (/consent_missing/i.test(raw)) {
+      userMsg = 'AI 처리 동의가 필요합니다.';
+    } else if (/Failed to fetch|NetworkError/i.test(raw)) {
       userMsg = '네트워크 연결 확인 후 다시 시도해주세요.';
     } else if (/timeout/i.test(raw)) {
       userMsg = 'AI 응답이 지연되고 있어요. 잠시 후 다시 시도해주세요.';
@@ -711,7 +712,11 @@ async function _doGenerateCaption(scenario, closePopup) {
       userMsg = '인스타 게시물이 더 모이면 사장님 말투에 맞춰 글이 나와요.';
     } else if (/HTTP 5\d\d/i.test(raw)) {
       userMsg = '서버가 잠깐 불안정해요. 1분 후 다시 시도해주세요.';
+    } else {
+      // 알 수 없는 에러 — 부드러운 폴백 (개발자는 위 console.error 로 확인)
+      userMsg = '캡션 만들기 실패. 잠시 후 다시 시도해주세요.';
     }
+
     hideCaptionLoader(false, () => {
       closePopup();
       // 미리보기 textarea 비어있어도 placeholder 살아남도록 둠
@@ -958,13 +963,8 @@ async function regenerateCaption(overrides = {}) {
   const ta = document.getElementById('captionText');
   if (ta) { ta.value = '✨ 새로 쓰는 중…'; _capAutoGrow(ta); }
   try {
-    const res = await _personaFetch('POST', '/persona/generate', payload);
-    const data = await res.json();
-    if (!res.ok) {
-      showToast(_CAP_ERR_MSG[data.code || data.detail] || '재생성 실패');
-      if (ta) ta.value = '';
-      return;
-    }
+    // [2026-04-26 픽스] _personaFetch 는 이미 파싱된 JSON 반환. res.json() 재호출 버그 제거.
+    const data = await _personaFetch('POST', '/persona/generate', payload);
     _capAiDraft = data.caption || '';
     _lastLogId = data.log_id || null;
     if (ta) { ta.value = _capAiDraft; _capAutoGrow(ta); }
@@ -982,7 +982,23 @@ async function regenerateCaption(overrides = {}) {
     }
     _renderCaptionActionBar(_capAiDraft, '');
   } catch (e) {
-    showToast('네트워크 오류. 다시 시도해주세요');
+    // [2026-04-26] 재생성 에러도 정확한 원인 노출. raw 는 console 로 디버깅 보조.
+    console.error('[caption.regenerate] 실패 raw:', e);
+    const raw = (e && (e.message || e.toString())) || '';
+    let userMsg;
+    const quotaMatch = raw.match(/quota_exceeded:caption(?::(\d+))?/i);
+    if (quotaMatch) {
+      const limit = quotaMatch[1] || '3';
+      userMsg = `오늘 캡션 한도(${limit}회) 다 쓰셨어요. 내일 다시 시도하거나 Pro 로 업그레이드해 주세요.`;
+    } else if (/^캡션 생성 실패/.test(raw)) {
+      userMsg = raw;
+    } else if (/Failed to fetch|NetworkError/i.test(raw)) {
+      userMsg = '네트워크 오류. 다시 시도해주세요.';
+    } else {
+      userMsg = '재생성 실패. 잠시 후 다시 시도해주세요.';
+    }
+    if (ta) ta.value = '';
+    showToast(userMsg);
   }
 }
 

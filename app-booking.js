@@ -228,12 +228,35 @@
       all.push(record);
       _saveOffline(all);
       _items.push(record);
+      // [2026-04-26 A9] 오프라인도 알리기
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_booking', optimistic: false } })); } catch (_e) { void _e; }
       return record;
     }
-    const created = await _api('POST', '/bookings', data);
-    _items.push(created);
-    _clearSWR();  // 날짜 범위 캐시 전체 무효화
-    return created;
+    // [2026-04-26 A9 픽스] 옵티미스틱 UI — POST 직전 _items 에 즉시 추가 + 이벤트 발사
+    const optimisticRecord = {
+      id: '__opt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+      shop_id: localStorage.getItem('shop_id') || '',
+      ...data,
+      created_at: new Date().toISOString(),
+      deleted_at: null,
+      _optimistic: true,
+    };
+    _items.push(optimisticRecord);
+    try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_booking', optimistic: true } })); } catch (_e) { void _e; }
+    try {
+      const created = await _api('POST', '/bookings', data);
+      const idx = _items.findIndex(b => b.id === optimisticRecord.id);
+      if (idx >= 0) _items[idx] = created;
+      else _items.push(created);
+      _clearSWR();  // 날짜 범위 캐시 전체 무효화
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_booking', optimistic: false } })); } catch (_e) { void _e; }
+      return created;
+    } catch (err) {
+      _items = _items.filter(b => b.id !== optimisticRecord.id);
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_booking', optimistic: false, rollback: true } })); } catch (_e) { void _e; }
+      if (window.showToast) window.showToast('예약 추가 실패 — 다시 시도해주세요');
+      throw err;
+    }
   }
 
   async function update(id, patch) {
@@ -245,12 +268,15 @@
       _saveOffline(all);
       const j = _items.findIndex(b => b.id === id);
       if (j >= 0) _items[j] = all[i];
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'update_booking', optimistic: false } })); } catch (_e) { void _e; }
       return all[i];
     }
     const updated = await _api('PATCH', '/bookings/' + id, patch);
     const j = _items.findIndex(b => b.id === id);
     if (j >= 0) _items[j] = updated;
     _clearSWR();
+    // [2026-04-26 A9] mutation 이벤트 누락 보충
+    try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'update_booking', optimistic: false } })); } catch (_e) { void _e; }
     return updated;
   }
 
@@ -259,11 +285,14 @@
       const all = _loadOffline().filter(b => b.id !== id);
       _saveOffline(all);
       _items = _items.filter(b => b.id !== id);
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'cancel_booking', optimistic: false } })); } catch (_e) { void _e; }
       return { ok: true };
     }
     await _api('DELETE', '/bookings/' + id);
     _items = _items.filter(b => b.id !== id);
     _clearSWR();
+    // [2026-04-26 A9] mutation 이벤트 누락 보충
+    try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'cancel_booking', optimistic: false } })); } catch (_e) { void _e; }
     return { ok: true };
   }
 

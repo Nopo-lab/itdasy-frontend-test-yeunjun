@@ -1554,6 +1554,9 @@
       }
     });
     try {
+      // [2026-04-26 A8 픽스] 다른 모듈(대시보드·고객·재고·매출·예약 등)은 정상 새로고침,
+      //   챗봇 자기 자신만은 server history reload 를 스킵 → 그룹 메모리 상태 보존
+      _selfDispatchedDataChange = true;
       window.dispatchEvent(new CustomEvent('itdasy:data-changed', {
         detail: { kind, mutation_kind: kind },
       }));
@@ -1588,6 +1591,14 @@
     if (msg.action_status === 'running' || msg.action_status === 'done') return;
     msg.action_status = 'running';
     _renderHistory();
+    // [2026-04-26 A9 픽스] 옵티미스틱 이벤트 — POST 직전 대시보드 즉시 반영 알림
+    // (실제 데이터 추가는 _executeAction 성공 후 _invalidateCachesFor 가 처리)
+    try {
+      _selfDispatchedDataChange = true;
+      window.dispatchEvent(new CustomEvent('itdasy:data-changed', {
+        detail: { kind: msg.action.kind, optimistic: true },
+      }));
+    } catch (_e) { void _e; }
     try {
       const d = await _executeAction(msg.action);
       msg.action_status = 'done';
@@ -1610,6 +1621,18 @@
     }
   }
 
+  // [2026-04-26 A8 픽스] 그룹별 부분 re-render — 한 그룹만 다시 그리기
+  // 다른 그룹의 expanded/bulkProgress/items 상태에 영향 X.
+  // 풀 _renderHistory 가 안전하긴 하지만 (mutate-only 보장), 향후 최적화 여지로 분리.
+  function _rerenderGroupRow(historyIdx, gIdx) {
+    const msg = _history[historyIdx];
+    const group = msg && msg.action_groups && msg.action_groups[gIdx];
+    if (!group) { _renderHistory(); return; }
+    // 현재 구조에서는 그룹 카드가 outerHTML 통째로 렌더되므로 안전하게 풀 렌더로 위임.
+    // (action_groups 객체는 mutate 만 — 절대 새로 만들지 않음 → 다른 그룹 상태 보존됨)
+    _renderHistory();
+  }
+
   // 그룹 카드 — 단일 행 실행
   async function _runGroupRow(historyIdx, gIdx, iIdx) {
     const msg = _history[historyIdx];
@@ -1617,17 +1640,17 @@
     const it = group && group.items && group.items[iIdx];
     if (!it || it.status === 'done' || it.status === 'running' || it.skipped) return;
     it.status = 'running';
-    _renderHistory();
+    _rerenderGroupRow(historyIdx, gIdx);
     try {
       await _executeAction(it.action);
       it.status = 'done';
-      _renderHistory();
+      _rerenderGroupRow(historyIdx, gIdx);
       if (window.hapticSuccess) window.hapticSuccess();
       if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
     } catch (e) {
       it.status = 'failed';
       it.errorMsg = window._humanError ? window._humanError(e) : e.message;
-      _renderHistory();
+      _rerenderGroupRow(historyIdx, gIdx);
     }
   }
 
@@ -1645,7 +1668,7 @@
     group.bulkProgress = { current: 0, total: targets.length };
     // 모두 running 상태로 한번에 표시 → 사용자가 '동시 진행' 체감
     targets.forEach(({ it }) => { it.status = 'running'; });
-    _renderHistory();
+    _rerenderGroupRow(historyIdx, gIdx);
     let okCount = 0;
     const CONCURRENCY = 5;  // Railway/DB 부담 방지 · 5건씩 묶어서
     for (let i = 0; i < targets.length; i += CONCURRENCY) {
@@ -1660,11 +1683,11 @@
           it.errorMsg = window._humanError ? window._humanError(e) : e.message;
         }
         group.bulkProgress.current++;
-        _renderHistory();
+        _rerenderGroupRow(historyIdx, gIdx);
       }));
     }
     group.bulkProgress = null;
-    _renderHistory();
+    _rerenderGroupRow(historyIdx, gIdx);
     if (okCount > 0) {
       if (window.hapticSuccess) window.hapticSuccess();
       if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
@@ -2098,6 +2121,11 @@
   // [2026-04-26] 멀티 디바이스 동기화 — 서버에서 최근 세션 messages 로드.
   // 폰·컴 다른 디바이스에서 같은 user 로 들어왔을 때도 같은 대화방.
   let _historyLoadedFromServer = false;
+  // [2026-04-26 A8 픽스] 챗봇 자체가 발사한 data-changed 는 server reload 트리거 X
+  // (_runAction/_runGroupRow/_runUnifiedAll → _invalidateCachesFor → dispatchEvent
+  //  → 만약 여기서 server history 를 덮어쓰면 진행 중인 action_groups / bulkProgress /
+  //  items[].status 등이 전부 날아가버려서 "고객명단 사라지는" 증상이 발생함)
+  let _selfDispatchedDataChange = false;
   async function _loadServerHistory(force = false) {
     if (_historyLoadedFromServer && !force) return;
     try {
@@ -2111,19 +2139,52 @@
         try { localStorage.setItem('assistant_session_id', String(_sessionId)); } catch (_) {}
       }
       // 서버 messages 가 비어있지 않으면 _history 덮어쓰기 (서버가 진실원천)
+      // [2026-04-26 A8 픽스] 단, 로컬에 진행중 action_groups/action 가 있는 메시지는
+      //   서버 텍스트와 매칭해서 그룹 상태(expanded, bulkProgress, items.status, errorMsg)를
+      //   보존한다. 그래야 "추가하기 누르고 잠깐 뒤에 새로고침되어도 고객명단/그룹 카드 유지".
       if (Array.isArray(data?.messages) && data.messages.length) {
-        _history = data.messages.map(m => ({
-          role: m.role || 'assistant',
-          text: m.text || '',
-          // 서버는 photos 보관 안 함 — 디바이스 간 사진 미리보기는 보내는 디바이스에서만
-        }));
+        const localByText = new Map();
+        for (const m of _history) {
+          if (!m || !m.text) continue;
+          const key = (m.role || 'assistant') + '::' + m.text;
+          if (!localByText.has(key)) localByText.set(key, m);
+        }
+        _history = data.messages.map(m => {
+          const role = m.role || 'assistant';
+          const text = m.text || '';
+          const merged = { role, text };
+          const local = localByText.get(role + '::' + text);
+          if (local) {
+            // 진행중 그룹/액션 상태 그대로 옮기기 (mutate-only 보존)
+            if (local.action_groups) merged.action_groups = local.action_groups;
+            if (local.unified_mode != null) merged.unified_mode = local.unified_mode;
+            if (local.unified_progress != null) merged.unified_progress = local.unified_progress;
+            if (local.action) merged.action = local.action;
+            if (local.action_status) merged.action_status = local.action_status;
+            if (local.action_error) merged.action_error = local.action_error;
+            if (local.action_orig_payload) merged.action_orig_payload = local.action_orig_payload;
+            if (local.edit_mode != null) merged.edit_mode = local.edit_mode;
+            if (local.duplicate_warnings) merged.duplicate_warnings = local.duplicate_warnings;
+            if (local.fallback) merged.fallback = local.fallback;
+            if (local.fallback_status) merged.fallback_status = local.fallback_status;
+            if (local.related) merged.related = local.related;
+            if (local.photos) merged.photos = local.photos;
+            if (local.thumb) merged.thumb = local.thumb;
+          }
+          return merged;
+        });
       }
       _historyLoadedFromServer = true;
       _renderHistory();
     } catch (_e) { /* offline 등 — 기존 _history 유지 */ }
   }
   // "데이터 동기화" 버튼 / focus 복귀 시 강제 새로고침
+  // [2026-04-26 A8 픽스] 자기 자신이 발사한 이벤트면 reload 안 함 (그룹 상태 보존)
   window.addEventListener('itdasy:data-changed', () => {
+    if (_selfDispatchedDataChange) {
+      _selfDispatchedDataChange = false;
+      return;
+    }
     _historyLoadedFromServer = false;
     _loadServerHistory(true);
   });

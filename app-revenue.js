@@ -119,18 +119,48 @@
       const all = _loadOffline();
       all.unshift(record);
       _saveOffline(all);
+      // [2026-04-26 A9] 오프라인도 알리기
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_revenue', optimistic: false } })); } catch (_e) { void _e; }
       return record;
     }
-    return await _api('POST', '/revenue', data);
+    // [2026-04-26 A9 픽스] 옵티미스틱 UI — 로컬 _items 에 즉시 추가 + 즉시 이벤트 발사
+    const optimisticRecord = {
+      id: '__opt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+      shop_id: localStorage.getItem('shop_id') || '',
+      ...data,
+      created_at: _now(),
+      _optimistic: true,
+    };
+    _items.unshift(optimisticRecord);
+    try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_revenue', optimistic: true } })); } catch (_e) { void _e; }
+    try {
+      const created = await _api('POST', '/revenue', data);
+      // 옵티미스틱 항목을 실 데이터로 교체
+      const idx = _items.findIndex(r => r.id === optimisticRecord.id);
+      if (idx >= 0) _items[idx] = created;
+      else _items.unshift(created);
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_revenue', optimistic: false } })); } catch (_e) { void _e; }
+      return created;
+    } catch (err) {
+      _items = _items.filter(r => r.id !== optimisticRecord.id);
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_revenue', optimistic: false, rollback: true } })); } catch (_e) { void _e; }
+      if (window.showToast) window.showToast('매출 저장 실패 — 다시 시도해주세요');
+      throw err;
+    }
   }
 
   async function remove(id) {
     if (_isOffline) {
       const all = _loadOffline().filter(r => r.id !== id);
       _saveOffline(all);
+      // [2026-04-26 A9] mutation 이벤트 누락 보충
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'delete_revenue', optimistic: false } })); } catch (_e) { void _e; }
       return { ok: true };
     }
     await _api('DELETE', '/revenue/' + id);
+    _items = _items.filter(r => r.id !== id);
+    // [2026-04-26 A9] mutation 이벤트 누락 보충
+    try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'delete_revenue', optimistic: false } })); } catch (_e) { void _e; }
     return { ok: true };
   }
 

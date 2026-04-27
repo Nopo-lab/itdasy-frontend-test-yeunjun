@@ -8,10 +8,14 @@
  */
 (function () {
   function _base() {
-    return (typeof API_BASE !== 'undefined') ? API_BASE : '';
+    // [2026-04-27] API_BASE 변수 미정의 → 빈 string → GitHub Pages 호출 404. window.API 사용.
+    if (typeof window !== 'undefined' && window.API) return window.API;
+    if (typeof API_BASE !== 'undefined') return API_BASE;
+    return '';
   }
   function _token() {
-    return (typeof getToken === 'function') ? getToken() : localStorage.getItem('itdasy_token::staging');
+    // getToken() 이 환경별 키 (::staging|::prod|::local) 자동 처리
+    return (typeof getToken === 'function') ? getToken() : '';
   }
 
   function _ensureModal() {

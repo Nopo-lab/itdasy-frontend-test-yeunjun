@@ -136,18 +136,52 @@
     `;
   }
 
+  // [2026-04-26 A1 픽스] AI 추천 카드 클릭 무반응 → 라벨 키워드 매칭으로 액션 자동 분기
+  // 백엔드가 act='chat' 으로만 보내도 라벨 텍스트로 적절한 모듈 열기.
+  // 매칭 함수가 window 에 없으면 openAssistant() 로 fallback.
+  const _ACT_MAP = [
+    [/단골|VIP|멤버십/i, 'openCustomers'],
+    [/예약|booking/i, 'openBooking'],
+    [/매출|revenue|입력/i, 'openRevenue'],
+    [/재고|inventory/i, 'openInventory'],
+    [/안부|메시지|문자/i, 'openAssistant'],
+    [/캡션|글쓰기|발행/i, 'openCaption'],
+  ];
+
   function _bind(container) {
     container.querySelectorAll('[data-brief-act]').forEach(el => {
       el.addEventListener('click', () => {
         const act = el.dataset.briefAct;
         if (window.hapticLight) window.hapticLight();
-        if (act === 'insights' && typeof window.openInsights === 'function') window.openInsights();
-        // [2026-04-24] 'birthday' 액션 제거 — 통합 카드에서 항목 자체를 노출하지 않음
-        else if (act === 'unrecorded' && typeof window.openBooking === 'function') window.openBooking();
-        else if (act === 'chat' && typeof window.openAssistant === 'function') window.openAssistant();
-        else if (typeof window[act] === 'function') {
-          try { window[act](); } catch (_e) { /* ignore */ }
+        // 명시적 분기 — 기존 동작 보존
+        if (act === 'insights' && typeof window.openInsights === 'function') {
+          window.openInsights();
+          return;
         }
+        // [2026-04-24] 'birthday' 액션 제거 — 통합 카드에서 항목 자체를 노출하지 않음
+        if (act === 'unrecorded' && typeof window.openBooking === 'function') {
+          window.openBooking();
+          return;
+        }
+        // window 에 등록된 함수면 바로 호출 (insights/unrecorded 외 명시 act)
+        if (act && act !== 'chat' && typeof window[act] === 'function') {
+          try { window[act](); } catch (_e) { /* ignore */ }
+          return;
+        }
+        // act === 'chat' 또는 매칭되는 기본 분기 없음 → 라벨 텍스트 키워드 매칭
+        let label = '';
+        try {
+          const span = el.querySelector('span');
+          label = span ? (span.textContent || '') : (el.textContent || '');
+        } catch (_e) { label = ''; }
+        for (const [re, fn] of _ACT_MAP) {
+          if (re.test(label) && typeof window[fn] === 'function') {
+            try { window[fn](); } catch (_e) { /* ignore */ }
+            return;
+          }
+        }
+        // 어느 것도 매칭되지 않으면 기존 fallback (AI 비서)
+        if (typeof window.openAssistant === 'function') window.openAssistant();
       });
     });
   }

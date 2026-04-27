@@ -169,12 +169,42 @@
       list.unshift(record);
       _saveOffline(list);
       _cache = list;
+      // [2026-04-26 A9] 오프라인도 동일하게 알리기
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_customer', optimistic: false } })); } catch (_e) { void _e; }
       return record;
     }
-    const created = await _api('POST', '/customers', data);
-    if (_cache) _cache.unshift(created);
-    _writeSWR(_cache);  // SWR 캐시 동기
-    return created;
+    // [2026-04-26 A9 픽스] 옵티미스틱 UI — POST 직전 로컬 캐시·대시보드 즉시 반영
+    const optimisticRecord = {
+      id: '__opt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+      shop_id: localStorage.getItem('shop_id') || '',
+      ...data,
+      last_visit_at: null,
+      visit_count: 0,
+      created_at: _now(),
+      deleted_at: null,
+      _optimistic: true,
+    };
+    if (_cache) _cache.unshift(optimisticRecord);
+    try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_customer', optimistic: true } })); } catch (_e) { void _e; }
+    try {
+      const created = await _api('POST', '/customers', data);
+      // 옵티미스틱 항목을 실제 데이터로 교체
+      if (_cache) {
+        const idx = _cache.findIndex(c => c.id === optimisticRecord.id);
+        if (idx >= 0) _cache[idx] = created;
+        else _cache.unshift(created);
+      }
+      _writeSWR(_cache);  // SWR 캐시 동기
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_customer', optimistic: false } })); } catch (_e) { void _e; }
+      return created;
+    } catch (err) {
+      // 실패 — 옵티미스틱 항목 제거 + 빨간 토스트
+      if (_cache) _cache = _cache.filter(c => c.id !== optimisticRecord.id);
+      _writeSWR(_cache);
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_customer', optimistic: false, rollback: true } })); } catch (_e) { void _e; }
+      if (window.showToast) window.showToast('고객 추가 실패 — 다시 시도해주세요');
+      throw err;
+    }
   }
 
   async function update(id, patch) {
@@ -185,6 +215,7 @@
       list[i] = { ...list[i], ...patch };
       _saveOffline(list);
       _cache = list;
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'update_customer', optimistic: false } })); } catch (_e) { void _e; }
       return list[i];
     }
     const updated = await _api('PATCH', '/customers/' + id, patch);
@@ -193,6 +224,8 @@
       if (i >= 0) _cache[i] = updated;
     }
     _writeSWR(_cache);  // SWR 캐시 동기
+    // [2026-04-26 A9] mutation 이벤트 누락 보충 (대시보드·시트 자동 새로고침)
+    try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'update_customer', optimistic: false } })); } catch (_e) { void _e; }
     return updated;
   }
 
@@ -201,11 +234,14 @@
       const list = _loadOffline().filter(c => c.id !== id);
       _saveOffline(list);
       _cache = list;
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'delete_customer', optimistic: false } })); } catch (_e) { void _e; }
       return { ok: true };
     }
     await _api('DELETE', '/customers/' + id);
     if (_cache) _cache = _cache.filter(c => c.id !== id);
     _writeSWR(_cache);  // SWR 캐시 동기
+    // [2026-04-26 A9] mutation 이벤트 누락 보충
+    try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'delete_customer', optimistic: false } })); } catch (_e) { void _e; }
     return { ok: true };
   }
 
