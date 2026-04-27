@@ -359,24 +359,38 @@
     // 다시 클릭(토글) 또는 stop 명시 전까지 계속 듣기.
     const _base = { value: (input && input.value) || '' };
     if (_base.value && !_base.value.endsWith(' ')) _base.value += ' ';
+    // [2026-04-27 픽스] 일부 브라우저(특히 모바일 Safari)는 e.resultIndex 를
+    // 항상 0 으로 줘서 매 이벤트마다 모든 results 를 재처리 → final 중복 누적
+    // ("지금지금지금 가는중 가는중" 현상). _processedFinalCount 로 처리한
+    // final 개수 추적해서 새 final 만 _base 에 append.
+    let _processedFinalCount = 0;
     function _newRec() {
       const r = new SR();
       r.lang = 'ko-KR';
       r.continuous = true;
       r.interimResults = true;
       r.onresult = (e) => {
-        let finalTxt = '';
-        let interimTxt = '';
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          const t = e.results[i][0].transcript;
-          if (e.results[i].isFinal) finalTxt += t;
-          else interimTxt += t;
-        }
         if (!input) return;
-        if (finalTxt) {
-          _base.value = _base.value + finalTxt;
+        let newFinalTxt = '';
+        let interimTxt = '';
+        // 전체 results 순회. 이미 처리한 final 인덱스보다 큰 것만 append.
+        for (let i = 0; i < e.results.length; i++) {
+          const res = e.results[i];
+          const t = res[0].transcript;
+          if (res.isFinal) {
+            if (i >= _processedFinalCount) {
+              newFinalTxt += t;
+              _processedFinalCount = i + 1;
+            }
+          } else {
+            // interim 은 가장 최신 것만 누적 (중복 방지: 한 이벤트 내 여러 interim 있으면 마지막 것)
+            interimTxt += t;
+          }
+        }
+        if (newFinalTxt) {
+          _base.value = _base.value + newFinalTxt;
           if (!_base.value.endsWith(' ')) _base.value += ' ';
-          input.value = _base.value;
+          input.value = _base.value + (interimTxt || '');
         } else if (interimTxt) {
           input.value = _base.value + interimTxt;
         }
@@ -406,6 +420,8 @@
           return;
         }
         try {
+          // 새 SR 인스턴스는 results 가 비어있으니 final 카운트도 리셋
+          _processedFinalCount = 0;
           const next = _newRec();
           next.start();
           _voiceRec = next;
