@@ -4,6 +4,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const read = (name) => fs.readFileSync(path.join(root, name), 'utf8');
 const exists = (name) => fs.existsSync(path.join(root, name));
+const localPath = (name) => name.split(/[?#]/, 1)[0];
 
 const errors = [];
 const fail = (msg) => errors.push(msg);
@@ -17,7 +18,7 @@ const scriptSrcs = [...index.matchAll(/<script\s+[^>]*src=["']([^"']+)["']/g)]
   .filter((src) => !/^https?:\/\//.test(src));
 
 for (const src of scriptSrcs) {
-  if (!exists(src)) fail(`index.html references missing script: ${src}`);
+  if (!exists(localPath(src))) fail(`index.html references missing script: ${src}`);
 }
 
 const staticAssetsBlock = sw.match(/const STATIC_ASSETS = \[([\s\S]*?)\];/);
