@@ -1295,8 +1295,12 @@ if ('serviceWorker' in navigator && !_isCapacitor) {
     });
   }).catch(() => {});
 
-  navigator.serviceWorker.register('sw.js', { scope: './' })
+  // [2026-04-28] updateViaCache: 'none' — sw.js 자체를 HTTP 캐시 안 함 → 매번 새 sw.js fetch
+  // 이전엔 기본값 'imports' 라 옛 sw.js 가 영구 서빙되던 버그.
+  navigator.serviceWorker.register('sw.js', { scope: './', updateViaCache: 'none' })
     .then(reg => {
+      // 페이지 진입 시마다 강제 update 시도 (sw.js fresh fetch + 새 SW 발견 시 install)
+      try { reg.update(); } catch (_) { /* ignore */ }
       const askVersion = () => {
         const ch = new MessageChannel();
         ch.port1.onmessage = (ev) => {
@@ -1312,6 +1316,8 @@ if ('serviceWorker' in navigator && !_isCapacitor) {
         });
       });
       navigator.serviceWorker.addEventListener('controllerchange', askVersion);
+      // 1시간마다 자동 update 시도 (사용자 앱 안 닫고 오래 쓰는 케이스)
+      setInterval(() => { try { reg.update(); } catch (_) { /* ignore */ } }, 60 * 60 * 1000);
     })
     .catch(err => {
       console.warn('[SW] 등록 실패:', {
