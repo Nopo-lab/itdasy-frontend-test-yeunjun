@@ -47,9 +47,15 @@
         const env = isLocal ? 'local' : (isStaging ? 'staging' : 'prod');
         const key = 'itdasy_token::' + env;
         localStorage.setItem(key, token);
-        // 혹시 모를 legacy 키에도 저장 (prod + staging 둘 다 · 안전망)
-        try { localStorage.setItem('itdasy_token::staging', token); } catch(_e) { void _e; }
-        try { localStorage.setItem('itdasy_token::prod', token); } catch(_e) { void _e; }
+        // 보안 강화 — 환경별 분기 한쪽만 저장 (cross-env 토큰 누설 방지).
+        // 혹시 남아있는 다른 환경 키는 명시적으로 삭제.
+        try {
+          if (env === 'staging') {
+            localStorage.removeItem('itdasy_token::prod');
+          } else if (env === 'prod') {
+            localStorage.removeItem('itdasy_token::staging');
+          }
+        } catch(_e) { void _e; }
         // URL 정리 (토큰이 히스토리에 남지 않도록)
         history.replaceState({}, '', window.location.pathname);
         document.getElementById('title').textContent = '✓ 로그인 완료!';

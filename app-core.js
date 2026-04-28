@@ -831,10 +831,14 @@ async function signup() {
   const password = document.getElementById('signupPassword').value;
   const referral_code = document.getElementById('signupRef').value.trim() || null;
   const agree = document.getElementById('signupAgree').checked;
+  // PIPA §22-2 — 만 14세 이상 자체 확인 체크박스 (없으면 하위호환으로 통과)
+  const ageOver14El = document.getElementById('signupAgeOver14');
+  const ageOver14 = ageOver14El ? ageOver14El.checked : true;
   const btn = document.getElementById('signupBtn');
   const errEl = document.getElementById('signupError');
   errEl.style.display = 'none';
   if (!agree) { errEl.textContent = '약관에 동의해주세요.'; errEl.style.display = 'block'; return; }
+  if (!ageOver14) { errEl.textContent = '만 14세 이상만 가입할 수 있어요.'; errEl.style.display = 'block'; return; }
   if (!name || !email || !password) { errEl.textContent = '모든 필수 항목을 입력해주세요.'; errEl.style.display = 'block'; return; }
   if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/\d/.test(password)) {
     errEl.textContent = '비밀번호는 8자 이상이고 영문+숫자를 포함해야 합니다.';
@@ -845,7 +849,7 @@ async function signup() {
     const res = await fetch(API + '/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, referral_code }),
+      body: JSON.stringify({ email, password, name, referral_code, age_over_14: ageOver14 }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || '가입 실패');
@@ -1022,22 +1026,32 @@ window.addEventListener('load', function() {
     const signupBtn2 = e.target.closest('#signupBtn');
     if (signupBtn2) {
       const a = document.getElementById('signupAgree');
+      const ageOk = document.getElementById('signupAgeOver14');
       if (!a || !a.checked) {
         const err = document.getElementById('signupError');
         if (err) { err.textContent = '약관에 동의해주세요.'; err.style.display = 'block'; }
+        return;
+      }
+      // PIPA §22-2 — 만 14세 미만 차단 (체크박스 없는 옛날 빌드는 통과)
+      if (ageOk && !ageOk.checked) {
+        const err = document.getElementById('signupError');
+        if (err) { err.textContent = '만 14세 이상만 가입할 수 있어요.'; err.style.display = 'block'; }
         return;
       }
       signup();
     }
   }, false);
 
-  // 약관 동의 시 버튼 활성화
+  // 약관·만14세 동의 시 버튼 활성화 (둘 다 체크돼야 활성화)
   document.addEventListener('change', (e) => {
-    if (e.target && e.target.id === 'signupAgree') {
+    if (e.target && (e.target.id === 'signupAgree' || e.target.id === 'signupAgeOver14')) {
+      const a = document.getElementById('signupAgree');
+      const ageOk = document.getElementById('signupAgeOver14');
+      const ok = !!(a && a.checked) && (!ageOk || ageOk.checked);
       const btn = document.getElementById('signupBtn');
       if (btn) {
-        btn.style.opacity = e.target.checked ? '1' : '0.6';
-        btn.style.pointerEvents = e.target.checked ? 'auto' : 'none';
+        btn.style.opacity = ok ? '1' : '0.6';
+        btn.style.pointerEvents = ok ? 'auto' : 'none';
       }
     }
   }, false);

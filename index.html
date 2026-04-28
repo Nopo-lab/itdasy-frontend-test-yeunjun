@@ -403,6 +403,14 @@
     </span>
   </label>
 
+  <!-- PIPA §22-2 — 만 14세 이상 자체 확인 (B2B 사장님 앱) -->
+  <label style="display:flex;align-items:flex-start;gap:8px;margin:8px 0 4px;padding:10px;background:rgba(0,0,0,0.03);border-radius:10px;cursor:pointer;font-size:12px;line-height:1.55;">
+    <input type="checkbox" id="signupAgeOver14" style="margin-top:2px;flex-shrink:0;">
+    <span>
+      <strong>만 14세 이상</strong>입니다 (필수 · 미만은 보호자 동의 필요)
+    </span>
+  </label>
+
   <div class="login-error" id="signupError"></div>
   <button class="pin-btn" id="signupBtn" style="opacity:0.6;pointer-events:none;">회원가입</button>
 
@@ -1107,6 +1115,10 @@
         <div class="insta-frame-actions">
           <button class="frame-action-btn" data-haptic="success" onclick="copyCaption()">해시태그 빼고 복사</button>
           <button class="frame-action-btn primary" data-haptic="success" onclick="copyAll()">전체 복사 📋</button>
+        </div>
+        <!-- AI 면책 고지 (의료광고법·소비자보호 — 사용자 책임 환기) -->
+        <div class="ai-disclaimer" style="font-size:10px;color:var(--text3);padding:8px 14px 12px;line-height:1.5;border-top:1px solid var(--border);text-align:center;">
+          AI 가 작성한 내용입니다. 의료·법률 정보는 전문가 확인이 필요합니다.
         </div>
       </div>
 
