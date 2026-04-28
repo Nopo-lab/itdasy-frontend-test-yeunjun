@@ -543,9 +543,25 @@
       try {
         const res = await _orig(input, init);
         try {
-          if (res && res.headers && res.headers.get && res.headers.get('X-Offline') === 'true') {
-            _showOfflineBanner(_lastSyncMs());
-            _setMutationLock(true);
+          if (res && res.headers && res.headers.get) {
+            const isOffline = res.headers.get('X-Offline') === 'true';
+            if (isOffline) {
+              _showOfflineBanner(_lastSyncMs());
+              _setMutationLock(true);
+            } else if (res.ok && navigator.onLine) {
+              // [2026-04-28 픽스] 정상 응답 (200 + X-Offline 없음) 시 배너 영구 노출 버그 해소.
+              // 백엔드 일시 502 회복 후에도 SW 캐시 X-Offline 응답 1번 봤다고 영구 잠금되던 문제.
+              const banner = document.getElementById('itdasy-offline-banner');
+              if (banner && banner.classList.contains('show')) {
+                _hideOfflineBanner();
+                _setMutationLock(false);
+                // SW 캐시 강제 갱신 — 다음 요청부터 fresh 응답
+                try {
+                  if (typeof window._clearAllSWRCache === 'function') window._clearAllSWRCache();
+                  window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'online_restore' } }));
+                } catch (_) { /* ignore */ }
+              }
+            }
           }
         } catch (_) { /* ignore */ }
         return res;
