@@ -440,12 +440,10 @@
 
     body.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-        <h2 style="font-size:20px;font-weight:700;margin:0;color:var(--text);">내샵관리</h2>
+        <!-- 본문 타이틀 제거 — 드로어 토픽바가 대체 -->
         ${_periodToggle(period)}
       </div>
       ${_heroSection(stats, prevAmount, ret, custList, briefData, period)}
-      <div class="db-sec"><h2>주요 지표</h2><span class="db-sec__hint">탭해서 상세보기</span></div>
-      ${_metricsGrid(stats, deltaPct, inventory, period)}
       <div class="db-sec"><h2>데이터 &amp; 인사이트</h2></div>
       ${_dataInsightsList(naverData)}
     `;
@@ -453,6 +451,7 @@
     _bindEvents();
   }
 
+  /* powerview:removed */
   // P3.2 — 탭 진입 시 호출
   window.initDashboardTab = async function () {
     await _loadAndRender();

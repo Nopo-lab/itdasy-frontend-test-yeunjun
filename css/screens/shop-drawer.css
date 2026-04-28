@@ -1,0 +1,242 @@
+/* ───────────────────────────────────────────────────────────
+   shop-drawer.css — 내샵관리 좌측 슬라이드 드로어
+   2026-04-28 신규. PowerView 그리드 보완용 사이드 메뉴.
+   루트 CLAUDE.md UX 룰 준수: border-radius 14px+, safe-area, lucide only.
+   ─────────────────────────────────────────────────────────── */
+
+/* 트리거 (햄버거 버튼) — tab-dashboard 헤더 좌측 */
+.dashboard-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 8px;
+  padding-left: max(16px, env(safe-area-inset-left));
+}
+.dashboard-topbar h1 {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+.drawer-trigger {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  border: none;
+  background: var(--bg2);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 120ms ease-out, background 160ms;
+}
+.drawer-trigger:active {
+  transform: scale(0.92);
+  background: var(--bg3);
+}
+.drawer-trigger .ic {
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+}
+
+/* 백드롭 */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.32);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 5500;
+}
+.drawer-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 드로어 본체 */
+.shop-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(82vw, 320px);
+  background: #fff;
+  border-top-right-radius: 22px;
+  border-bottom-right-radius: 22px;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
+  transform: translateX(-100%);
+  transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 5600;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  -webkit-overflow-scrolling: touch;
+}
+.shop-drawer.is-open {
+  transform: translateX(0);
+}
+
+/* 드로어 헤더 — 샵 정보 */
+.shop-drawer .drawer-header {
+  padding: 22px 18px 16px;
+  border-bottom: 1px solid var(--border, #f0f0f0);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.shop-drawer .shop-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.shop-drawer .shop-meta {
+  flex: 1;
+  min-width: 0;
+}
+.shop-drawer .shop-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.shop-drawer .shop-plan {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent2);
+  margin-top: 2px;
+}
+.shop-drawer .drawer-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: none;
+  background: var(--bg2);
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.shop-drawer .drawer-close .ic {
+  width: 18px;
+  height: 18px;
+}
+
+/* 메뉴 영역 */
+.shop-drawer .drawer-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 8px 24px;
+}
+.shop-drawer .drawer-group {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 14px 12px 6px;
+}
+.shop-drawer .drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 14px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms;
+  min-height: 44px; /* 시술 중 한 손 조작용 — md §5 */
+}
+.shop-drawer .drawer-item:hover,
+.shop-drawer .drawer-item:focus-visible {
+  background: var(--bg2);
+}
+.shop-drawer .drawer-item:active {
+  background: var(--bg3);
+}
+.shop-drawer .drawer-item .ic {
+  width: 20px;
+  height: 20px;
+  color: var(--accent2);
+  flex-shrink: 0;
+}
+.shop-drawer .drawer-item .lbl {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.shop-drawer .drawer-item .badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  min-width: 18px;
+  text-align: center;
+}
+.shop-drawer .drawer-item .badge.muted {
+  background: var(--bg3);
+  color: var(--text3);
+}
+.shop-drawer .drawer-item .chev {
+  width: 16px;
+  height: 16px;
+  color: var(--text3);
+  flex-shrink: 0;
+}
+
+/* 푸터 — 자동화 실패 알림 강조 */
+.shop-drawer .drawer-footer {
+  border-top: 1px solid var(--border, #f0f0f0);
+  padding: 10px 8px;
+}
+
+/* 접근성 — 스크린리더 전용 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* prefers-reduced-motion 대응 */
+@media (prefers-reduced-motion: reduce) {
+  .shop-drawer,
+  .drawer-backdrop {
+    transition-duration: 0ms;
+  }
+}
