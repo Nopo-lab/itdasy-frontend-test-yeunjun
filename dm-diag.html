@@ -19,10 +19,28 @@
 <body>
 <h1>📥 DM 자동응답 진단</h1>
 <div id="results"></div>
+<button class="btn" id="syncIdBtn" style="background:#3b82f6;">🔄 인스타 user_id 강제 동기화</button>
 <button class="btn" id="enableBtn" style="background:#059669;">⚡ DM 자동응답 ON 시키기</button>
 <button class="btn" onclick="location.reload()">다시 진단</button>
 <button class="btn" style="background:#888;" onclick="location.href='./'">잇데이로</button>
 <script>
+document.getElementById('syncIdBtn').addEventListener('click', async () => {
+  const t = localStorage.getItem('itdasy_token::staging') || localStorage.getItem('itdasy_token::prod') || localStorage.getItem('itdasy_token');
+  if (!t) { alert('토큰 없음'); return; }
+  try {
+    const res = await fetch('https://itdasy260417-staging-production.up.railway.app/instagram/sync-user-id', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + t },
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert('✅ 동기화 성공!\nIG User ID: ' + data.instagram_user_id + '\nHandle: ' + data.instagram_handle + '\n\n다시 진단 버튼 눌러서 확인하세요.');
+    } else {
+      alert('❌ 실패 ' + res.status + ':\n' + JSON.stringify(data, null, 2));
+    }
+  } catch (e) { alert('에러: ' + e.message); }
+});
+
 document.getElementById('enableBtn').addEventListener('click', async () => {
   const t = localStorage.getItem('itdasy_token::staging') || localStorage.getItem('itdasy_token::prod') || localStorage.getItem('itdasy_token');
   if (!t) { alert('토큰 없음 — 잇데이 로그인 먼저'); return; }
