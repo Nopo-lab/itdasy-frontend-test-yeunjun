@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>토큰 복사</title>
+<style>
+  body { font-family: -apple-system, sans-serif; padding: 20px; max-width: 480px; margin: 0 auto; background: #f7f7f9; }
+  h1 { font-size: 18px; color: #B8385A; }
+  textarea { width: 100%; min-height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-family: monospace; font-size: 11px; word-break: break-all; }
+  .btn { display: block; width: 100%; padding: 14px; margin-top: 10px; background: #F18091; color: #fff; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 15px; }
+  .info { padding: 10px; background: #fff; border-radius: 8px; margin: 10px 0; font-size: 13px; line-height: 1.6; }
+  .ok { color: #059669; font-weight: 700; }
+  .err { color: #dc2626; font-weight: 700; }
+</style>
+</head>
+<body>
+<h1>🔑 잇데이 토큰 복사</h1>
+<div class="info" id="info">로딩 중...</div>
+<textarea id="tok" readonly placeholder="토큰이 여기에 표시됩니다"></textarea>
+<button class="btn" id="copyBtn">📋 토큰 복사</button>
+<button class="btn" style="background:#888;" onclick="location.href='./'">잇데이로</button>
+<a class="btn" style="background:#3b82f6;text-align:center;display:block;text-decoration:none;line-height:24px;" href="https://nopo-lab.github.io/itdasy-admin/login.html">admin web 으로 가기</a>
+<script>
+const info = document.getElementById('info');
+const tok = document.getElementById('tok');
+const t = localStorage.getItem('itdasy_token::staging') || localStorage.getItem('itdasy_token::prod') || localStorage.getItem('itdasy_token');
+if (!t) {
+  info.innerHTML = '<span class="err">⚠️ 토큰 없음</span><br>잇데이 앱에 카카오 로그인 먼저 한 후 다시 이 페이지 방문하세요.';
+} else {
+  info.innerHTML = '<span class="ok">✅ 토큰 발견 (' + t.length + '자)</span><br>아래 박스 텍스트 전체 선택 + 복사 → admin web 토큰 박스에 붙여넣기.';
+  tok.value = t;
+  // 자동 selection
+  setTimeout(() => { tok.focus(); tok.select(); }, 200);
+  // payload 표시
+  try {
+    const p = JSON.parse(atob(t.split('.')[1]));
+    const exp = new Date(p.exp * 1000).toLocaleString('ko-KR');
+    info.innerHTML += '<br><br>user_id: ' + p.sub + '<br>만료: ' + exp;
+  } catch (_) {}
+}
+document.getElementById('copyBtn').addEventListener('click', async () => {
+  if (!t) { alert('토큰 없음'); return; }
+  try {
+    await navigator.clipboard.writeText(t);
+    alert('✅ 클립보드에 복사됨! admin web 토큰 박스에 붙여넣으세요.');
+  } catch (e) {
+    tok.focus(); tok.select();
+    document.execCommand('copy');
+    alert('복사 완료 (fallback)');
+  }
+});
+</script>
+</body>
+</html>
