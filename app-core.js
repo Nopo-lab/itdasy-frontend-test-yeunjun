@@ -252,7 +252,14 @@ document.getElementById('obShopNameInput').addEventListener('keydown', e => {
 
 function getToken() {
   try {
-    const t = localStorage.getItem(_TOKEN_KEY);
+    let t = localStorage.getItem(_TOKEN_KEY);
+    if (!t) {
+      const legacy = localStorage.getItem('itdasy_token');
+      if (legacy) {
+        t = legacy;
+        try { localStorage.setItem(_TOKEN_KEY, legacy); } catch (_) { /* ignore */ }
+      }
+    }
     if (!t) return null;
     try {
       const payload = JSON.parse(atob(t.split('.')[1]));
@@ -1250,7 +1257,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260427-v25';
+window.APP_BUILD = '20260428-v28';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;

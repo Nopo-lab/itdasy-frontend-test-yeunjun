@@ -501,6 +501,10 @@
     const b = document.getElementById('itdasy-offline-banner');
     if (b) b.classList.remove('show');
   }
+  function _markOnline() {
+    _hideOfflineBanner();
+    _setMutationLock(false);
+  }
 
   function _lastSyncMs() {
     try {
@@ -521,8 +525,7 @@
     _toast('오프라인 — 마지막 동기화 데이터로 보여요');
   }
   function _onOnline() {
-    _hideOfflineBanner();
-    _setMutationLock(false);
+    _markOnline();
     _toast('온라인 복구! 새로 불러올게요');
     try {
       // 캐시 클리어 + data-changed 로 모든 시트가 자동 새로고침
@@ -548,13 +551,13 @@
             if (isOffline) {
               _showOfflineBanner(_lastSyncMs());
               _setMutationLock(true);
-            } else if (res.ok && navigator.onLine) {
-              // [2026-04-28 픽스] 정상 응답 (200 + X-Offline 없음) 시 배너 영구 노출 버그 해소.
-              // 백엔드 일시 502 회복 후에도 SW 캐시 X-Offline 응답 1번 봤다고 영구 잠금되던 문제.
+            } else if (navigator.onLine) {
+              // [2026-04-28 v28] 200뿐 아니라 401/403/405/5xx도 "서버에 닿음" 신호로 본다.
+              // PWA가 502/캐시 fallback을 한 번 본 뒤 로그인 만료(401) 응답만 받아도 오프라인 배너가
+              // 계속 남던 문제를 해소한다.
               const banner = document.getElementById('itdasy-offline-banner');
               if (banner && banner.classList.contains('show')) {
-                _hideOfflineBanner();
-                _setMutationLock(false);
+                _markOnline();
                 // SW 캐시 강제 갱신 — 다음 요청부터 fresh 응답
                 try {
                   if (typeof window._clearAllSWRCache === 'function') window._clearAllSWRCache();
@@ -581,14 +584,27 @@
   // SW 가 fresh 응답 줄 거고, 진짜 오프라인이면 다음 fetch 에서 다시 잠긴다.
   document.addEventListener('DOMContentLoaded', () => {
     if (navigator.onLine) {
-      try {
-        _hideOfflineBanner();
-        _setMutationLock(false);
-      } catch (_) { /* ignore */ }
+      try { _markOnline(); } catch (_) { /* ignore */ }
     } else {
       _onOffline();
     }
   });
+  function _probeBackendOnline() {
+    if (!navigator.onLine || !window.API) return;
+    fetch(window.API + '/', { cache: 'no-store' })
+      .then(() => {
+        _markOnline();
+        try {
+          if (typeof window._clearAllSWRCache === 'function') window._clearAllSWRCache();
+        } catch (_) { /* ignore */ }
+      })
+      .catch(() => {});
+  }
+  window.addEventListener('online', _probeBackendOnline);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) _probeBackendOnline();
+  });
+  document.addEventListener('DOMContentLoaded', () => setTimeout(_probeBackendOnline, 800));
   // SW v26+ activate 메시지 받으면 즉시 reload (cache busting)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
