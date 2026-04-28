@@ -7,7 +7,7 @@
 //    - /api/, /auth/, /data-export/  → network-first (항상 최신)
 //    - app-*.js, *.css, *.html       → cache-first + 백그라운드 revalidate
 // ─────────────────────────────────────────────
-const CACHE_VERSION = '20260428-v28';
+const CACHE_VERSION = '20260428-v29-offline-banner-disabled';
 const CACHE_NAME    = `itdasy-${CACHE_VERSION}`;
 const API_CACHE_NAME = `itdasy-api-${CACHE_VERSION}`;
 
@@ -119,31 +119,14 @@ self.addEventListener('fetch', event => {
             } catch (_) { /* ignore */ }
             return fresh;
           }
-          // 5xx 등 오류 → 캐시 fallback 시도
-          const cached = await caches.match(event.request, { cacheName: API_CACHE_NAME });
-          if (cached) {
-            const headers = new Headers(cached.headers);
-            headers.set('X-Offline', 'true');
-            return new Response(await cached.clone().blob(), {
-              status: cached.status, statusText: cached.statusText, headers,
-            });
-          }
+          // [2026-04-28 v29] X-Offline 헤더 부착 제거 — 클라이언트 영구 잠금 원인.
+          // 5xx 등 오류 → fresh 응답 그대로 반환 (캐시 폴백 X). 일시 오류 시 fetch가 자체 catch.
           return fresh;
         } catch (_e) {
-          // 네트워크 실패 → 캐시 fallback (X-Offline 헤더 추가)
+          // 네트워크 진짜 실패 → 캐시 폴백 (헤더 부착 X). 클라가 navigator.onLine 으로 판단.
           const cached = await caches.match(event.request, { cacheName: API_CACHE_NAME });
-          if (cached) {
-            const headers = new Headers(cached.headers);
-            headers.set('X-Offline', 'true');
-            return new Response(await cached.clone().blob(), {
-              status: cached.status, statusText: cached.statusText, headers,
-            });
-          }
-          // 캐시도 없으면 빈 items 응답 (프론트가 깨지지 않도록)
-          return new Response(JSON.stringify({ items: [], _offline: true }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json', 'X-Offline': 'true' },
-          });
+          if (cached) return cached;
+          throw _e;  // 클라가 catch + onLine 체크
         }
       })());
       return;

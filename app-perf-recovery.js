@@ -536,48 +536,12 @@
   window.addEventListener('offline', _onOffline);
   window.addEventListener('online', _onOnline);
 
-  // 3-A 클라이언트측 보강: fetch 응답에 X-Offline 가 있으면 banner 표시
-  // (SW 가 cache fallback 했을 때 우리가 인지)
-  (function _hookOfflineHeaderDetection() {
-    if (window._offlineHeaderHooked) return;
-    window._offlineHeaderHooked = true;
-    const _orig = window.fetch.bind(window);
-    window.fetch = async function (input, init) {
-      try {
-        const res = await _orig(input, init);
-        try {
-          if (res && res.headers && res.headers.get) {
-            const isOffline = res.headers.get('X-Offline') === 'true';
-            if (isOffline) {
-              _showOfflineBanner(_lastSyncMs());
-              _setMutationLock(true);
-            } else if (navigator.onLine) {
-              // [2026-04-28 v28] 200뿐 아니라 401/403/405/5xx도 "서버에 닿음" 신호로 본다.
-              // PWA가 502/캐시 fallback을 한 번 본 뒤 로그인 만료(401) 응답만 받아도 오프라인 배너가
-              // 계속 남던 문제를 해소한다.
-              const banner = document.getElementById('itdasy-offline-banner');
-              if (banner && banner.classList.contains('show')) {
-                _markOnline();
-                // SW 캐시 강제 갱신 — 다음 요청부터 fresh 응답
-                try {
-                  if (typeof window._clearAllSWRCache === 'function') window._clearAllSWRCache();
-                  window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'online_restore' } }));
-                } catch (_) { /* ignore */ }
-              }
-            }
-          }
-        } catch (_) { /* ignore */ }
-        return res;
-      } catch (e) {
-        // 네트워크 실패 = 오프라인 신호
-        if (!navigator.onLine) {
-          _showOfflineBanner(_lastSyncMs());
-          _setMutationLock(true);
-        }
-        throw e;
-      }
-    };
-  })();
+  // [2026-04-28 v29 — X-Offline 검사 자체 비활성화]
+  // 영구 오프라인 잠금 사용자 보고 다수 → X-Offline 헤더 검사 로직 전면 제거.
+  // 오프라인 판단은 navigator.onLine 만 사용 (online/offline 이벤트 + DOMContentLoaded).
+  // SW 가 stale cache 응답 반환해도 배너 안 뜸 — UX 약간 stale 데이터 유지하지만
+  // 영구 잠금보다 훨씬 나음.
+  // fetch 자체 실패 (네트워크 끊김) 는 navigator.onLine 가 자동 감지.
 
   // [2026-04-28 nuclear 픽스] 페이지 로드 시 navigator.onLine 가 true 면
   // 무조건 오프라인 상태 reset. 이전 X-Offline 캐시·잠금 흔적 청소.
