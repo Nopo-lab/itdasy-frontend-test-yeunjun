@@ -36,12 +36,29 @@
         <div class="ss-title">카카오 알림톡</div>
       </header>
       <div class="ss-body">
+        <div class="ss-card" style="background:#FFF7E6;border:1px solid #FFD666;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <svg class="ic" aria-hidden="true" style="width:18px;height:18px;color:#B45309;"><use href="#ic-clock"/></svg>
+            <div class="ss-card-tt" style="margin:0;color:#8a5d00;">준비 중 · 출시 예정 안내</div>
+          </div>
+          <div class="ss-card-sub" style="color:#8a5d00;">
+            카카오 비즈니스 채널 연결은 <strong>Phase 2 (예상 2026-05)</strong> 에 활성화돼요.<br>
+            지금은 자동 발송 템플릿만 미리 살펴보실 수 있어요.
+          </div>
+        </div>
+
         <div class="ss-card">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
             <div class="ss-card-tt" style="margin:0;">연결 상태</div>
-            <span class="ss-status ss-status--off"><span class="dot"></span>미연결</span>
+            <span class="ss-status ss-status--off"><span class="dot"></span>미연결 · 준비 중</span>
           </div>
           <div class="ss-card-sub">알림톡을 보내려면 카카오 비즈니스 채널을 먼저 연결해야 해요. 사업자등록증·채널 ID 가 필요해요.</div>
+          <ol style="margin:10px 0 12px 18px;padding:0;font-size:12px;color:var(--text2,#555);line-height:1.7;">
+            <li>카카오 채널 만들기 (사업자등록증 필요)</li>
+            <li>잇데이에 채널 ID·발신번호 등록</li>
+            <li>알림톡 템플릿 카카오 검수 통과 (영업일 1-2일)</li>
+            <li>예약 흐름과 자동 연결 → 발송 시작</li>
+          </ol>
           <button type="button" class="ss-cta" data-kk-connect>카카오 채널 연결하기</button>
           <button type="button" class="ss-cta-secondary" data-kk-help>연결 가이드 보기</button>
         </div>

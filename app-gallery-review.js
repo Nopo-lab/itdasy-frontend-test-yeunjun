@@ -63,20 +63,34 @@ function _renderReviewPanel() {
   const body = document.getElementById('reviewPanelBody');
   if (!body) return;
 
+  // 사진 선택 여부 — 미선택 시 가이드 노출 (선택 안 돼 보고 픽스)
+  const _slotForGuide = (typeof _slots !== 'undefined' && _slots.find) ? _slots.find(s => s.id === _popupSlotId) : null;
+  const _selectedCount = (typeof _popupSelIds !== 'undefined' && _popupSelIds.size) ? _popupSelIds.size : 0;
+  const _hasPhotos = !!(_slotForGuide && _slotForGuide.photos && _slotForGuide.photos.length);
+  const guideHtml = (_reviewStickerCache.length && _hasPhotos && _selectedCount === 0) ? `
+    <div class="rv-guide" style="margin:8px 0 12px;padding:10px 12px;background:#FFF7E6;border:1px solid #FFD666;border-radius:10px;font-size:12px;color:#8a5d00;line-height:1.5;">
+      <strong>먼저 위쪽 사진을 1장 이상 선택해 주세요.</strong><br>
+      그 다음 아래 리뷰 카드를 탭하면 사진에 붙여 드려요.
+    </div>` : '';
+
   const stickerHtml = _reviewStickerCache.length ? `
     <div class="rv-section">
-      <div class="rv-section-label"><svg class="rv-section-ic" aria-hidden="true"><use href="#ic-image"/></svg> 업로드된 리뷰 (탭해서 선택)</div>
+      <div class="rv-section-label"><svg class="rv-section-ic" aria-hidden="true"><use href="#ic-image"/></svg> 업로드된 리뷰 (카드 탭 = 전체 사용)</div>
+      ${guideHtml}
       <div class="rv-sticker-grid">
         ${_reviewStickerCache.map((s, i) => `
-          <div class="rv-sticker-card">
+          <div class="rv-sticker-card" data-rv-card="${i}" role="button" tabindex="0"
+               style="cursor:pointer;${_selectedCount === 0 ? 'opacity:0.55;' : ''}"
+               onclick="selectReviewSticker(${i})"
+               onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectReviewSticker(${i});}">
             <img src="${s}" class="rv-sticker-img">
             <div class="rv-card-meta">
               <div class="rv-stars">${'<svg class="rv-star" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-star"/></svg>'.repeat(5)}</div>
               <span class="rv-card-date">방금</span>
             </div>
-            <div class="rv-sticker-actions">
-              <button class="btn-secondary" onclick="selectReviewSticker(${i})">전체 사용</button>
-              <button class="btn-primary" onclick="selectReviewTextOnly(${i})">텍스트만</button>
+            <div class="rv-sticker-actions" onclick="event.stopPropagation()">
+              <button class="btn-secondary" onclick="event.stopPropagation();selectReviewSticker(${i})">전체 사용</button>
+              <button class="btn-primary" onclick="event.stopPropagation();selectReviewTextOnly(${i})">텍스트만</button>
             </div>
           </div>
         `).join('')}

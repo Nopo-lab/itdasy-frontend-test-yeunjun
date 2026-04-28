@@ -66,6 +66,44 @@
           <div class="ss-card-sub">2인 이상 운영 모드에서 직원 등록 가능. 백엔드 연결 후 활성화.</div>
           <button type="button" class="ss-cta-secondary" disabled>직원 추가</button>
         </div>
+
+        <div class="ss-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+            <div class="ss-card-tt" style="margin:0;">외부 심사 진행 상태</div>
+          </div>
+          <div class="ss-card-sub" style="margin-bottom:10px;">제3자 플랫폼 검증 현황이에요. 통과 즉시 자동 활성화돼요.</div>
+
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bg2,#f0f0f0);">
+            <svg class="ic" aria-hidden="true" style="width:18px;height:18px;color:#B45309;"><use href="#ic-clock"/></svg>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:700;color:var(--text,#222);">Meta 비즈니스 검증</div>
+              <div style="font-size:11px;color:var(--text3,#999);margin-top:2px;">DM 자동응답·인스타 게시 · 예상 1~2주</div>
+            </div>
+            <span style="font-size:11px;font-weight:800;color:#B45309;background:#FFF7E6;padding:4px 10px;border-radius:999px;">심사 중</span>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bg2,#f0f0f0);">
+            <svg class="ic" aria-hidden="true" style="width:18px;height:18px;color:#B45309;"><use href="#ic-clock"/></svg>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:700;color:var(--text,#222);">Apple App Store 심사</div>
+              <div style="font-size:11px;color:var(--text3,#999);margin-top:2px;">iOS 앱 출시 · 예상 1~2주</div>
+            </div>
+            <span style="font-size:11px;font-weight:800;color:#B45309;background:#FFF7E6;padding:4px 10px;border-radius:999px;">심사 중</span>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 0;">
+            <svg class="ic" aria-hidden="true" style="width:18px;height:18px;color:#B45309;"><use href="#ic-clock"/></svg>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:700;color:var(--text,#222);">Google Play 심사</div>
+              <div style="font-size:11px;color:var(--text3,#999);margin-top:2px;">Android 앱 출시 · 예상 3~7일</div>
+            </div>
+            <span style="font-size:11px;font-weight:800;color:#B45309;background:#FFF7E6;padding:4px 10px;border-radius:999px;">심사 중</span>
+          </div>
+
+          <div style="margin-top:10px;padding:10px;background:#F6F8FA;border-radius:10px;font-size:11px;color:var(--text2,#555);line-height:1.5;">
+            심사 진행 중에는 일부 외부 연동(DM 자동응답·카카오 알림톡)이 제한돼요. 통과되면 알림으로 알려 드릴게요.
+          </div>
+        </div>
       </div>
     `;
     document.body.appendChild(el);

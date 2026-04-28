@@ -29,12 +29,28 @@
         <div class="ss-title">네이버 예약 연동</div>
       </header>
       <div class="ss-body">
+        <div class="ss-card" style="background:#FFF7E6;border:1px solid #FFD666;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <svg class="ic" aria-hidden="true" style="width:18px;height:18px;color:#B45309;"><use href="#ic-clock"/></svg>
+            <div class="ss-card-tt" style="margin:0;color:#8a5d00;">준비 중 · Phase 1 출시 예정</div>
+          </div>
+          <div class="ss-card-sub" style="color:#8a5d00;">
+            지금은 사업장 ID 만 미리 등록해 두실 수 있어요. 실제 양방향 동기화는 <strong>Phase 1 (예상 2026-05)</strong> 에 자동 활성화돼요.
+          </div>
+        </div>
+
         <div class="ss-card">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
             <div class="ss-card-tt" style="margin:0;">연결 상태</div>
             <span class="ss-status ss-status--off" id="nvStatus"><span class="dot"></span>미연결</span>
           </div>
           <div class="ss-card-sub">네이버 스마트플레이스 예약을 잇데이 캘린더와 실시간으로 양방향 동기화해요. 예약 충돌·중복을 자동으로 막아드려요.</div>
+          <ol style="margin:10px 0 0 18px;padding:0;font-size:12px;color:var(--text2,#555);line-height:1.7;">
+            <li>네이버 비즈니스에 스마트플레이스 등록</li>
+            <li>아래 칸에 사업장 ID 입력 → "연결하기"</li>
+            <li>네이버 인증 동의 (Phase 1 활성화 시)</li>
+            <li>예약이 자동으로 양쪽에 동기화돼요</li>
+          </ol>
         </div>
 
         <div class="ss-card">
