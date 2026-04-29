@@ -19,6 +19,8 @@
 <body>
 <h1>📥 DM 자동응답 진단</h1>
 <div id="results"></div>
+<button class="btn" id="subscribeBtn" style="background:#dc2626;">🔔 IG 계정 webhook 구독 활성화 (제일 먼저!)</button>
+<div id="subscribeResult" style="margin-top:8px;"></div>
 <button class="btn" id="recentBtn" style="background:#7c3aed;">🔍 최근 webhook 이벤트 보기</button>
 <div id="recentEvents" style="margin-top:8px;"></div>
 <button class="btn" id="syncIdBtn" style="background:#3b82f6;">🔄 인스타 user_id 강제 동기화</button>
@@ -26,6 +28,25 @@
 <button class="btn" onclick="location.reload()">다시 진단</button>
 <button class="btn" style="background:#888;" onclick="location.href='./'">잇데이로</button>
 <script>
+document.getElementById('subscribeBtn').addEventListener('click', async () => {
+  const t = localStorage.getItem('itdasy_token::staging') || localStorage.getItem('itdasy_token::prod') || localStorage.getItem('itdasy_token');
+  if (!t) { alert('토큰 없음'); return; }
+  const box = document.getElementById('subscribeResult');
+  box.innerHTML = '<pre>구독 활성화 중…</pre>';
+  try {
+    const res = await fetch('https://itdasy260417-staging-production.up.railway.app/instagram/dm-reply/subscribe-app', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + t },
+    });
+    const data = await res.json();
+    if (data.ok) {
+      box.innerHTML = '<pre style="background:#d1fae5;padding:8px;border-radius:6px;font-size:11px;color:#065f46;">✅ webhook 구독 활성화 성공!\n\n' + JSON.stringify(data, null, 2) + '\n\n→ 외부 폰에서 DM 보내고 30초 후 "🔍 최근 webhook 이벤트 보기" 클릭</pre>';
+    } else {
+      box.innerHTML = '<pre style="background:#fee2e2;padding:8px;border-radius:6px;font-size:11px;color:#991b1b;">❌ ' + (data.hint || data.error_message || '실패') + '\n\n' + JSON.stringify(data, null, 2) + '</pre>';
+    }
+  } catch (e) { box.innerHTML = '<pre style="color:#dc2626;">' + e.message + '</pre>'; }
+});
+
 document.getElementById('recentBtn').addEventListener('click', async () => {
   const t = localStorage.getItem('itdasy_token::staging') || localStorage.getItem('itdasy_token::prod') || localStorage.getItem('itdasy_token');
   if (!t) { alert('토큰 없음'); return; }
@@ -168,7 +189,25 @@ function pre(label, value, cls) {
     }
   } catch (e) { row('Diagnose 에러', e.message, 'err'); }
 
-  // 5. ShopSettings 조회 (인스타 user_id 확인)
+  // [2026-04-29] 6. 최근 webhook 이벤트 (자동 진단에 통합) — 사용자가 외부 DM 보낸 후
+  // 잇데이 백엔드에 도착했는지 즉시 표시. 0건이면 Meta 측 문제 (fields 구독·페북 연결·App Mode).
+  try {
+    const res = await fetch(API + '/instagram/dm-reply/recent-events?limit=20', {
+      headers: { 'Authorization': 'Bearer ' + token },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (!data.events || !data.events.length) {
+        pre('⚠️ webhook 이벤트 (최근 30분)', '0건 — Meta 가 메시지를 한 번도 안 보냄.\n\n원인 후보:\n1. Meta App Mode 가 Development → Tester 미등록 외부 계정은 발사 X\n2. 페북 페이지가 Meta App 의 Connected Page 로 등록 안 됨\n3. fields 구독했어도 messages 가 아닌 다른 필드 (comments 등)\n4. webhook URL 이 페북 페이지 webhook 이 아니라 Instagram webhook 인지 (다른 메뉴)', 'err');
+      } else {
+        pre('✅ webhook 이벤트 (최근 30분 buffer)', JSON.stringify(data.events, null, 2), 'ok');
+      }
+    } else {
+      row('webhook 이벤트', '404 (백엔드 배포 대기 — 1~2분 후 새로고침)', 'warn');
+    }
+  } catch (e) { row('webhook 이벤트 에러', e.message, 'err'); }
+
+  // 7. ShopSettings 조회 (인스타 user_id 확인)
   // [2026-04-29] has_token 은 GET /shop/settings 가 보안상 token 자체를 노출 안 해서
   // 항상 false 로 표시됐던 오해 신호. 실제 토큰 유무는 dm-reply/status 의
   // instagram_connected + expires_at 으로 판단해야 함.
