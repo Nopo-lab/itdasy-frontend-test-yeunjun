@@ -189,6 +189,24 @@ function pre(label, value, cls) {
     }
   } catch (e) { row('Diagnose 에러', e.message, 'err'); }
 
+  // [2026-04-29] 5.5 IG 계정의 subscribed_apps 직접 조회 (webhook 진짜 활성인지)
+  try {
+    const res = await fetch(API + '/instagram/dm-reply/subscriptions', {
+      headers: { 'Authorization': 'Bearer ' + token },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const subs = data?.data?.data || [];
+      const myFields = subs[0]?.subscribed_fields || [];
+      const hasMessages = myFields.includes('messages');
+      pre(
+        hasMessages ? '✅ IG subscribed_apps' : '❌ IG subscribed_apps (messages 미포함)',
+        JSON.stringify(data, null, 2),
+        hasMessages ? 'ok' : 'err'
+      );
+    }
+  } catch (e) { row('subscriptions 에러', e.message, 'err'); }
+
   // [2026-04-29] 6. 최근 webhook 이벤트 (자동 진단에 통합) — 사용자가 외부 DM 보낸 후
   // 잇데이 백엔드에 도착했는지 즉시 표시. 0건이면 Meta 측 문제 (fields 구독·페북 연결·App Mode).
   try {
