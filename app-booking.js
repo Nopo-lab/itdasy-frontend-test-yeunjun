@@ -215,6 +215,8 @@
       service_name: payload.service_name ? String(payload.service_name).slice(0, 50) : null,
       memo: payload.memo ? String(payload.memo).slice(0, 200) : null,
       status: 'confirmed',
+      // [2026-04-29 W5] 직원 지정 (선택)
+      staff_id: payload.staff_id ? Number(payload.staff_id) : null,
     };
     if (_isOffline) {
       const record = {
@@ -442,6 +444,8 @@
       <!-- E3 — 선택 고객의 알러지·주의 메모 자동 경고 배너 (CustomerMemo.fetchWarnings) -->
       <div id="bfCustomerWarn" style="margin-bottom:12px;"></div>
       <div class="dt-field-row"><label class="dt-field-lbl">서비스</label><input id="bfService" name="bfService" list="bfServiceDatalist" class="dt-field" value="${_esc(existing?.service_name||'')}" placeholder="속눈썹 풀세트" maxlength="50" autocomplete="off" /><datalist id="bfServiceDatalist"></datalist></div>
+      <!-- [2026-04-29 W5] 직원 선택 — Pro/Premium 등록한 직원 있을 때만 표시 -->
+      <div class="dt-field-row" id="bfStaffRow" style="display:none;"><label class="dt-field-lbl">담당</label><select id="bfStaff" name="bfStaff" class="dt-field"></select></div>
       <div class="dt-field-row"><label class="dt-field-lbl">메모</label><textarea id="bfMemo" name="bfMemo" class="dt-field" rows="2" maxlength="200">${_esc(existing?.memo||'')}</textarea></div>
       <div id="bfConflict" class="dt-conflict">⚠️ 이 시간에 이미 예약이 있어요</div>
       <div style="display:flex;gap:8px;margin-bottom:8px;">
@@ -469,6 +473,23 @@
       ` : ''}
       </div>
     `;
+
+    // [2026-04-29 W5] 직원 dropdown 채우기 — Pro/Premium 사용자가 직원 등록한 경우
+    (async () => {
+      try {
+        const sel = grid.querySelector('#bfStaff');
+        const row = grid.querySelector('#bfStaffRow');
+        if (!sel || !row || !window.StaffUI || !window.StaffUI.list) return;
+        const data = await window.StaffUI.list();
+        const items = (data && data.items) || [];
+        if (!items.length) return;  // 직원 없으면 row 숨김 유지
+        const cur = existing?.staff_id || '';
+        sel.innerHTML = '<option value="">미지정</option>' + items.map(s =>
+          `<option value="${s.id}" ${cur === s.id ? 'selected' : ''}>${(s.name || '').replace(/[<>&"]/g,'')}${s.role ? ' · ' + s.role.replace(/[<>&"]/g,'') : ''}</option>`
+        ).join('');
+        row.style.display = '';
+      } catch (_) { /* ignore */ }
+    })();
 
     // 자주 쓴 시술 datalist 채우기 (ServiceTemplate + 최근 매출) — Promise.all 병렬 fetch
     (async () => {
@@ -562,6 +583,7 @@
       const e = grid.querySelector('#bfEnd').value;
       if (!d || !s || !e) { if (window.showToast) window.showToast('날짜·시간을 입력해 주세요'); return; }
       if (s >= e) { if (window.showToast) window.showToast('종료 시간이 시작보다 늦어야 해요'); return; }
+      const staffSel = grid.querySelector('#bfStaff');
       const payload = {
         starts_at: new Date(d + 'T' + s + ':00').toISOString(),
         ends_at: new Date(d + 'T' + e + ':00').toISOString(),
@@ -569,6 +591,8 @@
         customer_name: grid.querySelector('#bfCustomerName').value.trim() || null,
         service_name: grid.querySelector('#bfService').value.trim() || null,
         memo: grid.querySelector('#bfMemo').value.trim() || null,
+        // [2026-04-29 W5] 직원 지정
+        staff_id: staffSel && staffSel.value ? Number(staffSel.value) : null,
       };
       try {
         if (existing) await update(existing.id, payload);
