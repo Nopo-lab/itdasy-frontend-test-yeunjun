@@ -706,6 +706,15 @@ ${isEdit ? `
     _bindFormExtras(body, existing);
     _bindFormSave(body, existing, date);
     if (existing) _bindFormActions(body, existing, date);
+    // [2026-04-29 A3] 빈 슬롯 클릭 시 (시간 이미 prefill) → 고객 picker 자동 오픈
+    // 탭→탭→탭 "딸깍" 흐름: 빈 슬롯 → (자동) 고객 → 시술 → 저장
+    // 단, 사장님이 '고객 미지정' 으로 빠른 등록하고 싶을 수도 있으니 300ms 후 살짝 지연.
+    if (!existing && pendS) {
+      setTimeout(() => {
+        const pickBtn = body.querySelector('#bfCustPick');
+        if (pickBtn && document.body.contains(pickBtn)) pickBtn.click();
+      }, 300);
+    }
   }
 
   // === 뷰 토글 ===
