@@ -640,6 +640,13 @@
       <span class="hint" style="flex-basis:100%;margin-left:28px;font-size:11px;color:var(--text3);font-weight:400;margin-top:2px;">30일 내 만료 고객 + 충전 안내 1탭</span>
     </button>
 
+    <!-- [2026-04-30] 가격표 사진 일괄 등록 — 챗봇 자동 가격 매칭 활성화 -->
+    <button class="sheet-row" data-haptic="light" onclick="closeSettings(); window.openPricelistUpload && window.openPricelistUpload();" style="flex-wrap:wrap;">
+      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0;margin-right:10px;"><use href="#ic-camera"/></svg>
+      <span>📋 가격표 사진 → 자동 등록</span>
+      <span class="hint" style="flex-basis:100%;margin-left:28px;font-size:11px;color:var(--text3);font-weight:400;margin-top:2px;">사진 1장 → AI 가 시술·가격 인식 → 챗봇 자동 합산 활성</span>
+    </button>
+
     <div class="sheet-sep"></div>
     <div style="padding:6px 20px 8px;font-size:11px;font-weight:800;color:var(--text3);letter-spacing:1.5px;">앱 설정</div>
     <button class="sheet-row" onclick="toggleHapticSetting(); updateHapticToggleLabel();">
@@ -1725,6 +1732,8 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-customer-dashboard.js"></script>
 <!-- [2026-04-29 W5] 회원권 / 정기권 UI — Premium 차별화 -->
 <script src="app-membership.js" defer></script>
+<!-- [2026-04-30] 가격표 사진 업로드 → ServiceTemplate 일괄 등록 -->
+<script src="app-pricelist.js" defer></script>
 <!-- [2026-04-29 W5] 직원 관리 — 미용실/대형샵 다중 직원 -->
 <script src="app-staff.js" defer></script>
 <!-- E3 (2026-04-26) — 검색 가능 AI 고객 메모. 알러지 자동 경고 + 전체 검색. -->

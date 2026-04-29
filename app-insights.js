@@ -122,6 +122,40 @@
     `;
   }
 
+  // [2026-04-30] 8주 sparkline SVG — predicted 는 점선·하이라이트
+  function _sparklineSVG(history, predicted) {
+    if (!history || !history.length) return '';
+    const W = 220, H = 56, P = 4;
+    const allValues = history.map(h => h.amount).concat(predicted ? [predicted] : []);
+    const maxV = Math.max(...allValues, 1);
+    const stepX = (W - P * 2) / Math.max(history.length - 1 + (predicted ? 1 : 0), 1);
+    const ptY = (v) => H - P - (v / maxV) * (H - P * 2);
+    const points = history.map((h, i) => `${P + i * stepX},${ptY(h.amount)}`);
+    const pathD = 'M ' + points.join(' L ');
+    const lastIdx = history.length - 1;
+    const lastPt = `${P + lastIdx * stepX},${ptY(history[lastIdx].amount)}`;
+    let predDot = '', predLine = '';
+    if (predicted != null) {
+      const px = P + (lastIdx + 1) * stepX;
+      const py = ptY(predicted);
+      predLine = `<line x1="${P + lastIdx * stepX}" y1="${ptY(history[lastIdx].amount)}" x2="${px}" y2="${py}" stroke="#F18091" stroke-width="2" stroke-dasharray="3 3" />`;
+      predDot = `<circle cx="${px}" cy="${py}" r="4" fill="#F18091" stroke="#fff" stroke-width="2" />`;
+    }
+    return `
+      <svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="display:block;">
+        <defs><linearGradient id="rfFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#F18091" stop-opacity="0.25"/>
+          <stop offset="100%" stop-color="#F18091" stop-opacity="0"/>
+        </linearGradient></defs>
+        <path d="${pathD} L ${P + lastIdx * stepX},${H - P} L ${P},${H - P} Z" fill="url(#rfFill)" />
+        <path d="${pathD}" fill="none" stroke="#F18091" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        ${predLine}
+        <circle cx="${lastPt.split(',')[0]}" cy="${lastPt.split(',')[1]}" r="3" fill="#F18091" />
+        ${predDot}
+      </svg>
+    `;
+  }
+
   function _forecastCard(data) {
     if (!data?.has_data) {
       return `
@@ -131,23 +165,33 @@
             <strong style="font-size:14px;">이번 주 매출 예상</strong>
           </div>
           <div style="font-size:12px;color:#888;">${_esc(data?.action || '데이터가 더 필요해요')}</div>
+          ${data?.history && data.history.some(h => h.amount > 0) ? `<div style="margin-top:10px;">${_sparklineSVG(data.history, null)}</div>` : ''}
         </div>`;
     }
     const up = data.delta_pct >= 0;
     const deltaColor = data.delta_pct >= 5 ? '#388e3c' : data.delta_pct <= -5 ? '#dc3545' : '#666';
     const arrow = data.delta_pct > 5 ? '↗' : data.delta_pct < -5 ? '↘' : '→';
+    const conf = data.confidence || 'low';
+    const confLabel = { high: '높음', medium: '보통', low: '낮음' }[conf] || '';
+    const confColor = { high: '#10B981', medium: '#F59E0B', low: '#94A3B8' }[conf] || '#94A3B8';
     return `
       <div style="padding:14px;background:linear-gradient(135deg,rgba(241,128,145,0.08),rgba(241,128,145,0.02));border-radius:12px;margin-bottom:12px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
           <span style="font-size:18px;">📈</span>
           <strong style="font-size:14px;">이번 주 매출 예상</strong>
+          <span style="margin-left:auto;font-size:10px;font-weight:700;color:${confColor};background:${confColor}20;padding:2px 7px;border-radius:99px;">신뢰도 ${confLabel}</span>
         </div>
-        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;">
-          <strong style="font-size:24px;color:var(--accent,#F18091);">${_formatKRW(data.predicted_week)}</strong>
-          <span style="font-size:12px;color:${deltaColor};font-weight:700;">${arrow} ${up ? '+' : ''}${data.delta_pct}%</span>
-          <span style="font-size:11px;color:#888;margin-left:auto;">지난주 ${_formatKRW(data.current_week)}</span>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;">
+          <strong style="font-size:26px;color:var(--accent,#F18091);font-variant-numeric:tabular-nums;">${_formatKRW(data.predicted_week)}</strong>
+          <span style="font-size:13px;color:${deltaColor};font-weight:700;">${arrow} ${up ? '+' : ''}${data.delta_pct}%</span>
         </div>
-        <div style="font-size:12px;color:#555;line-height:1.5;padding:8px 10px;background:#fff;border-radius:8px;margin-top:8px;">
+        <div style="margin-bottom:8px;">${_sparklineSVG(data.history || [], data.predicted_week)}</div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:#999;margin-bottom:8px;">
+          <span>8주 전</span>
+          <span>이번 주 누적 ${_formatKRW(data.current_week)}</span>
+          <span style="color:#F18091;font-weight:700;">예측</span>
+        </div>
+        <div style="font-size:12px;color:#555;line-height:1.5;padding:8px 10px;background:#fff;border-radius:8px;">
           💡 ${_esc(data.action)}
         </div>
       </div>

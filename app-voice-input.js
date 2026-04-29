@@ -54,6 +54,92 @@
     if (cur < 40) input.style.paddingRight = '40px';
   }
 
+  // [2026-04-30] 음성 인식 후처리 — 정확도 개선
+  // 한국어 숫자 → 아라비아 숫자 + 시간 표현 정규화 + 고객/시술 fuzzy 매칭
+  const _KOR_NUM = {
+    '영': 0, '공': 0, '제로': 0,
+    '한': 1, '하나': 1, '일': 1,
+    '두': 2, '둘': 2, '이': 2,
+    '세': 3, '셋': 3, '삼': 3,
+    '네': 4, '넷': 4, '사': 4,
+    '다섯': 5, '오': 5,
+    '여섯': 6, '육': 6,
+    '일곱': 7, '칠': 7,
+    '여덟': 8, '팔': 8,
+    '아홉': 9, '구': 9,
+    '열': 10, '십': 10,
+  };
+  function _normalizeKoreanNumbers(s) {
+    if (!s) return s;
+    let out = s;
+    // "오만원" / "오만" / "다섯만원" → 50000원
+    out = out.replace(/(?:^|\s)([영공한두세네다섯여섯일곱여덟아홉열일이삼사오육칠팔구십백천]+)\s*만\s*원?/g, (m, num) => {
+      const n = _KOR_NUM[num];
+      if (n != null) return ` ${n * 10000}원`;
+      // "이십" / "삼십" 같은 합성어
+      const compound = num.match(/^([이삼사오육칠팔구])십$/);
+      if (compound) return ` ${_KOR_NUM[compound[1]] * 100000}원`;
+      return m;
+    });
+    // "오천원" / "다섯천원" → 5000원
+    out = out.replace(/(?:^|\s)([영공한두세네다섯여섯일곱여덟아홉열]+)\s*천\s*원?/g, (m, num) => {
+      const n = _KOR_NUM[num];
+      return n != null ? ` ${n * 1000}원` : m;
+    });
+    // "두시" / "오후 두시" / "내일 두시" → "14시"
+    out = out.replace(/(?:^|\s)(?:오후\s*)?([한두세네다섯여섯일곱여덟아홉열]+)\s*시(?!간)/g, (m, num) => {
+      const n = _KOR_NUM[num];
+      if (n == null) return m;
+      // 오후가 앞에 있으면 +12
+      const isPM = /오후\s*[한두세네다섯여섯일곱여덟아홉열]+\s*시/.test(m);
+      const hour = isPM ? n + 12 : n;
+      return ` ${hour}시`;
+    });
+    // "두시간" → "2시간"
+    out = out.replace(/([한두세네다섯여섯일곱여덟아홉열])\s*시간/g, (m, num) => {
+      const n = _KOR_NUM[num];
+      return n != null ? `${n}시간` : m;
+    });
+    return out.replace(/\s+/g, ' ').trim();
+  }
+
+  function _fuzzyMatchName(transcript) {
+    // 고객 캐시 매칭 — "ㄴㅏㄹㄴ서연" / "김서엽" → "김서연"
+    const cust = (window.Customer?._cache) || (window._customerCache) || [];
+    if (!cust.length || !transcript) return transcript;
+    let out = transcript;
+    // 2~5자 한글 토큰 추출
+    const tokens = transcript.match(/[가-힣]{2,5}/g) || [];
+    for (const tok of tokens) {
+      // 정확 매칭 우선
+      const exact = cust.find(c => c.name === tok);
+      if (exact) continue;
+      // 1글자 차이 (편집 거리 1) 매칭
+      const fuzzy = cust.find(c => {
+        if (!c.name || Math.abs(c.name.length - tok.length) > 1) return false;
+        if (c.name.length !== tok.length) return false;
+        let diff = 0;
+        for (let i = 0; i < c.name.length; i++) {
+          if (c.name[i] !== tok[i]) diff++;
+          if (diff > 1) return false;
+        }
+        return diff === 1;
+      });
+      if (fuzzy) {
+        out = out.split(tok).join(fuzzy.name);
+      }
+    }
+    return out;
+  }
+
+  function _postProcess(transcript) {
+    if (!transcript) return transcript;
+    let out = transcript;
+    out = _normalizeKoreanNumbers(out);
+    out = _fuzzyMatchName(out);
+    return out;
+  }
+
   function _toggle(input, btn) {
     if (_active) {
       try { _active.rec.stop(); } catch(_e) { /* ignore */ }
@@ -64,6 +150,7 @@
     rec.lang = 'ko-KR';
     rec.interimResults = true;
     rec.continuous = false;
+    rec.maxAlternatives = 3;  // [2026-04-30] 다중 후보 — 첫 후보 외에 fuzzy 매칭 검토
     let _base = input.value || '';
     if (_base && !_base.endsWith(' ')) _base += ' ';
     btn.style.background = 'rgba(220,53,69,0.92)';
@@ -72,12 +159,29 @@
     rec.onresult = (e) => {
       let final = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) final += t;
-        else input.value = _base + t;
+        const result = e.results[i];
+        const t = result[0].transcript;
+        if (result.isFinal) {
+          // [2026-04-30] 다중 후보 중 고객명 매칭이 있는 후보 우선
+          let best = t;
+          if (result.length > 1) {
+            const cust = (window.Customer?._cache) || (window._customerCache) || [];
+            for (let alt = 0; alt < Math.min(result.length, 3); alt++) {
+              const altT = result[alt].transcript;
+              if (cust.some(c => c.name && altT.includes(c.name))) {
+                best = altT;
+                break;
+              }
+            }
+          }
+          final += best;
+        } else {
+          input.value = _base + t;
+        }
       }
       if (final) {
-        input.value = _base + final;
+        const processed = _postProcess(final);
+        input.value = _base + processed;
         _base = input.value;
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
