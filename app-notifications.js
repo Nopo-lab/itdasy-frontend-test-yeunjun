@@ -88,7 +88,20 @@
   }
 
   function _iconByKind(kind) {
-    return { booking_soon: '⏰', birthday: '🎂', retention: '💝' }[kind] || '🔔';
+    return {
+      booking_soon: '⏰',
+      birthday: '🎂',
+      retention: '💝',
+      proactive_morning_brief: '☀️',
+      booking_confirm_prev_day: '📅',
+      announcement: '📣',
+      support_reply: '💬',
+      // [2026-04-29 W5] 회원권 만료/잔액 알림
+      membership_expire_7d: '💳',
+      membership_expire_1d: '⚠️',
+      membership_low_30: '💳',
+      membership_low_10: '⚠️',
+    }[kind] || '🔔';
   }
 
   function _renderList() {
