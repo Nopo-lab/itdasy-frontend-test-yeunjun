@@ -1,0 +1,586 @@
+/* ── Itdasy Design System v1 · screens/myshop-v3.css ───────────
+   내샵관리 v3 — 샵 카드 + 운영 메뉴 + 통합 허브 + 시트 (AI/설정) + PC 사이드바 220px + 도넛 + 위젯 + 활동 피드
+   mockup: ../../mockups/03-myshop.html
+   tokens: tokens.css */
+
+/* ─────────────────────────────────────────────────────────────
+   레이아웃 · 모바일 우선, PC 1100px+ 에서 사이드바 노출
+   ───────────────────────────────────────────────────────────── */
+.ms-root { display: flex; flex-direction: column; min-height: 100vh; background: var(--bg); color: var(--text); }
+.ms-side { display: none; }
+
+@media (min-width: 1100px) {
+  .ms-root { flex-direction: row; }
+  .ms-side { display: flex; }
+  .ms-pc { display: flex; }
+  .ms-mobile-only { display: none; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   모바일 헤더
+   ───────────────────────────────────────────────────────────── */
+.ms-header {
+  padding: 18px 20px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg);
+}
+.ms-header__title { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; color: var(--text); }
+.ms-header__sub { font-size: 11px; color: var(--text-subtle); margin-top: 1px; font-weight: 500; }
+.ms-header__btn {
+  appearance: none; -webkit-appearance: none;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  outline: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-family: inherit;
+  color: var(--text);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   모바일 본문
+   ───────────────────────────────────────────────────────────── */
+.ms-body { flex: 1; overflow-y: auto; padding: 4px 16px 16px; }
+.ms-body::-webkit-scrollbar { width: 0; }
+
+/* ─────────────────────────────────────────────────────────────
+   샵 카드
+   ───────────────────────────────────────────────────────────── */
+.ms-shop {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ms-shop:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.ms-shop__top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.ms-shop__avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 16px; font-weight: 700;
+  flex-shrink: 0;
+}
+.ms-shop__info { flex: 1; min-width: 0; }
+.ms-shop__name { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; color: var(--text); }
+.ms-shop__plan {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10.5px; color: var(--brand-strong); font-weight: 700;
+  padding: 2px 7px;
+  background: var(--brand-bg);
+  border-radius: var(--r-pill);
+  margin-top: 3px;
+}
+.ms-shop__edit {
+  appearance: none; -webkit-appearance: none;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--surface-2);
+  border: 0; outline: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  font-family: inherit;
+}
+.ms-shop__stats {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+  padding-top: 14px;
+  border-top: 0.5px solid var(--border);
+}
+.ms-shop__stat { display: flex; flex-direction: column; gap: 2px; }
+.ms-shop__stat-label { font-size: 10.5px; color: var(--text-subtle); font-weight: 500; }
+.ms-shop__stat-value { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+.ms-shop__stat-trend { font-size: 10px; color: var(--ok); font-weight: 600; margin-top: 1px; }
+.ms-shop__stat-trend.is-amber { color: var(--brand-strong); }
+
+/* ─────────────────────────────────────────────────────────────
+   섹션
+   ───────────────────────────────────────────────────────────── */
+.ms-section { margin-bottom: 18px; }
+.ms-section__title {
+  font-size: 11px; color: var(--text-subtle); font-weight: 600;
+  margin: 0 4px 8px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   메뉴 리스트
+   ───────────────────────────────────────────────────────────── */
+.ms-menu {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.ms-menu__item {
+  appearance: none; -webkit-appearance: none;
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 14px 16px;
+  background: none; border: 0; outline: 0;
+  cursor: pointer;
+  border-bottom: 0.5px solid var(--border);
+  text-align: left;
+  font-family: inherit;
+  color: var(--text);
+  transition: background 0.18s;
+}
+.ms-menu__item:last-child { border-bottom: 0; }
+.ms-menu__item:hover { background: var(--surface-2); }
+.ms-menu__icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--surface-2);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--text);
+}
+.ms-menu__icon--brand { background: var(--brand-bg); color: var(--brand-strong); }
+.ms-menu__icon--purple { background: rgba(229, 88, 110, 0.08); color: var(--brand-strong); }
+.ms-menu__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ms-menu__name { font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
+.ms-menu__meta { font-size: 11.5px; color: var(--text-subtle); font-weight: 500; }
+.ms-menu__meta.is-danger { color: var(--danger); font-weight: 600; }
+.ms-menu__meta.is-ok { color: var(--ok); font-weight: 600; }
+.ms-menu__right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.ms-menu__badge {
+  font-size: 10px; font-weight: 700;
+  padding: 2px 7px; border-radius: var(--r-pill);
+  background: var(--brand-bg); color: var(--brand-strong);
+}
+.ms-menu__chev { color: var(--text-subtle); flex-shrink: 0; }
+
+/* ─────────────────────────────────────────────────────────────
+   시트 (오버레이 + 바디) — AI 허브 / 설정 허브 공통
+   ───────────────────────────────────────────────────────────── */
+.ms-sheet__overlay {
+  position: absolute; inset: 0;
+  background: rgba(15, 20, 25, 0.42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 5;
+}
+.ms-sheet {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  z-index: 10;
+  box-shadow: var(--shadow-xl);
+  display: flex; flex-direction: column;
+  max-height: 88%;
+}
+.ms-sheet__handle {
+  width: 40px; height: 4px;
+  background: var(--border-strong);
+  border-radius: var(--r-pill);
+  margin: 12px auto 0;
+  flex-shrink: 0;
+}
+.ms-sheet__head {
+  padding: 14px 18px 8px;
+  flex-shrink: 0;
+  display: flex; align-items: baseline; justify-content: space-between;
+}
+.ms-sheet__head-left { flex: 1; }
+.ms-sheet__title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); }
+.ms-sheet__sub { font-size: 12px; color: var(--text-subtle); margin-top: 2px; font-weight: 500; }
+.ms-sheet__close {
+  appearance: none; -webkit-appearance: none;
+  font-size: 12px; color: var(--text-muted);
+  background: none; border: 0; outline: 0;
+  cursor: pointer; font-weight: 600;
+  padding: 6px 8px;
+  font-family: inherit;
+}
+.ms-sheet__body { flex: 1; overflow-y: auto; padding: 4px 18px 22px; }
+.ms-sheet__body::-webkit-scrollbar { width: 0; }
+
+/* ─────────────────────────────────────────────────────────────
+   AI 허브 행
+   ───────────────────────────────────────────────────────────── */
+.ms-aih {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.ms-aih__row {
+  appearance: none; -webkit-appearance: none;
+  display: flex; align-items: center; gap: 11px;
+  width: 100%; padding: 13px 14px;
+  background: none; border: 0; outline: 0;
+  cursor: pointer;
+  border-bottom: 0.5px solid var(--border);
+  text-align: left;
+  font-family: inherit;
+  color: var(--text);
+  transition: background 0.18s;
+}
+.ms-aih__row:last-child { border-bottom: 0; }
+.ms-aih__row:hover { background: var(--surface-2); }
+.ms-aih__icon {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: var(--surface-2);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--text);
+}
+.ms-aih__icon--brand { background: var(--brand-bg); color: var(--brand-strong); }
+.ms-aih__icon--purple { background: rgba(229, 88, 110, 0.08); color: var(--brand-strong); }
+.ms-aih__info { flex: 1; min-width: 0; }
+.ms-aih__name {
+  font-size: 13.5px; font-weight: 600;
+  color: var(--text); letter-spacing: -0.2px;
+  display: flex; align-items: center; gap: 6px;
+}
+.ms-aih__badge-new {
+  font-size: 9px; font-weight: 700;
+  padding: 1px 5px; border-radius: var(--r-pill);
+  background: var(--brand-bg); color: var(--brand-strong);
+}
+.ms-aih__meta { font-size: 11px; color: var(--text-subtle); font-weight: 500; margin-top: 1px; }
+.ms-aih__right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.ms-aih__chev { color: var(--text-subtle); flex-shrink: 0; }
+.ms-aih__tag {
+  font-size: 10px; color: var(--text-subtle); font-weight: 600;
+  padding: 2px 7px;
+  background: var(--surface-2);
+  border-radius: var(--r-pill);
+}
+.ms-aih__tag.is-ok {
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+  color: var(--ok);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   토글 스위치 (시트 안)
+   ───────────────────────────────────────────────────────────── */
+.ms-toggle {
+  appearance: none; -webkit-appearance: none;
+  position: relative; width: 36px; height: 22px;
+  flex-shrink: 0;
+  background: none; border: 0; outline: 0;
+  cursor: pointer; padding: 0;
+  font-family: inherit;
+}
+.ms-toggle__track {
+  width: 100%; height: 100%;
+  background: var(--border-strong);
+  border-radius: var(--r-pill);
+  transition: background 0.2s;
+}
+.ms-toggle.is-on .ms-toggle__track { background: var(--text); }
+.ms-toggle__knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  background: #fff; border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ms-toggle.is-on .ms-toggle__knob { transform: translateX(14px); }
+
+/* ─────────────────────────────────────────────────────────────
+   설정 허브 행
+   ───────────────────────────────────────────────────────────── */
+.ms-sh {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.ms-sh__row {
+  appearance: none; -webkit-appearance: none;
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 14px 16px;
+  background: none; border: 0; outline: 0;
+  cursor: pointer;
+  border-bottom: 0.5px solid var(--border);
+  text-align: left;
+  font-family: inherit;
+  color: var(--text);
+}
+.ms-sh__row:last-child { border-bottom: 0; }
+.ms-sh__row:hover { background: var(--surface-2); }
+.ms-sh__icon {
+  width: 32px; height: 32px; border-radius: 9px;
+  background: var(--surface-2);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--text);
+}
+.ms-sh__info { flex: 1; min-width: 0; }
+.ms-sh__name { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.ms-sh__meta { font-size: 11px; color: var(--text-subtle); margin-top: 1px; font-weight: 500; }
+.ms-sh__chev { color: var(--text-subtle); flex-shrink: 0; }
+
+/* ─────────────────────────────────────────────────────────────
+   인라인 컨트롤 (진동 / 테마 / 글씨)
+   ───────────────────────────────────────────────────────────── */
+.ms-ic {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 4px 0;
+  margin-top: 6px;
+}
+.ms-ic__row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 16px;
+  border-bottom: 0.5px solid var(--border);
+}
+.ms-ic__row:last-child { border-bottom: 0; }
+.ms-ic__label { font-size: 13px; font-weight: 600; color: var(--text); }
+.ms-ic__seg {
+  display: flex; gap: 4px;
+  background: var(--surface-2);
+  padding: 2px;
+  border-radius: var(--r-pill);
+}
+.ms-ic__seg-btn {
+  appearance: none; -webkit-appearance: none;
+  font-size: 11px; font-weight: 600;
+  color: var(--text-muted);
+  padding: 5px 10px;
+  background: none; border: 0; outline: 0;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  font-family: inherit;
+}
+.ms-ic__seg-btn.is-on {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PC 사이드바 (220px 확장)
+   ───────────────────────────────────────────────────────────── */
+.ms-side {
+  width: 220px;
+  background: var(--surface);
+  border-right: 0.5px solid var(--border);
+  padding: 22px 14px 18px;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.ms-side__logo {
+  font-size: 14px; font-weight: 800; color: var(--text);
+  margin: 0 8px 18px;
+  letter-spacing: -0.3px;
+}
+.ms-side__section {
+  font-size: 10px; color: var(--text-subtle); font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 12px 10px 6px;
+  text-transform: uppercase;
+}
+.ms-side__item {
+  appearance: none; -webkit-appearance: none;
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 9px 10px;
+  background: none; border: 0; outline: 0;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.ms-side__item:hover { background: var(--surface-2); }
+.ms-side__item.is-active { background: var(--surface-2); }
+.ms-side__icon {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.ms-side__item.is-active .ms-side__icon { color: var(--text); }
+.ms-side__label {
+  font-size: 13.5px; color: var(--text-muted); font-weight: 500;
+  flex: 1; letter-spacing: -0.2px;
+}
+.ms-side__item.is-active .ms-side__label { color: var(--text); font-weight: 700; }
+.ms-side__badge {
+  font-size: 9.5px; font-weight: 700;
+  padding: 1px 6px; border-radius: var(--r-pill);
+  background: var(--brand-bg); color: var(--brand-strong);
+}
+.ms-side__badge.is-ok {
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  color: var(--ok);
+}
+.ms-side__fab {
+  appearance: none; -webkit-appearance: none;
+  margin-top: auto;
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 14px;
+  background: var(--brand-strong); color: #fff;
+  border-radius: var(--r-md);
+  cursor: pointer; border: 0; outline: 0;
+  font-size: 13.5px; font-weight: 700;
+  letter-spacing: -0.2px;
+  font-family: inherit;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PC 메인
+   ───────────────────────────────────────────────────────────── */
+.ms-pc {
+  flex: 1;
+  padding: 24px 28px;
+  overflow-y: auto;
+  background: var(--bg);
+  flex-direction: column;
+}
+.ms-pc::-webkit-scrollbar { width: 0; }
+.ms-pc__header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 18px;
+}
+.ms-pc__title { font-size: 24px; font-weight: 700; letter-spacing: -0.4px; color: var(--text); }
+.ms-pc__sub { font-size: 12px; color: var(--text-subtle); font-weight: 500; margin-top: 2px; }
+
+/* ─────────────────────────────────────────────────────────────
+   PC 도넛 차트
+   ───────────────────────────────────────────────────────────── */
+.ms-dash { display: grid; grid-template-columns: 1.5fr 1fr; gap: 14px; margin-bottom: 14px; }
+.ms-chart {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 18px 20px;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ms-chart:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.ms-chart__head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.ms-chart__title { font-size: 14px; font-weight: 700; letter-spacing: -0.2px; color: var(--text); }
+.ms-chart__sub { font-size: 11px; color: var(--text-subtle); font-weight: 500; margin-top: 2px; }
+.ms-chart__link {
+  appearance: none; -webkit-appearance: none;
+  font-size: 11px; color: var(--text-muted);
+  padding: 4px 9px;
+  background: var(--surface-2);
+  border: 0; outline: 0;
+  border-radius: var(--r-pill);
+  font-weight: 600; cursor: pointer;
+  font-family: inherit;
+}
+.ms-chart__body { display: flex; gap: 18px; align-items: center; }
+
+.ms-donut {
+  width: 130px; height: 130px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--brand-strong) 0deg 162deg,
+    color-mix(in srgb, var(--brand-strong) 55%, var(--surface)) 162deg 234deg,
+    color-mix(in srgb, var(--brand-strong) 22%, var(--surface)) 234deg 280deg,
+    var(--text-subtle) 280deg 320deg,
+    var(--border-strong) 320deg 360deg
+  );
+  position: relative;
+  flex-shrink: 0;
+}
+.ms-donut::after {
+  content: ''; position: absolute; inset: 22px;
+  background: var(--surface);
+  border-radius: 50%;
+}
+.ms-donut__center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 1;
+}
+.ms-donut__total { font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+.ms-donut__label { font-size: 10.5px; color: var(--text-subtle); font-weight: 500; margin-top: 1px; }
+
+.ms-legend { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+.ms-legend__row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.ms-legend__dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.ms-legend__name { flex: 1; color: var(--text-muted); font-weight: 500; }
+.ms-legend__value {
+  color: var(--text); font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+}
+.ms-legend__pct {
+  color: var(--text-subtle); font-size: 11px; font-weight: 500;
+  min-width: 32px; text-align: right;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PC 위젯 그리드
+   ───────────────────────────────────────────────────────────── */
+.ms-widgets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ms-widget {
+  appearance: none; -webkit-appearance: none;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 13px 14px;
+  cursor: pointer;
+  outline: 0;
+  text-align: left;
+  font-family: inherit;
+  color: var(--text);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ms-widget:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.ms-widget__label { font-size: 10.5px; color: var(--text-subtle); font-weight: 600; letter-spacing: 0.2px; }
+.ms-widget__value { font-size: 18px; font-weight: 700; color: var(--text); margin-top: 4px; letter-spacing: -0.3px; }
+.ms-widget__value.is-danger { color: var(--danger); }
+.ms-widget__value.is-amber { color: var(--warn); }
+.ms-widget__value.is-ok { color: var(--ok); }
+.ms-widget__meta { font-size: 10.5px; color: var(--text-subtle); margin-top: 2px; font-weight: 500; }
+
+/* ─────────────────────────────────────────────────────────────
+   PC 활동 피드
+   ───────────────────────────────────────────────────────────── */
+.ms-feed {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+}
+.ms-feed__row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+.ms-feed__row:last-child { border-bottom: 0; }
+.ms-feed__icon {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--surface-2);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.ms-feed__text {
+  flex: 1; font-size: 12.5px;
+  color: var(--text); font-weight: 500;
+}
+.ms-feed__text b { font-weight: 700; }
+.ms-feed__time { font-size: 10.5px; color: var(--text-subtle); font-weight: 500; flex-shrink: 0; }
+
+/* ─────────────────────────────────────────────────────────────
+   prefers-reduced-motion — hover transform 끄기
+   ───────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .ms-shop,
+  .ms-shop:hover,
+  .ms-chart,
+  .ms-chart:hover,
+  .ms-widget,
+  .ms-widget:hover,
+  .ms-toggle__knob,
+  .ms-menu__item,
+  .ms-aih__row,
+  .ms-side__item {
+    transition: none;
+    transform: none;
+  }
+}

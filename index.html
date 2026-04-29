@@ -69,6 +69,7 @@
 <link rel="stylesheet" href="css/screens/shop-drawer.css">
 <link rel="stylesheet" href="css/screens/sub-screens.css">
 <link rel="stylesheet" href="css/screens/calendar.css">
+<link rel="stylesheet" href="css/screens/myshop-v3.css">
 <link rel="stylesheet" href="style.css?v=20260424">
 <!-- [2026-04-29] Micro-interaction & Fun — 사용 재미 강화 -->
 <link rel="stylesheet" href="style-fun.css">
@@ -1158,23 +1159,21 @@
 
 
 
-<!-- 대시보드 탭 (T-403 + 기존 #tab-ai-suggest 흡수)
-     ⬇ 2026-04-24: 홈 hero-card '이번달 브리핑' 흡수 + 기간 토글 신설 (Task 6/7) -->
+<!-- 대시보드 탭 — 2026-04-30: 내샵관리 v3 디자인 적용 (app-myshop-v3.js)
+     기존 dashboard-topbar / dashboardMetrics / tab-ai-suggest 는 외부 JS 호환을 위해 hidden anchor 로 보존 -->
 <div class="tab" id="tab-dashboard">
-  <!-- 좌측 드로어 트리거 (햄버거) — 2026-04-28 -->
-  <header class="dashboard-topbar">
+  <!-- 외부 JS 호환 hidden anchor — 보존 -->
+  <header class="dashboard-topbar" style="display:none;" aria-hidden="true">
     <button class="drawer-trigger" type="button" data-drawer-trigger data-haptic="light" aria-label="메뉴 열기" aria-controls="shopDrawer">
       <svg class="ic" aria-hidden="true"><use href="#ic-menu"/></svg>
     </button>
     <h1>내 샵 관리</h1>
   </header>
-  <!-- 대시보드 지표 렌더링 타겟 — Commit 4 initDashboardTab() (헤더+토글+히어로+그리드+리스트 일괄 렌더) -->
-  <div id="dashboardMetrics"></div>
+  <div id="dashboardMetrics" style="display:none;" aria-hidden="true"></div>
+  <div id="tab-ai-suggest" style="display:none;" aria-hidden="true"></div>
 
-  <!-- AI 추천 섹션 (ID 유지: initAiRecommendTab / app-gallery-finish 호환) -->
-  <div id="tab-ai-suggest">
-    <!-- initAiRecommendTab()이 이 영역을 렌더링합니다 -->
-  </div>
+  <!-- 내샵관리 v3 마운트 포인트 — app-myshop-v3.js 가 자동 렌더 -->
+  <div id="myshopV3Root"></div>
 </div>
 
 
@@ -1662,6 +1661,8 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-today-brief.js"></script>
 <script src="app-home-v41-config.js"></script>
 <script src="app-home-v41.js" defer></script>
+<!-- [2026-04-30] 내샵관리 v3 — 모바일 메인 + PC 사이드바·도넛·위젯·피드 -->
+<script src="app-myshop-v3.js" defer></script>
 <script src="app-birthday.js"></script>
 <!-- 렉 박멸 — 챗봇/DM/영수증 무거운 스크립트는 defer 로 비차단 로드 (FCP ~120~250ms 단축 체감) -->
 <script src="app-assistant.js" defer></script>

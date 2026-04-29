@@ -1,92 +1,201 @@
-/* AI 자동화 허브 — DM/카카오/페르소나/캡션/게시물/스토리 통합 진입 (2026-04-30)
+/* AI 자동화 허브 v3 — 리스트 + 토글 시트 (2026-04-30)
    사용:
-     window.openAiHub()  — 카드 list 시트 열기
+     window.openAiHub()   — 시트 열기
+     window.closeAiHub()  — 시트 닫기
+
+   디자인: mockups/03-myshop.html "AI · 자동화" 시트
+   CSS:    css/screens/myshop-v3.css (.ms-sheet*, .ms-aih*, .ms-toggle*)
+   라우트:  7개 항목 → 기존 진입 함수 (변경 X)
 */
 (function () {
   'use strict';
 
+  // ── 토글 상태 키 (UI 빠른 ON/OFF — 백엔드 동기화는 상세 시트에서) ─
+  const KEY_DM = 'itdasy:aih:dm_enabled';
+  const KEY_KAKAO = 'itdasy:aih:kakao_enabled';
+
+  function _getToggle(key) {
+    try {
+      const v = localStorage.getItem(key);
+      return v === null ? true : v === 'true';
+    } catch (_e) { return true; }
+  }
+  function _setToggle(key, on) {
+    try { localStorage.setItem(key, on ? 'true' : 'false'); } catch (_e) { void _e; }
+  }
+
+  function _esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+  }
+
+  // ── 행 정의 (7개) ──────────────────────────────────────────────
+  // type: 'toggle' | 'tag' | 'badge' | 'plain'
+  function _rows() {
+    return [
+      { act: 'dm', icon: 'ic-message-circle', iconClass: 'ms-aih__icon--brand',
+        name: 'DM 자동응답', meta: '인스타 DM → AI 자동 답장',
+        type: 'toggle', toggleKey: KEY_DM },
+      { act: 'kakao', icon: 'ic-message-square', iconClass: '',
+        name: '카카오 알림톡', meta: '예약확정 · 리마인드 · 생일',
+        type: 'toggle', toggleKey: KEY_KAKAO },
+      { act: 'persona', icon: 'ic-wand-sparkles', iconClass: 'ms-aih__icon--brand',
+        name: 'AI 페르소나', meta: '원장님 말투 학습 · 캡션 일관성',
+        type: 'tag', tagText: '학습됨' },
+      { act: 'caption', icon: 'ic-pen-line', iconClass: '',
+        name: 'SNS 캡션', meta: '시나리오 · 1초 · 음성 3가지',
+        type: 'plain' },
+      { act: 'posts', icon: 'ic-image', iconClass: '',
+        name: '게시물 관리', meta: '완료 슬롯 · 마무리 탭',
+        type: 'plain' },
+      { act: 'memo', icon: 'ic-bot', iconClass: '',
+        name: '챗봇 메모', meta: '영구 메모 + 자동 학습 패턴',
+        type: 'plain' },
+      { act: 'capture', icon: 'ic-image-plus', iconClass: 'ms-aih__icon--purple',
+        name: '스마트 캡처', meta: '카톡 · 명함 · 가격표 OCR',
+        type: 'badge' },
+    ];
+  }
+
+  // ── 켜진 개수 (DM ON + 카카오 ON + 페르소나 학습됨 1 고정) ──
+  function _onCount() {
+    let n = 0;
+    if (_getToggle(KEY_DM)) n++;
+    if (_getToggle(KEY_KAKAO)) n++;
+    n += 1; // 페르소나 학습됨
+    return n;
+  }
+
+  // ── 행 우측 영역 마크업 ────────────────────────────────────────
+  function _rightHtml(row) {
+    const chev = `<svg class="ms-aih__chev" width="14" height="14" aria-hidden="true"><use href="#ic-chevron-right"/></svg>`;
+    if (row.type === 'toggle') {
+      const on = _getToggle(row.toggleKey);
+      return `
+        <div class="ms-aih__right">
+          <button type="button" class="ms-toggle ${on ? 'is-on' : ''}" data-toggle="${_esc(row.act)}" aria-label="${_esc(row.name)} ${on ? '끄기' : '켜기'}" aria-pressed="${on ? 'true' : 'false'}">
+            <span class="ms-toggle__track"></span>
+            <span class="ms-toggle__knob"></span>
+          </button>
+          ${chev}
+        </div>`;
+    }
+    if (row.type === 'tag') {
+      return `<div class="ms-aih__right"><span class="ms-aih__tag is-ok">${_esc(row.tagText)}</span>${chev}</div>`;
+    }
+    if (row.type === 'badge') {
+      return `<div class="ms-aih__right">${chev}</div>`;
+    }
+    return `<div class="ms-aih__right">${chev}</div>`;
+  }
+
+  // ── 행 마크업 (NEW 배지는 이름 옆) ─────────────────────────────
+  function _rowHtml(row) {
+    const newBadge = row.type === 'badge'
+      ? `<span class="ms-aih__badge-new">NEW</span>` : '';
+    return `
+      <button type="button" class="ms-aih__row" data-act="${_esc(row.act)}">
+        <span class="ms-aih__icon ${_esc(row.iconClass)}">
+          <svg width="16" height="16" aria-hidden="true"><use href="#${_esc(row.icon)}"/></svg>
+        </span>
+        <span class="ms-aih__info">
+          <span class="ms-aih__name">${_esc(row.name)}${newBadge}</span>
+          <span class="ms-aih__meta">${_esc(row.meta)}</span>
+        </span>
+        ${_rightHtml(row)}
+      </button>`;
+  }
+
+  // ── 시트 마크업 빌드 ──────────────────────────────────────────
+  function _buildSheet() {
+    const rows = _rows().map(_rowHtml).join('');
+    const sub = `7가지 · ${_onCount()}개 켜짐`;
+    return `
+      <div class="ms-sheet__overlay" data-close="1"></div>
+      <div id="aihCard" class="ms-sheet" role="dialog" aria-modal="true" aria-labelledby="aihTitle">
+        <div class="ms-sheet__handle"></div>
+        <div class="ms-sheet__head">
+          <div class="ms-sheet__head-left">
+            <div id="aihTitle" class="ms-sheet__title">AI · 자동화</div>
+            <div class="ms-sheet__sub" id="aihSub">${_esc(sub)}</div>
+          </div>
+          <button type="button" class="ms-sheet__close" data-close="1">닫기</button>
+        </div>
+        <div class="ms-sheet__body">
+          <div class="ms-aih">${rows}</div>
+          <div style="margin-top:12px;padding:10px 12px;background:var(--surface-2);border-radius:var(--r-sm);font-size:11px;color:var(--text-subtle);line-height:1.5;">
+            토글 있는 항목은 즉시 켜고 끄기 · 행을 누르면 상세 설정으로
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ── 시트 DOM 보장 + 핸들러 바인딩 ──────────────────────────────
   function _ensureSheet() {
     let sheet = document.getElementById('aiHubSheet');
-    if (sheet) return sheet;
+    if (sheet) {
+      sheet.innerHTML = _buildSheet();
+      _bindHandlers(sheet);
+      return sheet;
+    }
     sheet = document.createElement('div');
     sheet.id = 'aiHubSheet';
-    sheet.style.cssText = 'position:fixed;inset:0;z-index:9985;background:rgba(0,0,0,0.5);display:none;align-items:flex-end;justify-content:center;';
-    // 카드별 Lucide 아이콘 + 톤별 색상 정의
-    const _ic = (id, size = 26) => `<svg width="${size}" height="${size}" aria-hidden="true"><use href="#${id}"/></svg>`;
-    sheet.innerHTML = `
-      <div id="aihCard" style="width:100%;max-width:560px;background:#fff;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;padding:18px 18px max(18px,env(safe-area-inset-bottom));">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <span style="display:inline-flex;align-items:center;color:#7C3AED;">${_ic('ic-bot', 22)}</span>
-          <strong style="font-size:18px;">AI 자동화</strong>
-          <span style="font-size:11px;background:#FAF5FF;color:#5B21B6;padding:2px 8px;border-radius:99px;font-weight:700;">사장님 손 없이</span>
-          <button id="aihClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;cursor:pointer;line-height:1;color:#888;display:inline-flex;align-items:center;">${_ic('ic-x', 18)}</button>
-        </div>
-        <div style="font-size:12px;color:#777;line-height:1.5;margin-bottom:14px;">
-          AI 가 사장님 대신 처리하는 자동화들. 이 안에서 ON/OFF + 톤/규칙 설정.
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
-          <button class="aih-card" data-act="dm" style="padding:16px 10px;border:2px solid #FDE68A;border-radius:14px;background:linear-gradient(135deg,#FFFBEB,#FEF3C7);cursor:pointer;text-align:left;">
-            <div style="color:#B45309;margin-bottom:6px;display:inline-flex;">${_ic('ic-message-circle', 22)}</div>
-            <div style="font-size:13px;font-weight:800;color:#78350F;">DM 자동응답</div>
-            <div style="font-size:10px;color:#78350F80;margin-top:2px;line-height:1.4;">인스타 DM 도착 → AI 자동 답장 (톤 카드 3종)</div>
-          </button>
-          <button class="aih-card" data-act="kakao" style="padding:16px 10px;border:2px solid #FBBF24;border-radius:14px;background:linear-gradient(135deg,#FFFAEB,#FEF3C7);cursor:pointer;text-align:left;">
-            <div style="color:#92400E;margin-bottom:6px;display:inline-flex;">${_ic('ic-message-square', 22)}</div>
-            <div style="font-size:13px;font-weight:800;color:#92400E;">카카오 알림톡</div>
-            <div style="font-size:10px;color:#92400E80;margin-top:2px;line-height:1.4;">예약·후기·생일 자동 발송 <span style="background:#fff;padding:1px 5px;border-radius:99px;font-weight:700;">soon</span></div>
-          </button>
-          <button class="aih-card" data-act="persona" style="padding:16px 10px;border:2px solid #DDD6FE;border-radius:14px;background:linear-gradient(135deg,#FAF5FF,#F3E8FF);cursor:pointer;text-align:left;">
-            <div style="color:#5B21B6;margin-bottom:6px;display:inline-flex;">${_ic('ic-wand-sparkles', 22)}</div>
-            <div style="font-size:13px;font-weight:800;color:#5B21B6;">AI 페르소나</div>
-            <div style="font-size:10px;color:#5B21B680;margin-top:2px;line-height:1.4;">사장님 말투·이모지 학습 → 캡션 일관성</div>
-          </button>
-          <button class="aih-card" data-act="caption" style="padding:16px 10px;border:2px solid #FBCFE8;border-radius:14px;background:linear-gradient(135deg,#FDF2F8,#FCE7F3);cursor:pointer;text-align:left;">
-            <div style="color:#9D174D;margin-bottom:6px;display:inline-flex;">${_ic('ic-pen-line', 22)}</div>
-            <div style="font-size:13px;font-weight:800;color:#9D174D;">SNS 자동 캡션</div>
-            <div style="font-size:10px;color:#9D174D80;margin-top:2px;line-height:1.4;">시술 사진 → 인스타 캡션 자동 생성</div>
-          </button>
-          <button class="aih-card" data-act="posts" style="padding:16px 10px;border:2px solid #BFDBFE;border-radius:14px;background:linear-gradient(135deg,#EFF6FF,#DBEAFE);cursor:pointer;text-align:left;">
-            <div style="color:#1E3A8A;margin-bottom:6px;display:inline-flex;">${_ic('ic-image', 22)}</div>
-            <div style="font-size:13px;font-weight:800;color:#1E3A8A;">게시물 관리</div>
-            <div style="font-size:10px;color:#1E3A8A80;margin-top:2px;line-height:1.4;">완성된 포스트 인스타 발행</div>
-          </button>
-          <button class="aih-card" data-act="memo" style="padding:16px 10px;border:2px solid #C7D2FE;border-radius:14px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);cursor:pointer;text-align:left;">
-            <div style="color:#3730A3;margin-bottom:6px;display:inline-flex;">${_ic('ic-bot', 22)}</div>
-            <div style="font-size:13px;font-weight:800;color:#3730A3;">챗봇 메모</div>
-            <div style="font-size:10px;color:#3730A380;margin-top:2px;line-height:1.4;">사장님 영구 메모 + 자동 학습 패턴</div>
-          </button>
-          <button class="aih-card" data-act="capture" style="padding:16px 10px;border:2px solid #BBF7D0;border-radius:14px;background:linear-gradient(135deg,#F0FDF4,#DCFCE7);cursor:pointer;text-align:left;grid-column:span 2;">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <div style="color:#166534;display:inline-flex;flex-shrink:0;">${_ic('ic-image-plus', 26)}</div>
-              <div style="flex:1;">
-                <div style="font-size:13px;font-weight:800;color:#166534;">스마트 캡처 임포트</div>
-                <div style="font-size:10px;color:#16653480;margin-top:2px;line-height:1.4;">카톡 캡처 → 예약·매출 자동 / 명함 → 고객 자동</div>
-              </div>
-            </div>
-          </button>
-        </div>
-      </div>
-    `;
+    sheet.style.cssText = 'position:fixed;inset:0;z-index:9985;display:none;';
+    sheet.innerHTML = _buildSheet();
     document.body.appendChild(sheet);
-    sheet.addEventListener('click', (e) => { if (e.target === sheet) close(); });
-    sheet.querySelector('#aihClose').addEventListener('click', close);
-    sheet.querySelectorAll('.aih-card').forEach(b => {
-      b.addEventListener('click', () => {
-        const act = b.dataset.act;
-        close();
-        setTimeout(() => _route(act), 200);
-      });
-    });
+    _bindHandlers(sheet);
     return sheet;
   }
 
+  // ── 핸들러: 닫기 / 토글 / 행 클릭 ─────────────────────────────
+  function _bindHandlers(sheet) {
+    sheet.addEventListener('click', (e) => {
+      if (e.target.closest('[data-close]')) { close(); return; }
+
+      const tgl = e.target.closest('[data-toggle]');
+      if (tgl) {
+        e.stopPropagation();
+        _onToggleClick(tgl, sheet);
+        return;
+      }
+
+      const row = e.target.closest('.ms-aih__row');
+      if (row) {
+        const act = row.dataset.act;
+        close();
+        setTimeout(() => _route(act), 200);
+      }
+    });
+  }
+
+  // ── 토글 클릭 처리 ────────────────────────────────────────────
+  function _onToggleClick(btn, sheet) {
+    const act = btn.dataset.toggle;
+    const key = act === 'dm' ? KEY_DM : (act === 'kakao' ? KEY_KAKAO : null);
+    if (!key) return;
+    const next = !_getToggle(key);
+    _setToggle(key, next);
+    btn.classList.toggle('is-on', next);
+    btn.setAttribute('aria-pressed', next ? 'true' : 'false');
+    const sub = sheet.querySelector('#aihSub');
+    if (sub) sub.textContent = `7가지 · ${_onCount()}개 켜짐`;
+    try { window.hapticLight && window.hapticLight(); } catch (_e) { void _e; }
+    try {
+      window.dispatchEvent(new CustomEvent('itdasy:data-changed', {
+        detail: { kind: 'aih_toggle', act, on: next },
+      }));
+    } catch (_e) { void _e; }
+  }
+
+  // ── 7개 항목 라우터 (동작 변경 X) ─────────────────────────────
   function _route(act) {
     const map = {
       dm:      'openDMAutoreplySettings',
       kakao:   'openKakaoHub',
       persona: 'openPersonaSurveyModal',
       caption: 'openCaptionScenarioPopup',
-      posts:   null,  // showTab finish 별도 처리
+      posts:   null,
       memo:    'openAssistantFactsSheet',
       capture: 'openSmartCapture',
     };
@@ -109,11 +218,12 @@
     }
   }
 
+  // ── 열기/닫기 (시그니처 유지) ─────────────────────────────────
   function open() {
     const sheet = _ensureSheet();
     const card = sheet.querySelector('#aihCard');
     if (window.SheetAnim) window.SheetAnim.open(sheet, card);
-    else sheet.style.display = 'flex';
+    else sheet.style.display = 'block';
   }
   function close() {
     const sheet = document.getElementById('aiHubSheet');
