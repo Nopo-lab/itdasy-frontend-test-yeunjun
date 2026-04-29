@@ -7,7 +7,7 @@
 //    - /api/, /auth/, /data-export/  → network-first (항상 최신)
 //    - app-*.js, *.css, *.html       → cache-first + 백그라운드 revalidate
 // ─────────────────────────────────────────────
-const CACHE_VERSION = '20260430-v63-menu-consolidate';
+const CACHE_VERSION = '20260430-v64-undo-chain';
 const CACHE_NAME    = `itdasy-${CACHE_VERSION}`;
 const API_CACHE_NAME = `itdasy-api-${CACHE_VERSION}`;
 
@@ -58,6 +58,7 @@ const STATIC_ASSETS = [
   './app-smart-capture.js',
   './app-ai-hub.js',
   './app-settings-hub.js',
+  './app-assistant-undo.js',
   './manifest.json',
   './offline.html',
   'https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&family=Noto+Sans+KR:wght@300;400;500&display=swap',

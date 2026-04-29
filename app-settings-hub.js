@@ -36,6 +36,11 @@
           <span class="sh-lbl">백업 · 내보내기</span>
           <span class="sh-chev">›</span>
         </button>
+        <button class="sh-row" data-act="undo">
+          <span class="sh-emoji">↩️</span>
+          <span class="sh-lbl">챗봇 액션 되돌리기 (최근 30일)</span>
+          <span class="sh-chev">›</span>
+        </button>
         <button class="sh-row" data-act="failures">
           <span class="sh-emoji">🔔</span>
           <span class="sh-lbl">자동화 실패 알림함</span>
@@ -100,6 +105,7 @@
     if (act === 'shopinfo') { close(); setTimeout(() => window.openShopSettings && window.openShopSettings(), 200); return; }
     if (act === 'naver')    { close(); setTimeout(() => window.openNaverLink && window.openNaverLink(), 200); return; }
     if (act === 'backup')   { close(); setTimeout(() => window.openBackupScreen && window.openBackupScreen(), 200); return; }
+    if (act === 'undo')     { close(); setTimeout(() => window.openUndoHistory && window.openUndoHistory(), 200); return; }
     if (act === 'failures') { close(); setTimeout(() => window.openFailuresHub && window.openFailuresHub(), 200); return; }
     if (act === 'haptic') {
       try { window.toggleHapticSetting && window.toggleHapticSetting(); window.updateHapticToggleLabel && window.updateHapticToggleLabel(); } catch (_e) { void _e; }

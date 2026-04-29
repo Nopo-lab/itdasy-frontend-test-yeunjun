@@ -1925,6 +1925,10 @@
       _renderHistory();
       if (window.hapticSuccess) window.hapticSuccess();
       if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
+      // [2026-04-30] 되돌리기 버튼 토스트 — undo_log_id 받았으면
+      if (d.undo_log_id && window.showUndoToast) {
+        try { window.showUndoToast(d.message || '✓ 완료', d.undo_log_id); } catch (_e) { void _e; }
+      }
     } catch (e) {
       msg.action_status = 'failed';
       // 2026-04-26 버그B 픽스 — 실패 사유 저장 (UI 카드에 표시)
