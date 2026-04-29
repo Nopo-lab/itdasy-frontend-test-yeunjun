@@ -1,15 +1,7 @@
-/* ─────────────────────────────────────────────────────────────
-   Home v4.1 톤다운 렌더러 (2026-04-30)
-   - 헤더 / AI 비서 캐러셀 / 오늘의 예약 / 운영 3카드
-   - SWR 패턴: localStorage 캐시 즉시 렌더 → 백그라운드 fetch
-   - 데이터 소스:
-       /assistant/brief      (today_bookings / at_risk / low_stock / this_month_total)
-       loadSlotsFromDB()     (갤러리 미발행 슬롯)
-   - 외부 호환 hidden anchor 들 (#home-today-brief 등) 은 절대 손대지 않음.
-   - DOM ready / itdasy:data-changed / 탭 전환 시 자동 재렌더.
-
-   window.HomeV41 = { render(containerId), refresh() }
-   ──────────────────────────────────────────────────────────── */
+/* Home v4.1 톤다운 렌더러 — 헤더/캐러셀/오늘의 예약/운영 3카드.
+   SWR: 캐시 즉시 → 백그라운드 fetch. 데이터: /assistant/brief + loadSlotsFromDB().
+   외부 hidden anchor (#home-today-brief 등) 손대지 않음.
+   window.HomeV41 = { render(containerId), refresh() } */
 (function () {
   'use strict';
 
@@ -83,7 +75,7 @@
           </div>
         </div>
         <button type="button" class="hv-bell" data-hv-act="bell" aria-label="알림">
-          <svg width="22" height="22" aria-hidden="true"><use href="#ic-bell"/></svg>
+          <svg width="14" height="14" aria-hidden="true"><use href="#ic-bell"/></svg>
         </button>
       </div>
     `;
@@ -142,8 +134,7 @@
         cta: '안부 보내기', act: 'openInsights',
       });
     }
-    // 3) DM 자동응답 — TODO: 백엔드 미정 (v1 비노출)
-    // TODO[v1.5]: /dm/pending_drafts 등 엔드포인트 확정되면 카드 추가
+    // 3) DM 자동응답 — TODO[v1.5]: /dm/pending_drafts 확정 후 카드 추가
     // 4) 이어하기
     if (_hasInProgressSlot(slots)) {
       cards.push({
@@ -187,11 +178,12 @@
     const dots = cards.map((_, i) =>
       `<button type="button" class="hv-dot${i === 0 ? ' is-on' : ''}" data-hv-dot="${i}" aria-label="카드 ${i + 1}"></button>`
     ).join('');
+    const total = cards.length;
     return `
       <div class="hv-ai-label">
-        <span style="display:inline-flex;color:var(--brand-strong);"><svg width="13" height="13" aria-hidden="true"><use href="#ic-sparkles"/></svg></span>
-        <span class="hv-ai-label__text"><b>AI 비서</b>가 알려드려요</span>
-        <span class="hv-ai-label__count">${cards.length}건</span>
+        <span class="hv-ai-label__icon"><svg width="14" height="14" aria-hidden="true"><use href="#ic-sparkles"/></svg></span>
+        <span class="hv-ai-label__text"><b>AI 비서</b>가 ${total}가지 추천했어요</span>
+        <span class="hv-ai-label__count" data-hv-counter>1 / ${total}</span>
       </div>
       <div class="hv-carousel" data-hv-carousel role="region" aria-label="AI 비서 추천">
         ${items}
@@ -214,26 +206,35 @@
       .filter(b => (b.starts_at || '').startsWith(ymd))
       .sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)));
   }
+  function _renderBookingEmpty() {
+    return `
+      <section class="hv-booking" aria-label="오늘의 예약">
+        <div class="hv-booking__top">
+          <div>
+            <div class="hv-booking__label">오늘의 예약</div>
+            <div class="hv-booking__title">오늘 예약 없음</div>
+          </div>
+          <a href="#" class="hv-booking__link" data-hv-act="openCalendar">캘린더 →</a>
+        </div>
+      </section>
+    `;
+  }
+  function _bookingTitle(all, idxNext, visible) {
+    if (idxNext >= 0) {
+      const b = visible[idxNext];
+      const name = (b && (b.customer_name || b.name)) ? (b.customer_name || b.name) : '';
+      const next = _hhmm(b && b.starts_at);
+      return name ? `${all.length}건 · 다음 ${next} ${name}` : `${all.length}건 · 다음 ${next}`;
+    }
+    return `오늘 ${all.length}건`;
+  }
   function _renderBooking(brief) {
     const all = _todayBookings(brief);
-    const empty = CFG().BOOKING_EMPTY_DISPLAY || 'placeholder';
-    if (!all.length && empty === 'hide') return '';
-
+    const empty = CFG().BOOKING_EMPTY_DISPLAY || 'hide';
     if (!all.length) {
-      return `
-        <section class="hv-booking" aria-label="오늘의 예약">
-          <div class="hv-booking__top">
-            <div>
-              <div class="hv-booking__label">오늘 일정</div>
-              <div class="hv-booking__title">예약이 없어요</div>
-            </div>
-            <a href="#" class="hv-booking__link" data-hv-act="openCalendar">캘린더</a>
-          </div>
-          <div class="hv-slots"><div class="hv-slot" style="flex:1;">여유로운 하루 ✨</div></div>
-        </section>
-      `;
+      if (empty === 'hide') return '';
+      return _renderBookingEmpty();
     }
-
     const max = CFG().BOOKING_SLOTS_MAX || 4;
     const now = Date.now();
     const idxNext = all.findIndex(b => {
@@ -247,16 +248,14 @@
       return `<button type="button" class="hv-slot${cls}" data-hv-slot="${i}" data-hv-time="${_esc(b.starts_at || '')}">${_esc(_hhmm(b.starts_at))}</button>`;
     }).join('');
     const moreChip = more > 0 ? `<div class="hv-slot" aria-label="추가 예약">+${more}건 더</div>` : '';
-    const nextLabel = idxNext >= 0 ? `다음 ${_hhmm(visible[idxNext].starts_at)}` : `오늘 ${all.length}건`;
-
     return `
       <section class="hv-booking" aria-label="오늘의 예약">
         <div class="hv-booking__top">
           <div>
-            <div class="hv-booking__label">오늘 일정</div>
-            <div class="hv-booking__title">${_esc(nextLabel)}</div>
+            <div class="hv-booking__label">오늘의 예약</div>
+            <div class="hv-booking__title">${_esc(_bookingTitle(all, idxNext, visible))}</div>
           </div>
-          <a href="#" class="hv-booking__link" data-hv-act="openCalendar">전체 보기</a>
+          <a href="#" class="hv-booking__link" data-hv-act="openCalendar">캘린더 →</a>
         </div>
         <div class="hv-slots">${slotsHtml}${moreChip}</div>
       </section>
@@ -268,30 +267,48 @@
     try { return '₩' + (Number(n) || 0).toLocaleString('ko-KR'); }
     catch (_e) { return '₩0'; }
   }
+  // 데이터 미수신은 em dash, 0은 명시적 "0개 부족" 등으로 표기.
+  function _opsStock(brief) {
+    const ls = brief ? brief.low_stock : undefined;
+    if (ls == null) return { val: '—', danger: false };
+    const n = Array.isArray(ls) ? ls.length : Number(ls) || 0;
+    return { val: `${n}개 부족`, danger: n > 0 };
+  }
+  function _opsCustomers(brief) {
+    if (!brief) return '—';
+    if (typeof brief.new_customer_count === 'number') {
+      return `신규 ${brief.new_customer_count}명`;
+    }
+    const ar = brief.at_risk;
+    if (ar == null) return '—';
+    const n = Array.isArray(ar) ? ar.length : Number(ar) || 0;
+    return `이탈 위험 ${n}명`;
+  }
+  function _opsRevenue(brief) {
+    if (!brief) return '—';
+    const v = brief.this_month_total;
+    if (v == null) return '—';
+    return _won(v);
+  }
   function _renderOps(brief) {
-    const lowStock = (brief && brief.low_stock) || [];
-    const atRisk = (brief && brief.at_risk) || [];
-    const monthTotal = (brief && brief.this_month_total) || 0;
-
-    const stockVal = lowStock.length > 0 ? `${lowStock.length}개 부족` : '여유';
-    const stockDanger = lowStock.length > 0 ? ' is-danger' : '';
-    const custVal = atRisk.length > 0 ? `이탈 위험 ${atRisk.length}명` : '안정';
-    const revVal = monthTotal > 0 ? _won(monthTotal) : '집계 중';
-
+    const stock = _opsStock(brief);
+    const custVal = _opsCustomers(brief);
+    const revVal = _opsRevenue(brief);
+    const stockDanger = stock.danger ? ' is-danger' : '';
     return `
-      <section class="hv-ops" aria-label="운영 현황">
-        <div class="hv-ops__title">운영 현황</div>
+      <section class="hv-ops" aria-label="운영 관리">
+        <div class="hv-ops__title">운영 관리</div>
         <div class="hv-ops__grid">
           <button type="button" class="hv-ops__card" data-hv-act="openInventory">
-            <div class="hv-ops__cat">재고</div>
-            <div class="hv-ops__val${stockDanger}">${_esc(stockVal)}</div>
+            <div class="hv-ops__cat">재고관리</div>
+            <div class="hv-ops__val${stockDanger}">${_esc(stock.val)}</div>
           </button>
           <button type="button" class="hv-ops__card" data-hv-act="openCustomers">
-            <div class="hv-ops__cat">고객</div>
+            <div class="hv-ops__cat">고객관리</div>
             <div class="hv-ops__val">${_esc(custVal)}</div>
           </button>
           <button type="button" class="hv-ops__card" data-hv-act="openRevenue">
-            <div class="hv-ops__cat">이번달 매출</div>
+            <div class="hv-ops__cat">매출관리</div>
             <div class="hv-ops__val">${_esc(revVal)}</div>
           </button>
         </div>
@@ -303,6 +320,7 @@
   function _setupCarousel(container) {
     const car = container.querySelector('[data-hv-carousel]');
     const dots = container.querySelectorAll('[data-hv-dots] .hv-dot');
+    const counter = container.querySelector('[data-hv-counter]');
     if (!car || !dots.length) return;
     let raf = 0;
     car.addEventListener('scroll', () => {
@@ -314,6 +332,7 @@
         const cw = cards[0].getBoundingClientRect().width + 10;
         const idx = Math.min(dots.length - 1, Math.max(0, Math.round(car.scrollLeft / cw)));
         dots.forEach((d, i) => d.classList.toggle('is-on', i === idx));
+        if (counter) counter.textContent = (idx + 1) + ' / ' + cards.length;
       });
     }, { passive: true });
     dots.forEach((d, i) => {

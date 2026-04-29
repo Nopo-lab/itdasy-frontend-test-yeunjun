@@ -22,7 +22,7 @@
     // 오늘의 예약 슬롯 최대 노출 개수
     BOOKING_SLOTS_MAX: _readInt('hv41_slots_max', 4),
     // 0건일 때 카드 처리 ('hide' = 카드 숨김 / 'placeholder' = 빈 상태 표시)
-    BOOKING_EMPTY_DISPLAY: _readStr('hv41_empty', 'placeholder'),
+    BOOKING_EMPTY_DISPLAY: _readStr('hv41_empty', 'hide'),
     // 캐러셀에 노출할 카드 최대 개수
     CAROUSEL_MAX_CARDS: 6,
   };
