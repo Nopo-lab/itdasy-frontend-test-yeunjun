@@ -91,11 +91,13 @@
   }
 
   // ── 행 마크업 (NEW 배지는 이름 옆) ─────────────────────────────
+  // ⚠️ <button> 안에 <button>(토글) 중첩 invalid HTML — Safari가 분리시킴
+  // 그래서 row 자체는 <div role="button"> 으로 래핑
   function _rowHtml(row) {
     const newBadge = row.type === 'badge'
       ? `<span class="ms-aih__badge-new">NEW</span>` : '';
     return `
-      <button type="button" class="ms-aih__row" data-act="${_esc(row.act)}">
+      <div class="ms-aih__row" role="button" tabindex="0" data-act="${_esc(row.act)}">
         <span class="ms-aih__icon ${_esc(row.iconClass)}">
           <svg width="16" height="16" aria-hidden="true"><use href="#${_esc(row.icon)}"/></svg>
         </span>
@@ -104,7 +106,7 @@
           <span class="ms-aih__meta">${_esc(row.meta)}</span>
         </span>
         ${_rightHtml(row)}
-      </button>`;
+      </div>`;
   }
 
   // ── 시트 마크업 빌드 ──────────────────────────────────────────
@@ -148,7 +150,7 @@
     return sheet;
   }
 
-  // ── 핸들러: 닫기 / 토글 / 행 클릭 ─────────────────────────────
+  // ── 핸들러: 닫기 / 토글 / 행 클릭 + 키보드(div role=button 접근성) ──
   function _bindHandlers(sheet) {
     sheet.addEventListener('click', (e) => {
       if (e.target.closest('[data-close]')) { close(); return; }
@@ -166,6 +168,15 @@
         close();
         setTimeout(() => _route(act), 200);
       }
+    });
+    sheet.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const row = e.target.closest('.ms-aih__row');
+      if (!row) return;
+      e.preventDefault();
+      const act = row.dataset.act;
+      close();
+      setTimeout(() => _route(act), 200);
     });
   }
 

@@ -20,6 +20,10 @@
 /* 내샵관리 탭 활성일 때만 시스템 PC 사이드바 숨김 — ms-side(220px 풀 메뉴) 가 그 역할 대체 */
 body:has(#tab-dashboard.active) #sideNav { display: none !important; }
 
+/* 시스템 layout 의 body padding-left·tab max-width 가 ms-pc 를 좁게 만들어서 오버라이드 */
+body:has(#tab-dashboard.active) { padding-left: 0 !important; }
+body:has(#tab-dashboard.active) #tab-dashboard.tab { max-width: none !important; }
+
 /* ─────────────────────────────────────────────────────────────
    모바일 헤더
    ───────────────────────────────────────────────────────────── */
