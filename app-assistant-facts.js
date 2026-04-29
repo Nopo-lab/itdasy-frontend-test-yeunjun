@@ -30,7 +30,10 @@
   }
 
   function _kindLabel(kind) {
-    return { permanent: '🔒 영구', preference: '⭐ 선호', pattern: '🤖 자동학습' }[kind] || '🔒 영구';
+    return { permanent: '영구', preference: '선호', pattern: '자동 학습' }[kind] || '영구';
+  }
+  function _kindIcon(kind) {
+    return { permanent: 'ic-bot', preference: 'ic-star', pattern: 'ic-sparkles' }[kind] || 'ic-bot';
   }
   function _kindColor(kind) {
     return { permanent: '#7C3AED', preference: '#F18091', pattern: '#3B82F6' }[kind] || '#7C3AED';
@@ -42,12 +45,14 @@
     sheet = document.createElement('div');
     sheet.id = 'assistantFactsSheet';
     sheet.style.cssText = 'position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,0.5);display:none;align-items:flex-end;justify-content:center;';
+    const _ic = (id, size = 14) => `<svg width="${size}" height="${size}" aria-hidden="true"><use href="#${id}"/></svg>`;
     sheet.innerHTML = `
       <div id="afsCard" style="width:100%;max-width:520px;background:#fff;border-radius:20px 20px 0 0;max-height:88vh;display:flex;flex-direction:column;padding:18px 18px 0;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <strong style="font-size:17px;">🧠 챗봇 메모</strong>
+          <span style="display:inline-flex;align-items:center;color:#7C3AED;">${_ic('ic-bot', 18)}</span>
+          <strong style="font-size:17px;">챗봇 메모</strong>
           <span style="font-size:11px;background:#FAF5FF;color:#5B21B6;padding:2px 8px;border-radius:99px;font-weight:700;">사장님 머릿속</span>
-          <button id="afsClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;font-size:22px;cursor:pointer;line-height:1;">×</button>
+          <button id="afsClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#888;display:inline-flex;align-items:center;">${_ic('ic-x', 18)}</button>
         </div>
         <div style="font-size:12px;color:#777;line-height:1.5;margin-bottom:12px;">
           여기 적은 메모는 챗봇이 매번 참고해요. <span style="color:#5B21B6;font-weight:600;">"화요일 오전 예약 안 받음"</span> / <span style="color:#5B21B6;font-weight:600;">"강연준은 글루 알러지"</span> 같은 거.
@@ -74,12 +79,17 @@
 
   async function open() {
     const sheet = _ensureSheet();
-    sheet.style.display = 'flex';
+    const card = sheet.querySelector('#afsCard');
+    if (window.SheetAnim) window.SheetAnim.open(sheet, card);
+    else sheet.style.display = 'flex';
     await _refresh();
   }
   function close() {
     const sheet = document.getElementById('assistantFactsSheet');
-    if (sheet) sheet.style.display = 'none';
+    if (!sheet) return;
+    const card = sheet.querySelector('#afsCard');
+    if (window.SheetAnim) window.SheetAnim.close(sheet, card);
+    else sheet.style.display = 'none';
   }
 
   async function _refresh() {
@@ -95,7 +105,7 @@
       }
       list.innerHTML = facts.map(f => `
         <div style="display:flex;align-items:flex-start;gap:8px;padding:11px 12px;background:#FAFAFA;border-radius:12px;margin-bottom:8px;">
-          <span style="flex-shrink:0;font-size:10px;font-weight:700;color:${_kindColor(f.kind)};background:${_kindColor(f.kind)}15;padding:3px 8px;border-radius:99px;line-height:1.3;">${_kindLabel(f.kind)}</span>
+          <span style="flex-shrink:0;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:${_kindColor(f.kind)};background:${_kindColor(f.kind)}15;padding:3px 8px;border-radius:99px;line-height:1.3;"><svg width="10" height="10" aria-hidden="true"><use href="#${_kindIcon(f.kind)}"/></svg>${_kindLabel(f.kind)}</span>
           <div style="flex:1;font-size:13px;line-height:1.45;color:#333;word-break:break-word;">${_esc(f.text)}</div>
           <button class="afs-del" data-id="${f.id}" style="flex-shrink:0;background:none;border:none;color:#aaa;cursor:pointer;font-size:14px;padding:0 4px;line-height:1;" title="삭제">✕</button>
         </div>

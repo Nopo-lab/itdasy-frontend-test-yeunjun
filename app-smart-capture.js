@@ -20,20 +20,22 @@
     sheet = document.createElement('div');
     sheet.id = 'smartCaptureSheet';
     sheet.style.cssText = 'position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,0.5);display:none;align-items:flex-end;justify-content:center;';
+    const _ic = (id, size = 26) => `<svg width="${size}" height="${size}" aria-hidden="true"><use href="#${id}"/></svg>`;
     sheet.innerHTML = `
       <div id="scCard" style="width:100%;max-width:540px;background:#fff;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;padding:18px 18px max(18px,env(safe-area-inset-bottom));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <strong id="scTitle" style="font-size:17px;">📥 스마트 캡처</strong>
-          <button id="scClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;font-size:22px;cursor:pointer;line-height:1;">×</button>
+          <span style="display:inline-flex;align-items:center;color:#7C3AED;">${_ic('ic-image-plus', 20)}</span>
+          <strong id="scTitle" style="font-size:17px;">스마트 캡처</strong>
+          <button id="scClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#888;display:inline-flex;align-items:center;">${_ic('ic-x', 18)}</button>
         </div>
         <div id="scModePick" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
-          <button data-mode="kakao" class="sc-mode-btn" style="padding:18px 10px;border:2px solid #FEE500;border-radius:14px;background:linear-gradient(135deg,#FFF9C4,#FFF59D);cursor:pointer;text-align:center;">
-            <div style="font-size:30px;margin-bottom:6px;">💬</div>
-            <div style="font-size:13px;font-weight:800;color:#3F2C00;">카톡 캡처</div>
-            <div style="font-size:10px;color:#3F2C0080;margin-top:3px;">예약·매출·후기 자동 추출</div>
+          <button data-mode="kakao" class="sc-mode-btn" style="padding:20px 10px;border:2px solid #FBBF24;border-radius:14px;background:linear-gradient(135deg,#FFFBEB,#FEF3C7);cursor:pointer;text-align:center;">
+            <div style="color:#92400E;margin-bottom:8px;display:inline-flex;">${_ic('ic-message-square', 30)}</div>
+            <div style="font-size:13px;font-weight:800;color:#92400E;">카톡 캡처</div>
+            <div style="font-size:10px;color:#92400E80;margin-top:3px;">예약·매출·후기 자동 추출</div>
           </button>
-          <button data-mode="card" class="sc-mode-btn" style="padding:18px 10px;border:2px solid #DDD6FE;border-radius:14px;background:linear-gradient(135deg,#FAF5FF,#F3E8FF);cursor:pointer;text-align:center;">
-            <div style="font-size:30px;margin-bottom:6px;">💳</div>
+          <button data-mode="card" class="sc-mode-btn" style="padding:20px 10px;border:2px solid #DDD6FE;border-radius:14px;background:linear-gradient(135deg,#FAF5FF,#F3E8FF);cursor:pointer;text-align:center;">
+            <div style="color:#5B21B6;margin-bottom:8px;display:inline-flex;">${_ic('ic-credit-card', 30)}</div>
             <div style="font-size:13px;font-weight:800;color:#5B21B6;">명함</div>
             <div style="font-size:10px;color:#5B21B680;margin-top:3px;">사진 1장 → 고객 등록</div>
           </button>
@@ -54,17 +56,22 @@
 
   function open(initialMode) {
     const sheet = _ensureSheet();
-    sheet.style.display = 'flex';
     _mode = null;
     sheet.querySelector('#scModePick').style.display = 'grid';
     sheet.querySelector('#scWorkArea').style.display = 'none';
     sheet.querySelector('#scWorkArea').innerHTML = '';
-    sheet.querySelector('#scTitle').textContent = '📥 스마트 캡처';
+    sheet.querySelector('#scTitle').textContent = '스마트 캡처';
+    const card = sheet.querySelector('#scCard');
+    if (window.SheetAnim) window.SheetAnim.open(sheet, card);
+    else sheet.style.display = 'flex';
     if (initialMode) _setMode(initialMode);
   }
   function close() {
     const sheet = document.getElementById('smartCaptureSheet');
-    if (sheet) sheet.style.display = 'none';
+    if (!sheet) return;
+    const card = sheet.querySelector('#scCard');
+    if (window.SheetAnim) window.SheetAnim.close(sheet, card);
+    else sheet.style.display = 'none';
   }
 
   function _setMode(mode) {
@@ -72,14 +79,16 @@
     const sheet = document.getElementById('smartCaptureSheet');
     if (!sheet) return;
     sheet.querySelector('#scModePick').style.display = 'none';
-    sheet.querySelector('#scTitle').textContent = mode === 'kakao' ? '💬 카톡 캡처 → 자동 등록' : '💳 명함 → 고객 등록';
+    sheet.querySelector('#scTitle').textContent = mode === 'kakao' ? '카톡 캡처 → 자동 등록' : '명함 → 고객 등록';
     const work = sheet.querySelector('#scWorkArea');
     work.style.display = 'block';
+    const _ic = (id, size = 26) => `<svg width="${size}" height="${size}" aria-hidden="true"><use href="#${id}"/></svg>`;
+    const isKakao = mode === 'kakao';
     work.innerHTML = `
-      <div id="scUpload" style="border:2px dashed ${mode === 'kakao' ? '#FEE500' : '#DDD6FE'};border-radius:14px;padding:30px 16px;text-align:center;background:${mode === 'kakao' ? '#FFFEF7' : '#FAF5FF'};cursor:pointer;">
-        <div style="font-size:32px;margin-bottom:6px;">${mode === 'kakao' ? '💬' : '📷'}</div>
-        <div style="font-size:14px;font-weight:700;color:${mode === 'kakao' ? '#3F2C00' : '#5B21B6'};margin-bottom:4px;">탭해서 사진 선택</div>
-        <div style="font-size:11px;color:#888;">${mode === 'kakao' ? '카카오톡 채팅 캡처' : '명함 정면 사진'}</div>
+      <div id="scUpload" style="border:2px dashed ${isKakao ? '#FBBF24' : '#DDD6FE'};border-radius:14px;padding:30px 16px;text-align:center;background:${isKakao ? '#FFFBEB' : '#FAF5FF'};cursor:pointer;transition:all 0.2s;">
+        <div style="color:${isKakao ? '#92400E' : '#5B21B6'};margin-bottom:8px;display:inline-flex;">${_ic(isKakao ? 'ic-message-square' : 'ic-camera', 36)}</div>
+        <div style="font-size:14px;font-weight:700;color:${isKakao ? '#92400E' : '#5B21B6'};margin-bottom:4px;">탭해서 사진 선택</div>
+        <div style="font-size:11px;color:#888;">${isKakao ? '카카오톡 채팅 캡처' : '명함 정면 사진'}</div>
         <input id="scFile" type="file" accept="image/*" style="display:none;">
       </div>
       <div id="scProgress" style="display:none;text-align:center;padding:30px 0;">
@@ -137,23 +146,30 @@
     }
     progress.style.display = 'none';
     resultBox.style.display = 'block';
-    const typeLabel = { customer: '👤 고객', booking: '📅 예약', revenue: '💰 매출', review: '⭐ 후기' };
+    const _ic2 = (id, size = 14) => `<svg width="${size}" height="${size}" aria-hidden="true"><use href="#${id}"/></svg>`;
+    const typeIcon = { customer: 'ic-user', booking: 'ic-calendar', revenue: 'ic-dollar-sign', review: 'ic-star' };
+    const typeLabel = { customer: '고객', booking: '예약', revenue: '매출', review: '후기' };
+    const typeColor = { customer: '#1E40AF', booking: '#15803D', revenue: '#B45309', review: '#9D174D' };
     resultBox.innerHTML = `
-      <div style="padding:12px 14px;background:#F0FDF4;border-radius:12px;margin-bottom:12px;font-size:13px;font-weight:700;color:#166534;">
-        ✅ ${items.length}건 인식 완료 (검토 후 등록)
+      <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;background:#F0FDF4;border-radius:12px;margin-bottom:12px;font-size:13px;font-weight:700;color:#166534;">
+        <span style="display:inline-flex;align-items:center;">${_ic2('ic-check-circle', 16)}</span>
+        ${items.length}건 인식 완료 (검토 후 등록)
       </div>
       <div id="scKakaoList" style="max-height:340px;overflow-y:auto;">
         ${items.map((it, idx) => `
           <label style="display:flex;align-items:flex-start;gap:8px;padding:10px;background:#FAFAFA;border-radius:10px;margin-bottom:6px;cursor:pointer;">
             <input type="checkbox" data-idx="${idx}" checked style="margin-top:2px;flex-shrink:0;">
             <div style="flex:1;font-size:12px;line-height:1.5;">
-              <div style="font-weight:700;color:#5B21B6;margin-bottom:3px;">${typeLabel[it.type] || '?'}</div>
+              <div style="display:inline-flex;align-items:center;gap:5px;font-weight:700;color:${typeColor[it.type] || '#5B21B6'};margin-bottom:3px;">
+                ${_ic2(typeIcon[it.type] || 'ic-sparkles', 13)}
+                <span>${typeLabel[it.type] || '?'}</span>
+              </div>
               ${it.name ? `<div>이름: <strong>${_esc(it.name)}</strong></div>` : ''}
               ${it.phone ? `<div>전화: ${_esc(it.phone)}</div>` : ''}
               ${it.starts_at ? `<div>시간: ${_esc(it.starts_at)}</div>` : ''}
               ${it.service_name ? `<div>시술: ${_esc(it.service_name)}</div>` : ''}
               ${it.amount ? `<div>금액: <strong>${_krw(it.amount)}</strong></div>` : ''}
-              ${it.rating ? `<div>별점: ${'⭐'.repeat(it.rating)}</div>` : ''}
+              ${it.rating ? `<div style="display:inline-flex;align-items:center;gap:2px;color:#F59E0B;">${'<svg width=\"12\" height=\"12\" style=\"fill:currentColor;\"><use href=\"#ic-star\"/></svg>'.repeat(it.rating)}</div>` : ''}
               ${it.comment ? `<div style="color:#555;">${_esc(it.comment)}</div>` : ''}
               ${it.memo ? `<div style="color:#888;font-size:11px;">${_esc(it.memo)}</div>` : ''}
             </div>
@@ -214,7 +230,7 @@
     }
     resultBox.innerHTML = `
       <div style="padding:14px;background:#FAF5FF;border:1px solid #DDD6FE;border-radius:12px;margin-bottom:12px;">
-        <div style="font-size:13px;color:#5B21B6;font-weight:700;margin-bottom:8px;">✨ 인식 결과 (검토 후 등록)</div>
+        <div style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#5B21B6;font-weight:700;margin-bottom:8px;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-sparkles"/></svg>인식 결과 (검토 후 등록)</div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <label style="font-size:11px;color:#666;">이름 <input id="scCardName" value="${_esc(c.name || '')}" style="width:100%;margin-top:3px;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></label>
           <label style="font-size:11px;color:#666;">전화 <input id="scCardPhone" value="${_esc(c.phone || '')}" style="width:100%;margin-top:3px;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></label>

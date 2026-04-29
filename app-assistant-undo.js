@@ -108,11 +108,13 @@
     sheet = document.createElement('div');
     sheet.id = 'undoHistorySheet';
     sheet.style.cssText = 'position:fixed;inset:0;z-index:9985;background:rgba(0,0,0,0.5);display:none;align-items:flex-end;justify-content:center;';
+    const _ic = (id, size = 14) => `<svg width="${size}" height="${size}" aria-hidden="true"><use href="#${id}"/></svg>`;
     sheet.innerHTML = `
       <div id="uhsCard" style="width:100%;max-width:540px;background:#fff;border-radius:20px 20px 0 0;max-height:88vh;display:flex;flex-direction:column;padding:18px 18px max(18px,env(safe-area-inset-bottom));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <strong style="font-size:17px;">↩️ 되돌리기 (최근 30일)</strong>
-          <button id="uhsClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;font-size:22px;cursor:pointer;line-height:1;">×</button>
+          <span style="display:inline-flex;align-items:center;color:#7C3AED;">${_ic('ic-rotate-ccw', 18)}</span>
+          <strong style="font-size:17px;">되돌리기 (최근 30일)</strong>
+          <button id="uhsClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#888;display:inline-flex;align-items:center;">${_ic('ic-x', 18)}</button>
         </div>
         <div style="font-size:11px;color:#888;margin-bottom:10px;">챗봇이 추가/변경한 항목들. 클릭하면 되돌려요.</div>
         <div id="uhsList" style="flex:1;overflow-y:auto;">
@@ -121,7 +123,7 @@
         <div style="margin-top:10px;padding:12px;background:#FAF5FF;border-radius:10px;font-size:11px;line-height:1.5;color:#5B21B6;">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
             <input type="checkbox" id="uhsChainToggle">
-            <span><strong>🔗 Chain 모드</strong> — 챗봇이 여러 액션을 한 번 confirm 으로 자동 처리</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;"><svg width="12" height="12" style="vertical-align:-1px;"><use href="#ic-link"/></svg><strong>Chain 모드</strong> — 챗봇이 여러 액션을 한 번 confirm 으로 자동 처리</span>
           </label>
           <div style="margin-top:6px;font-size:10px;color:#5B21B680;">위험 액션(삭제/취소/메시지 발송)은 Chain 모드여도 개별 확인. 실패 시 자동 되돌림.</div>
         </div>
@@ -139,13 +141,18 @@
 
   async function open() {
     const sheet = _ensureSheet();
-    sheet.style.display = 'flex';
+    const card = sheet.querySelector('#uhsCard');
+    if (window.SheetAnim) window.SheetAnim.open(sheet, card);
+    else sheet.style.display = 'flex';
     sheet.querySelector('#uhsChainToggle').checked = isChainModeOn();
     await _refresh();
   }
   function close() {
     const sheet = document.getElementById('undoHistorySheet');
-    if (sheet) sheet.style.display = 'none';
+    if (!sheet) return;
+    const card = sheet.querySelector('#uhsCard');
+    if (window.SheetAnim) window.SheetAnim.close(sheet, card);
+    else sheet.style.display = 'none';
   }
 
   async function _refresh() {
@@ -172,7 +179,7 @@
           return `
             <div style="padding:10px 12px;background:#FAF5FF;border:1px solid #DDD6FE;border-radius:12px;margin-bottom:8px;">
               <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-                <span style="font-size:11px;font-weight:700;color:#5B21B6;background:#fff;padding:2px 7px;border-radius:99px;">🔗 Chain ${group.length}건</span>
+                <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#5B21B6;background:#fff;padding:3px 8px;border-radius:99px;"><svg width="11" height="11" aria-hidden="true"><use href="#ic-link"/></svg>Chain ${group.length}건</span>
                 <span style="font-size:10px;color:#999;">${dt.toLocaleString('ko-KR', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
                 <button class="uhs-undo-chain" data-chain="${cid}" style="margin-left:auto;background:#7C3AED;border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">전체 되돌리기</button>
               </div>
@@ -188,7 +195,7 @@
               <div>${_esc(it.summary)}</div>
               <div style="font-size:10px;color:#999;margin-top:2px;">${dt.toLocaleString('ko-KR', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
             </div>
-            <button class="uhs-undo" data-id="${it.id}" style="background:#fff;border:1px solid #ddd;color:#555;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;">↩️ 되돌리기</button>
+            <button class="uhs-undo" data-id="${it.id}" style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #ddd;color:#555;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;"><svg width="11" height="11" aria-hidden="true"><use href="#ic-rotate-ccw"/></svg>되돌리기</button>
           </div>
         `;
       }).join('');

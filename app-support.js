@@ -153,7 +153,7 @@
       _updateBadge(0);
     } catch (_e) { void _e; }
 
-    // 30초 polling (모달 닫히면 정지)
+    // [2026-04-30] 60초 polling (모달 닫히면 정지). 30s → 60s 로 서버 부하 절반.
     if (_pollTimer) clearInterval(_pollTimer);
     _pollTimer = setInterval(async () => {
       if (document.getElementById('supportChatModal')?.style.display === 'none') {
@@ -168,7 +168,7 @@
           await fetch(window.API + '/support/messages/read', { method: 'POST', headers: window.authHeader() });
         } catch (_e) { void _e; }
       }
-    }, 30000);
+    }, 60000);
 
     // 입력창 포커스
     setTimeout(() => document.getElementById('supportChatInput')?.focus(), 200);

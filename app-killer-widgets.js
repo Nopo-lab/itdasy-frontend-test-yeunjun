@@ -20,11 +20,41 @@
 
   function _esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch])); }
 
-  async function _fetchBrief() {
+  // [2026-04-30] SWR 캐시 추가 — 즉시 렌더 + 백그라운드 갱신
+  const _BRIEF_CACHE_KEY = 'pv_cache::ai_brief';
+  const _BRIEF_TTL_MS = 5 * 60 * 1000; // 5분
+  function _readBriefCache() {
+    try {
+      const raw = sessionStorage.getItem(_BRIEF_CACHE_KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (Date.now() - obj.t > _BRIEF_TTL_MS) return null;
+      return obj.d;
+    } catch (_e) { return null; }
+  }
+  function _writeBriefCache(data) {
+    try { sessionStorage.setItem(_BRIEF_CACHE_KEY, JSON.stringify({ t: Date.now(), d: data })); }
+    catch (_e) { /* quota — 무시 */ }
+  }
+
+  async function _fetchBrief(useCache = true) {
+    if (useCache) {
+      const cached = _readBriefCache();
+      if (cached) {
+        // 백그라운드 갱신 (다음 호출용) — 응답 기다리지 않음
+        fetch(API() + '/assistant/brief', { headers: AUTH() })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => d && _writeBriefCache(d))
+          .catch(() => { /* ignore */ });
+        return cached;
+      }
+    }
     try {
       const res = await fetch(API() + '/assistant/brief', { headers: AUTH() });
       if (!res.ok) return null;
-      return await res.json();
+      const d = await res.json();
+      _writeBriefCache(d);
+      return d;
     } catch (e) { return null; }
   }
 

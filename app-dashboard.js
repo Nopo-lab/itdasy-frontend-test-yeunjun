@@ -21,8 +21,8 @@
     return v.toLocaleString('ko-KR');
   }
 
-  // T-326 — sessionStorage 캐시 (1분 내 재호출 즉시 반환, 네트워크 로딩 지연 해소)
-  const _CACHE_TTL = 60 * 1000;
+  // T-326 — sessionStorage 캐시. [2026-04-30] 1분 → 5분 (재진입 hit 율 ↑, fetch 빈도 ↓)
+  const _CACHE_TTL = 5 * 60 * 1000;
   function _cacheKey(path) { return 'dash_cache::' + path; }
   function _getCached(path) {
     try {

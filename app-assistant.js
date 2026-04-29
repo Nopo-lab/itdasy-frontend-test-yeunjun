@@ -2077,12 +2077,37 @@
   let _proactiveLoadedAt = 0;
   async function _loadProactiveSuggestions() {
     try {
-      // 5분 캐시
+      // [2026-04-30] SWR 캐시 hit → 즉시 렌더 + 백그라운드 갱신
       if (Date.now() - _proactiveLoadedAt < 300000) return;
       if (!window.API || !window.authHeader) return;
+      // 1) sessionStorage 의 today/brief 캐시 hit 시도 (다른 화면이 이미 로드한 경우)
+      let d = null;
+      try {
+        const raw = sessionStorage.getItem('pv_cache::today');
+        if (raw) {
+          const obj = JSON.parse(raw);
+          if (Date.now() - obj.t < 300000) d = obj.d;
+        }
+      } catch (_e) { void _e; }
+      if (d) {
+        const suggestions = (d.proactive_suggestions || []).slice(0, 3);
+        _renderProactiveCarousel(suggestions);
+        _proactiveLoadedAt = Date.now();
+        // 백그라운드 갱신 (다음 호출용)
+        fetch(window.API + '/today/brief', { headers: window.authHeader() })
+          .then(r => r.ok ? r.json() : null)
+          .then(fresh => {
+            if (fresh) {
+              try { sessionStorage.setItem('pv_cache::today', JSON.stringify({ t: Date.now(), d: fresh })); } catch (_e) { void _e; }
+            }
+          }).catch(() => { /* ignore */ });
+        return;
+      }
+      // 2) 캐시 miss — 직접 fetch
       const res = await fetch(window.API + '/today/brief', { headers: window.authHeader() });
       if (!res.ok) return;
-      const d = await res.json();
+      d = await res.json();
+      try { sessionStorage.setItem('pv_cache::today', JSON.stringify({ t: Date.now(), d })); } catch (_e) { void _e; }
       const suggestions = (d.proactive_suggestions || []).slice(0, 3);
       _renderProactiveCarousel(suggestions);
       _proactiveLoadedAt = Date.now();

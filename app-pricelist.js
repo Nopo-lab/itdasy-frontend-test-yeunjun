@@ -70,11 +70,16 @@
     sheet.querySelector('#plProgress').style.display = 'none';
     sheet.querySelector('#plResult').style.display = 'none';
     sheet.querySelector('#plResult').innerHTML = '';
-    sheet.style.display = 'flex';
+    const card = sheet.querySelector('#pricelistCard') || sheet.firstElementChild;
+    if (window.SheetAnim) window.SheetAnim.open(sheet, card);
+    else sheet.style.display = 'flex';
   }
   function close() {
     const sheet = document.getElementById('pricelistSheet');
-    if (sheet) sheet.style.display = 'none';
+    if (!sheet) return;
+    const card = sheet.querySelector('#pricelistCard') || sheet.firstElementChild;
+    if (window.SheetAnim) window.SheetAnim.close(sheet, card);
+    else sheet.style.display = 'none';
   }
 
   async function _upload(file) {
