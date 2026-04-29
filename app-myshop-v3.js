@@ -249,37 +249,41 @@
         ${badge}
       </button>`;
   }
+  // 사이드바 아이콘은 인덱스 sprite 재사용 — 굵기·viewBox 일관성 보장
+  function _sideIcon(id) {
+    return `<svg width="18" height="18" aria-hidden="true"><use href="#${id}"/></svg>`;
+  }
   function _sideOpsHTML(brief) {
     const todayN = _todayBookingsList(brief).length;
     const lowStock = brief && Array.isArray(brief.low_stock) ? brief.low_stock.length :
                      (brief && typeof brief.low_stock === 'number' ? brief.low_stock : 0);
     return [
       '<div class="ms-side__section">운영</div>',
-      _sideItemHTML({ act: 'booking', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', label: '예약관리', badge: todayN > 0 ? todayN : null, badgeClass: 'is-ok' }),
-      _sideItemHTML({ act: 'customer', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/></svg>', label: '고객관리' }),
-      _sideItemHTML({ act: 'revenue', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>', label: '매출관리' }),
-      _sideItemHTML({ act: 'inventory', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>', label: '재고관리', badge: lowStock > 0 ? lowStock : null }),
+      _sideItemHTML({ act: 'booking',   iconSVG: _sideIcon('ic-calendar'),    label: '예약관리', badge: todayN > 0 ? todayN : null, badgeClass: 'is-ok' }),
+      _sideItemHTML({ act: 'customer',  iconSVG: _sideIcon('ic-users'),       label: '고객관리' }),
+      _sideItemHTML({ act: 'revenue',   iconSVG: _sideIcon('ic-dollar-sign'), label: '매출관리' }),
+      _sideItemHTML({ act: 'inventory', iconSVG: _sideIcon('ic-package'),     label: '재고관리', badge: lowStock > 0 ? lowStock : null }),
     ].join('');
   }
   function _sideHubHTML() {
     const automationOn = _automationOnCount();
     return [
       '<div class="ms-side__section">통합 허브</div>',
-      _sideItemHTML({ act: 'aiHub', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg>', label: 'AI · 자동화', badge: `${automationOn}/7`, badgeClass: 'is-ok' }),
-      _sideItemHTML({ act: 'settings', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/></svg>', label: '설정 · 연동' }),
+      _sideItemHTML({ act: 'aiHub',    iconSVG: _sideIcon('ic-sparkles'), label: 'AI · 자동화', badge: `${automationOn}/7`, badgeClass: 'is-ok' }),
+      _sideItemHTML({ act: 'settings', iconSVG: _sideIcon('ic-settings'), label: '설정 · 연동' }),
     ].join('');
   }
   function _sideAccountHTML() {
     return [
       '<div class="ms-side__section">계정</div>',
-      _sideItemHTML({ act: 'plan', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg>', label: '플랜 · Pro' }),
-      _sideItemHTML({ act: 'support', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>', label: '도움말' }),
+      _sideItemHTML({ act: 'plan',    iconSVG: _sideIcon('ic-star'),           label: '플랜 · Pro' }),
+      _sideItemHTML({ act: 'support', iconSVG: _sideIcon('ic-message-circle'), label: '도움말' }),
     ].join('');
   }
   function _renderPCSidebar(brief) {
     const top = [
-      _sideItemHTML({ act: 'goHome', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>', label: '홈' }),
-      _sideItemHTML({ active: true, iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18l-2 13H5z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg>', label: '내샵관리' }),
+      _sideItemHTML({ act: 'goHome',     iconSVG: _sideIcon('ic-home'),  label: '홈' }),
+      _sideItemHTML({ active: true,      iconSVG: _sideIcon('ic-store'), label: '내샵관리' }),
     ].join('');
     return `
       <aside class="ms-side" aria-label="내샵관리 사이드바">
@@ -289,7 +293,7 @@
         ${_sideHubHTML()}
         ${_sideAccountHTML()}
         <button type="button" class="ms-side__fab" data-mv-act="createShortcut">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg>
+          <svg width="16" height="16" aria-hidden="true"><use href="#ic-sparkles"/></svg>
           만들기
         </button>
       </aside>
