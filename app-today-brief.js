@@ -103,6 +103,13 @@
     if (d.at_risk_count > 0) {
       items.push({ ic: 'heart', label: `이탈 임박 ${d.at_risk_count}명 — 안부 한 통 보낼 타이밍`, color: '#dc3545', action: 'insights' });
     }
+    // [2026-04-29 W5] 회원권 통계 항목
+    if (d.membership_expiring_30d > 0) {
+      items.push({ ic: 'sparkles', label: `회원권 만료 임박 ${d.membership_expiring_30d}건 — 충전 안내 보낼 시점`, color: '#7C3AED', action: 'membership_expiring' });
+    }
+    if (d.membership_low_balance > 0) {
+      items.push({ ic: 'sparkles', label: `회원권 잔액 부족 ${d.membership_low_balance}명`, color: '#A78BFA' });
+    }
     // [2026-04-24] '생일' / '대기자' 항목 제거 — 사용자 요구로 통합 카드에서 비노출.
     //   백엔드 응답에 birthday_count 가 와도 무시. 항목 노출 자체를 차단해야
     //   AI 추천 텍스트 병합 단계에서도 우연히 들어오지 않음.
