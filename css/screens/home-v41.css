@@ -226,6 +226,11 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 }
 .hv-card--featured .hv-card__cta { background: var(--brand-strong); color: #FFF; }
 
+/* 빈 예약 카드 — 전체 클릭으로 캘린더 이동 */
+.hv-booking--empty { cursor: pointer; }
+.hv-booking--empty:active { transform: scale(0.99); }
+.hv-booking--empty:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
 /* ============ 점 인디케이터 ============ */
 .hv-dots {
   display: flex;

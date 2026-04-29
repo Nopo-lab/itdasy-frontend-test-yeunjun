@@ -111,10 +111,28 @@
     return list.some(b => (b.starts_at || '').startsWith(ymd));
   }
 
+  function _onboardingCards() {
+    return [
+      { kind: 'onboarding-caption', featured: true, dot: 'pink', cat: '시작하기',
+        headline: '사진으로 캡션을 만들어 보세요',
+        sub: '갤러리에 사진을 올리면 AI가 캡션을 만들어요',
+        cta: '캡션 만들기', act: 'openCaption' },
+      { kind: 'onboarding-booking', dot: 'green', cat: '예약',
+        headline: '첫 예약을 추가해 보세요',
+        sub: '캘린더에서 손님 예약을 등록할 수 있어요',
+        cta: '예약 추가', act: 'openCalendar' },
+      { kind: 'onboarding-customer', dot: 'purple', cat: '손님',
+        headline: '손님을 등록해 보세요',
+        sub: '단골을 모아두면 자동 안부도 보낼 수 있어요',
+        cta: '손님 등록', act: 'openCustomers' },
+    ];
+  }
+
   function _buildCarouselCards(brief, slots) {
     const cards = [];
+    const hasCaption = _hasUnpublishedPhotoSlot(slots);
     // 1) AI 캡션 (featured)
-    if (_hasUnpublishedPhotoSlot(slots)) {
+    if (hasCaption) {
       const cnt = slots.filter(s => s.status !== 'done' && Array.isArray(s.photos) && s.photos.length > 0).length;
       cards.push({
         kind: 'caption', featured: true, dot: 'pink', cat: '캡션 추천',
@@ -135,8 +153,8 @@
       });
     }
     // 3) DM 자동응답 — TODO[v1.5]: /dm/pending_drafts 확정 후 카드 추가
-    // 4) 이어하기
-    if (_hasInProgressSlot(slots)) {
+    // 4) 이어하기 (캡션 카드 있으면 dedup — 같은 갤러리 상태 가리킴)
+    if (!hasCaption && _hasInProgressSlot(slots)) {
       cards.push({
         kind: 'resume', dot: 'green', cat: '이어하기',
         headline: '진행 중인 작업이 있어요',
@@ -153,7 +171,9 @@
         cta: '캘린더 보기', act: 'openCalendar',
       });
     }
-    return cards.slice(0, CFG().CAROUSEL_MAX_CARDS || 6);
+    // 빈 상태 → 온보딩 카드로 채워서 첫 화면이 비지 않게
+    const final = cards.length ? cards : _onboardingCards();
+    return final.slice(0, CFG().CAROUSEL_MAX_CARDS || 6);
   }
 
   // ─────────── 캐러셀 렌더 ───────────
@@ -208,13 +228,13 @@
   }
   function _renderBookingEmpty() {
     return `
-      <section class="hv-booking" aria-label="오늘의 예약">
+      <section class="hv-booking hv-booking--empty" aria-label="오늘의 예약" data-hv-act="openCalendar" role="button" tabindex="0">
         <div class="hv-booking__top">
           <div>
             <div class="hv-booking__label">오늘의 예약</div>
             <div class="hv-booking__title">오늘 예약 없음</div>
           </div>
-          <a href="#" class="hv-booking__link" data-hv-act="openCalendar">캘린더 →</a>
+          <span class="hv-booking__link" aria-hidden="true">캘린더 →</span>
         </div>
       </section>
     `;
@@ -267,27 +287,22 @@
     try { return '₩' + (Number(n) || 0).toLocaleString('ko-KR'); }
     catch (_e) { return '₩0'; }
   }
-  // 데이터 미수신은 em dash, 0은 명시적 "0개 부족" 등으로 표기.
+  // 데이터 없으면 0 으로 표기 — 신규 가입자도 깔끔한 빈 상태로.
   function _opsStock(brief) {
     const ls = brief ? brief.low_stock : undefined;
-    if (ls == null) return { val: '—', danger: false };
-    const n = Array.isArray(ls) ? ls.length : Number(ls) || 0;
+    const n = Array.isArray(ls) ? ls.length : (Number(ls) || 0);
     return { val: `${n}개 부족`, danger: n > 0 };
   }
   function _opsCustomers(brief) {
-    if (!brief) return '—';
-    if (typeof brief.new_customer_count === 'number') {
+    if (brief && typeof brief.new_customer_count === 'number') {
       return `신규 ${brief.new_customer_count}명`;
     }
-    const ar = brief.at_risk;
-    if (ar == null) return '—';
-    const n = Array.isArray(ar) ? ar.length : Number(ar) || 0;
+    const ar = brief ? brief.at_risk : undefined;
+    const n = Array.isArray(ar) ? ar.length : (Number(ar) || 0);
     return `이탈 위험 ${n}명`;
   }
   function _opsRevenue(brief) {
-    if (!brief) return '—';
-    const v = brief.this_month_total;
-    if (v == null) return '—';
+    const v = brief ? brief.this_month_total : 0;
     return _won(v);
   }
   function _renderOps(brief) {
