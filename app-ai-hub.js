@@ -138,7 +138,8 @@
     let sheet = document.getElementById('aiHubSheet');
     if (sheet) {
       sheet.innerHTML = _buildSheet();
-      _bindHandlers(sheet);
+      // ⚠️ 핸들러는 sheet 엘리먼트에 1회만 attach (innerHTML 교체해도 부모 리스너는 살아남음)
+      // 이전엔 매번 attach 해서 N번 open 후 N번 fire → 토글 / route 다중 발생 버그
       return sheet;
     }
     sheet = document.createElement('div');
@@ -158,6 +159,8 @@
       const tgl = e.target.closest('[data-toggle]');
       if (tgl) {
         e.stopPropagation();
+        e.stopImmediatePropagation();
+        e.preventDefault();
         _onToggleClick(tgl, sheet);
         return;
       }

@@ -85,6 +85,11 @@
   background: var(--ok);
   animation: dm-pulse 2s ease-in-out infinite;
 }
+.dm-activate__dot--off {
+  background: var(--text-subtle);
+  animation: none;
+}
+.dm-activate__dot--off + .dm-activate__status-text { color: var(--text-subtle); }
 @keyframes dm-pulse {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.4; }
