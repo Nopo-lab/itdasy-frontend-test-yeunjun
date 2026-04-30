@@ -80,10 +80,17 @@
 
   function _close() {
     if (_nowLineTimer) { clearInterval(_nowLineTimer); _nowLineTimer = null; }
+    if (_escHandler) { document.removeEventListener('keydown', _escHandler); _escHandler = null; }
     const o = _overlay(); if (o) o.remove();
     document.body.style.overflow = '';
     document.body.classList.remove('bk-pc-mode');
     try { if (typeof window._markSheetClosed === 'function') window._markSheetClosed('booking'); } catch (_e) { void _e; }
+  }
+  let _escHandler = null;
+  function _bindEscClose() {
+    if (_escHandler) return;
+    _escHandler = (e) => { if (e.key === 'Escape') _close(); };
+    document.addEventListener('keydown', _escHandler);
   }
 
   // ============================================================
@@ -728,6 +735,7 @@
     document.body.appendChild(o);
     _bindHeader(o);
     _bindToolbar(o);
+    _bindEscClose();
     _renderViewBody();
   }
 
@@ -741,8 +749,8 @@
     }).join('');
     return `
         <div class="bk-pc__header">
-          <button class="bk-header__back" id="bk-back" aria-label="닫기">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="15 18 9 12 15 6"/></svg>
+          <button class="bk-header__back" id="bk-back" aria-label="닫기" title="ESC 또는 클릭으로 닫기">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
           <div class="bk-pc__title">예약</div>
           <div class="bk-pc__month-nav">
@@ -784,6 +792,7 @@
     document.body.appendChild(o);
     _bindHeaderPC(o);
     _bindPCLeft(o);
+    _bindEscClose();
     _renderViewBody();
   }
 
