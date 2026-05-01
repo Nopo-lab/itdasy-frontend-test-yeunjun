@@ -121,6 +121,9 @@
     }
     const created = await _api('POST', '/bookings', data);
     _items.push(created);
+    // 2026-05-01 ── 캐시 무효화. 이전엔 _items 만 push 하고 _cache 안 비움 → list() 가
+    // stale cache 반환 → 캘린더 재렌더 시 새 예약 안 보임 (사용자 보고 #2).
+    _invalidateCache();
     return created;
   }
 
@@ -137,6 +140,7 @@
     const updated = await _api('PATCH', '/bookings/' + id, patch);
     const j = _items.findIndex(b => b.id === id);
     if (j >= 0) _items[j] = updated;
+    _invalidateCache();
     return updated;
   }
 
@@ -148,6 +152,7 @@
     }
     await _api('DELETE', '/bookings/' + id);
     _items = _items.filter(b => b.id !== id);
+    _invalidateCache();
     return { ok: true };
   }
 

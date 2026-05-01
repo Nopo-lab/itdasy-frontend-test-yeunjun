@@ -170,10 +170,11 @@
       const opt = (e && e.detail) || {};
       if (opt.optimistic === true) return;  // 낙관적 호출은 confetti 생략 (실 결과 도착 시만)
       if (opt.rollback === true) return;
+      // 2026-05-01 ── 사용자 보고: '이상한 팝콘 터지는 효과 빼줘'.
+      // create_customer / create_booking 의 confetti 제거. 매출/회원권은 유지 (성과 강조).
       if (k === 'create_revenue') confetti({ emojis: ['💰', '💵', '✨', '🎉'], count: 12 });
       else if (k === 'membership_topup') confetti({ emojis: ['💳', '✨', '💖'], count: 14 });
-      else if (k === 'create_customer') confetti({ emojis: ['👋', '🌟', '✨'], count: 10 });
-      else if (k === 'create_booking') confetti({ emojis: ['📅', '✨', '🌷'], count: 10 });
+      // create_customer / create_booking 은 confetti 안 함 (조용히 추가)
     });
   }
 })();

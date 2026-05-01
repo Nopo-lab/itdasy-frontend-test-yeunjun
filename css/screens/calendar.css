@@ -345,8 +345,12 @@
   border-radius: 14px;
   background: #fff;
   overflow: auto;
-  max-height: calc(100vh - 280px);
+  /* 2026-05-01 ── 100vh → 100dvh (dynamic viewport height) — iOS Safari URL bar 변화에 정확.
+     사용자 보고: '캘린더 타임테이블 스크롤안됨' — 100vh 가 너무 커서 max-height 가 화면 밖까지 → 스크롤 안 생김. */
+  max-height: calc(100dvh - 220px);
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
 }
 .cv-tt-grid {
   display: grid;

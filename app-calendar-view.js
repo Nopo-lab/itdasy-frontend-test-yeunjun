@@ -1309,20 +1309,75 @@
     body.querySelector('#bfDurMinus')?.addEventListener('click', () => { if (_durMin > 15) { _durMin -= 15; _updateDur(); } });
     body.querySelector('#bfDurPlus')?.addEventListener('click', () => { if (_durMin < 480) { _durMin += 15; _updateDur(); } });
 
-    // --- 휠 스크롤 (간단한 click 기반 — 터치 시 위/아래 탭으로 값 변경) ---
+    // --- 휠 스크롤 (click + wheel 마우스 + touch swipe 모두 지원) ---
+    // 2026-05-01 ── 사용자 보고: '시간 입력 스크롤안됨'. wheel/swipe/click 모두 지원.
     body.querySelectorAll('.bf-tp-wheel').forEach(wheel => {
       const isHour = wheel.id === 'bfWheelH';
       const vals = isHour ? Array.from({length:24}, (_,i) => i) : [0,15,30,45];
+
+      function _curIdx() {
+        const cur = wheel.querySelector('.bf-tp-row.current');
+        if (!cur) return 0;
+        const v = parseInt(cur.dataset.val, 10);
+        return Math.max(0, vals.indexOf(v));
+      }
+      function _setIdx(idx) {
+        idx = ((idx % vals.length) + vals.length) % vals.length;
+        const newCur = vals[idx];
+        // 5개 row 다시 렌더 (cur-2 ~ cur+2)
+        const inner = wheel.querySelector('.bf-tp-inner');
+        if (!inner) return;
+        let html = '';
+        for (let i = idx - 2; i <= idx + 2; i++) {
+          const v = vals[((i % vals.length) + vals.length) % vals.length];
+          html += `<div class="bf-tp-row${v === newCur ? ' current' : ''}" data-val="${v}">${_pad(v)}</div>`;
+        }
+        inner.innerHTML = html;
+        _updateDur();
+      }
+
+      // click — 클릭한 row 로 점프
       wheel.addEventListener('click', e => {
         const row = e.target.closest('.bf-tp-row');
         if (!row || row.classList.contains('current')) return;
         const v = parseInt(row.dataset.val, 10);
-        // 현재 선택 변경
-        wheel.querySelectorAll('.bf-tp-row').forEach(r => {
-          r.classList.toggle('current', parseInt(r.dataset.val, 10) === v);
-        });
-        _updateDur();
+        const idx = vals.indexOf(v);
+        if (idx >= 0) _setIdx(idx);
       });
+
+      // mouse wheel — 위/아래 휠로 값 변경 (PC)
+      let wheelAcc = 0;
+      wheel.addEventListener('wheel', e => {
+        e.preventDefault();
+        wheelAcc += e.deltaY;
+        const STEP = 30;
+        if (Math.abs(wheelAcc) >= STEP) {
+          const dir = wheelAcc > 0 ? 1 : -1;
+          _setIdx(_curIdx() + dir);
+          wheelAcc = 0;
+        }
+      }, { passive: false });
+
+      // touch swipe — 위/아래 스와이프 (모바일)
+      let touchY = null, swipeAcc = 0;
+      wheel.addEventListener('touchstart', e => {
+        if (!e.touches || !e.touches.length) return;
+        touchY = e.touches[0].clientY;
+        swipeAcc = 0;
+      }, { passive: true });
+      wheel.addEventListener('touchmove', e => {
+        if (touchY === null || !e.touches || !e.touches.length) return;
+        const dy = touchY - e.touches[0].clientY;
+        swipeAcc += dy;
+        touchY = e.touches[0].clientY;
+        const ROW_H = 40;
+        if (Math.abs(swipeAcc) >= ROW_H) {
+          const dir = swipeAcc > 0 ? 1 : -1;
+          _setIdx(_curIdx() + dir);
+          swipeAcc = 0;
+        }
+      }, { passive: true });
+      wheel.addEventListener('touchend', () => { touchY = null; swipeAcc = 0; }, { passive: true });
     });
 
     // --- 고객 카드 ---
@@ -1331,19 +1386,15 @@
       if (!card) return;
       if (picked) {
         card.className = 'bf-cust-card';
+        // 2026-05-01 ── X 버튼의 SVG 에 pointer-events:none 으로 자식 클릭을 X 버튼에 위임
         card.innerHTML = `<div class="bf-cust-avatar">${_esc((picked.name || '?')[0])}</div>
           <div class="bf-cust-info"><div class="bf-cust-name">${_esc(picked.name || '')}</div><div class="bf-cust-meta" id="bfCustMeta"></div></div>
-          <button type="button" class="bf-cust-clear" id="bfCustClear"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+          <button type="button" class="bf-cust-clear" id="bfCustClear" aria-label="고객 선택 해제"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
         body.querySelector('#bfCustName').value = picked.name || '';
-        body.querySelector('#bfCustClear')?.addEventListener('click', e => {
-          e.stopPropagation(); custId = null;
-          body.querySelector('#bfCustName').value = '';
-          _renderCustCard(null);
-        });
       } else {
         card.className = 'bf-cust-card empty';
         card.innerHTML = `<div class="bf-cust-avatar empty">+</div><div class="bf-cust-info"><div class="bf-cust-empty-text">고객을 골라주세요</div></div>
-          <svg class="bf-cust-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>`;
+          <svg class="bf-cust-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="pointer-events:none;"><polyline points="9 18 15 12 9 6"/></svg>`;
       }
     }
     const _doPick = async () => {
@@ -1353,8 +1404,16 @@
       custId = picked.id;
       _renderCustCard(picked);
     };
+    // 2026-05-01 ── event delegation: 카드 click 시 X 버튼 안이면 clear, 아니면 picker 열기.
+    // 이전엔 X 의 click listener 가 inline 으로 매번 다시 붙어서 재렌더 시 누락 케이스 발생.
     body.querySelector('#bfCustCard')?.addEventListener('click', e => {
-      if (e.target.closest('#bfCustClear')) return;
+      if (e.target.closest('#bfCustClear')) {
+        e.preventDefault(); e.stopPropagation();
+        custId = null;
+        body.querySelector('#bfCustName').value = '';
+        _renderCustCard(null);
+        return;
+      }
       _doPick();
     });
 

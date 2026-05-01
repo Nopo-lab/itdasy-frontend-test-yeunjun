@@ -109,7 +109,12 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  scroll-snap-type: x mandatory;
+  /* 2026-05-01 ── mandatory → proximity. 사용자 보고: '드래그 부드럽지 않음'.
+     mandatory 는 손 떼면 무조건 가장 가까운 카드로 snap → 부자연스러움.
+     proximity 는 가까이 있을 때만 snap → 자연스러운 관성 스크롤. */
+  scroll-snap-type: x proximity;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   padding: 4px 16px 8px;
 }

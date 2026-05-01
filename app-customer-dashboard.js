@@ -368,20 +368,31 @@
           }
         } else if (act === 'booking') {
           closeCustomerDashboard();
-          if (typeof window.openBooking === 'function') window.openBooking();
+          // 2026-05-01 ── openBooking 안 보임. openCalendarView 가 진짜 진입점.
+          // 고객 prefill 위해 _pendingBookingCustomer 세팅 후 호출.
+          window._pendingBookingCustomer = { id, name };
+          if (typeof window.openCalendarView === 'function') window.openCalendarView();
+          else if (typeof window.openBooking === 'function') window.openBooking();
         } else if (act === 'revenue') {
           closeCustomerDashboard();
-          if (typeof window.openRevenue === 'function') window.openRevenue();
+          if (typeof window.openRevenue === 'function') {
+            window.openRevenue();
+            if (typeof window._openRevenueAddFor === 'function') {
+              window._openRevenueAddFor(id, name);
+            }
+          }
         } else if (act === 'nps') {
           closeCustomerDashboard();
           if (typeof window.openNps === 'function') window.openNps();
         } else if (act === 'ms-topup') {
-          // [2026-04-29] 회원권 충전 — 1탭 시트
+          // 2026-05-01 ── 고객 dashboard 닫고 회원권 시트 열기 (이전: 안 닫음 → 시트가 dashboard 뒤에).
+          closeCustomerDashboard();
           if (window.MembershipUI && typeof window.MembershipUI.openTopupSheet === 'function') {
             const cid = parseInt(btn.dataset.custId, 10);
             window.MembershipUI.openTopupSheet(cid, btn.dataset.custName || '');
           }
         } else if (act === 'ms-use') {
+          closeCustomerDashboard();
           if (window.MembershipUI && typeof window.MembershipUI.openUseSheet === 'function') {
             const cid = parseInt(btn.dataset.custId, 10);
             const bal = parseInt(btn.dataset.custBal || '0', 10);
