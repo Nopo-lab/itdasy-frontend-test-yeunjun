@@ -549,7 +549,7 @@
     const map = {
       booking:        () => window.openCalendarView && window.openCalendarView(),
       customer:       () => window.openCustomerHub && window.openCustomerHub(),
-      revenue:        () => window.openRevenueHub && window.openRevenueHub(),
+      revenue:        () => (window.openRevenue || window.openRevenueHub)?.(),
       inventory:      () => window.openInventoryHub && window.openInventoryHub(),
       aiHub:          () => window.openAiHub && window.openAiHub(),
       dmHub:          () => window.openDMAutoreplySettings && window.openDMAutoreplySettings(),
