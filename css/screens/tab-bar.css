@@ -5,22 +5,20 @@
    ────────────────────────────────────────────────────────────── */
 
 .tab-bar {
-  /* 2026-05-01 ── #bottomNavGroup (flex 컨테이너) 안에 들어감.
-     position 은 부모(group)가 fixed 라 여기선 static. 부모 flex 가 정중앙 정렬.
-     챗봇 (assistantFab) 도 같은 flex 안에 있어서 14px gap 으로 자동 붙음.
-     2026-05-01 ── 펄(pill) 배경/그림자 강화. 사용자 보고 '네비 왜 저러냐' — 너무 옅어
-     3개 버튼이 떨어져 보였음. surface 배경 명시 + 그림자 진하게 + 흰 배경에서도 보이게. */
+  /* 2026-05-01 ── #bottomNavGroup (flex 컨테이너) 안에 들어감. 부모가 fixed.
+     사용자 보고 '옹졸맞다' — max-width 320 좁아서 펄이 작게 떠보임.
+     flex:1 + max-width 키워서 가로 공간 거의 채우게. 펄 두께도 padding 키워 풍성하게. */
   position: static;
   pointer-events: auto;
-  max-width: 320px;
-  flex-shrink: 1;
+  flex: 1 1 auto;
+  max-width: 460px;
   min-width: 0;
   background: #ffffff;
   border: 1px solid rgba(15, 20, 25, 0.08);
   border-radius: 999px;
   display: grid;
   grid-template-columns: 1fr 64px 1fr;
-  padding: 8px 16px 10px;
+  padding: 10px 20px 12px;
   z-index: 999;
   box-shadow: 0 12px 32px rgba(15, 20, 25, 0.12), 0 2px 6px rgba(15, 20, 25, 0.06);
 
