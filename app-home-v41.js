@@ -447,6 +447,7 @@
         _bindEvents(container, swr.d);
         _syncAvatar(container);
         _scheduleAvatarRetry(container);
+        _watchHeaderAvatar();
         if (swr.fresh) return;
       } catch (_e) { /* fall through */ }
     }
@@ -479,6 +480,26 @@
       if (root && root.contains(container)) _syncAvatar(container);
       else if (root) _syncAvatar(root);
     }, 5000);
+  }
+
+  // 2026-05-01 ── 인스타 연동 후 #headerAvatar 변경 감지: MutationObserver.
+  // updateHeaderProfile (app-core.js) 이 itdasy:data-changed 발사 안 해서
+  // OAuth 끝나도 v4.1 헤더 아바타 갱신 안 되던 버그 픽스.
+  let _avatarObserver = null;
+  function _watchHeaderAvatar() {
+    if (_avatarObserver) return;
+    const target = document.getElementById('headerAvatar');
+    if (!target) return;
+    _avatarObserver = new MutationObserver(() => {
+      const root = document.getElementById('homeV41Root');
+      if (root) _syncAvatar(root);
+    });
+    _avatarObserver.observe(target, {
+      childList: true,        // <img> 추가/제거
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['src'],
+    });
   }
 
   // ─────────── 공개 API ───────────
