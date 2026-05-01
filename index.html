@@ -749,148 +749,37 @@
   </div>
 </div>
 
-<!-- AI 비서 플로팅 FAB — 드래그로 위치 이동 가능 · 위치 localStorage 저장 -->
+<!-- 2026-05-01 ── AI 비서 챗봇 — 탭바 오른쪽에 고정 (드래그 비활성화).
+     사용자 요청: '탭바 짧게 하고 챗봇 동그라미 하나 오른쪽 고정'. -->
 <button
   id="assistantFab"
-  onclick="if(!this.dataset.dragging && typeof openAssistant==='function')openAssistant()"
+  onclick="if(typeof openAssistant==='function')openAssistant()"
   data-haptic="light"
   aria-label="AI 비서"
-  title="길게 눌러 드래그하면 위치 이동"
   style="
     position: fixed;
-    right: 16px;
-    bottom: 18px;
+    right: 14px;
+    bottom: var(--tab-bar-bottom, calc(14px + env(safe-area-inset-bottom, 0px)));
     width: 56px; height: 56px;
     border-radius: 50%;
     border: none;
     background: linear-gradient(135deg, #F18091, #D95F70);
     color: #fff;
-    font-size: 26px;
-    line-height: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     box-shadow: 0 6px 18px rgba(241, 128, 145, 0.45), 0 2px 6px rgba(0,0,0,0.1);
-    z-index: 250;
-    transition: transform 0.06s ease-out, box-shadow 0.12s ease;
+    z-index: 1000;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   "
-  onmouseover="this.style.transform='scale(1.08)'"
-  onmouseout="this.style.transform='scale(1)'"
-  onmousedown="this.style.transform='scale(0.94)'"
-  onmouseup="this.style.transform='scale(1.08)'"
 ><svg width="26" height="26"><use href="#ic-bot"/></svg></button>
 
 <script>
-// FAB 드래그 · 위치 저장 (2026-04-24 추가)
-(function(){
-  const fab = document.getElementById('assistantFab');
-  if (!fab) return;
-  const KEY = 'itdasy:fab_pos';
-  const MARGIN = 12;
-  const FAB_SIZE = 56;
-
-  function clampTop(y) {
-    const maxY = window.innerHeight - FAB_SIZE - MARGIN - 70; // 하단 네비 영역 70px 여유
-    return Math.max(MARGIN + 60, Math.min(maxY, y)); // 상단 헤더 60px 여유
-  }
-
-  function applyPos(p) {
-    if (!p) return;
-    fab.style.right = 'auto';
-    fab.style.bottom = 'auto';
-    fab.style.left = p.x + 'px';
-    fab.style.top = clampTop(p.y) + 'px';
-  }
-
-  // 저장된 위치 복원
-  try {
-    const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
-    if (saved && typeof saved.x === 'number' && typeof saved.y === 'number') {
-      applyPos(saved);
-    }
-  } catch (_e) { void _e; }
-
-  let startX, startY, initL, initT, moved = false, dragging = false;
-
-  function onDown(ev) {
-    const t = ev.touches ? ev.touches[0] : ev;
-    startX = t.clientX;
-    startY = t.clientY;
-    const r = fab.getBoundingClientRect();
-    initL = r.left;
-    initT = r.top;
-    moved = false;
-    dragging = true;
-    fab.style.transition = 'none';
-    document.addEventListener('touchmove', onMove, { passive: false });
-    document.addEventListener('touchend', onUp, { passive: true });
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }
-
-  function onMove(ev) {
-    if (!dragging) return;
-    const t = ev.touches ? ev.touches[0] : ev;
-    const dx = t.clientX - startX;
-    const dy = t.clientY - startY;
-    if (!moved && Math.sqrt(dx * dx + dy * dy) > 8) {
-      moved = true;
-      fab.dataset.dragging = '1';
-      fab.style.right = 'auto';
-      fab.style.bottom = 'auto';
-    }
-    if (moved) {
-      if (ev.cancelable) ev.preventDefault();
-      const nx = Math.max(MARGIN, Math.min(window.innerWidth - FAB_SIZE - MARGIN, initL + dx));
-      const ny = clampTop(initT + dy);
-      fab.style.left = nx + 'px';
-      fab.style.top = ny + 'px';
-    }
-  }
-
-  function onUp() {
-    if (!dragging) return;
-    dragging = false;
-    document.removeEventListener('touchmove', onMove);
-    document.removeEventListener('touchend', onUp);
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-    fab.style.transition = '';
-
-    if (moved) {
-      // 가장자리에 스냅 (좌·우 중 가까운 쪽)
-      const r = fab.getBoundingClientRect();
-      const midX = r.left + r.width / 2;
-      const snapLeft = midX < window.innerWidth / 2;
-      const targetX = snapLeft ? MARGIN : window.innerWidth - FAB_SIZE - MARGIN;
-      const targetY = clampTop(r.top);
-      fab.style.left = targetX + 'px';
-      fab.style.top = targetY + 'px';
-      try { localStorage.setItem(KEY, JSON.stringify({ x: targetX, y: targetY })); } catch (_e) { void _e; }
-      // 클릭 이벤트 방지 (드래그 끝나자마자 클릭으로 인식 안되게)
-      setTimeout(() => { delete fab.dataset.dragging; }, 100);
-    } else {
-      delete fab.dataset.dragging;
-    }
-  }
-
-  fab.addEventListener('touchstart', onDown, { passive: true });
-  fab.addEventListener('mousedown', onDown);
-
-  // 화면 회전·리사이즈 시 경계 재조정
-  window.addEventListener('resize', () => {
-    const r = fab.getBoundingClientRect();
-    const nx = Math.max(MARGIN, Math.min(window.innerWidth - FAB_SIZE - MARGIN, r.left));
-    const ny = clampTop(r.top);
-    if (nx !== r.left || ny !== r.top) {
-      applyPos({ x: nx, y: ny });
-      try { localStorage.setItem(KEY, JSON.stringify({ x: nx, y: ny })); } catch (_e) { void _e; }
-    }
-  });
-})();
+// 2026-05-01 ── 챗봇 FAB 드래그 비활성화 (탭바 오른쪽 고정).
+// 이전 사용자가 드래그로 옮긴 위치 캐시 정리 — 재방문 시 새 고정 위치로.
+try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
 </script>
 
 <!-- 만들기 바텀시트 -->

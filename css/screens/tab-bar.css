@@ -5,19 +5,17 @@
    ────────────────────────────────────────────────────────────── */
 
 .tab-bar {
-  /* 2026-04-24 — 정중앙 정렬. FAB 은 별도 우측 하단(드래그 가능).
-     iOS jump fix: --tab-bar-bottom 을 app-core.js 의 visualViewport 핸들러가 동적 갱신.
-     2026-05-01 ── pointer-events: auto !important — 초기 진입 시 overlay 잔재 방어.
-     2026-05-01 ── transform 제거. position:fixed + transform 조합이 iOS Safari 에서
-     자식 :active 시 GPU 레이어 detach 로 탭바 잠깐 사라지는 버그. left:0/right:0 + margin:auto
-     로 가운데 맞춤 (transform 없이 정중앙). */
+  /* 2026-04-24 — 정중앙 정렬. FAB 은 별도 우측 하단.
+     2026-05-01 ── transform 제거 (position:fixed + transform iOS GPU 버그 회피).
+     2026-05-01 ── 우측 88px 비워둠 — 챗봇 (assistantFab) 자리. 사용자 요청:
+                   "탭바 짧게 하고 동그란 챗봇 하나 오른쪽에 있는거". */
   position: fixed !important;
   pointer-events: auto !important;
   bottom: var(--tab-bar-bottom, calc(14px + env(safe-area-inset-bottom, 0px))) !important;
   left: 14px !important;
-  right: 14px !important;
-  margin: 0 auto !important;
-  max-width: 460px;           /* 가로 화면·태블릿 대응 */
+  right: 88px !important;     /* 챗봇 (56px) + margin(16px+16px) 자리 */
+  margin: 0 !important;
+  max-width: 380px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
