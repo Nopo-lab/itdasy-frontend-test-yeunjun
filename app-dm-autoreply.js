@@ -57,12 +57,22 @@
   }
 
   /* ── 백엔드 fetch ────────────────────────────────── */
+  // 2026-05-01 ── _origFetch: 글로벌 fetch wrap (자동 재시도 + 서버 불안정 토스트) 우회.
+  // DM 패널은 옵셔널 데이터라 토스트 spam 안 띄우고 조용히 빈 상태로 폴백.
+  // 8s timeout 으로 Railway cold start hang 방지.
+  function _rawFetch(url, opts = {}) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    return (window._origFetch || window.fetch)(url, { ...opts, signal: ctrl.signal })
+      .finally(() => clearTimeout(timer));
+  }
+
   async function _fetchAll() {
     const headers = window.authHeader();
     const endpoints = [
-      fetch(window.API + '/instagram/dm-reply/status', { headers }).catch(() => null),
-      fetch(window.API + '/instagram/dm-reply/settings', { headers }).catch(() => null),
-      fetch(window.API + '/instagram/dm-reply/recent-conversations?limit=10', { headers }).catch(() => null),
+      _rawFetch(window.API + '/instagram/dm-reply/status', { headers }).catch(() => null),
+      _rawFetch(window.API + '/instagram/dm-reply/settings', { headers }).catch(() => null),
+      _rawFetch(window.API + '/instagram/dm-reply/recent-conversations?limit=10', { headers }).catch(() => null),
     ];
     const [sR, stR, cR] = await Promise.all(endpoints);
     const status = (sR && sR.ok) ? await sR.json().catch(() => ({})) : {};
@@ -93,7 +103,7 @@
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(async () => {
       try {
-        await fetch(window.API + '/instagram/dm-reply/settings', {
+        await _rawFetch(window.API + '/instagram/dm-reply/settings', {
           method: 'POST',
           headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
           body: JSON.stringify(_sanitizeForSave(_settings)),
@@ -544,24 +554,33 @@
       // 즉시 flush — 디바운스 타이머 우회
       clearTimeout(_saveTimer);
       _saveTimer = setTimeout(() => {}, 0);
-      // 2026-05-01 ── 저장 실패 시 실제 에러 메시지 surfacing + invalid 값 sanitize
+      // 2026-05-01 ── 저장: invalid 값 sanitize + 1회 자동 재시도 + 실제 에러 표시
       const safeSettings = _sanitizeForSave(_settings);
+      const _trySave = async () => _rawFetch(window.API + '/instagram/dm-reply/settings', {
+        method: 'POST',
+        headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(safeSettings),
+      });
+      let r = null;
+      try { r = await _trySave(); }
+      catch (e1) {
+        // 첫 시도 네트워크 오류 — 1초 후 1회 재시도 (cold start / 일시 connection drop)
+        await new Promise(res => setTimeout(res, 1000));
+        try { r = await _trySave(); }
+        catch (e2) {
+          _toast(`저장 실패 — 네트워크 오류 (${e2.name || 'fetch'}: ${(e2.message || '').slice(0, 60)})`);
+          return;
+        }
+      }
+      if (r.ok) { _toast('저장됐어요'); return; }
+      let detail = '저장 실패';
       try {
-        const r = await fetch(window.API + '/instagram/dm-reply/settings', {
-          method: 'POST',
-          headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
-          body: JSON.stringify(safeSettings),
-        });
-        if (r.ok) { _toast('저장됐어요'); return; }
-        let detail = '저장 실패';
-        try {
-          const body = await r.json();
-          if (body?.detail) {
-            detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail).slice(0, 120);
-          }
-        } catch (_e) { /* ignore */ }
-        _toast(`저장 실패 (${r.status}): ${detail}`);
-      } catch (e) { _toast('저장 실패 — 네트워크 오류'); }
+        const body = await r.json();
+        if (body?.detail) {
+          detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail).slice(0, 120);
+        }
+      } catch (_e) { /* ignore */ }
+      _toast(`저장 실패 (${r.status}): ${detail}`);
     });
     sheet.querySelector('[data-act="pause"]')?.addEventListener('click', () => {
       _saveSettings({ enabled: false });
