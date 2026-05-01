@@ -384,13 +384,15 @@
     const status = card.dataset.status;
     _haptic();
 
-    // [2026-05-01] pending_confirm 큐에 있는 메시지면 실제 발송 호출.
-    // 카드 안 textarea(.dm-bubble--sent.is-draft) 의 현재 텍스트 = 사장이 톤 조정/편집한 결과.
-    if (status === 'pending_confirm' && logId) {
+    // 2026-05-01 ── pending_confirm (AI 초안) 또는 received (broadcast/수동 답장 가능) 둘 다 send_edit 시도.
+    // 카드 안 contenteditable 버블(.dm-bubble--sent.is-draft) 의 현재 텍스트로 발송.
+    const sendable = (status === 'pending_confirm' || status === 'received' || status === '') && logId;
+    if (sendable) {
       const draftEl = card.querySelector('.dm-bubble--sent.is-draft');
       const editedText = (draftEl?.textContent || '').trim();
       if (!editedText) {
-        _toast('답장 내용이 비어있어요');
+        _toast('답장 내용을 먼저 입력해주세요');
+        draftEl?.focus();
         return;
       }
       const sendBtn = card.querySelector('[data-act="send"]');
