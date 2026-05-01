@@ -382,7 +382,9 @@ async function doPublishFromCaption() {
     fd.append('caption', full);
     if (typeof setUploadProgress === 'function') setUploadProgress(30, '서버 전송 중...');
 
-    const res  = await fetch(API + '/instagram/publish', {
+    // 2026-05-01 ── 엔드포인트 미스매치 픽스: /publish 는 JSON image_url 받음.
+    // multipart FormData 는 /publish-file 에 보내야 함.
+    const res  = await fetch(API + '/instagram/publish-file', {
       method: 'POST',
       headers: { ...authHeader(), 'ngrok-skip-browser-warning': 'true' },
       body: fd,

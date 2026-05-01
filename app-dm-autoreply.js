@@ -71,6 +71,21 @@
     return { status, settings, conversations: recent.conversations || [] };
   }
 
+  // 2026-05-01 ── 백엔드 Pydantic 검증 통과 보장: invalid 값 sanitize.
+  // autonomy_mode 패턴 검증 + tone enum 검증 + bool 강제.
+  function _sanitizeForSave(s) {
+    const out = Object.assign({}, s || {});
+    const TONES = ['friendly', 'professional', 'cute'];
+    const MODES = ['draft', 'confirm_high', 'auto'];
+    if (!TONES.includes(out.tone)) out.tone = 'friendly';
+    if (!MODES.includes(out.autonomy_mode)) out.autonomy_mode = 'confirm_high';
+    out.enabled = Boolean(out.enabled);
+    out.prefer_template_first = Boolean(out.prefer_template_first);
+    if (!Array.isArray(out.blocked_keywords)) out.blocked_keywords = [];
+    if (!Array.isArray(out.sample_replies)) out.sample_replies = [];
+    return out;
+  }
+
   // 디바운스 저장 (POST /settings)
   function _saveSettings(partial) {
     if (!_settings) return;
@@ -81,7 +96,7 @@
         await fetch(window.API + '/instagram/dm-reply/settings', {
           method: 'POST',
           headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
-          body: JSON.stringify(_settings),
+          body: JSON.stringify(_sanitizeForSave(_settings)),
         });
       } catch (_) { /* 조용히 실패 — 다음 저장 때 재시도 */ }
     }, 400);
@@ -525,17 +540,28 @@
 
   function _bindHeader(sheet) {
     sheet.querySelector('[data-act="close"]')?.addEventListener('click', closeDMAutoreplySettings);
-    sheet.querySelector('[data-act="save"]')?.addEventListener('click', () => {
+    sheet.querySelector('[data-act="save"]')?.addEventListener('click', async () => {
       // 즉시 flush — 디바운스 타이머 우회
       clearTimeout(_saveTimer);
       _saveTimer = setTimeout(() => {}, 0);
+      // 2026-05-01 ── 저장 실패 시 실제 에러 메시지 surfacing + invalid 값 sanitize
+      const safeSettings = _sanitizeForSave(_settings);
       try {
-        fetch(window.API + '/instagram/dm-reply/settings', {
+        const r = await fetch(window.API + '/instagram/dm-reply/settings', {
           method: 'POST',
           headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
-          body: JSON.stringify(_settings),
-        }).then(r => _toast(r.ok ? '저장됐어요' : '저장 실패')).catch(() => _toast('저장 실패'));
-      } catch (_) { _toast('저장 실패'); }
+          body: JSON.stringify(safeSettings),
+        });
+        if (r.ok) { _toast('저장됐어요'); return; }
+        let detail = '저장 실패';
+        try {
+          const body = await r.json();
+          if (body?.detail) {
+            detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail).slice(0, 120);
+          }
+        } catch (_e) { /* ignore */ }
+        _toast(`저장 실패 (${r.status}): ${detail}`);
+      } catch (e) { _toast('저장 실패 — 네트워크 오류'); }
     });
     sheet.querySelector('[data-act="pause"]')?.addEventListener('click', () => {
       _saveSettings({ enabled: false });

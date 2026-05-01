@@ -629,7 +629,14 @@ async function _doGenerateCaption(scenario, closePopup) {
     console.log('[caption.generate] 응답 수신:', { caption_len: (data.caption||'').length, log_id: data.log_id, used_tone: data.used_tone });
 
     const finalCaption = data.caption || '';
-    const hashes = ''; // TD-020: 해시태그 미반환 — 추후 추가 예정
+    // 2026-05-01 ── 백엔드 GenerateResponse 에 hashtags 필드 추가 후 반영.
+    // persona.hashtags (사용자 등록 top20) 또는 SHOP_DEFAULT_HASHTAGS 폴백.
+    const hashtagsArr = Array.isArray(data.hashtags) ? data.hashtags : [];
+    const hashes = hashtagsArr
+      .map(t => String(t || '').trim().replace(/^#+/, ''))
+      .filter(Boolean)
+      .map(t => '#' + t)
+      .join(' ');
 
     // [2026-04-26] 백엔드가 200 OK + 빈 caption 응답 → 사용자에겐 빈 textarea 만 남음.
     // 명시적 에러로 던져 catch 블록에서 안내하도록.
@@ -813,7 +820,9 @@ async function doActualPublish() {
 
     setUploadProgress(30, '서버에 전송 중...');
 
-    const res = await fetch(API + '/instagram/publish', {
+    // 2026-05-01 ── 엔드포인트 미스매치 픽스: /publish 는 JSON image_url 받음.
+    // multipart FormData 는 /publish-file 에 보내야 함.
+    const res = await fetch(API + '/instagram/publish-file', {
       method: 'POST',
       headers: { ...authHeader(), 'ngrok-skip-browser-warning': 'true' },
       body: formData
