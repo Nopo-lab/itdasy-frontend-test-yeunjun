@@ -959,6 +959,16 @@
     <div id="stepCaption"></div>
   </div>
 
+  <!-- 2026-05-01 ── 깜빡임 방지: 캐시 보고 미리 화면 결정 (검사 응답 오기 전).
+       checkInstaStatus 가 실제 상태로 마지막에 덮어씀. 첫 방문은 캐시 없어 그대로 pre-connect. -->
+  <script>
+    try {
+      if (localStorage.getItem('itdasy:ig_connected_cache') === '1') {
+        document.write('<style>#homePreConnect{display:none !important}#homePostConnect{display:flex !important}</style>');
+      }
+    } catch (_e) { /* ignore */ }
+  </script>
+
   <!-- ── 연동 전 상태 ── -->
   <div id="homePreConnect" class="hc-section">
 
@@ -1575,7 +1585,7 @@
 </aside>
 <!-- /shop-drawer -->
 
-<script src="app-core.js?v=20260501-10"></script>
+<script src="app-core.js?v=20260501-11"></script>
 <script src="app-drawer.js"></script>
 <script src="app-shop-settings.js"></script>
 <script src="app-backup.js"></script>
@@ -1588,7 +1598,7 @@
 <script src="app-dm-confirm-queue.js?v=0501"></script>
 <script src="app-dm-conversations.js?v=0501"></script>
 <script src="app-dm-manual-replies.js?v=0501"></script>
-<script src="app-instagram.js"></script>
+<script src="app-instagram.js?v=20260501-1"></script>
 <script src="app-persona-survey.js"></script>
 <script src="components/scenario-selector.js"></script>
 <script src="app-caption.js"></script>

@@ -52,6 +52,9 @@ async function checkInstaStatus(fromLogin = false) {
     };
 
     if (data.connected) {
+      // 2026-05-01 ── 다음 방문 시 깜빡임 없게 캐시. checkInstaStatus 응답 오기 전에
+      // 인라인 스크립트가 이 캐시 보고 즉시 homePostConnect 표시.
+      try { localStorage.setItem('itdasy:ig_connected_cache', '1'); } catch (_e) { /* ignore */ }
       document.getElementById('homePreConnect').style.display = 'none';
       document.getElementById('homePostConnect').style.display = 'flex';
       _instaHandle = data.handle || '';
@@ -72,6 +75,7 @@ async function checkInstaStatus(fromLogin = false) {
       // 첫 글 완성 여부는 generationLog 기반. 백엔드 지원 전까진 localStorage hint로
       updateStep('stepCaption', !!localStorage.getItem('_first_caption_done'));
     } else {
+      try { localStorage.removeItem('itdasy:ig_connected_cache'); } catch (_e) { /* ignore */ }
       document.getElementById('homePreConnect').style.display = 'flex';
       document.getElementById('homePostConnect').style.display = 'none';
       updateStep('stepInsta', false);
