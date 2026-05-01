@@ -1719,12 +1719,12 @@ window.forceSync = async function () {
 };
 
 // 앱이 백그라운드 → 포커스 복귀 시 캐시 무효화 + data-changed 발사
-// [2026-04-26 A7] 멀티 디바이스 강화 — 5분 → 60초로 대폭 단축. 다른 디바이스에서
-// 매출/예약 추가하면 60초 안에 보이도록.
+// 2026-05-01 ── 60s → 300s 환원. 영상 녹화 / 다중 창 전환 시 매번 cache clear 되어 UI 렉.
+// 멀티 디바이스 동시 사용 빈도 낮음 — 5분 단위 충분.
 (function _installFocusSyncHandler() {
   if (window._focusSyncInstalled) return;
   window._focusSyncInstalled = true;
-  const STALE_MS = 60 * 1000;  // 60초 (이전 5분)
+  const STALE_MS = 300 * 1000;  // 5분 (60s 너무 공격적이라 완화)
   function _onFocus() {
     try {
       const lastFocus = sessionStorage.getItem('itdasy:last_focus_at');
