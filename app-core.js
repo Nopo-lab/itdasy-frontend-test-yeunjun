@@ -517,6 +517,8 @@ function getMyUserId() {
 }
 
 // ───── 스플래시 스크린 (iOS PWA 전용) ─────
+// 2026-05-01 ── 이미 로그인된 사용자는 splash 짧게 (2s → 600ms). 토큰 없으면 그대로 2s
+// (브랜드 노출). 또한 splash 끝나자마자 pointer-events 복구로 네비 즉시 클릭 가능.
 (function initSplash() {
   const isPWA = window.navigator.standalone === true
              || window.matchMedia('(display-mode: standalone)').matches;
@@ -525,18 +527,20 @@ function getMyUserId() {
   const splash = document.getElementById('splashScreen');
   if (!splash) return;
 
-  // 메인 콘텐츠 숨기고 스플래시 표시
   document.body.classList.add('splashing');
   splash.style.display = 'flex';
 
-  // 2.0s → 페이드아웃 시작, 2.3s → 완전 제거
+  // 토큰 있으면 짧게 (이미 로그인된 사용자는 splash 안 보고 싶어함)
+  let tokenExists = false;
+  try { tokenExists = !!localStorage.getItem('itdasy_token::staging'); } catch (_e) { /* ignore */ }
+  const HOLD_MS = tokenExists ? 600 : 2000;
+
   setTimeout(() => {
     splash.classList.add('fade-out');
-    setTimeout(() => {
-      splash.style.display = 'none';
-      document.body.classList.remove('splashing');
-    }, 300);
-  }, 2000);
+    // pointer-events 즉시 복구 — 페이드아웃 동안에도 탭바/콘텐츠 클릭 가능
+    document.body.classList.remove('splashing');
+    setTimeout(() => { splash.style.display = 'none'; }, 300);
+  }, HOLD_MS);
 })();
 
 // ───── 설정 바텀시트 ─────

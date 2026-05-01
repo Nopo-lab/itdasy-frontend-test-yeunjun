@@ -91,11 +91,17 @@
     } catch (_e) { return ''; }
   }
   function _automationOnCount() {
-    // localStorage 토글 키 기반 (현재 알 수 있는 항목: DM 자동응답 / 카카오 알림톡)
-    let on = 0;
+    // 2026-05-01 ── ai-hub 와 동일 source 로 통일 — 이전엔 다른 키 보고 항상 0.
+    if (typeof window.aihGetOnCount === 'function') {
+      try { return window.aihGetOnCount(); } catch (_e) { /* fallback */ }
+    }
+    // 폴백: ai-hub 가 아직 안 로드됐을 때
+    let on = 1;  // 페르소나 학습됨 = 기본 1
     try {
-      if (localStorage.getItem('dm_autoreply_enabled') === 'true') on += 1;
-      if (localStorage.getItem('kakao_alimtalk_enabled') === 'true') on += 1;
+      const v1 = localStorage.getItem('itdasy:aih:dm_enabled');
+      const v2 = localStorage.getItem('itdasy:aih:kakao_enabled');
+      if (v1 === null || v1 === 'true') on += 1;
+      if (v2 === null || v2 === 'true') on += 1;
     } catch (_e) { /* ignore */ }
     return on;
   }

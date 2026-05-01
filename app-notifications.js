@@ -11,8 +11,13 @@
 
   let _items = [];
   let _pollTimer = null;
-  // sessionStorage 키 — 같은 세션 안에서 X 닫은 공지는 다시 안 띄움 (서버 read 처리되기 전까지)
+  // 2026-05-01 ── localStorage 로 변경. sessionStorage 면 앱 재시작 시 닫은 공지 다시 뜸.
+  // 사용자 보고: '공지 한번 끄면 계속 꺼져야하는데 안꺼짐.' — 영구 dismissal 로 통일.
   const _DISMISS_KEY = 'itdasy::announcement_dismissed_ids';
+  const _DISMISS_STORAGE = (function () {
+    try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); return localStorage; }
+    catch (_) { return sessionStorage; }
+  })();
 
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
@@ -175,7 +180,7 @@
 
   function _getDismissed() {
     try {
-      const raw = sessionStorage.getItem(_DISMISS_KEY);
+      const raw = _DISMISS_STORAGE.getItem(_DISMISS_KEY);
       return raw ? JSON.parse(raw) : [];
     } catch (_) { return []; }
   }
@@ -183,7 +188,7 @@
     try {
       const arr = _getDismissed();
       if (!arr.includes(id)) arr.push(id);
-      sessionStorage.setItem(_DISMISS_KEY, JSON.stringify(arr.slice(-50)));
+      _DISMISS_STORAGE.setItem(_DISMISS_KEY, JSON.stringify(arr.slice(-50)));
     } catch (_) { void 0; }
   }
 

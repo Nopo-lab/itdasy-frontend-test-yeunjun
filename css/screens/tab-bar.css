@@ -9,8 +9,11 @@
      iOS jump fix: --tab-bar-bottom 을 app-core.js 의 visualViewport 핸들러가 동적 갱신.
      없을 때는 safe-area + 14px 폴백.
      2026-05-01 — !important 추가: 다른 stylesheet 가 우연히 override 하는 것 차단.
-     사용자 보고 "스크롤 해야 보임" → position 이 어딘가에서 깨진 것으로 추정. */
+     사용자 보고 "스크롤 해야 보임" → position 이 어딘가에서 깨진 것으로 추정.
+     2026-05-01 ── pointer-events: auto !important — 초기 진입 시 다른 overlay 잔재가
+     탭바 위에 깔리는 케이스 방어 (사용자 보고: 스크롤해야 클릭됨). */
   position: fixed !important;
+  pointer-events: auto !important;
   bottom: var(--tab-bar-bottom, calc(14px + env(safe-area-inset-bottom, 0px))) !important;
   left: 50% !important;
   transform: translate3d(-50%, 0, 0);  /* iOS Safari GPU 레이어 분리 */

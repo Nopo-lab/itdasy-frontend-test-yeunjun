@@ -249,4 +249,7 @@
 
   window.openAiHub = open;
   window.closeAiHub = close;
+  // 2026-05-01 ── 다른 모듈(myshop)에서 ai-hub 와 동일한 카운트 쓸 수 있게 export.
+  // 이전엔 myshop 이 자체 키로 0 만 표시했지만 aihub 는 7개 중 3개 ON 으로 표시 → 불일치.
+  window.aihGetOnCount = _onCount;
 })();
