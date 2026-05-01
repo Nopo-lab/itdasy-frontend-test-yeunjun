@@ -635,7 +635,7 @@
     const { status, settings, conversations } = await _fetchAll();
     const browserTz = (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul');
     _settings = settings || {
-      enabled: false, tone: 'friendly',
+      enabled: true, tone: 'friendly',  // 2026-05-01 default ON
       blocked_keywords: [], auto_reply_start: '09:00', auto_reply_end: '22:00',
       timezone_name: browserTz, sample_replies: [],
     };
