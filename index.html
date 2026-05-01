@@ -749,36 +749,9 @@
   </div>
 </div>
 
-<!-- 2026-05-01 ── AI 비서 챗봇 — 탭바 오른쪽에 고정 (드래그 비활성화).
-     사용자 요청: '탭바 짧게 하고 챗봇 동그라미 하나 오른쪽 고정'. -->
-<button
-  id="assistantFab"
-  onclick="if(typeof openAssistant==='function')openAssistant()"
-  data-haptic="light"
-  aria-label="AI 비서"
-  style="
-    position: fixed;
-    right: 14px;
-    bottom: var(--tab-bar-bottom, calc(14px + env(safe-area-inset-bottom, 0px)));
-    width: 56px; height: 56px;
-    border-radius: 50%;
-    border: none;
-    background: linear-gradient(135deg, #F18091, #D95F70);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 6px 18px rgba(241, 128, 145, 0.45), 0 2px 6px rgba(0,0,0,0.1);
-    z-index: 1000;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-  "
-><svg width="26" height="26"><use href="#ic-bot"/></svg></button>
-
+<!-- 2026-05-01 ── 챗봇은 탭바 옆에 같이 묶여있음 (line 824 #bottomNavGroup 참조).
+     이전 위치 캐시 정리. -->
 <script>
-// 2026-05-01 ── 챗봇 FAB 드래그 비활성화 (탭바 오른쪽 고정).
-// 이전 사용자가 드래그로 옮긴 위치 캐시 정리 — 재방문 시 새 고정 위치로.
 try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
 </script>
 
@@ -821,22 +794,58 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
   </div>
 </div>
 
-<nav class="tab-bar" id="nav" role="tablist" aria-label="메인 네비게이션">
-  <button type="button" class="tab-bar__btn active" data-tab="home" data-prefetch="home"
-          onclick="showTab('home',this)" aria-label="홈 탭">
-    <svg class="tab-bar__icon"><use href="#ic-home"/></svg>
-    <span class="tab-bar__label">홈</span>
-  </button>
-  <button type="button" class="tab-bar__fab" data-haptic="light"
-          onclick="openNavSheet()" aria-label="만들기">
-    <svg width="24" height="24"><use href="#ic-wand-sparkles"/></svg>
-  </button>
-  <button type="button" class="tab-bar__btn" data-tab="dashboard" data-prefetch="dashboard,customer,revenue,inventory,bookings"
-          onclick="showTab('dashboard',this); if(typeof initDashboardTab==='function')initDashboardTab();" aria-label="내 샵 관리 탭">
-    <svg class="tab-bar__icon"><use href="#ic-store"/></svg>
-    <span class="tab-bar__label">내 샵 관리</span>
-  </button>
-</nav>
+<!-- 2026-05-01 ── 탭바 + 챗봇 묶음. 둘이 같은 flex 컨테이너 안에 있어서 항상 가운데 정렬되며 14px 간격으로 붙음. -->
+<div id="bottomNavGroup" style="
+  position: fixed;
+  bottom: var(--tab-bar-bottom, calc(14px + env(safe-area-inset-bottom, 0px)));
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  pointer-events: none;
+  z-index: 999;
+">
+  <nav class="tab-bar" id="nav" role="tablist" aria-label="메인 네비게이션" style="position: static; bottom: auto; left: auto; right: auto; margin: 0; pointer-events: auto;">
+    <button type="button" class="tab-bar__btn active" data-tab="home" data-prefetch="home"
+            onclick="showTab('home',this)" aria-label="홈 탭">
+      <svg class="tab-bar__icon"><use href="#ic-home"/></svg>
+      <span class="tab-bar__label">홈</span>
+    </button>
+    <button type="button" class="tab-bar__fab" data-haptic="light"
+            onclick="openNavSheet()" aria-label="만들기">
+      <svg width="24" height="24"><use href="#ic-wand-sparkles"/></svg>
+    </button>
+    <button type="button" class="tab-bar__btn" data-tab="dashboard" data-prefetch="dashboard,customer,revenue,inventory,bookings"
+            onclick="showTab('dashboard',this); if(typeof initDashboardTab==='function')initDashboardTab();" aria-label="내 샵 관리 탭">
+      <svg class="tab-bar__icon"><use href="#ic-store"/></svg>
+      <span class="tab-bar__label">내 샵 관리</span>
+    </button>
+  </nav>
+  <button
+    id="assistantFab"
+    onclick="if(typeof openAssistant==='function')openAssistant()"
+    data-haptic="light"
+    aria-label="AI 비서"
+    style="
+      flex-shrink: 0;
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(135deg, #F18091, #D95F70);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(241, 128, 145, 0.45), 0 2px 6px rgba(0,0,0,0.1);
+      pointer-events: auto;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    "
+  ><svg width="26" height="26"><use href="#ic-bot"/></svg></button>
+</div>
 
 <!-- 홈 탭 -->
 <div class="tab active" id="tab-home">

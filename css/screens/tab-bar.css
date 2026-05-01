@@ -5,17 +5,14 @@
    ────────────────────────────────────────────────────────────── */
 
 .tab-bar {
-  /* 2026-04-24 — 정중앙 정렬. FAB 은 별도 우측 하단.
-     2026-05-01 ── transform 제거 (position:fixed + transform iOS GPU 버그 회피).
-     2026-05-01 ── 우측 88px 비워둠 — 챗봇 (assistantFab) 자리. 사용자 요청:
-                   "탭바 짧게 하고 동그란 챗봇 하나 오른쪽에 있는거". */
-  position: fixed !important;
-  pointer-events: auto !important;
-  bottom: var(--tab-bar-bottom, calc(14px + env(safe-area-inset-bottom, 0px))) !important;
-  left: 14px !important;
-  right: 88px !important;     /* 챗봇 (56px) + margin(16px+16px) 자리 */
-  margin: 0 !important;
-  max-width: 380px;
+  /* 2026-05-01 ── #bottomNavGroup (flex 컨테이너) 안에 들어감.
+     position 은 부모(group)가 fixed 라 여기선 static. 부모 flex 가 정중앙 정렬.
+     챗봇 (assistantFab) 도 같은 flex 안에 있어서 14px gap 으로 자동 붙음. */
+  position: static;
+  pointer-events: auto;
+  max-width: 320px;
+  flex-shrink: 1;
+  min-width: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
