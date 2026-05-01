@@ -393,8 +393,10 @@
   }
 
   // 앱 부팅 시점에 미리 한 번 (유휴 타이밍)
+  // 2026-05-01 ── 우선순위 핵심 3개만 prefetch. 9개 동시 fetch → cold start 누적 + pool 폭주.
+  // 나머지는 사용자가 dashboard 진입 시 lazy load. forecast/at-risk 는 거의 안 봄.
   async function prefetch() {
-    const paths = ['/revenue?period=month', '/revenue?period=week', '/revenue?period=today', '/revenue?period=lastmonth', '/customers', '/bookings', '/retention/at-risk', '/revenue/forecast', '/today/brief'];
+    const paths = ['/today/brief', '/revenue?period=month', '/customers'];
     await Promise.all(paths.map(p => _cachedGet(p).catch(() => null)));
   }
   // 외부 노출 — 부팅 훅에서 호출
