@@ -453,7 +453,7 @@
       const k = (e && e.detail && e.detail.kind) || '';
       if (!k) return;
       const affects = ['update_customer', 'create_revenue', 'update_revenue', 'create_booking',
-                       'update_booking', 'cancel_booking', 'reschedule_booking', 'create_nps'];
+                       'update_booking', 'delete_booking', 'cancel_booking', 'reschedule_booking', 'create_nps'];
       if (!affects.includes(k)) return;
       const sheet = document.getElementById('customerDashSheet');
       if (!sheet || sheet.style.display === 'none') return;

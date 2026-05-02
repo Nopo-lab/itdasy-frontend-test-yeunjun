@@ -693,6 +693,7 @@
   if (!window._myShopV3DataListenerInit) {
     window._myShopV3DataListenerInit = true;
     window.addEventListener('itdasy:data-changed', () => {
+      try { localStorage.removeItem(SWR_KEY); sessionStorage.removeItem(SWR_KEY); } catch (_e) { void _e; }
       const root = document.getElementById('myshopV3Root');
       if (!root) return;
       const dashTab = document.getElementById('tab-dashboard');

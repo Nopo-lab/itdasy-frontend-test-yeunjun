@@ -16,6 +16,50 @@
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
   }
+  function _num(v) {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  function _servicePriceFor(svc) {
+    const k = String(svc || '').trim().toLowerCase();
+    const list = window._serviceTemplatesCache || [];
+    if (!k || !list.length) return null;
+    let hit = list.find(t => String(t.name || '').trim().toLowerCase() === k);
+    if (!hit) {
+      hit = list.find(t => {
+        const name = String(t.name || '').trim().toLowerCase();
+        return name && (k.includes(name) || name.includes(k));
+      });
+    }
+    return _num(hit?.default_price);
+  }
+  async function _hydrateAmountFromServices() {
+    if (!_ctx?.service_name || _ctx.amount) return;
+    try {
+      if (typeof window.loadServiceTemplates === 'function') await window.loadServiceTemplates();
+      const amount = _servicePriceFor(_ctx.service_name);
+      if (!amount) return;
+      _ctx.amount = amount;
+      const input = document.getElementById('cfAmount');
+      if (input && !input.value) input.value = String(amount);
+    } catch (e) {
+      console.warn('[complete-flow] 기본 금액 자동입력 실패:', e);
+    }
+  }
+  function _emitChange(kind, extra) {
+    try {
+      window.dispatchEvent(new CustomEvent('itdasy:data-changed', {
+        detail: { kind, optimistic: false, ...(extra || {}) },
+      }));
+    } catch (e) {
+      console.warn('[complete-flow] 화면 갱신 알림 실패:', e);
+    }
+  }
+  function _refreshConnectedViews() {
+    try { if (window.Dashboard?.refresh) Promise.resolve(window.Dashboard.refresh(true)).catch(e => console.warn('[complete-flow] 대시보드 갱신 실패:', e)); } catch (e) { console.warn('[complete-flow] 대시보드 갱신 실패:', e); }
+    try { if (window.MyShopV3?.refresh) Promise.resolve(window.MyShopV3.refresh()).catch(e => console.warn('[complete-flow] 내샵 갱신 실패:', e)); } catch (e) { console.warn('[complete-flow] 내샵 갱신 실패:', e); }
+    try { if (window.RevenueHub?.refresh) Promise.resolve(window.RevenueHub.refresh()).catch(e => console.warn('[complete-flow] 매출 화면 갱신 실패:', e)); } catch (e) { console.warn('[complete-flow] 매출 화면 갱신 실패:', e); }
+  }
 
   async function _apiPost(path, body) {
     const res = await fetch(window.API + path, {
@@ -47,13 +91,14 @@
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
           <span style="font-size:22px;">🎀</span>
           <strong style="font-size:17px;">시술 완료 · 빠른 기록</strong>
-          <button onclick="closeCompleteFlow()" style="margin-left:auto;background:rgba(0,0,0,0.05);border:none;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;" aria-label="닫기">✕</button>
+          <button id="cfClose" style="margin-left:auto;background:rgba(0,0,0,0.05);border:none;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;" aria-label="닫기">✕</button>
         </div>
         <div id="cfBody" style="flex:1;overflow-y:auto;"></div>
       </div>
     `;
     document.body.appendChild(sheet);
-    sheet.addEventListener('click', (e) => { if (e.target === sheet) closeCompleteFlow(); });
+    sheet.querySelector('#cfClose')?.addEventListener('click', _close);
+    sheet.addEventListener('click', (e) => { if (e.target === sheet) _close(); });
     return sheet;
   }
 
@@ -92,23 +137,41 @@
         <button id="cfSkip" style="flex:1;padding:13px;border:1px solid #ddd;border-radius:10px;background:#fff;cursor:pointer;color:#555;font-weight:700;font-size:13px;">건너뛰기</button>
         <button id="cfSave" style="flex:2;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;cursor:pointer;font-weight:800;font-size:15px;">한 번에 기록 ✓</button>
       </div>
+      <button id="cfInventory" style="width:100%;margin-top:8px;padding:12px;border:1px solid #eee;border-radius:10px;background:#fafafa;cursor:pointer;color:#555;font-weight:700;font-size:13px;">재고 확인</button>
     `;
 
     document.getElementById('cfSkip').addEventListener('click', _skipAndComplete);
     document.getElementById('cfSave').addEventListener('click', _saveAll);
+    document.getElementById('cfInventory').addEventListener('click', _openInventory);
   }
 
   // 예약만 완료 처리하고 닫기
   async function _skipAndComplete() {
-    await _markBookingCompleted();
-    if (window.showToast) window.showToast('예약 완료 처리됨');
-    closeCompleteFlow();
-    if (window.Dashboard?.refresh) window.Dashboard.refresh();
+    try {
+      await _markBookingCompleted();
+      _emitChange('update_booking', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
+      if (window.showToast) window.showToast('예약 완료 처리됨');
+      _close();
+      _refreshConnectedViews();
+    } catch (e) {
+      console.warn('[complete-flow] 예약 완료 처리 실패:', e);
+      if (window.showToast) window.showToast('완료 처리 실패: ' + (e.message || ''));
+    }
   }
 
   async function _markBookingCompleted() {
     if (!_ctx.booking_id) return;
-    try { await _apiPatch('/bookings/' + _ctx.booking_id, { status: 'completed' }); } catch (_) { void 0; }
+    if (window.Booking?.update) return window.Booking.update(_ctx.booking_id, { status: 'completed' });
+    return _apiPatch('/bookings/' + _ctx.booking_id, { status: 'completed' });
+  }
+
+  function _openInventory() {
+    _close();
+    if (typeof window.openInventoryHub === 'function') {
+      window.openInventoryHub();
+    } else if (window.showToast) {
+      window.showToast('재고 화면을 불러올 수 없어요');
+    }
   }
 
   async function _saveAll() {
@@ -136,10 +199,12 @@
           memo,
         }),
       ]);
+      if (_ctx.booking_id) _emitChange('update_booking', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
+      _emitChange('create_revenue', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
       if (window.hapticSuccess) window.hapticSuccess();
       if (window.showToast) window.showToast('✨ 매출 기록 완료!');
-      closeCompleteFlow();
-      if (window.Dashboard?.refresh) window.Dashboard.refresh();
+      _close();
+      _refreshConnectedViews();
     } catch (e) {
       btn.disabled = false;
       btn.textContent = '한 번에 기록 ✓';
@@ -156,12 +221,13 @@
         customer_id: booking.customer_id || null,
         customer_name: booking.customer_name || null,
         service_name: booking.service_name || null,
-        amount: null, method: 'card',
+        amount: _num(booking.amount) || _servicePriceFor(booking.service_name), method: 'card',
       };
       _ensureSheet();
       document.getElementById('completeFlowSheet').style.display = 'flex';
       document.body.style.overflow = 'hidden';
       _render();
+      _hydrateAmountFromServices();
     },
     show(opts) {
       _ctx = {
@@ -179,9 +245,10 @@
     },
   };
 
-  window.closeCompleteFlow = function () {
+  function _close() {
     const sheet = document.getElementById('completeFlowSheet');
     if (sheet) sheet.style.display = 'none';
     document.body.style.overflow = '';
-  };
+  }
+  window.closeCompleteFlow = _close;
 })();

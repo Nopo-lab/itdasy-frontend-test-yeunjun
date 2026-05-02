@@ -1552,9 +1552,11 @@
       try {
         if (existing) {
           await window.Booking.update(existing.id, payload);
+          window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'update_booking', booking_id: existing.id, customer_id: payload.customer_id } }));
         } else {
-          await window.Booking.create(payload);
+          const created = await window.Booking.create(payload);
           window.dispatchEvent(new CustomEvent('booking:created', { detail: { customer_name: payload.customer_name, customer_id: payload.customer_id || null } }));
+          window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_booking', booking_id: created?.id || null, customer_id: payload.customer_id } }));
         }
         if (window.hapticLight) window.hapticLight();
         const _name = payload.customer_name || '';
@@ -1577,6 +1579,7 @@
       if (!confirm('이 예약을 삭제할까요?')) return;
       try {
         await window.Booking.remove(existing.id);
+        window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'delete_booking', booking_id: existing.id, customer_id: existing.customer_id || null } }));
         if (window.hapticLight) window.hapticLight();
         if (window.showToast) window.showToast('삭제 완료');
         if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
@@ -1599,6 +1602,7 @@
         if (newStatus === existing.status) return;
         try {
           await window.Booking.update(existing.id, { status: newStatus });
+          window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'update_booking', booking_id: existing.id, customer_id: existing.customer_id || null } }));
           if (window.hapticLight) window.hapticLight();
           if (window.showToast) window.showToast(`✅ 상태를 '${STATUS_LABEL[newStatus]}'로 변경했어요`);
           if (window.Dashboard?.refresh) window.Dashboard.refresh(true);

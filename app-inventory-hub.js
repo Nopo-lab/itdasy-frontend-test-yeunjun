@@ -19,6 +19,16 @@
 
   const _state = { rows: [], pending: [], searchKW: '', editingId: null };
 
+  function _emitInventoryChanged(action, item) {
+    try {
+      window.dispatchEvent(new CustomEvent('itdasy:data-changed', {
+        detail: { kind: 'upsert_inventory', action, inventory_id: item?.id || null, optimistic: false },
+      }));
+    } catch (e) {
+      console.warn('[inventory-hub] 화면 갱신 알림 실패:', e);
+    }
+  }
+
   /* ── 캐시 ──────────────────────────────────────────────────── */
   function _readCache() {
     try {
@@ -339,6 +349,7 @@
       _state.rows.push(created);
       sessionStorage.removeItem(CACHE_KEY); _writeCache(_state.rows);
       _resetInput(); _render();
+      _emitInventoryChanged('create', created);
       if (window.hapticLight) window.hapticLight();
       if (window.showToast) window.showToast('✅ 추가 완료');
     } catch (e) { if (window.showToast) window.showToast('저장 실패: ' + e.message); }
@@ -368,6 +379,7 @@
       _state.pending = [];
       sessionStorage.removeItem(CACHE_KEY); _writeCache(_state.rows);
       _render();
+      _emitInventoryChanged('batch_create', null);
       if (window.hapticLight) window.hapticLight();
       if (window.showToast) window.showToast(`✅ ${results.length}건 저장`);
     } catch (e) { if (window.showToast) window.showToast('저장 실패: ' + e.message); }
@@ -386,6 +398,7 @@
       row.quantity = next;
       sessionStorage.removeItem(CACHE_KEY); _writeCache(_state.rows);
       _render();
+      _emitInventoryChanged('quantity', row);
       if (window.hapticLight) window.hapticLight();
     } catch (e) { if (window.showToast) window.showToast('실패: ' + e.message); }
   }
@@ -408,6 +421,7 @@
       if (idx >= 0) _state.rows[idx] = updated;
       sessionStorage.removeItem(CACHE_KEY); _writeCache(_state.rows);
       _state.editingId = null; _render();
+      _emitInventoryChanged('update', updated);
       if (window.showToast) window.showToast('수정 완료');
     } catch (e) { if (window.showToast) window.showToast('수정 실패: ' + e.message); }
   }
