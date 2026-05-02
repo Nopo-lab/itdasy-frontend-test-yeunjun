@@ -640,6 +640,8 @@
     } catch (_e) { /* ignore */ }
   }
   function closeDMAutoreplySettings() {
+    // [2026-05-02 Phase 1.2] inbox 폴링 정지 (close 시 즉시)
+    try { _stopInboxPoll(); } catch (_e) { void _e; }
     // 2026-05-01 ── 방어적 close. visibility 복귀 후 _overlay 가 null 이지만 DOM 에는
     // 살아있는 stuck 케이스 방어 — 항상 #dmAutoreplySheet DOM 정리.
     const overlay = _overlay || document.getElementById('dmAutoreplySheet');
@@ -711,7 +713,7 @@
             ${_renderBan(_settings)}
             ${_renderAdvanced(_settings)}
           </div>
-          <div>
+          <div id="dmInboxMount">
             ${_renderInbox(conversations, tone)}
           </div>
         </div>
@@ -726,6 +728,54 @@
     overlay.addEventListener('click', (e) => { if (e.target === overlay) closeDMAutoreplySettings(); });
 
     if (window.SheetAnim?.open) window.SheetAnim.open(overlay, sheet);
+    // [2026-05-02 Phase 1.2] inbox 자동 갱신 — 8초마다 신규 DM 따라잡음
+    _startInboxPoll();
+  }
+
+  // ── [2026-05-02] DM 자동응답 sheet 의 최근 DM (recent-conversations) 폴링 ──
+  const INBOX_POLL_MS = 8000;
+  let _inboxPollTimer = null;
+  let _inboxVisHandlerBound = false;
+
+  function _isInboxOpen() {
+    if (!_overlay) return false;
+    const ds = _overlay.style.display;
+    return ds !== 'none' && (_overlay.isConnected !== false);
+  }
+  function _bindInboxVisHandler() {
+    if (_inboxVisHandlerBound) return;
+    _inboxVisHandlerBound = true;
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && _isInboxOpen()) _refreshInbox().catch(() => {});
+    });
+  }
+  function _startInboxPoll() {
+    _stopInboxPoll();
+    _bindInboxVisHandler();
+    _inboxPollTimer = setInterval(() => {
+      if (document.hidden || !_isInboxOpen()) return;
+      _refreshInbox().catch(() => {});
+    }, INBOX_POLL_MS);
+  }
+  function _stopInboxPoll() {
+    if (_inboxPollTimer) clearInterval(_inboxPollTimer);
+    _inboxPollTimer = null;
+  }
+  async function _refreshInbox() {
+    if (!_overlay) return;
+    const mount = _overlay.querySelector('#dmInboxMount');
+    if (!mount) return;
+    try {
+      const headers = window.authHeader();
+      const r = await _rawFetch(window.API + '/instagram/dm-reply/recent-conversations?limit=10', { headers });
+      if (!r || !r.ok) return;
+      const data = await r.json().catch(() => ({}));
+      const conversations = data.conversations || [];
+      const tone = (_settings && _settings.tone) || 'friendly';
+      mount.innerHTML = _renderInbox(conversations, tone);
+      // 새로 그려진 inbox 안의 버튼들 재바인딩
+      if (_sheet) _bindEvents(_sheet);
+    } catch (_e) { /* 조용히 실패 — 다음 틱에 재시도 */ }
   }
 
   window.openDMAutoreplySettings = openDMAutoreplySettings;
