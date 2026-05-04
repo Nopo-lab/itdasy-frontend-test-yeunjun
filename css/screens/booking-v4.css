@@ -3,6 +3,20 @@
    mockup: ../../mockups/04-booking.html
    tokens: tokens.css */
 
+/* [2026-05-04] 슬라이드 통일 — 우→좌, 사이드바(220px) 유지. inline 스타일 override. */
+@keyframes bk-slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+#cal-overlay {
+  animation: bk-slide-in-right 0.18s cubic-bezier(0.32,0.72,0,1) !important;
+}
+@media (min-width: 768px) {
+  #cal-overlay {
+    inset: 0 0 0 220px !important;
+  }
+}
+
 /* ============================================================
    §0 로컬 변수 — time grid 높이 + spring easing
    ============================================================ */

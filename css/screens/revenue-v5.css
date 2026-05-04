@@ -695,13 +695,23 @@
   .rv-pc { display: block; }
 }
 
-/* 매출관리 풀스크린 진입 시 시스템 사이드바·여백 무력화 (myshop-v3 패턴) */
-body.rv-mode #sideNav { display: none !important; }
-body.rv-mode { padding-left: 0 !important; overflow: hidden; }
-body:has(#revenueSheet[style*="display: flex"]) #sideNav,
-body:has(#revenueSheet[style*="display:flex"]) #sideNav,
-body:has(#revenue-hub-overlay) #sideNav { display: none !important; }
-body:has(#revenue-hub-overlay) { padding-left: 0 !important; }
+/* [2026-05-04] 매출관리 슬라이드 통일 — 사이드바 유지, 우→좌 슬라이드.
+   사이드바 클릭 가능하도록 hide 룰 제거. PC 에서만 220px 좌측 여백. */
+body.rv-mode { overflow: hidden; }
+@media (min-width: 768px) {
+  #revenueSheet,
+  #revenue-hub-overlay {
+    inset: 0 0 0 220px !important;
+  }
+}
+@keyframes rv-slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+#revenueSheet[style*="display: flex"],
+#revenueSheet[style*="display:flex"] {
+  animation: rv-slide-in-right 0.18s cubic-bezier(0.32,0.72,0,1);
+}
 
 /* ============================================================
    12 · prefers-reduced-motion — hover transform 끄기
