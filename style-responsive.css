@@ -170,8 +170,9 @@
     top: 60px !important;
   }
 
-  /* 3) 모든 hub 통일 — PC: 사이드바(232px) 우측, 헤더(60px) 아래 영역.
-     운영(예약/고객/매출/재고) + 통합허브(AI/설정) + 플랜/도움말 동일. */
+  /* 3) 모든 hub 통일 — PC: 사이드바(232px) 우측, 헤더(60px) 아래.
+     운영(예약/고객/매출/재고) + 통합허브(AI/설정) + 플랜/도움말 동일.
+     배경 흰색 풀패널 (운영 hub 와 동일한 깔끔한 룩). */
   .hub-overlay,
   #revenueSheet,
   #revenue-hub-overlay,
@@ -186,28 +187,37 @@
     transform: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    background: var(--bg) !important;
+    background: #fff !important;
     padding: 0 !important;
     align-items: stretch !important;
     justify-content: flex-start !important;
+    overflow-y: auto !important;
   }
-  /* AI/Settings/Plan/Support 내부 카드를 PC 풀패널로 펼치기 */
+  /* AI/Settings/Plan/Support 내부 카드 — 풀패널 펼치기 (max-width 제거). */
   #aiHubSheet > #aihCard,
   #settingsHubSheet > #shCard,
   #planPopup > *:not(script),
   #supportChatModal > *:not(script) {
-    width: auto !important;
-    max-width: 1080px !important;     /* 너무 넓어 보이지 않게 max */
+    width: 100% !important;
+    max-width: none !important;
     height: auto !important;
     max-height: none !important;
     min-height: calc(100vh - 60px);
     border-radius: 0 !important;
-    margin: 0 auto !important;        /* 중앙 정렬 */
-    padding: 28px 32px !important;
+    margin: 0 !important;
+    padding: 32px 40px !important;
+    background: #fff !important;
     box-shadow: none !important;
     transform: none !important;
-    flex: none !important;
+    flex: 1 !important;
     overflow-y: auto !important;
+  }
+  /* 바텀시트 핸들(가로 막대)은 모바일 전용 — PC 에서 hide */
+  #aiHubSheet > #aihCard::before,
+  #settingsHubSheet > #shCard::before,
+  #aiHubSheet .sheet-handle,
+  #settingsHubSheet .sheet-handle {
+    display: none !important;
   }
   /* 사이드바 자체 로고 숨김 — 헤더 잇데이 로고와 중복 */
   .ms-side__logo {
