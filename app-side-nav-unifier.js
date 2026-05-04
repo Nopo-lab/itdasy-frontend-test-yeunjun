@@ -25,7 +25,16 @@
     // 운영 hub 들 — overlay 요소 제거 (#genericSheet 도 .hub-overlay 라 같이 제거됨)
     document.querySelectorAll('.hub-overlay, .hub-backdrop').forEach(el => el.remove());
     try { window.closeSheet?.(); } catch (_e) { void _e; }
-    try { window.closeNavSheet?.(); } catch (_e) { void _e; }
+    // navSheet 직접 닫기 — closeNavSheet 의 280ms setTimeout race condition 회피
+    const ns = document.getElementById('navSheet');
+    if (ns) {
+      ns.style.display = 'none';
+      const nsInner = document.getElementById('navSheetInner');
+      if (nsInner) {
+        nsInner.style.transform = '';
+        nsInner.style.transition = '';
+      }
+    }
     const rs = document.getElementById('revenueSheet');
     if (rs) rs.style.display = 'none';
     document.body.classList.remove('rv-mode');
