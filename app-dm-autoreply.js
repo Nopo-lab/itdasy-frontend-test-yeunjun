@@ -608,11 +608,18 @@
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.detail || ('HTTP ' + res.status));
-      draftEl.textContent = d.ai_draft_text || orig;
-      _draftMap.set(draftEl.dataset.tail, draftEl.textContent);
+      // 폴링이 카드를 재렌더했을 수 있으므로 logId 로 다시 조회
+      const liveCard = document.querySelector(`.dm-card[data-log-id="${CSS.escape(logId)}"]`);
+      const liveEl = liveCard ? liveCard.querySelector('.dm-bubble--sent.is-draft') : draftEl;
+      if (liveEl) {
+        liveEl.textContent = d.ai_draft_text || orig;
+        _draftMap.set(liveEl.dataset.tail, liveEl.textContent);
+      }
       if (d.guarded) _toast('✓ 시간 정보 유지하며 톤만 변경됨');
     } catch (e) {
-      draftEl.textContent = orig;
+      const liveCard2 = document.querySelector(`.dm-card[data-log-id="${CSS.escape(logId)}"]`);
+      const liveEl2 = liveCard2 ? liveCard2.querySelector('.dm-bubble--sent.is-draft') : draftEl;
+      if (liveEl2) liveEl2.textContent = orig;
       _toast('재생성 실패: ' + (e.message || ''));
     }
   }

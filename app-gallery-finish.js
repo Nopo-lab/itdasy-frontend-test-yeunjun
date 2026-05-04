@@ -145,13 +145,13 @@ function _renderFinishTab(root, galleryItems = []) {
   doneSlots.forEach(slot => {
     const card = root.querySelector(`[data-finish-slot="${slot.id}"]`);
     if (!card) return;
-    card.querySelector('[data-action="edit"]').addEventListener('click', () => openSlotPopup(slot.id));
-    card.querySelector('[data-action="publish"]').addEventListener('click', () => publishSlotToInstagram(slot.id));
-    card.querySelector('[data-action="gallery"]').addEventListener('click', () => _saveSlotToGallery(slot.id));
-    card.querySelector('[data-action="download"]').addEventListener('click', () => downloadSlotPhotos(slot.id));
-    card.querySelector('[data-action="pickCustomer"]').addEventListener('click', () => _pickCustomerForSlot(slot.id));
-    card.querySelector('[data-action="defer"]').addEventListener('click', () => _deferSlot(slot.id));
-    card.querySelector('[data-action="delete"]').addEventListener('click', () => deleteSlotFinish(slot.id));
+    card.querySelector('[data-action="edit"]')?.addEventListener('click', () => openSlotPopup(slot.id));
+    card.querySelector('[data-action="publish"]')?.addEventListener('click', () => publishSlotToInstagram(slot.id));
+    card.querySelector('[data-action="gallery"]')?.addEventListener('click', () => _saveSlotToGallery(slot.id));
+    card.querySelector('[data-action="download"]')?.addEventListener('click', () => downloadSlotPhotos(slot.id));
+    card.querySelector('[data-action="pickCustomer"]')?.addEventListener('click', () => _pickCustomerForSlot(slot.id));
+    card.querySelector('[data-action="defer"]')?.addEventListener('click', () => _deferSlot(slot.id));
+    card.querySelector('[data-action="delete"]')?.addEventListener('click', () => deleteSlotFinish(slot.id));
   });
   root.querySelectorAll('[data-gallery-item]').forEach(el => {
     el.addEventListener('click', () => _galleryItemDetail(el.dataset.galleryItem));

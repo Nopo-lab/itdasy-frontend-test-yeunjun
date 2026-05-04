@@ -318,6 +318,13 @@
       </div>
     `;
     document.body.appendChild(sheet);
+    // iOS 300ms 딜레이 제거 — asstBody 안 버튼은 즉시 반응
+    if (!document.getElementById('asst-tap-style')) {
+      const st = document.createElement('style');
+      st.id = 'asst-tap-style';
+      st.textContent = '#assistantSheetPanel button { touch-action: manipulation; }';
+      document.head.appendChild(st);
+    }
     sheet.addEventListener('click', (e) => { if (e.target === sheet) closeAssistant(); });
     sheet.querySelector('#asstSend').addEventListener('click', _send);
     // 📸 사진 업로드 버튼 → 하단 action sheet

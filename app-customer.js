@@ -610,8 +610,8 @@
     // (예: 일부 고객만 SWR 에 들어있는 stale 케이스 차단)
     try {
       const swr = _readSWR();
-      if (!_cache || !swr || !swr.fresh) {
-        try { await _fetchFresh(); } catch (_e) { if (!_cache) await list(); }
+      if (!_cache || !_cache.length || !swr || !swr.fresh) {
+        try { await _fetchFresh(); } catch (_e) { if (!_cache || !_cache.length) await list(); }
       }
     } catch (_) { /* ignore — fallback 아래 items */ }
     return new Promise((resolve) => {
@@ -683,7 +683,7 @@
             const pickedId = row.dataset.pickId;
             const items2 = _cache || [];
             const c = items2.find(x => String(x.id) === String(pickedId));
-            close(c ? { id: c.id, name: c.name } : null);
+            close(c || null);
           });
         });
       };

@@ -1160,7 +1160,7 @@
     return slots;
   }
 
-  function _buildFormHTML(existing, slots, dateStr, defStart, defEnd) {
+  function _buildFormHTML(existing, slots, dateStr, defStart, defEnd, autoSlot) {
     const isEdit = !!existing;
     // 시/분 파싱
     const [defH, defM] = defStart.split(':').map(Number);
@@ -1170,6 +1170,8 @@
     const dd = new Date(dateStr + 'T00:00:00');
     const DOW = ['일','월','화','수','목','금','토'];
     const dateLabel = (dd.getMonth()+1) + '월 ' + dd.getDate() + '일 ' + DOW[dd.getDay()] + '요일';
+    const todayLabel = _ds(new Date()) === dateStr ? '오늘' : DOW[dd.getDay()] + '요일';
+    const dayCnt = (_mappedCache || []).filter(it => _ds(new Date(it.starts_at)) === dateStr && it.status !== 'cancelled' && it.status !== 'no_show').length;
     // 휠 행 생성 (시: 0~23, 분: 0/15/30/45)
     const hRows = (cur) => {
       let h = ''; for (let i = cur - 2; i <= cur + 2; i++) {
@@ -1187,6 +1189,12 @@
     const endTimeLabel = _pad(endH) + ':' + _pad(endM);
 
     let html = `<button class="cv-form-back" id="cv-form-back">← 뒤로</button>`;
+    if (!isEdit && autoSlot) {
+      html += `<div class="bf-auto-banner">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m12 3 1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg>
+        빈 슬롯 ${defStart} 자동 선택 · 고객만 고르면 끝
+      </div>`;
+    }
     // 수정 모드 — 시술 완료 액션 카드
     if (isEdit && existing.status !== 'completed') {
       html += `<button type="button" class="bf-complete-action" id="bfComplete">
@@ -1208,7 +1216,7 @@
     html += `<div class="bf-section"><div class="bf-label">날짜</div>
       <button type="button" class="bf-date-card" id="bfDateCard">
         <div class="bf-date-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg></div>
-        <div style="flex:1"><div class="bf-date-text" id="bfDateLabel">${dateLabel}</div><div class="bf-date-meta" id="bfDateMeta">날짜를 탭해서 변경</div></div>
+        <div style="flex:1"><div class="bf-date-text" id="bfDateLabel">${dateLabel}</div><div class="bf-date-meta" id="bfDateMeta">${todayLabel} · ${dayCnt}건 예약됨</div></div>
         <svg class="bf-date-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
       <input type="date" id="bfDate" class="bf-date-native" value="${dateStr}" />
@@ -1296,6 +1304,9 @@
         const DOW2 = ['일','월','화','수','목','금','토'];
         const lbl = body.querySelector('#bfDateLabel');
         if (lbl) lbl.textContent = (d.getMonth()+1) + '월 ' + d.getDate() + '일 ' + DOW2[d.getDay()] + '요일';
+        const meta = body.querySelector('#bfDateMeta');
+        const cnt = (_mappedCache || []).filter(it => _ds(new Date(it.starts_at)) === dateInput.value && it.status !== 'cancelled' && it.status !== 'no_show').length;
+        if (meta) meta.textContent = (_ds(new Date()) === dateInput.value ? '오늘' : DOW2[d.getDay()] + '요일') + ' · ' + cnt + '건 예약됨';
         _checkConflict();
       });
     }
@@ -1373,7 +1384,7 @@
         const dy = touchY - e.touches[0].clientY;
         swipeAcc += dy;
         touchY = e.touches[0].clientY;
-        const ROW_H = 40;
+        const ROW_H = 14;
         if (Math.abs(swipeAcc) >= ROW_H) {
           const dir = swipeAcc > 0 ? 1 : -1;
           _setIdx(_curIdx() + dir);
@@ -1389,9 +1400,21 @@
       if (!card) return;
       if (picked) {
         card.className = 'bf-cust-card';
+        const visits = +picked.visit_count || 0;
+        const bal = +picked.membership_balance || 0;
+        const rawBirth = String(picked.birthday || '');
+        const bm = rawBirth.match(/^(\d{1,2})[-/](\d{1,2})$/) || rawBirth.match(/^\d{4}-(\d{1,2})-(\d{1,2})/);
+        const td = new Date();
+        const isBirthday = bm && +bm[1] === td.getMonth() + 1 && +bm[2] === td.getDate();
+        const meta = [
+          visits ? '<b>방문 ' + visits + '회</b>' : '',
+          bal ? '회원권 ' + (bal / 10000).toFixed(bal >= 100000 ? 0 : 1) + '만' : '',
+          isBirthday ? '오늘 생일' : '',
+        ].filter(Boolean).join(' · ');
+        const badge = (picked.is_regular || visits >= 5) ? '<span class="bf-cust-badge">단골</span>' : '';
         // 2026-05-01 ── X 버튼의 SVG 에 pointer-events:none 으로 자식 클릭을 X 버튼에 위임
         card.innerHTML = `<div class="bf-cust-avatar">${_esc((picked.name || '?')[0])}</div>
-          <div class="bf-cust-info"><div class="bf-cust-name">${_esc(picked.name || '')}</div><div class="bf-cust-meta" id="bfCustMeta"></div></div>
+          <div class="bf-cust-info"><div class="bf-cust-name">${_esc(picked.name || '')} ${badge}</div><div class="bf-cust-meta" id="bfCustMeta">${meta}</div></div>
           <button type="button" class="bf-cust-clear" id="bfCustClear" aria-label="고객 선택 해제"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
         body.querySelector('#bfCustName').value = picked.name || '';
       } else {
@@ -1404,8 +1427,8 @@
       if (!window.Customer?.pick) { if (window.showToast) window.showToast('고객 모듈 로드 중…'); return; }
       const picked = await window.Customer.pick({ selectedId: custId });
       if (picked === null) return;
-      custId = picked.id;
-      _renderCustCard(picked);
+      custId = picked.id || null;
+      _renderCustCard(picked.name ? picked : null);
     };
     // 2026-05-01 ── event delegation: 카드 click 시 X 버튼 안이면 clear, 아니면 picker 열기.
     // 이전엔 X 의 click listener 가 inline 으로 매번 다시 붙어서 재렌더 시 누락 케이스 발생.
@@ -1629,7 +1652,7 @@
     const dateStr = _ds(defDate);
     const defS = existing ? _fmt(new Date(existing.starts_at)) : (pendS ? _fmt(pendS) : slots[0]);
     const defE = existing ? _fmt(new Date(existing.ends_at))   : (pendE ? _fmt(pendE) : (slots[2] || slots[slots.length - 1]));
-    body.innerHTML = '<div class="cv-form-wrap bf-wrap" style="padding:16px;">' + _buildFormHTML(existing, slots, dateStr, defS, defE) + '</div>';
+    body.innerHTML = '<div class="cv-form-wrap bf-wrap" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;">' + _buildFormHTML(existing, slots, dateStr, defS, defE, !!pendS) + '</div>';
     body.querySelector('#cv-form-back').addEventListener('click', () => _renderViewBody());
     _bindFormExtras(body, existing);
     _bindFormSave(body, existing, date);
