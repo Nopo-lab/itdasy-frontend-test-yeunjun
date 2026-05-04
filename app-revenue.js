@@ -855,24 +855,30 @@
       }
       return;
     }
-    const target = sheet.querySelector(_cachedIsPC ? '#rvPCMain' : '#rvBody');
-    _renderSkeletonInto(target);
+    // [2026-05-04] 캐시 없을 때: skeleton 으로 #rvPCMain 통째 교체하지 않음.
+    // 빈 _items 로 layout 만 보여주고 (0원 표시) fetch 완료 시 _rerender 로 채움.
+    // 이전: _renderSkeletonInto 가 main innerHTML 덮어써서 layout 안 보였음.
     try {
       await list(_currentPeriod);
       _rerender();
     } catch (_e) {
       console.warn('[revenue] load 실패:', _e);
+      const target = sheet.querySelector(_cachedIsPC ? '#rvPCMain' : '#rvBody');
       if (target) target.innerHTML = '<div style="padding:30px;text-align:center;color:var(--danger);">불러오기 실패</div>';
     }
   }
 
   // ── open / close ────────────────────────────────────────
   window.openRevenue = async function () {
-    // [2026-05-04] 즉시 렌더 + 백그라운드 fetch 패턴 — 고객/재고 hub 와 동일.
-    // 이전: await _loadAndRender() 로 fetch 끝까지 화면 멈춤 (4-5초 체감).
+    // [2026-05-04 v88] 즉시 layout 표시 + 백그라운드 fetch.
+    // 1) _renderRoot 로 사이드바 + #rvPCMain 빈 컨테이너
+    // 2) _rerender 로 0원 / 0건 placeholder 즉시 표시 (Fun.countUp 가 알아서 0→실제값)
+    // 3) display:flex 로 보이기
+    // 4) _loadAndRender 백그라운드 (SWR 캐시 / 네트워크)
     const sheet = _ensureSheet();
     _cachedIsPC = _isPC();
     await _renderRoot();
+    try { _rerender(); } catch (_e) { void _e; }
     sheet.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     document.body.classList.add('rv-mode');
