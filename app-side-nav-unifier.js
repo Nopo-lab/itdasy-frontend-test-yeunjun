@@ -6,16 +6,34 @@
   'use strict';
 
   function _closeAllHubs() {
-    try { window.closeCustomerHub?.(); } catch (_e) { void _e; }
-    try { window.closeInventoryHub?.(); } catch (_e) { void _e; }
-    try { window.closeRevenue?.(); } catch (_e) { void _e; }
-    try { window.closeRevenueHub?.(); } catch (_e) { void _e; }
-    try { window.closeBooking?.(); } catch (_e) { void _e; }
-    try { window.closeServiceTemplates?.(); } catch (_e) { void _e; }
-    try { window.closeAiHub?.(); } catch (_e) { void _e; }
-    try { window.closeSettingsHub?.(); } catch (_e) { void _e; }
-    try { window.closePlanPopup?.(); } catch (_e) { void _e; }
-    try { window.closeSupportChat?.(); } catch (_e) { void _e; }
+    // [2026-05-04] SheetAnim.close 의 220ms setTimeout 이 재오픈 직후 display:none 으로
+    // 덮어쓰는 race condition 회피 — 직접 display 조작.
+    ['aiHubSheet', 'settingsHubSheet', 'planPopup', 'supportChatModal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.display = 'none';
+        el.style.opacity = '';
+        el.style.transition = '';
+      }
+      const card = el?.querySelector('#aihCard, #shCard');
+      if (card) {
+        card.style.transition = '';
+        card.style.transform = '';
+        card.style.opacity = '';
+      }
+    });
+    // 운영 hub 들 — overlay 요소 제거
+    document.querySelectorAll('.hub-overlay, .hub-backdrop').forEach(el => el.remove());
+    const rs = document.getElementById('revenueSheet');
+    if (rs) rs.style.display = 'none';
+    document.body.classList.remove('rv-mode');
+    document.body.style.overflow = '';
+    const co = document.getElementById('cal-overlay');
+    if (co) co.remove();
+    // popstate 관리용 sheet-closed 신호
+    ['customers', 'inventory', 'revenue', 'booking', 'revenuehub', 'aihub', 'settingshub'].forEach(k => {
+      try { window._markSheetClosed?.(k); } catch (_e) { void _e; }
+    });
   }
   window._closeAllHubs = _closeAllHubs;
 

@@ -138,10 +138,17 @@
   }
 
   async function _load() {
-    const [customers, revenues] = await Promise.all([_fetchCustomers(), _fetchRevenues()]);
+    // [2026-05-04] customers 먼저 표시 → revenues 백그라운드 enrich.
+    // 이전: Promise.all 로 두 fetch 다 기다려서 revenue 가 느리면 hub 전체 멈춤.
+    const customers = await _fetchCustomers();
     _state.rows    = customers;
-    _state.enriched = _enrich(customers, revenues);
+    _state.enriched = _enrich(customers, []);
     if (window.AppAutocomplete) window.AppAutocomplete.rebuild({ customers });
+    // 백그라운드: revenues 도착하면 enrich 다시 + 재렌더
+    _fetchRevenues().then(revenues => {
+      _state.enriched = _enrich(customers, revenues);
+      try { _render(); } catch (_e) { void _e; }
+    }).catch(() => {});
   }
 
   /* ── 렌더 ──────────────────────────────────────────────────── */

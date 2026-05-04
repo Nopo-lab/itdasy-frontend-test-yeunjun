@@ -1401,7 +1401,8 @@ function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;
   const v = swVer || window.APP_BUILD || '?';
-  el.textContent = 'v' + v.replace(/^20\d{6}-?/, '');
+  // 날짜(20260504-) + 첫 dash 이후 설명 제거 → 'v89' 만 표시
+  el.textContent = 'v' + v.replace(/^20\d{6}-?/, '').replace(/^v?(\d+).*$/, '$1');
   el.title = '빌드: ' + v + ' (탭하면 최근 로그)';
   if (swVer && window.APP_BUILD && swVer !== window.APP_BUILD && !sessionStorage.getItem('cache_busted')) {
     console.warn('[SW] 버전 불일치 감지 — 캐시 전부 삭제 후 리로드. active=' + swVer + ' / bundle=' + window.APP_BUILD);

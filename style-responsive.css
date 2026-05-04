@@ -197,14 +197,21 @@
   #planPopup > *:not(script),
   #supportChatModal > *:not(script) {
     width: auto !important;
-    max-width: none !important;
+    max-width: 1080px !important;     /* 너무 넓어 보이지 않게 max */
     height: auto !important;
     max-height: none !important;
+    min-height: calc(100vh - 60px);
     border-radius: 0 !important;
-    margin: 0 !important;
+    margin: 0 auto !important;        /* 중앙 정렬 */
+    padding: 28px 32px !important;
     box-shadow: none !important;
     transform: none !important;
-    flex: 1 !important;
+    flex: none !important;
+    overflow-y: auto !important;
+  }
+  /* 사이드바 자체 로고 숨김 — 헤더 잇데이 로고와 중복 */
+  .ms-side__logo {
+    display: none !important;
   }
   .hub-overlay::before {
     display: none;
