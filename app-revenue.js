@@ -868,13 +868,15 @@
 
   // ── open / close ────────────────────────────────────────
   window.openRevenue = async function () {
+    // [2026-05-04] 즉시 렌더 + 백그라운드 fetch 패턴 — 고객/재고 hub 와 동일.
+    // 이전: await _loadAndRender() 로 fetch 끝까지 화면 멈춤 (4-5초 체감).
     const sheet = _ensureSheet();
     _cachedIsPC = _isPC();
     await _renderRoot();
     sheet.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     document.body.classList.add('rv-mode');
-    await _loadAndRender();
+    _loadAndRender().catch(() => {});
     try {
       if (typeof window._registerSheet === 'function') window._registerSheet('revenue', window.closeRevenue);
       if (typeof window._markSheetOpen === 'function') window._markSheetOpen('revenue');
