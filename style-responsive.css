@@ -185,9 +185,9 @@
   #revenue-hub-overlay aside.ms-side {
     display: none !important;
   }
-  /* 글로벌 사이드바를 hub 위로 — z-index 올림 */
+  /* 글로벌 사이드바 z-index — 어떤 hub 보다도 위 (revenueSheet inline z-index 9000) */
   #sideNav.ms-side {
-    z-index: 1000;
+    z-index: 10000 !important;
   }
 
   /* 4) 일반 popup-overlay — 그대로지만 콘텐츠 폭만 살짝 확장 허용 */
@@ -216,5 +216,13 @@
   }
   .tab {
     max-width: 1080px;
+  }
+  /* 사이드바 폭 변경에 맞춰 hub 영역도 260px 우측으로 */
+  .hub-overlay,
+  #revenueSheet,
+  #revenue-hub-overlay,
+  #cal-overlay,
+  .hub-overlay.hub-overlay--prototype {
+    inset: 0 0 0 260px !important;
   }
 }
