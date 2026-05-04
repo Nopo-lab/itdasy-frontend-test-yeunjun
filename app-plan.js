@@ -10,6 +10,12 @@
   let _selectedPlan = 'pro';
   let _currentPlan = 'free';
 
+  function _planDisplayName(plan) {
+    if (plan === 'premium') return 'Premium';
+    if (plan === 'pro') return 'Pro';
+    return 'Free';
+  }
+
   async function openPlanPopup() {
     const pop = document.getElementById('planPopup');
     if (!pop) return;
@@ -86,11 +92,12 @@
   }
 
   async function _loadUsage() {
-    if (!window.API || !window.authHeader) return;
+    const headers = window.authHeader && window.authHeader();
+    if (!window.API || !headers || !headers.Authorization) return;
     const box = document.getElementById('planUsageContent');
     if (!box) return;
     try {
-      const res = await fetch(window.API + '/subscription/usage', { headers: window.authHeader() });
+      const res = await fetch(window.API + '/subscription/usage', { headers });
       if (!res.ok) throw new Error('usage ' + res.status);
       const u = await res.json();
       const rows = [];
@@ -105,9 +112,10 @@
   }
 
   async function _loadStatus() {
-    if (!window.API || !window.authHeader) return;
+    const headers = window.authHeader && window.authHeader();
+    if (!window.API || !headers || !headers.Authorization) return;
     try {
-      const res = await fetch(window.API + '/subscription/status', { headers: window.authHeader() });
+      const res = await fetch(window.API + '/subscription/status', { headers });
       if (!res.ok) return;
       const d = await res.json();
       _currentPlan = (d.plan || 'free').toLowerCase();
@@ -120,18 +128,21 @@
     const badge = document.getElementById('planBadge');
     if (!badge) return;
     if (plan === 'pro') {
-      badge.textContent = 'Pro';
+      badge.textContent = _planDisplayName(plan);
       badge.style.background = 'linear-gradient(135deg,#f18091,#ff9aa8)';
       badge.style.color = '#fff';
     } else if (plan === 'premium') {
-      badge.textContent = 'Premium';
+      badge.textContent = _planDisplayName(plan);
       badge.style.background = 'linear-gradient(135deg,#833ab4,#a052d2)';
       badge.style.color = '#fff';
     } else {
-      badge.textContent = 'Free';
+      badge.textContent = _planDisplayName(plan);
       badge.style.background = '#e0e0e0';
       badge.style.color = '#888';
     }
+    try {
+      window.dispatchEvent(new CustomEvent('itdasy:plan-updated', { detail: { plan } }));
+    } catch (_) { void 0; }
   }
 
   async function doPlanAction() {
@@ -191,6 +202,7 @@
 
   // 외부에서 현재 플랜 조회 (고객·매출 한도 분기용)
   window.getCurrentPlan = () => _currentPlan;
+  window.getCurrentPlanLabel = () => _planDisplayName(_currentPlan);
   window.isPaidPlan = () => _currentPlan === 'pro' || _currentPlan === 'premium';
 
   // planActionBtn 클릭 이벤트 바인딩 (app-core.js 의 on() 등록 외에 안전장치)

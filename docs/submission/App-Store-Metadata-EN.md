@@ -85,7 +85,7 @@ v1.0 Official Launch 🎉
 - AI Assistant chatbot with real actions (not just answers)
 - Monthly growth story card (1080×1920)
 - Import wizard (Excel/CSV/photos) with AI column mapping
-- Sign in with Apple + Face ID
+- Email login + optional Face ID app unlock
 - Korean + English support
 - At-risk customer detection + retention revenue tracker
 ```

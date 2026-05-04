@@ -149,7 +149,7 @@ Sentry, Gemini, 내부 로그 모두 "자사 서비스 내" 사용이며 광고 
 
 ## 📋 추가 중요 선언
 
-- **Sign in with Apple** 구현됨 (`/auth/apple` 엔드포인트, JWKS 검증)
+- **Sign in with Apple** iOS 소셜 로그인 노출 전 필수. 현재 iOS 심사 빌드는 이메일 로그인만 노출한다.
 - **In-App Account Deletion** 구현됨 (Settings → 🗑 계정 탈퇴 → 2단계 확인 → `DELETE /auth/delete-account`)
 - **AI 생성 콘텐츠 신고** 구현됨 (🚩 버튼 → `POST /moderation/report` → 24시간 내 검토)
 - **Cross-border transfer** 명시 동의 필수 (가입 체크박스)

@@ -311,6 +311,8 @@ window.disconnectInstagram = disconnectInstagram;
 async function connectInstagram() {
   if (!getToken()) {
     document.getElementById('lockOverlay').classList.remove('hidden');
+    if (window.applyStoreReviewLoginGuard) window.applyStoreReviewLoginGuard();
+    if (document.body) document.body.classList.add('itdasy-locked');
     return;
   }
 

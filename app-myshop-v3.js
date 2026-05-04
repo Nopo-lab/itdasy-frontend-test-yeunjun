@@ -34,10 +34,17 @@
   }
 
   // ─────────── fetch ───────────
-  async function _fetchBrief() {
-    if (!window.API || !window.authHeader) return null;
+  function _authHeaders() {
     try {
-      const res = await fetch(window.API + '/today/brief', { headers: window.authHeader() });
+      const headers = window.authHeader ? window.authHeader() : {};
+      return headers && headers.Authorization ? headers : null;
+    } catch (_e) { return null; }
+  }
+  async function _fetchBrief() {
+    const headers = _authHeaders();
+    if (!window.API || !headers) return null;
+    try {
+      const res = await fetch(window.API + '/today/brief', { headers });
       if (!res.ok) return null;
       const data = await res.json();
       _writeSWR(data);
@@ -47,9 +54,10 @@
   // DM 검토 대기 — 백엔드 큐 미구현이라 일단 최근 대화 N건을 검토 대기로 간주
   // TODO[v1.5]: /instagram/dm-reply/pending-queue 신설되면 교체
   async function _fetchRecentDMs() {
-    if (!window.API || !window.authHeader) return [];
+    const headers = _authHeaders();
+    if (!window.API || !headers) return [];
     try {
-      const res = await fetch(window.API + '/instagram/dm-reply/recent-conversations?limit=5', { headers: window.authHeader() });
+      const res = await fetch(window.API + '/instagram/dm-reply/recent-conversations?limit=5', { headers });
       if (!res.ok) return [];
       const data = await res.json();
       return Array.isArray(data && data.conversations) ? data.conversations : [];
@@ -71,6 +79,17 @@
   function _shopAvatarUrl() {
     try { return localStorage.getItem('itdasy:ig_profile_pic') || ''; }
     catch (_e) { return ''; }
+  }
+  function _planLabel() {
+    try {
+      if (typeof window.getCurrentPlanLabel === 'function') return window.getCurrentPlanLabel();
+      const badge = document.getElementById('planBadge');
+      const text = badge && badge.textContent ? badge.textContent.trim() : '';
+      return text || 'Free';
+    } catch (_e) { return 'Free'; }
+  }
+  function _planText() {
+    return _planLabel().replace(/\s*플랜$/g, '') + ' 플랜';
   }
   function _won(n) {
     try { return '₩' + (Number(n) || 0).toLocaleString('ko-KR'); }
@@ -237,7 +256,7 @@
           <div class="ms-shop__avatar" aria-hidden="true">${avatarHTML}</div>
           <div class="ms-shop__info">
             <div class="ms-shop__name">${_esc(shop)}</div>
-            <div class="ms-shop__plan">✦ Pro 플랜</div>
+            <div class="ms-shop__plan">✦ ${_esc(_planText())}</div>
           </div>
           <button type="button" class="ms-shop__edit" data-mv-act="editShop" aria-label="샵 정보 편집">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -327,8 +346,9 @@
 
   // ─────────── 계정 메뉴 2개 ───────────
   function _renderAccountMenu() {
+    const planLabel = _planLabel();
     const items = [
-      _menuItemHTML({ act: 'plan', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg>', name: '플랜 · 구독', meta: 'Pro' }),
+      _menuItemHTML({ act: 'plan', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg>', name: '플랜 · 구독', meta: planLabel }),
       _menuItemHTML({ act: 'support', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>', name: '도움말 · 문의', meta: '사용법 · 문의하기' }),
     ].join('');
     return `<div class="ms-section"><div class="ms-section__title">계정</div><div class="ms-menu">${items}</div></div>`;
@@ -375,9 +395,10 @@
     ].join('');
   }
   function _sideAccountHTML() {
+    const planLabel = _planLabel();
     return [
       '<div class="ms-side__section">계정</div>',
-      _sideItemHTML({ act: 'plan',    iconSVG: _sideIcon('ic-star'),           label: '플랜 · Pro' }),
+      _sideItemHTML({ act: 'plan',    iconSVG: _sideIcon('ic-star'),           label: '플랜 · ' + planLabel }),
       _sideItemHTML({ act: 'support', iconSVG: _sideIcon('ic-message-circle'), label: '도움말' }),
     ].join('');
   }
@@ -698,6 +719,10 @@
       if (!root) return;
       const dashTab = document.getElementById('tab-dashboard');
       if (dashTab && dashTab.classList.contains('active')) _doRender(root);
+    });
+    window.addEventListener('itdasy:plan-updated', () => {
+      const root = document.getElementById('myshopV3Root');
+      if (root) _doRender(root);
     });
     // 탭 전환 감지 — #tab-dashboard.active 가 되면 첫 렌더 (혹시 자동마운트 시점에 아직 DOM 없었을 경우)
     document.addEventListener('click', (ev) => {

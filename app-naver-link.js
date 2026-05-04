@@ -12,7 +12,7 @@
   function _api() { return window.API || ''; }
   function _auth() { try { return (window.authHeader && window.authHeader()) || {}; } catch (_) { return {}; } }
   function _toast(m) { if (window.showToast) window.showToast(m); }
-  function _haptic() { try { window.hapticLight && window.hapticLight(); } catch (_) {} }
+  function _haptic() { try { window.hapticLight && window.hapticLight(); } catch (_e) { void _e; } }
 
   function _ensureMounted() {
     let el = document.getElementById(ID);
@@ -116,7 +116,7 @@
         sw.setAttribute('aria-checked', sw.classList.contains('is-on') ? 'true' : 'false');
         _haptic();
         try { localStorage.setItem('itdasy_nv_' + sw.getAttribute('data-nv-toggle'),
-          sw.classList.contains('is-on') ? '1' : '0'); } catch (_) {}
+          sw.classList.contains('is-on') ? '1' : '0'); } catch (_e) { void _e; }
       }
     });
     return el;
@@ -152,7 +152,7 @@
     const id = (document.getElementById('nvBizId') || { value: '' }).value.trim();
     const name = (document.getElementById('nvBizName') || { value: '' }).value.trim();
     if (!id) { _toast('스마트플레이스 ID 를 입력해주세요'); return; }
-    try { localStorage.setItem('itdasy_nv_biz_id', id); localStorage.setItem('itdasy_nv_biz_name', name); } catch (_) {}
+    try { localStorage.setItem('itdasy_nv_biz_id', id); localStorage.setItem('itdasy_nv_biz_name', name); } catch (_e) { void _e; }
     _toast('연결 요청 중...');
     try {
       const res = await fetch(_api() + '/integrations/naver/link', {
@@ -161,7 +161,7 @@
         body: JSON.stringify({ biz_id: id, biz_name: name }),
       });
       if (res.ok) {
-        try { localStorage.setItem('itdasy_nv_linked', '1'); } catch (_) {}
+        try { localStorage.setItem('itdasy_nv_linked', '1'); } catch (_e) { void _e; }
         _setStatus(true);
         const sb = document.querySelector('[data-nv-sync]');
         if (sb) sb.disabled = false;

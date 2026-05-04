@@ -17,6 +17,10 @@
 
   const API = () => window.API || '';
   const AUTH = () => (window.authHeader ? window.authHeader() : {});
+  const HAS_AUTH = () => {
+    try { return !!(window.authHeader && window.authHeader().Authorization); }
+    catch (_e) { return false; }
+  };
 
   function _esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch])); }
 
@@ -38,6 +42,7 @@
   }
 
   async function _fetchBrief(useCache = true) {
+    if (!HAS_AUTH()) return null;
     if (useCache) {
       const cached = _readBriefCache();
       if (cached) {
@@ -331,6 +336,7 @@
 
   // SMS 프리필 모달 — 원장님이 직접 기본 메시지 앱에서 발송
   async function _getAtRiskPhones() {
+    if (!HAS_AUTH()) return [];
     try {
       const brief = await _fetchBrief();
       const atRiskNames = (brief?.at_risk || []).map(a => a.name);

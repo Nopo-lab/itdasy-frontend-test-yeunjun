@@ -165,7 +165,7 @@ function selectReviewSticker(idx) {
   _openReviewEditor(selectedPhotos[0]);
 }
 // 전역 등록 (onclick 인라인에서 호출되므로 명시적 보강)
-try { if (typeof window !== 'undefined') { window.selectReviewSticker = selectReviewSticker; window.openReviewPanel = openReviewPanel; window.closeReviewPanel = closeReviewPanel; window.handleReviewUpload = handleReviewUpload; } } catch (_) {}
+try { if (typeof window !== 'undefined') { window.selectReviewSticker = selectReviewSticker; window.openReviewPanel = openReviewPanel; window.closeReviewPanel = closeReviewPanel; window.handleReviewUpload = handleReviewUpload; } } catch (_e) { void _e; }
 
 function _openReviewEditor(photo) {
   const editor = document.getElementById('reviewEditor');
@@ -335,4 +335,4 @@ async function selectReviewTextOnly(idx) {
     selectReviewSticker(idx);
   }
 }
-try { if (typeof window !== 'undefined') { window.selectReviewTextOnly = selectReviewTextOnly; } } catch (_) {}
+try { if (typeof window !== 'undefined') { window.selectReviewTextOnly = selectReviewTextOnly; } } catch (_e) { void _e; }

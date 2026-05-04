@@ -32,10 +32,17 @@
   }
 
   // ─────────── fetch ───────────
-  async function _fetchBrief() {
-    if (!window.API || !window.authHeader) return null;
+  function _authHeaders() {
     try {
-      const res = await fetch(window.API + '/assistant/brief', { headers: window.authHeader() });
+      const headers = window.authHeader ? window.authHeader() : {};
+      return headers && headers.Authorization ? headers : null;
+    } catch (_e) { return null; }
+  }
+  async function _fetchBrief() {
+    const headers = _authHeaders();
+    if (!window.API || !headers) return null;
+    try {
+      const res = await fetch(window.API + '/assistant/brief', { headers });
       if (!res.ok) return null;
       const data = await res.json();
       _writeSWR(data);

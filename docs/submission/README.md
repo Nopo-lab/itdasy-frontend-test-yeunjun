@@ -16,7 +16,7 @@
 2. Google Play Developer 가입 확인 ($25 1회)
 3. `npx cap add ios` → iOS 프로젝트 생성
 4. `PrivacyInfo.xcprivacy` 복사 + Info.plist 키 추가
-5. Sign in with Apple 구현 (T-320)
+5. iOS 로그인 점검: 현재는 이메일 로그인만 노출. Google/카카오 재노출 전 Sign in with Apple 구현 (T-320)
 6. 리뷰어 데모 계정 시드 스크립트 실행 (`scripts/seed_review_demo.py`)
 7. 스크린샷 촬영 (CBT4 계정 실제 데이터)
 8. TestFlight / Play Internal 테스트

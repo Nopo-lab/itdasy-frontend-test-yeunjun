@@ -413,11 +413,9 @@
     if (legacy === '이번주') { localStorage.setItem('itdasy_dashboard_period_key', 'week');  return 'week'; }
     return 'month';
   }
-  // 기간별 비교(prev) endpoint — 백엔드가 lastmonth 만 제공하면 month 외 기간은 null delta 로 graceful degrade
+  // 기간별 비교(prev) endpoint — 서버 지원 전까지 요청하지 않고 "대기 중"으로 표시.
   function _prevPeriodPath(period) {
-    if (period === 'month') return '/revenue?period=lastmonth';
-    if (period === 'week')  return '/revenue?period=lastweek';
-    if (period === 'today') return '/revenue?period=yesterday';
+    if (period === 'month' || period === 'week' || period === 'today') return null;
     return null;
   }
 
@@ -429,6 +427,7 @@
     const period0 = _getPeriod();
     const period = _getPeriod();
     const prevPath = _prevPeriodPath(period);
+    const naverPath = null;
 
     // [P1-2A] stale-while-revalidate — stale 캐시 즉시 렌더 → 백그라운드 fresh fetch → 다시 렌더
     const allPaths = [
@@ -440,9 +439,9 @@
       '/bookings',
       '/retention/at-risk',
       '/inventory',
-      '/naver-reviews/summary',
+      naverPath,
       '/today/brief?period=' + period,
-    ].filter(Boolean);
+    ];
 
     function _renderFromData(data) {
       const [monthRev, prevRev, todayRev, periodRev, custList, bookList, ret, inventory, naverData, briefData] = data;
@@ -466,7 +465,7 @@
     }
 
     // 1) stale 캐시 (sessionStorage 또는 localStorage) 즉시 렌더 — 0ms 체감
-    const staleData = allPaths.map(p => _getCachedStale(p));
+    const staleData = allPaths.map(p => p ? _getCachedStale(p) : null);
     const hasStale = staleData.some(v => v !== null && v !== undefined);
     if (hasStale) {
       _renderFromData([
@@ -496,7 +495,7 @@
         _cachedGet('/bookings').catch(() => ({ items: [] })),
         _cachedGet('/retention/at-risk').catch(() => null),
         _cachedGet('/inventory').catch(() => null),
-        _cachedGet('/naver-reviews/summary').catch(() => null),
+        naverPath ? _cachedGet(naverPath).catch(() => null) : Promise.resolve(null),
         _cachedGet('/today/brief?period=' + period).catch(() => null),
       ]);
       _renderFromData(fresh);

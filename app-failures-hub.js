@@ -23,7 +23,7 @@
   function _api() { return window.API || ''; }
   function _auth() { try { return (window.authHeader && window.authHeader()) || {}; } catch (_) { return {}; } }
   function _toast(m) { if (window.showToast) window.showToast(m); }
-  function _haptic() { try { window.hapticLight && window.hapticLight(); } catch (_) {} }
+  function _haptic() { try { window.hapticLight && window.hapticLight(); } catch (_e) { void _e; } }
 
   function _ensureMounted() {
     let el = document.getElementById(ID);

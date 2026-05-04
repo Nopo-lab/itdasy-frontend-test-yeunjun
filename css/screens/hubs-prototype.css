@@ -1,0 +1,237 @@
+/* 04a/06/07 prototype recovery layer */
+
+.hub-fab-add {
+  position: fixed;
+  right: 18px;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  z-index: 2;
+  width: 54px;
+  height: 54px;
+  border: none;
+  border-radius: 50%;
+  background: #E5586E;
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  box-shadow: 0 8px 24px rgba(229, 88, 110, 0.32);
+}
+
+@media (width >= 900px) {
+  .hub-overlay.hub-overlay--prototype {
+    inset: 24px !important;
+    inset: 24px !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: none !important;
+    transform: none !important;
+    border-radius: 14px !important;
+    box-shadow: 0 18px 54px rgba(15, 20, 25, 0.24);
+    overflow: hidden;
+  }
+
+  .hub-overlay--prototype::before {
+    display: none;
+  }
+
+  .hub-desktop-shell {
+    display: flex;
+    min-height: 100%;
+    height: 100%;
+    background: #F4F4F5;
+  }
+
+  .hp-sidebar {
+    width: 220px;
+    background: #fff;
+    border-right: 0.5px solid rgba(15, 20, 25, 0.06);
+    padding: 22px 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .hp-main {
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+    padding: 24px 28px;
+  }
+
+  .hp-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .hp-header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 0;
+    color: #0F1419;
+  }
+
+  .hp-search {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: min(300px, 32vw);
+    height: 38px;
+    padding: 0 12px;
+    background: #fff;
+    border: 0.5px solid rgba(15, 20, 25, 0.06);
+    border-radius: 12px;
+    color: #98A1AC;
+  }
+
+  .hp-search input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    font-size: 13px;
+    color: #0F1419;
+  }
+
+  .hp-stats {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 0;
+  }
+
+  .hp-stats--four {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .hub-filter-chips--pc {
+    padding: 0;
+    margin-bottom: 14px;
+  }
+
+  .hp-add-panel {
+    margin-bottom: 14px;
+    border: 0.5px solid rgba(15, 20, 25, 0.06);
+    border-radius: 12px;
+  }
+
+  .hp-two-col {
+    display: grid;
+    grid-template-columns: 1.4fr minmax(320px, 1fr);
+    gap: 14px;
+    align-items: start;
+  }
+
+  .hp-list,
+  .hp-detail,
+  .hp-inv-section {
+    background: #fff;
+    border: 0.5px solid rgba(15, 20, 25, 0.06);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .hp-detail {
+    padding: 18px;
+    position: sticky;
+    top: 0;
+  }
+
+  .hp-customer-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border: none;
+    border-bottom: 0.5px solid rgba(15, 20, 25, 0.06);
+    background: #fff;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .hp-customer-row:hover {
+    background: #F8F8F9;
+  }
+
+  .hp-customer-row.selected {
+    background: #FEF3F5;
+  }
+
+  .hub-qadd--desktop {
+    margin-bottom: 14px;
+    border: 0.5px solid rgba(15, 20, 25, 0.06);
+    border-radius: 12px;
+  }
+
+  .hp-inv-section {
+    margin-bottom: 14px;
+  }
+
+  .hp-inv-section.danger {
+    border-color: rgba(220, 72, 72, 0.2);
+  }
+
+  .hp-inv-table {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1.4fr 120px 72px;
+    align-items: stretch;
+  }
+
+  .hp-inv-th,
+  .hp-inv-cell {
+    min-width: 0;
+    padding: 10px 16px;
+    border-bottom: 0.5px solid rgba(15, 20, 25, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .hp-inv-th {
+    background: #F8F8F9;
+    color: #98A1AC;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+
+  .hp-inv-row {
+    display: contents;
+  }
+
+  .hp-inv-row:hover .hp-inv-cell {
+    background: #F8F8F9;
+  }
+
+  .hp-inv-row.low .hp-inv-cell {
+    background: rgba(220, 72, 72, 0.08);
+  }
+
+  .hp-table-empty {
+    grid-column: 1 / -1;
+  }
+
+  .hp-inv-edit-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1.5fr .8fr .6fr .8fr .7fr 1fr auto auto;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 0.5px solid rgba(15, 20, 25, 0.06);
+    background: #FFF9FA;
+  }
+}
+
+@media (width <= 899px) {
+  .hub-overlay--prototype .hub-title {
+    flex: 1;
+  }
+}

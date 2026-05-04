@@ -10,7 +10,7 @@
   const ID = 'kakaoHubScreen';
 
   function _toast(m) { if (window.showToast) window.showToast(m); }
-  function _haptic() { try { window.hapticLight && window.hapticLight(); } catch (_) {} }
+  function _haptic() { try { window.hapticLight && window.hapticLight(); } catch (_e) { void _e; } }
 
   const TEMPLATES = [
     { key: 'reserved',  title: '예약 확정 안내', body: '안녕하세요 #{고객명}님🌷 #{날짜} #{시간} #{메뉴} 예약 확정되었어요. 혹시 변경 필요하시면 답장 주세요!' },

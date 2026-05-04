@@ -71,8 +71,8 @@
       placeholders: { amount: '50000', vendor: '다이소', category: '재료', recorded_at: '2026-04-23', memo: '젤네일 베이스 3개' },
     },
     inventory_order: {
-      title: '📦 주문내역 스캔',
-      subtitle: '쿠팡·네이버 주문내역 스크린샷 → AI 가 품목/수량 파싱 → 재고 자동 입고',
+      title: '📦 가격표·주문내역 스캔',
+      subtitle: '가격표·쿠팡·네이버 주문내역 사진 → AI 가 품목/수량 파싱 → 재고 자동 입고',
       fields: ['item_name', 'quantity', 'unit_price', 'total', 'ordered_at'],
       labels: { item_name: '품목', quantity: '수량', unit_price: '단가', total: '합계', ordered_at: '주문일' },
       placeholders: { item_name: '젤네일 베이스', quantity: '3', unit_price: '12000', total: '36000', ordered_at: '2026-04-23' },

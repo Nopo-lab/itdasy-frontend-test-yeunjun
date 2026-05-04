@@ -12,7 +12,8 @@
 ## 📋 1. App Store Connect 세팅
 
 - [ ] **App ID 등록**: `com.nopolab.itdasy`
-  - Capabilities: ☑ Sign in with Apple · ☑ In-App Purchase · ☑ Push Notifications
+  - Capabilities: ☑ In-App Purchase · ☑ Push Notifications
+  - Sign in with Apple 은 iOS에서 Google/카카오 로그인을 다시 노출할 때 추가
 - [ ] **App Store Connect 앱 생성**: 이름 "잇데이"
 - [ ] **IAP 상품 2개**
   - `itdasy_pro_monthly` — ₩3,900 / $2.99 USD 자동갱신 구독 (1주 무료 체험)
@@ -72,12 +73,12 @@ cp docs/submission/PrivacyInfo.xcprivacy ios/App/App/PrivacyInfo.xcprivacy
 
 ---
 
-## 📋 5. Sign in with Apple Capability
+## 📋 5. iOS 로그인 점검
 
-Xcode → **App target** → **Signing & Capabilities** → `+ Capability` → **"Sign in with Apple"** 추가
+현재 iOS 심사 빌드는 이메일 로그인만 노출한다. Google/카카오 로그인을 iOS에 다시 노출하려면 먼저 Sign in with Apple 을 구현한다.
 
-- [ ] Capabilities 목록에 "Sign in with Apple" 표시
-- [ ] Apple Developer Console 의 App ID 에도 동일 capability 체크돼 있는지 확인
+- [ ] iOS에서 Google/카카오 버튼이 숨겨져 있는지 확인
+- [ ] Google/카카오를 노출하려면 Xcode/App ID 에 Sign in with Apple 추가
 
 ---
 
@@ -139,7 +140,7 @@ Organizer 창 → Distribute App → App Store Connect → Upload
 
 | 사유 | 예방 |
 |---|---|
-| Guideline 4.8 (Sign in with Apple 없음) | T-320 구현 완료 ✅ — Capability 추가 + 버튼 노출 |
+| Guideline 4.8 (Sign in with Apple 없음) | T-500: iOS에서는 Google/카카오 버튼 숨김. 다시 노출 전 T-320 구현 필요 |
 | Guideline 3.1.1 (IAP 미사용) | 앱 내 유료 기능은 반드시 IAP 만. 외부 결제 링크 금지 |
 | Privacy Policy 누락 | `https://itdasy.com/privacy.html` ✅ |
 | Demo 계정 로그인 실패 | 시드 스크립트 최신화 확인 |

@@ -36,7 +36,7 @@
   ];
 
   // _state.filter ∈ 'all' | 'member' | 'new' | 'regular' | 'risk'
-  const _state = { rows: [], enriched: [], searchKW: '', addPanelOpen: false, filter: 'all' };
+  const _state = { rows: [], enriched: [], searchKW: '', addPanelOpen: false, filter: 'all', selectedId: null };
 
   /* ── 분류 helper: 신규(첫방문 30일내) / 단골(방문≥5회) / 이탈(60일+ 미방문) / 생일(오늘) / 회원권 보유 ── */
   function _daysBetween(iso, ref) {
@@ -149,9 +149,22 @@
     const overlay = document.getElementById(OID);
     if (!overlay) return;
     const ac = window.AppAutocomplete ? window.AppAutocomplete.renderDatalist() : '';
+    const isDesktop = window.matchMedia && window.matchMedia('(min-width: 900px)').matches;
+    overlay.classList.toggle('hub-overlay--prototype', !!isDesktop);
+    overlay.classList.toggle('hub-overlay--customer', !!isDesktop);
+    if (isDesktop && window.HubPrototypeRender?.customer) {
+      overlay.innerHTML = ac + window.HubPrototypeRender.customer({
+        state: _state,
+        classify: _classify,
+        stats: _stats,
+      });
+      _bindEvents();
+      return;
+    }
     overlay.innerHTML = ac + _renderHeader() + _renderSearch() +
       (_state.addPanelOpen ? _renderAddPanel() : '') +
-      _renderStats() + _renderFilterChips() + _renderList();
+      _renderStats() + _renderFilterChips() + _renderList() +
+      '<button class="hub-fab-add" data-act="toggle-add" aria-label="고객 추가">+</button>';
     _bindEvents();
   }
 
@@ -184,7 +197,7 @@
       <button class="hub-back" data-act="close" aria-label="뒤로가기">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-chevron-left"/></svg>
       </button>
-      <span class="hub-title">고객</span>
+      <span class="hub-title">고객관리</span>
       <button class="ch-excel-btn" data-act="excel">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-download"/></svg>
         엑셀 불러오기
@@ -197,7 +210,7 @@
     return `<div class="ch-search-wrap">
       <div class="ch-search-inner">
         <svg class="ch-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="#ic-search"/></svg>
-        <input class="ch-search" id="ch-search" placeholder="이름·전화 검색" value="${_esc(_state.searchKW)}" />
+        <input class="ch-search" id="ch-search" placeholder="이름·연락처·태그 검색" value="${_esc(_state.searchKW)}" />
       </div>
     </div>`;
   }
@@ -216,7 +229,7 @@
     const f  = _state.filter;
     let list = kw
       ? _state.enriched.filter(c =>
-          ((c.name||'') + ' ' + (c.phone||'') + ' ' + (c.memo||'')).toLowerCase().includes(kw))
+          ((c.name||'') + ' ' + (c.phone||'') + ' ' + (c.memo||'') + ' ' + (Array.isArray(c.tags) ? c.tags.join(' ') : '')).toLowerCase().includes(kw))
       : _state.enriched.slice();
 
     if (f !== 'all') {
@@ -299,6 +312,10 @@
       else if (act === 'add-customer')   await _addCustomer();
       else if (act === 'excel')          _openExcelImport();
       else if (act === 'filter')         { _state.filter = btn.dataset.filter || 'all'; _render(); }
+      else if (act === 'select-customer') { _state.selectedId = btn.dataset.id; _render(); }
+      else if (act === 'desktop-revenue') _openCustomerRevenue(btn.dataset.id);
+      else if (act === 'desktop-booking') _openCustomerBooking(btn.dataset.id);
+      else if (act === 'desktop-membership') _openCustomerMembership(btn.dataset.id);
       else if (act === 'open-customer') {
         const id = btn.dataset.id;
         if (typeof window.openCustomerDashboard === 'function') window.openCustomerDashboard(id);
@@ -332,12 +349,43 @@
       const created = await res.json();
       _state.rows.push(created);
       _state.enriched.push(created);
+      _state.selectedId = created.id;
       _writeCache(_state.rows);
       _state.addPanelOpen = false;
       _render();
       if (window.hapticLight) window.hapticLight();
       if (window.showToast) window.showToast(`✅ ${v.name} 추가 완료`);
     } catch (e) { if (window.showToast) window.showToast('저장 실패: ' + e.message); }
+  }
+
+  function _findCustomer(id) {
+    return (_state.enriched || []).find(c => String(c.id) === String(id));
+  }
+
+  function _openCustomerRevenue(id) {
+    const c = _findCustomer(id);
+    if (!c) return;
+    closeCustomerHub();
+    if (typeof window.openRevenue === 'function') {
+      window.openRevenue();
+      if (typeof window._openRevenueAddFor === 'function') window._openRevenueAddFor(c.id, c.name);
+    } else if (typeof window.openRevenueHub === 'function') window.openRevenueHub();
+  }
+
+  function _openCustomerBooking(id) {
+    const c = _findCustomer(id);
+    if (!c) return;
+    window._pendingBookingCustomer = { id: c.id, name: c.name };
+    closeCustomerHub();
+    if (typeof window.openCalendarView === 'function') window.openCalendarView();
+    else if (typeof window.openBooking === 'function') window.openBooking();
+  }
+
+  function _openCustomerMembership(id) {
+    const c = _findCustomer(id);
+    if (!c) return;
+    closeCustomerHub();
+    if (window.MembershipUI?.openTopupSheet) window.MembershipUI.openTopupSheet(c.id, c.name || '');
   }
 
   /* ── 엑셀 임포트 ───────────────────────────────────────────── */
@@ -367,7 +415,7 @@
     overlay.id = OID; overlay.className = 'hub-overlay';
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
-    _state.rows = []; _state.enriched = []; _state.searchKW = ''; _state.addPanelOpen = false;
+    _state.rows = []; _state.enriched = []; _state.searchKW = ''; _state.addPanelOpen = false; _state.selectedId = null;
     _render();
     _load().then(() => _render()).catch(() => {});
     // [2026-04-26 A5] popstate 등록

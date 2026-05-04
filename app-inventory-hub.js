@@ -97,6 +97,21 @@
     const overlay = document.getElementById(OID);
     if (!overlay) return;
     const ac = window.AppAutocomplete ? window.AppAutocomplete.renderDatalist() : '';
+    const isDesktop = window.matchMedia && window.matchMedia('(min-width: 900px)').matches;
+    overlay.classList.toggle('hub-overlay--prototype', !!isDesktop);
+    overlay.classList.toggle('hub-overlay--inventory', !!isDesktop);
+    if (isDesktop && window.HubPrototypeRender?.inventory) {
+      overlay.innerHTML = ac + window.HubPrototypeRender.inventory({
+        state: _state,
+        partition: _partition,
+        stats: _stats,
+        forecast: _forecastDays,
+        fmtQty: _fmtQty,
+        fmtNum: _fmtNum,
+      });
+      _bindEvents();
+      return;
+    }
     const { low, ok } = _partition(_state.rows);
     overlay.innerHTML = ac + _renderHeader() +
       _renderOcrCard() + _renderInputBar() + _renderPendingBanner() +
@@ -134,10 +149,10 @@
       <button class="hub-back" data-act="close" aria-label="뒤로가기">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-chevron-left"/></svg>
       </button>
-      <span class="hub-title">재고</span>
+      <span class="hub-title">재고관리</span>
       <div style="flex:1;position:relative;max-width:180px;">
         <svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#999;pointer-events:none;" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="#ic-search"/></svg>
-        <input id="ih-search" placeholder="검색" value="${_esc(_state.searchKW)}"
+        <input id="ih-search" placeholder="재고 검색" value="${_esc(_state.searchKW)}"
           style="width:100%;height:32px;padding:0 8px 0 26px;border:1.5px solid #E5E5EA;border-radius:10px;font-size:12px;box-sizing:border-box;-webkit-appearance:none;"/>
       </div>
     </div>`;
@@ -174,7 +189,7 @@
     return `
       <div style="display:flex; justify-content:space-between; align-items:baseline; padding:6px 16px; margin-bottom:8px;">
         <span style="font-size:11px; color:#DC4848; font-weight:700; letter-spacing:0.3px; text-transform:uppercase;">지금 부족해요</span>
-        <span style="font-size:11px; color:#DC4848; font-weight:700;">${low.length}건</span>
+        <span style="font-size:11px; color:#DC4848; font-weight:700;">자동 주문 가능 · ${low.length}건</span>
       </div>
       <div class="inv-list danger">
         ${low.map(r => _renderLowCard(r)).join('')}
@@ -282,6 +297,7 @@
       const act = btn.dataset.act;
       if      (act === 'close')         closeInventoryHub();
       else if (act === 'ocr')           _openOcrScan();
+      else if (act === 'focus-add')     _focusAddRow();
       else if (act === 'add')           await _submitQuickAdd();
       else if (act === 'stack')         _stackRow();
       else if (act === 'flush')         await _flushBatch();
@@ -308,7 +324,12 @@
     });
   }
 
-  /* ── OCR 진입 ────────────────────────────────────────────── */
+  function _focusAddRow() {
+    const input = document.getElementById(OID)?.querySelector('.hub-qadd [data-field="name"]');
+    input?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    setTimeout(() => input?.focus(), 120);
+  }
+
   function _openOcrScan() {
     if (typeof window.openInventoryOrderScan === 'function') {
       window.openInventoryOrderScan();

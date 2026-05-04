@@ -564,7 +564,8 @@
     }
   });
   function _probeBackendOnline() {
-    if (!navigator.onLine || !window.API) return;
+    const auth = window.authHeader && window.authHeader();
+    if (!navigator.onLine || !window.API || !auth || !auth.Authorization) return;
     fetch(window.API + '/', { cache: 'no-store' })
       .then(() => {
         _markOnline();

@@ -9,6 +9,12 @@
   const API = window.API || '';
   let _cache = null;
 
+  function _emptyStaff() { return { items: [], total: 0, plan_limit: 0, used: 0 }; }
+  function _hasAuth() {
+    try { return !!(window.authHeader && window.authHeader().Authorization); }
+    catch (_e) { return false; }
+  }
+
   function _fetch(method, path, body) {
     const headers = window.authHeader ? window.authHeader() : {};
     if (body) headers['Content-Type'] = 'application/json';
@@ -31,6 +37,7 @@
   function _pickColor(idx) { return COLORS[idx % COLORS.length]; }
 
   async function list(force) {
+    if (!_hasAuth()) return _emptyStaff();
     if (_cache && !force) return _cache;
     try {
       const r = await _fetch('GET', '/staff');
@@ -40,7 +47,7 @@
       return r;
     } catch (e) {
       console.warn('[staff] list 실패:', e.message);
-      return { items: [], total: 0, plan_limit: 0, used: 0 };
+      return _emptyStaff();
     }
   }
 

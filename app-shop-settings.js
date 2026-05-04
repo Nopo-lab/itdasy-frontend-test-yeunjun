@@ -13,7 +13,7 @@
   function _api() { return window.API || ''; }
   function _auth() { try { return (window.authHeader && window.authHeader()) || {}; } catch (_) { return {}; } }
   function _toast(m) { if (window.showToast) window.showToast(m); }
-  function _haptic() { try { window.hapticLight && window.hapticLight(); } catch (_) {} }
+  function _haptic() { try { window.hapticLight && window.hapticLight(); } catch (_e) { void _e; } }
 
   function _ensureMounted() {
     let el = document.getElementById(ID);
@@ -168,11 +168,11 @@
       localStorage.setItem('itdasy_shop_addr', payload.address);
       localStorage.setItem('itdasy_shop_hours', payload.hours);
       localStorage.setItem('itdasy_solo_mode', String(payload.solo_mode));
-    } catch (_) {}
+    } catch (_e) { void _e; }
 
     // 드로어 헤더 즉시 갱신
     if (window.ShopDrawer && window.ShopDrawer.refreshHeader) {
-      try { window.ShopDrawer.refreshHeader(); } catch (_) {}
+      try { window.ShopDrawer.refreshHeader(); } catch (_e) { void _e; }
     }
 
     // 백엔드 동기화 (실패해도 로컬은 유지)

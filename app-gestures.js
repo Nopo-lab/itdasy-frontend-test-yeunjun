@@ -22,10 +22,10 @@
   /* ── 0. 공용 헬퍼 ─────────────────────────────────────── */
   const HAPTIC = (kind) => {
     const fn = window['haptic' + kind.charAt(0).toUpperCase() + kind.slice(1)];
-    if (typeof fn === 'function') { try { fn(); } catch (_) {} }
+    if (typeof fn === 'function') { try { fn(); } catch (_e) { void _e; } }
   };
   const TOAST = (msg) => {
-    if (typeof window.showToast === 'function') { try { window.showToast(msg); } catch (_) {} }
+    if (typeof window.showToast === 'function') { try { window.showToast(msg); } catch (_e) { void _e; } }
   };
 
   /* ── 1. 시트 swipe-down close — 새로 등장하는 시트에 자동 부착 ─── */

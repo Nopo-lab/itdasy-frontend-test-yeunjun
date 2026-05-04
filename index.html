@@ -36,7 +36,7 @@
 <meta name="theme-color" content="#F2F4F6">
 <title>잇데이 스튜디오</title>
 <script>
-  window.__LATEST_BUILD__ = '20260504-v79-review-trust';
+  window.__LATEST_BUILD__ = '20260504-v80-prototype-recovery';
   setTimeout(function(){
     if (window.APP_BUILD && window.APP_BUILD !== window.__LATEST_BUILD__ && !sessionStorage.getItem('build_busted')) {
       console.warn('[BUILD] stale JS 감지 — HTML=' + window.__LATEST_BUILD__ + ' / JS=' + window.APP_BUILD + ' → 캐시 파괴');
@@ -60,6 +60,7 @@
 <link rel="stylesheet" href="css/screens/home-v41.css">
 <link rel="stylesheet" href="css/screens/power-view.css">
 <link rel="stylesheet" href="css/screens/hubs.css">
+<link rel="stylesheet" href="css/screens/hubs-prototype.css?v=20260504-1">
 <link rel="stylesheet" href="css/screens/dashboard.css">
 <link rel="stylesheet" href="css/screens/details.css">
 <link rel="stylesheet" href="css/screens/workshop.css">
@@ -1685,11 +1686,12 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-autocomplete.js"></script>
 <script src="app-revenue-hub.js"></script>
 <script src="app-revenue-report.js"></script>
-<script src="app-inventory-hub.js?v=20260502-1"></script>
+<script src="js/hubs/prototype-render.js?v=20260504-1"></script>
+<script src="app-inventory-hub.js?v=20260504-1"></script>
 <script src="app-emoji-storage.js"></script>
-<script src="app-customer-hub.js"></script>
+<script src="app-customer-hub.js?v=20260504-1"></script>
 <script src="app-customer-sync.js"></script>
-<script src="app-calendar-view.js?v=20260502-3"></script>
+<script src="app-calendar-view.js?v=20260504-1"></script>
 <!-- app-voice-input.js 제거 — 전역 🎤 버튼 자동주입 비활성 (2026-04-23) -->
 <script src="app-biometric.js"></script>
 <!-- 2026-05-01 ── app-referral.js 제거 (친구초대 폐지) -->

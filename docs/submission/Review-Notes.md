@@ -4,7 +4,7 @@
 
 - **Email**: `review@itdasy.com`
 - **Password**: `review1234!`
-- **Role**: Beauty salon owner (pre-seeded with sample data)
+- **Role**: Beauty salon owner demo account
 
 ## What the app does
 
@@ -12,7 +12,7 @@ Itdasy is an AI-powered operations assistant for solo beauty salon owners in Kor
 
 ## Key features to test
 
-1. **Login** with the demo account above → dashboard with sample data
+1. **Login** with the demo account above → dashboard
 2. **Power View** (⛶ button on dashboard) — 7 tabs including Customer, Booking, Revenue, Inventory, NPS, Service Presets, More
 3. **AI Assistant** (🤖 button) — try: `"김서연 내일 2시 예약 추가"` (add booking) or `"이번 달 매출 어때?"` (query revenue)
 4. **Instagram Integration** — skipped in review (requires user's own IG account; our app is verified as Meta Business Partner)
@@ -28,9 +28,9 @@ Itdasy is an AI-powered operations assistant for solo beauty salon owners in Kor
 
 ## Sign in with Apple
 
-⚠️ **Status**: To be implemented in v1.1. Current v1.0 uses email+password only. We believe this is compliant with Guideline 4.8 since no third-party social login is offered in v1.0.
+⚠️ **Status**: To be implemented before third-party login is offered in the iOS app. The current iOS review build uses email+password only; Google/Kakao buttons are hidden on iOS.
 
-*Alternative: If 4.8 requires Apple Sign-In regardless, we will add it in the next submission cycle.*
+Web and Android may continue to show Google/Kakao login during staging, but the iOS review surface must stay email-only until Apple login is shipped.
 
 ## Privacy
 
