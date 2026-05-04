@@ -25,6 +25,7 @@
     // 운영 hub 들 — overlay 요소 제거 (#genericSheet 도 .hub-overlay 라 같이 제거됨)
     document.querySelectorAll('.hub-overlay, .hub-backdrop').forEach(el => el.remove());
     try { window.closeSheet?.(); } catch (_e) { void _e; }
+    try { window.closeNavSheet?.(); } catch (_e) { void _e; }
     const rs = document.getElementById('revenueSheet');
     if (rs) rs.style.display = 'none';
     document.body.classList.remove('rv-mode');
@@ -32,7 +33,7 @@
     const co = document.getElementById('cal-overlay');
     if (co) co.remove();
     // popstate 관리용 sheet-closed 신호
-    ['customers', 'inventory', 'revenue', 'booking', 'revenuehub', 'aihub', 'settingshub'].forEach(k => {
+    ['customers', 'inventory', 'revenue', 'booking', 'revenuehub', 'aihub', 'settingshub', 'nav'].forEach(k => {
       try { window._markSheetClosed?.(k); } catch (_e) { void _e; }
     });
   }
@@ -45,10 +46,11 @@
 
   // capture: true → inline onclick 이전에 실행되어 기존 hub 먼저 종료
   document.addEventListener('click', function (ev) {
-    const btn = ev.target && ev.target.closest && ev.target.closest('.ms-side__item');
+    const btn = ev.target && ev.target.closest && ev.target.closest('.ms-side__item, .ms-side__fab');
     if (!btn) return;
-    // 홈/내샵관리는 showTab 이 자체 처리하므로 close 만 호출 (열린 hub 닫고 탭 노출)
+    // 홈/내샵관리는 showTab 이 자체 처리하므로 close 만 호출 (열린 hub 닫고 탭 노출).
+    // 만들기(.ms-side__fab) 도 다른 hub 자동 종료 → 새 navSheet 깔끔히 표시.
     _closeAllHubs();
-    _markActive(btn);
+    if (btn.classList.contains('ms-side__item')) _markActive(btn);
   }, true);
 })();

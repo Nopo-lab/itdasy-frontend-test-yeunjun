@@ -195,7 +195,8 @@
   #settingsHubSheet,
   #planPopup,
   #supportChatModal,
-  #slotPopup.dt-overlay {
+  #slotPopup.dt-overlay,
+  #navSheet {
     inset: var(--app-header-h) 0 0 232px !important;
     width: auto !important;
     height: auto !important;
@@ -207,6 +208,21 @@
     align-items: stretch !important;
     justify-content: flex-start !important;
     overflow-y: auto !important;
+    z-index: 950 !important;            /* 사이드바(10000) 보다 아래 */
+  }
+  /* navSheet 내부 — 바텀시트 슬라이드 제거, 풀패널 콘텐츠로 */
+  #navSheetInner {
+    width: 100% !important;
+    max-width: 720px !important;
+    margin: 24px auto !important;
+    border-radius: 16px !important;
+    transform: none !important;
+    transition: none !important;
+    padding: 24px 28px !important;
+  }
+  /* navSheet 핸들바(드래그 표시) PC 에서 hide */
+  #navSheetInner > div:first-child {
+    display: none !important;
   }
   /* AI/Settings/Plan/Support 내부 카드 — 풀패널 펼치기 (max-width 제거). */
   #aiHubSheet > #aihCard,
@@ -267,7 +283,8 @@
   body:has(#aiHubSheet[style*="display"]:not([style*="display: none"]):not([style*="display:none"])) .tab.active,
   body:has(#settingsHubSheet[style*="display"]:not([style*="display: none"]):not([style*="display:none"])) .tab.active,
   body:has(#planPopup[style*="display: flex"]) .tab.active,
-  body:has(#supportChatModal[style*="display: flex"]) .tab.active {
+  body:has(#supportChatModal[style*="display: flex"]) .tab.active,
+  body:has(#navSheet[style*="display: flex"]) .tab.active {
     display: none !important;
   }
 
@@ -308,7 +325,8 @@
   #settingsHubSheet,
   #planPopup,
   #supportChatModal,
-  #slotPopup.dt-overlay {
+  #slotPopup.dt-overlay,
+  #navSheet {
     inset: var(--app-header-h) 0 0 260px !important;
   }
 }
