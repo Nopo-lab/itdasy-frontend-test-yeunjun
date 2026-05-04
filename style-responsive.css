@@ -156,18 +156,55 @@
     border-radius: 24px;
   }
 
-  /* 3) 허브 (고객·재고·매출·예약) — PC: 사이드바 220px 우측 영역만 차지.
-     사이드바 항상 보임. hub 내부 자체 사이드바는 숨김 (중복 방지). */
+  /* [2026-05-04] 헤더 항상 위로 고정 — hub 위에서도 토글 클릭 가능 */
+  .app-header {
+    position: fixed !important;
+    top: 0; left: 0; right: 0;
+    z-index: 11000 !important;
+  }
+  body {
+    padding-top: 60px;
+  }
+  /* 사이드바도 헤더 아래로 시작 */
+  #sideNav.ms-side {
+    top: 60px !important;
+  }
+
+  /* 3) 모든 hub 통일 — PC: 사이드바(232px) 우측, 헤더(60px) 아래 영역.
+     운영(예약/고객/매출/재고) + 통합허브(AI/설정) + 플랜/도움말 동일. */
   .hub-overlay,
   #revenueSheet,
   #revenue-hub-overlay,
-  #cal-overlay {
-    inset: 0 0 0 232px !important;
+  #cal-overlay,
+  #aiHubSheet,
+  #settingsHubSheet,
+  #planPopup,
+  #supportChatModal {
+    inset: 60px 0 0 232px !important;
     width: auto !important;
     height: auto !important;
     transform: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+    background: var(--bg) !important;
+    padding: 0 !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+  }
+  /* AI/Settings/Plan/Support 내부 카드를 PC 풀패널로 펼치기 */
+  #aiHubSheet > #aihCard,
+  #settingsHubSheet > #shCard,
+  #planPopup > *:not(script),
+  #supportChatModal > *:not(script) {
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    flex: 1 !important;
   }
   .hub-overlay::before {
     display: none;
@@ -194,7 +231,11 @@
   body:has(#revenueSheet[style*="display: flex"]) .tab.active,
   body:has(#revenueSheet[style*="display:flex"]) .tab.active,
   body:has(#cal-overlay) .tab.active,
-  body:has(#revenue-hub-overlay) .tab.active {
+  body:has(#revenue-hub-overlay) .tab.active,
+  body:has(#aiHubSheet[style*="display"]:not([style*="display: none"]):not([style*="display:none"])) .tab.active,
+  body:has(#settingsHubSheet[style*="display"]:not([style*="display: none"]):not([style*="display:none"])) .tab.active,
+  body:has(#planPopup[style*="display: flex"]) .tab.active,
+  body:has(#supportChatModal[style*="display: flex"]) .tab.active {
     display: none !important;
   }
 
@@ -225,12 +266,16 @@
   .tab {
     max-width: 1080px;
   }
-  /* 사이드바 폭 변경에 맞춰 hub 영역도 260px 우측으로 */
+  /* 사이드바 폭 변경에 맞춰 hub 영역도 260px 우측으로. 헤더 60px 유지. */
   .hub-overlay,
   #revenueSheet,
   #revenue-hub-overlay,
   #cal-overlay,
-  .hub-overlay.hub-overlay--prototype {
-    inset: 0 0 0 260px !important;
+  .hub-overlay.hub-overlay--prototype,
+  #aiHubSheet,
+  #settingsHubSheet,
+  #planPopup,
+  #supportChatModal {
+    inset: 60px 0 0 260px !important;
   }
 }

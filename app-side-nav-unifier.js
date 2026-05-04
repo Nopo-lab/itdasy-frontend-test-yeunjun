@@ -14,6 +14,8 @@
     try { window.closeServiceTemplates?.(); } catch (_e) { void _e; }
     try { window.closeAiHub?.(); } catch (_e) { void _e; }
     try { window.closeSettingsHub?.(); } catch (_e) { void _e; }
+    try { window.closePlanPopup?.(); } catch (_e) { void _e; }
+    try { window.closeSupportChat?.(); } catch (_e) { void _e; }
   }
   window._closeAllHubs = _closeAllHubs;
 
