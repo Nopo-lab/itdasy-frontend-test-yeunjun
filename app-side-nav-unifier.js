@@ -22,8 +22,9 @@
         card.style.opacity = '';
       }
     });
-    // 운영 hub 들 — overlay 요소 제거
+    // 운영 hub 들 — overlay 요소 제거 (#genericSheet 도 .hub-overlay 라 같이 제거됨)
     document.querySelectorAll('.hub-overlay, .hub-backdrop').forEach(el => el.remove());
+    try { window.closeSheet?.(); } catch (_e) { void _e; }
     const rs = document.getElementById('revenueSheet');
     if (rs) rs.style.display = 'none';
     document.body.classList.remove('rv-mode');
