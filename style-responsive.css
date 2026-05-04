@@ -156,15 +156,18 @@
     border-radius: 24px;
   }
 
-  /* 3) 허브 (고객·재고·매출·예약) — PC: 풀스크린 takeover. 글로벌 사이드바는 숨김.
-     hub 자체 사이드바(.hp-sidebar / .ms-side 내부)가 nav 역할. */
-  .hub-overlay {
-    inset: 0;
-    width: auto;
-    height: auto;
-    transform: none;
-    border-radius: 0;
-    box-shadow: none;
+  /* 3) 허브 (고객·재고·매출·예약) — PC: 사이드바 220px 우측 영역만 차지.
+     사이드바 항상 보임. hub 내부 자체 사이드바는 숨김 (중복 방지). */
+  .hub-overlay,
+  #revenueSheet,
+  #revenue-hub-overlay,
+  #cal-overlay {
+    inset: 0 0 0 232px !important;
+    width: auto !important;
+    height: auto !important;
+    transform: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
   }
   .hub-overlay::before {
     display: none;
@@ -172,14 +175,19 @@
   .hub-backdrop {
     display: none;
   }
-  /* hub 열릴 때 글로벌 사이드바 숨김 — 중복 사이드바 방지 */
-  body:has(.hub-overlay) #sideNav,
-  body:has(#cal-overlay) #sideNav {
+  /* hub 내부 자체 사이드바 숨김 — 글로벌 사이드바와 중복되므로 */
+  .hub-overlay .hp-sidebar,
+  .hub-overlay > aside.ms-side,
+  .hub-desktop-shell > aside.ms-side,
+  #revenueSheet > aside.ms-side,
+  #revenueSheet aside.ms-side,
+  #revenue-hub-overlay > aside.ms-side,
+  #revenue-hub-overlay aside.ms-side {
     display: none !important;
   }
-  body:has(.hub-overlay),
-  body:has(#cal-overlay) {
-    padding-left: 0 !important;
+  /* 글로벌 사이드바를 hub 위로 — z-index 올림 */
+  #sideNav.ms-side {
+    z-index: 1000;
   }
 
   /* 4) 일반 popup-overlay — 그대로지만 콘텐츠 폭만 살짝 확장 허용 */

@@ -4,33 +4,27 @@
    ──────────────────────────────────────────────────────────── */
 
 /* ── 허브 공통 ─────────────────────────────────────────────── */
-/* [2026-05-04] 우→좌 슬라이드 패널 통일 (이전 bottom-up sheet 폐기).
-   사이드바(220px) 유지 + 오른쪽 영역에 패널이 들어옴. 모바일은 풀스크린. */
+/* [2026-05-04] 인라인 탭 패턴으로 통일 (홈/내샵관리 전환과 동일).
+   사이드바(220px) 항상 보이고, hub 는 우측 영역만 차지. 페이드 전환. */
 .hub-backdrop {
   position: fixed; inset: 0; z-index: 899;
   background: rgba(0,0,0,0.45);
-  animation: hub-fade-in 0.10s ease;
+  animation: hub-fade-in 0.08s ease;
 }
 @keyframes hub-fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes hub-slide-in-right {
-  from { transform: translateX(100%); }
-  to   { transform: translateX(0); }
-}
-/* legacy alias — 다른 곳에서 hub-slide-up 참조 시 깨지지 않도록 동일 */
-@keyframes hub-slide-up {
-  from { transform: translateX(100%); }
-  to   { transform: translateX(0); }
-}
+/* legacy alias */
+@keyframes hub-slide-up { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hub-slide-in-right { from { opacity: 0; } to { opacity: 1; } }
+
 .hub-overlay {
   position: fixed; inset: 0;
   z-index: 900; background: #fff; overflow-y: auto;
   border-radius: 0;
-  box-shadow: -8px 0 32px rgba(0,0,0,0.18);
+  box-shadow: none;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  animation: hub-slide-in-right 0.18s cubic-bezier(0.32,0.72,0,1);
+  animation: hub-fade-in 0.08s ease-out;
 }
-/* 바텀시트용 핸들 — 사이드 패널엔 불필요 */
 .hub-overlay::before, .rr-overlay::before {
   display: none !important;
 }
