@@ -706,6 +706,16 @@ body.rv-mode { overflow: hidden; }
 #revenueSheet[style*="display:flex"] {
   animation: rv-fade-in 0.08s ease-out;
 }
+/* style-fun.css:166 [id$="Sheet"] > div:first-child 의 itd-sheet-in 슬라이드업 무력화.
+   전 sheet 인라인 탭 패턴이라 슬라이드 부적합. */
+#revenueSheet > div:first-child,
+#customerSheet > div:first-child,
+#inventorySheet > div:first-child,
+#bookingSheet > div:first-child,
+#npsSheet > div:first-child {
+  animation: none !important;
+  transform: none !important;
+}
 
 /* ============================================================
    12 · prefers-reduced-motion — hover transform 끄기

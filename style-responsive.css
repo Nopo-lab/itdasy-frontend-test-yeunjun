@@ -189,6 +189,14 @@
   #sideNav.ms-side {
     z-index: 10000 !important;
   }
+  /* hub 열려있을 때 홈/대시보드 .tab 잔상 제거 — 즉시 hide */
+  body:has(.hub-overlay) .tab.active,
+  body:has(#revenueSheet[style*="display: flex"]) .tab.active,
+  body:has(#revenueSheet[style*="display:flex"]) .tab.active,
+  body:has(#cal-overlay) .tab.active,
+  body:has(#revenue-hub-overlay) .tab.active {
+    display: none !important;
+  }
 
   /* 4) 일반 popup-overlay — 그대로지만 콘텐츠 폭만 살짝 확장 허용 */
   .popup-content {
