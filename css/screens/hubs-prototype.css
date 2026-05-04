@@ -17,15 +17,16 @@
 }
 
 @media (width >= 900px) {
+  /* [2026-05-04] 풀스크린 takeover 로 통일 — 24px inset 모달 폐기. 글로벌 사이드바
+     자리(220px)도 hub 자체 .hp-sidebar 가 대체하므로 풀스크린이 자연스러움. */
   .hub-overlay.hub-overlay--prototype {
-    inset: 24px !important;
-    inset: 24px !important;
+    inset: 0 !important;
     width: auto !important;
     height: auto !important;
     max-width: none !important;
     transform: none !important;
-    border-radius: 14px !important;
-    box-shadow: 0 18px 54px rgba(15, 20, 25, 0.24);
+    border-radius: 0 !important;
+    box-shadow: none;
     overflow: hidden;
   }
 

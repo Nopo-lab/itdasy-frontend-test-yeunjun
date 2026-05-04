@@ -695,15 +695,15 @@
   .rv-pc { display: block; }
 }
 
-/* [2026-05-04] 매출관리 슬라이드 통일 — 사이드바 유지, 우→좌 슬라이드.
-   사이드바 클릭 가능하도록 hide 룰 제거. PC 에서만 220px 좌측 여백. */
-body.rv-mode { overflow: hidden; }
-@media (min-width: 768px) {
-  #revenueSheet,
-  #revenue-hub-overlay {
-    inset: 0 0 0 220px !important;
-  }
-}
+/* [2026-05-04] 매출관리 풀스크린 takeover + 우→좌 슬라이드.
+   글로벌 사이드바 hide (hub 자체 .ms-side 가 nav 역할). */
+body.rv-mode #sideNav { display: none !important; }
+body.rv-mode { padding-left: 0 !important; overflow: hidden; }
+body:has(#revenueSheet[style*="display: flex"]) #sideNav,
+body:has(#revenueSheet[style*="display:flex"]) #sideNav,
+body:has(#revenue-hub-overlay) #sideNav { display: none !important; }
+body:has(#revenue-hub-overlay) { padding-left: 0 !important; }
+
 @keyframes rv-slide-in-right {
   from { transform: translateX(100%); }
   to   { transform: translateX(0); }
