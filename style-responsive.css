@@ -186,8 +186,7 @@
   }
 
   /* 3) 모든 hub 통일 — PC: 사이드바(232px) 우측, 헤더 아래.
-     운영(예약/고객/매출/재고) + 통합허브(AI/설정) + 플랜/도움말 동일.
-     배경 흰색 풀패널 (운영 hub 와 동일한 깔끔한 룩). */
+     운영(예약/고객/매출/재고) + 통합허브(AI/설정) + 플랜/도움말 + 작업실 동일. */
   .hub-overlay,
   #revenueSheet,
   #revenue-hub-overlay,
@@ -195,7 +194,8 @@
   #aiHubSheet,
   #settingsHubSheet,
   #planPopup,
-  #supportChatModal {
+  #supportChatModal,
+  #slotPopup.dt-overlay {
     inset: var(--app-header-h) 0 0 232px !important;
     width: auto !important;
     height: auto !important;
@@ -307,7 +307,8 @@
   #aiHubSheet,
   #settingsHubSheet,
   #planPopup,
-  #supportChatModal {
+  #supportChatModal,
+  #slotPopup.dt-overlay {
     inset: var(--app-header-h) 0 0 260px !important;
   }
 }

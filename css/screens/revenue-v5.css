@@ -707,14 +707,26 @@ body.rv-mode { overflow: hidden; }
   animation: rv-fade-in 0.08s ease-out;
 }
 /* style-fun.css:166 [id$="Sheet"] > div:first-child 의 itd-sheet-in 슬라이드업 무력화.
-   전 sheet 인라인 탭 패턴이라 슬라이드 부적합. */
+   전 sheet 인라인 탭 패턴이라 슬라이드 부적합. genericSheet 도 포함 (시술메뉴). */
 #revenueSheet > div:first-child,
 #customerSheet > div:first-child,
 #inventorySheet > div:first-child,
 #bookingSheet > div:first-child,
-#npsSheet > div:first-child {
+#npsSheet > div:first-child,
+#genericSheet > div:first-child {
   animation: none !important;
   transform: none !important;
+}
+/* 매출관리 .ms-root 가 flex container 인데 flex:1 없어서 자식 폭만 차지 →
+   우측 800px 빈공간. 강제 풀확장. */
+#revenueSheet > .ms-root,
+#revenueSheet .ms-root {
+  flex: 1 1 100% !important;
+  width: 100% !important;
+}
+#revenueSheet .rv-pc {
+  flex: 1 1 100% !important;
+  width: 100% !important;
 }
 
 /* ============================================================
