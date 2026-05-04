@@ -529,18 +529,18 @@ function authHeader() {
           _setAuthGateLocked(true);
           return res;
         }
-        // 5xx 게이트웨이성 에러: retryable 이면 재시도
+        // 5xx 게이트웨이성 에러: retryable 이면 재시도. 첫 실패는 조용히, 2회째 실패부터 토스트.
         if (retryable && RETRY_STATUSES.has(res.status) && attempt < MAX_RETRIES) {
-          _showReconnectToast();
+          if (attempt >= 1) _showReconnectToast();
           await _sleep(BACKOFF_MS[attempt] || 1500);
           attempt++;
           continue;
         }
         return res;
       } catch (err) {
-        // 네트워크 에러 (DNS·오프라인·CORS·abort) — retryable 한정으로 재시도
+        // 네트워크 에러 (DNS·오프라인·CORS·abort) — retryable 한정으로 재시도. 첫 실패는 조용히.
         if (retryable && attempt < MAX_RETRIES) {
-          _showReconnectToast();
+          if (attempt >= 1) _showReconnectToast();
           await _sleep(BACKOFF_MS[attempt] || 1500);
           attempt++;
           continue;
@@ -1396,7 +1396,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260505-v96-navsheet-race-fix';
+window.APP_BUILD = '20260505-v97-silent-first-retry';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;
