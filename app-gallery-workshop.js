@@ -262,6 +262,24 @@ function togglePhotoSelect(id) {
 
 function _updateAssignBottomSheet() { _renderAssignPopup(); }
 
+// ── 슬롯 카드 즉시 고객 매핑 ──────────────────────────────────
+async function _pickCustomerForWorkshopSlot(slotId) {
+  const slot = _slots.find(s => s.id === slotId);
+  if (!slot) return;
+  if (!window.Customer || !window.Customer.pick) {
+    showToast('고객 관리 모듈이 아직 로드되지 않았어요');
+    return;
+  }
+  const picked = await window.Customer.pick({ selectedId: slot.customer_id });
+  if (picked === null) return;
+  slot.customer_id = picked.id;
+  slot.customer_name = picked.name;
+  if (/^손님\s?\d+$/.test(slot.label)) slot.label = picked.name;
+  try { await saveSlotToDB(slot); } catch (_e) { /* ignore */ }
+  _renderSlotCards();
+}
+window._pickCustomerForWorkshopSlot = _pickCustomerForWorkshopSlot;
+
 // ── 슬롯 카드 (가로 스크롤) ────────────────────────────────────
 function _renderSlotCards() {
   const list   = document.getElementById('slotCardList');
@@ -306,6 +324,10 @@ function _renderSlotCards() {
       <div class="ws-slot-card__meta">
         <div class="ws-slot-card__name">${slot.label}${done ? `<svg class="ic ic--xs" style="color:var(--ok);" aria-hidden="true"><use href="#ic-check-circle"/></svg>` : ''}</div>
         <div class="ws-slot-card__count">${photoCount}장</div>
+        ${slot.customer_name
+          ? `<div style="display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--accent,#F18091);font-weight:700;margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${slot.customer_name}</div>`
+          : `<button onclick="event.stopPropagation();_pickCustomerForWorkshopSlot('${slot.id}');" style="background:none;border:none;color:var(--accent,#F18091);font-size:11px;font-weight:700;cursor:pointer;padding:2px 0;display:inline-flex;align-items:center;gap:3px;margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>고객 지정하기 →</button>`
+        }
       </div>`;
     list.appendChild(card);
   });
