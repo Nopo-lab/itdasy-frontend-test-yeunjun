@@ -314,12 +314,15 @@ function _renderSlotCards() {
     card.setAttribute('oncontextmenu', 'return false');
 
     const thumbHtml = thumb
-      ? `<div class="ws-slot-card__thumb" onclick="openSlotPopup('${slot.id}')"><img src="${thumb.editedDataUrl || thumb.dataUrl}" alt="">${photoCount > 1 ? `<div class="ws-slot-card__thumb-count">+${photoCount}</div>` : ''}</div>`
+      ? `<div class="ws-slot-card__thumb"><img src="${thumb.editedDataUrl || thumb.dataUrl}" alt="">${photoCount > 1 ? `<div class="ws-slot-card__thumb-count">+${photoCount}</div>` : ''}</div>`
       : `<div class="ws-slot-card__empty" onclick="openAssignPopup()"><svg class="ic ic--md" aria-hidden="true"><use href="#ic-plus"/></svg></div>`;
 
     card.innerHTML = `
-      <button onclick="deleteSlot('${slot.id}',event)" class="ws-slot-card__del" aria-label="삭제">
+      <button onclick="event.stopPropagation();deleteSlot('${slot.id}',event)" class="ws-slot-card__del" aria-label="삭제">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+      <button onclick="event.stopPropagation();openSlotPopup('${slot.id}');" style="position:absolute;top:30px;right:6px;width:26px;height:26px;border-radius:999px;background:rgba(15,20,25,0.6);border:none;color:#fff;cursor:pointer;display:grid;place-items:center;z-index:2;backdrop-filter:blur(4px);" aria-label="사진 편집">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>
       </button>
       ${thumbHtml}
       <div class="ws-slot-card__meta">
@@ -330,6 +333,16 @@ function _renderSlotCards() {
           : `<button onclick="event.stopPropagation();_pickCustomerForWorkshopSlot('${slot.id}');" style="background:none;border:none;color:var(--accent,#F18091);font-size:11px;font-weight:700;cursor:pointer;padding:2px 0;display:inline-flex;align-items:center;gap:3px;margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>고객 지정하기 →</button>`
         }
       </div>`;
+
+    // 카드 자체 클릭 → 글쓰기 직행 (사진 있는 슬롯만)
+    if (thumb) {
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', () => {
+        showTab('caption', document.querySelector('.tab-bar__fab[data-tab="caption"]'));
+        if (typeof loadSlotForCaption === 'function') loadSlotForCaption(slot.id);
+        if (typeof initCaptionSlotPicker === 'function') initCaptionSlotPicker();
+      });
+    }
     list.appendChild(card);
   });
 
