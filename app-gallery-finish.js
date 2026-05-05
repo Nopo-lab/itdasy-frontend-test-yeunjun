@@ -30,9 +30,11 @@ function _renderFinishTab(root, galleryItems = []) {
 
   if (!_slots.length) {
     root.innerHTML = `
-      <div class="sec-title" style="margin-bottom:4px;">마무리 🎀</div>
+      <div class="sec-title" style="margin-bottom:4px;">마무리</div>
       <div style="text-align:center;padding:60px 20px;">
-        <div style="font-size:40px;margin-bottom:12px;">📭</div>
+        <div style="width:64px;height:64px;border-radius:999px;background:var(--brand-bg,#FCEEF1);display:grid;place-items:center;color:var(--accent,#F18091);margin:0 auto 16px;">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+        </div>
         <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;">작업실에서 슬롯을 먼저 만들어보세요</div>
         <button onclick="showTab('workshop',document.querySelector('.tab-bar__btn[data-tab=&quot;workshop&quot;]')); initWorkshopTab();" style="margin-top:16px;padding:10px 20px;border-radius:12px;border:1.5px solid var(--accent2);background:transparent;color:var(--accent2);font-weight:700;cursor:pointer;font-size:12px;">작업실로 이동 →</button>
       </div>
@@ -46,7 +48,7 @@ function _renderFinishTab(root, galleryItems = []) {
 
   if (!doneSlots.length) {
     root.innerHTML = `
-      <div class="sec-title" style="margin-bottom:4px;">마무리 🎀</div>
+      <div class="sec-title" style="margin-bottom:4px;">마무리</div>
       ${incompleteHtml}
       <div style="text-align:center;padding:40px 20px;">
         <div style="font-size:32px;margin-bottom:10px;">⏳</div>
@@ -137,13 +139,13 @@ function _renderFinishTab(root, galleryItems = []) {
     `).join('');
     return `
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
-        <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px;">갤러리 📁 <span style="font-size:11px;color:var(--text3);font-weight:400;">${galleryItems.length}개</span></div>
+        <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px;display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>갤러리 <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:2px;">${galleryItems.length}개</span></div>
         ${dateHtml}
       </div>`;
   })() : '';
 
   root.innerHTML = `
-    <div class="sec-title" style="margin-bottom:4px;">마무리 🎀</div>
+    <div class="sec-title" style="margin-bottom:4px;">마무리</div>
     ${incompleteHtml}
     <div class="sec-sub" style="margin-bottom:16px;">완료 ${doneSlots.length}개 · 원하는 방법으로 마무리하세요</div>
     ${slotsHtml}
@@ -186,9 +188,9 @@ function _galleryItemDetail(galleryId) {
         ${_buildPeekCarousel(photos, 'gd_carousel')}
         ${escapedCaption ? `<div style="margin-top:12px;font-size:13px;color:#333;white-space:pre-wrap;line-height:1.6;">${escapedCaption}</div>` : ''}
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px;">
-          <button id="_gd_republish" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:13px;font-weight:800;cursor:pointer;">📸 다시 올리기</button>
+          <button id="_gd_republish" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>다시 올리기</button>
           <div style="display:flex;gap:8px;">
-            <button id="_gd_download" style="flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--border);background:transparent;font-size:12px;color:var(--text2);cursor:pointer;font-weight:600;">📥 저장</button>
+            <button id="_gd_download" style="flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--border);background:transparent;font-size:12px;color:var(--text2);cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>저장</button>
             <button id="_gd_delete" style="flex:1;padding:10px;border-radius:12px;border:1.5px solid rgba(220,53,69,0.3);background:transparent;font-size:12px;color:#dc3545;cursor:pointer;">삭제</button>
           </div>
         </div>
@@ -424,7 +426,7 @@ function _previewSlotOnInsta(slotId) {
   pop.innerHTML = `
     <div style="width:100%;max-width:360px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.5);font-family:-apple-system,sans-serif;">
       <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #dbdbdb;">
-        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);padding:2px;"><div style="width:100%;height:100%;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;">🎀</div></div>
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);padding:2px;"><div style="width:100%;height:100%;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#262626;">잇</div></div>
         <div style="flex:1;">
           <div style="font-size:13px;font-weight:700;">${handle}</div>
           <div style="font-size:10px;color:#888;">서울</div>
@@ -436,8 +438,12 @@ function _previewSlotOnInsta(slotId) {
           ? `<img src="${previewImg}" style="width:100%;height:100%;object-fit:cover;">`
           : `<div style="color:#888;font-size:12px;">사진이 없어요</div>`}
       </div>
-      <div style="display:flex;gap:14px;padding:8px 12px;font-size:22px;">
-        ❤️ 💬 ✈️ <span style="flex:1;"></span> 🔖
+      <div style="display:flex;gap:14px;padding:10px 12px 6px;align-items:center;color:#262626;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        <span style="flex:1;"></span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       </div>
       <div style="padding:4px 12px 12px;font-size:12px;line-height:1.5;color:#262626;max-height:220px;overflow-y:auto;">
         <b>${handle}</b> <span style="white-space:pre-wrap;">${(caption || '(캡션 없음)').replace(/</g,'&lt;')}</span>
