@@ -226,6 +226,9 @@ function _renderSlotCards() {
   const completionEl = document.getElementById('wsCompletionCount');
   if (!list) return;
 
+  const dropZone = document.getElementById('wsDropZone');
+  if (dropZone) dropZone.style.display = _slots.length === 0 ? 'block' : 'none';
+
   if (!_slots.length) {
     list.innerHTML = '';
     if (header) header.style.display = 'none';
