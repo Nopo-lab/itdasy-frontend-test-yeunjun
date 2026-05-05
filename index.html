@@ -589,6 +589,18 @@
 <aside class="side-nav ms-side" id="sideNav" aria-label="PC 사이드 네비게이션">
   <div class="ms-side__logo">잇데이</div>
 
+  <!-- AI 챗봇 진입 카드 — PC 전용 (모바일은 #assistantFab 사용) -->
+  <button id="cw-chatbot-card" class="cw-chatbot-card" type="button" aria-label="AI 챗봇 열기">
+    <span class="cw-chatbot-card__icon">
+      <svg width="16" height="16" aria-hidden="true"><use href="#ic-bot"/></svg>
+    </span>
+    <span class="cw-chatbot-card__text">
+      <span class="cw-chatbot-card__title">AI 챗봇</span>
+      <span class="cw-chatbot-card__sub">뭐든 물어보세요</span>
+    </span>
+    <span class="cw-chatbot-card__badge">NEW</span>
+  </button>
+
   <button type="button" class="ms-side__item" data-side-tab="home"
           onclick="showTab('home', document.querySelector('.tab-bar__btn[data-tab=&quot;home&quot;]'));"
           aria-label="홈">
