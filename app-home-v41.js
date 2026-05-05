@@ -54,6 +54,16 @@
     try { return await window.loadSlotsFromDB(); }
     catch (_e) { return []; }
   }
+  async function _fetchPendingCount() {
+    const headers = _authHeaders();
+    if (!window.API || !headers) return 0;
+    try {
+      const res = await fetch(window.API + '/public/book/admin/pending', { headers });
+      if (!res.ok) return 0;
+      const data = await res.json();
+      return Array.isArray(data.items) ? data.items.length : 0;
+    } catch (_e) { return 0; }
+  }
 
   // ─────────── 헤더 ───────────
   function _todayKor() {
@@ -81,8 +91,9 @@
             <div class="hv-header__shop">${_esc(shop)}</div>
           </div>
         </div>
-        <button type="button" class="hv-bell" data-hv-act="bell" aria-label="알림">
+        <button type="button" class="hv-bell" data-hv-act="bell" aria-label="알림" style="position:relative;">
           <svg width="14" height="14" aria-hidden="true"><use href="#ic-bell"/></svg>
+          <span id="dashBellBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#F18091;color:#fff;font-size:9px;font-weight:800;border-radius:50%;min-width:14px;height:14px;line-height:14px;text-align:center;padding:0 2px;"></span>
         </button>
       </div>
     `;
@@ -159,7 +170,16 @@
         cta: '안부 보내기', act: 'openInsights',
       });
     }
-    // 3) DM 자동응답 — TODO[v1.5]: /dm/pending_drafts 확정 후 카드 추가
+    // 3) 입금 대기 예약
+    const pendingCount = (brief && brief.pending_booking_count) || 0;
+    if (pendingCount > 0) {
+      cards.push({
+        kind: 'booking-pending', dot: 'amber', cat: '예약 승인',
+        headline: `입금 대기 예약 ${pendingCount}건`,
+        sub: '입금 확인 후 승인하면 캘린더에 반영돼요',
+        cta: '확인하기', act: 'openBookingApproval',
+      });
+    }
     // 4) 이어하기 (캡션 카드 있으면 dedup — 같은 갤러리 상태 가리킴)
     if (!hasCaption && _hasInProgressSlot(slots)) {
       cards.push({
@@ -428,6 +448,9 @@
       bell: () => {
         if (typeof window.openNotifications === 'function') window.openNotifications();
       },
+      openBookingApproval: () => {
+        if (typeof window.openBookingApproval === 'function') window.openBookingApproval();
+      },
     };
     if (map[act]) { map[act](); return; }
     if (typeof window[act] === 'function') {
@@ -492,11 +515,13 @@
     if (_inFlight) return;
     _inFlight = true;
     try {
-      const [brief, slots] = await Promise.all([
+      const [brief, slots, pendingCount] = await Promise.all([
         _fetchBrief().catch(() => null),
         _fetchSlots().catch(() => []),
+        _fetchPendingCount().catch(() => 0),
       ]);
       const merged = brief || (swr && swr.d) || {};
+      merged.pending_booking_count = pendingCount;
       container.innerHTML = _composeHTML(merged, slots || []);
       _setupCarousel(container);
       _bindEvents(container, merged);
