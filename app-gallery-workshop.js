@@ -149,7 +149,7 @@ function _buildWorkshopHTML() {
     </div>
     <p class="ws-slot-hint">탭해서 편집해요</p>
   </div>
-  <div id="slotCardList" style="display:flex;gap:12px;overflow-x:auto;padding:4px 0 12px;-webkit-overflow-scrolling:touch;"></div>
+  <div id="slotCardList" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:4px 0 12px;"></div>
   <div id="wsBanner" style="display:none;margin-bottom:8px;"></div>
   `;
 }
