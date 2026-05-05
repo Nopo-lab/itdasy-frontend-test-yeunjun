@@ -854,7 +854,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
         <span class="nav-sheet-s">사진 올리면 AI가 글까지 알아서</span>
       </span>
     </button>
-    <button class="nav-sheet-opt" onclick="closeNavSheet(); showTab('workshop',null); if(typeof initWorkshopTab==='function')initWorkshopTab();">
+    <button class="nav-sheet-opt" onclick="closeNavSheet(); showTab('portfolio',null); if(typeof loadPortfolio==='function') loadPortfolio();">
       <span class="nav-sheet-ic"><svg width="20" height="20"><use href="#ic-image"/></svg></span>
       <span class="nav-sheet-body">
         <span class="nav-sheet-t">포트폴리오</span>
@@ -1309,6 +1309,30 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
 <div class="tab" id="tab-finish">
   <div id="finishRoot"></div>
 </div>
+
+<!-- 포트폴리오 탭 -->
+<section id="tab-portfolio" class="tab" style="display:none;">
+  <header style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;border-bottom:0.5px solid var(--border);">
+    <button onclick="showTab('home', document.querySelector('.tab-bar__btn[data-tab=&quot;home&quot;]'));" style="width:32px;height:32px;border-radius:999px;background:transparent;border:none;cursor:pointer;display:grid;place-items:center;color:var(--text);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <h1 style="font-size:15px;font-weight:700;letter-spacing:-0.3px;">포트폴리오</h1>
+    <div style="width:32px;"></div>
+  </header>
+  <div style="padding:14px 16px 16px;">
+    <div id="portfolioMainFilters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
+    <div id="portfolioSubFilterWrap" style="display:none;margin-bottom:10px;">
+      <div id="portfolioSubFilters" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    </div>
+    <div id="portfolioAllTagsWrap" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px;"></div>
+    <div id="portfolioGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+    <div id="portfolioEmpty" style="display:none;text-align:center;padding:60px 20px;color:var(--text3);">
+      <div style="font-size:48px;margin-bottom:12px;">📷</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;">아직 포트폴리오가 없어요</div>
+      <div style="font-size:12px;color:var(--text3);line-height:1.5;">마무리 단계에서 인스타에 발행하거나<br>"앨범에 보관" 하면 여기 모여요</div>
+    </div>
+  </div>
+</section>
 
 <!-- 갤러리 슬롯 팝업 (§5.9 dt-overlay 풀스크린) -->
 <div id="slotPopup" class="dt-overlay" style="display:none;" oncontextmenu="return false">

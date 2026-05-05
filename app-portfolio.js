@@ -69,6 +69,17 @@ let _portfolioDragSrcId = null;
 let _portfolioItems = [];
 let _portfolioUploadPhotoType = 'general';
 
+function filterMainTag(btn, tag) {
+  _activePortfolioMainTag = tag;
+  _activePortfolioSubTag = '';
+  loadPortfolio();
+}
+
+function filterSubTag(btn, tag) {
+  _activePortfolioSubTag = tag;
+  loadPortfolio();
+}
+
 function _portfolioEscapeText(value) {
   const div = document.createElement('div');
   div.textContent = value || '';
