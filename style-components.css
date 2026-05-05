@@ -455,6 +455,72 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
 }
 .ws-drop-title { font-size: 16px; font-weight: 700; margin: 0 0 4px; color: var(--text); }
 .ws-drop-sub { font-size: 12px; color: var(--text-subtle); margin: 0; }
+
+/* [2026-05-05 19차-A] 작업실 빈 상태 — 풀스크린 .empty 패턴 */
+.ws-empty {
+  position: relative;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: calc(100vh - 200px);
+  padding: 40px 24px 140px;
+  text-align: center;
+  cursor: pointer;
+  background: transparent;
+  border: 1.5px dashed transparent;
+  border-radius: var(--r-lg);
+  transition: border-color 0.2s, background 0.2s;
+}
+.ws-empty.is-drag {
+  border-color: var(--brand);
+  background: var(--brand-bg);
+}
+.ws-empty__icon {
+  width: 64px; height: 64px;
+  border-radius: 999px;
+  background: var(--brand-bg, #FCEEF1);
+  display: grid; place-items: center;
+  color: var(--brand, #F18091);
+  margin-bottom: 18px;
+}
+.ws-empty__title {
+  margin: 0 0 6px;
+  font-size: 20px; font-weight: 800;
+  color: var(--text, #0F1419);
+  letter-spacing: -0.4px;
+}
+.ws-empty__sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-subtle, var(--text2, #5A6573));
+}
+.ws-empty__bottom {
+  position: fixed;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  left: 0; right: 0;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, transparent 0%, var(--bg, #fff) 35%);
+  z-index: 50;
+  pointer-events: none;
+}
+.ws-empty__cta {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  display: block;
+  padding: 14px;
+  border-radius: 14px;
+  border: none;
+  background: var(--accent, #F18091);
+  color: #fff;
+  font-size: 15px; font-weight: 800;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 4px 14px rgba(241,128,145,0.28);
+}
+@media (min-width: 768px) {
+  .ws-empty__bottom { left: var(--side-nav-width, 232px); bottom: 24px; }
+  .ws-empty__cta { max-width: 360px; }
+}
 .ws-top-row {
   display: flex; align-items: center; justify-content: flex-end; gap: 8px;
   margin-bottom: 12px; min-height: 24px;

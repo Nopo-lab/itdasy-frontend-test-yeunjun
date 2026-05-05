@@ -120,18 +120,25 @@ function _buildWorkshopHTML() {
     <h1>오늘 작업</h1>
   </section>
 
-  <div id="wsDropZone" class="ws-dropzone"
+  <!-- [2026-05-05 19차-A] 빈 상태 — 풀스크린 .ws-empty 패턴 -->
+  <div id="wsDropZone" class="ws-empty"
     onclick="document.getElementById('galleryFileInput').click()"
-    ondragover="event.preventDefault();this.style.borderColor='var(--brand)';this.style.background='var(--brand-bg)';"
-    ondragleave="this.style.borderColor='';this.style.background='';"
+    ondragover="event.preventDefault();this.classList.add('is-drag');"
+    ondragleave="this.classList.remove('is-drag');"
     ondrop="_handleDropZoneDrop(event)"
     oncontextmenu="return false">
     <input type="file" id="galleryFileInput" accept="image/*" multiple style="display:none;" onchange="handleGalleryUpload(this)">
-    <div class="ws-drop-icon">
-      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <div class="ws-empty__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
     </div>
-    <p class="ws-drop-title">사진 올려서 시작해요</p>
-    <p class="ws-drop-sub">탭해서 사진 선택 · 최대 20장</p>
+    <h2 class="ws-empty__title">사진 올려서 시작</h2>
+    <p class="ws-empty__sub">최대 20장 · AI가 손님별 자동 정리</p>
+    <div class="ws-empty__bottom">
+      <button type="button" class="ws-empty__cta" onclick="event.stopPropagation();document.getElementById('galleryFileInput').click();">사진 선택</button>
+    </div>
   </div>
 
   <div class="ws-top-row">
