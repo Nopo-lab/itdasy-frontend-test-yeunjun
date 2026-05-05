@@ -1095,9 +1095,9 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
 
       <!-- [만들기 버튼 sticky] -->
       <div id="captionCtrlBar" style="position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--border);padding:10px 14px;display:flex;gap:8px;">
-        <button id="captionBtn" data-haptic="medium" onclick="generateCaption()" style="flex:1;padding:11px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:14px;font-weight:800;cursor:pointer;">만들기 ✨</button>
+        <button id="captionBtn" data-haptic="medium" onclick="generateCaption()" style="flex:1;padding:11px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:800;cursor:pointer;">만들기 ✨</button>
         <!-- E2: 음성 캡션 진입 — 음성으로 한 줄 → AI 캡션·해시태그 + 재방문 제안 -->
-        <button id="captionVoiceBtn" type="button" data-haptic="medium" onclick="window.openVoiceCaption&&window.openVoiceCaption()" aria-label="음성 캡션" style="padding:11px 14px;border-radius:12px;border:none;background:linear-gradient(135deg,#7C3AED,#A78BFA);color:#fff;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+        <button id="captionVoiceBtn" type="button" data-haptic="medium" onclick="window.openVoiceCaption&&window.openVoiceCaption()" aria-label="음성 캡션" style="padding:11px 14px;border-radius:12px;border:1px solid var(--border-strong);background:transparent;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
           <svg width="14" height="14" aria-hidden="true"><use href="#ic-mic"/></svg> 음성
         </button>
       </div>
