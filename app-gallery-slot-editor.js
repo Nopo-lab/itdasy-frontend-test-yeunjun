@@ -100,10 +100,7 @@ function _renderPopupBody(slot) {
 
   body.innerHTML = `
     ${usageHtml}
-    <div style="margin-bottom:12px;">
-      <input type="file" id="popupPhotoInput" accept="image/*" multiple style="display:none;" onchange="addPhotosToPopup(this)">
-      <button onclick="document.getElementById('popupPhotoInput').click()" style="width:100%;padding:11px;border-radius:12px;border:1.5px dashed rgba(241,128,145,0.4);background:transparent;color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer;">+ 사진 추가</button>
-    </div>
+    <input type="file" id="popupPhotoInput" accept="image/*" multiple style="display:none;" onchange="addPhotosToPopup(this)">
     <div id="popupPhotoGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;"></div>
     <div id="popupBulkBar" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -112,9 +109,6 @@ function _renderPopupBody(slot) {
       </div>
     </div>
     <div id="popupProgress" style="display:none;text-align:center;padding:16px;font-size:13px;color:var(--text3);">처리 중... ⏳</div>
-    <div style="text-align:center;padding:8px;font-size:11px;color:var(--text3);background:rgba(241,128,145,0.06);border-radius:10px;">
-      💡 배경 편집은 하단 <b>배경</b> 탭에서 할 수 있어요
-    </div>
   `;
   _renderPopupPhotoGrid(slot);
 }
@@ -127,11 +121,6 @@ function _renderPopupPhotoGrid(slot) {
   if (!grid) return;
 
   const visiblePhotos = (slot.photos || []).filter(p => !p.hidden);
-  if (!visiblePhotos.length) {
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;font-size:13px;color:var(--text3);">사진을 추가해주세요</div>';
-    if (bulkBar) bulkBar.style.display = 'none';
-    return;
-  }
 
   if (selCount) selCount.textContent = _popupSelIds.size;
   if (bulkBar)  bulkBar.style.display = _popupSelIds.size > 0 ? 'block' : 'none';
@@ -184,6 +173,23 @@ function _renderPopupPhotoGrid(slot) {
 
     grid.appendChild(wrap);
   });
+
+  // 마지막 칸 +추가 카드 — 남은 열 수만큼 span 해서 빈공간 0
+  const N = visiblePhotos.length;
+  const cols = 3;
+  const remainder = N % cols;
+  const span = remainder === 0 ? cols : cols - remainder;
+
+  const addCell = document.createElement('div');
+  addCell.style.cssText = `grid-column:span ${span};aspect-ratio:${span}/1;border-radius:10px;background:var(--bg2,#f8f8f9);border:1.5px dashed var(--border,rgba(0,0,0,0.1));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;user-select:none;`;
+  addCell.innerHTML = `
+    <div style="width:32px;height:32px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--accent,#F18091);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--text2,#5A6573);">사진 더 추가</div>
+  `;
+  addCell.addEventListener('click', () => document.getElementById('popupPhotoInput').click());
+  grid.appendChild(addCell);
 }
 
 // ── 팝업 사진 선택 토글 ────────────────────────────────────────
