@@ -114,6 +114,12 @@
   box-shadow: 0 4px 14px rgba(241, 128, 145, 0.18);
 }
 
+/* 포트폴리오 skeleton pulse — 로딩 체감 속도 개선 */
+@keyframes portfolio-skel-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.85; }
+}
+
 
 /* 카드 섹션 구분 */
 .card-divider { height: 1px; background: var(--border); margin: 24px 0; }

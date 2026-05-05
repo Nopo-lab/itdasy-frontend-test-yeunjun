@@ -130,6 +130,15 @@ async function loadPortfolio() {
     if (_portfolioSearchVal) params.push('search=' + encodeURIComponent(_portfolioSearchVal));
     if (params.length) url += '?' + params.join('&');
 
+    // [2026-05-05] 빈 그리드 → skeleton pulse 즉시 표시 (로딩 체감 속도 개선).
+    // 이전: 빈 그리드 + 빈 필터로 몇 초 깜깜 → 응답성 떨어져 보임.
+    const grid0 = document.getElementById('portfolioGrid');
+    if (grid0 && !grid0.children.length) {
+      grid0.innerHTML = Array.from({length: 6}).map(() =>
+        '<div class="portfolio-skel" style="aspect-ratio:1/1;border-radius:12px;background:var(--bg2,#f3f4f6);animation:portfolio-skel-pulse 1.4s ease-in-out infinite;"></div>'
+      ).join('');
+    }
+
     const [itemsRes, tagsRes] = await Promise.all([
       fetch(url, { headers: { ...authHeader(), 'ngrok-skip-browser-warning': 'true' } }),
       fetch(API + '/portfolio/tags', { headers: { ...authHeader(), 'ngrok-skip-browser-warning': 'true' } }),
