@@ -159,24 +159,67 @@ async function handleGalleryUpload(input) {
   const files     = Array.isArray(input) ? input : Array.from(input.files || []);
   const remaining = 20 - _photos.length;
   const toAdd     = files.slice(0, remaining);
-  for (const file of toAdd) {
-    _photos.push({ id: _uid(), file, dataUrl: await _fileToDataUrl(file) });
-  }
   if (files.length > remaining) showToast(`최대 20장까지 가능해요 (${remaining}장 추가됨)`);
   if (!Array.isArray(input)) input.value = '';
   const zone = document.getElementById('wsDropZone');
   if (zone) { zone.style.borderColor = ''; zone.style.background = ''; }
 
-  if (_slots.length === 0 && toAdd.length > 0) {
-    const slot = { id: _uid(), label: '손님 1', order: 0, photos: [], caption: '', hashtags: '', status: 'open', instagramPublished: false, deferredAt: null, createdAt: Date.now() };
-    _slots.push(slot);
-    try { await saveSlotToDB(slot); } catch (_e) { /* ignore */ }
+  // dataUrl 변환 후 newPhotos 로 따로 수집
+  const newPhotos = [];
+  for (const file of toAdd) {
+    const photo = { id: _uid(), file, dataUrl: await _fileToDataUrl(file) };
+    newPhotos.push(photo);
+    _photos.push(photo);
+  }
+
+  // 자동 그룹: file.lastModified 시간순 정렬 → 30분 간격 기준 슬롯 자동 분류
+  let autoGroups = [];
+  if (newPhotos.length > 0) {
+    const GAP_MS = 30 * 60 * 1000;
+    const sorted = [...newPhotos].sort((a, b) => (a.file?.lastModified || 0) - (b.file?.lastModified || 0));
+
+    let currentGroup = [];
+    let prevTime = null;
+    sorted.forEach(photo => {
+      const t = photo.file?.lastModified || Date.now();
+      if (prevTime !== null && t - prevTime > GAP_MS) {
+        if (currentGroup.length > 0) autoGroups.push(currentGroup);
+        currentGroup = [];
+      }
+      currentGroup.push(photo);
+      prevTime = t;
+    });
+    if (currentGroup.length > 0) autoGroups.push(currentGroup);
+
+    const startNum = _slots.length + 1;
+    for (let i = 0; i < autoGroups.length; i++) {
+      const slot = {
+        id: _uid(),
+        label: `손님 ${startNum + i}`,
+        order: _slots.length,
+        photos: autoGroups[i],
+        caption: '',
+        hashtags: '',
+        status: 'open',
+        instagramPublished: false,
+        deferredAt: null,
+        createdAt: Date.now(),
+      };
+      _slots.push(slot);
+      try { await saveSlotToDB(slot); } catch (_e) { /* ignore */ }
+    }
+
+    // 슬롯에 배정된 사진은 미배정 풀(_photos)에서 제거
+    const assignedIds = new Set(newPhotos.map(p => p.id));
+    _photos = _photos.filter(p => !assignedIds.has(p.id));
   }
 
   _renderPhotoGrid();
   _renderSlotCards();
 
-  if (toAdd.length > 0) setTimeout(() => openAssignPopup(), 100);
+  if (autoGroups.length > 0) {
+    showToast(`${autoGroups.length}명 손님으로 자동 분류했어요 ✓`);
+  }
 }
 
 async function _handleDropZoneDrop(e) {
