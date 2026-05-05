@@ -264,6 +264,27 @@ function _renderSlotCards() {
     list.appendChild(card);
   });
 
+  // 2열 그리드 마지막 칸 +추가 카드 — column-span 동적 (짝수→풀폭, 홀수→옆 칸)
+  const N = _slots.length;
+  const span = N % 2 === 0 ? 2 : 1;
+
+  const addCard = document.createElement('div');
+  addCard.className = 'ws-slot-card-add';
+  addCard.style.cssText = `grid-column:span ${span};aspect-ratio:${span}/1;border-radius:16px;background:var(--bg2,#f8f8f9);border:1.5px dashed var(--border,rgba(15,20,25,0.10));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;user-select:none;transition:border-color 0.15s;`;
+  addCard.innerHTML = `
+    <div style="width:36px;height:36px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--accent,#F18091);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--text2,#5A6573);">사진 추가</div>
+  `;
+  addCard.addEventListener('mouseenter', () => { addCard.style.borderColor = 'var(--accent,#F18091)'; });
+  addCard.addEventListener('mouseleave', () => { addCard.style.borderColor = 'var(--border,rgba(15,20,25,0.10))'; });
+  addCard.addEventListener('click', () => {
+    const input = document.getElementById('galleryFileInput');
+    if (input) input.click();
+  });
+  list.appendChild(addCard);
+
   const resetBtn = document.getElementById('wsResetBtn');
   if (resetBtn) resetBtn.style.display = _slots.length > 0 ? 'block' : 'none';
 }
