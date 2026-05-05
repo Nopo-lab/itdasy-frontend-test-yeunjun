@@ -89,16 +89,16 @@ function _renderFinishTab(root, galleryItems = []) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             발행하기
           </button>
-          <div style="display:flex;justify-content:space-around;align-items:center;padding-top:10px;margin-top:4px;border-top:0.5px solid var(--border,rgba(15,20,25,0.06));gap:4px;">
-            <button data-action="defer" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:700;color:var(--text2,#5A6573);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;border-radius:6px;">
+          <div style="display:flex;justify-content:space-around;align-items:center;padding-top:12px;margin-top:6px;border-top:0.5px solid var(--border,rgba(15,20,25,0.06));gap:6px;">
+            <button data-action="defer" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:600;color:var(--text2,#5A6573);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-radius:6px;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               나중에
             </button>
-            <button data-action="pickCustomer" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:700;color:var(--accent,#F18091);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;border-radius:6px;">
+            <button data-action="pickCustomer" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:${slot.customer_name ? '800' : '600'};color:${slot.customer_name ? 'var(--accent,#F18091)' : 'var(--text2,#5A6573)'};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-radius:6px;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               ${slot.customer_name ? slot.customer_name.slice(0,4) : '고객'}
             </button>
-            <button data-action="delete" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:700;color:rgba(220,53,69,0.7);cursor:pointer;border-radius:6px;">
+            <button data-action="delete" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:600;color:var(--text3,#98A1AC);cursor:pointer;border-radius:6px;">
               삭제
             </button>
           </div>
