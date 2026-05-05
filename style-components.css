@@ -461,6 +461,7 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
   position: relative;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
+  width: 100%;
   min-height: calc(100vh - 200px);
   padding: 40px 24px 140px;
   text-align: center;
@@ -469,6 +470,7 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
   border: 1.5px dashed transparent;
   border-radius: var(--r-lg);
   transition: border-color 0.2s, background 0.2s;
+  box-sizing: border-box;
 }
 .ws-empty.is-drag {
   border-color: var(--brand);
@@ -480,7 +482,8 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
   background: var(--brand-bg, #FCEEF1);
   display: grid; place-items: center;
   color: var(--brand, #F18091);
-  margin-bottom: 18px;
+  margin: 0 auto 18px;        /* 명시적 가운데 — flex 부모에서 align-items 외 안전망 */
+  align-self: center;
 }
 .ws-empty__title {
   margin: 0 0 6px;
