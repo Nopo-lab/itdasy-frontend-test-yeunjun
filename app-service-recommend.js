@@ -9,7 +9,7 @@
  *  - window.API (백엔드 베이스), window.authHeader()
  *  - window.compressImageForUpload() — app-receipt-scan.js 에서 정의
  *  - window.showToast() (선택)
- *  - window.openBooking(date) — app-booking.js (현재 시점 그냥 오픈; prefill 은 sessionStorage 경유)
+ *  - window.openBooking(date) — app-calendar-view.js (prefill 은 sessionStorage 경유)
  */
 (function () {
   'use strict';

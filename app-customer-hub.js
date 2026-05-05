@@ -89,7 +89,8 @@
       const raw = sessionStorage.getItem(CACHE_KEY);
       if (!raw) return null;
       const { t, d } = JSON.parse(raw);
-      return (Date.now() - t < CACHE_TTL) ? d : null;
+      if (Date.now() - t >= CACHE_TTL) return null;
+      return (Array.isArray(d) && d.length) ? d : null;
     } catch (_) { return null; }
   }
   function _writeCache(d) {

@@ -585,12 +585,13 @@
     // TODO[v1.5]: 톤 변경 시 즉시 새 초안 생성 — 지금은 UI만 토글
   }
 
-  let _regenInFlight = false;  // 중복 호출 방지
+  const _regenInFlight = new Set();  // logId별 중복 호출 방지
   async function _handleRegen(card) {
     // [2026-05-02 Phase 1.2++] 진짜 백엔드 호출 — fake hardcoded 제거.
     // POST /dm-confirm-queue/{log_id}/regenerate { tone } → 시간 컨텍스트 가드레일 보존.
-    if (_regenInFlight) return;  // 이미 생성 중이면 중복 호출 방지
     const logId = card.dataset.logId;
+    const regenKey = String(logId || '');
+    if (regenKey && _regenInFlight.has(regenKey)) return;  // 이미 생성 중이면 중복 호출 방지
     if (!logId) {
       _toast('재생성하려면 먼저 메시지가 큐에 등록되어야 해요');
       return;
@@ -606,16 +607,21 @@
     const statusLabel = '생성 중…';
     draftEl.textContent = statusLabel;
     draftEl.style.color = '#aaa';
-    _draftMap.set(String(logId), statusLabel); // 폴링 시에도 '생성 중' 표시 유지
+    _draftMap.set(regenKey, statusLabel); // 폴링 시에도 '생성 중' 표시 유지
     
-    _regenInFlight = true;
+    _regenInFlight.add(regenKey);
+    const regenBtn = card.querySelector('[data-act="regen"]');
+    if (regenBtn) {
+      regenBtn.disabled = true;
+      regenBtn.textContent = '생성 중…';
+    }
     _haptic();
     try {
-      const res = await fetch(window.API + `/dm-confirm-queue/${encodeURIComponent(logId)}/regenerate`, {
+      const res = await _rawFetch(window.API + `/dm-confirm-queue/${encodeURIComponent(logId)}/regenerate`, {
         method: 'POST',
         headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ tone }),
-      });
+      }, 45000);
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.detail || ('HTTP ' + res.status));
       
@@ -627,31 +633,41 @@
       const liveEl = liveCard ? liveCard.querySelector('.dm-bubble--sent.is-draft') : draftEl;
       
       if (newText) {
-        _draftMap.set(String(logId), newText);
+        _draftMap.set(regenKey, newText);
         if (liveEl) {
           liveEl.textContent = newText;
           liveEl.style.color = '';
         }
         _toast('✓ 새 답장 생성됨');
       } else {
-        _draftMap.delete(String(logId)); // 실패 시 맵에서 제거하여 원본(ai_draft_text) 노출 유도
+        _draftMap.delete(regenKey); // 실패 시 맵에서 제거하여 원본(ai_draft_text) 노출 유도
         if (liveEl) {
           liveEl.textContent = orig;
           liveEl.style.color = '';
         }
+        _toast('새 답장이 비어 있어요. 다시 눌러주세요.');
       }
       if (d.guarded) _toast('✓ 시간 정보 유지하며 톤만 변경됨');
     } catch (e) {
-      _draftMap.delete(String(logId));
+      _draftMap.delete(regenKey);
       const liveCard2 = document.querySelector(`.dm-card[data-log-id="${CSS.escape(logId)}"]`);
       const liveEl2 = liveCard2 ? liveCard2.querySelector('.dm-bubble--sent.is-draft') : draftEl;
       if (liveEl2) { 
         liveEl2.textContent = orig; 
         liveEl2.style.color = ''; 
       }
-      _toast('재생성 실패: ' + (e.message || ''));
+      const msg = e?.name === 'AbortError'
+        ? '답장 만들기가 너무 오래 걸려 멈췄어요. 다시 눌러주세요.'
+        : (e.message || '');
+      _toast('재생성 실패: ' + msg);
     } finally {
-      _regenInFlight = false;
+      _regenInFlight.delete(regenKey);
+      const liveCard3 = document.querySelector(`.dm-card[data-log-id="${CSS.escape(logId)}"]`);
+      const liveBtn = liveCard3 ? liveCard3.querySelector('[data-act="regen"]') : regenBtn;
+      if (liveBtn) {
+        liveBtn.disabled = false;
+        liveBtn.textContent = '↻ 다시';
+      }
     }
   }
 

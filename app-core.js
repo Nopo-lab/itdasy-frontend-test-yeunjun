@@ -276,14 +276,16 @@ function getToken() {
 function _clearAllSWRCache() {
   try {
     Object.keys(localStorage).forEach(k => {
-      if (k.startsWith('pv_cache::') || k.startsWith('itdasy:cache')) {
+      if (k.startsWith('pv_cache::') || k.startsWith('itdasy:cache') || k.startsWith('dash_cache::') ||
+          k === 'ch_cache' || k === 'ih_cache' || k === 'rh_cache') {
         try { localStorage.removeItem(k); } catch (_e) { void _e; }
       }
     });
   } catch (_e) { void _e; }
   try {
     Object.keys(sessionStorage).forEach(k => {
-      if (k.startsWith('pv_cache::') || k.startsWith('itdasy:cache')) {
+      if (k.startsWith('pv_cache::') || k.startsWith('itdasy:cache') || k.startsWith('dash_cache::') ||
+          k === 'ch_cache' || k === 'ih_cache' || k === 'rh_cache') {
         try { sessionStorage.removeItem(k); } catch (_e) { void _e; }
       }
     });
@@ -1396,7 +1398,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260505-v97-silent-first-retry';
+window.APP_BUILD = '20260506-v99-dm-regen-timeout';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;

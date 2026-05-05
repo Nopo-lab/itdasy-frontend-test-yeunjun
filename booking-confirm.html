@@ -70,8 +70,14 @@
 <script>
 (function () {
   'use strict';
-  // 백엔드 베이스 URL — itdasy_backend-test (스테이징) 기본값
-  var API = 'https://itdasy260417-staging-production.up.railway.app';
+  // [2026-05-04] 환경별 API 자동 선택 (itdasy-frontend: 운영 / test-yeunjun: 스테이징)
+  var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  var isTest  = window.location.hostname.includes('test') || window.location.pathname.includes('test');
+  var API = isLocal
+    ? 'http://localhost:8000'
+    : (isTest
+        ? 'https://itdasy260417-staging-production.up.railway.app'
+        : 'https://itdasy260417-production.up.railway.app');
 
   function getQuery(name) {
     var m = new RegExp('[?&]' + name + '=([^&]+)').exec(location.search);
