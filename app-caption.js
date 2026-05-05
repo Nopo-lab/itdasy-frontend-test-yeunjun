@@ -1073,32 +1073,13 @@ function _renderCaptionActionBar(caption, hashtags) {
 
   actionBar.style.display = 'block';
   actionBar.innerHTML = `
-    <!-- 재생성 옵션 4종 (Apple HIG 44pt 보장) + 첫 사용 툴팁 -->
-    <div style="background:rgba(241,128,145,0.06);border:1.5px solid rgba(241,128,145,0.2);border-radius:14px;padding:12px;margin-bottom:10px;">
-      <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px;">마음에 안 드시면 다시 써드릴게요 <span style="color:var(--text3);font-weight:500;">· 각 버튼 누르면 조건만 바꿔 재생성</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-        <button onclick="regenerateCaption({})" title="같은 조건으로 한 번 더 생성" style="${_btnBase}">🔄 다시 생성</button>
-        <button onclick="regenerateCaption({length_tier:'short'})" title="1~2문장으로 압축" style="${_btnBase}">📏 더 짧게</button>
-        <button onclick="regenerateCaption({length_tier:'long'})" title="상세 설명·스토리 포함" style="${_btnBase}">📖 더 길게</button>
-        <button onclick="regenerateCaption({tone_override:'ornate'})" title="이모지·감탄사 풍성하게" style="${_btnBase}">💕 더 친근하게</button>
-      </div>
-      ${localStorage.getItem('_regen_hint_shown') ? '' : `
-      <div id="_regenFirstHint" style="margin-top:10px;padding:8px 10px;background:#fff5f7;border-radius:8px;font-size:11px;color:var(--accent);display:flex;align-items:center;gap:6px;">
-        <span>💡 각 버튼 <b>꾹 누르면</b> 뭘 바꾸는지 설명 뜹니다</span>
-      </div>
-      `}
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--brand-bg);border-radius:10px;font-size:11.5px;color:var(--accent);font-weight:600;margin-bottom:10px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>
+      직접 고치면 AI가 다음에 더 잘 써요
     </div>
-    <script>if(!localStorage.getItem('_regen_hint_shown')){localStorage.setItem('_regen_hint_shown','1');setTimeout(()=>{const e=document.getElementById('_regenFirstHint');if(e)e.style.display='none';},8000);}</script>
-
-    <div style="background:rgba(76,175,80,0.08);border:1.5px solid rgba(76,175,80,0.25);border-radius:14px;padding:14px;margin-bottom:10px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="font-size:12px;font-weight:700;color:#388e3c;">✅ 캡션 생성 완료!</div>
-        <button data-report-ai="caption" data-snippet="${(caption || '').replace(/"/g,'&quot;')}" data-source="/caption/generate" title="AI 캡션 신고" aria-label="AI 캡션 신고"
-          style="background:transparent;border:none;cursor:pointer;font-size:13px;color:#999;padding:4px 6px;">🚩 신고</button>
-      </div>
-      <!-- 피드백 #13: 인스타 피드 미리보기 버튼 복원 -->
-      <button onclick="_previewCaptionOnInsta()" style="width:100%;min-height:48px;padding:12px;border-radius:12px;border:1.5px solid #833ab4;background:#fff;color:#833ab4;font-size:13px;font-weight:800;cursor:pointer;margin-bottom:8px;">📱 인스타 피드 미리보기</button>
-      <button onclick="saveCaptionToGallery()" style="width:100%;min-height:48px;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#4caf50,#388e3c);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📁 갤러리에 저장하기</button>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+      <button data-report-ai="caption" data-snippet="${(caption || '').replace(/"/g,'&quot;')}" data-source="/caption/generate" title="AI 캡션 신고" aria-label="AI 캡션 신고"
+        style="background:transparent;border:none;cursor:pointer;font-size:13px;color:#999;padding:4px 6px;">🚩 신고</button>
     </div>
     ${hasNextSlot ? `
     <div style="background:rgba(241,128,145,0.07);border:1.5px solid rgba(241,128,145,0.2);border-radius:14px;padding:14px;">
