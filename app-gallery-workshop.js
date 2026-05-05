@@ -219,6 +219,7 @@ async function handleGalleryUpload(input) {
 
   if (autoGroups.length > 0) {
     showToast(`${autoGroups.length}명 손님으로 자동 분류했어요 ✓`);
+    _showAutoGroupBanner(autoGroups.length);
   }
 }
 
@@ -376,6 +377,27 @@ async function deleteSlot(slotId, e) {
 }
 
 // ── 완료 현황 배너 ─────────────────────────────────────────────
+function _showAutoGroupBanner(count) {
+  const banner = document.getElementById('wsBanner');
+  if (!banner) return;
+  banner.style.display = 'block';
+  banner.innerHTML = `
+    <div style="background:var(--brand-bg,#FCEEF1);border:1px solid var(--accent,#F18091);border-radius:14px;padding:13px 14px;margin-bottom:14px;display:flex;align-items:center;gap:11px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--accent,#F18091);flex-shrink:0;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:800;color:var(--accent,#F18091);letter-spacing:-0.2px;">${count}명 손님으로 자동 분류했어요</div>
+        <div style="font-size:11px;color:var(--text2,#5A6573);margin-top:2px;">촬영 시각 30분 기준 · 다르면 수정해요</div>
+      </div>
+      <button onclick="if(typeof openAssignPopup==='function')openAssignPopup();" style="padding:6px 12px;background:#fff;border:1px solid var(--border,rgba(15,20,25,0.08));border-radius:999px;font-size:11px;font-weight:700;color:var(--text,#0F1419);cursor:pointer;flex-shrink:0;">수정</button>
+      <button onclick="document.getElementById('wsBanner').style.display='none';" style="width:24px;height:24px;background:transparent;border:none;color:var(--text3,#98A1AC);cursor:pointer;display:grid;place-items:center;flex-shrink:0;" aria-label="닫기">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  `;
+}
+
 function _renderCompletionBanner() {
   const badge  = document.getElementById('wsCompletionBadge');
   const banner = document.getElementById('wsBanner');
