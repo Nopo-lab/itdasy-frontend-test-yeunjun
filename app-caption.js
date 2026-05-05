@@ -1091,8 +1091,8 @@ function _renderCaptionActionBar(caption, hashtags) {
     </div>
     ` : `
     <div style="display:flex;gap:8px;">
-      <button onclick="showTab('finish',document.querySelector('.tab-bar__btn[data-tab=&quot;finish&quot;]')); initFinishTab();" style="flex:1;padding:12px;border-radius:14px;border:1.5px solid rgba(241,128,145,0.3);background:transparent;color:var(--accent);font-size:13px;font-weight:700;cursor:pointer;">마무리로 이동 →</button>
-      <button onclick="_previewCaptionOnInsta()" style="flex:1;padding:12px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:13px;font-weight:800;cursor:pointer;">지금 바로 올리기</button>
+      <button onclick="if(typeof _captionSlotId !== 'undefined' && _captionSlotId && typeof _showPublishOptions === 'function') { _showPublishOptions(_captionSlotId); } else { showTab('finish',document.querySelector('.tab-bar__btn[data-tab=&quot;finish&quot;]')); initFinishTab(); }" style="flex:1;padding:12px;border-radius:14px;border:1.5px solid rgba(241,128,145,0.3);background:transparent;color:var(--accent);font-size:13px;font-weight:700;cursor:pointer;">발행 옵션 ▾</button>
+      <button onclick="_previewCaptionOnInsta()" style="flex:1;padding:12px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:13px;font-weight:800;cursor:pointer;">인스타에 올리기</button>
     </div>
     `}
   `;
