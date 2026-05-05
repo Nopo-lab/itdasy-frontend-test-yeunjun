@@ -1422,6 +1422,17 @@ function _updateVersionBadge(swVer) {
 }
 document.addEventListener('DOMContentLoaded', () => _updateVersionBadge(window.APP_BUILD));
 
+// [2026-05-05] AI 챗봇 사이드바 카드 클릭 → 기존 #assistantFab 동작 트리거.
+// 모바일은 카드 자체가 hide(media query) 되어 영향 없음.
+document.addEventListener('DOMContentLoaded', () => {
+  const chatbotCard = document.getElementById('cw-chatbot-card');
+  if (chatbotCard) {
+    chatbotCard.addEventListener('click', () => {
+      document.getElementById('assistantFab')?.click();
+    });
+  }
+});
+
 const _isCapacitor = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 
 if ('serviceWorker' in navigator && !_isCapacitor) {
