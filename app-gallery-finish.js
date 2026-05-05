@@ -161,7 +161,7 @@ function _renderFinishTab(root, galleryItems = []) {
     const card = root.querySelector(`[data-finish-slot="${slot.id}"]`);
     if (!card) return;
     card.querySelector('[data-action="edit"]')?.addEventListener('click', () => openSlotPopup(slot.id));
-    card.querySelector('[data-action="publish"]')?.addEventListener('click', () => publishSlotToInstagram(slot.id));
+    card.querySelector('[data-action="publish"]')?.addEventListener('click', () => _previewSlotOnInsta(slot.id));
     card.querySelector('[data-action="gallery"]')?.addEventListener('click', (e) => {
       e.currentTarget.disabled = true;
       e.currentTarget.style.opacity = '0.5';
@@ -341,6 +341,66 @@ async function _saveSlotToGallery(slotId) {
       : '저장 실패: ' + (window._humanError ? window._humanError(e) : (e.message || '알 수 없는 오류'));
     showToast(msg);
   }
+}
+
+function _previewSlotOnInsta(slotId) {
+  const slot = _slots.find(s => s.id === slotId);
+  if (!slot) return;
+
+  const handle = (window._instaHandle || 'itdasy').replace('@', '');
+  const caption = slot.caption || '';
+  const hashtags = slot.hashtags || '';
+
+  let previewImg = '';
+  const visPhotos = (slot.photos || []).filter(p => !p.hidden);
+  if (visPhotos.length > 0) {
+    const p = visPhotos[0];
+    previewImg = p.editedDataUrl || p.dataUrl;
+  }
+
+  let pop = document.getElementById('_finishInstaPreview');
+  if (!pop) {
+    pop = document.createElement('div');
+    pop.id = '_finishInstaPreview';
+    pop.style.cssText = 'display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.82);align-items:center;justify-content:center;padding:14px;';
+    pop.onclick = e => { if (e.target === pop) pop.style.display = 'none'; };
+    document.body.appendChild(pop);
+  }
+
+  const hashHtml = hashtags ? hashtags.split(/\s+/).filter(Boolean).map(h => {
+    const clean = h.startsWith('#') ? h : '#' + h;
+    return `<span style="color:#1e7abf;">${clean}</span>`;
+  }).join(' ') : '';
+
+  pop.innerHTML = `
+    <div style="width:100%;max-width:360px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.5);font-family:-apple-system,sans-serif;">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #dbdbdb;">
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);padding:2px;"><div style="width:100%;height:100%;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;">🎀</div></div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:700;">${handle}</div>
+          <div style="font-size:10px;color:#888;">서울</div>
+        </div>
+        <div style="font-size:18px;color:#262626;">⋯</div>
+      </div>
+      <div style="width:100%;aspect-ratio:1/1;background:#000;display:flex;align-items:center;justify-content:center;">
+        ${previewImg
+          ? `<img src="${previewImg}" style="width:100%;height:100%;object-fit:cover;">`
+          : `<div style="color:#888;font-size:12px;">사진이 없어요</div>`}
+      </div>
+      <div style="display:flex;gap:14px;padding:8px 12px;font-size:22px;">
+        ❤️ 💬 ✈️ <span style="flex:1;"></span> 🔖
+      </div>
+      <div style="padding:4px 12px 12px;font-size:12px;line-height:1.5;color:#262626;max-height:220px;overflow-y:auto;">
+        <b>${handle}</b> <span style="white-space:pre-wrap;">${(caption || '(캡션 없음)').replace(/</g,'&lt;')}</span>
+        ${hashHtml ? '<div style="margin-top:6px;word-break:break-word;">' + hashHtml + '</div>' : ''}
+      </div>
+      <div style="padding:10px 12px;border-top:1px solid #efefef;display:flex;gap:8px;">
+        <button onclick="document.getElementById('_finishInstaPreview').style.display='none'" style="flex:1;min-height:40px;padding:10px;border-radius:10px;border:1px solid #dbdbdb;background:#fff;font-size:12px;font-weight:700;cursor:pointer;">닫기</button>
+        <button onclick="publishSlotToInstagram('${slotId}');document.getElementById('_finishInstaPreview').style.display='none'" style="flex:1;min-height:40px;padding:10px;border-radius:10px;border:none;background:var(--accent,#F18091);color:#fff;font-size:12px;font-weight:800;cursor:pointer;">이대로 올리기</button>
+      </div>
+    </div>
+  `;
+  pop.style.display = 'flex';
 }
 
 async function publishSlotToInstagram(slotId) {
