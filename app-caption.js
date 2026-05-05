@@ -690,6 +690,9 @@ async function _doGenerateCaption(scenario, closePopup) {
       _renderCaptionActionBar(finalCaption, hashes);
       if (btn) { btn.innerHTML = '만들기 ✨'; btn.disabled = false; }
 
+      // [2026-05-05 19차-B] 인스타 시뮬 사진 미리보기 업데이트
+      try { _updateCaptionPreviewImage(); } catch (_e) { void _e; }
+
       // [2026-04-24] 캡션 렌더 후 미리보기 프레임으로 스크롤 — 사용자 시선 유도
       const frame = document.getElementById('captionResult');
       if (frame && typeof frame.scrollIntoView === 'function') {
@@ -1150,3 +1153,35 @@ async function saveCaptionToGallery() {
     showToast('저장 실패: ' + (window._humanError ? window._humanError(e) : e.message));
   }
 }
+
+// [2026-05-05 19차-B] 인스타 시뮬 — 캡션 결과 위 사진 미리보기 업데이트
+// 슬롯 연결돼 있고 사진 있으면 첫 사진 표시 + dots indicator(1/N), 없으면 hide.
+function _updateCaptionPreviewImage() {
+  const wrap = document.getElementById('captionPreviewImg');
+  const imgEl = document.getElementById('captionPreviewImgEl');
+  const dots = document.getElementById('captionPreviewDots');
+  const icons = document.getElementById('captionPreviewIcons');
+  if (!wrap || !imgEl) return;
+
+  const slot = (typeof _captionSlotId !== 'undefined' && _captionSlotId && typeof _slots !== 'undefined')
+    ? _slots.find(s => s.id === _captionSlotId) : null;
+  const photos = (slot && Array.isArray(slot.photos)) ? slot.photos.filter(p => !p.hidden && (p.dataUrl || p.url)) : [];
+  const first = photos[0];
+  if (!first) {
+    wrap.style.display = 'none';
+    if (icons) icons.style.display = 'none';
+    return;
+  }
+  imgEl.src = first.dataUrl || first.url || '';
+  wrap.style.display = 'block';
+  if (icons) icons.style.display = 'flex';
+  if (dots) {
+    if (photos.length > 1) {
+      dots.textContent = '1/' + photos.length;
+      dots.style.display = 'inline-flex';
+    } else {
+      dots.style.display = 'none';
+    }
+  }
+}
+window._updateCaptionPreviewImage = _updateCaptionPreviewImage;
