@@ -394,6 +394,7 @@ function _showAutoGroupBanner(count) {
   const banner = document.getElementById('wsBanner');
   if (!banner) return;
   banner.style.display = 'block';
+  banner.dataset.autoGroupCount = String(count);
   banner.innerHTML = `
     <div style="background:var(--brand-bg,#FCEEF1);border:1px solid var(--accent,#F18091);border-radius:14px;padding:13px 14px;margin-bottom:14px;display:flex;align-items:center;gap:11px;">
       <div style="width:32px;height:32px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--accent,#F18091);flex-shrink:0;">
@@ -401,15 +402,54 @@ function _showAutoGroupBanner(count) {
       </div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:800;color:var(--accent,#F18091);letter-spacing:-0.2px;">${count}명 손님으로 자동 분류했어요</div>
-        <div style="font-size:11px;color:var(--text2,#5A6573);margin-top:2px;">촬영 시각 30분 기준 · 다르면 수정해요</div>
+        <div style="font-size:11px;color:var(--text2,#5A6573);margin-top:2px;">촬영 시각 30분 기준 · 다르면 수정/합치기</div>
       </div>
       <button onclick="if(typeof openAssignPopup==='function')openAssignPopup();" style="padding:6px 12px;background:#fff;border:1px solid var(--border,rgba(15,20,25,0.08));border-radius:999px;font-size:11px;font-weight:700;color:var(--text,#0F1419);cursor:pointer;flex-shrink:0;">수정</button>
+      <button onclick="if(typeof _mergeAutoGroups==='function')_mergeAutoGroups(${count});" style="padding:6px 12px;background:#fff;border:1px solid var(--border,rgba(15,20,25,0.08));border-radius:999px;font-size:11px;font-weight:700;color:var(--text,#0F1419);cursor:pointer;flex-shrink:0;">합치기</button>
       <button onclick="document.getElementById('wsBanner').style.display='none';" style="width:24px;height:24px;background:transparent;border:none;color:var(--text3,#98A1AC);cursor:pointer;display:grid;place-items:center;flex-shrink:0;" aria-label="닫기">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
   `;
 }
+
+// [2026-05-05 18차-B] 자동 분류된 슬롯 합치기 — 마지막 N 슬롯의 photos 를
+// 첫 슬롯에 모으고 나머지 N-1개 슬롯을 _slots + DB 에서 제거. 재렌더 + 토스트.
+async function _mergeAutoGroups(count) {
+  if (!count || count < 2) {
+    if (typeof showToast === 'function') showToast('합칠 슬롯이 부족해요');
+    return;
+  }
+  if (!Array.isArray(_slots) || _slots.length < count) return;
+  const ok = window._confirm2 ? window._confirm2(`최근 ${count}개 슬롯을 1개로 합칠까요?`) : confirm(`최근 ${count}개 슬롯을 1개로 합칠까요?`);
+  if (!ok) return;
+
+  const targets = _slots.slice(-count);
+  const keep = targets[0];
+  const drop = targets.slice(1);
+
+  // 1) 모든 photos 를 keep 에 합침 (순서 유지)
+  keep.photos = drop.reduce((acc, s) => acc.concat(s.photos || []), keep.photos || []);
+
+  // 2) DB 에서 drop 슬롯 제거 (병렬, 실패 무시 — UI 일관성 우선)
+  await Promise.all(drop.map(s =>
+    (typeof deleteSlotFromDB === 'function' ? deleteSlotFromDB(s.id).catch(() => {}) : Promise.resolve())
+  ));
+
+  // 3) _slots 에서 drop id 제거
+  const dropIds = new Set(drop.map(s => s.id));
+  _slots = _slots.filter(s => !dropIds.has(s.id));
+
+  // 4) keep 갱신 저장
+  try { if (typeof saveSlotToDB === 'function') await saveSlotToDB(keep); } catch (_e) { /* ignore */ }
+
+  // 5) 배너 닫고 재렌더 + 토스트
+  const banner = document.getElementById('wsBanner');
+  if (banner) banner.style.display = 'none';
+  if (typeof _renderSlotCards === 'function') _renderSlotCards();
+  if (typeof showToast === 'function') showToast('1개 슬롯으로 합쳤어요');
+}
+window._mergeAutoGroups = _mergeAutoGroups;
 
 function _renderCompletionBanner() {
   const badge  = document.getElementById('wsCompletionBadge');
