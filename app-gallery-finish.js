@@ -86,18 +86,10 @@ function _renderFinishTab(root, galleryItems = []) {
         <!-- 마무리 액션 -->
         <div style="display:flex;flex-direction:column;gap:6px;">
           <button data-action="publish" style="width:100%;min-height:48px;padding:12px;border-radius:12px;border:none;background:var(--accent,#F18091);color:#fff;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;letter-spacing:-0.2px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
-            인스타에 올리기
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            발행하기
           </button>
           <div style="display:flex;justify-content:space-around;align-items:center;padding-top:10px;margin-top:4px;border-top:0.5px solid var(--border,rgba(15,20,25,0.06));gap:4px;">
-            <button data-action="gallery" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:700;color:var(--text2,#5A6573);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;border-radius:6px;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-              보관
-            </button>
-            <button data-action="download" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:700;color:var(--text2,#5A6573);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;border-radius:6px;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              저장
-            </button>
             <button data-action="defer" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:700;color:var(--text2,#5A6573);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;border-radius:6px;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               나중에
@@ -161,13 +153,7 @@ function _renderFinishTab(root, galleryItems = []) {
     const card = root.querySelector(`[data-finish-slot="${slot.id}"]`);
     if (!card) return;
     card.querySelector('[data-action="edit"]')?.addEventListener('click', () => openSlotPopup(slot.id));
-    card.querySelector('[data-action="publish"]')?.addEventListener('click', () => _previewSlotOnInsta(slot.id));
-    card.querySelector('[data-action="gallery"]')?.addEventListener('click', (e) => {
-      e.currentTarget.disabled = true;
-      e.currentTarget.style.opacity = '0.5';
-      _saveSlotToGallery(slot.id);
-    });
-    card.querySelector('[data-action="download"]')?.addEventListener('click', () => downloadSlotPhotos(slot.id));
+    card.querySelector('[data-action="publish"]')?.addEventListener('click', () => _showPublishOptions(slot.id));
     card.querySelector('[data-action="pickCustomer"]')?.addEventListener('click', () => _pickCustomerForSlot(slot.id));
     card.querySelector('[data-action="defer"]')?.addEventListener('click', () => _deferSlot(slot.id));
     card.querySelector('[data-action="delete"]')?.addEventListener('click', () => deleteSlotFinish(slot.id));
@@ -342,6 +328,69 @@ async function _saveSlotToGallery(slotId) {
     showToast(msg);
   }
 }
+
+function _showPublishOptions(slotId) {
+  const slot = _slots.find(s => s.id === slotId);
+  if (!slot) return;
+
+  let pop = document.getElementById('_publishOptionsPop');
+  if (!pop) {
+    pop = document.createElement('div');
+    pop.id = '_publishOptionsPop';
+    pop.style.cssText = 'display:none;position:fixed;inset:0;z-index:9500;background:rgba(15,20,25,0.5);align-items:flex-end;justify-content:center;';
+    pop.onclick = e => { if (e.target === pop) pop.style.display = 'none'; };
+    document.body.appendChild(pop);
+  }
+
+  pop.innerHTML = `
+    <div style="width:100%;max-width:480px;background:var(--surface,#fff);border-radius:22px 22px 0 0;padding:8px 0 24px;">
+      <div style="width:38px;height:4px;border-radius:2px;background:var(--border-strong,rgba(0,0,0,0.12));margin:6px auto 14px;"></div>
+      <div style="padding:0 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <div style="font-size:17px;font-weight:800;color:var(--text);letter-spacing:-0.3px;">${slot.label}</div>
+          <div style="font-size:11.5px;color:var(--text3);margin-top:2px;">어디로 보낼까요?</div>
+        </div>
+        <button onclick="document.getElementById('_publishOptionsPop').style.display='none'" style="width:30px;height:30px;border-radius:999px;background:var(--bg2,#f8f8f9);border:none;color:var(--text2);cursor:pointer;display:grid;place-items:center;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div style="display:flex;flex-direction:column;">
+        <button onclick="document.getElementById('_publishOptionsPop').style.display='none'; _previewSlotOnInsta('${slotId}');" style="display:flex;align-items:center;gap:14px;padding:14px 20px;border:none;background:var(--brand-bg,#FCEEF1);width:100%;cursor:pointer;text-align:left;border-bottom:1px solid var(--border);">
+          <div style="width:40px;height:40px;border-radius:12px;background:#fff;display:grid;place-items:center;color:var(--accent,#F18091);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.2px;">인스타에 올리기</div>
+            <div style="font-size:11.5px;color:var(--text3);margin-top:2px;">미리보기 후 바로 발행</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent,#F18091)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <button onclick="document.getElementById('_publishOptionsPop').style.display='none'; _saveSlotToGallery('${slotId}');" style="display:flex;align-items:center;gap:14px;padding:14px 20px;border:none;background:transparent;width:100%;cursor:pointer;text-align:left;border-bottom:1px solid var(--border);">
+          <div style="width:40px;height:40px;border-radius:12px;background:var(--bg2,#f8f8f9);display:grid;place-items:center;color:var(--text);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.2px;">앨범에 보관</div>
+            <div style="font-size:11.5px;color:var(--text3);margin-top:2px;">서버 저장 · 포트폴리오에서 다시 보기</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <button onclick="document.getElementById('_publishOptionsPop').style.display='none'; downloadSlotPhotos('${slotId}');" style="display:flex;align-items:center;gap:14px;padding:14px 20px;border:none;background:transparent;width:100%;cursor:pointer;text-align:left;">
+          <div style="width:40px;height:40px;border-radius:12px;background:var(--bg2,#f8f8f9);display:grid;place-items:center;color:var(--text);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.2px;">내 폰에 저장</div>
+            <div style="font-size:11.5px;color:var(--text3);margin-top:2px;">사진 + 캡션 폰 갤러리로</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+  `;
+  pop.style.display = 'flex';
+}
+window._showPublishOptions = _showPublishOptions;
 
 function _previewSlotOnInsta(slotId) {
   const slot = _slots.find(s => s.id === slotId);
