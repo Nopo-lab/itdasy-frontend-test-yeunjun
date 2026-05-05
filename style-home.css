@@ -99,7 +99,20 @@
   letter-spacing: -0.02em;
   transition: all 0.18s;
 }
-.style-opt.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* [2026-05-05 v6 톤] 활성: 검정 배경 + 흰 글씨 (이전 핑크 폐기). 비활성: 회색 그대로. */
+.style-opt.on,
+.style-opt.active {
+  background: var(--text, #0F1419);
+  border-color: var(--text, #0F1419);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* 포트폴리오 카드 hover — 작업실 슬롯과 동일 패턴 (핑크 보더 + 그림자) */
+.portfolio-cell:hover {
+  border-color: var(--accent, #F18091) !important;
+  box-shadow: 0 4px 14px rgba(241, 128, 145, 0.18);
+}
 
 
 /* 카드 섹션 구분 */

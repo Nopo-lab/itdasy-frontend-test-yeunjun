@@ -199,7 +199,8 @@ async function loadPortfolio() {
     }
     empty.style.display = 'none';
 
-    const ptypeColor = { before: '#6495ed', after: 'var(--accent)', general: 'var(--text3)' };
+    // [2026-05-05 v6 톤] photo_type 색감 통일 — BEFORE 회색(text2), AFTER 핑크 그대로, general 회색.
+    const ptypeColor = { before: 'var(--text2, #5A6573)', after: 'var(--accent)', general: 'var(--text3)' };
     const ptypeLabel = { before: 'BEFORE', after: 'AFTER', general: '일반' };
 
     _portfolioItems.forEach(item => {
@@ -211,7 +212,8 @@ async function loadPortfolio() {
       const safeTags = _portfolioEscapeText(item.tags || '');
       cell.dataset.id = item.id;
       cell.draggable = true;
-      cell.style.cssText = 'position:relative; aspect-ratio:1/1; overflow:hidden; border-radius:12px; background:var(--bg2); cursor:grab; transition:opacity 0.2s;';
+      cell.className = 'portfolio-cell';
+      cell.style.cssText = 'position:relative; aspect-ratio:1/1; overflow:hidden; border-radius:12px; background:var(--bg2); cursor:grab; transition:opacity 0.2s, border-color 0.18s, box-shadow 0.18s; border:1px solid var(--border, rgba(15,20,25,0.08));';
       cell.innerHTML = `
         <img src="${safeSrc}" style="width:100%; height:100%; object-fit:cover; pointer-events:none;">
         <div style="position:absolute; top:4px; right:4px; background:${ptypeColor[pt]}; border-radius:20px; padding:2px 6px; font-size:8px; color:#fff; font-weight:800; opacity:0.92;">${ptypeLabel[pt]}</div>
