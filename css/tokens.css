@@ -45,22 +45,22 @@
   --stroke: 2;
 }
 
-/* §1 컬러 — 다크 (디자인시스템 v1 정의) */
+/* §1 컬러 — 다크 v6 톤 (#000 배경 + 흰 hairline) */
 html[data-theme="dark"] {
-  --brand:         #FF8CA0;
+  --brand:         #FF8FA3;
   --brand-strong:  #FFA8B8;
-  --brand-bg:      rgba(255,140,160,.14);
-  --bg:            #0E1218;
-  --frame:         #252B35;
-  --surface:       #1A1F27;
-  --surface-2:     #242A33;
-  --text:          #F3F5F7;
-  --text-muted:    #C7CCD3;
-  --text-subtle:   #8B93A0;
-  --border:        rgba(255,255,255,.10);
-  --border-strong: rgba(255,255,255,.20);
-  --shadow-md:    0 8px 24px rgba(0,0,0,.30);
-  --shadow-brand: 0 10px 24px rgba(255,140,160,.35);
+  --brand-bg:      rgba(255,143,163,.20);
+  --bg:            #000000;
+  --frame:         #232325;
+  --surface:       #18181A;
+  --surface-2:     #232325;
+  --text:          #FAFAFA;
+  --text-muted:    #DDDDDD;
+  --text-subtle:   #A8A8A8;
+  --border:        rgba(255,255,255,.18);
+  --border-strong: rgba(255,255,255,.28);
+  --shadow-md:    0 8px 24px rgba(0,0,0,.40);
+  --shadow-brand: 0 10px 24px rgba(255,143,163,.35);
 }
 
 /* §4 SVG 전역 기본값 — Lucide 라인 스타일 */

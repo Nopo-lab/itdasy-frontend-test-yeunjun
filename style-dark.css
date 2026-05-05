@@ -9,13 +9,13 @@ html[data-theme="light"] { color-scheme: light; }
 html[data-theme="dark"], html[data-theme="dark"] body {
   color-scheme: dark;
 
-  /* ── 새 다크 토큰 (T-200 P1) ── */
-  --brand: #F18091; --brand-strong: #FF99AC; --brand-bg: rgba(241,128,145,.10);
-  --bg: #0B0E13; --surface: #16191F; --surface-2: #1F232B;
-  --text: #ECEEF1; --text-muted: #B0B4BB; --text-subtle: #8E929A;
-  --border: rgba(255,255,255,.08); --border-strong: rgba(255,255,255,.16);
-  --shadow-md: 0 4px 16px rgba(0,0,0,.30);
-  --shadow-brand: 0 8px 24px rgba(241,128,145,.40);
+  /* ── 다크 토큰 v6 톤 (#000 배경 + 흰 hairline) ── */
+  --brand: #FF8FA3; --brand-strong: #FFA8B8; --brand-bg: rgba(255,143,163,.20);
+  --bg: #000000; --surface: #18181A; --surface-2: #232325;
+  --text: #FAFAFA; --text-muted: #DDDDDD; --text-subtle: #A8A8A8;
+  --border: rgba(255,255,255,.18); --border-strong: rgba(255,255,255,.28);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.40);
+  --shadow-brand: 0 8px 24px rgba(255,143,163,.40);
 
   /* ── 레거시 alias (라이트와 동일 매핑) ── */
   --bg2: var(--surface);
@@ -26,13 +26,13 @@ html[data-theme="dark"], html[data-theme="dark"] body {
   --text3: var(--text-subtle);
   --border2: var(--border-strong);
 
-  background: #0B0E13 !important;
-  color: #ECEEF1 !important;
+  background: #000000 !important;
+  color: #FAFAFA !important;
 }
 
 html[data-theme="dark"] body {
-  background: #0B0E13 !important;
-  color: #ECEEF1 !important;
+  background: #000000 !important;
+  color: #FAFAFA !important;
 }
 
 /* stylelint-disable selector-id-pattern */
@@ -52,8 +52,8 @@ html[data-theme="dark"] #onboardingCaptionPopup,
 html[data-theme="dark"] #slotPopup,
 html[data-theme="dark"] #welcomeOverlay,
 html[data-theme="dark"] #analyzeOverlay {
-  background: #1A1C22 !important;
-  color: #ECEEF1 !important;
+  background: #18181A !important;
+  color: #FAFAFA !important;
 }
 
 /* inline style 로 background:#fff 박힌 요소들 강제 */
