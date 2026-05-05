@@ -67,15 +67,15 @@ function _renderFinishTab(root, galleryItems = []) {
       : '';
     const isDeferred = !!slot.deferredAt;
     return `
-      <div data-finish-slot="${slot.id}" style="background:#fff;border:1.5px solid ${isDeferred ? 'rgba(255,193,7,0.4)' : 'rgba(76,175,80,0.3)'};border-radius:16px;padding:14px;margin-bottom:10px;">
+      <div data-finish-slot="${slot.id}" style="background:#fff;border:1px solid var(--border, rgba(15,20,25,0.08));border-radius:16px;padding:14px;margin-bottom:10px;">
         <!-- 슬롯 정보 -->
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
           <div style="display:flex;gap:4px;">${thumbs}</div>
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-              <div style="font-size:13px;font-weight:800;color:var(--text);">${slot.label} ✅</div>
-              ${slot.caption ? '<span style="font-size:9px;background:rgba(76,175,80,0.15);color:#388e3c;border-radius:4px;padding:1px 5px;font-weight:700;">캡션✓</span>' : ''}
-              ${isDeferred ? '<span style="font-size:9px;background:rgba(255,193,7,0.15);color:#f57c00;border-radius:4px;padding:1px 5px;font-weight:700;">나중에</span>' : ''}
+              <div style="font-size:13px;font-weight:800;color:var(--text);">${slot.label}</div>
+              ${slot.caption ? '<span style="font-size:9px;background:var(--brand-bg,#FCEEF1);color:var(--accent,#F18091);border-radius:4px;padding:1px 5px;font-weight:700;">캡션✓</span>' : ''}
+              ${isDeferred ? '<span style="font-size:9px;background:var(--bg2,#f8f8f9);color:var(--text2,#5A6573);border-radius:4px;padding:1px 5px;font-weight:700;">나중에</span>' : ''}
               ${slot.customer_name ? `<span style="font-size:9px;background:rgba(241,128,145,0.15);color:var(--accent,#F18091);border-radius:4px;padding:1px 5px;font-weight:700;">👤 ${slot.customer_name.slice(0,6)}</span>` : ''}
             </div>
             <div style="font-size:11px;color:var(--text3);">${visPhotos.length}장</div>
@@ -85,15 +85,30 @@ function _renderFinishTab(root, galleryItems = []) {
         </div>
         <!-- 마무리 액션 -->
         <div style="display:flex;flex-direction:column;gap:6px;">
-          <button data-action="publish" style="width:100%;min-height:48px;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:13px;font-weight:800;cursor:pointer;">🚀 인스타 바로 올리기</button>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-            <button data-action="gallery" style="min-height:40px;padding:10px;border-radius:10px;border:1.5px solid rgba(241,128,145,0.3);background:transparent;color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;">📁 갤러리 보관</button>
-            <button data-action="download" style="min-height:40px;padding:10px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;">📥 폰에 저장</button>
-          </div>
-          <div style="display:flex;gap:6px;">
-            <button data-action="pickCustomer" style="flex:1;min-height:40px;padding:8px;border-radius:10px;border:1.5px solid rgba(241,128,145,0.3);background:transparent;color:var(--accent,#F18091);font-size:11px;font-weight:700;cursor:pointer;">👤 ${slot.customer_name ? slot.customer_name.slice(0,8) : '고객 지정'}</button>
-            <button data-action="defer" style="flex:1;min-height:40px;padding:8px;border-radius:10px;border:1.5px solid rgba(255,193,7,0.5);background:transparent;color:#f57c00;font-size:11px;font-weight:700;cursor:pointer;">🕐 나중에 (AI추천으로)</button>
-            <button data-action="delete" style="min-height:40px;padding:8px 14px;border-radius:10px;border:1.5px solid rgba(220,53,69,0.3);background:transparent;color:#dc3545;font-size:11px;cursor:pointer;font-weight:600;">삭제</button>
+          <button data-action="publish" style="width:100%;min-height:48px;padding:12px;border-radius:12px;border:none;background:var(--accent,#F18091);color:#fff;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;letter-spacing:-0.2px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+            인스타에 올리기
+          </button>
+          <div style="display:flex;justify-content:space-around;align-items:center;padding-top:10px;margin-top:4px;border-top:0.5px solid var(--border,rgba(15,20,25,0.06));gap:4px;">
+            <button data-action="gallery" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:700;color:var(--text2,#5A6573);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;border-radius:6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+              보관
+            </button>
+            <button data-action="download" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:700;color:var(--text2,#5A6573);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;border-radius:6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              저장
+            </button>
+            <button data-action="defer" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:700;color:var(--text2,#5A6573);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;border-radius:6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              나중에
+            </button>
+            <button data-action="pickCustomer" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:700;color:var(--accent,#F18091);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;border-radius:6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              ${slot.customer_name ? slot.customer_name.slice(0,4) : '고객'}
+            </button>
+            <button data-action="delete" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:700;color:rgba(220,53,69,0.7);cursor:pointer;border-radius:6px;">
+              삭제
+            </button>
           </div>
         </div>
       </div>
