@@ -14,6 +14,16 @@
   function _auth() { try { return (window.authHeader && window.authHeader()) || {}; } catch (_) { return {}; } }
   function _toast(m) { if (window.showToast) window.showToast(m); }
   function _haptic() { try { window.hapticLight && window.hapticLight(); } catch (_e) { void _e; } }
+  async function _safeGet(key) {
+    try {
+      if (window.SecureStorage) return await window.SecureStorage.get(key);
+      return localStorage.getItem(key) || '';
+    } catch (_) { return ''; }
+  }
+  async function _safeSet(key, value) {
+    if (window.SecureStorage) return window.SecureStorage.set(key, value);
+    localStorage.setItem(key, value || '');
+  }
 
   function _ensureMounted() {
     let el = document.getElementById(ID);
@@ -130,12 +140,12 @@
     card.style.display = solo.classList.contains('is-on') ? 'none' : 'block';
   }
 
-  function _hydrate() {
+  async function _hydrate() {
     const get = (k) => { try { return localStorage.getItem(k) || ''; } catch (_) { return ''; } };
     const fields = {
       ssShopName:  get('itdasy_shop_name') || get('shop_name') || '',
-      ssShopPhone: get('itdasy_shop_phone') || '',
-      ssShopAddr:  get('itdasy_shop_addr') || '',
+      ssShopPhone: await _safeGet('itdasy_shop_phone'),
+      ssShopAddr:  await _safeGet('itdasy_shop_addr'),
       ssShopHours: get('itdasy_shop_hours') || '',
     };
     Object.keys(fields).forEach(id => {
@@ -164,8 +174,8 @@
     // 로컬 저장 (즉시 반영)
     try {
       localStorage.setItem('itdasy_shop_name', payload.shop_name);
-      localStorage.setItem('itdasy_shop_phone', payload.phone);
-      localStorage.setItem('itdasy_shop_addr', payload.address);
+      await _safeSet('itdasy_shop_phone', payload.phone);
+      await _safeSet('itdasy_shop_addr', payload.address);
       localStorage.setItem('itdasy_shop_hours', payload.hours);
       localStorage.setItem('itdasy_solo_mode', String(payload.solo_mode));
     } catch (_e) { void _e; }
@@ -191,7 +201,7 @@
 
   function openShopSettings() {
     const el = _ensureMounted();
-    _hydrate();
+    _hydrate().catch(() => {});
     requestAnimationFrame(() => el.classList.add('is-open'));
     el.setAttribute('aria-hidden', 'false');
     _haptic();

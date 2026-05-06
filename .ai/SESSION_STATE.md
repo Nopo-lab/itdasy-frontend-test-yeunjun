@@ -2,7 +2,7 @@
 
 > 새 세션이 시작되면 **이 파일을 먼저 읽고** 현재 단계·대기 결정·마지막 체크포인트를 파악한다.
 
-**LAST UPDATED:** 2026-05-06 · Phase 9 P2 성능 최적화 1차
+**LAST UPDATED:** 2026-05-06 · Phase 9 P3~P5 프론트 1차
 
 ---
 
@@ -11,7 +11,7 @@
 - **현재 Phase:** 9 — 전면 최적화 + 신기능 (플랜 파일 참조)
 - **플랜 파일:** `~/.claude/plans/lively-sniffing-pudding.md`
 - **이전 완료:** Phase 0~6.4 완전 완료. Phase 7(앱 심사 50%), Phase 8(운영 승격 50%)
-- **최신 빌드:** `20260506-v100-phase2-cache`
+- **최신 빌드:** `20260506-v101-phase3-5`
 
 **불가침 영역:**
 - 글쓰기 탭 시나리오 팝업(`openCaptionScenarioPopup` / `scenario-selector.js` / `_doGenerateCaption`) — 원영님 "이 로직 최고". 에러 핸들러 문구 1군데 외 수정 금지.
@@ -37,9 +37,23 @@
 - `app-customer-hub.js`: 고객 분류 계산 반복 줄임
 - 보류: 초기 lazy loader 는 `index.html` 로드 순서 영향이 커서 별도 안전 티켓으로 분리
 
-### Phase 3: UX 간소화 🔵 예정
-### Phase 4: 보안 강화 🔵 예정
-### Phase 5: 신규 기능 🔵 예정
+### Phase 3: UX 간소화 ✅ 1차 완료 (2026-05-06)
+- `css/screens/phase9-ux.css` 신규: 고객/예약/매출 버튼 터치 영역 44~48px 확보
+- `app-phase9-ux.js` 신규: 예약 빠른 추가, 매출 빠른 입력, 공통 로딩/오류 문구 헬퍼 추가
+- 홈 빠른 실행 버튼: 예약 추가, 매출 기록, 대기자, 위험 고객, 리마인더, 리뷰 요청, 회원권, 예약 링크
+
+### Phase 4: 보안 강화 🟡 프론트 1차 완료 (2026-05-06)
+- `app-secure-storage.js` 신규: Web Crypto 기반 전화번호/주소 암호화 저장
+- `app-shop-settings.js`: 샵 전화번호/주소 저장·불러오기를 암호화 저장으로 교체
+- 보류: refresh token, shop_id 응답, 강한 CSP 는 백엔드/외부 스크립트 영향 있어 별도 안전 작업 필요
+
+### Phase 5: 신규 기능 🟡 프론트 1차 완료 (2026-05-06)
+- `app-waitlist.js` 신규: 대기자 로컬 관리 + 예약 빠른 추가 연결
+- `app-reminder.js` 신규: 리마인더 설정 + 예약 확인 수동 전송 연결
+- `app-retention-ai.js` 신규: `/retention/at-risk` 기반 위험 고객 화면 + DM 초안 복사
+- `app-review.js` 신규: 리뷰 요청 문구 생성/복사 관리
+- `app-public-link.js` 로드: 공개 예약 링크 화면을 빠른 실행에 연결
+- 남음: 대기자/멤버십/리뷰 서버 저장, 자동 스케줄러, refresh token 은 연준 백엔드 작업 필요
 
 ---
 
