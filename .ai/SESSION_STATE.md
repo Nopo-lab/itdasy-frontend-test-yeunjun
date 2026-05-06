@@ -2,7 +2,7 @@
 
 > 새 세션이 시작되면 **이 파일을 먼저 읽고** 현재 단계·대기 결정·마지막 체크포인트를 파악한다.
 
-**LAST UPDATED:** 2026-05-06 · Phase 9 P3~P5 프론트 1차
+**LAST UPDATED:** 2026-05-07 · cold start 버그 수정 + 챗봇 복구
 
 ---
 
@@ -54,6 +54,14 @@
 - `app-review.js` 신규: 리뷰 요청 문구 생성/복사 관리
 - `app-public-link.js` 로드: 공개 예약 링크 화면을 빠른 실행에 연결
 - 남음: 대기자/멤버십/리뷰 서버 저장, 자동 스케줄러, refresh token 은 연준 백엔드 작업 필요
+
+### Phase 6: Cold Start 버그 수정 ✅ 완료 (2026-05-07)
+- `app-customer-dashboard.js`: _apiGet 타임아웃 10s→22s, AbortError 시 /customers/{id} 폴백 추가
+- `app-perf-recovery.js`: 헬스체크 프로브 타임아웃 8s→20s, 초기 프로브 딜레이 800ms→3s
+- `app-core.js`: AbortController 이미 abort된 신호의 재시도 차단 (불필요 토스트 억제)
+- `itdasy_backend-test/generation.py`: Vertex AI location "global"→"us-central1" 수정, SA JSON 인증 배포
+  - 원인: 사용자가 Railway에 USE_VERTEX_AI=true + GOOGLE_SERVICE_ACCOUNT_JSON 추가했는데
+    기존 코드가 location="global" (무효)로 모든 AI 호출 실패 → 챗봇 1분+ 타임아웃
 
 ---
 
