@@ -484,14 +484,18 @@ function authHeader() {
   window._fetchPatched = true;
   const _origFetch = window.fetch.bind(window);
 
-  // 재시도 설정: 읽기성 요청(GET/HEAD)과 멱등성 POST 는 재시도. 파일 업로드 요청(body 가 FormData/Blob)도 재시도 가능하나 body 를 재사용 못하므로 제외.
-  const RETRY_STATUSES = new Set([502, 503, 504]);
-  const MAX_RETRIES = 2;          // 총 3회 시도 (초기 + 2회 재시도)
-  const BACKOFF_MS = [400, 1200]; // exponential-ish
+  // 재시도 설정: GET/HEAD + JSON body(string) POST 는 재시도 가능. FormData/Blob 은 body 재사용 불가라 제외.
+  // 500 추가: Railway cold start 시 일시적 500 응답도 재시도 대상.
+  const RETRY_STATUSES = new Set([500, 502, 503, 504]);
+  const MAX_RETRIES = 3;              // 총 4회 시도 (초기 + 3회 재시도)
+  const BACKOFF_MS = [500, 1500, 4000]; // exponential backoff (cold start 대응)
 
   function _isRetryableMethod(init) {
     const m = (init && init.method ? String(init.method).toUpperCase() : 'GET');
-    return m === 'GET' || m === 'HEAD';
+    if (m === 'GET' || m === 'HEAD') return true;
+    // JSON body(string) POST 는 body 재사용 가능 → 재시도 허용
+    if (m === 'POST' && init && typeof init.body === 'string') return true;
+    return false;
   }
   function _bodyReusable(init) {
     if (!init || !init.body) return true;
@@ -1783,9 +1787,9 @@ window.safeStorage = {
   remove(key) { try { localStorage.removeItem(key); return true; } catch (_e) { return false; } },
 };
 
-// 안전 fetch — 15초 타임아웃 + AbortController
+// 안전 fetch — 25초 타임아웃 + AbortController (Railway cold start 10-20s 대응)
 window.safeFetch = async function (url, opts = {}) {
-  const timeout = opts.timeout || 15000;
+  const timeout = opts.timeout || 25000;
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeout);
   try {

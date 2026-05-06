@@ -56,7 +56,7 @@
 
       const p = (async () => {
         const ctl = new AbortController();
-        const timer = setTimeout(() => ctl.abort(), 8000);
+        const timer = setTimeout(() => ctl.abort(), 20000); // Railway cold start 대응
         try {
           const res = await fetch(window.API + url, {
             headers: { ...auth },
@@ -566,14 +566,21 @@
   function _probeBackendOnline() {
     const auth = window.authHeader && window.authHeader();
     if (!navigator.onLine || !window.API || !auth || !auth.Authorization) return;
-    fetch(window.API + '/', { cache: 'no-store' })
-      .then(() => {
-        _markOnline();
-        try {
-          if (typeof window._clearAllSWRCache === 'function') window._clearAllSWRCache();
-        } catch (_) { /* ignore */ }
+    // /auth/me 로 실제 API 응답성 확인 (401도 서버 정상 신호)
+    const ctl = new AbortController();
+    setTimeout(() => ctl.abort(), 8000);
+    fetch(window.API + '/auth/me', { cache: 'no-store', headers: auth, signal: ctl.signal })
+      .then(r => {
+        if (r.ok || r.status === 401) {
+          _markOnline();
+          try {
+            if (typeof window._clearAllSWRCache === 'function') window._clearAllSWRCache();
+          } catch (_) { /* ignore */ }
+        } else {
+          _markOffline();
+        }
       })
-      .catch(() => {});
+      .catch(() => { _markOffline(); });
   }
   window.addEventListener('online', _probeBackendOnline);
   document.addEventListener('visibilitychange', () => {
