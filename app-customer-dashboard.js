@@ -68,9 +68,9 @@
   async function _apiGet(path) {
     if (!window.API || !window.authHeader) throw new Error('no-auth');
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 10000); // 10초 타임아웃
+    const tid = setTimeout(() => ctrl.abort(), 22000); // Railway cold start 대응 22s
     try {
-      const res = await fetch(window.API + path, { 
+      const res = await fetch(window.API + path, {
         headers: window.authHeader(),
         signal: ctrl.signal
       });
@@ -445,8 +445,9 @@
       _bindMembership(d);
     } catch (e) {
       console.warn('[customer-dashboard] 실패:', e);
-      // 대시보드 엔드포인트 미존재 시 기본 고객 상세로 폴백
-      if (e.message && (e.message.includes('404') || e.message.includes('endpoint') || e.message.includes('501'))) {
+      // 대시보드 엔드포인트 없거나 타임아웃·네트워크 오류 시 기본 고객 상세로 폴백
+      const _isNetworkErr = e.name === 'AbortError' || e.message === 'Failed to fetch' || e.message === 'NetworkError when attempting to fetch resource.';
+      if (_isNetworkErr || (e.message && (e.message.includes('404') || e.message.includes('endpoint') || e.message.includes('501')))) {
         try {
           const cust = await _apiGet('/customers/' + id);
           body.innerHTML = `

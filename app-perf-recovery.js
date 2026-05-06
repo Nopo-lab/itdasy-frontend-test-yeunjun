@@ -567,8 +567,9 @@
     const auth = window.authHeader && window.authHeader();
     if (!navigator.onLine || !window.API || !auth || !auth.Authorization) return;
     // /auth/me 로 실제 API 응답성 확인 (401도 서버 정상 신호)
+    // Railway cold start 최대 20s — 프로브 타임아웃도 20s로 맞춤
     const ctl = new AbortController();
-    setTimeout(() => ctl.abort(), 8000);
+    setTimeout(() => ctl.abort(), 20000);
     fetch(window.API + '/auth/me', { cache: 'no-store', headers: auth, signal: ctl.signal })
       .then(r => {
         if (r.ok || r.status === 401) {
@@ -586,7 +587,8 @@
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) _probeBackendOnline();
   });
-  document.addEventListener('DOMContentLoaded', () => setTimeout(_probeBackendOnline, 800));
+  // cold start 시 800ms 프로브가 즉시 실패해 오프라인 배너를 띄우는 문제 방지 — 3s 지연
+  document.addEventListener('DOMContentLoaded', () => setTimeout(_probeBackendOnline, 3000));
   // SW v26+ activate 메시지 받으면 즉시 reload (cache busting)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('controllerchange', () => {

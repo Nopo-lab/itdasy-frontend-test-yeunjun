@@ -544,6 +544,11 @@ function authHeader() {
         }
         return res;
       } catch (err) {
+        // 호출자 AbortController 가 이미 abort한 경우 → 재시도 없이 즉시 전파
+        // (재시도해도 즉시 abort되어 toast만 쌓이는 문제 방지)
+        if (err.name === 'AbortError' && init && init.signal && init.signal.aborted) {
+          throw err;
+        }
         // 네트워크 에러 (DNS·오프라인·CORS·abort) — retryable 한정으로 재시도. 첫 실패는 조용히.
         if (retryable && attempt < MAX_RETRIES) {
           if (attempt >= 1) _showReconnectToast();
