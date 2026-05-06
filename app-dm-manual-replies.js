@@ -46,6 +46,9 @@
   };
 
   async function _fetchSettings() {
+    if (window.DmSettingsCache?.get) {
+      return window.DmSettingsCache.get().catch(() => null);
+    }
     try {
       const res = await fetch(window.API + '/instagram/dm-reply/settings', { headers: window.authHeader() });
       if (!res.ok) return null;
@@ -172,12 +175,15 @@
           const el = sheet.querySelector('#' + taId);
           payload[_CAT_TO_TPL_KEY[cat]] = el ? el.value : '';
         }
-        const res = await fetch(window.API + '/instagram/dm-reply/settings', {
-          method: 'POST',
-          headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (window.DmSettingsCache?.save) await window.DmSettingsCache.save(payload);
+        else {
+          const res = await fetch(window.API + '/instagram/dm-reply/settings', {
+            method: 'POST',
+            headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+        }
         if (window.showToast) window.showToast('기본 멘트 저장됐어요');
       } catch (e) {
         if (window.showToast) window.showToast('저장 실패: ' + (e.message || ''));

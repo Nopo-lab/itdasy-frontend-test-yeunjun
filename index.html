@@ -36,7 +36,7 @@
 <meta name="theme-color" content="#F2F4F6">
 <title>잇데이 스튜디오</title>
 <script>
-  window.__LATEST_BUILD__ = '20260506-v99-dm-regen-timeout';
+  window.__LATEST_BUILD__ = '20260506-v100-phase2-cache';
   setTimeout(function(){
     if (window.APP_BUILD && window.APP_BUILD !== window.__LATEST_BUILD__ && !sessionStorage.getItem('build_busted')) {
       console.warn('[BUILD] stale JS 감지 — HTML=' + window.__LATEST_BUILD__ + ' / JS=' + window.APP_BUILD + ' → 캐시 파괴');
@@ -1633,7 +1633,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
 </aside>
 <!-- /shop-drawer -->
 
-<script src="app-core.js?v=20260506-v99"></script>
+<script src="app-core.js?v=20260506-v100"></script>
 <script src="app-drawer.js"></script>
 <script src="app-shop-settings.js"></script>
 <script src="app-backup.js"></script>
@@ -1642,7 +1642,8 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
 <script src="app-failures-hub.js"></script>
 <script src="app-perf-recovery.js?v=20260504-1"></script>
 <script src="app-spec-validator.js"></script>
-<script src="app-dm-autoreply.js?v=20260506-v99"></script>
+<script src="app-dm-settings-cache.js?v=20260506-v100"></script>
+<script src="app-dm-autoreply.js?v=20260506-v100"></script>
 <script src="app-dm-confirm-queue.js?v=20260502-3"></script>
 <script src="app-dm-conversations.js?v=20260502-3"></script>
 <script src="app-dm-manual-replies.js?v=0501"></script>
@@ -1690,8 +1691,9 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-theme.js"></script>
 <script src="app-plan.js?v=20260504-1"></script>
 <script src="app-support.js"></script>
-<script src="app-customer.js"></script>
-<script src="app-customer-dashboard.js?v=20260502-1"></script>
+<script src="app-customer-cache.js?v=20260506-v100"></script>
+<script src="app-customer.js?v=20260506-v100"></script>
+<script src="app-customer-dashboard.js?v=20260506-v100"></script>
 <!-- [2026-04-29 W5] 회원권 / 정기권 UI — Premium 차별화 -->
 <script src="app-membership.js" defer></script>
 <!-- [2026-04-30] 시트 진입/종료 애니메이션 헬퍼 (SheetAnim) -->
@@ -1712,7 +1714,7 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-staff.js?v=20260504-1" defer></script>
 <!-- E3 (2026-04-26) — 검색 가능 AI 고객 메모. 알러지 자동 경고 + 전체 검색. -->
 <script src="app-customer-memo.js"></script>
-<script src="app-revenue.js?v=20260505-v97"></script>
+<script src="app-revenue.js?v=20260506-v100"></script>
 <script src="app-booking-api.js"></script>
 <script src="app-booking-approval.js"></script>
 <!-- E4 (2026-04-26) — 노쇼 자동 감지 + 예약 확인 메시지 -->
@@ -1753,7 +1755,7 @@ window._lazyImgly = function _lazyImgly() {
 <script src="js/hubs/prototype-render.js?v=20260504-1"></script>
 <script src="app-inventory-hub.js?v=20260504-1"></script>
 <script src="app-emoji-storage.js"></script>
-<script src="app-customer-hub.js?v=20260506-v98"></script>
+<script src="app-customer-hub.js?v=20260506-v100"></script>
 <script src="app-customer-sync.js"></script>
 <script src="app-calendar-view.js?v=20260504-1"></script>
 

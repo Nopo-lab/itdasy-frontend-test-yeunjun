@@ -37,6 +37,7 @@
 
   // _state.filter ∈ 'all' | 'member' | 'new' | 'regular' | 'risk'
   const _state = { rows: [], enriched: [], searchKW: '', addPanelOpen: false, filter: 'all', selectedId: null };
+  const _classifyMemo = new Map();
 
   /* ── 분류 helper: 신규(첫방문 30일내) / 단골(방문≥5회) / 이탈(60일+ 미방문) / 생일(오늘) / 회원권 보유 ── */
   function _daysBetween(iso, ref) {
@@ -47,6 +48,11 @@
     return Math.floor((b - a) / 86400000);
   }
   function _classify(c) {
+    const key = [
+      c.id, c.visit_count, c.last_visit_at, c.first_visit_at,
+      c.created_at, c.membership_balance, c.birthday,
+    ].join('|');
+    if (_classifyMemo.has(key)) return _classifyMemo.get(key);
     const visits = +c.visit_count || 0;
     const lastDays = _daysBetween(c.last_visit_at);
     const firstDays = _daysBetween(c.first_visit_at || c.created_at);
@@ -63,7 +69,10 @@
       const mo = +m[1], dy = +m[2];
       return mo === today.getMonth() + 1 && dy === today.getDate();
     })();
-    return { isNew, isRegular, isRisk, hasMember, isBirthday, visits, lastDays };
+    const result = { isNew, isRegular, isRisk, hasMember, isBirthday, visits, lastDays };
+    if (_classifyMemo.size > 1000) _classifyMemo.clear();
+    _classifyMemo.set(key, result);
+    return result;
   }
 
   function _stats(enriched) {
@@ -85,6 +94,8 @@
 
   /* ── 캐시 ──────────────────────────────────────────────────── */
   function _readCache() {
+    const shared = window.CustomerCache?.read && window.CustomerCache.read({ minItems: 1 });
+    if (shared) return shared.items;
     try {
       const raw = sessionStorage.getItem(CACHE_KEY);
       if (!raw) return null;
@@ -95,17 +106,40 @@
   }
   function _writeCache(d) {
     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), d })); } catch (_) { void 0; }
+    try { window.CustomerCache?.set && window.CustomerCache.set(d); } catch (_) { void 0; }
+  }
+
+  function _refreshCustomersInBackground(prev) {
+    if (!window.CustomerCache?.fetchFresh) return;
+    window.CustomerCache.fetchFresh().then(fresh => {
+      if (!Array.isArray(fresh) || JSON.stringify(fresh) === JSON.stringify(prev)) return;
+      _state.rows = fresh;
+      _state.enriched = _enrich(fresh, []);
+      _writeCache(fresh);
+      if (document.getElementById(OID)) _render();
+      _fetchRevenues().then(revenues => {
+        _state.enriched = _enrich(fresh, revenues);
+        if (document.getElementById(OID)) _render();
+      }).catch(() => {});
+    }).catch(() => {});
   }
 
   /* ── fetch + enrich ────────────────────────────────────────── */
   async function _fetchCustomers() {
     const cached = _readCache();
-    if (cached) return cached;
+    if (cached) {
+      _refreshCustomersInBackground(cached);
+      return cached;
+    }
     try {
-      const res = await fetch(`${API()}/customers`, { headers: AUTH() });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : (data.items || []);
+      const list = window.CustomerCache?.fetchFresh
+        ? await window.CustomerCache.fetchFresh()
+        : await fetch(`${API()}/customers`, { headers: AUTH() })
+          .then(async res => {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            return Array.isArray(data) ? data : (data.items || []);
+          });
       const result = list.length ? list : _MOCK;
       _writeCache(result);
       return result;
@@ -359,6 +393,7 @@
       _state.enriched.push(created);
       _state.selectedId = created.id;
       _writeCache(_state.rows);
+      try { window.CustomerCache?.set && window.CustomerCache.set(_state.rows); } catch (_e) { void _e; }
       _state.addPanelOpen = false;
       _render();
       if (window.hapticLight) window.hapticLight();
@@ -405,7 +440,7 @@
       if (window.ImportWizard?.open) {
         window.ImportWizard.open({
           file: f, kind: 'customer',
-          onDone: async () => { sessionStorage.removeItem(CACHE_KEY); await _load(); _render(); },
+          onDone: async () => { sessionStorage.removeItem(CACHE_KEY); window.CustomerCache?.clear?.(); await _load(); _render(); },
         });
       }
     });
@@ -444,7 +479,7 @@
   window.openCustomerHub  = openCustomerHub;
   window.closeCustomerHub = closeCustomerHub;
   window.CustomerHub = {
-    refresh: async () => { sessionStorage.removeItem(CACHE_KEY); await _load(); _render(); },
+    refresh: async () => { sessionStorage.removeItem(CACHE_KEY); window.CustomerCache?.clear?.(); await _load(); _render(); },
     focusSearch: () => document.querySelector(`#${OID} #ch-search`)?.focus(),
   };
 })();

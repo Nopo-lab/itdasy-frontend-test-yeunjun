@@ -2,7 +2,7 @@
 
 > 새 세션이 시작되면 **이 파일을 먼저 읽고** 현재 단계·대기 결정·마지막 체크포인트를 파악한다.
 
-**LAST UPDATED:** 2026-05-06 · Phase 9 전면 최적화 플랜 시작
+**LAST UPDATED:** 2026-05-06 · Phase 9 P2 성능 최적화 1차
 
 ---
 
@@ -11,7 +11,7 @@
 - **현재 Phase:** 9 — 전면 최적화 + 신기능 (플랜 파일 참조)
 - **플랜 파일:** `~/.claude/plans/lively-sniffing-pudding.md`
 - **이전 완료:** Phase 0~6.4 완전 완료. Phase 7(앱 심사 50%), Phase 8(운영 승격 50%)
-- **최신 빌드:** `20260506-v99-dm-regen-timeout`
+- **최신 빌드:** `20260506-v100-phase2-cache`
 
 **불가침 영역:**
 - 글쓰기 탭 시나리오 팝업(`openCaptionScenarioPopup` / `scenario-selector.js` / `_doGenerateCaption`) — 원영님 "이 로직 최고". 에러 핸들러 문구 1군데 외 수정 금지.
@@ -29,11 +29,13 @@
 - `app-perf-recovery.js`: _probeBackendOnline → /auth/me 실제 API ping으로 교체
 - `app-dm-autoreply.js`: read timeout 8s → 15s
 
-### Phase 2: 성능 최적화 🔵 예정
-- app-customer-cache.js 신규 (고객 공유 SWR)
-- app-revenue.js 병렬 prefetch
-- app-dm-settings-cache.js 신규
-- 고객 목록 렌더링 최적화, lazy loader
+### Phase 2: 성능 최적화 ✅ 1차 완료 (2026-05-06)
+- `app-customer-cache.js` 신규: 고객 목록 공유 캐시 + 중복 요청 방지
+- `app-customer.js` / `app-customer-hub.js` / `app-customer-dashboard.js`: 같은 고객 캐시를 함께 사용
+- `app-revenue.js`: 오늘/이번주/이번달 매출을 미리 받아 탭 전환 대기 줄임
+- `app-dm-settings-cache.js` 신규: DM 자동응답/멘트관리 설정 중복 요청 방지
+- `app-customer-hub.js`: 고객 분류 계산 반복 줄임
+- 보류: 초기 lazy loader 는 `index.html` 로드 순서 영향이 커서 별도 안전 티켓으로 분리
 
 ### Phase 3: UX 간소화 🔵 예정
 ### Phase 4: 보안 강화 🔵 예정

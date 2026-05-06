@@ -295,8 +295,11 @@
     try {
       await _apiPatch('/customers/' + id, patch);
       // SWR 캐시 무효화 — 목록 화면이 다시 신선한 데이터 가져오도록
-      try { localStorage.removeItem('pv_cache::customers'); } catch (_e) { void _e; }
-      try { sessionStorage.removeItem('pv_cache::customers'); } catch (_e) { void _e; }
+      if (window.CustomerCache?.clear) window.CustomerCache.clear();
+      else {
+        try { localStorage.removeItem('pv_cache::customers'); } catch (_e) { void _e; }
+        try { sessionStorage.removeItem('pv_cache::customers'); } catch (_e) { void _e; }
+      }
       try { sessionStorage.removeItem('pv_cache::customer'); } catch (_e) { void _e; }
       window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'update_customer', id } }));
       if (window.hapticLight) window.hapticLight();

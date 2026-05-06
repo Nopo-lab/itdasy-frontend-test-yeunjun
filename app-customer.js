@@ -58,6 +58,7 @@
   const _SWR_KEY = 'pv_cache::customers';
   const _SWR_TTL = 120 * 1000;  // 2분 내 캐시는 신선
   function _readSWR() {
+    if (window.CustomerCache?.read) return window.CustomerCache.read();
     try {
       const raw = localStorage.getItem(_SWR_KEY) || sessionStorage.getItem(_SWR_KEY);
       if (!raw) return null;
@@ -66,12 +67,14 @@
     } catch (_e) { return null; }
   }
   function _writeSWR(items) {
+    if (window.CustomerCache?.set) return window.CustomerCache.set(items);
     const payload = JSON.stringify({ t: Date.now(), d: items });
     try { localStorage.setItem(_SWR_KEY, payload); } catch (_e) {
       try { sessionStorage.setItem(_SWR_KEY, payload); } catch (_e2) { void _e2; }
     }
   }
   function _clearSWR() {
+    if (window.CustomerCache?.clear) return window.CustomerCache.clear();
     try { localStorage.removeItem(_SWR_KEY); } catch (_e) { void _e; }
     try { sessionStorage.removeItem(_SWR_KEY); } catch (_e) { void _e; }
   }
@@ -92,6 +95,12 @@
   }
 
   async function _fetchFresh() {
+    if (window.CustomerCache?.fetchFresh) {
+      const items = await window.CustomerCache.fetchFresh();
+      _isOffline = false;
+      _cache = items;
+      return _cache;
+    }
     const d = await _api('GET', '/customers');
     _isOffline = false;
     _cache = d.items || [];

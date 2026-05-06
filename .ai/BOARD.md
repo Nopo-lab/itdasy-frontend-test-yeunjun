@@ -1,6 +1,6 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-06 01:11 by 오케스트레이터 (원영님 최신 기반에 로컬 변경 통합)
+**LAST UPDATED:** 2026-05-06 23:30 by 오케스트레이터 (Phase 9 P2 성능 최적화 1차)
 
 > 전 터미널이 읽고, 오케스트레이터만 쓴다. 30초 안에 "누가 뭘 하고 있나" 파악되어야 함.
 
@@ -30,6 +30,9 @@
 
 ## DONE (2026-05-06 추가)
 
+- Phase 9 P2 성능 최적화 1차 완료: 고객 목록/고객관리/대시보드가 같은 임시 저장값을 쓰게 하고, 매출 탭 전환 대기를 줄였고, DM 설정 중복 요청을 줄임.
+- 최신 빌드 버전 `20260506-v100-phase2-cache`.
+- 자동 확인: 문법 확인, 변경 파일 자동 검사(막는 오류 0개), `npm run smoke`, `npm test -- --runInBand`, `git diff --check`, 로컬 브라우저 고객/매출 화면 열림 확인 통과.
 - 프론트 테스트 연준 최신 `origin/main` 반영 완료. 기존 로컬 변경은 `stash@{0}` (`codex-pre-pull-20260506-customer-dashboard`) 에 임시 보관.
 - 백엔드 테스트 최신 `test/main` 반영 완료. 작업 가지 `codex/customer-dashboard-backend-test` 생성.
 - 백엔드 고객 목록/고객 상세 대시보드 실제 응답 확인: 심사용 계정 기준 `/customers` 200, `/customers/60/dashboard` 200.

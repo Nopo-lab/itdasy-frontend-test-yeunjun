@@ -69,14 +69,19 @@
 
   async function _fetchAll() {
     const headers = window.authHeader();
+    const settingsPromise = window.DmSettingsCache?.get
+      ? window.DmSettingsCache.get().catch(() => null)
+      : _rawFetch(window.API + '/instagram/dm-reply/settings', { headers })
+        .then(r => (r && r.ok) ? r.json().catch(() => null) : null)
+        .catch(() => null);
     const endpoints = [
       _rawFetch(window.API + '/instagram/dm-reply/status', { headers }).catch(() => null),
-      _rawFetch(window.API + '/instagram/dm-reply/settings', { headers }).catch(() => null),
+      settingsPromise,
       _rawFetch(window.API + '/instagram/dm-reply/recent-conversations?limit=10', { headers }).catch(() => null),
     ];
     const [sR, stR, cR] = await Promise.all(endpoints);
     const status = (sR && sR.ok) ? await sR.json().catch(() => ({})) : {};
-    const settings = (stR && stR.ok) ? await stR.json().catch(() => null) : null;
+    const settings = stR || null;
     const recent = (cR && cR.ok) ? await cR.json().catch(() => ({})) : {};
     return { status, settings, conversations: recent.conversations || [] };
   }
@@ -103,11 +108,15 @@
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(async () => {
       try {
-        await _rawFetch(window.API + '/instagram/dm-reply/settings', {
-          method: 'POST',
-          headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
-          body: JSON.stringify(_sanitizeForSave(_settings)),
-        }, 25000);
+        const safe = _sanitizeForSave(_settings);
+        if (window.DmSettingsCache?.save) await window.DmSettingsCache.save(safe);
+        else {
+          await _rawFetch(window.API + '/instagram/dm-reply/settings', {
+            method: 'POST',
+            headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
+            body: JSON.stringify(safe),
+          }, 25000);
+        }
       } catch (_) { /* 조용히 실패 — 다음 저장 때 재시도 */ }
     }, 400);
   }
@@ -817,11 +826,17 @@
       _saveTimer = setTimeout(() => {}, 0);
       // 2026-05-01 ── 저장: invalid 값 sanitize + 1회 자동 재시도 + 실제 에러 표시
       const safeSettings = _sanitizeForSave(_settings);
-      const _trySave = async () => _rawFetch(window.API + '/instagram/dm-reply/settings', {
-        method: 'POST',
-        headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(safeSettings),
-      }, 25000);  // Railway cold start 대비 25s
+      const _trySave = async () => {
+        if (window.DmSettingsCache?.save) {
+          await window.DmSettingsCache.save(safeSettings);
+          return { ok: true, status: 200, json: async () => ({}) };
+        }
+        return _rawFetch(window.API + '/instagram/dm-reply/settings', {
+          method: 'POST',
+          headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(safeSettings),
+        }, 25000);
+      };
       let r = null;
       try { r = await _trySave(); }
       catch (e1) {

@@ -25,6 +25,7 @@
   let _revWindow = 50;
   let _isOffline = false;
   let _cachedIsPC = false;
+  const _periodInflight = {};
 
   // ── 유틸 ────────────────────────────────────────────────
   const _now = () => new Date().toISOString();
@@ -105,12 +106,32 @@
     } catch (_) { /* silent */ }
   }
 
+  async function _fetchPeriodData(p) {
+    if (_periodInflight[p]) return _periodInflight[p];
+    _periodInflight[p] = _api('GET', '/revenue?period=' + p)
+      .then(d => {
+        const items = d.items || [];
+        _writeSWRPeriod(p, items);
+        return items;
+      })
+      .finally(() => { _periodInflight[p] = null; });
+    return _periodInflight[p];
+  }
+
   async function _fetchPeriod(p) {
-    const d = await _api('GET', '/revenue?period=' + p);
+    const items = await _fetchPeriodData(p);
     _isOffline = false;
-    _items = d.items || [];
-    _writeSWRPeriod(p, _items);
+    _items = items;
     return _items;
+  }
+
+  function _prefetchAllPeriods() {
+    PERIODS.forEach(p => {
+      if (p === _currentPeriod) return;
+      const swr = _readSWRPeriod(p);
+      if (swr && swr.fresh) return;
+      _fetchPeriodData(p).catch(() => {});
+    });
   }
 
   async function list(period) {
@@ -297,6 +318,7 @@
       _currentPeriod = p;
       _revWindow = 50;
       _loadAndRender();
+      _prefetchAllPeriods();
       return;
     }
     if (act === 'incentive-cfg') return _openIncentiveSettings();
@@ -883,6 +905,7 @@
     document.body.style.overflow = 'hidden';
     document.body.classList.add('rv-mode');
     _loadAndRender().catch(() => {});
+    _prefetchAllPeriods();
     try {
       if (typeof window._registerSheet === 'function') window._registerSheet('revenue', window.closeRevenue);
       if (typeof window._markSheetOpen === 'function') window._markSheetOpen('revenue');
