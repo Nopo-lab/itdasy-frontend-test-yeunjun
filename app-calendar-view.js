@@ -344,10 +344,11 @@
   }
 
   function _renderDayMobile(date, mapped) {
-    const { start, end } = _ttHours();
+    const tt = _ttHours();
     const dayDS = _ds(date);
     const filtered = _filterByStaff(mapped).filter(m => _ds(new Date(m._raw.starts_at)) === dayDS);
-    let h = '<div class="bk-day" id="bk-day-grid" data-date="' + dayDS + '">';
+    const { start, end } = _expandHoursForItems(tt.start, tt.end, filtered);
+    let h = '<div class="bk-day" id="bk-day-grid" data-date="' + dayDS + '" data-start-h="' + start + '">';
     for (let hr = start; hr < end; hr++) {
       h += '<div class="bk-day__row">';
       h += '<div class="bk-day__hour-label">' + _pad(hr) + ':00</div>';
@@ -393,14 +394,20 @@
   // §7 모바일 — 주간 뷰
   // ============================================================
   function _renderWeekMobile(baseDate, mapped) {
-    const { start, end } = _ttHours();
+    const tt = _ttHours();
     const DOW = ['일','월','화','수','목','금','토'];
     const ws = new Date(baseDate); ws.setHours(0,0,0,0);
     ws.setDate(ws.getDate() - ws.getDay());
+    const we = new Date(ws); we.setDate(ws.getDate() + 7);
     const today = new Date(); today.setHours(0,0,0,0);
     const filtered = _filterByStaff(mapped);
+    const inWeek = filtered.filter(m => {
+      const sd = new Date(m._raw.starts_at);
+      return sd >= ws && sd < we;
+    });
+    const { start, end } = _expandHoursForItems(tt.start, tt.end, inWeek);
 
-    let h = '<div class="bk-week-m">';
+    let h = '<div class="bk-week-m" data-start-h="' + start + '">';
     // header
     h += '<div class="bk-week-m__header"><div class="bk-week-m__h-cell"></div>';
     for (let i = 0; i < 7; i++) {
@@ -469,14 +476,20 @@
   // §9 PC — 주간 뷰
   // ============================================================
   function _renderWeekPC(baseDate, mapped) {
-    const { start, end } = _ttHours();
+    const tt = _ttHours();
     const DOW = ['일','월','화','수','목','금','토'];
     const ws = new Date(baseDate); ws.setHours(0,0,0,0);
     ws.setDate(ws.getDate() - ws.getDay());
+    const we = new Date(ws); we.setDate(ws.getDate() + 7);
     const today = new Date(); today.setHours(0,0,0,0);
     const filtered = _filterByStaff(mapped);
+    const inWeek = filtered.filter(m => {
+      const sd = new Date(m._raw.starts_at);
+      return sd >= ws && sd < we;
+    });
+    const { start, end } = _expandHoursForItems(tt.start, tt.end, inWeek);
 
-    let h = '<div class="bk-pc-main">';
+    let h = '<div class="bk-pc-main" data-start-h="' + start + '">';
     h += '<div class="bk-week__header"><div class="bk-week__h-cell"></div>';
     for (let i = 0; i < 7; i++) {
       const d = new Date(ws); d.setDate(ws.getDate() + i);
@@ -532,13 +545,14 @@
   // §10 PC — 일간 뷰 (직원 컬럼 분할)
   // ============================================================
   function _renderDayPC(date, mapped) {
-    const { start, end } = _ttHours();
+    const tt = _ttHours();
     const dayDS = _ds(date);
     const filtered = _filterByStaff(mapped).filter(m => _ds(new Date(m._raw.starts_at)) === dayDS);
+    const { start, end } = _expandHoursForItems(tt.start, tt.end, filtered);
     const staff = _staffList.length ? _staffList : [{ id: 1, name: '원장', color_idx: 0 }];
 
     // grid columns 동적 계산 (CSS 기본 3 컬럼 - 필요 시 inline style)
-    let h = '<div class="bk-pc-day">';
+    let h = '<div class="bk-pc-day" data-start-h="' + start + '">';
     const colCount = staff.length;
     const headerCols = `80px repeat(${colCount}, 1fr)`;
     h += `<div class="bk-pc-day__header" style="grid-template-columns:${headerCols}">`;
@@ -604,13 +618,35 @@
     const end   = Math.max(start + 1, Math.min(24, h.end ?? 22));
     return { start, end };
   }
+  // 영업시간 밖에 예약이 있으면 그리드 범위를 확장 (위/아래 잘림 방지)
+  function _expandHoursForItems(start, end, items) {
+    let s = start, e = end;
+    if (!items || !items.length) return { start: s, end: e };
+    for (const it of items) {
+      const sd = new Date(it._raw.starts_at);
+      const ed = new Date(it._raw.ends_at);
+      if (isNaN(sd) || isNaN(ed)) continue;
+      const sh = sd.getHours();
+      const eh = ed.getHours() + (ed.getMinutes() > 0 ? 1 : 0);
+      if (sh < s) s = Math.max(0, sh);
+      if (eh > e) e = Math.min(24, eh);
+    }
+    return { start: s, end: e };
+  }
 
   // ============================================================
   // §12 now-line
   // ============================================================
   function _placeNowLine() {
     const o = _overlay(); if (!o) return;
-    const { start } = _ttHours();
+    // 그리드가 expand 된 경우 data-start-h 우선 (없으면 _ttHours fallback)
+    const rootSel = (_curView === 'day' && !_cachedIsPC) ? '.bk-day'
+                   : (_curView === 'day' && _cachedIsPC) ? '.bk-pc-day'
+                   : (_curView === 'week' && _cachedIsPC) ? '.bk-pc-main'
+                   : '.bk-week-m';
+    const root = o.querySelector(rootSel);
+    const dataStart = root ? parseInt(root.getAttribute('data-start-h') || '', 10) : NaN;
+    const start = Number.isFinite(dataStart) ? dataStart : _ttHours().start;
     const now = new Date();
     if (now.getHours() < start) return _hideNowLine();
     const minutesFromStart = (now.getHours() - start) * 60 + now.getMinutes();
