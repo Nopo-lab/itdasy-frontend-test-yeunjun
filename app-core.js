@@ -386,6 +386,19 @@ async function applyNewSession(newToken, opts) {
           if (typeof me.shop_name === 'string') localStorage.setItem('shop_name', me.shop_name);
           if (typeof me.shop_type === 'string' && me.shop_type) localStorage.setItem('shop_type', me.shop_type);
         } catch (_) { void 0; }
+        // [2026-05-08 27차 [F-4]] /me 응답 도착 후 헤더/홈 즉시 재렌더 — 옛날 user 잔류 차단
+        // renderHomeHeroCard 는 brief 인자 필수라 직접 호출 안 함 (브리프 fetch 후 별도 갱신).
+        try {
+          if (typeof window.updateHeaderProfile === 'function') {
+            const handle = (typeof window._instaHandle === 'string') ? window._instaHandle : '';
+            window.updateHeaderProfile(handle, null, '');
+          }
+          const settingsName = document.getElementById('settingsShopName');
+          if (settingsName) settingsName.textContent = me.shop_name || '사장님';
+          if (typeof window.renderHomeResume === 'function') {
+            Promise.resolve(window.renderHomeResume()).catch(() => {});
+          }
+        } catch (_e) { void _e; }
         if (typeof window.applyOAuthProviderBadge === 'function') {
           window.applyOAuthProviderBadge();
         }
@@ -701,10 +714,30 @@ function closeSettings() {
 }
 
 async function resetShopSetup() {
-  if (!(await nativeConfirm("확인", '샵 이름과 종류를 다시 설정할까요?'))) return;
-  localStorage.removeItem('shop_name');
-  localStorage.removeItem('shop_type');
-  localStorage.removeItem('onboarding_done');
+  // [2026-05-08 27차 [H]] 샵 재설정 시 인스타·말투까지 함께 정리
+  if (!(await nativeConfirm(
+    "확인",
+    '샵 이름·종류·인스타 연동·말투 분석을 모두 처음 상태로 돌릴까요?'
+  ))) return;
+
+  // 1. 백엔드 인스타 해제 (실패해도 진행)
+  try {
+    await fetch(API + '/instagram/disconnect', { method: 'POST', headers: authHeader() });
+  } catch (_e) { void _e; }
+
+  // 2. 로컬 정리 — 샵·온보딩·인스타 동의·말투 분석
+  ['shop_name', 'shop_type', 'onboarding_done',
+   'itdasy_consented', 'itdasy_consented_at', 'itdasy_latest_analysis']
+    .forEach(k => { try { localStorage.removeItem(k); } catch (_e) { void _e; } });
+
+  // 3. 메모리 + 헤더/말투 카드 즉시 비우기
+  try { _instaHandle = ''; } catch (_e) { void _e; }
+  try { if (typeof window !== 'undefined') window._instaHandle = ''; } catch (_e) { void _e; }
+  if (typeof updateHeaderProfile === 'function') updateHeaderProfile('', '', '');
+  const pd = document.getElementById('personaDash');
+  if (pd) { pd.style.display = 'none'; const pc = document.getElementById('personaContent'); if (pc) pc.innerHTML = ''; }
+
+  // 4. 온보딩 오버레이 띄우기 (기존 동작 유지)
   const ob = document.getElementById('onboardingOverlay');
   if (ob) ob.classList.remove('hidden');
 }
@@ -1287,6 +1320,18 @@ window.addEventListener('load', function() {
     }
   })();
 
+  // [2026-05-08 27차 [G]] 인스타 OAuth 충돌 처리 — BE 가 ig_conflict=1 로 리다이렉트
+  (function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('ig_conflict') === '1') {
+      const handle = params.get('handle') || '';
+      history.replaceState(null, '', window.location.pathname);
+      if (typeof window.showInstaConflictModal === 'function') {
+        window.showInstaConflictModal(handle);
+      }
+    }
+  })();
+
   // T-317 — 토큰 없어도 생체 인증 등록돼 있으면 먼저 시도
   (async () => {
     if (!getToken() && window.Biometric && window.Biometric.isEnabled()) {
@@ -1468,7 +1513,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260506-v102-cal-hour-expand';
+window.APP_BUILD = '20260508-v107-27th';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;

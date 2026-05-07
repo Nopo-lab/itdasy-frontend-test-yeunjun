@@ -387,3 +387,40 @@ async function connectInstagram() {
     btn.disabled = false;
   }
 }
+
+// [2026-05-08 27차 [G]] 인스타 충돌 모달 — 다른 user 가 이미 사용 중인 IG 계정
+function showInstaConflictModal(handle) {
+  const modal = document.createElement('div');
+  modal.id = 'instaConflictModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:#fff;max-width:340px;width:100%;border-radius:18px;padding:24px 22px;box-shadow:0 12px 40px rgba(0,0,0,0.18);">
+      <div style="font-size:17px;font-weight:700;color:#111;margin-bottom:10px;">이미 다른 잇데이 계정에 연결돼 있어요</div>
+      <div style="font-size:14px;color:#444;line-height:1.6;margin-bottom:20px;">
+        ${handle ? `<strong>@${handle}</strong>` : '이 인스타그램 계정'}은 다른 잇데이 계정에서 사용 중이에요.<br><br>
+        그 계정으로 로그인해서 <strong>[설정 → 인스타 연결 해제]</strong> 한 다음<br>이 계정에서 다시 연결해 주세요.
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button id="igConflictClose" style="flex:1;height:46px;border:1px solid #E5E7EB;background:#fff;color:#444;border-radius:12px;font-weight:600;cursor:pointer;">닫기</button>
+        <button id="igConflictSwitch" style="flex:1.4;height:46px;border:none;background:#111;color:#fff;border-radius:12px;font-weight:700;cursor:pointer;">다른 계정으로 로그인</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  document.getElementById('igConflictClose').addEventListener('click', () => {
+    modal.remove();
+  });
+  document.getElementById('igConflictSwitch').addEventListener('click', async () => {
+    modal.remove();
+    try {
+      if (typeof window.logout === 'function') {
+        await window.logout();
+      } else {
+        localStorage.removeItem(typeof _TOKEN_KEY !== 'undefined' ? _TOKEN_KEY : 'itdasy_token');
+        location.href = 'index.html';
+      }
+    } catch (_e) { void _e; }
+  });
+}
+window.showInstaConflictModal = showInstaConflictModal;
