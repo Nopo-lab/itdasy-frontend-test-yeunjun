@@ -137,6 +137,9 @@
 
   /* 25차 — 비번 wrapper focus 시 핑크 보더 */
   .login-pw-wrap:focus-within { border-color: var(--accent, #F18091); }
+
+  /* 26차 — 이메일 wrapper도 동일 focus 효과 */
+  .login-email-wrap:focus-within { border-color: var(--accent, #F18091); }
 </style>
 </head>
 <body>
@@ -499,7 +502,10 @@
 
     <div id="emailFoldContent" style="display:none;padding-top:8px;border-top:1px solid var(--border, rgba(15,20,25,0.06));">
       <div style="margin-bottom:18px;font-size:13px;color:var(--accent);font-weight:600;display:none;text-align:center;" id="sessionExpiredMsg">⚠️ 로그인 세션이 만료되었습니다. 다시 로그인해주세요.</div>
-      <input type="email" class="login-input" id="loginEmail" placeholder="이메일" autocomplete="email" inputmode="email" style="width:100%;padding:14px 16px;border:1px solid var(--border-strong,rgba(15,20,25,0.14));border-radius:12px;font-size:14px;margin-bottom:8px;box-sizing:border-box;">
+      <!-- [2026-05-07 26차] 이메일 wrapper 통합 — 비번 wrapper 와 동일 border 구조 -->
+      <div class="login-email-wrap" style="display:flex;align-items:center;width:100%;border:1px solid var(--border-strong,rgba(15,20,25,0.14));border-radius:12px;background:#fff;box-sizing:border-box;overflow:hidden;margin-bottom:8px;transition:border-color .15s;">
+        <input type="email" class="login-input" id="loginEmail" placeholder="이메일" autocomplete="email" inputmode="email" style="flex:1;min-width:0;padding:14px 16px;border:none;outline:none;background:transparent;font-size:14px;font-family:inherit;color:inherit;">
+      </div>
       <div class="login-pw-wrap" style="display:flex;align-items:center;width:100%;border:1px solid var(--border-strong,rgba(15,20,25,0.14));border-radius:12px;background:#fff;box-sizing:border-box;overflow:hidden;transition:border-color .15s;">
         <input type="password" class="login-input" id="loginPassword" placeholder="비밀번호" autocomplete="current-password" style="flex:1;min-width:0;padding:14px 0 14px 16px;border:none;outline:none;background:transparent;font-size:14px;font-family:inherit;color:inherit;">
         <button type="button" id="loginPwToggle" aria-label="비밀번호 보기" style="flex-shrink:0;width:44px;height:44px;border:none;background:transparent;cursor:pointer;color:#888;display:flex;align-items:center;justify-content:center;">

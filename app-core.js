@@ -301,9 +301,10 @@ window._clearAllSWRCache = _clearAllSWRCache;
 // ──────────────────────────────────────────────
 const _USER_KEY_PREFIXES = ['itdasy_', 'pv_cache::', 'persona_'];
 const _USER_KEY_EXACT = ['last_login_email', 'user_oauth_provider', 'last_user_id', 'shop_id'];
-// 디바이스/UI 설정처럼 사용자 변경 시 보존할 키 (온보딩·테마·언어)
+// [2026-05-07 26차] user 변경 시 보존 키는 "디바이스 단위 UI 설정"만.
+// shop_* / onboarding_done 은 user 데이터 → 제거.
+// 잘못 보존되면 다른 user 로그인 시 옛 매장명/온보딩 상태가 남는다 (출시 블로커).
 const _USER_KEY_KEEP = new Set([
-  'onboarding_done', 'shop_type', 'shop_name',
   'theme', 'itdasy_theme', 'lang', 'i18n_lang',
   'itdasy_biometric_asked',
 ]);
@@ -810,6 +811,10 @@ async function logout() {
 
   // 1. 토큰 및 사용자 범위 스토리지 광범위 삭제
   setToken(null);
+  // [2026-05-07 26차] 메모리 변수도 명시 클리어 — _purgeUserScopedStorage 는 storage 만 청소함.
+  // 누락 시 다른 user 로그인 후에도 이전 user 의 인스타 핸들이 남아 헤더/캡션 미리보기에 노출됨.
+  _instaHandle = '';
+  try { if (typeof window !== 'undefined') window._instaHandle = ''; } catch (_e) { void _e; }
   // 사용자 식별 / 캐시 / 페르소나·일정·세션 컨텍스트 일괄 정리
   // (온보딩·테마·생체등록 같은 디바이스 설정은 _USER_KEY_KEEP 가 보존)
   try { _purgeUserScopedStorage(); } catch (_e) { void _e; }

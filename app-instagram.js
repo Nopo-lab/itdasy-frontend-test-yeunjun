@@ -297,10 +297,25 @@ async function disconnectInstagram() {
     if (tsEl) tsEl.textContent = '';
     if (typeof updateHeaderProfile === 'function') updateHeaderProfile('', '', '');
     _instaHandle = '';
+    // [2026-05-07 26차] window._instaHandle 도 클리어 + SW 캐시 무효화 + cache bust hard reload
+    try { if (typeof window !== 'undefined') window._instaHandle = ''; } catch (_e) { void _e; }
+    try {
+      if ('serviceWorker' in navigator && 'caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    } catch (_e) { void _e; }
 
     showToast('✓ 인스타 연동이 해제됐어요');
-    // 0.6초 뒤 새로고침 — 모든 위젯·캐시·상태 초기화
-    setTimeout(() => { try { location.reload(); } catch (_e) { void _e; } }, 600);
+    // 0.6초 뒤 cache bust 쿼리 + hash 제거 후 hard reload
+    setTimeout(() => {
+      try {
+        const url = new URL(location.href);
+        url.searchParams.set('_t', Date.now());
+        url.hash = '';
+        location.replace(url.toString());
+      } catch (_e) { location.reload(); }
+    }, 600);
   } catch (e) {
     showToast('해제 실패: ' + (e && e.message ? e.message : '잠시 후 다시 시도해주세요'));
   }
