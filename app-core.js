@@ -868,10 +868,10 @@ async function login() {
       // 보조: 이메일도 갱신 (applyNewSession 안에서 /me 응답 기준으로 덮어씀)
       localStorage.setItem('last_login_email', email);
     } catch (_) { /* ignore */ }
-    document.getElementById('lockOverlay').classList.add('hidden');
     _setAuthGateLocked(false);
     checkCbt1Reset();
     checkOnboarding();
+    document.getElementById('lockOverlay').classList.add('hidden');
     checkInstaStatus(true);
     // T-317 — 생체 인증 등록 제안 (한 번만)
     _offerBiometricEnroll(data.access_token);
@@ -1023,9 +1023,9 @@ async function signup() {
       localStorage.setItem('last_login_email', email);
     } catch (_) { /* ignore */ }
     document.getElementById('signupOverlay').style.display = 'none';
-    document.getElementById('lockOverlay').classList.add('hidden');
     _setAuthGateLocked(false);
     checkOnboarding();
+    document.getElementById('lockOverlay').classList.add('hidden');
     checkInstaStatus(true);
   } catch (e) {
     errEl.textContent = _friendlyErr(e, '가입 실패');
@@ -1201,12 +1201,16 @@ window.addEventListener('load', function() {
 
   // 비밀번호 보기 토글
   const pwToggle = document.getElementById('loginPwToggle');
-  if (pwToggle) pwToggle.addEventListener('click', () => {
-    const inp = document.getElementById('loginPassword');
-    if (!inp) return;
-    inp.type = inp.type === 'password' ? 'text' : 'password';
-    pwToggle.textContent = inp.type === 'password' ? '👁' : '🙈';
-  });
+  if (pwToggle) {
+    const _eyeOpen = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const _eyeOff  = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    pwToggle.addEventListener('click', () => {
+      const inp = document.getElementById('loginPassword');
+      if (!inp) return;
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+      pwToggle.innerHTML = inp.type === 'password' ? _eyeOpen : _eyeOff;
+    });
+  }
 
   // 회원가입 전환 — document 위임 (타이밍 무관)
   document.addEventListener('click', (e) => {
