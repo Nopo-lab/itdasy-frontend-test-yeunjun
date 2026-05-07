@@ -93,19 +93,23 @@ async function checkInstaStatus(fromLogin = false) {
 function renderPersonaDash(p, showTestBtn) {
   document.getElementById('personaDash').style.display = 'block';
   const content = document.getElementById('personaContent');
-  if (content) {
-    content.innerHTML = `
-      <div style="background:rgba(241,128,145,0.04); padding:14px; border-radius:14px; border:0.5px solid rgba(241,128,145,0.15); margin-bottom:16px;">
-        <div style="margin-bottom:8px; font-size:11px; color:var(--accent2); font-weight:700; letter-spacing:-0.2px;">💬 말투 요약</div>
-        <div style="font-size:13px; color:var(--text); line-height:1.6; font-weight:500;">"${p.tone || '친근하고 공손한 말투'}"</div>
-      </div>
-
-      <div style="display:flex; flex-direction:column; gap:8px;">
-        ${showTestBtn ? `<button class="btn-primary" style="width:100%; height:44px; font-size:13px; font-weight:700;" onclick="showOnboardingCaptionPopup()">✍️ 내 말투로 테스트 글 만들기</button>` : ''}
-        <button class="btn-copy" style="width:100%; height:42px; font-size:13px; font-weight:600; border:1px solid var(--accent2); background:white; color:var(--accent2); border-radius:10px;" onclick="showDetailedAnalysis()">📋 전체 분석 리포트 확인</button>
-      </div>
-    `;
-  }
+  if (!content) return;
+  // [2026-05-08 28차 [K]] tone 카테고리 (친근/정중/귀여움) 제거 — 사장님 본인 말투를 분류 X.
+  // BE Persona.style_summary (한 줄 요약) 그대로 노출.
+  const summary = (p && typeof p.style_summary === 'string' && p.style_summary.trim())
+    ? p.style_summary.trim()
+    : '아직 분석 전이에요. 분석 후에 사장님 말투 요약이 여기 보여요.';
+  const _esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  content.innerHTML = `
+    <div style="background:rgba(241,128,145,0.04); padding:14px; border-radius:14px; border:0.5px solid rgba(241,128,145,0.15); margin-bottom:16px;">
+      <div style="margin-bottom:8px; font-size:11px; color:var(--accent2); font-weight:700; letter-spacing:-0.2px;">💬 사장님 말투</div>
+      <div style="font-size:13px; color:var(--text); line-height:1.6; font-weight:500;">${_esc(summary)}</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      ${showTestBtn ? `<button class="btn-primary" style="width:100%; height:44px; font-size:13px; font-weight:700;" onclick="showOnboardingCaptionPopup()">✍️ 내 말투로 테스트 글 만들기</button>` : ''}
+      <button class="btn-copy" style="width:100%; height:42px; font-size:13px; font-weight:600; border:1px solid var(--accent2); background:white; color:var(--accent2); border-radius:10px;" onclick="showDetailedAnalysis()">📋 전체 분석 리포트 확인</button>
+    </div>
+  `;
 }
 
 function showDetailedAnalysis() {
@@ -274,9 +278,13 @@ async function runPersonaAnalyze() {
 }
 
 async function disconnectInstagram() {
-  // [2026-04-24] 작동 강화: res.ok 체크 + 헤더/아바타 초기화 + 페이지 새로고침 강제.
-  // 기존엔 응답 검사 없이 fetch 만 하고 끝나서 401·5xx 시에도 "해제됐다" 처럼 보였음.
-  if (!(await nativeConfirm('인스타 연동 해제', '인스타그램 연동을 해제할까요?\n분석된 말투 정보는 그대로 유지돼요.'))) return;
+  // [2026-05-08 28차 [I]] 인스타 해제 = 잇데이 로그아웃 (1잇데이 = 1매장 = 1인스타 모델).
+  // 26차 [C] 의 caches.delete + hard reload 가 reload 후 /auth/me 401 받아 자동 토큰 클리어
+  // → "로그아웃된 듯 보임" 부작용 → 의도된 명시적 로그아웃으로 정리.
+  if (!(await nativeConfirm(
+    '인스타 연동 해제',
+    '인스타 연동을 해제하면 잇데이에서도 로그아웃돼요.\n다시 시작할 때 새 인스타로 연결하세요.\n\n고객·예약·매출·말투 분석 데이터는 안전하게 보관돼요.'
+  ))) return;
   try {
     const res = await fetch(API + '/instagram/disconnect', {
       method: 'POST',
@@ -286,35 +294,16 @@ async function disconnectInstagram() {
       const txt = await res.text().catch(() => '');
       throw new Error(`해제 실패 (HTTP ${res.status}) ${txt.slice(0, 60)}`);
     }
-
-    // 로컬 스토리지에 저장된 동의 및 분석 데이터 초기화
-    localStorage.removeItem('itdasy_consented');
-    localStorage.removeItem('itdasy_consented_at');
-    localStorage.removeItem('itdasy_latest_analysis');
-
-    // UI 초기화 (타임스탬프·헤더 아바타·핸들)
-    const tsEl = document.getElementById('consentTimestampDisplay');
-    if (tsEl) tsEl.textContent = '';
-    if (typeof updateHeaderProfile === 'function') updateHeaderProfile('', '', '');
-    _instaHandle = '';
-    // [2026-05-07 26차] window._instaHandle 도 클리어 + SW 캐시 무효화 + cache bust hard reload
-    try { if (typeof window !== 'undefined') window._instaHandle = ''; } catch (_e) { void _e; }
-    try {
-      if ('serviceWorker' in navigator && 'caches' in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k)));
-      }
-    } catch (_e) { void _e; }
-
-    showToast('✓ 인스타 연동이 해제됐어요');
-    // 0.6초 뒤 cache bust 쿼리 + hash 제거 후 hard reload
+    showToast('✓ 인스타 해제됨. 다시 시작할게요');
+    // logout 의 모든 정리 로직 (토큰·storage·IDB·SW) 재사용 — skipConfirm 으로 컨펌 한 번만.
     setTimeout(() => {
       try {
-        const url = new URL(location.href);
-        url.searchParams.set('_t', Date.now());
-        url.hash = '';
-        location.replace(url.toString());
-      } catch (_e) { location.reload(); }
+        if (typeof window.logout === 'function') {
+          window.logout({ skipConfirm: true }).catch(() => { location.href = 'index.html'; });
+        } else {
+          location.href = 'index.html';
+        }
+      } catch (_e) { location.href = 'index.html'; }
     }, 600);
   } catch (e) {
     showToast('해제 실패: ' + (e && e.message ? e.message : '잠시 후 다시 시도해주세요'));

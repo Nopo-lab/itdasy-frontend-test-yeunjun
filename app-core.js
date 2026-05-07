@@ -845,8 +845,10 @@ async function confirmDeleteAccount() {
   }
 }
 
-async function logout() {
-  if (!(await nativeConfirm("확인", "로그아웃 하시겠습니까? 세션과 캐시가 모두 초기화됩니다."))) return;
+async function logout(opts) {
+  opts = opts || {};
+  // [2026-05-08 28차 [J]] skipConfirm — disconnectInstagram 등 다른 흐름에서 이중 컨펌 방지
+  if (!opts.skipConfirm && !(await nativeConfirm("확인", "로그아웃 하시겠습니까? 세션과 캐시가 모두 초기화됩니다."))) return;
 
   // 1. 토큰 및 사용자 범위 스토리지 광범위 삭제
   setToken(null);
@@ -1513,7 +1515,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260508-v107-27th';
+window.APP_BUILD = '20260508-v108-28th-1';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;
