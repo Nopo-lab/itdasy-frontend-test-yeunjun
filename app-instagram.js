@@ -62,6 +62,9 @@ async function checkInstaStatus(fromLogin = false) {
       } catch (_e) { /* ignore */ }
       document.getElementById('homePreConnect').style.display = 'none';
       document.getElementById('homePostConnect').style.display = 'flex';
+      // [2026-05-08 hotfix] 연결됐으면 mini-bar 도 숨김
+      const bar = document.getElementById('ipcMiniBar');
+      if (bar) bar.style.display = 'none';
       // [2026-05-08 28차 2단계] 인스타 연결되면 dismissed 자동 해제 — 해제 후 다시 미연결 시 카드 다시 보이게
       try { localStorage.removeItem('itdasy_ipc_dismissed'); } catch (_e) { void _e; }
       _instaHandle = data.handle || '';
@@ -90,12 +93,15 @@ async function checkInstaStatus(fromLogin = false) {
       //   미연결 + 카드 dismissed     → 메인홈만
       //   연결됨                      → 메인홈만 (위 if(data.connected) 처리)
       const dismissed = (function(){ try { return localStorage.getItem('itdasy_ipc_dismissed') === '1'; } catch (_) { return false; } })();
+      const miniBar = document.getElementById('ipcMiniBar');
       if (dismissed) {
         document.getElementById('homePreConnect').style.display = 'none';
         document.getElementById('homePostConnect').style.display = 'flex';
+        if (miniBar) miniBar.style.display = 'flex';
       } else {
         document.getElementById('homePreConnect').style.display = 'flex';
         document.getElementById('homePostConnect').style.display = 'none';
+        if (miniBar) miniBar.style.display = 'none';
       }
       updateStep('stepInsta', false);
       updateStep('stepPersona', false);
@@ -458,6 +464,9 @@ function _dismissIpcCard() {
   // 카드 닫으면 메인홈 visible 시킴 (교차 표시)
   const post = document.getElementById('homePostConnect');
   if (post) post.style.display = 'flex';
+  // [2026-05-08 hotfix] 메인홈 상단에 작은 띠 표시 — 재진입 경로
+  const bar = document.getElementById('ipcMiniBar');
+  if (bar) bar.style.display = 'flex';
   if (typeof showToast === 'function') {
     showToast('설정에서 다시 인스타 연결할 수 있어요');
   }

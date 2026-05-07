@@ -1112,6 +1112,17 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
     <span id="consentTimestampDisplay" style="display:none;"></span>
   </div>
 
+  <!-- 잇비 카드 닫음 후 메인홈 상단에 표시 — 재진입 경로 -->
+  <div id="ipcMiniBar" class="ipc-mini-bar" style="display:none;"
+       onclick="connectInstagram()" data-haptic="light">
+    <span class="ipc-mini-bar-text">인스타 연결하면 잇비 시작</span>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  </div>
+
   <!-- ── 연동 후 상태 (홈 v4.1 톤다운) ── -->
   <div id="homePostConnect" class="hc-section" style="display:none;">
 
