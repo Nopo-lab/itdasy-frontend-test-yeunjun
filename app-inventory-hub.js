@@ -188,8 +188,8 @@
     if (!low.length) return '';
     return `
       <div style="display:flex; justify-content:space-between; align-items:baseline; padding:6px 16px; margin-bottom:8px;">
-        <span style="font-size:11px; color:#DC4848; font-weight:700; letter-spacing:0.3px; text-transform:uppercase;">지금 부족해요</span>
-        <span style="font-size:11px; color:#DC4848; font-weight:700;">자동 주문 가능 · ${low.length}건</span>
+        <span style="font-size:13px; color:var(--accent,#F18091); font-weight:700; letter-spacing:-0.2px;">지금 부족해요</span>
+        <span style="font-size:12px; color:var(--accent,#F18091); font-weight:600; white-space:nowrap;">자동 주문 가능 · ${low.length}건</span>
       </div>
       <div class="inv-list danger">
         ${low.map(r => _renderLowCard(r)).join('')}
@@ -236,8 +236,8 @@
     if (!ok.length) return '';
     return `
       <div style="display:flex; justify-content:space-between; align-items:baseline; padding:6px 16px; margin-bottom:8px;">
-        <span style="font-size:11px; color:var(--text-3); font-weight:700; letter-spacing:0.3px; text-transform:uppercase;">정상 재고</span>
-        <span style="font-size:11px; color:var(--text-3); font-weight:700;">${ok.length}개</span>
+        <span style="font-size:13px; color:var(--text-2,#5A6573); font-weight:700; letter-spacing:-0.2px;">정상 재고</span>
+        <span style="font-size:12px; color:var(--text-3,#98A1AC); font-weight:600; white-space:nowrap;">${ok.length}개</span>
       </div>
       <div class="inv-list">
         ${ok.map(r => _renderOkRow(r)).join('')}
