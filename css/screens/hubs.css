@@ -327,8 +327,8 @@
   margin-top: 3px; letter-spacing: -0.3px;
   font-variant-numeric: tabular-nums;
 }
-.hub-stat-mini .val.danger { color: #DC4848; }
-.hub-stat-mini .val.green  { color: #10A56B; }
+.hub-stat-mini .val.danger { color: var(--accent, #F18091); }
+.hub-stat-mini .val.green  { color: var(--text, #0F1419); }
 
 /* ── 필터 칩 (고객/재고 공용) ────────────────────────────── */
 .hub-filter-chips {
@@ -394,15 +394,15 @@
 
 /* ── 배지 (단골/회원권/신규/이탈/생일) ─────────────────── */
 .badge {
-  font-size: 9.5px; font-weight: 700;
+  font-size: 11px; font-weight: 700;
   padding: 2px 7px; border-radius: 999px;
   letter-spacing: -0.1px;
   display: inline-flex; align-items: center; gap: 3px;
 }
-.badge-regular  { background: #FBD0D6; color: #C73E52; }
-.badge-member   { background: #FBD0D6; color: #C73E52; }
-.badge-new      { background: rgba(16,165,107,0.12); color: #10A56B; }
-.badge-risk     { background: rgba(220,72,72,0.10); color: #DC4848; }
+.badge-regular  { background: var(--brand-bg, #FCEEF1); color: var(--accent, #F18091); }
+.badge-member   { background: var(--brand-bg, #FCEEF1); color: var(--accent, #F18091); }
+.badge-new      { background: #F2F2F7; color: #5A6573; }
+.badge-risk     { background: var(--brand-bg, #FCEEF1); color: var(--accent, #F18091); }
 .badge-birthday { background: #F2F2F7; color: #5A6573; }
 
 /* ── OCR 가격표 카드 (재고) ─────────────────────────────── */
