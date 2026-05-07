@@ -519,6 +519,44 @@ function authHeader() {
     _reconnectToastTimer = setTimeout(() => { window.__itdasyReconnectShown = false; }, 8000);
   }
 
+  let _refreshing = false;
+  let _refreshWaiters = [];
+
+  async function _tryRefresh() {
+    if (_refreshing) {
+      return new Promise((res, rej) => _refreshWaiters.push({ res, rej }));
+    }
+    _refreshing = true;
+    try {
+      const API = window.API || '';
+      const tok = getToken();
+      const r = await _origFetch(API + '/auth/refresh', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
+      });
+      if (!r.ok) throw new Error('refresh_failed');
+      const data = await r.json();
+      setToken(data.access_token);
+      _refreshWaiters.forEach(w => w.res(data.access_token));
+      return data.access_token;
+    } catch (e) {
+      _refreshWaiters.forEach(w => w.rej(e));
+      throw e;
+    } finally {
+      _refreshing = false;
+      _refreshWaiters = [];
+    }
+  }
+
+  function _handle401() {
+    setToken(null);
+    const msg = document.getElementById('sessionExpiredMsg');
+    if (msg) msg.style.display = 'block';
+    const lock = document.getElementById('lockOverlay');
+    if (lock) lock.classList.remove('hidden');
+    _setAuthGateLocked(true);
+  }
+
   window.fetch = async function(input, init) {
     const retryable = _isRetryableMethod(init) && _bodyReusable(init);
     let attempt = 0;
@@ -527,13 +565,21 @@ function authHeader() {
       try {
         const res = await _origFetch(input, init);
         if (res.status === 401 && getToken()) {
-          setToken(null);
-          const msg = document.getElementById('sessionExpiredMsg');
-          if (msg) msg.style.display = 'block';
-          const lock = document.getElementById('lockOverlay');
-          if (lock) lock.classList.remove('hidden');
-          _setAuthGateLocked(true);
-          return res;
+          // /auth/refresh 자체가 401이면 무한루프 방지
+          const url = typeof input === 'string' ? input : (input.url || '');
+          if (url.includes('/auth/refresh') || url.includes('/auth/login')) {
+            _handle401();
+            return res;
+          }
+          try {
+            const newTok = await _tryRefresh();
+            // 갱신된 토큰으로 원 요청 재시도
+            const newInit = { ...init, headers: { ...(init && init.headers), 'Authorization': 'Bearer ' + newTok } };
+            return await _origFetch(input, newInit);
+          } catch (_e) {
+            _handle401();
+            return res;
+          }
         }
         // 5xx 게이트웨이성 에러: retryable 이면 재시도. 첫 실패는 조용히, 2회째 실패부터 토스트.
         if (retryable && RETRY_STATUSES.has(res.status) && attempt < MAX_RETRIES) {
