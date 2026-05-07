@@ -47,7 +47,7 @@
           <button type="button" class="p9-sheet__btn" data-rm-save>저장</button>
           <button type="button" class="p9-sheet__ghost" data-rm-send>오늘 예약 확인 보내기</button>
         </div>
-        <div class="p9-sheet__meta">자동 발송 예약은 서버 스케줄러 연결 후 완전 자동화됩니다.</div>
+        <div class="p9-sheet__meta">서버 스케줄러가 5분마다 자동으로 확인 메시지를 보내고 있어요. "오늘 예약 확인 보내기"는 즉시 수동 발송입니다.</div>
       </div>`;
     document.body.appendChild(el);
     el.addEventListener('click', _onClick);
