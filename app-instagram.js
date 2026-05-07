@@ -83,12 +83,18 @@ async function checkInstaStatus(fromLogin = false) {
       updateStep('stepCaption', !!localStorage.getItem('_first_caption_done'));
     } else {
       try { localStorage.removeItem('itdasy:ig_connected_cache'); } catch (_e) { /* ignore */ }
-      // [2026-05-08 28차 2단계] dismissed 사장님은 카드 안 보임 (재연결 = 설정 메뉴로)
+      // [2026-05-08 28차 hotfix] 잇비 카드 / 메인홈 교차 표시 — 둘 다 보이면 스크롤 어색.
+      //   미연결 + 카드 visible       → 잇비 카드만
+      //   미연결 + 카드 dismissed     → 메인홈만
+      //   연결됨                      → 메인홈만 (위 if(data.connected) 처리)
       const dismissed = (function(){ try { return localStorage.getItem('itdasy_ipc_dismissed') === '1'; } catch (_) { return false; } })();
-      document.getElementById('homePreConnect').style.display = dismissed ? 'none' : 'flex';
-      // [2026-05-08 28차 hotfix] 인스타 미연결이어도 메인홈 (운영 4기능 등) 항상 표시.
-      // 잇비 카드는 위에 hero, 닫으면 (dismissed) 메인홈만 보임.
-      document.getElementById('homePostConnect').style.display = 'flex';
+      if (dismissed) {
+        document.getElementById('homePreConnect').style.display = 'none';
+        document.getElementById('homePostConnect').style.display = 'flex';
+      } else {
+        document.getElementById('homePreConnect').style.display = 'flex';
+        document.getElementById('homePostConnect').style.display = 'none';
+      }
       updateStep('stepInsta', false);
       updateStep('stepPersona', false);
       updateStep('stepCaption', false);
@@ -428,6 +434,9 @@ function _dismissIpcCard() {
   try { localStorage.setItem('itdasy_ipc_dismissed', '1'); } catch (_e) { void _e; }
   const card = document.getElementById('homePreConnect');
   if (card) card.style.display = 'none';
+  // 카드 닫으면 메인홈 visible 시킴 (교차 표시)
+  const post = document.getElementById('homePostConnect');
+  if (post) post.style.display = 'flex';
   if (typeof showToast === 'function') {
     showToast('설정에서 다시 인스타 연결할 수 있어요');
   }
