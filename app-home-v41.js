@@ -451,6 +451,19 @@
       openBookingApproval: () => {
         if (typeof window.openBookingApproval === 'function') window.openBookingApproval();
       },
+      openCustomers: () => {
+        if (typeof window.openCustomerHub === 'function') return window.openCustomerHub();
+        if (typeof window.openCustomers === 'function') return window.openCustomers();
+      },
+      openRevenue: () => {
+        if (typeof window.showTab === 'function') {
+          const btn = document.querySelector('.tab-bar__btn[data-tab="dashboard"]');
+          try { window.showTab('dashboard', btn); } catch (_e) { /* ignore */ }
+        }
+      },
+      openInventory: () => {
+        if (typeof window.openInventoryPanel === 'function') return window.openInventoryPanel();
+      },
     };
     if (map[act]) { map[act](); return; }
     if (typeof window[act] === 'function') {
