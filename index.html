@@ -1032,10 +1032,13 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
   </div>
 
   <!-- 2026-05-01 ── 깜빡임 방지: 캐시 보고 미리 화면 결정 (검사 응답 오기 전).
-       checkInstaStatus 가 실제 상태로 마지막에 덮어씀. 첫 방문은 캐시 없어 그대로 pre-connect. -->
+       checkInstaStatus 가 실제 상태로 마지막에 덮어씀. 첫 방문은 캐시 없어 그대로 pre-connect.
+       [2026-05-08 v117] OAuth 직후 (?connected=success) 도 잇비카드 즉시 숨김 — status 호출 결과 기다리지 않음. -->
   <script>
     try {
-      if (localStorage.getItem('itdasy:ig_connected_cache') === '1') {
+      const _isOAuthBack = new URLSearchParams(location.search).get('connected') === 'success';
+      const _cached = localStorage.getItem('itdasy:ig_connected_cache') === '1';
+      if (_isOAuthBack || _cached) {
         document.write('<style>#homePreConnect{display:none}#homePostConnect{display:flex}</style>');
       }
     } catch (_e) { /* ignore */ }

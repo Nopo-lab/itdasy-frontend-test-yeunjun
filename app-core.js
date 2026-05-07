@@ -1359,19 +1359,21 @@ window.addEventListener('load', function() {
     try { applyNewSession(getToken()); } catch (_) { /* ignore */ }
     checkCbt1Reset();
     checkOnboarding();
+    // [2026-05-08 v117] OAuth 직후면 분석 즉시 시작 — checkInstaStatus 네트워크 응답 기다리지 않음.
+    //   사장님이 잇비카드 → 메인홈 → 분석중 깜빡임 보던 거 차단. 분석중 오버레이만 보임.
+    const _params0 = new URLSearchParams(window.location.search);
+    const _justOAuthed = _params0.get('connected') === 'success';
+    if (_justOAuthed) {
+      history.replaceState(null, '', window.location.pathname);
+      try {
+        const pd = document.getElementById('personaDash');
+        if (pd) pd.style.display = 'none';
+      } catch (_e) { void _e; }
+      try { runPersonaAnalyze(); } catch (_e) { void _e; }
+    }
     checkInstaStatus().then(() => {
-      // 인스타 OAuth 콜백 후 내 말투 자동 완성
+      // (connected=success 는 위에서 이미 처리됨 — runPersonaAnalyze 즉시 호출)
       const params = new URLSearchParams(window.location.search);
-      if (params.get('connected') === 'success') {
-        history.replaceState(null, '', window.location.pathname);
-        // [2026-05-08 hotfix] 옛 persona 카드 명시 숨김 (이중 안전망)
-        try {
-          const pd = document.getElementById('personaDash');
-          if (pd) pd.style.display = 'none';
-        } catch (_e) { void _e; }
-        // 지연 단축 — 사용자가 옛 카드 보는 시간 최소화
-        setTimeout(runPersonaAnalyze, 200);
-      }
       // Chrome 이동 후 자동 연동 시작
       if (params.get('auto_connect') === '1') {
         history.replaceState(null, '', window.location.pathname);
@@ -1524,7 +1526,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260508-v116-vertex-429-msg';
+window.APP_BUILD = '20260508-v117-oauth-instant-analyze';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;
