@@ -432,10 +432,28 @@
 <!-- 2026-05-04 ── 로그인 전에는 앱 화면 조각을 숨긴다. 토큰 확인은 app-core.js 의 getToken() 이 담당. -->
 <div class="lock-overlay" id="lockOverlay" style="display:none">
   <script>
+    // [2026-05-08 v118] 토큰 있으면 lockOverlay 처음부터 안 보임 — OAuth 복귀 / SW 버전 mismatch reload 깜빡임 차단.
     try {
       var _ov = document.getElementById('lockOverlay');
-      if (document.body) { document.body.classList.add('itdasy-locked'); }
-      _ov.style.display = '';  // inline display:none 해제 → CSS (.hidden 또는 default) 가 결정
+      var _hasToken = false;
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('itdasy_token') === 0 && localStorage.getItem(k)) {
+            _hasToken = true;
+            break;
+          }
+        }
+      } catch (_eT) { /* ignore */ }
+      if (_hasToken) {
+        // 인증된 상태 — lockOverlay 계속 숨김. 앱 콘텐츠 바로 표시.
+        _ov.classList.add('hidden');
+        _ov.style.display = '';  // inline 해제, .hidden 클래스가 결정
+      } else {
+        // 토큰 없음 — 로그인 화면.
+        if (document.body) { document.body.classList.add('itdasy-locked'); }
+        _ov.style.display = '';
+      }
     } catch (_e) {
       if (document.body) { document.body.classList.add('itdasy-locked'); }
       document.getElementById('lockOverlay').style.display = '';
