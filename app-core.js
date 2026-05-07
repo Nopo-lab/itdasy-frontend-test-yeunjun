@@ -300,7 +300,7 @@ window._clearAllSWRCache = _clearAllSWRCache;
 //   새 토큰을 구분 못 하므로 user_id 기준으로 비교.
 // ──────────────────────────────────────────────
 const _USER_KEY_PREFIXES = ['itdasy_', 'pv_cache::', 'persona_'];
-const _USER_KEY_EXACT = ['last_login_email', 'user_oauth_provider', 'last_user_id'];
+const _USER_KEY_EXACT = ['last_login_email', 'user_oauth_provider', 'last_user_id', 'shop_id'];
 // 디바이스/UI 설정처럼 사용자 변경 시 보존할 키 (온보딩·테마·언어)
 const _USER_KEY_KEEP = new Set([
   'onboarding_done', 'shop_type', 'shop_name',
