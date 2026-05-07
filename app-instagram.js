@@ -77,7 +77,9 @@ async function checkInstaStatus(fromLogin = false) {
       const persona = data.persona || {};
       const personaDone = !!(persona.style_summary);
       updateStep('stepPersona', personaDone);
-      if (personaDone) renderPersonaDash(persona);
+      // [2026-05-08 hotfix] OAuth 직후 (?connected=success) 자동 분석이 곧 따라옴 → 옛 persona 안 깜빡이게 강제 숨김
+      const justOAuthed = (function(){ try { return new URLSearchParams(location.search).get('connected') === 'success'; } catch (_) { return false; } })();
+      if (personaDone && !justOAuthed) renderPersonaDash(persona);
       else document.getElementById('personaDash').style.display = 'none';
       // 첫 글 완성 여부는 generationLog 기반. 백엔드 지원 전까진 localStorage hint로
       updateStep('stepCaption', !!localStorage.getItem('_first_caption_done'));
@@ -238,7 +240,11 @@ async function runPersonaAnalyze() {
     clearInterval(ticker);
 
     if (!res.ok) {
+      // [2026-05-08 hotfix] status code 별 친절 메시지 + personaDash 명시 숨김
       let friendly = '인스타 분석에 실패했습니다. 잠시 후 다시 시도해주세요';
+      if (res.status === 404) friendly = '분석할 게시물이 아직 없어요. 게시물을 먼저 올려주세요!';
+      else if (res.status === 429) friendly = '이번 달 분석 한도(1회)를 다 썼어요. 다음 달에 다시 시도해주세요';
+      else if (res.status === 401) friendly = '인스타 토큰이 만료됐어요. 재연동해주세요';
       try {
         const err = await res.json();
         if (err.detail && typeof err.detail === 'string' && !err.detail.includes('Error')) {
@@ -246,6 +252,9 @@ async function runPersonaAnalyze() {
         }
       } catch(_) { /* ignore */ }
       overlay.style.display = 'none';
+      // 옛 persona 카드 남지 않도록 강제 숨김
+      const pd = document.getElementById('personaDash');
+      if (pd) pd.style.display = 'none';
       showToast(friendly);
       return;
     }
@@ -285,6 +294,9 @@ async function runPersonaAnalyze() {
   } catch(e) {
     clearInterval(ticker);
     overlay.style.display = 'none';
+    // [2026-05-08 hotfix] 네트워크 실패도 옛 persona 카드 같이 숨김
+    const pd = document.getElementById('personaDash');
+    if (pd) pd.style.display = 'none';
     showToast('네트워크 오류로 분석이 중단됐어요. 잠시 후 다시 시도해주세요');
   }
 }

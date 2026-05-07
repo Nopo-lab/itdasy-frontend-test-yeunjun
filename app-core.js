@@ -1364,7 +1364,13 @@ window.addEventListener('load', function() {
       const params = new URLSearchParams(window.location.search);
       if (params.get('connected') === 'success') {
         history.replaceState(null, '', window.location.pathname);
-        setTimeout(runPersonaAnalyze, 800);
+        // [2026-05-08 hotfix] 옛 persona 카드 명시 숨김 (이중 안전망)
+        try {
+          const pd = document.getElementById('personaDash');
+          if (pd) pd.style.display = 'none';
+        } catch (_e) { void _e; }
+        // 지연 단축 — 사용자가 옛 카드 보는 시간 최소화
+        setTimeout(runPersonaAnalyze, 200);
       }
       // Chrome 이동 후 자동 연동 시작
       if (params.get('auto_connect') === '1') {
@@ -1518,7 +1524,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260508-v114-toggle-cross';
+window.APP_BUILD = '20260508-v115-oauth-flow-fix';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;
