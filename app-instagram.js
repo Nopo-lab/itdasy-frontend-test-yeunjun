@@ -247,8 +247,17 @@ async function runPersonaAnalyze() {
       else if (res.status === 401) friendly = '인스타 토큰이 만료됐어요. 재연동해주세요';
       try {
         const err = await res.json();
-        if (err.detail && typeof err.detail === 'string' && !err.detail.includes('Error')) {
-          friendly = err.detail;
+        const detail = (err && typeof err.detail === 'string') ? err.detail : '';
+        // [2026-05-08 v116] Vertex AI / Gemini 사용량 초과 — BE 가 500 으로 wrap 해서 보냄.
+        // 이 케이스는 status 분기 안 타니까 detail 패턴으로 별도 감지.
+        if (detail.includes('RESOURCE_EXHAUSTED') || detail.includes('Resource exhausted')) {
+          friendly = 'AI 분석 서버가 잠시 바빠요. 1~2분 뒤 다시 시도해주세요';
+        }
+        // 친절 detail 만 채택 — 기술 메시지(에러/예외/JSON 덤프 등)는 거름
+        else if (detail && detail.length < 120
+                 && !detail.includes('Error') && !detail.includes('Exception')
+                 && !detail.includes('Traceback') && !detail.includes("'error'")) {
+          friendly = detail;
         }
       } catch(_) { /* ignore */ }
       overlay.style.display = 'none';
