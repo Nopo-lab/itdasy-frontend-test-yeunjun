@@ -860,7 +860,10 @@ async function logout(opts) {
   // (온보딩·테마·생체등록 같은 디바이스 설정은 _USER_KEY_KEEP 가 보존)
   try { _purgeUserScopedStorage(); } catch (_e) { void _e; }
   // 호환성 — 옛 단일 키도 함께 제거
-  ['itdasy_token', 'itdasy_consented', 'itdasy_consented_at', 'itdasy_latest_analysis'].forEach(k => {
+  // [2026-05-08 28차 hotfix] itdasy_ipc_dismissed (잇비 카드 닫기 상태) +
+  // itdasy:ig_connected_cache (콜론 prefix 라 _purgeUserScopedStorage 의 itdasy_ 매칭 못 함) 명시 정리.
+  ['itdasy_token', 'itdasy_ipc_dismissed', 'itdasy:ig_connected_cache',
+   'itdasy_consented', 'itdasy_consented_at', 'itdasy_latest_analysis'].forEach(k => {
     try { localStorage.removeItem(k); } catch (_e) { void _e; }
   });
 
@@ -1515,7 +1518,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260508-v111-pre-post-coexist';
+window.APP_BUILD = '20260508-v112-logout-purge-fix';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;
