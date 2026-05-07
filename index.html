@@ -84,6 +84,53 @@
 <link rel="stylesheet" href="style-fun.css">
 <!-- [2026-04-30 v65] 허브 카드 + 시트 폴리싱 (lift/active/blur) -->
 <link rel="stylesheet" href="style-hub.css?v=0501">
+<style id="login-v22">
+  /* 모션 keyframes */
+  @keyframes loginFadeUp { from { opacity:0; transform:translateY(12px);} to { opacity:1; transform:translateY(0);} }
+  @keyframes loginPulse { 0%,100% { transform:scale(1); opacity:.4;} 50% { transform:scale(1.4); opacity:1;} }
+  @keyframes loginShimmer { 0% { background-position:-200% center;} 100% { background-position:200% center;} }
+  @keyframes loginTypewriter { from { width:0;} to { width:100%;} }
+  @keyframes loginBlink { 50% { border-color:transparent;} }
+
+  .login-fade-1{animation:loginFadeUp .6s ease-out 0s both}
+  .login-fade-2{animation:loginFadeUp .6s ease-out .15s both}
+  .login-fade-3{animation:loginFadeUp .6s ease-out .3s both}
+  .login-fade-4{animation:loginFadeUp .6s ease-out .45s both}
+  .login-fade-5{animation:loginFadeUp .6s ease-out .6s both}
+  .login-fade-6{animation:loginFadeUp .6s ease-out .75s both}
+  .login-fade-7{animation:loginFadeUp .6s ease-out .9s both}
+
+  .login-brand-wrap{text-align:center;margin-top:20px}
+  .login-brand-title{font-size:23px;font-weight:800;color:var(--accent,#F18091);letter-spacing:-.5px;position:relative;display:inline-block}
+  .login-brand-title::after{content:'';position:absolute;right:-10px;top:6px;width:6px;height:6px;border-radius:999px;background:var(--accent,#F18091);animation:loginPulse 1.8s ease-in-out infinite}
+  .login-brand-sub{font-size:10px;color:var(--text3,#98A1AC);letter-spacing:1.5px;margin-top:4px;font-weight:600;text-align:center}
+
+  .login-hero{margin:auto 0;text-align:center;padding:18px 0}
+  .login-hero-tag{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--brand-bg,rgba(241,128,145,.12));color:var(--accent,#F18091);border-radius:999px;font-size:11.5px;font-weight:700;margin-bottom:16px;letter-spacing:-.2px}
+  .login-hero-tag .login-dot{width:5px;height:5px;border-radius:999px;background:var(--accent,#F18091);animation:loginPulse 1.5s ease-in-out infinite}
+  .login-hero-main{font-size:24px;font-weight:800;letter-spacing:-.6px;line-height:1.35;color:var(--text,#0F1419)}
+  .login-hero-main .login-accent{background:linear-gradient(90deg,var(--accent,#F18091) 0%,var(--accent2,#E25774) 50%,var(--accent,#F18091) 100%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:loginShimmer 3s linear infinite;font-weight:800}
+  .login-hero-pink{font-size:14.5px;font-weight:700;color:var(--accent,#F18091);letter-spacing:-.3px;margin-top:12px}
+  .login-hero-sub{font-size:12.5px;color:var(--text3,#98A1AC);font-weight:500;margin-top:12px;line-height:1.6}
+  .login-hero-sub .login-pip{display:inline-block;width:3px;height:3px;border-radius:999px;background:var(--text3,#98A1AC);margin:0 6px 3px;vertical-align:middle}
+
+  .login-ai-card{background:var(--surface,#fff);border:1px solid var(--brand-bg,rgba(241,128,145,.18));border-radius:14px;padding:12px 14px;margin:0 0 14px;display:flex;align-items:center;gap:10px;position:relative;overflow:hidden;width:100%;max-width:340px;box-sizing:border-box}
+  .login-ai-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent,#F18091)}
+  .login-ai-card .login-ai-ava{width:32px;height:32px;border-radius:999px;background:linear-gradient(135deg,var(--accent,#F18091) 0%,var(--accent2,#E25774) 100%);display:grid;place-items:center;color:#fff;flex-shrink:0;position:relative}
+  .login-ai-card .login-ai-ava::after{content:'';position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:999px;background:#4ADE80;border:2px solid #fff;animation:loginPulse 1.6s ease-in-out infinite}
+  .login-ai-card .login-ai-body{flex:1;min-width:0}
+  .login-ai-card .login-ai-name{font-size:12px;font-weight:800;color:var(--text,#0F1419);letter-spacing:-.2px}
+  .login-ai-card .login-ai-msg{font-size:11.5px;color:var(--text2,#5A6573);margin-top:2px;line-height:1.4}
+  .login-ai-card .login-ai-typing{display:inline-block;border-right:2px solid var(--accent,#F18091);white-space:nowrap;overflow:hidden;animation:loginTypewriter 2.5s steps(28,end) 1.5s both,loginBlink .8s step-end 1.5s 5}
+
+  .login-btn-kakao{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:54px;padding:15px;border:none;border-radius:14px;background:#FEE500;color:#3A1D1D;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:-.3px;margin-bottom:8px;transition:transform .15s ease-out,box-shadow .15s ease-out}
+  .login-btn-kakao:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(254,229,0,.45)}
+  .login-btn-google{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;padding:13px;border:1px solid var(--border-strong,rgba(15,20,25,.14));border-radius:14px;background:#fff;color:var(--text,#0F1419);font-size:14px;font-weight:700;cursor:pointer;margin-bottom:6px;transition:border-color .15s,transform .15s ease-out}
+  .login-btn-google:hover{border-color:var(--text3,#98A1AC);transform:translateY(-1px)}
+  .login-fold-trigger{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:14px;background:none;border:none;color:var(--text2,#5A6573);font-size:13px;font-weight:600;cursor:pointer}
+  .login-foot{text-align:center;font-size:13px;color:var(--text3,#98A1AC);margin-top:18px}
+  .login-foot a{color:var(--accent,#F18091);font-weight:700;text-decoration:none}
+</style>
 </head>
 <body>
 
@@ -383,63 +430,89 @@
       document.getElementById('lockOverlay').style.display = '';
     }
   </script>
-  <div class="lock-title">잇데이 스튜디오</div>
-  <div class="lock-sub">ITDASY STUDIO</div>
-  
-  <!-- 서비스 설명 (홈에서 이동) -->
-  <div style="margin:24px 0; text-align:center;">
-    <div style="font-size:18px; font-weight:800; color:var(--text); line-height:1.4; letter-spacing:-0.5px;">피드 글 작성부터<br>사진 편집, 인스타 발행까지</div>
-    <div style="margin-top:8px; font-size:15px; font-weight:700; color:var(--accent2);">핸드폰 하나로 끝.</div>
-    <div style="margin-top:12px; font-size:12px; color:var(--text3); font-weight:500;">"사장님의 시간을 아껴, 매출을 잇습니다."</div>
+  <div class="login-brand-wrap login-fade-1">
+    <div class="login-brand-title">잇데이 스튜디오</div>
+    <div class="login-brand-sub">IT'S DAY · 매일 매출 잇는 날</div>
   </div>
 
-  <div style="margin-bottom:20px; font-size:13px; color:var(--accent); font-weight:600; display:none;" id="sessionExpiredMsg">⚠️ 로그인 세션이 만료되었습니다. 다시 로그인해주세요.</div>
-  <input type="email" class="login-input" id="loginEmail" placeholder="이메일" autocomplete="email" inputmode="email">
-  <div style="position:relative;width:100%;max-width:300px;margin-bottom:10px;">
-    <input type="password" class="login-input" id="loginPassword" placeholder="비밀번호" autocomplete="current-password" style="margin-bottom:0;padding-right:44px;">
-    <button type="button" id="loginPwToggle" aria-label="비밀번호 보기" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:none;background:transparent;cursor:pointer;font-size:15px;color:#888;padding:0;display:flex;align-items:center;justify-content:center;">👁</button>
+  <div class="login-hero">
+    <div class="login-hero-tag login-fade-2">
+      <span class="login-dot"></span> 내 말투를 아는 AI 비서
+    </div>
+    <div class="login-hero-main login-fade-3">
+      사장님 말투 그대로,<br>
+      <span class="login-accent">나만의 AI 비서, 잇비</span>
+    </div>
+    <div class="login-hero-pink login-fade-4">사진만 올려요. 글은 잇비가.</div>
+    <div class="login-hero-sub login-fade-5">
+      인스타 글 <span class="login-pip"></span>
+      예약 <span class="login-pip"></span>
+      매출 <span class="login-pip"></span>
+      손님 관리
+    </div>
   </div>
-  <div class="login-error" id="loginError"></div>
-  <button class="pin-btn" id="loginBtn">로그인</button>
 
-  <!-- ───── 소셜 로그인 구분선 ───── -->
-  <div id="loginSocialDivider" style="display:flex;align-items:center;gap:8px;width:100%;max-width:300px;margin:14px 0 6px;">
-    <div style="flex:1;height:1px;background:#eee;"></div>
-    <span style="font-size:11px;color:var(--text3);font-weight:600;">또는</span>
-    <div style="flex:1;height:1px;background:#eee;"></div>
+  <div class="login-ai-card login-fade-6">
+    <div class="login-ai-ava">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="10" rx="2" ry="2"/>
+        <circle cx="12" cy="5" r="2"/>
+        <path d="M12 7v4"/>
+        <line x1="8" y1="16" x2="8" y2="16"/>
+        <line x1="16" y1="16" x2="16" y2="16"/>
+      </svg>
+    </div>
+    <div class="login-ai-body">
+      <div class="login-ai-name">잇비 <span style="color:var(--text3);font-weight:500;">· 사장님만의 AI 비서</span></div>
+      <div class="login-ai-msg"><span class="login-ai-typing">박서연 손님 단골 시술 글 쓰는 중...</span></div>
+    </div>
   </div>
 
-  <!-- Google · Kakao 소셜 로그인 (OAuth) -->
-  <div id="socialLoginWrap" style="width:100%;max-width:300px;">
-    <button id="loginGoogleBtn"
-      style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:1px solid #ddd;border-radius:12px;background:#fff;color:#222;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;">
-      <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.64-.05-1.25-.16-1.84H9v3.48h4.84a4.13 4.13 0 0 1-1.8 2.71v2.26h2.92A8.8 8.8 0 0 0 17.64 9.2z" fill="#4285F4"/><path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26a5.38 5.38 0 0 1-8.1-2.82H.95v2.33A9 9 0 0 0 9 18z" fill="#34A853"/><path d="M3.96 10.71A5.41 5.41 0 0 1 3.68 9c0-.6.1-1.17.28-1.71V4.96H.95A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.04l3-2.33z" fill="#FBBC05"/><path d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58A9 9 0 0 0 9 0 9 9 0 0 0 .95 4.96l3 2.33A5.38 5.38 0 0 1 9 3.58z" fill="#EA4335"/></svg>
-      Google로 계속하기
-    </button>
-
-    <button id="loginKakaoBtn"
-      style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:none;border-radius:12px;background:#FEE500;color:#3A1D1D;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;">
+  <div class="login-fade-7" style="width:100%;max-width:340px;">
+    <button id="loginKakaoBtn" onclick="startKakaoLogin()" class="login-btn-kakao">
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 1.4C4.58 1.4 1 4.22 1 7.68c0 2.2 1.47 4.13 3.7 5.26L3.9 16.52l4.02-2.55c.36.05.73.08 1.08.08 4.42 0 8-2.82 8-6.28S13.42 1.4 9 1.4z" fill="#3A1D1D"/></svg>
-      카카오로 계속하기
+      카카오로 1분 시작
     </button>
 
-    <button id="loginNaverBtn"
-      style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:none;border-radius:12px;background:#03C75A;color:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z"/></svg>
-      네이버로 시작하기
+    <button id="loginGoogleBtn" onclick="startGoogleLogin()" class="login-btn-google">
+      <svg width="16" height="16" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.64-.05-1.25-.16-1.84H9v3.48h4.84a4.13 4.13 0 0 1-1.8 2.71v2.26h2.92A8.8 8.8 0 0 0 17.64 9.2z" fill="#4285F4"/><path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26a5.38 5.38 0 0 1-8.1-2.82H.95v2.33A9 9 0 0 0 9 18z" fill="#34A853"/><path d="M3.96 10.71A5.41 5.41 0 0 1 3.68 9c0-.6.1-1.17.28-1.71V4.96H.95A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.04l3-2.33z" fill="#FBBC05"/><path d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58A9 9 0 0 0 9 0 9 9 0 0 0 .95 4.96l3 2.33A5.38 5.38 0 0 1 9 3.58z" fill="#EA4335"/></svg>
+      Google로 시작
     </button>
-  </div>
 
-  <div style="margin-top:16px;text-align:center;font-size:13px;color:var(--text3);">
-    처음이신가요?
-    <a href="#register" id="goSignup" style="color:var(--accent);font-weight:700;text-decoration:none;margin-left:4px;">회원가입 →</a>
+    <button type="button" id="emailFoldBtn" onclick="toggleEmailFold()" class="login-fold-trigger">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+        <polyline points="22,6 12,13 2,6"/>
+      </svg>
+      이메일로 로그인
+      <svg id="emailFoldChevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.2s;">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </button>
+
+    <div id="emailFoldContent" style="display:none;padding-top:8px;border-top:1px solid var(--border, rgba(15,20,25,0.06));">
+      <div style="margin-bottom:18px;font-size:13px;color:var(--accent);font-weight:600;display:none;text-align:center;" id="sessionExpiredMsg">⚠️ 로그인 세션이 만료되었습니다. 다시 로그인해주세요.</div>
+      <input type="email" class="login-input" id="loginEmail" placeholder="이메일" autocomplete="email" inputmode="email" style="width:100%;padding:14px 16px;border:1px solid var(--border-strong,rgba(15,20,25,0.14));border-radius:12px;font-size:14px;margin-bottom:8px;box-sizing:border-box;">
+      <div style="position:relative;width:100%;">
+        <input type="password" class="login-input" id="loginPassword" placeholder="비밀번호" autocomplete="current-password" style="width:100%;padding:14px 44px 14px 16px;border:1px solid var(--border-strong,rgba(15,20,25,0.14));border-radius:12px;font-size:14px;box-sizing:border-box;">
+        <button type="button" id="loginPwToggle" aria-label="비밀번호 보기" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:none;background:transparent;cursor:pointer;color:#888;display:flex;align-items:center;justify-content:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <button class="pin-btn" id="loginBtn" style="width:100%;margin-top:10px;">로그인</button>
+    </div>
+
+    <div class="login-foot">
+      처음이세요? <a href="#register" id="goSignup">잇데이 시작 →</a>
+    </div>
+    <a href="index.html" style="display:block;margin-top:14px;text-align:center;font-size:12px;color:var(--text3);text-decoration:none;">홈으로 돌아가기</a>
   </div>
-  <a href="index.html" style="display:block; margin-top:18px; font-size:13px; color:var(--text3); text-decoration:none;">홈으로 돌아가기</a>
 </div>
 
 <!-- ───── 회원가입 오버레이 ───── -->
 <div class="lock-overlay" id="signupOverlay" style="display:none;">
-  <div class="lock-title">🚀 잇데이 회원가입</div>
+  <div class="lock-title">잇데이 회원가입</div>
   <div class="lock-sub" style="margin-bottom:8px;">14일 무료 체험 · 카드 정보 불필요</div>
 
   <div style="margin:20px 0 18px;text-align:center;font-size:12px;color:var(--text3);line-height:1.6;">
@@ -1636,6 +1709,18 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
 </aside>
 <!-- /shop-drawer -->
 
+<script>
+  // [22차] 로그인 화면 이메일 폼 fold 토글
+  function toggleEmailFold() {
+    const content = document.getElementById('emailFoldContent');
+    const chev = document.getElementById('emailFoldChevron');
+    if (!content) return;
+    const isOpen = content.style.display !== 'none';
+    content.style.display = isOpen ? 'none' : 'block';
+    if (chev) chev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+  }
+  window.toggleEmailFold = toggleEmailFold;
+</script>
 <script src="app-core.js?v=20260506-v101"></script>
 <script src="app-drawer.js"></script>
 <script src="app-secure-storage.js?v=20260506-v101"></script>
