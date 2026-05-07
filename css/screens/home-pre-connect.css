@@ -165,3 +165,22 @@
 [data-theme="dark"] .ipc-bubble {
   background: rgba(241,128,145,0.08);
 }
+
+/* 지금은 됐어요 — 카드 닫기 (영구 미표시 / 인스타 연결 시 자동 해제) */
+.ipc-skip {
+  display: block;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-subtle, #98A1AC);
+  padding: 12px 0 2px;
+  margin-top: 8px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  font-family: inherit;
+  letter-spacing: -0.1px;
+  transition: color 0.15s;
+}
+.ipc-skip:hover { color: var(--text-muted, #5A6573); }

@@ -62,6 +62,8 @@ async function checkInstaStatus(fromLogin = false) {
       } catch (_e) { /* ignore */ }
       document.getElementById('homePreConnect').style.display = 'none';
       document.getElementById('homePostConnect').style.display = 'flex';
+      // [2026-05-08 28차 2단계] 인스타 연결되면 dismissed 자동 해제 — 해제 후 다시 미연결 시 카드 다시 보이게
+      try { localStorage.removeItem('itdasy_ipc_dismissed'); } catch (_e) { void _e; }
       _instaHandle = data.handle || '';
       updateHeaderProfile(_instaHandle, data.persona ? data.persona.tone : null, data.profile_picture_url || '');
       updateStep('stepInsta', true);
@@ -81,7 +83,9 @@ async function checkInstaStatus(fromLogin = false) {
       updateStep('stepCaption', !!localStorage.getItem('_first_caption_done'));
     } else {
       try { localStorage.removeItem('itdasy:ig_connected_cache'); } catch (_e) { /* ignore */ }
-      document.getElementById('homePreConnect').style.display = 'flex';
+      // [2026-05-08 28차 2단계] dismissed 사장님은 카드 안 보임 (재연결 = 설정 메뉴로)
+      const dismissed = (function(){ try { return localStorage.getItem('itdasy_ipc_dismissed') === '1'; } catch (_) { return false; } })();
+      document.getElementById('homePreConnect').style.display = dismissed ? 'none' : 'flex';
       document.getElementById('homePostConnect').style.display = 'none';
       updateStep('stepInsta', false);
       updateStep('stepPersona', false);
@@ -413,3 +417,17 @@ function showInstaConflictModal(handle) {
   });
 }
 window.showInstaConflictModal = showInstaConflictModal;
+
+// [2026-05-08 28차 2단계] 잇비 카드 닫기 핸들러
+//   - localStorage 저장 → 다음 진입 시 카드 미표시
+//   - 토스트로 재진입 경로 안내
+//   - itdasy_ prefix 라 logout 시 _purgeUserScopedStorage 가 자연 정리
+function _dismissIpcCard() {
+  try { localStorage.setItem('itdasy_ipc_dismissed', '1'); } catch (_e) { void _e; }
+  const card = document.getElementById('homePreConnect');
+  if (card) card.style.display = 'none';
+  if (typeof showToast === 'function') {
+    showToast('설정에서 다시 인스타 연결할 수 있어요');
+  }
+}
+window._dismissIpcCard = _dismissIpcCard;
