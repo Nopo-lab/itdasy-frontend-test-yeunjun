@@ -86,7 +86,9 @@ async function checkInstaStatus(fromLogin = false) {
       // [2026-05-08 28차 2단계] dismissed 사장님은 카드 안 보임 (재연결 = 설정 메뉴로)
       const dismissed = (function(){ try { return localStorage.getItem('itdasy_ipc_dismissed') === '1'; } catch (_) { return false; } })();
       document.getElementById('homePreConnect').style.display = dismissed ? 'none' : 'flex';
-      document.getElementById('homePostConnect').style.display = 'none';
+      // [2026-05-08 28차 hotfix] 인스타 미연결이어도 메인홈 (운영 4기능 등) 항상 표시.
+      // 잇비 카드는 위에 hero, 닫으면 (dismissed) 메인홈만 보임.
+      document.getElementById('homePostConnect').style.display = 'flex';
       updateStep('stepInsta', false);
       updateStep('stepPersona', false);
       updateStep('stepCaption', false);
