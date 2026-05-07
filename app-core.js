@@ -380,6 +380,12 @@ async function applyNewSession(newToken, opts) {
       if (me) {
         try { if (me.email) localStorage.setItem('last_login_email', me.email); } catch (_) { void 0; }
         try { if (me.oauth_provider) localStorage.setItem('user_oauth_provider', me.oauth_provider); } catch (_) { void 0; }
+        // [2026-05-07 26차 [F-3]] /me 응답에 shop 정보 있으면 localStorage 동기화
+        // _USER_KEY_KEEP 에서 shop_* 빠진 뒤로 user 변경 시 매장명 폴백 노출 방지.
+        try {
+          if (typeof me.shop_name === 'string') localStorage.setItem('shop_name', me.shop_name);
+          if (typeof me.shop_type === 'string' && me.shop_type) localStorage.setItem('shop_type', me.shop_type);
+        } catch (_) { void 0; }
         if (typeof window.applyOAuthProviderBadge === 'function') {
           window.applyOAuthProviderBadge();
         }
