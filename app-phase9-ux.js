@@ -150,12 +150,13 @@
       </div>`;
   }
 
+  // 2026-05-08: 사용자 요청으로 홈 상단 8개 퀵탭(p9-quick-dock) 제거.
+  // 동일 기능은 햄버거 사이드바 / 탭바 / 챗봇으로 접근 가능.
+  // 기존에 dock 이 이미 DOM 에 박혀있으면 정리.
   function installQuickDock() {
-    if (document.getElementById('p9QuickDock')) return;
-    const host = document.getElementById('homeV41Root') || document.getElementById('homePostConnect') || document.getElementById('tab-home');
-    if (!host) return;
-    host.insertAdjacentHTML('beforebegin', _dockHTML());
-    document.getElementById('p9QuickDock')?.addEventListener('click', _onDockClick);
+    const existing = document.getElementById('p9QuickDock');
+    if (existing) { try { existing.remove(); } catch (_e) { void _e; } }
+    return; // 더 이상 새로 만들지 않음
   }
 
   function _onDockClick(e) {

@@ -600,12 +600,14 @@
   let _lastContainerId = null;
   let _inFlight = false;
 
-  // 2026-05-08 ── 사용자 요청: 빠른 퀵탭(캐러셀) 완전 제거 + 상단 영구 알림 센터.
-  // _buildCarouselCards / _renderCarousel / _setupCarousel 은 호출 안 함.
-  function _composeHTML(brief, _slots, dmQueueCount, onlinePendingCount) {
+  // 2026-05-08 (rev2): 캐러셀 복구 + 상단에 승인 알림 센터 추가.
+  // 진짜 "8개 퀵탭" 은 app-phase9-ux.js 의 p9-quick-dock — 거기서 제거.
+  function _composeHTML(brief, slots, dmQueueCount, onlinePendingCount) {
+    const cards = _buildCarouselCards(brief, slots);
     return [
       _renderHeader(),
       _renderApprovalCenter(brief, dmQueueCount || 0, onlinePendingCount || 0),
+      _renderCarousel(cards),
       _renderBooking(brief),
       _renderOps(brief),
     ].join('');
@@ -622,6 +624,7 @@
       try {
         const slots = await _fetchSlots();
         container.innerHTML = _composeHTML(swr.d, slots, swr.d._dmQueueCount || 0, swr.d._onlinePendingCount || 0);
+        _setupCarousel(container);
         _bindEvents(container, swr.d);
         _syncAvatar(container);
         _scheduleAvatarRetry(container);
@@ -643,9 +646,9 @@
       // brief.pending_booking_count 은 입금 대기 — 그대로 유지
       merged._dmQueueCount = dmQueueCount;
       merged._onlinePendingCount = onlinePendingCount;
-      // SWR 캐시 업데이트 (다음 진입 즉시 표시)
       try { _writeSWR(merged); } catch (_e) { void _e; }
       container.innerHTML = _composeHTML(merged, slots || [], dmQueueCount, onlinePendingCount);
+      _setupCarousel(container);
       _bindEvents(container, merged);
       _syncAvatar(container);
       _scheduleAvatarRetry(container);
