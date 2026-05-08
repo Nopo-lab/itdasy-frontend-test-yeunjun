@@ -11,8 +11,8 @@ html[data-theme="dark"], html[data-theme="dark"] body {
 
   /* ── 다크 토큰 v6 톤 (#000 배경 + 흰 hairline) ── */
   --brand: #FF8FA3; --brand-strong: #FFA8B8; --brand-bg: rgba(255,143,163,.20);
-  --bg: #000000; --surface: #18181A; --surface-2: #232325;
-  --text: #FAFAFA; --text-muted: #DDDDDD; --text-subtle: #A8A8A8;
+  --bg: #000; --surface: #18181A; --surface-2: #232325;
+  --text: #FAFAFA; --text-muted: #DDD; --text-subtle: #A8A8A8;
   --border: rgba(255,255,255,.18); --border-strong: rgba(255,255,255,.28);
   --shadow-md: 0 4px 16px rgba(0,0,0,.40);
   --shadow-brand: 0 8px 24px rgba(255,143,163,.40);
@@ -26,12 +26,12 @@ html[data-theme="dark"], html[data-theme="dark"] body {
   --text3: var(--text-subtle);
   --border2: var(--border-strong);
 
-  background: #000000 !important;
+  background: #000 !important;
   color: #FAFAFA !important;
 }
 
 html[data-theme="dark"] body {
-  background: #000000 !important;
+  background: #000 !important;
   color: #FAFAFA !important;
 }
 
@@ -200,25 +200,66 @@ html[data-theme="dark"] .sheet-handle {
 /* stylelint-enable selector-id-pattern */
 
 /* ═══════════════════════════════════════════════════════
-   T-334 · 큰 글씨 모드 (2026-04-22)
-   50대+ 원장님 접근성
+   T-334 · 큰 글씨 모드 (2026-04-22, 2026-05-08 강화)
+   50대+ 원장님 접근성. light/dark 모드 모두 적용 (theme-agnostic).
+   normal=16, large=18, xl=22 — 차이를 더 크게 해서 체감 명확화.
    ═══════════════════════════════════════════════════════ */
-html[data-fontsize="large"] {
-  font-size: 17px;  /* 기본 16 → 17, 전체 rem 기반 확대 */
-}
-html[data-fontsize="large"] body { font-size: 17px; }
 
+/* ── large (크게) — root 16→18, 차분히 확대 ── */
+html[data-fontsize="large"] {
+  font-size: 18px;
+}
+html[data-fontsize="large"] body { font-size: 18px; }
 html[data-fontsize="large"] button,
 html[data-fontsize="large"] input,
 html[data-fontsize="large"] textarea,
 html[data-fontsize="large"] select {
-  font-size: max(17px, 1.05em);
+  font-size: max(16px, 1em);
+}
+/* 주요 컴포넌트 — large 단계 확대 */
+html[data-fontsize="large"] .hv-card__headline,
+html[data-fontsize="large"] .list-menu__title,
+html[data-fontsize="large"] .btn-primary,
+html[data-fontsize="large"] .tab-bar__btn,
+html[data-fontsize="large"] .drawer-item .lbl {
+  font-size: 1.08em;
+}
+html[data-fontsize="large"] .hv-card__sub,
+html[data-fontsize="large"] .list-menu__desc {
+  font-size: 1em;
 }
 
+/* ── xl (아주 크게) — 22px, 가독성 우선 ── */
 html[data-fontsize="xl"] {
-  font-size: 19px;
+  font-size: 22px;
 }
-html[data-fontsize="xl"] body { font-size: 19px; }
+html[data-fontsize="xl"] body { font-size: 22px; line-height: 1.55; }
+html[data-fontsize="xl"] button,
+html[data-fontsize="xl"] input,
+html[data-fontsize="xl"] textarea,
+html[data-fontsize="xl"] select {
+  font-size: max(18px, 1em);
+  line-height: 1.5;
+}
+/* xl 단계 — 주요 컴포넌트 더 크게 */
+html[data-fontsize="xl"] .hv-card__headline,
+html[data-fontsize="xl"] .list-menu__title,
+html[data-fontsize="xl"] .btn-primary,
+html[data-fontsize="xl"] .tab-bar__btn,
+html[data-fontsize="xl"] .drawer-item .lbl {
+  font-size: 1.2em;
+}
+html[data-fontsize="xl"] .hv-card__sub,
+html[data-fontsize="xl"] .list-menu__desc {
+  font-size: 1.05em;
+  line-height: 1.6;
+}
+/* xl — 본문 텍스트 가독성 추가 보정 */
+html[data-fontsize="xl"] p,
+html[data-fontsize="xl"] li,
+html[data-fontsize="xl"] td {
+  line-height: 1.65;
+}
 
 html[data-theme="dark"] .tab-bar {
   box-shadow: 0 8px 24px rgba(0,0,0,.35);
