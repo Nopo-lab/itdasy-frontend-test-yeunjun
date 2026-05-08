@@ -267,7 +267,31 @@
       } else {
         r = await _fetch('POST', `/dm-confirm-queue/${id}/discard`);
       }
-      if (window.showToast) window.showToast(r.message || '✓ 처리됨');
+      // send / send_edit 성공 시 → 예약 캐시 무효화 + 홈/벨 갱신 + Undo 토스트
+      // (app-booking-api.js 의 _invalidateCache 가 itdasy:data-changed 리스너로 발동)
+      const isApproveSend = (action === 'send' || action === 'send_edit');
+      const undoLogId = r.log_id || r.action_log_id || null;
+      const baseMsg = r.message || '예약 등록됐어요';
+
+      if (isApproveSend && undoLogId && typeof window.showUndoToast === 'function') {
+        // 백엔드가 action log id 를 돌려주면 "되돌리기 →" 버튼 토스트
+        try { window.showUndoToast(baseMsg, undoLogId); } catch (_t) {
+          if (window.showToast) window.showToast(baseMsg);
+        }
+      } else if (window.showToast) {
+        window.showToast(baseMsg);
+      }
+
+      if (isApproveSend) {
+        try {
+          window.dispatchEvent(new CustomEvent('itdasy:data-changed', {
+            detail: { kind: 'create_booking', source: 'dm_confirm', booking_id: r.booking_id || null }
+          }));
+        } catch (_evt) { /* ignore */ }
+        try { if (typeof window.refreshDashBell === 'function') window.refreshDashBell(); } catch (_b) { /* ignore */ }
+        try { if (window.HomeV41 && typeof window.HomeV41.refresh === 'function') window.HomeV41.refresh(); } catch (_h) { /* ignore */ }
+      }
+
       // 카드 슬라이드 아웃
       card.style.transition = 'all 0.25s ease-out';
       card.style.opacity = '0';
