@@ -17,23 +17,37 @@
     } catch (_) { return null; }
   }
 
-  window.addEventListener('booking:created', async (e) => {
+  // [PERF P1-3] debounce — 대량 예약 입력 시 중복 API 호출 방지
+  let _syncTimer = null;
+  const _pendingNames = new Set();
+
+  window.addEventListener('booking:created', (e) => {
     const { customer_name, customer_id } = e.detail || {};
     if (customer_id)                              return;
     if (!customer_name || !customer_name.trim())  return;
     if (_localCustomerByName(customer_name))      return;
 
-    try {
-      await fetch(`${API()}/customers?force=true`, {
-        method: 'POST',
-        headers: { ...AUTH(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: customer_name.trim(), tags: [] }),
-      });
-      sessionStorage.removeItem('ch_cache');
-      if (window.CustomerHub?.refresh) window.CustomerHub.refresh();
-      if (window.showToast) window.showToast(`✅ 신규 고객 "${customer_name}" 자동 등록됨`);
-    } catch (_e) {
-      console.warn('[customer-sync] auto-create fail', _e);
-    }
+    _pendingNames.add(customer_name.trim());
+    clearTimeout(_syncTimer);
+    _syncTimer = setTimeout(async () => {
+      const names = [..._pendingNames];
+      _pendingNames.clear();
+      for (const name of names) {
+        try {
+          await fetch(`${API()}/customers?force=true`, {
+            method: 'POST',
+            headers: { ...AUTH(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, tags: [] }),
+          });
+        } catch (_e) {
+          console.warn('[customer-sync] auto-create fail', _e);
+        }
+      }
+      if (names.length > 0) {
+        sessionStorage.removeItem('ch_cache');
+        if (window.CustomerHub?.refresh) window.CustomerHub.refresh();
+        if (window.showToast) window.showToast(`✅ 신규 고객 ${names.length}명 자동 등록됨`);
+      }
+    }, 500);
   });
 })();
