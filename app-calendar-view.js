@@ -437,15 +437,24 @@
 
   function _placeWeekMBlocks(grid, items, startH, weekStart) {
     if (!grid) return;
+    // [PERF P3-2] DOM 쿼리 1회 캐싱 + DocumentFragment 배치 삽입
+    const cellMap = new Map();
+    grid.querySelectorAll('.bk-week-m__day').forEach(cell => {
+      const key = (cell.dataset.date || '') + ':' + (cell.dataset.hour || '');
+      cellMap.set(key, cell);
+    });
+    const fragments = new Map();
     items.forEach(it => {
       const s = new Date(it._raw.starts_at);
       const e = new Date(it._raw.ends_at);
-      const dayI = Math.round((new Date(_ds(s)) - new Date(_ds(weekStart))) / 86400000);
-      if (dayI < 0 || dayI > 6) return;
-      const dayCol = grid.querySelectorAll('.bk-week-m__day')[(s.getHours() - startH) * 7 + dayI];
-      // 더 안전하게: data-date + 첫 시간 column 찾기
-      const col = grid.querySelector(`.bk-week-m__day[data-date="${_ds(s)}"][data-hour="${s.getHours()}"]`);
-      const target = col || dayCol;
+      const key = _ds(s) + ':' + s.getHours();
+      let target = cellMap.get(key);
+      if (!target) {
+        const dayI = Math.round((new Date(_ds(s)) - new Date(_ds(weekStart))) / 86400000);
+        if (dayI < 0 || dayI > 6) return;
+        const allCells = grid.querySelectorAll('.bk-week-m__day');
+        target = allCells[(s.getHours() - startH) * 7 + dayI];
+      }
       if (!target) return;
       const top = (s.getMinutes() / 60) * HOUR_PX_MOBILE_WEEK;
       const height = Math.max(15, ((e - s) / 60000 / 60) * HOUR_PX_MOBILE_WEEK);
@@ -456,8 +465,10 @@
       block.style.top = top + 'px';
       block.style.height = height + 'px';
       block.textContent = it.cust;
-      target.appendChild(block);
+      if (!fragments.has(target)) fragments.set(target, document.createDocumentFragment());
+      fragments.get(target).appendChild(block);
     });
+    fragments.forEach((frag, cell) => cell.appendChild(frag));
   }
 
   // ============================================================
@@ -522,10 +533,16 @@
 
   function _placeWeekPCBlocks(grid, items, startH, weekStart) {
     if (!grid) return;
+    // [PERF P3-2] DOM 쿼리 1회 캐싱 + DocumentFragment 배치 삽입
+    const dayColMap = new Map();
+    grid.querySelectorAll('.bk-week__day').forEach(col => {
+      if (col.dataset.date) dayColMap.set(col.dataset.date, col);
+    });
+    const fragments = new Map();
     items.forEach(it => {
       const s = new Date(it._raw.starts_at);
       const e = new Date(it._raw.ends_at);
-      const dayCol = grid.querySelector(`.bk-week__day[data-date="${_ds(s)}"]`);
+      const dayCol = dayColMap.get(_ds(s));
       if (!dayCol) return;
       const top = (s.getHours() - startH) * HOUR_PX_PC_WEEK + (s.getMinutes() / 60) * HOUR_PX_PC_WEEK;
       const height = Math.max(30, ((e - s) / 60000 / 60) * HOUR_PX_PC_WEEK);
@@ -537,8 +554,10 @@
       block.style.height = height + 'px';
       block.innerHTML = '<div class="bk-week__block-title">' + _esc(it.cust) + '</div>'
         + '<div class="bk-week__block-sub">' + _fmt(s) + ' · ' + _esc(it.svc || '') + '</div>';
-      dayCol.appendChild(block);
+      if (!fragments.has(dayCol)) fragments.set(dayCol, document.createDocumentFragment());
+      fragments.get(dayCol).appendChild(block);
     });
+    fragments.forEach((frag, col) => col.appendChild(frag));
   }
 
   // ============================================================
