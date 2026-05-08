@@ -77,7 +77,9 @@
       clearTimeout(tid);
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        throw new Error(d.detail || ('HTTP ' + res.status));
+        const err = new Error(d.detail || ('HTTP ' + res.status));
+        err.status = res.status;
+        throw err;
       }
       return await res.json();
     } catch (e) {
@@ -85,6 +87,9 @@
       throw e;
     }
   }
+
+  // UUID v4 정규식 — 손상된 id 면 즉시 안내
+  const _UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   async function _apiPatch(path, body) {
     if (!window.API || !window.authHeader) throw new Error('no-auth');
@@ -431,6 +436,18 @@
     sheet.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     const body = sheet.querySelector('#cdBody');
+
+    // id 형식 검증 — UUID 아니면 즉시 안내
+    if (typeof id !== 'string' || !_UUID_RE.test(id)) {
+      console.warn('[customer-dashboard] invalid id:', id);
+      body.innerHTML = `
+        <div style="padding:40px 20px;text-align:center;">
+          <div style="font-size:13px;color:#c00;">손님 정보를 찾을 수 없어요</div>
+          <div style="font-size:11px;color:#888;margin-top:4px;">잘못된 손님 식별자입니다.</div>
+        </div>
+      `;
+      return;
+    }
     body.innerHTML = '<div style="padding:20px;color:#888;">불러오는 중…</div>';
     try {
       const d = await _apiGet('/customers/' + id + '/dashboard');
@@ -445,9 +462,13 @@
       _bindMembership(d);
     } catch (e) {
       console.warn('[customer-dashboard] 실패:', e);
-      // 대시보드 엔드포인트 없거나 타임아웃·네트워크 오류 시 기본 고객 상세로 폴백
+      // 폴백 조건: 네트워크 오류 / 4xx (요청 형식·인증 권한·없음) / 5xx 일부 (구현 안 됨·게이트웨이)
+      // — 422 "요청 형식이 올바르지 않습니다" 도 기본 고객 정보 폴백 대상
       const _isNetworkErr = e.name === 'AbortError' || e.message === 'Failed to fetch' || e.message === 'NetworkError when attempting to fetch resource.';
-      if (_isNetworkErr || (e.message && (e.message.includes('404') || e.message.includes('endpoint') || e.message.includes('501')))) {
+      const _is4xx = typeof e.status === 'number' && e.status >= 400 && e.status < 500;
+      const _isFallbackable5xx = e.status === 501 || e.status === 502 || e.status === 503;
+      const _isLegacyMatch = e.message && (e.message.includes('404') || e.message.includes('endpoint') || e.message.includes('501'));
+      if (_isNetworkErr || _is4xx || _isFallbackable5xx || _isLegacyMatch) {
         try {
           const cust = await _apiGet('/customers/' + id);
           body.innerHTML = `
@@ -456,15 +477,18 @@
             ${_renderEditBar(cust.id, cust)}
           `;
           _bindActions(cust.id, cust.name);
+          if (typeof window.showToast === 'function') {
+            window.showToast('기본 정보로 표시 중이에요');
+          }
           return;
         } catch (_fallbackErr) { /* 폴백도 실패 — 아래 에러 UI 표시 */ }
       }
       const errMsg = e.message || '네트워크 오류';
       body.innerHTML = `
         <div style="padding:40px 20px;text-align:center;">
-          <div style="font-size:36px;margin-bottom:10px;">😢</div>
+          <div style="margin-bottom:10px;color:#F18091;"><svg width="36" height="36" aria-hidden="true"><use href="#ic-alert-triangle"/></svg></div>
           <div style="font-size:13px;color:#c00;">대시보드를 불러오지 못했어요</div>
-          <div style="font-size:11px;color:#888;margin-top:4px;">${errMsg}</div>
+          <div style="font-size:11px;color:#888;margin-top:4px;">${_esc(errMsg)}</div>
           <button id="cdRetryBtn" style="margin-top:14px;padding:10px 20px;border:1px solid #F18091;background:rgba(241,128,145,0.08);color:#F18091;border-radius:12px;font-weight:700;font-size:13px;cursor:pointer;">다시 시도</button>
         </div>
       `;
