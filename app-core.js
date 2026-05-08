@@ -1977,17 +1977,78 @@ window._confirm2 = function (msg, opts) {
 // ─────────────────────────────────────────────────────────────
 window.forceSync = async function () {
   try {
+    // 1/3 — 캐시 비우기
+    if (typeof window.showToast === 'function') window.showToast('1/3 캐시 비우는 중…');
     if (typeof window._clearAllSWRCache === 'function') window._clearAllSWRCache();
-    if (typeof window.showToast === 'function') window.showToast('동기화 중…');
-    // data-changed 신호 한 번 — TodayBrief / 인사이트 등이 즉시 재렌더
+    // sessionStorage 의 dash_cache, pv_cache 등도 함께 정리
     try {
-      window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'force_sync' } }));
+      const keys = Object.keys(sessionStorage);
+      keys.forEach(k => {
+        if (/^(dash_cache::|pv_cache::|hv41_cache::)/.test(k)) sessionStorage.removeItem(k);
+      });
     } catch (_e) { void _e; }
-    setTimeout(() => { try { location.reload(); } catch (_e) { void _e; } }, 800);
+
+    // 2/3 — 데이터 다시 받기 신호
+    setTimeout(() => {
+      try {
+        if (typeof window.showToast === 'function') window.showToast('2/3 서버에서 다시 받는 중…');
+        window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'force_sync' } }));
+      } catch (_e) { void _e; }
+    }, 350);
+
+    // 3/3 — 화면 새로고침 + 마지막 동기화 시각 기록
+    setTimeout(() => {
+      try {
+        if (typeof window.showToast === 'function') window.showToast('3/3 화면 새로고침…');
+        localStorage.setItem('itdasy_last_sync_at', String(Date.now()));
+      } catch (_e) { void _e; }
+      setTimeout(() => { try { location.reload(); } catch (_e) { void _e; } }, 250);
+    }, 700);
   } catch (e) {
-    if (typeof window.showToast === 'function') window.showToast('동기화 실패 — 잠시 후 다시 시도해주세요');
+    if (typeof window.showToast === 'function') window.showToast('새로고침 실패 — 잠시 후 다시 시도해주세요');
   }
 };
+
+// 마지막 동기화 시각 — 설정 시트에서 표시용 ("N분 전")
+window.getLastSyncRelative = function () {
+  try {
+    const at = Number(localStorage.getItem('itdasy_last_sync_at') || 0);
+    if (!at) return '';
+    const diffMs = Date.now() - at;
+    const min = Math.floor(diffMs / 60000);
+    if (min < 1) return '방금 전';
+    if (min < 60) return min + '분 전';
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return hr + '시간 전';
+    return Math.floor(hr / 24) + '일 전';
+  } catch (_e) { return ''; }
+};
+
+// 모든 [data-last-sync] 요소의 텍스트를 마지막 동기화 시각으로 갱신
+window.refreshLastSyncBadges = function () {
+  try {
+    const rel = window.getLastSyncRelative();
+    document.querySelectorAll('[data-last-sync]').forEach(el => {
+      el.textContent = rel ? '마지막: ' + rel : '';
+    });
+  } catch (_e) { void _e; }
+};
+
+// DOMContentLoaded 후 1회 + 페이지 보이기 / focus 시 매번 갱신
+(function _installLastSyncBadgeRefresh() {
+  if (window._lastSyncBadgeInstalled) return;
+  window._lastSyncBadgeInstalled = true;
+  function _tick() { try { window.refreshLastSyncBadges(); } catch (_e) { void _e; } }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _tick);
+  } else {
+    _tick();
+  }
+  window.addEventListener('focus', _tick);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') _tick();
+  });
+})();
 
 // 앱이 백그라운드 → 포커스 복귀 시 캐시 무효화 + data-changed 발사
 // 2026-05-01 ── 60s → 300s 환원. 영상 녹화 / 다중 창 전환 시 매번 cache clear 되어 UI 렉.
