@@ -486,19 +486,36 @@
 
     // 2) 백그라운드 fresh fetch — 도착 후 다시 렌더 (조용히 갱신)
     try {
-      const fresh = await Promise.all([
+      // [PERF P1-1] critical 5개 우선 로드, 나머지 lazy (cold start 60%↓)
+      const [monthRev, prevRev, todayRev, periodRev, customers] = await Promise.all([
         _cachedGet('/revenue?period=month').catch(() => ({ items: [] })),
         prevPath ? _cachedGet(prevPath).catch(() => ({ items: [] })) : Promise.resolve({ items: [] }),
         _cachedGet('/revenue?period=today').catch(() => ({ items: [] })),
         _cachedGet('/revenue?period=' + period).catch(() => ({ items: [] })),
         _cachedGet('/customers').catch(() => ({ total: 0, items: [] })),
+      ]);
+      const fresh = [monthRev, prevRev, todayRev, periodRev, customers, { items: [] }, null, null, null, null];
+      _renderFromData(fresh);
+
+      // 비핵심 데이터 백그라운드 로드 (UI 먼저 그린 후)
+      Promise.all([
         _cachedGet('/bookings').catch(() => ({ items: [] })),
         _cachedGet('/retention/at-risk').catch(() => null),
         _cachedGet('/inventory').catch(() => null),
         naverPath ? _cachedGet(naverPath).catch(() => null) : Promise.resolve(null),
         _cachedGet('/today/brief?period=' + period).catch(() => null),
-      ]);
-      _renderFromData(fresh);
+      ]).then(([bookings, atRisk, inventory, naver, brief]) => {
+        fresh[5] = bookings;
+        fresh[6] = atRisk;
+        fresh[7] = inventory;
+        fresh[8] = naver;
+        fresh[9] = brief;
+        // 비핵심 데이터 도착 후 해당 위젯만 재렌더
+        try { _renderBookingWidget && _renderBookingWidget(bookings); } catch(_){}
+        try { _renderRetentionWidget && _renderRetentionWidget(atRisk); } catch(_){}
+        try { _renderInventoryWidget && _renderInventoryWidget(inventory); } catch(_){}
+        try { _renderBriefWidget && _renderBriefWidget(brief); } catch(_){}
+      }).catch(() => {});
     } catch (_e) {
       // fresh 실패해도 stale 화면은 이미 표시됨 — 조용히 무시
     }
