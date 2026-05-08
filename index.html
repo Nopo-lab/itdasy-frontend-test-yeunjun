@@ -759,7 +759,7 @@
     <span class="ms-side__icon"><svg width="18" height="18"><use href="#ic-star"/></svg></span>
     <span class="ms-side__label">플랜 · Free</span>
   </button>
-  <button type="button" class="ms-side__item" onclick="(window.openSupport || window.openSupportChat)?.();" aria-label="도움말">
+  <button type="button" class="ms-side__item" onclick="setTimeout(function(){(window.openSupport || window.openSupportChat)?.();},0);" aria-label="도움말">
     <span class="ms-side__icon"><svg width="18" height="18"><use href="#ic-message-circle"/></svg></span>
     <span class="ms-side__label">도움말</span>
   </button>

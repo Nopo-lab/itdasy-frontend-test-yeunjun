@@ -137,7 +137,12 @@
   window.openSupportChat = async function () {
     const modal = document.getElementById('supportChatModal');
     if (!modal) return;
+    // 진입 가드 — 진입 click 이 backdrop close 핸들러로 즉시 흡수되는 경합 차단
+    modal.dataset.opened = '0';
     modal.style.display = 'flex';
+    requestAnimationFrame(() => {
+      setTimeout(() => { modal.dataset.opened = '1'; }, 80);
+    });
     if (window.hapticLight) window.hapticLight();
 
     await _renderAll();
@@ -176,7 +181,10 @@
 
   window.closeSupportChat = function () {
     const modal = document.getElementById('supportChatModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+      modal.style.display = 'none';
+      modal.dataset.opened = '0';
+    }
     if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
   };
 
@@ -240,9 +248,11 @@
     }, 2500);
   });
 
-  // 배경 클릭으로 닫기
+  // 배경 클릭으로 닫기 — 진입 직후 80ms 동안은 무시 (모달 오픈 click 이 그대로 close 로 흡수되는 경합 차단)
   document.addEventListener('click', (e) => {
     const modal = document.getElementById('supportChatModal');
-    if (modal && e.target === modal) window.closeSupportChat();
+    if (modal && e.target === modal && modal.dataset.opened === '1') {
+      window.closeSupportChat();
+    }
   });
 })();
