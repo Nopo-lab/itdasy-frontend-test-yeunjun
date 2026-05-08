@@ -99,20 +99,45 @@
     ].join('');
   }
 
+  // 플랜별 메모 한도 — Free 20 / Pro·Premium 무제한 (사용자 확정 2026-05-08)
+  const FREE_MEMO_LIMIT = 20;
+  function _isPaidPlan() {
+    try { return typeof window.isPaidPlan === 'function' ? !!window.isPaidPlan() : false; }
+    catch (_e) { return false; }
+  }
+  function _memoLimit() { return _isPaidPlan() ? Infinity : FREE_MEMO_LIMIT; }
+
+  function _renderQuota(quotaEl, count) {
+    if (!quotaEl) return;
+    const limit = _memoLimit();
+    if (limit === Infinity) {
+      quotaEl.textContent = `${count}개`;
+      quotaEl.style.color = '#9CA3AF';
+    } else {
+      quotaEl.textContent = `${count} / ${limit}`;
+      quotaEl.style.color = (count >= limit) ? '#DC2626' : (count >= limit - 3 ? '#E68A00' : '#9CA3AF');
+      quotaEl.title = `Free 플랜은 손님당 메모 ${limit}개까지에요. Pro로 업그레이드하면 무제한이에요.`;
+    }
+  }
+
   // ── 메모 섹션 (고객 상세에 인라인 주입) ────────────────
-  async function _loadAndRender(customerId, listEl) {
+  // count 를 외부로 반환해서 quota UI 갱신에 활용
+  async function _loadAndRender(customerId, listEl, quotaEl) {
     listEl.innerHTML = '<div style="padding:12px;color:#9CA3AF;font-size:12px;">불러오는 중…</div>';
     try {
       const d = await _api('GET', '/customers/' + encodeURIComponent(customerId) + '/memos');
       const items = (d && d.items) || [];
+      if (quotaEl) _renderQuota(quotaEl, items.length);
       if (!items.length) {
         listEl.innerHTML = '<div style="padding:18px;text-align:center;font-size:12px;color:#9CA3AF;background:#FAFAFA;border-radius:10px;">아직 메모가 없어요. 첫 메모를 적어 보세요</div>';
-        return;
+        return items.length;
       }
       listEl.innerHTML = items.map(_memoCard).join('');
+      return items.length;
     } catch (e) {
       console.warn('[customer-memo] list 실패:', e);
       listEl.innerHTML = '<div style="padding:12px;color:#DC2626;font-size:12px;">불러오기 실패. 다시 시도해 주세요.</div>';
+      return 0;
     }
   }
 
@@ -127,7 +152,10 @@
         await _api('DELETE', '/customers/' + encodeURIComponent(customerId) + '/memos/' + encodeURIComponent(memoId));
         if (window.hapticLight) window.hapticLight();
         if (window.showToast) window.showToast('삭제 완료');
-        await _loadAndRender(customerId, listEl);
+        // 삭제 후 quota 카운트도 갱신 — host 안의 quota 슬롯 룩업
+        const host = listEl.closest('[data-cm-memo-section]');
+        const quotaEl = host ? host.querySelector('[data-cm-quota]') : null;
+        await _loadAndRender(customerId, listEl, quotaEl);
         // 데이터 변경 알림
         try {
           window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'delete_memo', customer_id: customerId } }));
@@ -149,8 +177,10 @@
       host.style.cssText = 'margin-bottom:14px;';
       host.innerHTML = [
         '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">',
-          '<strong style="font-size:13px;">📝 시술 메모 <span style="font-size:10px;color:#9CA3AF;font-weight:400;">(AI 자동 태그)</span></strong>',
-          '<button type="button" data-cm-search style="margin-left:auto;padding:4px 8px;border:1px solid #E5E7EB;border-radius:8px;background:#fff;font-size:11px;color:#555;cursor:pointer;">🔎 전체 검색</button>',
+          '<svg width="14" height="14" aria-hidden="true" style="color:#F18091;"><use href="#ic-edit-3"/></svg>',
+          '<strong style="font-size:13px;">시술 메모 <span style="font-size:10px;color:#9CA3AF;font-weight:400;">(AI 자동 태그)</span></strong>',
+          '<span data-cm-quota style="font-size:11px;color:#9CA3AF;font-weight:600;margin-left:6px;"></span>',
+          '<button type="button" data-cm-search style="margin-left:auto;padding:4px 8px;border:1px solid #E5E7EB;border-radius:8px;background:#fff;font-size:11px;color:#555;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><svg width="11" height="11" aria-hidden="true"><use href="#ic-search"/></svg>전체 검색</button>',
         '</div>',
         '<div style="background:#FAFAFA;border:1px solid #E5E7EB;border-radius:12px;padding:10px;margin-bottom:10px;">',
           '<textarea data-cm-input class="cm-memo-textarea" placeholder="예: 알러지 있음 글루 X, 옴브레 좋아함, 8주 단위로 옴" maxlength="2000"></textarea>',
@@ -168,10 +198,24 @@
       const statusEl = host.querySelector('[data-cm-status]');
       const listEl = host.querySelector('[data-cm-list]');
       const searchBtn = host.querySelector('[data-cm-search]');
+      const quotaEl = host.querySelector('[data-cm-quota]');
 
       saveBtn.addEventListener('click', async () => {
         const text = (inputEl.value || '').trim();
         if (!text) { if (window.showToast) window.showToast('메모 내용을 입력해 주세요'); return; }
+
+        // 플랜별 한도 체크 (Free 20 / Pro·Premium 무제한)
+        const limit = _memoLimit();
+        if (limit !== Infinity) {
+          const cards = listEl.querySelectorAll('[data-cm-memo]');
+          if (cards.length >= limit) {
+            if (window.showToast) {
+              window.showToast(`Free 플랜은 손님당 메모 ${limit}개까지에요. Pro로 업그레이드하면 무제한이에요.`);
+            }
+            return;
+          }
+        }
+
         saveBtn.disabled = true;
         statusEl.textContent = 'AI 태그 분석 중…';
         try {
@@ -180,7 +224,7 @@
           if (window.showToast) window.showToast('메모 저장 완료');
           inputEl.value = '';
           statusEl.textContent = '';
-          await _loadAndRender(customerId, listEl);
+          await _loadAndRender(customerId, listEl, quotaEl);
           try {
             window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_memo', customer_id: customerId } }));
           } catch (_e) { void _e; }
@@ -206,7 +250,8 @@
       _bindList(customerId, listEl);
     }
     const listEl = host.querySelector('[data-cm-list]');
-    _loadAndRender(customerId, listEl);
+    const quotaEl = host.querySelector('[data-cm-quota]');
+    _loadAndRender(customerId, listEl, quotaEl);
   }
 
   // ── 경고 메모 조회 (예약/매출 폼용) ────────────────────
