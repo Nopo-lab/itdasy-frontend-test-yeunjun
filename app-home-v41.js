@@ -65,6 +65,18 @@
     } catch (_e) { return 0; }
   }
 
+  // DM 자동응답 승인 대기 큐 — 사장 확인 필요한 답장 N건
+  async function _fetchDMQueueCount() {
+    const headers = _authHeaders();
+    if (!window.API || !headers) return 0;
+    try {
+      const res = await fetch(window.API + '/dm-confirm-queue', { headers });
+      if (!res.ok) return 0;
+      const data = await res.json();
+      return Array.isArray(data) ? data.length : (Array.isArray(data.items) ? data.items.length : 0);
+    } catch (_e) { return 0; }
+  }
+
   // ─────────── 헤더 ───────────
   function _todayKor() {
     const d = new Date();
@@ -245,6 +257,90 @@
         </button>
       </div>
       <div class="hv-dots" data-hv-dots>${dots}</div>
+    `;
+  }
+
+  // ─────────── 영구 승인 알림 센터 (2026-05-08 — 캐러셀 대체) ───────────
+  // 사용자 요청: 빠른 퀵탭 8개 삭제 + DM 큐·앱 사용자 승인 필요 항목 항상 상단 표시.
+  // 집계 대상: DM 자동응답 승인 대기 / 입금 대기 예약 / 온라인 예약 승인 대기 / 이탈 위험 단골
+  function _approvalCenterCards(brief, dmQueueCount, onlinePendingCount) {
+    const cards = [];
+    if (dmQueueCount > 0) {
+      cards.push({
+        kind: 'dm_queue',
+        label: 'DM 자동응답 승인',
+        count: dmQueueCount,
+        body: '챗봇이 작성한 답장을 확인하고 보내주세요',
+        cta: '확인',
+        act: 'openDMConfirmQueue',
+        icon: 'ic-message-circle',
+        accent: '#7C3AED',
+      });
+    }
+    const depositPending = (brief && brief.pending_booking_count) || 0;
+    if (depositPending > 0) {
+      cards.push({
+        kind: 'deposit_pending',
+        label: '입금 대기 예약',
+        count: depositPending,
+        body: '입금 확인 후 승인하면 캘린더에 등록돼요',
+        cta: '승인',
+        act: 'openBookingApproval',
+        icon: 'ic-credit-card',
+        accent: '#E68A00',
+      });
+    }
+    if (onlinePendingCount > 0 && onlinePendingCount !== depositPending) {
+      cards.push({
+        kind: 'online_pending',
+        label: '온라인 예약 승인 대기',
+        count: onlinePendingCount,
+        body: '손님이 사장님 승인을 기다리고 있어요',
+        cta: '승인',
+        act: 'openBookingApproval',
+        icon: 'ic-calendar',
+        accent: '#0891B2',
+      });
+    }
+    const atRisk = (brief && brief.at_risk) || [];
+    if (Array.isArray(atRisk) && atRisk.length > 0) {
+      cards.push({
+        kind: 'at_risk',
+        label: '단골 챙기기',
+        count: atRisk.length,
+        body: atRisk[0]?.name ? `${atRisk[0].name}님 다녀가신 지 오래` : '안부 한 통 보낼 타이밍이에요',
+        cta: '안부',
+        act: 'openInsights',
+        icon: 'ic-star',
+        accent: '#F18091',
+      });
+    }
+    return cards;
+  }
+
+  function _renderApprovalCenter(brief, dmQueueCount, onlinePendingCount) {
+    const cards = _approvalCenterCards(brief, dmQueueCount, onlinePendingCount);
+    if (!cards.length) return ''; // 0건이면 영역 자체 0px (빈 상태로 자연스럽게)
+    const items = cards.map(c => `
+      <button type="button" class="hv-approval-row" data-hv-act="${_esc(c.act)}" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;background:var(--surface,#fff);border:1px solid ${c.accent}33;border-left:3px solid ${c.accent};border-radius:12px;cursor:pointer;text-align:left;">
+        <span style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:${c.accent}1A;color:${c.accent};flex-shrink:0;">
+          <svg width="16" height="16" aria-hidden="true"><use href="#${_esc(c.icon)}"/></svg>
+        </span>
+        <span style="flex:1;min-width:0;">
+          <span style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:var(--text,#222);">
+            ${_esc(c.label)}
+            <span style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;background:${c.accent};color:#fff;border-radius:100px;font-size:11px;font-weight:800;">${c.count}</span>
+          </span>
+          <span style="display:block;font-size:11.5px;color:var(--text-subtle,#888);margin-top:2px;line-height:1.4;">${_esc(c.body)}</span>
+        </span>
+        <span style="font-size:12px;font-weight:800;color:${c.accent};white-space:nowrap;">${_esc(c.cta)} →</span>
+      </button>
+    `).join('');
+    return `
+      <section class="hv-approval-center" aria-label="승인 대기 알림" style="display:flex;flex-direction:column;gap:8px;margin:8px 0 12px;">
+        <div style="font-size:11px;letter-spacing:0.4px;color:var(--text-subtle,#888);font-weight:800;padding:0 2px;">사장님 확인이 필요해요</div>
+        ${items}
+      </section>
     `;
   }
 
@@ -451,6 +547,15 @@
       openBookingApproval: () => {
         if (typeof window.openBookingApproval === 'function') window.openBookingApproval();
       },
+      openDMConfirmQueue: () => {
+        // 영구 알림 센터에서 DM 자동응답 큐 진입
+        if (typeof window.openDMConfirmQueue === 'function') return window.openDMConfirmQueue();
+        if (typeof window.openDMQueue === 'function') return window.openDMQueue();
+      },
+      openInsights: () => {
+        if (typeof window.openInsights === 'function') return window.openInsights();
+        if (typeof window.openCustomerInsights === 'function') return window.openCustomerInsights();
+      },
       openCustomers: () => {
         if (typeof window.openCustomerHub === 'function') return window.openCustomerHub();
         if (typeof window.openCustomers === 'function') return window.openCustomers();
@@ -495,11 +600,12 @@
   let _lastContainerId = null;
   let _inFlight = false;
 
-  function _composeHTML(brief, slots) {
-    const cards = _buildCarouselCards(brief, slots);
+  // 2026-05-08 ── 사용자 요청: 빠른 퀵탭(캐러셀) 완전 제거 + 상단 영구 알림 센터.
+  // _buildCarouselCards / _renderCarousel / _setupCarousel 은 호출 안 함.
+  function _composeHTML(brief, _slots, dmQueueCount, onlinePendingCount) {
     return [
       _renderHeader(),
-      _renderCarousel(cards),
+      _renderApprovalCenter(brief, dmQueueCount || 0, onlinePendingCount || 0),
       _renderBooking(brief),
       _renderOps(brief),
     ].join('');
@@ -510,13 +616,12 @@
     if (!container) return;
     _lastContainerId = container.id || _lastContainerId;
 
-    // SWR: 캐시 즉시
+    // SWR: 캐시 즉시 (DM 큐 카운트는 캐시에 없으니 0 으로 시작)
     const swr = _readSWR();
     if (swr && swr.d) {
       try {
         const slots = await _fetchSlots();
-        container.innerHTML = _composeHTML(swr.d, slots);
-        _setupCarousel(container);
+        container.innerHTML = _composeHTML(swr.d, slots, swr.d._dmQueueCount || 0, swr.d._onlinePendingCount || 0);
         _bindEvents(container, swr.d);
         _syncAvatar(container);
         _scheduleAvatarRetry(container);
@@ -528,15 +633,19 @@
     if (_inFlight) return;
     _inFlight = true;
     try {
-      const [brief, slots, pendingCount] = await Promise.all([
+      const [brief, slots, onlinePendingCount, dmQueueCount] = await Promise.all([
         _fetchBrief().catch(() => null),
         _fetchSlots().catch(() => []),
         _fetchPendingCount().catch(() => 0),
+        _fetchDMQueueCount().catch(() => 0),
       ]);
       const merged = brief || (swr && swr.d) || {};
-      merged.pending_booking_count = pendingCount;
-      container.innerHTML = _composeHTML(merged, slots || []);
-      _setupCarousel(container);
+      // brief.pending_booking_count 은 입금 대기 — 그대로 유지
+      merged._dmQueueCount = dmQueueCount;
+      merged._onlinePendingCount = onlinePendingCount;
+      // SWR 캐시 업데이트 (다음 진입 즉시 표시)
+      try { _writeSWR(merged); } catch (_e) { void _e; }
+      container.innerHTML = _composeHTML(merged, slots || [], dmQueueCount, onlinePendingCount);
       _bindEvents(container, merged);
       _syncAvatar(container);
       _scheduleAvatarRetry(container);
