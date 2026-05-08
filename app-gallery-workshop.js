@@ -108,9 +108,7 @@ async function initWorkshopTab() {
   }
 
   try { _slots = await loadSlotsFromDB(); } catch (_e) { _slots = []; }
-  _renderPhotoGrid();
-  _renderSlotCards();
-  _renderCompletionBanner();
+  _scheduleBatchRender({ photoGrid: true, slotCards: true, banner: true });
 }
 
 function _buildWorkshopHTML() {
@@ -221,8 +219,7 @@ async function handleGalleryUpload(input) {
     _photos = _photos.filter(p => !assignedIds.has(p.id));
   }
 
-  _renderPhotoGrid();
-  _renderSlotCards();
+  _scheduleBatchRender({ photoGrid: true, slotCards: true });
 
   if (autoGroups.length > 0) {
     showToast(`${autoGroups.length}명 손님으로 자동 분류했어요 ✓`);
@@ -248,6 +245,24 @@ async function resetWorkshop() {
   const root = document.getElementById('workshopRoot');
   if (root) { root.innerHTML = _buildWorkshopHTML(); _initDragEvents(); }
   showToast('초기화 완료 ✅');
+}
+
+// [PERF P3-1] 배치 렌더 — 여러 렌더 함수를 requestAnimationFrame 1회로 묶음
+let _batchRenderScheduled = false;
+let _batchRenderFlags = { photoGrid: false, slotCards: false, banner: false };
+
+function _scheduleBatchRender(flags) {
+  Object.assign(_batchRenderFlags, flags);
+  if (_batchRenderScheduled) return;
+  _batchRenderScheduled = true;
+  requestAnimationFrame(() => {
+    _batchRenderScheduled = false;
+    const f = _batchRenderFlags;
+    _batchRenderFlags = { photoGrid: false, slotCards: false, banner: false };
+    if (f.photoGrid) _renderPhotoGrid();
+    if (f.slotCards) _renderSlotCards();
+    if (f.banner) _renderCompletionBanner();
+  });
 }
 
 // ── UI 상태 업데이트 ───────────────────────────────────────────
@@ -391,9 +406,7 @@ async function deleteSlot(slotId, e) {
   _slots = _slots.filter(s => s.id !== slotId);
   try { await deleteSlotFromDB(slotId); } catch (_e) { /* ignore */ }
   await _renumberSlots();
-  _renderSlotCards();
-  _renderPhotoGrid();
-  _renderCompletionBanner();
+  _scheduleBatchRender({ photoGrid: true, slotCards: true, banner: true });
 }
 
 // ── 완료 현황 배너 ─────────────────────────────────────────────
