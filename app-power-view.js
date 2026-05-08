@@ -638,11 +638,35 @@
   };
 
   // ── 키보드 단축키 ────────────────────────────────────
+  // 2026-05-08: Cmd/Ctrl+S, Cmd/Ctrl+Enter → 즉시 추가 (엑셀급 단축 저장)
+  // Cmd/Ctrl+K → 검색, Cmd/Ctrl+/ → 단축키 안내 토스트
   function _escListener(e) {
     if (e.key === 'Escape') { closePowerView(); return; }
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    const meta = e.metaKey || e.ctrlKey;
+    if (!meta) return;
+    const k = e.key.toLowerCase();
+    if (k === 'k') {
       const s = document.getElementById('pv-search');
       if (s) { e.preventDefault(); s.focus(); s.select(); }
+    } else if (k === 's' || (k === 'enter')) {
+      // qadd input 안에 포커스가 있으면 그대로 저장 (Enter 는 input 의 keypress 가 이미 처리)
+      const overlay = document.getElementById(OVERLAY_ID);
+      if (!overlay) return;
+      const focused = document.activeElement;
+      const inQAdd = focused && focused.closest && focused.closest('.pv-qadd');
+      const isInput = focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA' || focused.tagName === 'SELECT');
+      // Cmd+S 는 어디서든, Cmd+Enter 는 input 안에서만
+      if (k === 's' || (k === 'enter' && isInput)) {
+        e.preventDefault();
+        if (inQAdd || !isInput) {
+          if (typeof _submitQuickAdd === 'function') _submitQuickAdd();
+        }
+      }
+    } else if (k === '/') {
+      e.preventDefault();
+      if (window.showToast) {
+        window.showToast('Cmd/Ctrl+S 저장 · Cmd/Ctrl+K 검색 · Esc 닫기');
+      }
     }
   }
 

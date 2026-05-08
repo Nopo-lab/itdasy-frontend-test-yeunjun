@@ -59,6 +59,7 @@
 
   // ── 자동완성 소스 ─────────────────────────────────────
   // service_name 풀: 업종별 기본 풀 + 사용자 데이터 (중복 제거)
+  // 2026-05-08: customer_name 정렬 — 단골(is_regular) 먼저, 다음 visit_count 내림차순
   function _buildAutoSources() {
     const data = window._PVState.data;
     const shopServicePool = _getShopServicePool();
@@ -72,7 +73,14 @@
       service_name: new Set(shopServicePool),
       item_name: new Set(),
     };
-    (data.customer || []).forEach(c => {
+    // 단골 + 방문 횟수 우선 정렬 — 사장님이 자주 부르는 손님 dropdown 상단에
+    const sortedCustomers = (data.customer || []).slice().sort((a, b) => {
+      const ar = a.is_regular ? 1 : 0;
+      const br = b.is_regular ? 1 : 0;
+      if (ar !== br) return br - ar;
+      return (b.visit_count || 0) - (a.visit_count || 0);
+    });
+    sortedCustomers.forEach(c => {
       if (c.name && !seen.customer_name.has(c.name)) { seen.customer_name.add(c.name); out.customer_name.push(c.name); }
     });
     (data.revenue || []).forEach(r => {

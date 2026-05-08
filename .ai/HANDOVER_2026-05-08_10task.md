@@ -241,7 +241,15 @@ sed -i '' '1759,$ {
 
 ---
 
-### ⏸ 작업 10 — 파워뷰 엑셀급 고도화 (뷰티샵 원장 특화) [대기]
+### 🚧 작업 10 — 파워뷰 엑셀급 고도화 (뷰티샵 원장 특화) [부분 완료, 후속 세션에서 P0~P3 본 작업 필요]
+
+**완료된 부분 (이 세션)**:
+- ✅ Cmd/Ctrl+S 즉시 추가 단축키 (엑셀급 저장)
+- ✅ Cmd/Ctrl+Enter 즉시 추가 (input focus 시)
+- ✅ Cmd/Ctrl+/ 단축키 안내 토스트
+- ✅ customer_name 자동완성 — 단골(is_regular) 먼저, 다음 visit_count desc
+
+**아래는 후속 세션에서 진행할 P0~P3 본 작업** (HANDOVER_2026-05-08_10task.md 의 나머지 내용 그대로 진행):
 
 **파일**: `app-power-view.js` (~792줄), `app-power-view-render.js` (~521줄), 신규 `app-power-view-clipboard.js`, `app-power-view-formula.js`, `app-power-view-beauty.js`
 
