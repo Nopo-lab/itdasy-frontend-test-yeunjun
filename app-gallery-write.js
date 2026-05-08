@@ -6,9 +6,10 @@
 function _buildPeekCarousel(photos, id) {
   if (!photos.length) return '<div style="color:var(--text3);text-align:center;padding:16px;font-size:12px;">사진 없음</div>';
   const total = photos.length;
+  // [PERF P2-2] 첫 장만 즉시 로드, 나머지는 data-src로 lazy
   if (total === 1) {
     return `<div style="width:70%;margin:0 auto;aspect-ratio:1/1;border-radius:14px;overflow:hidden;">
-      <img src="${photos[0].editedDataUrl || photos[0].dataUrl}" style="width:100%;height:100%;object-fit:cover;">
+      <img src="${photos[0].editedDataUrl || photos[0].dataUrl}" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
     </div>`;
   }
   return `
@@ -17,7 +18,7 @@ function _buildPeekCarousel(photos, id) {
         ${photos.map((p, i) => `
           <div style="flex-shrink:0;width:70%;padding:0 2%;box-sizing:border-box;">
             <div class="${id}_s" style="aspect-ratio:1/1;border-radius:14px;overflow:hidden;transition:transform .35s,filter .35s;transform:scale(${i===0?1:.85});filter:${i===0?'none':'brightness(.6)'};">
-              <img src="${p.editedDataUrl || p.dataUrl}" style="width:100%;height:100%;object-fit:cover;display:block;">
+              <img ${i === 0 ? `src="${p.editedDataUrl || p.dataUrl}"` : `src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-src="${p.editedDataUrl || p.dataUrl}"`} loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
             </div>
           </div>`).join('')}
       </div>
@@ -26,6 +27,21 @@ function _buildPeekCarousel(photos, id) {
       </div>
     </div>
   `;
+}
+
+// [PERF P2-2] 캐러셀 스와이프 시 다음 슬라이드 lazy load
+function _lazyLoadSlide(id, index) {
+  const track = document.getElementById(id + '_t');
+  if (!track) return;
+  const imgs = track.querySelectorAll('img');
+  // 현재 + 앞뒤 1장씩 로드
+  for (let offset = -1; offset <= 1; offset++) {
+    const img = imgs[index + offset];
+    if (img && img.dataset.src) {
+      img.src = img.dataset.src;
+      delete img.dataset.src;
+    }
+  }
 }
 
 function _initPeekCarousel(id, total) {
@@ -50,6 +66,8 @@ function _initPeekCarousel(id, total) {
       const d = document.getElementById(id + '_d' + i);
       if (d) { d.style.width = i === cur ? '18px' : '6px'; d.style.background = i === cur ? 'var(--accent)' : 'rgba(0,0,0,0.15)'; }
     }
+    // [PERF P2-2] 슬라이드 전환 시 인접 이미지 lazy load
+    try { _lazyLoadSlide(id, cur); } catch(_){}
   }
 
   // 모멘텀 계산용 변수
