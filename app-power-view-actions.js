@@ -260,13 +260,9 @@
         const action = items[idx];
         _close();
         if (!action || typeof action.run !== 'function') return;
-        try {
-          _haptic();
-          await action.run();
-        } catch (err) {
-          console.warn('[PVActions] action failed', err);
-          _toast('작업 중 문제가 생겼어요. 다시 시도해주세요');
-        }
+        // popover 트리거가 속한 행 찾기 → 행 단위 status 표시
+        const tr = triggerEl ? triggerEl.closest('tr') : null;
+        await _execWithStatus(tr, null, action.run);
       });
 
       // 외부 클릭/Esc/스크롤 로 닫기
@@ -297,10 +293,166 @@
           open(btn, row, tab);
         });
       });
+      // Phase UX revision — 행 끝 주액션 직접 노출 (원칙 2·6)
+      root.querySelectorAll('[data-pv-primary]').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const rowId = btn.getAttribute('data-row-id');
+          const actionKey = btn.getAttribute('data-pv-primary');
+          const tab = window._PVState && window._PVState.currentTab;
+          if (!rowId || !tab) return;
+          const list = (window._PVState.data && window._PVState.data[tab]) || [];
+          const row = list.find((r) => String(r.id) === String(rowId));
+          if (!row) return;
+          const primaries = getPrimaryActions(tab, row);
+          const action = primaries.find((a) => a.key === actionKey);
+          if (!action || typeof action.run !== 'function') return;
+          const tr = btn.closest('tr');
+          await _execWithStatus(tr, btn, action.run);
+        });
+      });
     } catch (e) {
       console.warn('[PVActions] bindRowTriggers', e);
     }
   }
 
-  window._PVActions = { open, close: _close, bindRowTriggers };
+  // ── 행 단위 loading/success/error 상태 (원칙 5) ───────
+  async function _execWithStatus(tr, btn, fn) {
+    try {
+      _haptic();
+      if (tr) {
+        tr.dataset.pvLoading = 'true';
+        delete tr.dataset.pvSuccess;
+        delete tr.dataset.pvError;
+      }
+      if (btn) btn.disabled = true;
+      await fn();
+      if (tr) {
+        delete tr.dataset.pvLoading;
+        tr.dataset.pvSuccess = 'true';
+        setTimeout(() => { try { delete tr.dataset.pvSuccess; } catch (_e) { void _e; } }, 1500);
+      }
+    } catch (err) {
+      console.warn('[PVActions] action failed', err);
+      _toast('작업 중 문제가 생겼어요');
+      if (tr) {
+        delete tr.dataset.pvLoading;
+        tr.dataset.pvError = 'true';
+        setTimeout(() => { try { delete tr.dataset.pvError; } catch (_e) { void _e; } }, 2200);
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  // ── 탭별 주액션 정의 (원칙 2: 가장 흔한 동선만) ────────
+  // 행 끝에 직접 노출되는 1~2개 액션. 아이콘 only + title 툴팁.
+  function getPrimaryActions(tab, row) {
+    try {
+      switch (tab) {
+        case 'customer':
+          // 회원권 보유 시 충전, 아니면 단골 토글 (가장 흔한 동선)
+          if (row.membership_active) {
+            return [{ key: 'charge', icon: 'ic-credit-card', label: '회원권 충전',
+              run: async () => {
+                if (typeof window.openMembershipCharge === 'function') {
+                  window.openMembershipCharge(row.id, row.name || '', Number(row.membership_balance || 0));
+                } else { _toast('회원권 모듈을 불러오지 못했어요'); }
+              }}];
+          }
+          return [{ key: 'toggle-regular', icon: 'ic-star', label: row.is_regular ? '단골 해제' : '단골 등록',
+            run: async () => {
+              await _patch('/customers/' + row.id, { is_regular: !row.is_regular });
+              _emit('update_customer', { customer_id: row.id });
+              _toast(row.is_regular ? '단골 해제했어요' : '단골 등록했어요');
+              _refreshTab();
+            }}];
+        case 'booking': {
+          // 미래 미확정 → 확인 메시지, 과거 미처리 → 정상참석, 노쇼 의심 → 노쇼 표시
+          const t = Date.parse(row.starts_at || '');
+          const now = Date.now();
+          const past = Number.isFinite(t) && t < now - 30 * 60 * 1000;
+          const arr = [];
+          if (past && row.status !== 'completed' && row.status !== 'no_show' && row.status !== 'cancelled') {
+            arr.push({ key: 'mark-attended', icon: 'ic-check-circle', label: '✓ 정상 참석',
+              run: async () => {
+                if (window.NoShow && typeof window.NoShow.markAttended === 'function') {
+                  await window.NoShow.markAttended(row.id);
+                  _emit('update_booking', { booking_id: row.id });
+                  _refreshTab();
+                } else { _toast('노쇼 모듈을 불러오지 못했어요'); }
+              }});
+            arr.push({ key: 'mark-noshow', icon: 'ic-alert-triangle', label: '🚫 노쇼',
+              run: async () => {
+                if (window.NoShow && typeof window.NoShow.markNoShow === 'function') {
+                  await window.NoShow.markNoShow(row.id);
+                  _emit('update_booking', { booking_id: row.id });
+                  _refreshTab();
+                } else { _toast('노쇼 모듈을 불러오지 못했어요'); }
+              }});
+          } else {
+            arr.push({ key: 'send-confirmation', icon: 'ic-send', label: '확인 메시지',
+              run: async () => {
+                if (window.NoShow && typeof window.NoShow.sendConfirmation === 'function') {
+                  await window.NoShow.sendConfirmation(row.id);
+                } else { _toast('확인 메시지 모듈을 불러오지 못했어요'); }
+              }});
+          }
+          return arr;
+        }
+        case 'inventory':
+          // ±1 둘 다 흔하므로 둘 다 노출 (원터치)
+          return [
+            { key: 'sub-1', icon: 'ic-minus', label: '-1 사용',
+              run: async () => {
+                await _post('/inventory/' + row.id + '/adjust', { delta: -1, reason: 'use' });
+                _emit('update_inventory', { inventory_id: row.id });
+                _refreshTab();
+              }},
+            { key: 'add-1', icon: 'ic-plus', label: '+1 입고',
+              run: async () => {
+                await _post('/inventory/' + row.id + '/adjust', { delta: 1, reason: 'in' });
+                _emit('update_inventory', { inventory_id: row.id });
+                _refreshTab();
+              }},
+          ];
+        case 'revenue':
+          return [{ key: 'open-customer', icon: 'ic-user', label: '고객 카드',
+            run: async () => {
+              const cid = row.customer_id;
+              if (cid && typeof window.openCustomerDashboard === 'function') window.openCustomerDashboard(cid);
+              else _toast('연결된 고객 정보가 없어요');
+            }}];
+        case 'nps':
+          return [{ key: 'open-customer', icon: 'ic-user', label: '고객 카드',
+            run: async () => {
+              const cid = row.customer_id;
+              if (cid && typeof window.openCustomerDashboard === 'function') window.openCustomerDashboard(cid);
+              else _toast('연결된 고객 정보가 없어요');
+            }}];
+        case 'service':
+        default:
+          return [];
+      }
+    } catch (e) {
+      console.warn('[PVActions] getPrimaryActions', e);
+      return [];
+    }
+  }
+
+  // 주액션 버튼 HTML (행 끝 노출용)
+  function renderPrimaryButtons(tab, row) {
+    try {
+      const arr = getPrimaryActions(tab, row);
+      if (!arr.length) return '';
+      return arr.map((a) => `
+        <button type="button" class="pv-primary-btn" data-pv-primary="${_esc(a.key)}" data-row-id="${_esc(row.id)}" title="${_esc(a.label)}" aria-label="${_esc(a.label)}">
+          <svg width="13" height="13" aria-hidden="true"><use href="#${_esc(a.icon || 'ic-chevron-right')}"/></svg>
+        </button>
+      `).join('');
+    } catch (_e) { return ''; }
+  }
+
+  window._PVActions = { open, close: _close, bindRowTriggers, getPrimaryActions, renderPrimaryButtons };
 })();

@@ -594,6 +594,148 @@ html[data-theme="dark"] .pv-voice-btn {
   color: var(--text, #FAFAFA);
 }
 
+/* ── UX 7원칙 — 행 끝 주액션 버튼 (원칙 2·6) ────────── */
+.pv-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--brand, #F18091);
+  background: var(--brand-bg, #FEF4F5);
+  color: var(--brand, #F18091);
+  border-radius: 8px;
+  cursor: pointer;
+  margin-right: 4px;
+  padding: 0;
+  transition: all 0.12s;
+}
+.pv-primary-btn:hover:not(:disabled) {
+  background: var(--brand, #F18091);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(241, 128, 145, 0.32);
+}
+.pv-primary-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(241, 128, 145, 0.24);
+}
+.pv-primary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── UX 7원칙 — 행 단위 loading/success/error (원칙 5) ── */
+.pv-row-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  height: 22px;
+  margin-right: 0;
+  vertical-align: middle;
+  overflow: hidden;
+  transition: width 0.18s, margin-right 0.18s;
+}
+.pv-row-status > svg {
+  display: none;
+  flex-shrink: 0;
+}
+.pv-row-status__loading { animation: pvRowSpin 0.9s linear infinite; }
+@keyframes pvRowSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* loading */
+tr[data-pv-loading="true"] {
+  background: rgba(241, 128, 145, 0.06);
+  position: relative;
+}
+tr[data-pv-loading="true"] td:first-of-type::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--brand, #F18091);
+  animation: pvRowFlicker 0.8s ease-in-out infinite;
+}
+@keyframes pvRowFlicker {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+tr[data-pv-loading="true"] .pv-row-status {
+  width: 22px;
+  margin-right: 4px;
+}
+tr[data-pv-loading="true"] .pv-row-status__loading {
+  display: inline-block;
+  color: var(--brand, #F18091);
+}
+tr[data-pv-loading="true"] .pv-primary-btn,
+tr[data-pv-loading="true"] .pv-actions-trigger {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* success */
+tr[data-pv-success="true"] {
+  background: rgba(46, 140, 126, 0.10);
+  animation: pvRowFlash 1.2s ease-out;
+}
+@keyframes pvRowFlash {
+  0% { background: rgba(46, 140, 126, 0.28); }
+  100% { background: rgba(46, 140, 126, 0.10); }
+}
+tr[data-pv-success="true"] .pv-row-status {
+  width: 22px;
+  margin-right: 4px;
+}
+tr[data-pv-success="true"] .pv-row-status__success {
+  display: inline-block;
+  color: #2E8C7E;
+  animation: pvRowCheck 0.4s ease-out;
+}
+@keyframes pvRowCheck {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* error */
+tr[data-pv-error="true"] {
+  background: rgba(220, 53, 69, 0.10);
+  animation: pvRowShake 0.4s ease-in-out;
+}
+@keyframes pvRowShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+tr[data-pv-error="true"] .pv-row-status {
+  width: 22px;
+  margin-right: 4px;
+}
+tr[data-pv-error="true"] .pv-row-status__error {
+  display: inline-block;
+  color: #DC3545;
+}
+
+/* 다크 모드 */
+html[data-theme="dark"] .pv-primary-btn {
+  background: rgba(255, 143, 163, 0.16);
+  border-color: #FF8FA3;
+  color: #FF8FA3;
+}
+html[data-theme="dark"] .pv-primary-btn:hover:not(:disabled) {
+  background: #FF8FA3;
+  color: #1a0c10;
+}
+html[data-theme="dark"] tr[data-pv-loading="true"] { background: rgba(255, 143, 163, 0.10); }
+html[data-theme="dark"] tr[data-pv-success="true"] { background: rgba(46, 200, 180, 0.16); }
+html[data-theme="dark"] tr[data-pv-error="true"] { background: rgba(220, 53, 69, 0.18); }
+
 /* ── 모바일 (≤720px) ─────────────────────────────────── */
 @media (width <= 720px) {
   .pv-action-popover {

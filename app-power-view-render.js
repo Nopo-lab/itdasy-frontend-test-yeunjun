@@ -255,7 +255,9 @@
     `).join('');
 
     const editMode = !!state.editMode;
-    const actionColWidth = editMode ? 88 : 78; // 56 → 78 (⚡ 버튼 추가 공간)
+    // 주액션 노출 여부에 따라 액션 컬럼 폭 조정 (UX 원칙 2·6)
+    const hasPrimary = !editMode && window._PVActions && typeof window._PVActions.getPrimaryActions === 'function';
+    const actionColWidth = editMode ? 88 : (hasPrimary ? 124 : 78);
     // 다중 선택 체크박스 — 비편집 모드 + _PVSelect 로드 시에만 (Phase 1 Tier B)
     const showSelect = !editMode && !!window._PVSelect;
     const selectColHeader = showSelect ? `<th style="width:36px;text-align:center;"><input type="checkbox" data-pv-select-all aria-label="전체 선택" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand,#F18091);" /></th>` : '';
@@ -311,9 +313,23 @@
       const cells = schema.row(r).map(c => `<td>${c}</td>`).join('');
       // 다중 선택 체크박스 셀 (Tier B — _PVSelect 로드 시)
       const selectCell = showSelect ? `<td style="text-align:center;"><input type="checkbox" data-pv-select aria-label="선택" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand,#F18091);" /></td>` : '';
-      // 비편집 모드 행 끝: ⚡ 액션 버튼 + 수정 버튼 (Phase 1 Tier A)
+      // 행 끝: 주액션 (UX 원칙 2·6) + ⚡ 기타 메뉴 + 수정
+      let primaryHtml = '';
+      try {
+        if (hasPrimary && typeof window._PVActions.renderPrimaryButtons === 'function') {
+          primaryHtml = window._PVActions.renderPrimaryButtons(state.currentTab, r) || '';
+        }
+      } catch (_e) { /* silent */ }
+      // 행 단위 상태 표시 cell (UX 원칙 5: loading/success/error)
+      const statusCell = `<span class="pv-row-status" aria-hidden="true">
+        <svg class="pv-row-status__loading" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        <svg class="pv-row-status__success" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <svg class="pv-row-status__error" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </span>`;
       const actionCell = `<td style="text-align:right;white-space:nowrap;">
-        <button class="pv-actions-trigger" data-pv-actions-trigger data-row-id="${r.id}" aria-label="액션 메뉴" title="액션 메뉴">
+        ${statusCell}
+        ${primaryHtml}
+        <button class="pv-actions-trigger" data-pv-actions-trigger data-row-id="${r.id}" aria-label="기타 액션" title="기타 액션">
           <svg width="14" height="14" aria-hidden="true"><use href="#ic-more-horizontal"/></svg>
         </button>
         <button class="pv-row-edit" data-edit-id="${r.id}" aria-label="수정" title="수정" style="border:none;background:transparent;cursor:pointer;color:#888;padding:4px 8px;border-radius:6px;transition:all 0.12s;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-edit-3"/></svg></button>
