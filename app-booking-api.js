@@ -41,9 +41,17 @@
     if (!window.API || !window.authHeader) throw new Error('no-auth');
     const auth = window.authHeader();
     if (!auth?.Authorization) throw new Error('no-token');
-    const opts = { method, headers: { ...auth, 'Content-Type': 'application/json' } };
+    // [BUG-3] 15초 타임아웃 — 서버 무응답 시 무한 대기 방지
+    const _ac = new AbortController();
+    const _to = setTimeout(() => _ac.abort(), 15000);
+    const opts = { method, headers: { ...auth, 'Content-Type': 'application/json' }, signal: _ac.signal };
     if (body) opts.body = JSON.stringify(body);
-    const res = await fetch(window.API + path, opts);
+    let res;
+    try {
+      res = await fetch(window.API + path, opts);
+    } finally {
+      clearTimeout(_to);
+    }
     if (res.status === 404 || res.status === 501) throw new Error('endpoint-missing');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.status === 204 ? null : await res.json();
