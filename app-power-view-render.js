@@ -243,8 +243,11 @@
 
     const editMode = !!state.editMode;
     const actionColWidth = editMode ? 88 : 78; // 56 → 78 (⚡ 버튼 추가 공간)
+    // 다중 선택 체크박스 — 비편집 모드 + _PVSelect 로드 시에만 (Phase 1 Tier B)
+    const showSelect = !editMode && !!window._PVSelect;
+    const selectColHeader = showSelect ? `<th style="width:36px;text-align:center;"><input type="checkbox" data-pv-select-all aria-label="전체 선택" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand,#F18091);" /></th>` : '';
     // 헤더에 정렬 가능 컬럼이면 data-pv-sort + 화살표 추가 (Phase 1 Tier A)
-    const headers = schema.headers.map((h, idx) => {
+    const headers = selectColHeader + schema.headers.map((h, idx) => {
       let sortKey = null;
       try {
         if (window._PVSort && typeof window._PVSort.getSortKey === 'function') {
@@ -283,6 +286,8 @@
         return `<tr data-id="${r.id}" class="pv-row-editing">${editCells}${actionCell}</tr>`;
       }
       const cells = schema.row(r).map(c => `<td>${c}</td>`).join('');
+      // 다중 선택 체크박스 셀 (Tier B — _PVSelect 로드 시)
+      const selectCell = showSelect ? `<td style="text-align:center;"><input type="checkbox" data-pv-select aria-label="선택" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand,#F18091);" /></td>` : '';
       // 비편집 모드 행 끝: ⚡ 액션 버튼 + 수정 버튼 (Phase 1 Tier A)
       const actionCell = `<td style="text-align:right;white-space:nowrap;">
         <button class="pv-actions-trigger" data-pv-actions-trigger data-row-id="${r.id}" aria-label="액션 메뉴" title="액션 메뉴">
@@ -290,7 +295,7 @@
         </button>
         <button class="pv-row-edit" data-edit-id="${r.id}" aria-label="수정" title="수정" style="border:none;background:transparent;cursor:pointer;color:#888;padding:4px 8px;border-radius:6px;transition:all 0.12s;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-edit-3"/></svg></button>
       </td>`;
-      return `<tr data-id="${r.id}">${cells}${actionCell}</tr>`;
+      return `<tr data-id="${r.id}">${selectCell}${cells}${actionCell}</tr>`;
     }).join('');
 
     const pendingList = state.pending[state.currentTab] || [];
@@ -315,7 +320,7 @@
       </div>` : '';
 
     const emptyHtml = !rowsHtml ? `
-      <tr><td colspan="${schema.headers.length}">
+      <tr><td colspan="${schema.headers.length + 1 + (showSelect ? 1 : 0)}">
         <div class="pv-empty">
           <div class="pv-empty-icon">${schema.empty.icon}</div>
           <div style="font-weight:800;color:#555;margin-bottom:6px;">${state.searchKW ? '검색 결과가 없어요' : schema.empty.title}</div>
@@ -373,7 +378,7 @@
     _bindBody();
     _focusFirstInput();
 
-    // Phase 1 Tier A — 정렬·필터 + ⚡ 액션 바인딩 (모듈 미로드 시 안전 skip)
+    // Phase 1 Tier A/B — 정렬·필터 + ⚡ 액션 + 다중선택 바인딩 (모듈 미로드 시 안전 skip)
     try {
       const bodyEl = document.getElementById('pv-body');
       if (bodyEl) {
@@ -383,9 +388,12 @@
         if (window._PVActions && typeof window._PVActions.bindRowTriggers === 'function') {
           window._PVActions.bindRowTriggers(bodyEl);
         }
+        if (window._PVSelect && typeof window._PVSelect.bindRowCheckboxes === 'function') {
+          window._PVSelect.bindRowCheckboxes(bodyEl);
+        }
       }
     } catch (e) {
-      console.warn('[PowerView] sort/actions bind failed', e);
+      console.warn('[PowerView] sort/actions/select bind failed', e);
     }
   }
 

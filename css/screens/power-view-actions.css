@@ -193,6 +193,82 @@ html[data-theme="dark"] .pv-filter-reset:hover {
   color: #D1D5DB;
 }
 
+/* ── Tier B — 다중선택 행 + sticky 액션바 ─────────────── */
+tr.pv-row-selected {
+  background: rgba(241, 128, 145, 0.08) !important;
+}
+tr.pv-row-selected td {
+  border-color: rgba(241, 128, 145, 0.2);
+}
+
+.pv-select-bar {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10005;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--text, #1a0c10);
+  color: #fff;
+  border-radius: 100px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+  font-size: 13px;
+  font-weight: 700;
+  animation: pvBarSlideUp 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  max-width: 92vw;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+@keyframes pvBarSlideUp {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+.pv-select-bar__count {
+  padding: 6px 10px;
+  background: var(--brand, #F18091);
+  color: #fff;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.pv-select-bar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #fff;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.pv-select-bar__btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.pv-select-bar__btn:active {
+  background: rgba(255, 255, 255, 0.24);
+}
+.pv-select-bar__close {
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 50%;
+  transition: color 0.12s;
+}
+.pv-select-bar__close:hover {
+  color: #fff;
+}
+
 /* ── 모바일 (≤720px) ─────────────────────────────────── */
 @media (width <= 720px) {
   .pv-action-popover {
