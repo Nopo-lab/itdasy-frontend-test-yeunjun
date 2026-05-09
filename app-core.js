@@ -18,6 +18,14 @@
   }
 })();
 
+// [UX-LOAD] 로딩 오버레이 해제 — fade out 후 display:none
+function _hideLoadingOverlay() {
+  var lo = document.getElementById('appLoadingOverlay');
+  if (!lo || lo.style.display === 'none') return;
+  lo.style.opacity = '0';
+  setTimeout(function() { lo.style.display = 'none'; lo.style.opacity = ''; }, 350);
+}
+
 // ===== 백엔드 설정 =====
 // 이 레포(itdasy-frontend-test-yeunjun)는 연준 스테이징 전용 → 스테이징 백엔드 바라봄
 // 운영 레포(itdasy-frontend)는 프로덕션 백엔드(itdasy260417-production)를 사용해야 함
@@ -383,7 +391,8 @@ async function applyNewSession(newToken, opts) {
         // [2026-05-07 26차 [F-3]] /me 응답에 shop 정보 있으면 localStorage 동기화
         // _USER_KEY_KEEP 에서 shop_* 빠진 뒤로 user 변경 시 매장명 폴백 노출 방지.
         try {
-          if (typeof me.shop_name === 'string') localStorage.setItem('shop_name', me.shop_name);
+          // [BUG-LOAD-3] shop_name 빈 값이면 저장 안 함 — JSON.parse('') SyntaxError 방지
+          if (typeof me.shop_name === 'string' && me.shop_name) localStorage.setItem('shop_name', me.shop_name);
           if (typeof me.shop_type === 'string' && me.shop_type) localStorage.setItem('shop_type', me.shop_type);
         } catch (_) { void 0; }
         // [2026-05-08 27차 [F-4]] /me 응답 도착 후 헤더/홈 즉시 재렌더 — 옛날 user 잔류 차단
@@ -930,11 +939,15 @@ async function login() {
     checkCbt1Reset();
     checkOnboarding();
     document.getElementById('lockOverlay').classList.add('hidden');
+    // [UX-LOAD] 로그인 후 로딩 화면 표시 → preload 완료 후 해제
+    var _lo = document.getElementById('appLoadingOverlay');
+    if (_lo) _lo.style.display = 'flex';
     checkInstaStatus(true);
     // T-317 — 생체 인증 등록 제안 (한 번만)
     _offerBiometricEnroll(data.access_token);
     // Wave 2+ — 로그인 직후 주요 데이터 preload (탭 열 때 즉시 표시)
-    _preloadTabs();
+    try { await _preloadTabs(); } catch (_) { /* ignore */ }
+    _hideLoadingOverlay();
     // [2026-04-26 0초딜레이] 홈 화면 AI 추천 카드 즉시 렌더 (500ms 딜레이 제거)
     // SWR 캐시 있으면 0ms, 없으면 fetch — 어차피 비동기라 메인 쓰레드 블로킹 X
     if (window.TodayBrief && typeof window.TodayBrief.render === 'function') {
@@ -1352,9 +1365,13 @@ window.addEventListener('load', function() {
       const ok = await _tryBiometricLogin();
       if (ok) {
         document.getElementById('lockOverlay').classList.add('hidden');
+        var _lo2 = document.getElementById('appLoadingOverlay');
+        if (_lo2) _lo2.style.display = 'flex';
         _setAuthGateLocked(false);
         checkOnboarding();
         checkInstaStatus(true);
+        try { if (window._preloadTabs) await window._preloadTabs(); } catch (_) { /* ignore */ }
+        _hideLoadingOverlay();
       }
     }
   })();
@@ -1368,6 +1385,13 @@ window.addEventListener('load', function() {
     try { applyNewSession(getToken()); } catch (_) { /* ignore */ }
     checkCbt1Reset();
     checkOnboarding();
+    // [UX-LOAD] 필수 데이터 preload 완료 후 로딩 화면 해제
+    (async () => {
+      try {
+        if (window._preloadTabs) await window._preloadTabs();
+      } catch (_) { /* ignore */ }
+      _hideLoadingOverlay();
+    })();
     // [2026-05-08 v117] OAuth 직후면 분석 즉시 시작 — checkInstaStatus 네트워크 응답 기다리지 않음.
     //   사장님이 잇비카드 → 메인홈 → 분석중 깜빡임 보던 거 차단. 분석중 오버레이만 보임.
     const _params0 = new URLSearchParams(window.location.search);
@@ -1402,12 +1426,12 @@ window.addEventListener('load', function() {
         tsEl2.style.display = 'none';
       }
     }
-    // 홈 화면 AI 추천 카드 즉시 렌더 (자동 로그인 시에도)
+    // [UX-LOAD] preload 완료 후 TodayBrief 렌더 — 캐시 히트로 즉시 표시
     setTimeout(() => {
       if (window.TodayBrief && typeof window.TodayBrief.render === 'function') {
         try { window.TodayBrief.render('home-today-brief'); } catch (_e) { /* ignore */ }
       }
-    }, 800);
+    }, 100);
   } else {
     _setAuthGateLocked(true);
   }
@@ -1876,17 +1900,8 @@ window._preloadTabs = async function () {
   }));
 };
 
-// 앱 첫 부팅 시에도 preload (토큰 이미 있으면) — 1.5s 딜레이 제거, 다음 프레임 즉시
-if (typeof window !== 'undefined') {
-  const _bootPreload = () => {
-    if (window._preloadTabs && window.authHeader) {
-      const auth = window.authHeader();
-      if (auth && auth.Authorization) window._preloadTabs();
-    }
-  };
-  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(_bootPreload);
-  else setTimeout(_bootPreload, 0);
-}
+// [UX-LOAD] 자동 preload 제거 — if(getToken()) / login() 에서 직접 await 하므로 중복 방지
+// (기존: 부팅 시 자동 _preloadTabs 호출 → 중복 fetch 원인)
 
 // ──────────────────────────────────────────────
 // Wave 1+2+3 유틸 함수 (yeunjun 오늘 적용분 재이식 · 원영 base 위에 얹음)
