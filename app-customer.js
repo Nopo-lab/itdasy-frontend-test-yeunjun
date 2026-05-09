@@ -117,7 +117,8 @@
       // 신선 캐시면 끝. 오래됐으면 백그라운드로 갱신.
       if (!swr.fresh) {
         _fetchFresh().then(fresh => {
-          if (JSON.stringify(_cache) !== JSON.stringify(fresh)) {
+          // [BUG-R3-1] JSON.stringify 전체 비교 제거 — 건수/첫ID 간이 비교로 전환
+          if (fresh.length !== _cache.length || (fresh[0] && _cache[0] && fresh[0].id !== _cache[0].id)) {
             _cache = fresh;
             _rerender && _rerender();  // UI 자동 갱신
           }

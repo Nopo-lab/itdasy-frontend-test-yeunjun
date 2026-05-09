@@ -1,5 +1,12 @@
 // Itdasy Studio - 마무리 탭 (app-gallery.js에서 분리)
 
+// [SEC-R3-2] HTML 이스케이프 유틸
+function _finEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
 function escapeHtml(s) {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
@@ -75,10 +82,10 @@ function _renderFinishTab(root, galleryItems = []) {
           <div style="display:flex;gap:4px;">${thumbs}</div>
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-              <div style="font-size:13px;font-weight:800;color:var(--text);">${slot.label}</div>
+              <div style="font-size:13px;font-weight:800;color:var(--text);">${_finEsc(slot.label)}</div>
               ${slot.caption ? '<span style="font-size:9px;background:var(--brand-bg,#FCEEF1);color:var(--accent,#F18091);border-radius:4px;padding:1px 5px;font-weight:700;">캡션✓</span>' : ''}
               ${isDeferred ? '<span style="font-size:9px;background:var(--bg2,#f8f8f9);color:var(--text2,#5A6573);border-radius:4px;padding:1px 5px;font-weight:700;">나중에</span>' : ''}
-              ${slot.customer_name ? `<span style="font-size:9px;background:rgba(241,128,145,0.15);color:var(--accent,#F18091);border-radius:4px;padding:1px 5px;font-weight:700;">👤 ${slot.customer_name.slice(0,6)}</span>` : ''}
+              ${slot.customer_name ? `<span style="font-size:9px;background:rgba(241,128,145,0.15);color:var(--accent,#F18091);border-radius:4px;padding:1px 5px;font-weight:700;">👤 ${_finEsc(slot.customer_name.slice(0,6))}</span>` : ''}
             </div>
             <div style="font-size:11px;color:var(--text3);">${visPhotos.length}장</div>
             ${cap}
@@ -349,7 +356,7 @@ function _showPublishOptions(slotId) {
       <div style="width:38px;height:4px;border-radius:2px;background:var(--border-strong,rgba(0,0,0,0.12));margin:6px auto 14px;"></div>
       <div style="padding:0 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
         <div>
-          <div style="font-size:17px;font-weight:800;color:var(--text);letter-spacing:-0.3px;">${slot.label}</div>
+          <div style="font-size:17px;font-weight:800;color:var(--text);letter-spacing:-0.3px;">${_finEsc(slot.label)}</div>
           <div style="font-size:11.5px;color:var(--text3);margin-top:2px;">어디로 보낼까요?</div>
         </div>
         <button onclick="document.getElementById('_publishOptionsPop').style.display='none'" style="width:30px;height:30px;border-radius:999px;background:var(--bg2,#f8f8f9);border:none;color:var(--text2);cursor:pointer;display:grid;place-items:center;">
