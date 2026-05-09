@@ -2648,14 +2648,18 @@
   }
   // "데이터 동기화" 버튼 / focus 복귀 시 강제 새로고침
   // [2026-04-26 A8 픽스] 자기 자신이 발사한 이벤트면 reload 안 함 (그룹 상태 보존)
-  window.addEventListener('itdasy:data-changed', () => {
-    if (_selfDispatchedDataChange) {
-      _selfDispatchedDataChange = false;
-      return;
-    }
-    _historyLoadedFromServer = false;
-    _loadServerHistory(true);
-  });
+  // [BUG-R2-3] 중복 등록 방어 — Capacitor 재초기화 시 리스너 쌓임 방지
+  if (!window._assistantDataListenerInit) {
+    window._assistantDataListenerInit = true;
+    window.addEventListener('itdasy:data-changed', () => {
+      if (_selfDispatchedDataChange) {
+        _selfDispatchedDataChange = false;
+        return;
+      }
+      _historyLoadedFromServer = false;
+      _loadServerHistory(true);
+    });
+  }
 
   window.openAssistant = function () {
     _ensureSheet();
