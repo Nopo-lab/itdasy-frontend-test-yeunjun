@@ -550,10 +550,19 @@ function authHeader() {
     try {
       const API = window.API || '';
       const tok = getToken();
-      const r = await _origFetch(API + '/auth/refresh', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
-      });
+      // [BUG-2] 10초 타임아웃 — 서버 무응답 시 앱 hang 방지
+      const _ac = new AbortController();
+      const _to = setTimeout(() => _ac.abort(), 10000);
+      let r;
+      try {
+        r = await _origFetch(API + '/auth/refresh', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
+          signal: _ac.signal,
+        });
+      } finally {
+        clearTimeout(_to);
+      }
       if (!r.ok) throw new Error('refresh_failed');
       const data = await r.json();
       setToken(data.access_token);
