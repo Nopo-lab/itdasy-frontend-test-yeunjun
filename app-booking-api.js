@@ -14,6 +14,7 @@
   const _cache = {};
   // [P2] 60초 → 5분 (재진입 hit 율 ↑). stale-while-revalidate 패턴이라 fresh 데이터도 백그라운드로 도착.
   const CACHE_TTL = 5 * 60 * 1000;
+  let _lastFetchId = 0;  // [BUG-1] SWR race condition 방지용 요청 ID
 
   function _uuid() {
     if (crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -51,6 +52,7 @@
   // [P2] 백그라운드 fresh fetch — stale-while-revalidate 의 fresh 단계
   // ⚠️ 절대 dispatch('itdasy:data-changed') 하지 말 것 — listener 가 cache invalidate + 재호출 → 무한 루프 (사용량 폭발).
   async function _fetchFreshBookings(fromISO, toISO, key) {
+    const fetchId = ++_lastFetchId;  // [BUG-1] 이 요청의 고유 ID
     const qs = new URLSearchParams();
     if (fromISO) qs.set('from', fromISO);
     if (toISO)   qs.set('to',   toISO);
@@ -59,20 +61,25 @@
       _isOffline = false;
       const items = d.items || [];
       _cache[key] = { t: Date.now(), items };
-      _items = items;
-      // dispatch 제거 — 캐시는 다음 list() 호출 시 fresh 자동 사용. 사장이 캘린더 다시 열거나 mutation 발생 시 갱신.
+      // [BUG-1] 백그라운드 fetch 완료 시, 더 새로운 요청이 이미 _items를 갱신했으면 덮어쓰지 않음
+      if (fetchId === _lastFetchId) {
+        _items = items;
+      }
       return items;
     } catch (e) {
       if (e.message !== 'endpoint-missing' && e.message !== 'no-token') throw e;
       _isOffline = true;
       const all = _loadOffline();
-      _items = all.filter(b => {
+      const filtered = all.filter(b => {
         const t = new Date(b.starts_at).getTime();
         if (fromISO && t < new Date(fromISO).getTime()) return false;
         if (toISO   && t > new Date(toISO).getTime())   return false;
         return !b.deleted_at;
       });
-      return _items;
+      if (fetchId === _lastFetchId) {
+        _items = filtered;
+      }
+      return filtered;
     }
   }
 
