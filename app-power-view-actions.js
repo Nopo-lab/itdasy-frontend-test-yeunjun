@@ -215,6 +215,13 @@
       const builder = ACTIONS[tab];
       if (typeof builder !== 'function') return;
       const items = (builder(rowData) || []).filter(Boolean);
+      // Phase 3: AI 비서 액션 자동 머지 (모듈 로드 시)
+      try {
+        if (window._PVAIInline && typeof window._PVAIInline.aiAction === 'function') {
+          const ai = window._PVAIInline.aiAction(tab, rowData);
+          if (ai) items.push(ai);
+        }
+      } catch (_e) { /* silent */ }
       if (!items.length) return;
 
       const pop = document.createElement('div');

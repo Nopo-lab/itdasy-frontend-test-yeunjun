@@ -213,6 +213,12 @@
       }
     } catch (_e) { /* sort/filter 실패해도 검색만 적용된 list 사용 */ }
     const fullList = list; // totals/export/clipboard 용 — 페이지 절단 전
+    // Phase 3: 그룹화 (선택 시 그룹 헤더 행이 list 안에 끼어들어감)
+    try {
+      if (window._PVGroup && typeof window._PVGroup.applyGrouping === 'function') {
+        list = window._PVGroup.applyGrouping(list, state.currentTab);
+      }
+    } catch (_e) { /* silent */ }
     try {
       if (window._PVPagination && typeof window._PVPagination.slice === 'function') {
         list = window._PVPagination.slice(list, state.currentTab);
@@ -270,7 +276,17 @@
       } catch (_e) { /* silent */ }
       return `<th data-pv-sort="${_esc(sortKey)}" tabindex="0" role="button">${_esc(h)}${arrow}</th>`;
     }).join('') + `<th style="width:${actionColWidth}px;"></th>`;
+    const totalCols = schema.headers.length + 1 + (showSelect ? 1 : 0);
     const rowsHtml = list.map(r => {
+      // Phase 3: 그룹 헤더 행 (단순 정보 행)
+      if (r && r.__group) {
+        try {
+          if (window._PVGroup && typeof window._PVGroup.groupHeaderRow === 'function') {
+            return window._PVGroup.groupHeaderRow(r, totalCols);
+          }
+        } catch (_e) { /* silent */ }
+        return '';
+      }
       if (editMode && Array.isArray(schema.editFields)) {
         const editCells = schema.editFields.map(f => {
           if (f.readonly) {
@@ -373,12 +389,39 @@
           <svg width="14" height="14" aria-hidden="true"><use href="#ic-download"/></svg>
           내보내기
         </button>` : ''}
+        ${(() => {
+          // Phase 3: 음성 입력 버튼 — Web Speech API 지원 시
+          try {
+            if (window._PVVoice && typeof window._PVVoice.button === 'function') {
+              return window._PVVoice.button() || '';
+            }
+          } catch (_e) { /* silent */ }
+          return '';
+        })()}
       </div>
       ${(() => {
         // 필터 칩 행 (Phase 1 Tier A · 2026-05-09) — _PVSort 미로드 시 빈 문자열로 fall-through
         try {
           if (window._PVSort && typeof window._PVSort.renderFilterChips === 'function') {
             return window._PVSort.renderFilterChips(state.currentTab) || '';
+          }
+        } catch (_e) { /* silent */ }
+        return '';
+      })()}
+      ${(() => {
+        // Phase 3: 그룹 칩 — _PVGroup 미로드 시 빈 문자열
+        try {
+          if (window._PVGroup && typeof window._PVGroup.renderToggle === 'function') {
+            return window._PVGroup.renderToggle(state.currentTab) || '';
+          }
+        } catch (_e) { /* silent */ }
+        return '';
+      })()}
+      ${(() => {
+        // Phase 3: KPI 칩 (formula presets) — fullList 기준
+        try {
+          if (window._PVFormula && typeof window._PVFormula.renderPresetChips === 'function') {
+            return window._PVFormula.renderPresetChips(state.currentTab, fullList) || '';
           }
         } catch (_e) { /* silent */ }
         return '';
@@ -430,6 +473,12 @@
         }
         if (window._PVPagination && typeof window._PVPagination.bind === 'function') {
           window._PVPagination.bind(bodyEl);
+        }
+        if (window._PVGroup && typeof window._PVGroup.bind === 'function') {
+          window._PVGroup.bind(bodyEl);
+        }
+        if (window._PVVoice && typeof window._PVVoice.bind === 'function') {
+          window._PVVoice.bind();
         }
       }
       // Export 버튼 — 현재 보이는 list (필터·정렬 후) 기준 다운로드
