@@ -877,6 +877,84 @@ html[data-theme="dark"] .pv-ops-card { background: var(--surface, #18181A); colo
 html[data-theme="dark"] .pv-ops-li { background: var(--surface-2, #232325); }
 html[data-theme="dark"] .pv-ops-empty { background: var(--surface-2, #232325); }
 
+/* ── 자동 시각화 칼럼 (Phase 2 마무리 · viz.js) ────────── */
+.pv-manner-bar {
+  display: inline-block;
+  width: 36px;
+  height: 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 100px;
+  overflow: hidden;
+}
+.pv-manner-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: 100px;
+  transition: width 0.18s;
+}
+
+.pv-balance-gauge {
+  display: block;
+  margin-top: 4px;
+  width: 100%;
+  max-width: 80px;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 100px;
+  overflow: hidden;
+}
+.pv-balance-gauge__fill {
+  display: block;
+  height: 100%;
+  border-radius: 100px;
+  transition: width 0.18s;
+}
+
+.pv-stock-bar {
+  display: block;
+  margin-top: 4px;
+  width: 60px;
+  max-width: 100%;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 100px;
+  overflow: hidden;
+}
+.pv-stock-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: 100px;
+  transition: width 0.18s;
+}
+
+.pv-time-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 7px;
+  background: rgba(241, 128, 145, 0.10);
+  color: var(--brand, #F18091);
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.pv-time-badge--soon {
+  background: rgba(245, 124, 0, 0.10);
+  color: #F57C00;
+}
+.pv-time-badge--past {
+  background: rgba(120, 120, 120, 0.10);
+  color: #888;
+}
+
+html[data-theme="dark"] .pv-manner-bar,
+html[data-theme="dark"] .pv-balance-gauge,
+html[data-theme="dark"] .pv-stock-bar {
+  background: rgba(255, 255, 255, 0.10);
+}
+
 /* ── 모바일 (≤720px) ─────────────────────────────────── */
 @media (width <= 720px) {
   .pv-action-popover {

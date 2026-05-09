@@ -174,15 +174,26 @@
       }},
     ],
     service: (row) => [
-      { icon: 'ic-edit-3', label: '가격 수정', run: async () => {
-        const cur = Number(row.default_price || 0);
-        const next = window.prompt('새 기본 금액 (원):', String(cur));
-        if (next == null) return;
-        const n = Number(String(next).replace(/[^0-9.\-]/g, ''));
-        if (!Number.isFinite(n) || n < 0) { _toast('숫자만 입력해주세요'); return; }
-        await _patch('/services/' + row.id, { default_price: n });
-        _emit('update_service', { service_id: row.id });
-        _refreshTab();
+      { icon: 'ic-edit-3', label: '인라인 수정', run: async () => {
+        // UX 원칙 3: prompt 제거, 인라인 편집으로 자연스럽게
+        try {
+          if (window._PVInt && typeof window._PVInt.toggleEditMode === 'function') {
+            window._PVInt.toggleEditMode(true);
+            setTimeout(() => {
+              const tr = document.querySelector(`tr[data-id="${row.id}"]`);
+              if (tr) {
+                tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const priceInput = tr.querySelector('[data-pv-edit*=":default_price"]');
+                if (priceInput && typeof priceInput.focus === 'function') {
+                  priceInput.focus();
+                  if (typeof priceInput.select === 'function') priceInput.select();
+                }
+              }
+            }, 220);
+          } else {
+            _toast('편집 모드를 켤 수 없어요');
+          }
+        } catch (_e) { /* silent */ }
       }},
     ],
   };
