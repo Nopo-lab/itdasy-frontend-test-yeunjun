@@ -141,7 +141,8 @@
       _items = swr.items;
       if (!swr.fresh) {
         _fetchPeriod(p).then(fresh => {
-          if (JSON.stringify(_items) !== JSON.stringify(fresh)) {
+          // [BUG-R2-4] JSON.stringify 전체 비교 제거 — 건수/첫ID 간이 비교로 전환
+          if (fresh.length !== _items.length || (fresh[0] && _items[0] && fresh[0].id !== _items[0].id)) {
             _items = fresh;
             try { _rerender && _rerender(); } catch (_e) { void _e; }
           }
@@ -158,6 +159,7 @@
         const all = _loadOffline();
         _items = all.filter(r => {
           const t = new Date(r.recorded_at || r.created_at).getTime();
+          if (!t || isNaN(t)) return true;  // [BUG-R2-4] 날짜 없는 항목은 포함
           return t >= start.getTime() && t <= end.getTime();
         });
         return _items;
