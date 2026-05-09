@@ -1,5 +1,12 @@
 // Itdasy Studio - 캡션 생성 (슬롯머신, 톤 컨트롤, 해시태그)
 
+// [SEC-R2-1] HTML 이스케이프 유틸
+function _capEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
 // ═══════════════════════════════════════════════════════
 async function _personaFetch(method, path, body) {
   const headers = window.authHeader ? window.authHeader() : {};
@@ -456,9 +463,11 @@ function renderCaptionKeywordTags() {
   const keywords = getShopKeywords();
   const deleted = _loadDeletedKeywords();
 
-  container.innerHTML = keywords.map(k =>
-    `<span class="tag" data-v="${k}" onclick="toggleCaptionTag(this)">${k}<button class="tag-delete" onclick="deleteCaptionKeyword('${k}',event)">×</button></span>`
-  ).join('') + `<span class="tag tag-add" onclick="showAddKeywordInput()">+ 추가</span>`;
+  // [SEC-R2-1] XSS 방지 — 키워드를 이스케이프하여 삽입
+  container.innerHTML = keywords.map(k => {
+    const safe = _capEsc(k);
+    return `<span class="tag" data-v="${safe}" onclick="toggleCaptionTag(this)">${safe}<button class="tag-delete" data-kw="${safe}" onclick="deleteCaptionKeyword(this.dataset.kw,event)">×</button></span>`;
+  }).join('') + `<span class="tag tag-add" onclick="showAddKeywordInput()">+ 추가</span>`;
 }
 
 
