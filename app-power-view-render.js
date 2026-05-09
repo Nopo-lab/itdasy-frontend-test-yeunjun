@@ -204,13 +204,20 @@
     }
 
     // 검색 → 필터 → 정렬 순으로 변환 (Phase 1 Tier A · 2026-05-09)
-    // _PVSort 가 미로드되도 안전하게 fall-through (기존 동작 유지)
+    // Phase 2 추가: 페이지네이션 (>800행)
+    // 모듈들 미로드되도 안전하게 fall-through (기존 동작 유지)
     let list = _applySearch(state.data[state.currentTab] || [], schema);
     try {
       if (window._PVSort && typeof window._PVSort.apply === 'function') {
         list = window._PVSort.apply(list, state.currentTab);
       }
     } catch (_e) { /* sort/filter 실패해도 검색만 적용된 list 사용 */ }
+    const fullList = list; // totals/export/clipboard 용 — 페이지 절단 전
+    try {
+      if (window._PVPagination && typeof window._PVPagination.slice === 'function') {
+        list = window._PVPagination.slice(list, state.currentTab);
+      }
+    } catch (_e) { /* silent */ }
     const qadd = schema.qadd;
     const autoSource = _buildAutoSources();
     const fieldsHtml = qadd.fields.map(f => {
@@ -295,7 +302,15 @@
         </button>
         <button class="pv-row-edit" data-edit-id="${r.id}" aria-label="수정" title="수정" style="border:none;background:transparent;cursor:pointer;color:#888;padding:4px 8px;border-radius:6px;transition:all 0.12s;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-edit-3"/></svg></button>
       </td>`;
-      return `<tr data-id="${r.id}">${selectCell}${cells}${actionCell}</tr>`;
+      // Phase 2: 조건부 포맷 클래스 (선택 행 클래스와 공존)
+      let fmtCls = '';
+      try {
+        if (window._PVFormat && typeof window._PVFormat.rowClasses === 'function') {
+          fmtCls = window._PVFormat.rowClasses(state.currentTab, r) || '';
+        }
+      } catch (_e) { /* silent */ }
+      const trClass = fmtCls ? ` class="${fmtCls}"` : '';
+      return `<tr${trClass} data-id="${r.id}">${selectCell}${cells}${actionCell}</tr>`;
     }).join('');
 
     const pendingList = state.pending[state.currentTab] || [];
@@ -354,6 +369,10 @@
           📥 엑셀 불러오기
           <input type="file" id="pv-excel-file" accept=".xlsx,.xls,.csv" hidden />
         </label>
+        ${window._PVExport ? `<button type="button" id="pv-export-btn" class="pv-export-btn" title="현재 보이는 행 CSV 내려받기">
+          <svg width="14" height="14" aria-hidden="true"><use href="#ic-download"/></svg>
+          내보내기
+        </button>` : ''}
       </div>
       ${(() => {
         // 필터 칩 행 (Phase 1 Tier A · 2026-05-09) — _PVSort 미로드 시 빈 문자열로 fall-through
@@ -370,6 +389,24 @@
           <tbody id="pv-tbody">${rowsHtml}${emptyHtml}</tbody>
         </table>
       </div>
+      ${(() => {
+        // Phase 2: 페이지네이션 (>800행) — 모듈 미로드 시 빈 문자열
+        try {
+          if (window._PVPagination && typeof window._PVPagination.renderMore === 'function') {
+            return window._PVPagination.renderMore(fullList, state.currentTab) || '';
+          }
+        } catch (_e) { /* silent */ }
+        return '';
+      })()}
+      ${(() => {
+        // Phase 2: 자동 합계행 — fullList(페이지 절단 전) 기준
+        try {
+          if (window._PVTotals && typeof window._PVTotals.render === 'function') {
+            return window._PVTotals.render(state.currentTab, fullList) || '';
+          }
+        } catch (_e) { /* silent */ }
+        return '';
+      })()}
       <div class="pv-footer">
         <div><span class="pv-count">${list.length}</span><span style="color:#999"> / 총 ${(state.data[state.currentTab] || []).length}건</span></div>
         <div class="pv-hotkeys">단축: <kbd>Enter</kbd> 즉시 · <kbd>Shift+Enter</kbd> 쌓기 · <kbd>⌘K</kbd> 검색 · <kbd>Esc</kbd> 닫기</div>
@@ -378,7 +415,7 @@
     _bindBody();
     _focusFirstInput();
 
-    // Phase 1 Tier A/B — 정렬·필터 + ⚡ 액션 + 다중선택 바인딩 (모듈 미로드 시 안전 skip)
+    // Phase 1/2 — 모든 신규 모듈 바인딩 (모듈 미로드 시 안전 skip)
     try {
       const bodyEl = document.getElementById('pv-body');
       if (bodyEl) {
@@ -391,9 +428,29 @@
         if (window._PVSelect && typeof window._PVSelect.bindRowCheckboxes === 'function') {
           window._PVSelect.bindRowCheckboxes(bodyEl);
         }
+        if (window._PVPagination && typeof window._PVPagination.bind === 'function') {
+          window._PVPagination.bind(bodyEl);
+        }
+      }
+      // Export 버튼 — 현재 보이는 list (필터·정렬 후) 기준 다운로드
+      const exportBtn = document.getElementById('pv-export-btn');
+      if (exportBtn && window._PVExport && typeof window._PVExport.downloadCSV === 'function') {
+        exportBtn.addEventListener('click', () => {
+          const tab = window._PVState && window._PVState.currentTab;
+          if (!tab) return;
+          // 필터·정렬·페이지절단 전체 fullList 와는 별개로, 다운로드는 'fullList' 기준
+          // (사용자가 "내보내기" 누른 시점의 보이는 결과)
+          // fullList 가 클로저 밖이므로 _PVState.data 와 _PVSort 으로 재계산
+          let list = window._PVState.data[tab] || [];
+          try {
+            if (state.searchKW) list = list.filter((r) => state.currentTab && window._PVInt.SCHEMAS[tab].search(r, state.searchKW.toLowerCase()));
+            if (window._PVSort && window._PVSort.apply) list = window._PVSort.apply(list, tab);
+          } catch (_e) { /* silent */ }
+          window._PVExport.downloadCSV(tab, list);
+        });
       }
     } catch (e) {
-      console.warn('[PowerView] sort/actions/select bind failed', e);
+      console.warn('[PowerView] phase1/2 bind failed', e);
     }
   }
 
