@@ -203,7 +203,14 @@
       state.data[state.currentTab] = await fetchTab(state.currentTab);
     }
 
-    const list = _applySearch(state.data[state.currentTab] || [], schema);
+    // 검색 → 필터 → 정렬 순으로 변환 (Phase 1 Tier A · 2026-05-09)
+    // _PVSort 가 미로드되도 안전하게 fall-through (기존 동작 유지)
+    let list = _applySearch(state.data[state.currentTab] || [], schema);
+    try {
+      if (window._PVSort && typeof window._PVSort.apply === 'function') {
+        list = window._PVSort.apply(list, state.currentTab);
+      }
+    } catch (_e) { /* sort/filter 실패해도 검색만 적용된 list 사용 */ }
     const qadd = schema.qadd;
     const autoSource = _buildAutoSources();
     const fieldsHtml = qadd.fields.map(f => {
@@ -235,8 +242,24 @@
     `).join('');
 
     const editMode = !!state.editMode;
-    const actionColWidth = editMode ? 88 : 56;
-    const headers = schema.headers.map(h => `<th>${_esc(h)}</th>`).join('') + `<th style="width:${actionColWidth}px;"></th>`;
+    const actionColWidth = editMode ? 88 : 78; // 56 → 78 (⚡ 버튼 추가 공간)
+    // 헤더에 정렬 가능 컬럼이면 data-pv-sort + 화살표 추가 (Phase 1 Tier A)
+    const headers = schema.headers.map((h, idx) => {
+      let sortKey = null;
+      try {
+        if (window._PVSort && typeof window._PVSort.getSortKey === 'function') {
+          sortKey = window._PVSort.getSortKey(state.currentTab, idx);
+        }
+      } catch (_e) { /* silent */ }
+      if (!sortKey) return `<th>${_esc(h)}</th>`;
+      let arrow = '';
+      try {
+        if (window._PVSort && typeof window._PVSort.renderHeaderArrow === 'function') {
+          arrow = window._PVSort.renderHeaderArrow(state.currentTab, idx);
+        }
+      } catch (_e) { /* silent */ }
+      return `<th data-pv-sort="${_esc(sortKey)}" tabindex="0" role="button">${_esc(h)}${arrow}</th>`;
+    }).join('') + `<th style="width:${actionColWidth}px;"></th>`;
     const rowsHtml = list.map(r => {
       if (editMode && Array.isArray(schema.editFields)) {
         const editCells = schema.editFields.map(f => {
@@ -260,7 +283,14 @@
         return `<tr data-id="${r.id}" class="pv-row-editing">${editCells}${actionCell}</tr>`;
       }
       const cells = schema.row(r).map(c => `<td>${c}</td>`).join('');
-      return `<tr data-id="${r.id}">${cells}<td style="text-align:right;"><button class="pv-row-edit" data-edit-id="${r.id}" aria-label="수정" title="수정" style="border:none;background:transparent;cursor:pointer;color:#888;padding:4px 8px;border-radius:6px;transition:all 0.12s;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-edit-3"/></svg></button></td></tr>`;
+      // 비편집 모드 행 끝: ⚡ 액션 버튼 + 수정 버튼 (Phase 1 Tier A)
+      const actionCell = `<td style="text-align:right;white-space:nowrap;">
+        <button class="pv-actions-trigger" data-pv-actions-trigger data-row-id="${r.id}" aria-label="액션 메뉴" title="액션 메뉴">
+          <svg width="14" height="14" aria-hidden="true"><use href="#ic-more-horizontal"/></svg>
+        </button>
+        <button class="pv-row-edit" data-edit-id="${r.id}" aria-label="수정" title="수정" style="border:none;background:transparent;cursor:pointer;color:#888;padding:4px 8px;border-radius:6px;transition:all 0.12s;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-edit-3"/></svg></button>
+      </td>`;
+      return `<tr data-id="${r.id}">${cells}${actionCell}</tr>`;
     }).join('');
 
     const pendingList = state.pending[state.currentTab] || [];
@@ -320,6 +350,15 @@
           <input type="file" id="pv-excel-file" accept=".xlsx,.xls,.csv" hidden />
         </label>
       </div>
+      ${(() => {
+        // 필터 칩 행 (Phase 1 Tier A · 2026-05-09) — _PVSort 미로드 시 빈 문자열로 fall-through
+        try {
+          if (window._PVSort && typeof window._PVSort.renderFilterChips === 'function') {
+            return window._PVSort.renderFilterChips(state.currentTab) || '';
+          }
+        } catch (_e) { /* silent */ }
+        return '';
+      })()}
       <div class="pv-list">
         <table class="pv-table">
           <thead><tr>${headers}</tr></thead>
@@ -333,6 +372,21 @@
     `;
     _bindBody();
     _focusFirstInput();
+
+    // Phase 1 Tier A — 정렬·필터 + ⚡ 액션 바인딩 (모듈 미로드 시 안전 skip)
+    try {
+      const bodyEl = document.getElementById('pv-body');
+      if (bodyEl) {
+        if (window._PVSort && typeof window._PVSort.bindHeaderClicks === 'function') {
+          window._PVSort.bindHeaderClicks(bodyEl);
+        }
+        if (window._PVActions && typeof window._PVActions.bindRowTriggers === 'function') {
+          window._PVActions.bindRowTriggers(bodyEl);
+        }
+      }
+    } catch (e) {
+      console.warn('[PowerView] sort/actions bind failed', e);
+    }
   }
 
   function _focusFirstInput() {
