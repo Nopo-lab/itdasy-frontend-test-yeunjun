@@ -55,12 +55,14 @@ function _renderBgPanel() {
     const preview = bg.imageData
       ? `<img src="${bg.imageData}" alt="${bg.name}">`
       : `<div style="width:100%;height:100%;background:${bg.gradient || bg.color};"></div>`;
+    const _bid = (bg.id || '').replace(/['"<>&]/g, '');
+    const _bnm = String(bg.name || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     return `
-      <div class="gp-card" onclick="selectBg('${bg.id}')">
+      <div class="gp-card" data-bgid="${_bid}" onclick="selectBg(this.dataset.bgid)">
         <div class="gp-card__thumb${isSelected ? ' gp-card__thumb--sel' : ''}">${preview}</div>
-        <div class="gp-card__name">${bg.name}</div>
-        <button class="gp-fav-btn" onclick="toggleFavBg('${bg.id}',event)" aria-label="${isFav ? '즐겨찾기 해제' : '즐겨찾기 추가'}">${isFav ? '⭐' : '☆'}</button>
-        ${isUser ? `<button class="gp-del-btn" onclick="deleteUserBg('${bg.id}',event)" aria-label="삭제">×</button>` : ''}
+        <div class="gp-card__name">${_bnm}</div>
+        <button class="gp-fav-btn" data-bgid="${_bid}" onclick="toggleFavBg(this.dataset.bgid,event)" aria-label="${isFav ? '즐겨찾기 해제' : '즐겨찾기 추가'}">${isFav ? '⭐' : '☆'}</button>
+        ${isUser ? `<button class="gp-del-btn" data-bgid="${_bid}" onclick="deleteUserBg(this.dataset.bgid,event)" aria-label="삭제">×</button>` : ''}
       </div>`;
   };
 

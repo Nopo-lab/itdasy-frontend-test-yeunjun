@@ -59,14 +59,18 @@ function _renderElementPanel() {
     <div class="gp-section">
       <p class="gp-section-lbl"><svg class="ic ic--xs" aria-hidden="true"><use href="#ic-package"/></svg> 내 요소 (로고, 브랜드 이미지)</p>
       <div class="gp-grid gp-grid--4">
-        ${_userElements.map(el => `
-          <div class="gp-card" onclick="selectElement('${el.id}')">
+        ${_userElements.map(el => {
+          const _id = (el.id || '').replace(/['"<>&]/g, '');
+          const _nm = String(el.name || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+          return `
+          <div class="gp-card" data-elid="${_id}" onclick="selectElement(this.dataset.elid)">
             <div class="gp-card__thumb gp-card__thumb--fit">
-              <img src="${el.imageData}" alt="${el.name}">
+              <img src="${el.imageData}" alt="${_nm}">
             </div>
-            <div class="gp-card__name">${el.name}</div>
-            <button class="gp-del-btn" onclick="deleteElement('${el.id}',event)" aria-label="삭제">×</button>
-          </div>`).join('')}
+            <div class="gp-card__name">${_nm}</div>
+            <button class="gp-del-btn" data-elid="${_id}" onclick="deleteElement(this.dataset.elid,event)" aria-label="삭제">×</button>
+          </div>`;
+        }).join('')}
         <div class="gp-add-card" onclick="addUserElement()">
           <div class="gp-add-card__thumb">+</div>
           <div class="gp-card__name">추가</div>
