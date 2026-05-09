@@ -458,11 +458,24 @@
         return '';
       })()}
       ${(() => {
-        // Phase 2: 자동 합계행 — fullList(페이지 절단 전) 기준
+        // Phase 2: 자동 합계행 + Phase 4: 운영 분석 버튼 + 유료 quota 칩
         try {
+          let totals = '';
           if (window._PVTotals && typeof window._PVTotals.render === 'function') {
-            return window._PVTotals.render(state.currentTab, fullList) || '';
+            totals = window._PVTotals.render(state.currentTab, fullList) || '';
           }
+          let opsBtn = '';
+          if (state.currentTab === 'revenue' && window._PVOps && typeof window._PVOps.button === 'function') {
+            opsBtn = window._PVOps.button();
+          }
+          let quota = '';
+          if (window._PVQuota && typeof window._PVQuota.chip === 'function') {
+            quota = window._PVQuota.chip(state.currentTab, fullList);
+          }
+          if (totals && (opsBtn || quota)) {
+            return totals.replace('</div>', `<div class="pv-totals__extra">${quota}${opsBtn}</div></div>`);
+          }
+          return totals || (opsBtn || quota ? `<div class="pv-totals"><div class="pv-totals__extra">${quota}${opsBtn}</div></div>` : '');
         } catch (_e) { /* silent */ }
         return '';
       })()}
@@ -495,6 +508,12 @@
         }
         if (window._PVVoice && typeof window._PVVoice.bind === 'function') {
           window._PVVoice.bind();
+        }
+        if (window._PVOps && typeof window._PVOps.bind === 'function') {
+          window._PVOps.bind();
+        }
+        if (window._PVQuota && typeof window._PVQuota.bind === 'function') {
+          window._PVQuota.bind();
         }
       }
       // Export 버튼 — 현재 보이는 list (필터·정렬 후) 기준 다운로드
