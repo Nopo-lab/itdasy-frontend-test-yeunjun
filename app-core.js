@@ -28,8 +28,8 @@ function _hideLoadingOverlay() {
 
 // ===== 백엔드 설정 =====
 // 이 레포(itdasy-frontend-test-yeunjun)는 연준 스테이징 전용 → 스테이징 백엔드 바라봄
-// 운영 레포(itdasy-frontend)는 프로덕션 백엔드(itdasy260417-production)를 사용해야 함
-const PROD_API = 'https://itdasy260417-staging-production.up.railway.app';
+// 운영 레포(itdasy-frontend)는 운영 백엔드(별도 Cloud Run 서비스/커스텀 도메인)를 사용해야 함
+const PROD_API = 'https://itdasy-backend-staging-644329093453.asia-northeast3.run.app';
 const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:8000'
   : PROD_API;
@@ -1784,7 +1784,7 @@ async function loadStatsCard() {
     if (r.status === 429) {
       const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
       // API 도메인에 한정 (외부 요청 무시)
-      if (url.includes('railway.app') || url.startsWith(API)) {
+      if (url.startsWith(API)) {
         const now = Date.now();
         if (now - lastOpened > 3000 && typeof window.openPlanPopup === 'function') {
           lastOpened = now;

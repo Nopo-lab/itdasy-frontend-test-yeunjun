@@ -38,7 +38,7 @@ document.getElementById('claimPageIdBtn').addEventListener('click', async () => 
   // recent-events 에서 외부 sender 의 webhook 자동 추출 (is_echo 아닌 것)
   let pageId = '';
   try {
-    const res = await fetch('https://itdasy260417-staging-production.up.railway.app/instagram/dm-reply/recent-events?limit=20', {
+    const res = await fetch('https://itdasy-backend-staging-644329093453.asia-northeast3.run.app/instagram/dm-reply/recent-events?limit=20', {
       headers: { 'Authorization': 'Bearer ' + t },
     });
     const data = await res.json();
@@ -57,7 +57,7 @@ document.getElementById('claimPageIdBtn').addEventListener('click', async () => 
   if (!pageId || !/^\d+$/.test(pageId)) { alert('유효한 page_id 가 아니에요'); return; }
   box.innerHTML = '<pre>등록 중…</pre>';
   try {
-    const res = await fetch('https://itdasy260417-staging-production.up.railway.app/instagram/dm-reply/claim-page-id', {
+    const res = await fetch('https://itdasy-backend-staging-644329093453.asia-northeast3.run.app/instagram/dm-reply/claim-page-id', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' },
       body: JSON.stringify({ page_id: pageId }),
@@ -95,7 +95,7 @@ document.getElementById('subscribeBtn').addEventListener('click', async () => {
   const box = document.getElementById('subscribeResult');
   box.innerHTML = '<pre>구독 활성화 중…</pre>';
   try {
-    const res = await fetch('https://itdasy260417-staging-production.up.railway.app/instagram/dm-reply/subscribe-app', {
+    const res = await fetch('https://itdasy-backend-staging-644329093453.asia-northeast3.run.app/instagram/dm-reply/subscribe-app', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + t },
     });
@@ -114,7 +114,7 @@ document.getElementById('recentBtn').addEventListener('click', async () => {
   const box = document.getElementById('recentEvents');
   box.innerHTML = '<pre>불러오는 중…</pre>';
   try {
-    const res = await fetch('https://itdasy260417-staging-production.up.railway.app/instagram/dm-reply/recent-events?limit=20', {
+    const res = await fetch('https://itdasy-backend-staging-644329093453.asia-northeast3.run.app/instagram/dm-reply/recent-events?limit=20', {
       headers: { 'Authorization': 'Bearer ' + t },
     });
     const data = await res.json();
@@ -132,7 +132,7 @@ document.getElementById('syncIdBtn').addEventListener('click', async () => {
   const t = localStorage.getItem('itdasy_token::staging') || localStorage.getItem('itdasy_token::prod') || localStorage.getItem('itdasy_token');
   if (!t) { alert('토큰 없음'); return; }
   try {
-    const res = await fetch('https://itdasy260417-staging-production.up.railway.app/instagram/sync-user-id', {
+    const res = await fetch('https://itdasy-backend-staging-644329093453.asia-northeast3.run.app/instagram/sync-user-id', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + t },
     });
@@ -149,7 +149,7 @@ document.getElementById('enableBtn').addEventListener('click', async () => {
   const t = localStorage.getItem('itdasy_token::staging') || localStorage.getItem('itdasy_token::prod') || localStorage.getItem('itdasy_token');
   if (!t) { alert('토큰 없음 — 잇데이 로그인 먼저'); return; }
   try {
-    const res = await fetch('https://itdasy260417-staging-production.up.railway.app/instagram/dm-reply/settings', {
+    const res = await fetch('https://itdasy-backend-staging-644329093453.asia-northeast3.run.app/instagram/dm-reply/settings', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -177,7 +177,7 @@ document.getElementById('enableBtn').addEventListener('click', async () => {
 });
 </script>
 <script>
-const API = 'https://itdasy260417-staging-production.up.railway.app';
+const API = 'https://itdasy-backend-staging-644329093453.asia-northeast3.run.app';
 const r = document.getElementById('results');
 function row(label, value, cls) {
   const d = document.createElement('div');

@@ -72,7 +72,7 @@ AI Instagram marketing for solo beauty salon owners. Captions, photo editing, sc
 - We do not sell user data to third parties
 - We do not use user data for advertising
 - Data deletion URL: `https://nopo-lab.github.io/itdasy-frontend/data-deletion.html`
-- Data deletion callback (for automated systems): `https://itdasy260417-production.up.railway.app/instagram/data-deletion`
+- Data deletion callback (for automated systems): `https://itdasy-backend-staging-644329093453.asia-northeast3.run.app/instagram/data-deletion`
 
 ---
 
@@ -108,7 +108,7 @@ Both products are billed monthly with auto-renewal. 1-week free trial on first s
 ### Real-Time Developer Notifications (RTDN)
 After creating Pub/Sub topic, configure notification endpoint:
 ```
-https://itdasy260417-production.up.railway.app/iap/google/webhook
+https://itdasy-backend-staging-644329093453.asia-northeast3.run.app/iap/google/webhook
 ```
 (Endpoint exists in `backend/routers/iap.py` — verify after Railway recovery.)
 

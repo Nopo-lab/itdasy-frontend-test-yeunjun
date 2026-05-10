@@ -18,7 +18,7 @@
 ### 2. 데이터 삭제 콜백 엔드포인트 ✅
 
 - `POST /instagram/deletion-callback` 구현됨 (commit `0d6e1fc`)
-- URL: `https://itdasy260417-production.up.railway.app/instagram/deletion-callback`
+- URL: `https://itdasy-backend-staging-644329093453.asia-northeast3.run.app/instagram/deletion-callback`
 - Meta Developer Console 에 등록
 
 ### 3. 앱 스크린샷·비디오 (Phase 6.3 반영) — ❌ 재촬영 필요
