@@ -343,8 +343,10 @@
     const announcements = _items.filter(n => n.kind === 'announcement' && !dismissed.includes(n.id));
     if (!announcements.length) {
       host.innerHTML = '';
+      host.style.display = 'none';  // 빈 카드 자리(margin) 흔적 제거
       return;
     }
+    host.style.display = '';  // 다시 보일 때 복귀
     // 가장 최신 한 건만 노출 (스택형 카드는 시트에서 확인)
     const a = announcements[0];
     const more = announcements.length - 1;
