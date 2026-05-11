@@ -794,6 +794,9 @@ function openSettings() {
     }
   }
 
+  // [Hotfix] 시트 열릴 때 항상 맨 위에서 시작 — 이전 스크롤 위치 잔존 방지
+  card.scrollTop = 0;
+
   // 먼저 display, 한 프레임 뒤 open (두 번 rAF로 확실히 렌더 후 transition 발동)
   card.classList.remove('open');
   sheet.style.display = 'flex';
@@ -1773,6 +1776,19 @@ if ('serviceWorker' in navigator && !_isCapacitor) {
     if (ob && !ob.classList.contains('hidden')) return;
     if ((window.scrollY || document.documentElement.scrollTop) > 0) return;
     if (e.touches.length !== 1) return;
+
+    // [Hotfix A] 시트/팝업이 열려있으면 PTR 완전 비활성화
+    // 팝업 안에서 당겨 새로고침 의도 없음 + body translateY 가 시트도 같이 미는 버그 방지.
+    const anySheet = document.querySelector(
+      '#settingsSheet[style*="flex"], .ms-sheet[style*="flex"], .hub-sheet.open, .ms-sheet.open, #navSheet[style*="flex"], .drawer-nav.open'
+    );
+    if (anySheet) return;
+
+    // [Hotfix B] 탭바/하단 네비/AI비서 FAB 위에서 시작된 터치는 PTR 제외
+    // PTR이 body를 translateY 로 밀면 탭바도 같이 밀려 버튼이 안 눌리는 문제 방지.
+    const nav = e.target.closest('#bottomNavGroup, .tab-bar, #assistantFab');
+    if (nav) return;
+
     startY    = e.touches[0].clientY;
     pulling   = true;
     triggered = false;
@@ -1785,6 +1801,11 @@ if ('serviceWorker' in navigator && !_isCapacitor) {
 
   document.addEventListener('touchmove', e => {
     if (!pulling || loading) return;
+    // [Hotfix] 시트 열림 재확인 — touchstart→touchmove 사이에 시트가 열릴 수 있음
+    const anySheet2 = document.querySelector(
+      '#settingsSheet[style*="flex"], .ms-sheet[style*="flex"], .hub-sheet.open, .ms-sheet.open'
+    );
+    if (anySheet2) { pulling = false; return; }
     if (e.touches.length !== 1) { pulling = false; springBack(); return; }
 
     const dy   = e.touches[0].clientY - startY;
