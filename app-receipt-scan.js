@@ -446,7 +446,7 @@
           <label for="rs-file-input" style="display:inline-block;padding:14px 22px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border-radius:100px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(241,128,145,0.3);">
             사진 선택 / 촬영
           </label>
-          <input id="rs-file-input" type="file" accept="image/*" capture="environment" style="display:none;">
+          <input id="rs-file-input" type="file" accept="image/*" style="display:none;">
           <div style="font-size:11px;color:#888;margin-top:14px;">AI 가 이미지에서 자동 추출합니다.</div>
         </div>
       </div>`;
