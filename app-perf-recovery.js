@@ -444,7 +444,11 @@
     }
   });
   document.addEventListener('DOMContentLoaded', () => {
-    _frObserver.observe(document.body, { childList: true, subtree: true });
+    // [PerfFix] body 전체 subtree → 메인 컨텐츠만. 헤더/사이드바 DOM 변경에 반응 안 함.
+    const _formTarget = document.querySelector('.main-content')
+      || document.querySelector('main')
+      || document.body;
+    _frObserver.observe(_formTarget, { childList: true, subtree: true });
     // 초기 페이지에 이미 떠 있는 폼도 복원
     document.querySelectorAll('[data-form-id]').forEach(c => {
       const fid = c.getAttribute('data-form-id');

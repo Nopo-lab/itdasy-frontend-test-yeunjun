@@ -363,7 +363,7 @@ function _renderCaptionPhotoRow() {
     wrap.addEventListener('touchend', () => {
       clearTimeout(_lpTimer);
       if (_lpActive) { wrap.style.opacity = '1'; _lpActive = false; }
-    });
+    }, { passive: true });
     wrap.addEventListener('touchmove', e => {
       if (!_lpActive) { clearTimeout(_lpTimer); return; }
       e.preventDefault();

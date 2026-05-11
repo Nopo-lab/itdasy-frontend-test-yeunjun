@@ -94,8 +94,8 @@ function _initPeekCarousel(id, total) {
     lastTime = now;
     // 실시간 드래그 반영
     track.style.transform = `translateX(calc(15% + ${offsetPx + dx}px))`;
-    if (Math.abs(dx) > 10) e.preventDefault();
-  }, { passive: false });
+    // [PerfFix] passive:true 로 변경 — preventDefault 제거. CSS touch-action 으로 축 제어.
+  }, { passive: true });
 
   track.addEventListener('touchend', e => {
     if (!dragging) return;
@@ -120,6 +120,10 @@ function _initPeekCarousel(id, total) {
     track.style.transition = 'none';
     e.preventDefault();
   });
+  // [PerfFix] window 리스너 누적 방지 — 캐러셀 재셋업 시 이전 리스너 정리.
+  if (window._dragAC_writeSlide) { try { window._dragAC_writeSlide.abort(); } catch (_e) { void _e; } }
+  window._dragAC_writeSlide = new AbortController();
+  const _dragSig = { signal: window._dragAC_writeSlide.signal };
   window.addEventListener('mousemove', e => {
     if (!md) return;
     const x = e.clientX;
@@ -130,7 +134,7 @@ function _initPeekCarousel(id, total) {
     mLastX = x;
     mLastTime = now;
     track.style.transform = `translateX(calc(15% + ${offsetPx + dx}px))`;
-  });
+  }, _dragSig);
   window.addEventListener('mouseup', e => {
     if (!md) return;
     md = false;
@@ -139,7 +143,7 @@ function _initPeekCarousel(id, total) {
     const totalMove = dx + momentum;
     const slidesToMove = Math.round(-totalMove / slideW);
     go(cur + slidesToMove);
-  });
+  }, _dragSig);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -351,13 +355,16 @@ function _showCaptionPublishPreview(photos, caption) {
       }, { passive: true });
       let msx = 0, mst = 0, mdr = false;
       track.addEventListener('mousedown', e => { msx = e.clientX; mst = Date.now(); mdr = true; e.preventDefault(); });
+      // [PerfFix] AbortController로 누적 방지.
+      if (window._dragAC_pubSwipe) { try { window._dragAC_pubSwipe.abort(); } catch (_e) { void _e; } }
+      window._dragAC_pubSwipe = new AbortController();
       window.addEventListener('mouseup', e => {
         if (!mdr) return; mdr = false;
         const dx = e.clientX - msx;
         const fast = Math.abs(dx) / (Date.now() - mst) > 0.4;
         if (dx < -30 || (fast && dx < 0)) pubGo(cur + 1);
         else if (dx > 30 || (fast && dx > 0)) pubGo(cur - 1);
-      });
+      }, { signal: window._dragAC_pubSwipe.signal });
     }, 80);
   }
 }

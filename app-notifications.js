@@ -469,8 +469,20 @@
     }, 120 * 1000);
   }
 
+  // [PerfFix] 탭이 백그라운드로 가면 폴링 중단 — 배터리/CPU 절약. 복귀 시 재시작.
+  function _stopPolling() {
+    if (!_pollTimer) return;
+    clearInterval(_pollTimer);
+    _pollTimer = null;
+  }
+
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') _poll();
+    if (document.visibilityState === 'visible') {
+      _poll();
+      _startPolling();
+    } else {
+      _stopPolling();
+    }
   });
 
   if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(_startPolling, 2000);

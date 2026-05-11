@@ -252,7 +252,7 @@ function _setupElementDrag() {
     }
   }, { passive: false });
 
-  wrap.addEventListener('touchend', () => { dragging = false; pinching = false; });
+  wrap.addEventListener('touchend', () => { dragging = false; pinching = false; }, { passive: true });
 
   // 마우스
   wrap.addEventListener('mousedown', e => {
@@ -262,6 +262,10 @@ function _setupElementDrag() {
     startElemX = _elementEditState.x; startElemY = _elementEditState.y;
     e.preventDefault();
   });
+  // [PerfFix] _setupElementDrag 재호출 시 window 리스너 누적 → AbortController로 매번 정리.
+  if (window._dragAC_elem) { try { window._dragAC_elem.abort(); } catch (_e) { void _e; } }
+  window._dragAC_elem = new AbortController();
+  const _dragSig = { signal: window._dragAC_elem.signal };
   window.addEventListener('mousemove', e => {
     if (!dragging) return;
     const rect = wrap.getBoundingClientRect();
@@ -269,8 +273,8 @@ function _setupElementDrag() {
     _elementEditState.x = Math.max(5, Math.min(95, startElemX + (pos.x - startX)));
     _elementEditState.y = Math.max(5, Math.min(95, startElemY + (pos.y - startY)));
     updateOverlay();
-  });
-  window.addEventListener('mouseup', () => { dragging = false; });
+  }, _dragSig);
+  window.addEventListener('mouseup', () => { dragging = false; }, _dragSig);
 
   // 마우스 휠 크기 조절
   wrap.addEventListener('wheel', e => {

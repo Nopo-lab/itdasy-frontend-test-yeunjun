@@ -27,6 +27,21 @@ window._esc = window._esc || function (s) {
   });
 };
 
+// ===== data-changed 디바운스 dispatch (PerfFix) =====
+// 빠른 연속 조작(예: 고객 일괄 추가) 시 21개 모듈이 매번 동시 발동 → UI 렉.
+// force_sync/focus_sync 만 즉시, 그 외엔 50ms 디바운스로 1회만 발동.
+let _dcPending = null;
+window._fireDataChanged = window._fireDataChanged || function (detail) {
+  if (detail && (detail.kind === 'force_sync' || detail.kind === 'focus_sync')) {
+    window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail }));
+    return;
+  }
+  clearTimeout(_dcPending);
+  _dcPending = setTimeout(() => {
+    window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail }));
+  }, 50);
+};
+
 // [UX-LOAD] 로딩 오버레이 해제 — fade out 후 display:none
 function _hideLoadingOverlay() {
   var lo = document.getElementById('appLoadingOverlay');
@@ -341,23 +356,27 @@ function getToken() {
 }
 // [2026-04-24] 디바이스 간 데이터 불일치 방어 — 토큰 변경 감지 시 SWR 캐시 일괄 클리어.
 // 폰·노트북·태블릿 같은 계정으로 들어왔을 때 다른 디바이스의 stale 스냅샷이 보이는 문제 해결.
+// [PerfFix] 같은 프레임 안에서 N번 호출돼도 rAF로 1번만 실행.
+let _swrClearScheduled = false;
 function _clearAllSWRCache() {
-  try {
-    Object.keys(localStorage).forEach(k => {
-      if (k.startsWith('pv_cache::') || k.startsWith('itdasy:cache') || k.startsWith('dash_cache::') ||
-          k === 'ch_cache' || k === 'ih_cache' || k === 'rh_cache') {
-        try { localStorage.removeItem(k); } catch (_e) { void _e; }
-      }
+  if (_swrClearScheduled) return;
+  _swrClearScheduled = true;
+  requestAnimationFrame(() => {
+    _swrClearScheduled = false;
+    const prefixes = ['pv_cache::', 'itdasy:cache', 'dash_cache::'];
+    const exactKeys = ['ch_cache', 'ih_cache', 'rh_cache'];
+    [localStorage, sessionStorage].forEach(store => {
+      try {
+        const keys = Object.keys(store);
+        for (let i = 0; i < keys.length; i++) {
+          const k = keys[i];
+          if (exactKeys.indexOf(k) !== -1 || prefixes.some(p => k.startsWith(p))) {
+            try { store.removeItem(k); } catch (_e) { void _e; }
+          }
+        }
+      } catch (_e) { void _e; }
     });
-  } catch (_e) { void _e; }
-  try {
-    Object.keys(sessionStorage).forEach(k => {
-      if (k.startsWith('pv_cache::') || k.startsWith('itdasy:cache') || k.startsWith('dash_cache::') ||
-          k === 'ch_cache' || k === 'ih_cache' || k === 'rh_cache') {
-        try { sessionStorage.removeItem(k); } catch (_e) { void _e; }
-      }
-    });
-  } catch (_e) { void _e; }
+  });
 }
 window._clearAllSWRCache = _clearAllSWRCache;
 
@@ -1759,14 +1778,17 @@ if ('serviceWorker' in navigator && !_isCapacitor) {
     triggered = false;
   }, { passive: true });
 
+  // [PerfFix] touchmove를 passive:true로 — preventDefault 제거.
+  // iOS 200ms 터치 지연 해소. 대신 body overscroll-behavior-y:contain 으로 바운스 차단
+  // (CSS는 다른 터미널 동시작업 중이라 JS에서 직접 style 설정).
+  try { document.body.style.overscrollBehaviorY = 'contain'; } catch (_e) { void _e; }
+
   document.addEventListener('touchmove', e => {
     if (!pulling || loading) return;
     if (e.touches.length !== 1) { pulling = false; springBack(); return; }
 
     const dy   = e.touches[0].clientY - startY;
     if (dy <= 0) { pulling = false; return; }
-
-    e.preventDefault();
 
     const move = dy * RESISTANCE;
     applyMove(move);
@@ -1788,7 +1810,7 @@ if ('serviceWorker' in navigator && !_isCapacitor) {
         EMOJI.style.color     = '';
       }
     }
-  }, { passive: false });
+  }, { passive: true });
 
   document.addEventListener('touchend', async () => {
     if (!pulling) return;
@@ -2075,7 +2097,7 @@ window.forceSync = async function () {
     setTimeout(() => {
       try {
         if (typeof window.showToast === 'function') window.showToast('2/3 서버에서 다시 받는 중…');
-        window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'force_sync' } }));
+        window._fireDataChanged({ kind: 'force_sync' });
       } catch (_e) { void _e; }
     }, 350);
 
@@ -2147,7 +2169,7 @@ window.refreshLastSyncBadges = function () {
       if (elapsed > STALE_MS) {
         if (typeof window._clearAllSWRCache === 'function') window._clearAllSWRCache();
         try {
-          window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'focus_sync' } }));
+          window._fireDataChanged({ kind: 'focus_sync' });
         } catch (_e) { void _e; }
       }
       sessionStorage.setItem('itdasy:last_focus_at', String(Date.now()));

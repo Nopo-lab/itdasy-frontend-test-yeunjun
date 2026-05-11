@@ -402,52 +402,81 @@
     if (more) {
       more.addEventListener('click', () => { _windowSize += WINDOW_STEP; _rerender(); }, { once: true });
     }
-    box.querySelectorAll('.customer-row').forEach(row => {
-      // [2026-04-29 E1] 좌우 스와이프 액션
-      let _sx = 0, _sy = 0, _swiped = false, _down = false;
-      const SWIPE_THRESHOLD = 60;
-      row.addEventListener('pointerdown', (e) => {
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
-        _down = true; _swiped = false;
-        _sx = e.clientX; _sy = e.clientY;
-      });
-      row.addEventListener('pointermove', (e) => {
-        if (!_down) return;
-        const dx = e.clientX - _sx, dy = e.clientY - _sy;
-        if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-          _swiped = true;
-          row.style.transform = `translateX(${Math.max(-120, Math.min(120, dx))}px)`;
-          row.style.transition = 'none';
-        }
-      });
-      const _resetRow = () => { row.style.transform = ''; row.style.transition = 'transform 180ms ease'; };
-      row.addEventListener('pointerup', (e) => {
-        if (!_down) return;
-        _down = false;
-        const dx = e.clientX - _sx;
-        if (_swiped && Math.abs(dx) >= SWIPE_THRESHOLD) {
-          if (dx < 0) {
-            _resetRow();
-            _confirmDelete(row.dataset.id);
-          } else {
-            _resetRow();
-            _openSwipeActions(row.dataset.id);
-          }
-          e.preventDefault(); e.stopPropagation();
-          return;
-        }
-        _resetRow();
-      });
-      row.addEventListener('pointercancel', () => { _down = false; _resetRow(); });
-      row.addEventListener('click', (e) => {
-        if (_swiped) { e.preventDefault(); e.stopPropagation(); _swiped = false; return; }
-        // 행 클릭 = 대시보드(조회). 편집은 대시보드 안의 '편집' 버튼 또는 _openDetail 직접 호출.
-        if (typeof window.openCustomerDashboard === 'function') {
-          window.openCustomerDashboard(row.dataset.id);
-        } else {
-          _openDetail(row.dataset.id);
-        }
-      });
+    // [PerfFix] 행 단위 리스너 5×N개 → 컨테이너 위임 1회. _rerender 시 누적 방지.
+    _setupCustomerDelegation(box);
+  }
+
+  // ─── 고객 행 이벤트 위임 ──────────────────────────────────
+  // _rerender() 가 innerHTML 을 갈아끼워도 컨테이너 자체는 유지되므로 1회 등록으로 충분.
+  let _customerDelegated = false;
+  const _swipeState = { row: null, sx: 0, sy: 0, swiped: false, down: false };
+  function _resetSwipeRow() {
+    const r = _swipeState.row;
+    if (r) { r.style.transform = ''; r.style.transition = 'transform 180ms ease'; }
+  }
+  function _setupCustomerDelegation(listEl) {
+    if (_customerDelegated || !listEl) return;
+    _customerDelegated = true;
+    const SWIPE_THRESHOLD = 60;
+
+    listEl.addEventListener('pointerdown', (e) => {
+      const row = e.target.closest('.customer-row');
+      if (!row) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      _swipeState.row = row;
+      _swipeState.down = true;
+      _swipeState.swiped = false;
+      _swipeState.sx = e.clientX;
+      _swipeState.sy = e.clientY;
+    }, { passive: true });
+
+    listEl.addEventListener('pointermove', (e) => {
+      if (!_swipeState.down || !_swipeState.row) return;
+      const dx = e.clientX - _swipeState.sx;
+      const dy = e.clientY - _swipeState.sy;
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        _swipeState.swiped = true;
+        _swipeState.row.style.transform = `translateX(${Math.max(-120, Math.min(120, dx))}px)`;
+        _swipeState.row.style.transition = 'none';
+      }
+    }, { passive: true });
+
+    listEl.addEventListener('pointerup', (e) => {
+      if (!_swipeState.down || !_swipeState.row) return;
+      _swipeState.down = false;
+      const row = _swipeState.row;
+      const dx = e.clientX - _swipeState.sx;
+      if (_swipeState.swiped && Math.abs(dx) >= SWIPE_THRESHOLD) {
+        _resetSwipeRow();
+        if (dx < 0) _confirmDelete(row.dataset.id);
+        else _openSwipeActions(row.dataset.id);
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      _resetSwipeRow();
+    });
+
+    listEl.addEventListener('pointercancel', () => {
+      _swipeState.down = false;
+      _resetSwipeRow();
+      _swipeState.row = null;
+    });
+
+    listEl.addEventListener('click', (e) => {
+      const row = e.target.closest('.customer-row');
+      if (!row) return;
+      if (_swipeState.swiped) {
+        e.preventDefault();
+        e.stopPropagation();
+        _swipeState.swiped = false;
+        return;
+      }
+      if (typeof window.openCustomerDashboard === 'function') {
+        window.openCustomerDashboard(row.dataset.id);
+      } else {
+        _openDetail(row.dataset.id);
+      }
     });
   }
 
