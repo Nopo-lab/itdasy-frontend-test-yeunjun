@@ -1938,15 +1938,31 @@
   }
 
   // 순수 실행기 — action 객체만 받아 POST, 결과 반환. UI 갱신은 호출자가.
+  // [QA-NEXT #4] action._ai_original (AI 추출 시점 payload 스냅샷) 있으면 original_payload 동봉 →
+  // 백엔드에서 final vs original diff 를 UserCorrection 으로 학습.
   async function _executeAction(action) {
+    const body = { kind: action.kind, payload: action.payload || {} };
+    if (action._ai_original && typeof action._ai_original === 'object') {
+      body.original_payload = action._ai_original;
+    }
+    if (action._source_question) body.source_question = action._source_question;
     const res = await fetch(window.API + '/assistant/execute', {
       method: 'POST',
       headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind: action.kind, payload: action.payload || {} }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'HTTP ' + res.status);
+      // [QA-NEXT #3] 백엔드 stages 단계 분리 — detail 이 dict(stages 포함) 일 수 있음
+      let msg = '';
+      if (err && typeof err.detail === 'object' && err.detail !== null) {
+        msg = err.detail.message || JSON.stringify(err.detail);
+      } else {
+        msg = err.detail || ('HTTP ' + res.status);
+      }
+      const e2 = new Error(msg);
+      if (err && typeof err.detail === 'object') e2.stages = err.detail.stages || null;
+      throw e2;
     }
     const d = await res.json();
     _invalidateCachesFor(d.kind || action.kind);
@@ -2475,6 +2491,16 @@
       const actionsList = (Array.isArray(d.actions) && d.actions.length)
         ? d.actions
         : (d.action && d.action.kind ? [d.action] : []);
+      // [QA-NEXT #4] 각 action 의 AI 원본 payload 스냅샷 저장 → execute 시 original_payload 로 동봉.
+      const _imgQ = (window._lastAssistantQuestion || '');
+      actionsList.forEach(a => {
+        try {
+          if (a && a.payload && !a._ai_original) {
+            a._ai_original = JSON.parse(JSON.stringify(a.payload));
+          }
+          if (a && !a._source_question) a._source_question = _imgQ;
+        } catch (_e) { void _e; }
+      });
       const msg = { role: 'assistant', text: d.answer || '사진을 확인했어요.' };
       if (Array.isArray(d.related_questions) && d.related_questions.length) {
         msg.related = d.related_questions.slice(0, 3);
@@ -2568,6 +2594,15 @@
       const actionsList = (Array.isArray(d.actions) && d.actions.length)
         ? d.actions
         : (d.action && d.action.kind ? [d.action] : []);
+      // [QA-NEXT #4] AI 원본 payload 스냅샷 저장 (텍스트 /ask 경로)
+      actionsList.forEach(a => {
+        try {
+          if (a && a.payload && !a._ai_original) {
+            a._ai_original = JSON.parse(JSON.stringify(a.payload));
+          }
+          if (a && !a._source_question) a._source_question = q;
+        } catch (_e) { void _e; }
+      });
 
       // Wave B4 — answer + actions 모두 빈값이면 휴리스틱 프리뷰 카드
       const answerText = (d.answer || '').trim();
