@@ -585,7 +585,7 @@
       settings:       () => window.openSettingsHub && window.openSettingsHub(),
       // 플랜·구독 — app-plan.js 에서 openPlanPopup 으로 노출. openPlan / openSupport 도 시도.
       plan:           () => (window.openPlan || window.openPlanPopup || (() => {}))(),
-      support:        () => (window.openSupport || (() => {}))(),
+      support:        () => (window.openSupport || window.openSupportChat || (() => {}))(),
       bell:           () => window.openNotifications && window.openNotifications(),
       editShop:       () => window.openShopSettings && window.openShopSettings(),
       createShortcut: () => window.openAiHub && window.openAiHub(),

@@ -28,16 +28,21 @@
           <strong id="scTitle" style="font-size:17px;">스마트 캡처</strong>
           <button id="scClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#888;display:inline-flex;align-items:center;">${_ic('ic-x', 18)}</button>
         </div>
-        <div id="scModePick" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
-          <button data-mode="kakao" class="sc-mode-btn" style="padding:20px 10px;border:2px solid #FBBF24;border-radius:14px;background:linear-gradient(135deg,#FFFBEB,#FEF3C7);cursor:pointer;text-align:center;">
-            <div style="color:#92400E;margin-bottom:8px;display:inline-flex;">${_ic('ic-message-square', 30)}</div>
+        <div id="scModePick" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+          <button data-mode="kakao" class="sc-mode-btn" style="padding:18px 8px;border:2px solid #FBBF24;border-radius:14px;background:linear-gradient(135deg,#FFFBEB,#FEF3C7);cursor:pointer;text-align:center;">
+            <div style="color:#92400E;margin-bottom:8px;display:inline-flex;">${_ic('ic-message-square', 28)}</div>
             <div style="font-size:13px;font-weight:800;color:#92400E;">카톡 캡처</div>
             <div style="font-size:10px;color:#92400E80;margin-top:3px;">예약·매출·후기 자동 추출</div>
           </button>
-          <button data-mode="card" class="sc-mode-btn" style="padding:20px 10px;border:2px solid #DDD6FE;border-radius:14px;background:linear-gradient(135deg,#FAF5FF,#F3E8FF);cursor:pointer;text-align:center;">
-            <div style="color:#5B21B6;margin-bottom:8px;display:inline-flex;">${_ic('ic-credit-card', 30)}</div>
+          <button data-mode="card" class="sc-mode-btn" style="padding:18px 8px;border:2px solid #DDD6FE;border-radius:14px;background:linear-gradient(135deg,#FAF5FF,#F3E8FF);cursor:pointer;text-align:center;">
+            <div style="color:#5B21B6;margin-bottom:8px;display:inline-flex;">${_ic('ic-credit-card', 28)}</div>
             <div style="font-size:13px;font-weight:800;color:#5B21B6;">명함</div>
             <div style="font-size:10px;color:#5B21B680;margin-top:3px;">사진 1장 → 고객 등록</div>
+          </button>
+          <button data-mode="inventory_order" class="sc-mode-btn" style="padding:18px 8px;border:2px solid #6EE7B7;border-radius:14px;background:linear-gradient(135deg,#ECFDF5,#D1FAE5);cursor:pointer;text-align:center;">
+            <div style="color:#065F46;margin-bottom:8px;display:inline-flex;">${_ic('ic-dollar-sign', 28)}</div>
+            <div style="font-size:13px;font-weight:800;color:#065F46;">가격표 OCR</div>
+            <div style="font-size:10px;color:#065F4680;margin-top:3px;">발주서·영수증 자동 입력</div>
           </button>
         </div>
         <div id="scWorkArea" style="display:none;"></div>
@@ -75,6 +80,16 @@
   }
 
   function _setMode(mode) {
+    // [QA #10] 가격표/영수증 OCR — app-receipt-scan.js 의 inventory_order 모드로 위임.
+    if (mode === 'inventory_order') {
+      close();
+      try {
+        const fn = window.openInventoryOrderScan;
+        if (typeof fn === 'function') fn();
+        else if (typeof window.openReceiptScan === 'function') window.openReceiptScan('inventory_order');
+      } catch (_e) { /* ignore */ }
+      return;
+    }
     _mode = mode;
     const sheet = document.getElementById('smartCaptureSheet');
     if (!sheet) return;

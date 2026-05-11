@@ -107,8 +107,38 @@ async function checkInstaStatus(fromLogin = false) {
       updateStep('stepPersona', false);
       updateStep('stepCaption', false);
     }
+    // [QA #8] single source-of-truth — 매 fetch 결과를 store 에 저장 + 변경 이벤트 dispatch.
+    try {
+      const prev = window._lastIgState || {};
+      const next = {
+        connected: !!data.connected,
+        handle: data.handle || '',
+        profile_picture_url: data.profile_picture_url || '',
+        persona: data.persona || null,
+        expires_at: data.expires_at || null,
+        ts: Date.now(),
+      };
+      window._lastIgState = next;
+      if (prev.connected !== next.connected || prev.handle !== next.handle) {
+        window.dispatchEvent(new CustomEvent('itdasy:ig:changed', { detail: next }));
+      }
+    } catch (_e) { /* ignore */ }
   } catch(_e) { /* ignore */ }
 }
+
+// [QA #8] 외부 컴포넌트용 IG 상태 store — 현재 상태 read + 변경 구독.
+window.IGState = {
+  get() { return window._lastIgState || null; },
+  subscribe(handler) {
+    if (typeof handler !== 'function') return () => {};
+    const wrap = (e) => { try { handler(e.detail || null); } catch (_e) { /* ignore */ } };
+    window.addEventListener('itdasy:ig:changed', wrap);
+    return () => window.removeEventListener('itdasy:ig:changed', wrap);
+  },
+  refresh() {
+    try { return checkInstaStatus(); } catch (_e) { return Promise.resolve(); }
+  },
+};
 
 function renderPersonaDash(p, showTestBtn) {
   document.getElementById('personaDash').style.display = 'block';
@@ -317,12 +347,11 @@ async function runPersonaAnalyze() {
 }
 
 async function disconnectInstagram() {
-  // [2026-05-08 28차 [I]] 인스타 해제 = 잇데이 로그아웃 (1잇데이 = 1매장 = 1인스타 모델).
-  // 26차 [C] 의 caches.delete + hard reload 가 reload 후 /auth/me 401 받아 자동 토큰 클리어
-  // → "로그아웃된 듯 보임" 부작용 → 의도된 명시적 로그아웃으로 정리.
+  // [2026-05-11 QA #1] 인스타 해제 ≠ 잇데이 로그아웃 (사용자 피드백: "해제했더니 강제 로그아웃 당했다").
+  // OAuth provider (google/kakao/naver/email) 세션은 유지. IG 상태만 끊고 UI 갱신.
   if (!(await nativeConfirm(
     '인스타 연동 해제',
-    '인스타 연동을 해제하면 잇데이에서도 로그아웃돼요.\n다시 시작할 때 새 인스타로 연결하세요.\n\n고객·예약·매출·말투 분석 데이터는 안전하게 보관돼요.'
+    '인스타 연동을 끊을게요. 잇데이 로그인은 그대로 유지돼요.\n나중에 다시 연결하면 분석 결과를 새 인스타 기준으로 갱신해요.\n\n고객·예약·매출·말투 분석 데이터는 안전하게 보관돼요.'
   ))) return;
   try {
     const res = await fetch(API + '/instagram/disconnect', {
@@ -333,23 +362,27 @@ async function disconnectInstagram() {
       const txt = await res.text().catch(() => '');
       throw new Error(`해제 실패 (HTTP ${res.status}) ${txt.slice(0, 60)}`);
     }
-    showToast('✓ 인스타 해제됨. 다시 시작할게요');
-    // logout 의 모든 정리 로직 (토큰·storage·IDB·SW) 재사용 — skipConfirm 으로 컨펌 한 번만.
-    setTimeout(() => {
-      try {
-        if (typeof window.logout === 'function') {
-          window.logout({ skipConfirm: true }).catch(() => { location.href = 'index.html'; });
-        } else {
-          location.href = 'index.html';
-        }
-      } catch (_e) { location.href = 'index.html'; }
-    }, 600);
+    showToast('✓ 인스타 해제됨');
+    // [QA #8] single source-of-truth — 모든 IG 상태 listener 에게 변경 통보.
+    try {
+      window.dispatchEvent(new CustomEvent('itdasy:ig:changed', {
+        detail: { connected: false, source: 'disconnect' },
+      }));
+    } catch (_e) { /* ignore */ }
+    // 상태 카드 즉시 재조회 (로그아웃 대신).
+    try {
+      const fn = window.checkInstagramStatus || window.checkInstaStatus || checkInstaStatus;
+      if (typeof fn === 'function') await fn();
+    } catch (_e) { /* ignore */ }
   } catch (e) {
     showToast('해제 실패: ' + (e && e.message ? e.message : '잠시 후 다시 시도해주세요'));
   }
 }
 // [2026-04-24] 전역 노출 — index.html 의 onclick 핸들러가 호출.
 window.disconnectInstagram = disconnectInstagram;
+// [QA #8] 외부에서 IG 상태 재조회 (호환 alias — 일부 코드가 checkInstagramStatus 라는 이름으로 호출).
+window.checkInstaStatus = checkInstaStatus;
+window.checkInstagramStatus = checkInstaStatus;
 
 async function connectInstagram() {
   if (!getToken()) {
@@ -445,7 +478,7 @@ function showInstaConflictModal(handle) {
       if (typeof window.logout === 'function') {
         await window.logout();
       } else {
-        localStorage.removeItem(typeof _TOKEN_KEY !== 'undefined' ? _TOKEN_KEY : 'itdasy_token');
+        if (typeof window.setToken === 'function') window.setToken(null);
         location.href = 'index.html';
       }
     } catch (_e) { void _e; }

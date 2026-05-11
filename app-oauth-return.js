@@ -92,11 +92,16 @@
       if (u.searchParams.get('connected') === 'success') {
         if (window.showToast) window.showToast('인스타 연동 완료!');
 
-        // 인스타 연동 상태 재조회 (app-instagram.js 내부 함수가 있을 경우)
-        if (typeof window.checkInstagramStatus === 'function') {
-          window.checkInstagramStatus();
-        } else if (typeof window.refreshInstagramUI === 'function') {
-          window.refreshInstagramUI();
+        // [QA #3] 인스타 상태 재조회 — 함수 존재 가드 + 다중 alias 시도.
+        // 함수 없으면 location.reload 로 강제 새로고침 (cache vs live 불일치 방지).
+        const refresh = window.checkInstagramStatus
+          || window.checkInstaStatus
+          || window.refreshInstagramUI
+          || (window.IGState && window.IGState.refresh);
+        if (typeof refresh === 'function') {
+          try { Promise.resolve(refresh()).catch(() => {}); } catch (_e) { /* ignore */ }
+        } else {
+          try { setTimeout(() => location.reload(), 300); } catch (_e) { /* ignore */ }
         }
 
         // 홈 탭으로 유도 (선택)

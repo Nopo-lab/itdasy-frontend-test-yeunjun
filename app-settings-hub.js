@@ -60,6 +60,32 @@
       </div>
     `;
   }
+  // [QA #9] 현재 로그인 provider/email 정보 — localStorage 기반.
+  function _accountInfo() {
+    let prov = '';
+    let email = '';
+    try { prov = localStorage.getItem('user_oauth_provider') || ''; } catch (_e) { void _e; }
+    try { email = localStorage.getItem('last_login_email') || ''; } catch (_e) { void _e; }
+    const provMap = { google: 'Google', kakao: '카카오', naver: '네이버', email: '이메일' };
+    const provLabel = provMap[String(prov).toLowerCase()] || (prov ? prov : '이메일');
+    return { provLabel, email };
+  }
+  function _accountHTML() {
+    const { provLabel, email } = _accountInfo();
+    const right = email ? `${_esc(provLabel)} · ${_esc(email)}` : _esc(provLabel);
+    return `
+      <div class="ms-section__title" style="margin-top:4px;">계정</div>
+      <div class="ms-sh" id="shAccount">
+        <div class="ms-sh__row" style="cursor:default;">
+          <div class="ms-sh__icon"><span class="ic-box ic-box--sm ic-box--blue">${_ic('ic-store', 14)}</span></div>
+          <div class="ms-sh__info">
+            <div class="ms-sh__name">현재 로그인</div>
+            <div class="ms-sh__meta">${right}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
   function _listHTML() {
     return `
       <div class="ms-sh" id="shList">
@@ -122,6 +148,7 @@
       <div class="ms-sheet" id="shCard" style="position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;">
         ${_headHTML()}
         <div class="ms-sheet__body">
+          ${_accountHTML()}
           ${_listHTML()}
           ${_inlineHTML()}
           ${_logoutHTML()}
