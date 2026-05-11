@@ -17,6 +17,17 @@
   // ─── 아이콘 헬퍼 (sprite use) ────────────────────────────
   function _ic(id, size) {
     const sz = size || 16;
+    // Phase1: Phosphor 매핑
+    const phMap = {
+      'ic-store': 'ph-storefront',
+      'ic-link': 'ph-link',
+      'ic-download': 'ph-cloud-arrow-down',
+      'ic-rotate-ccw': 'ph-arrow-counter-clockwise',
+      'ic-bell': 'ph-bell-ringing',
+      'ic-arrow-left': 'ph-sign-out',
+    };
+    const ph = phMap[id];
+    if (ph) return `<i class="ph-duotone ${_esc(ph)}" style="font-size:${sz}px;" aria-hidden="true"></i>`;
     return `<svg width="${sz}" height="${sz}" aria-hidden="true"><use href="#${_esc(id)}"/></svg>`;
   }
 
@@ -52,11 +63,11 @@
   function _listHTML() {
     return `
       <div class="ms-sh" id="shList">
-        ${_rowHTML('shopinfo', 'ic-store',      '샵 정보 · 직원',     '영업시간 · 시술 메뉴 · 직원')}
-        ${_rowHTML('naver',    'ic-link',       '네이버 예약 연동',   '연결 상태 확인', { metaClass: 'is-ok' })}
-        ${_rowHTML('backup',   'ic-download',   '백업 · 내보내기',    '자동 백업 · 데이터 내보내기')}
-        ${_rowHTML('undo',     'ic-rotate-ccw', '챗봇 액션 되돌리기', '최근 30일 이력')}
-        ${_rowHTML('failures', 'ic-bell',       '자동화 실패 알림함', '실패 로그 · 재시도')}
+        ${_rowHTML('shopinfo', 'ic-store',      '샵 정보 · 직원',     '영업시간 · 시술 메뉴 · 직원', { boxColor: 'blue' })}
+        ${_rowHTML('naver',    'ic-link',       '네이버 예약 연동',   '연결 상태 확인', { metaClass: 'is-ok', boxColor: 'teal' })}
+        ${_rowHTML('backup',   'ic-download',   '백업 · 내보내기',    '자동 백업 · 데이터 내보내기', { boxColor: 'purple' })}
+        ${_rowHTML('undo',     'ic-rotate-ccw', '챗봇 액션 되돌리기', '최근 30일 이력', { boxColor: 'amber' })}
+        ${_rowHTML('failures', 'ic-bell',       '자동화 실패 알림함', '실패 로그 · 재시도', { boxColor: 'coral' })}
       </div>
     `;
   }
@@ -93,7 +104,7 @@
     return `
       <div class="ms-sh" style="margin-top:14px;">
         <button type="button" class="ms-sh__row" data-act="logout">
-          <div class="ms-sh__icon" style="color:var(--danger);">${_ic('ic-arrow-left', 16)}</div>
+          <div class="ms-sh__icon" style="color:var(--danger);"><span class="ic-box ic-box--sm ic-box--red">${_ic('ic-arrow-left', 14)}</span></div>
           <div class="ms-sh__info">
             <div class="ms-sh__name" style="color:var(--danger);">로그아웃</div>
             <div class="ms-sh__meta">현재 기기에서 로그아웃</div>
@@ -123,9 +134,12 @@
   function _rowHTML(act, icon, name, meta, opt) {
     const o = opt || {};
     const metaCls = o.metaClass ? ` ${_esc(o.metaClass)}` : '';
+    const iconHtml = o.boxColor
+      ? `<div class="ms-sh__icon"><span class="ic-box ic-box--sm ic-box--${_esc(o.boxColor)}">${_ic(icon, 14)}</span></div>`
+      : `<div class="ms-sh__icon">${_ic(icon, 16)}</div>`;
     return `
       <button type="button" class="ms-sh__row" data-act="${_esc(act)}">
-        <div class="ms-sh__icon">${_ic(icon, 16)}</div>
+        ${iconHtml}
         <div class="ms-sh__info">
           <div class="ms-sh__name">${_esc(name)}</div>
           <div class="ms-sh__meta${metaCls}">${_esc(meta)}</div>

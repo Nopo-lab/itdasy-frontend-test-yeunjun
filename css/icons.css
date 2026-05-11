@@ -46,3 +46,39 @@
 .ic--ok     { color: var(--ok); }
 .ic--warn   { color: var(--warn); }
 .ic--danger { color: var(--danger); }
+
+/* ── Phase 1: iOS-style 카테고리 컬러 아이콘 박스 ───────── */
+.ic-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  font-size: 16px;
+}
+.ic-box--sm { width: 24px; height: 24px; border-radius: 6px; font-size: 14px; }
+.ic-box--lg { width: 32px; height: 32px; border-radius: 8px; font-size: 18px; }
+
+/* 카테고리 컬러 */
+.ic-box--pink   { background: #FFF1F3; color: #E5586E; }
+.ic-box--blue   { background: #E6F1FB; color: #185FA5; }
+.ic-box--teal   { background: #E1F5EE; color: #0F6E56; }
+.ic-box--amber  { background: #FAEEDA; color: #854F0B; }
+.ic-box--purple { background: #EEEDFE; color: #534AB7; }
+.ic-box--coral  { background: #FAECE7; color: #993C1D; }
+.ic-box--violet { background: #F3E8FF; color: #7C3AED; }
+.ic-box--gray   { background: #F1EFE8; color: #5F5E5A; }
+.ic-box--red    { background: #FCEBEB; color: #A32D2D; }
+
+/* 다크모드 대응 */
+[data-theme="dark"] .ic-box--pink   { background: #3D1C22; color: #F18091; }
+[data-theme="dark"] .ic-box--blue   { background: #172A3F; color: #6DAFED; }
+[data-theme="dark"] .ic-box--teal   { background: #12302A; color: #5DD4B0; }
+[data-theme="dark"] .ic-box--amber  { background: #342510; color: #E6A832; }
+[data-theme="dark"] .ic-box--purple { background: #221F3D; color: #9B93E8; }
+[data-theme="dark"] .ic-box--coral  { background: #2E1A14; color: #E8815A; }
+[data-theme="dark"] .ic-box--violet { background: #2A1540; color: #B58AFF; }
+[data-theme="dark"] .ic-box--gray   { background: #2A2A28; color: #A0A09C; }
+[data-theme="dark"] .ic-box--red    { background: #351515; color: #E05A5A; }

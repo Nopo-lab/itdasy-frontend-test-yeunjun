@@ -75,6 +75,13 @@
   fill: none;
 }
 
+/* Phase1: Phosphor <i> 탭바 아이콘 대응 */
+i.tab-bar__icon {
+  font-size: 22px;
+  line-height: 1;
+  display: block;
+}
+
 .tab-bar__label {
   font-size: 11px;
   line-height: 1;

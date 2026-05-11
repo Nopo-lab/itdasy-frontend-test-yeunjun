@@ -34,25 +34,25 @@
   // type: 'toggle' | 'tag' | 'badge' | 'plain'
   function _rows() {
     return [
-      { act: 'dm', icon: 'ic-message-circle', iconClass: 'ms-aih__icon--brand',
+      { act: 'dm', icon: 'ph-chat-circle-dots', boxColor: 'blue',
         name: 'DM 자동응답', meta: '인스타 DM → AI 자동 답장',
         type: 'toggle', toggleKey: KEY_DM },
-      { act: 'kakao', icon: 'ic-message-square', iconClass: '',
+      { act: 'kakao', icon: 'ph-bell-ringing', boxColor: 'amber',
         name: '카카오 알림톡', meta: '예약확정 · 리마인드 · 생일',
         type: 'toggle', toggleKey: KEY_KAKAO },
-      { act: 'persona', icon: 'ic-wand-sparkles', iconClass: 'ms-aih__icon--brand',
+      { act: 'persona', icon: 'ph-user-circle-gear', boxColor: 'purple',
         name: 'AI 페르소나', meta: '원장님 말투 학습 · 캡션 일관성',
         type: 'tag', tagText: '학습됨' },
-      { act: 'caption', icon: 'ic-pen-line', iconClass: '',
+      { act: 'caption', icon: 'ph-pencil-line', boxColor: 'pink',
         name: 'SNS 캡션', meta: '시나리오 · 1초 · 음성 3가지',
         type: 'plain' },
-      { act: 'posts', icon: 'ic-image', iconClass: '',
+      { act: 'posts', icon: 'ph-squares-four', boxColor: 'teal',
         name: '게시물 관리', meta: '완료 슬롯 · 마무리 탭',
         type: 'plain' },
-      { act: 'memo', icon: 'ic-bot', iconClass: '',
+      { act: 'memo', icon: 'ic-bot', boxColor: 'violet',
         name: '챗봇 메모', meta: '영구 메모 + 자동 학습 패턴',
         type: 'plain' },
-      { act: 'capture', icon: 'ic-image-plus', iconClass: 'ms-aih__icon--purple',
+      { act: 'capture', icon: 'ph-scan', boxColor: 'violet',
         name: '스마트 캡처', meta: '카톡 · 명함 · 가격표 OCR',
         type: 'badge' },
     ];
@@ -96,11 +96,18 @@
   function _rowHtml(row) {
     const newBadge = row.type === 'badge'
       ? `<span class="ms-aih__badge-new">NEW</span>` : '';
+    // Phase1: Phosphor vs 레거시 SVG
+    const isPhosphor = row.icon.startsWith('ph-');
+    const iconInner = isPhosphor
+      ? `<i class="ph-duotone ${_esc(row.icon)}" aria-hidden="true"></i>`
+      : `<svg width="16" height="16" aria-hidden="true"><use href="#${_esc(row.icon)}"/></svg>`;
+    const boxCls = row.boxColor ? `ic-box ic-box--sm ic-box--${_esc(row.boxColor)}` : '';
+    const iconHtml = boxCls
+      ? `<span class="${boxCls}">${iconInner}</span>`
+      : iconInner;
     return `
       <div class="ms-aih__row" role="button" tabindex="0" data-act="${_esc(row.act)}">
-        <span class="ms-aih__icon ${_esc(row.iconClass)}">
-          <svg width="16" height="16" aria-hidden="true"><use href="#${_esc(row.icon)}"/></svg>
-        </span>
+        <span class="ms-aih__icon">${iconHtml}</span>
         <span class="ms-aih__info">
           <span class="ms-aih__name">${_esc(row.name)}${newBadge}</span>
           <span class="ms-aih__meta">${_esc(row.meta)}</span>
