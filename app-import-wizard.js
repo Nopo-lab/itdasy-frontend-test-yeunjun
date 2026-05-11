@@ -110,17 +110,17 @@
       ${STEPS.map((label, i) => `
         <div style="display:flex;align-items:center;flex:1;min-width:0;">
           <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-            <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${i < activeIdx ? 'var(--brand,#F18091)' : i === activeIdx ? 'var(--brand,#F18091)' : 'var(--border-strong,#ddd)'};background:${i < activeIdx ? 'var(--brand,#F18091)' : i === activeIdx ? 'var(--brand-bg,#FEF4F5)' : 'transparent'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:${i < activeIdx ? '#fff' : i === activeIdx ? 'var(--brand,#F18091)' : 'var(--text-subtle,#bbb)'};">${i < activeIdx ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : i + 1}</div>
-            <div style="font-size:10px;font-weight:700;color:${i === activeIdx ? 'var(--brand,#F18091)' : 'var(--text-subtle,#aaa)'};white-space:nowrap;">${label}</div>
+            <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${i < activeIdx ? 'var(--brand,var(--brand))' : i === activeIdx ? 'var(--brand,var(--brand))' : 'var(--border-strong,#ddd)'};background:${i < activeIdx ? 'var(--brand,var(--brand))' : i === activeIdx ? 'var(--brand-bg,#FEF4F5)' : 'transparent'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:${i < activeIdx ? '#fff' : i === activeIdx ? 'var(--brand,var(--brand))' : 'var(--text-subtle,#bbb)'};">${i < activeIdx ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : i + 1}</div>
+            <div style="font-size:10px;font-weight:700;color:${i === activeIdx ? 'var(--brand,var(--brand))' : 'var(--text-subtle,#aaa)'};white-space:nowrap;">${label}</div>
           </div>
-          ${i < STEPS.length - 1 ? `<div style="flex:1;height:2px;background:${i < activeIdx ? 'var(--brand,#F18091)' : 'var(--border,#eee)'};margin:0 4px;margin-bottom:16px;"></div>` : ''}
+          ${i < STEPS.length - 1 ? `<div style="flex:1;height:2px;background:${i < activeIdx ? 'var(--brand,var(--brand))' : 'var(--border,#eee)'};margin:0 4px;margin-bottom:16px;"></div>` : ''}
         </div>
       `).join('')}
       </div>
       ${showBar ? `
         <div style="margin-top:10px;">
           <div style="height:6px;background:var(--border,#eee);border-radius:100px;overflow:hidden;">
-            <div style="height:100%;width:${barPct}%;background:linear-gradient(90deg,var(--brand,#F18091),#FFA8B6);transition:width 0.3s ease;border-radius:100px;"></div>
+            <div style="height:100%;width:${barPct}%;background:linear-gradient(90deg,var(--brand,var(--brand)),#FFA8B6);transition:width 0.3s ease;border-radius:100px;"></div>
           </div>
           <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10.5px;color:var(--text-subtle,#888);">
             <span style="font-weight:700;">${barPct}%</span>
@@ -162,14 +162,14 @@
         <div id="iw-dropzone" style="border:2px dashed var(--border-strong,#d0d0d0);border-radius:16px;padding:40px 20px;cursor:pointer;transition:border-color 0.15s;background:var(--surface-raised,#fafafa);">
           <div style="color:var(--text-subtle,#aaa);margin-bottom:12px;">${uploadSvg}</div>
           <div style="font-size:15px;font-weight:800;color:var(--text,#222);margin-bottom:6px;">엑셀 / CSV 파일을 여기에 놓거나</div>
-          <button id="iw-file-pick" style="padding:10px 24px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:100px;font-weight:800;font-size:13px;cursor:pointer;margin-top:4px;">파일 고르기</button>
+          <button id="iw-file-pick" style="padding:10px 24px;background:var(--brand,var(--brand));color:#fff;border:none;border-radius:100px;font-weight:800;font-size:13px;cursor:pointer;margin-top:4px;">파일 고르기</button>
           <input type="file" id="iw-file-input" accept=".csv,.xlsx,.xls" style="display:none;" />
           <div style="margin-top:12px;font-size:11px;color:var(--text-subtle,#aaa);">CSV · XLSX · XLS 지원 · 손님/예약/매출 정보</div>
         </div>
         ${state.file ? `<div style="margin-top:14px;padding:10px 16px;background:var(--surface-raised,#f2f2f2);border-radius:10px;display:flex;align-items:center;gap:10px;text-align:left;">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           <div style="flex:1;font-size:12.5px;font-weight:700;color:var(--text,#333);">${_esc(state.file.name)}</div>
-          <button id="iw-start" style="padding:8px 18px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:100px;font-weight:800;font-size:12px;cursor:pointer;">정리 시작</button>
+          <button id="iw-start" style="padding:8px 18px;background:var(--brand,var(--brand));color:#fff;border:none;border-radius:100px;font-weight:800;font-size:12px;cursor:pointer;">정리 시작</button>
         </div>` : ''}
       </div>
     `, 0);
@@ -177,7 +177,7 @@
     const fileInput = document.getElementById('iw-file-input');
     document.getElementById('iw-file-pick')?.addEventListener('click', () => fileInput.click());
     fileInput?.addEventListener('change', (e) => { const f = e.target.files[0]; if (f) { state.file = f; _showStep1(); } });
-    zone?.addEventListener('dragover', (e) => { e.preventDefault(); zone.style.borderColor = 'var(--brand,#F18091)'; });
+    zone?.addEventListener('dragover', (e) => { e.preventDefault(); zone.style.borderColor = 'var(--brand,var(--brand))'; });
     zone?.addEventListener('dragleave', () => { zone.style.borderColor = ''; });
     zone?.addEventListener('drop', (e) => { e.preventDefault(); zone.style.borderColor = ''; const f = e.dataTransfer.files[0]; if (f) { state.file = f; _showStep1(); } });
     document.getElementById('iw-start')?.addEventListener('click', _analyze);
@@ -188,7 +188,7 @@
     const msg = message || 'AI가 엑셀을 읽고 있어요…';
     _shell(`
       <div style="padding:40px 20px;text-align:center;">
-        <div style="width:48px;height:48px;border:4px solid #eee;border-top-color:var(--brand,#F18091);border-radius:50%;margin:0 auto 16px;animation:pvSpin 0.8s linear infinite;"></div>
+        <div style="width:48px;height:48px;border:4px solid #eee;border-top-color:var(--brand,var(--brand));border-radius:50%;margin:0 auto 16px;animation:pvSpin 0.8s linear infinite;"></div>
         <div style="font-size:14px;font-weight:700;color:var(--text,#333);margin-bottom:6px;">${_esc(msg)}</div>
         <div style="font-size:12px;color:var(--text-subtle,#888);line-height:1.6;">엑셀 항목을 잇데이 항목과 자동으로 짝지어줘요.<br>잠깐만 기다려주세요.</div>
       </div>
@@ -233,7 +233,7 @@
         <div style="padding:30px;text-align:center;">
           <div style="color:#c62828;font-size:14px;margin-bottom:12px;font-weight:700;">잠시 문제가 생겼어요</div>
           <div style="font-size:12px;color:#888;margin-bottom:14px;">${_esc(e.message)}</div>
-          <button id="iw-retry" style="padding:10px 18px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">다시 시도</button>
+          <button id="iw-retry" style="padding:10px 18px;background:var(--brand,var(--brand));color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">다시 시도</button>
         </div>`, 1);
       document.getElementById('iw-retry')?.addEventListener('click', _analyze);
     }
@@ -292,7 +292,7 @@
       <div style="margin-bottom:16px;">
         <div style="font-size:11px;letter-spacing:0.5px;color:#888;font-weight:800;margin-bottom:8px;">엑셀 항목 ↔ 잇데이 항목</div>
         ${mappingRows}
-        <button id="iw-add-custom" style="width:100%;margin-top:6px;padding:10px;background:var(--surface-raised,#fafafa);border:1px dashed var(--border-strong,#ccc);border-radius:10px;font-size:12px;font-weight:700;color:var(--brand,#F18091);cursor:pointer;">+ 잇데이에 없는 항목 새로 만들기</button>
+        <button id="iw-add-custom" style="width:100%;margin-top:6px;padding:10px;background:var(--surface-raised,#fafafa);border:1px dashed var(--border-strong,#ccc);border-radius:10px;font-size:12px;font-weight:700;color:var(--brand,var(--brand));cursor:pointer;">+ 잇데이에 없는 항목 새로 만들기</button>
       </div>
 
       ${extras.length ? `
@@ -303,7 +303,7 @@
 
       <div style="display:flex;gap:8px;justify-content:space-between;margin-top:14px;">
         <button id="iw-back" style="padding:10px 16px;background:var(--surface-raised,#eee);border:none;border-radius:10px;font-weight:700;cursor:pointer;color:var(--text,#333);">← 이전</button>
-        <button id="iw-next" style="padding:10px 20px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">다음 →</button>
+        <button id="iw-next" style="padding:10px 20px;background:var(--brand,var(--brand));color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">다음 →</button>
       </div>
     `, 1);
 
@@ -369,7 +369,7 @@
         <div style="font-size:12px;color:#7A4500;font-weight:700;margin-bottom:8px;">이미 등록된 ${dupCount}건 — 어떻게 할까요?</div>
         <div style="display:flex;gap:6px;">
           ${[['skip','건너뛰기'],['overwrite','덮어쓰기'],['new_row','새로 추가']].map(([p, l]) => `
-            <button data-bulk="${p}" style="flex:1;padding:8px;background:${state.dup.default===p ? 'var(--brand,#F18091)' : '#fff'};color:${state.dup.default===p ? '#fff' : '#555'};border:1px solid ${state.dup.default===p ? 'var(--brand,#F18091)' : '#ddd'};border-radius:7px;font-size:11.5px;font-weight:700;cursor:pointer;">${l}</button>
+            <button data-bulk="${p}" style="flex:1;padding:8px;background:${state.dup.default===p ? 'var(--brand,var(--brand))' : '#fff'};color:${state.dup.default===p ? '#fff' : '#555'};border:1px solid ${state.dup.default===p ? 'var(--brand,var(--brand))' : '#ddd'};border-radius:7px;font-size:11.5px;font-weight:700;cursor:pointer;">${l}</button>
           `).join('')}
         </div>
       </div>` : '';
@@ -382,7 +382,7 @@
       ${dupBlock}
       <div style="display:flex;gap:8px;justify-content:space-between;margin-top:16px;">
         <button id="iw-back" style="padding:10px 16px;background:var(--surface-raised,#eee);border:none;border-radius:10px;font-weight:700;cursor:pointer;color:var(--text,#333);">← 이전</button>
-        <button id="iw-commit" style="padding:10px 20px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">잇데이에 넣기 →</button>
+        <button id="iw-commit" style="padding:10px 20px;background:var(--brand,var(--brand));color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">잇데이에 넣기 →</button>
       </div>
     `, 2);
 
@@ -403,7 +403,7 @@
     const startedAt = Date.now();
     _shell(`
       <div style="padding:40px 20px;text-align:center;">
-        <div style="width:48px;height:48px;border:4px solid var(--border,#eee);border-top-color:var(--brand,#F18091);border-radius:50%;margin:0 auto 16px;animation:pvSpin 0.8s linear infinite;"></div>
+        <div style="width:48px;height:48px;border:4px solid var(--border,#eee);border-top-color:var(--brand,var(--brand));border-radius:50%;margin:0 auto 16px;animation:pvSpin 0.8s linear infinite;"></div>
         <div style="font-size:14px;font-weight:700;color:var(--text,#333);margin-bottom:6px;">잇데이에 넣고 있어요…</div>
         <div style="font-size:12px;color:var(--text-subtle,#888);">잠깐만 기다려주세요.</div>
       </div>
@@ -417,7 +417,7 @@
       const eta = Math.max(1, expected - elapsed);
       _shell(`
         <div style="padding:40px 20px;text-align:center;">
-          <div style="width:48px;height:48px;border:4px solid var(--border,#eee);border-top-color:var(--brand,#F18091);border-radius:50%;margin:0 auto 16px;animation:pvSpin 0.8s linear infinite;"></div>
+          <div style="width:48px;height:48px;border:4px solid var(--border,#eee);border-top-color:var(--brand,var(--brand));border-radius:50%;margin:0 auto 16px;animation:pvSpin 0.8s linear infinite;"></div>
           <div style="font-size:14px;font-weight:700;color:var(--text,#333);margin-bottom:6px;">잇데이에 넣고 있어요…</div>
           <div style="font-size:12px;color:var(--text-subtle,#888);">잠깐만 기다려주세요.</div>
         </div>
@@ -451,7 +451,7 @@
           <div style="font-size:11.5px;color:#888;margin-bottom:14px;line-height:1.6;">
             지금까지 설정은 자동으로 저장됐어요.<br>다시 시도하거나, 나중에 다시 열어도 이어할 수 있어요.
           </div>
-          <button id="iw-retry" style="padding:10px 18px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">다시 시도</button>
+          <button id="iw-retry" style="padding:10px 18px;background:var(--brand,var(--brand));color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">다시 시도</button>
         </div>`, 3);
       document.getElementById('iw-retry')?.addEventListener('click', _commit);
     }
@@ -471,7 +471,7 @@
             <summary style="cursor:pointer;font-weight:700;">실패 상세</summary>
             <div style="margin-top:6px;white-space:pre-wrap;">${_esc(d.errors.join('\n'))}</div>
           </details>` : ''}
-        <button id="iw-close-done" style="width:100%;padding:13px;background:var(--brand,#F18091);color:#fff;border:none;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;">닫기</button>
+        <button id="iw-close-done" style="width:100%;padding:13px;background:var(--brand,var(--brand));color:#fff;border:none;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;">닫기</button>
       </div>
     `, 3);
     document.getElementById('iw-close-done').addEventListener('click', () => {
@@ -492,7 +492,7 @@
         </div>
         <div style="display:flex;gap:8px;">
           <button id="iw-discard" style="flex:1;padding:12px;background:#eee;border:none;border-radius:10px;font-weight:700;cursor:pointer;">새로 시작</button>
-          <button id="iw-resume" style="flex:2;padding:12px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">이어하기 →</button>
+          <button id="iw-resume" style="flex:2;padding:12px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;">이어하기 →</button>
         </div>
       </div>
     `, 0);

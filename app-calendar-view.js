@@ -69,7 +69,7 @@
       .bf-tp-row.current {
         opacity: 1 !important;
         font-weight: 700 !important;
-        color: var(--brand, #F18091) !important;
+        color: var(--brand, var(--brand)) !important;
         transform: scale(1.15) !important;
       }
     `;

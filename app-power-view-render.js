@@ -38,7 +38,7 @@
       }
       case 'revenue':
         return `<strong>${krw(p.amount)}</strong>` +
-          (p.method ? ` · <span style="padding:1px 7px;border-radius:100px;background:#FEF4F5;color:#D95F70;font-size:10.5px;font-weight:700;">${esc(p.method)}</span>` : '') +
+          (p.method ? ` · <span style="padding:1px 7px;border-radius:100px;background:#FEF4F5;color:var(--brand-strong);font-size:10.5px;font-weight:700;">${esc(p.method)}</span>` : '') +
           (p.service_name ? ` · ${esc(p.service_name)}` : '') +
           (p.customer_name ? ` · <span style="color:#888;">${esc(p.customer_name)}</span>` : '');
       case 'inventory':
@@ -260,7 +260,7 @@
     const actionColWidth = editMode ? 88 : (hasPrimary ? 124 : 78);
     // 다중 선택 체크박스 — 비편집 모드 + _PVSelect 로드 시에만 (Phase 1 Tier B)
     const showSelect = !editMode && !!window._PVSelect;
-    const selectColHeader = showSelect ? `<th style="width:36px;text-align:center;"><input type="checkbox" data-pv-select-all aria-label="전체 선택" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand,#F18091);" /></th>` : '';
+    const selectColHeader = showSelect ? `<th style="width:36px;text-align:center;"><input type="checkbox" data-pv-select-all aria-label="전체 선택" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand,var(--brand));" /></th>` : '';
     // 헤더에 정렬 가능 컬럼이면 data-pv-sort + 화살표 추가 (Phase 1 Tier A)
     const headers = selectColHeader + schema.headers.map((h, idx) => {
       let sortKey = null;
@@ -300,7 +300,7 @@
           const ph = f.placeholder ? ` placeholder="${_esc(f.placeholder)}"` : '';
           if (f.type === 'checkbox') {
             const ck = !!raw ? ' checked' : '';
-            return `<td style="text-align:center;"><input data-pv-edit="${r.id}:${f.key}" data-pv-edit-type="checkbox" type="checkbox"${ck} style="width:18px;height:18px;cursor:pointer;accent-color:#F18091;" /></td>`;
+            return `<td style="text-align:center;"><input data-pv-edit="${r.id}:${f.key}" data-pv-edit-type="checkbox" type="checkbox"${ck} style="width:18px;height:18px;cursor:pointer;accent-color:var(--brand);" /></td>`;
           }
           return `<td><input data-pv-edit="${r.id}:${f.key}" data-pv-edit-type="${f.type || 'text'}" type="${f.type || 'text'}" value="${_esc(shown)}"${ph} style="width:100%;padding:7px 9px;border:1.5px solid hsl(350, 60%, 88%);border-radius:10px;font-size:12.5px;background:#fff;box-sizing:border-box;" /></td>`;
         }).join('');
@@ -312,7 +312,7 @@
       }
       const cells = schema.row(r).map(c => `<td>${c}</td>`).join('');
       // 다중 선택 체크박스 셀 (Tier B — _PVSelect 로드 시)
-      const selectCell = showSelect ? `<td style="text-align:center;"><input type="checkbox" data-pv-select aria-label="선택" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand,#F18091);" /></td>` : '';
+      const selectCell = showSelect ? `<td style="text-align:center;"><input type="checkbox" data-pv-select aria-label="선택" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand,var(--brand));" /></td>` : '';
       // 행 끝: 주액션 (UX 원칙 2·6) + ⚡ 기타 메뉴 + 수정
       let primaryHtml = '';
       try {
@@ -352,7 +352,7 @@
           <div style="font-size:12px;font-weight:800;color:#B45309;">⏳ 쌓아둔 행 ${pendingList.length}개</div>
           <div style="display:flex;gap:6px;">
             <button id="pv-batch-clear" style="padding:6px 10px;font-size:11px;border:1px solid #EAB308;background:#fff;color:#B45309;border-radius:7px;cursor:pointer;font-weight:700;">비우기</button>
-            <button id="pv-batch-save" style="padding:6px 12px;font-size:11.5px;border:none;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border-radius:7px;cursor:pointer;font-weight:800;box-shadow:0 2px 6px rgba(241,128,145,0.3);">⚡ ${pendingList.length}개 한 번에 저장</button>
+            <button id="pv-batch-save" style="padding:6px 12px;font-size:11.5px;border:none;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border-radius:7px;cursor:pointer;font-weight:800;box-shadow:0 2px 6px rgba(241,128,145,0.3);">⚡ ${pendingList.length}개 한 번에 저장</button>
           </div>
         </div>
         <div style="font-size:12px;color:#333;line-height:1.65;max-height:120px;overflow:auto;display:flex;flex-direction:column;gap:4px;">
@@ -376,10 +376,10 @@
       </td></tr>` : '';
 
     const reportBannerHtml = state.currentTab === 'revenue' ? `
-      <button onclick="if(typeof openRevenueReport==='function')openRevenueReport()" style="display:flex;align-items:center;gap:8px;width:100%;padding:11px 16px;margin-bottom:4px;background:#FEF4F5;border:none;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;color:#D95F70;text-align:left;transition:background 0.15s;" onmouseover="this.style.background='#FDE8EB'" onmouseout="this.style.background='#FEF4F5'">
+      <button onclick="if(typeof openRevenueReport==='function')openRevenueReport()" style="display:flex;align-items:center;gap:8px;width:100%;padding:11px 16px;margin-bottom:4px;background:#FEF4F5;border:none;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;color:var(--brand-strong);text-align:left;transition:background 0.15s;" onmouseover="this.style.background='#FDE8EB'" onmouseout="this.style.background='#FEF4F5'">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#ic-bar-chart-3"/></svg>
         상세 리포트
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;color:#F18091;" aria-hidden="true"><use href="#ic-chevron-right"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;color:var(--brand);" aria-hidden="true"><use href="#ic-chevron-right"/></svg>
       </button>` : '';
 
     body.innerHTML = `
@@ -387,7 +387,7 @@
       ${reportBannerHtml}
       <div class="pv-qadd" data-voice-root>
         ${fieldsHtml}
-        <button class="pv-btn-stack" id="pv-stack-btn" title="목록에 쌓아두고 나중에 일괄 저장" style="padding:11px 12px;background:#fff;border:1.5px solid #F18091;color:#D95F70;border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 0.15s;">⊕ 쌓기</button>
+        <button class="pv-btn-stack" id="pv-stack-btn" title="목록에 쌓아두고 나중에 일괄 저장" style="padding:11px 12px;background:#fff;border:1.5px solid var(--brand);color:var(--brand-strong);border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 0.15s;">⊕ 쌓기</button>
         <button class="pv-btn-add" id="pv-add-btn">즉시 추가 <span class="pv-kbd">↵</span></button>
       </div>
       ${pendingHtml}

@@ -100,7 +100,7 @@
             </div>
             <div style="margin-top:6px;text-align:right;">
               <button data-draft-cid="${c.customer_id}" data-draft-name="${_esc(c.name)}" data-draft-phone="${_esc(c.phone || '')}"
-                      style="padding:5px 10px;font-size:11px;font-weight:700;border:1px solid #F18091;background:#fff;color:#D95F70;border-radius:100px;cursor:pointer;">
+                      style="padding:5px 10px;font-size:11px;font-weight:700;border:1px solid var(--brand);background:#fff;color:var(--brand-strong);border-radius:100px;cursor:pointer;">
                 💬 카톡 초안 만들기
               </button>
             </div>
@@ -138,19 +138,19 @@
     if (predicted != null) {
       const px = P + (lastIdx + 1) * stepX;
       const py = ptY(predicted);
-      predLine = `<line x1="${P + lastIdx * stepX}" y1="${ptY(history[lastIdx].amount)}" x2="${px}" y2="${py}" stroke="#F18091" stroke-width="2" stroke-dasharray="3 3" />`;
-      predDot = `<circle cx="${px}" cy="${py}" r="4" fill="#F18091" stroke="#fff" stroke-width="2" />`;
+      predLine = `<line x1="${P + lastIdx * stepX}" y1="${ptY(history[lastIdx].amount)}" x2="${px}" y2="${py}" stroke="var(--brand)" stroke-width="2" stroke-dasharray="3 3" />`;
+      predDot = `<circle cx="${px}" cy="${py}" r="4" fill="var(--brand)" stroke="#fff" stroke-width="2" />`;
     }
     return `
       <svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="display:block;">
         <defs><linearGradient id="rfFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#F18091" stop-opacity="0.25"/>
-          <stop offset="100%" stop-color="#F18091" stop-opacity="0"/>
+          <stop offset="0%" stop-color="var(--brand)" stop-opacity="0.25"/>
+          <stop offset="100%" stop-color="var(--brand)" stop-opacity="0"/>
         </linearGradient></defs>
         <path d="${pathD} L ${P + lastIdx * stepX},${H - P} L ${P},${H - P} Z" fill="url(#rfFill)" />
-        <path d="${pathD}" fill="none" stroke="#F18091" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="${pathD}" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
         ${predLine}
-        <circle cx="${lastPt.split(',')[0]}" cy="${lastPt.split(',')[1]}" r="3" fill="#F18091" />
+        <circle cx="${lastPt.split(',')[0]}" cy="${lastPt.split(',')[1]}" r="3" fill="var(--brand)" />
         ${predDot}
       </svg>
     `;
@@ -182,14 +182,14 @@
           <span style="margin-left:auto;font-size:10px;font-weight:700;color:${confColor};background:${confColor}20;padding:2px 7px;border-radius:99px;">신뢰도 ${confLabel}</span>
         </div>
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;">
-          <strong style="font-size:26px;color:var(--accent,#F18091);font-variant-numeric:tabular-nums;">${_formatKRW(data.predicted_week)}</strong>
+          <strong style="font-size:26px;color:var(--accent,var(--brand));font-variant-numeric:tabular-nums;">${_formatKRW(data.predicted_week)}</strong>
           <span style="font-size:13px;color:${deltaColor};font-weight:700;">${arrow} ${up ? '+' : ''}${data.delta_pct}%</span>
         </div>
         <div style="margin-bottom:8px;">${_sparklineSVG(data.history || [], data.predicted_week)}</div>
         <div style="display:flex;justify-content:space-between;font-size:10px;color:#999;margin-bottom:8px;">
           <span>8주 전</span>
           <span>이번 주 누적 ${_formatKRW(data.current_week)}</span>
-          <span style="color:#F18091;font-weight:700;">예측</span>
+          <span style="color:var(--brand);font-weight:700;">예측</span>
         </div>
         <div style="font-size:12px;color:#555;line-height:1.5;padding:8px 10px;background:#fff;border-radius:8px;">
           💡 ${_esc(data.action)}

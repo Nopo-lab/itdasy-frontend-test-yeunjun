@@ -119,7 +119,7 @@
       const x = padL + i * colW + 4;
       const h = max > 0 ? ((v / max) * (H - padT - padB)) : 0;
       const y = H - padB - h;
-      return `<rect x="${x}" y="${y}" width="${colW - 8}" height="${h}" rx="3" fill="var(--brand,#F18091)" />
+      return `<rect x="${x}" y="${y}" width="${colW - 8}" height="${h}" rx="3" fill="var(--brand,var(--brand))" />
         <text x="${x + (colW - 8) / 2}" y="${H - padB + 14}" text-anchor="middle" font-size="9" fill="var(--text-subtle,#888)">${_esc(k.slice(5))}</text>`;
     }).join('');
     const yAxis = `<text x="4" y="${padT + 8}" font-size="9" fill="var(--text-subtle,#888)">${_krw(max)}</text>

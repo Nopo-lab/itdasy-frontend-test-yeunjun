@@ -197,7 +197,7 @@
     }
 
     // 상단 태그라인
-    ctx.fillStyle = '#f18091';
+    ctx.fillStyle = 'var(--brand)';
     ctx.font = 'bold 36px Pretendard, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -252,7 +252,7 @@
 
         <label style="display:block;">
           <input id="_icFile" type="file" accept="image/*" style="display:none;">
-          <div id="_icPickBtn" style="padding:18px; border:2px dashed #f18091; border-radius:14px; text-align:center; color:#f18091; font-weight:700; font-size:14px; cursor:pointer; background:#fff5f7;">
+          <div id="_icPickBtn" style="padding:18px; border:2px dashed var(--brand); border-radius:14px; text-align:center; color:var(--brand); font-weight:700; font-size:14px; cursor:pointer; background:#fff5f7;">
             📷 사진 고르기
           </div>
         </label>
@@ -264,7 +264,7 @@
         <div id="_icProgress" style="display:none; margin-top:18px;">
           <div id="_icStep" style="font-size:13px; font-weight:700; color:#1a1a1a; margin-bottom:8px;">분석 중…</div>
           <div style="width:100%; height:8px; background:#f0f0f0; border-radius:4px; overflow:hidden;">
-            <div id="_icBar" style="width:0%; height:100%; background:linear-gradient(90deg,#f18091,#ff9aa8); transition:width .3s ease;"></div>
+            <div id="_icBar" style="width:0%; height:100%; background:linear-gradient(90deg,var(--brand),#ff9aa8); transition:width .3s ease;"></div>
           </div>
         </div>
 
@@ -281,7 +281,7 @@
           <img id="_icStory" style="width:60%; max-width:240px; border-radius:14px; border:1px solid #eee; display:block; margin:0 auto;">
           <div style="display:flex; gap:8px; margin-top:12px;">
             <a id="_icStoryDownload" download="itdasy-story.png" style="flex:1; text-align:center; padding:12px; border-radius:12px; background:#4caf50; color:#fff; text-decoration:none; font-weight:700; font-size:13px; min-height:44px; display:flex; align-items:center; justify-content:center;">💾 스토리 저장</a>
-            <button id="_icAgain" style="flex:1; padding:12px; border-radius:12px; border:none; background:#f18091; color:#fff; font-weight:700; font-size:13px; min-height:44px; cursor:pointer;">🔁 다른 사진</button>
+            <button id="_icAgain" style="flex:1; padding:12px; border-radius:12px; border:none; background:var(--brand); color:#fff; font-weight:700; font-size:13px; min-height:44px; cursor:pointer;">🔁 다른 사진</button>
           </div>
         </div>
       </div>
@@ -356,7 +356,7 @@
       tagsBox.innerHTML = '';
       tags.forEach(t => {
         const span = document.createElement('span');
-        span.style.cssText = 'background:#fff5f7; color:#f18091; padding:4px 10px; border-radius:999px;';
+        span.style.cssText = 'background:#fff5f7; color:var(--brand); padding:4px 10px; border-radius:999px;';
         span.textContent = t;
         tagsBox.appendChild(span);
       });
@@ -402,7 +402,7 @@
     btn.id = '_icQuickBtn';
     btn.type = 'button';
     btn.textContent = '⚡ 1초 캡션';
-    btn.style.cssText = 'padding:12px 16px; border:none; border-radius:14px; background:linear-gradient(135deg,#f18091,#ff9aa8); color:#fff; font-weight:800; font-size:14px; cursor:pointer; min-height:44px; box-shadow:0 4px 12px rgba(241,128,145,0.3);';
+    btn.style.cssText = 'padding:12px 16px; border:none; border-radius:14px; background:linear-gradient(135deg,var(--brand),#ff9aa8); color:#fff; font-weight:800; font-size:14px; cursor:pointer; min-height:44px; box-shadow:0 4px 12px rgba(241,128,145,0.3);';
     btn.addEventListener('click', openInstantCaption);
     target.appendChild(btn);
     return true;

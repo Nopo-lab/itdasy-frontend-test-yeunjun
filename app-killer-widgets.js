@@ -94,7 +94,7 @@
     const momPctNum = brief.mom_delta_pct;
     const momSign = momPctNum == null ? '' : (momPctNum >= 0 ? ' +' : ' ');
     const headline = `
-      <div class="kw-card" style="background:linear-gradient(135deg,#1A1B26 0%,#2D1A2E 55%,#D95F70 150%);color:#fff;padding:20px 18px;border-radius:20px;margin-bottom:12px;box-shadow:0 10px 30px rgba(217,95,112,0.2);position:relative;overflow:hidden;">
+      <div class="kw-card" style="background:linear-gradient(135deg,#1A1B26 0%,#2D1A2E 55%,var(--brand-strong) 150%);color:#fff;padding:20px 18px;border-radius:20px;margin-bottom:12px;box-shadow:0 10px 30px rgba(217,95,112,0.2);position:relative;overflow:hidden;">
         <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,0.04);"></div>
         <div style="font-size:10.5px;letter-spacing:2.5px;opacity:0.65;font-weight:800;margin-bottom:8px;">🌅 ${_timeGreet()}</div>
         <div style="font-size:17px;line-height:1.55;font-weight:800;position:relative;z-index:1;">
@@ -105,7 +105,7 @@
 
     // 1. 오늘 위험 신호
     const widget1 = `
-      <div class="kw-card" style="background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;padding:18px;border-radius:18px;margin-bottom:12px;box-shadow:0 6px 20px rgba(241,128,145,0.3);">
+      <div class="kw-card" style="background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;padding:18px;border-radius:18px;margin-bottom:12px;box-shadow:0 6px 20px rgba(241,128,145,0.3);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <div style="font-size:11px;letter-spacing:2px;opacity:0.85;font-weight:800;">🔔 오늘 한눈에</div>
           ${alertCount > 0 ? `<div style="background:rgba(255,255,255,0.25);padding:3px 10px;border-radius:100px;font-size:11px;font-weight:800;">알림 ${alertCount}</div>` : ''}
@@ -174,7 +174,7 @@
           <div style="font-weight:900;font-size:14px;color:#222;">${progress}%</div>
         </div>
         <div style="height:10px;background:#f0f0f0;border-radius:100px;overflow:hidden;position:relative;">
-          <div style="height:100%;background:linear-gradient(90deg,#F18091,#FFB347);width:${progress}%;border-radius:100px;transition:width 1.2s cubic-bezier(0.2,0.9,0.3,1);box-shadow:0 0 10px rgba(241,128,145,0.45);"></div>
+          <div style="height:100%;background:linear-gradient(90deg,var(--brand),#FFB347);width:${progress}%;border-radius:100px;transition:width 1.2s cubic-bezier(0.2,0.9,0.3,1);box-shadow:0 0 10px rgba(241,128,145,0.45);"></div>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#666;margin-top:8px;">
           <span>${_money(thisMonth)}</span>
@@ -183,7 +183,7 @@
       </div>` : `
       <div class="kw-card" style="background:#FAFAFA;padding:14px 16px;border-radius:14px;margin-bottom:10px;border:1px dashed #ddd;text-align:center;">
         <div style="font-size:12px;color:#888;margin-bottom:6px;">🎯 이번 달 매출 목표를 설정해 보세요</div>
-        <button data-kw-setgoal style="padding:6px 14px;background:#F18091;color:#fff;border:none;border-radius:8px;font-size:11.5px;font-weight:800;cursor:pointer;">목표 설정</button>
+        <button data-kw-setgoal style="padding:6px 14px;background:var(--brand);color:#fff;border:none;border-radius:8px;font-size:11.5px;font-weight:800;cursor:pointer;">목표 설정</button>
       </div>`;
 
     // T-331 — 아낀 시간·돈 카운터
@@ -408,7 +408,7 @@
           <textarea class="kw-draft-text" style="width:100%;min-height:80px;padding:10px;border:1px solid #eee;border-radius:8px;font-size:12.5px;font-family:inherit;resize:vertical;line-height:1.55;">${_esc(item.draft_text || '')}</textarea>
           <div style="display:flex;gap:6px;margin-top:8px;">
             <button class="kw-draft-copy" style="flex:1;padding:8px;border:1px solid #eee;border-radius:8px;background:#fff;font-size:11.5px;cursor:pointer;font-weight:700;">📄 복사</button>
-            ${item.phone ? `<button class="kw-draft-sms" data-phone="${_esc(item.phone)}" style="flex:1;padding:8px;background:linear-gradient(135deg,#F18091,#E96A7E);color:#fff;border:none;border-radius:8px;font-size:11.5px;cursor:pointer;font-weight:700;">📨 문자 열기</button>` : ''}
+            ${item.phone ? `<button class="kw-draft-sms" data-phone="${_esc(item.phone)}" style="flex:1;padding:8px;background:linear-gradient(135deg,var(--brand),#E96A7E);color:#fff;border:none;border-radius:8px;font-size:11.5px;cursor:pointer;font-weight:700;">📨 문자 열기</button>` : ''}
           </div>
         `;
         container.appendChild(card);
@@ -457,7 +457,7 @@
           <button data-kw-sms-to="${p.phone}" style="display:flex;align-items:center;gap:8px;width:100%;margin-bottom:6px;padding:10px 12px;background:#FEF4F5;border:1px solid #F9D6DC;border-radius:10px;cursor:pointer;font-size:12.5px;color:#333;text-align:left;">
             <span style="font-weight:800;flex:1;">${p.name}</span>
             <span style="color:#888;font-size:11px;">${p.phone}</span>
-            <span style="color:#D95F70;font-weight:800;">📨 문자 열기</span>
+            <span style="color:var(--brand-strong);font-weight:800;">📨 문자 열기</span>
           </button>`).join('');
       list.querySelectorAll('[data-kw-sms-to]').forEach(b => {
         b.addEventListener('click', () => {

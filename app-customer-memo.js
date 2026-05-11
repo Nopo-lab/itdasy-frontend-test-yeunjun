@@ -37,8 +37,8 @@
       '.cm-memo-meta{font-size:10px;color:#9CA3AF;margin-top:4px;display:flex;align-items:center;gap:6px;}',
       '.cm-memo-text{font-size:13px;color:#374151;line-height:1.5;white-space:pre-wrap;}',
       '.cm-memo-textarea{width:100%;padding:10px;border:1px solid #E5E7EB;border-radius:10px;font-size:13px;line-height:1.5;resize:vertical;min-height:60px;font-family:inherit;background:#fff;color:#222;box-sizing:border-box;}',
-      '.cm-memo-textarea:focus{outline:none;border-color:#F18091;}',
-      '.cm-memo-btn{padding:10px 14px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;}',
+      '.cm-memo-textarea:focus{outline:none;border-color:var(--brand);}',
+      '.cm-memo-btn{padding:10px 14px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;}',
       '.cm-memo-btn:disabled{opacity:0.5;cursor:not-allowed;}',
       '.cm-memo-btn-ghost{padding:6px 10px;background:transparent;color:#9CA3AF;border:none;font-size:11px;cursor:pointer;}',
       '.cm-memo-btn-ghost:hover{color:#DC2626;}',
@@ -46,7 +46,7 @@
       '.cm-warn-banner strong{color:#991B1B;font-weight:800;}',
       '.cm-warn-banner ul{margin:6px 0 0;padding-left:20px;font-size:12px;line-height:1.6;}',
       '.cm-search-input{width:100%;padding:12px 14px;border:1px solid #E5E7EB;border-radius:12px;font-size:14px;box-sizing:border-box;}',
-      '.cm-search-input:focus{outline:none;border-color:#F18091;}',
+      '.cm-search-input:focus{outline:none;border-color:var(--brand);}',
     ].join('');
     document.head.appendChild(st);
   }
@@ -177,7 +177,7 @@
       host.style.cssText = 'margin-bottom:14px;';
       host.innerHTML = [
         '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">',
-          '<svg width="14" height="14" aria-hidden="true" style="color:#F18091;"><use href="#ic-edit-3"/></svg>',
+          '<svg width="14" height="14" aria-hidden="true" style="color:var(--brand);"><use href="#ic-edit-3"/></svg>',
           '<strong style="font-size:13px;">시술 메모 <span style="font-size:10px;color:#9CA3AF;font-weight:400;">(AI 자동 태그)</span></strong>',
           '<span data-cm-quota style="font-size:11px;color:#9CA3AF;font-weight:600;margin-left:6px;"></span>',
           '<button type="button" data-cm-search style="margin-left:auto;padding:4px 8px;border:1px solid #E5E7EB;border-radius:8px;background:#fff;font-size:11px;color:#555;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><svg width="11" height="11" aria-hidden="true"><use href="#ic-search"/></svg>전체 검색</button>',

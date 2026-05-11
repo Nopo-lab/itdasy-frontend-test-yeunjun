@@ -36,7 +36,7 @@
     return { permanent: 'ic-bot', preference: 'ic-star', pattern: 'ic-sparkles' }[kind] || 'ic-bot';
   }
   function _kindColor(kind) {
-    return { permanent: '#7C3AED', preference: '#F18091', pattern: '#3B82F6' }[kind] || '#7C3AED';
+    return { permanent: '#7C3AED', preference: 'var(--brand)', pattern: '#3B82F6' }[kind] || '#7C3AED';
   }
 
   function _ensureSheet() {

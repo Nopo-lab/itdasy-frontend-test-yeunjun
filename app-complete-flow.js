@@ -135,7 +135,7 @@
       <!-- 버튼 -->
       <div style="display:flex;gap:8px;">
         <button id="cfSkip" style="flex:1;padding:13px;border:1px solid #ddd;border-radius:10px;background:#fff;cursor:pointer;color:#555;font-weight:700;font-size:13px;">건너뛰기</button>
-        <button id="cfSave" style="flex:2;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;cursor:pointer;font-weight:800;font-size:15px;">한 번에 기록 ✓</button>
+        <button id="cfSave" style="flex:2;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;cursor:pointer;font-weight:800;font-size:15px;">한 번에 기록 ✓</button>
       </div>
       <button id="cfInventory" style="width:100%;margin-top:8px;padding:12px;border:1px solid #eee;border-radius:10px;background:#fafafa;cursor:pointer;color:#555;font-weight:700;font-size:13px;">재고 확인</button>
     `;

@@ -49,7 +49,7 @@
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
           <span style="font-size:22px;">✨</span>
           <strong style="font-size:17px;">스토리 자동 만들기</strong>
-          <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(241,128,145,0.15);color:#D95F70;font-weight:700;">AI</span>
+          <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(241,128,145,0.15);color:var(--brand-strong);font-weight:700;">AI</span>
           <button onclick="closeStory()" style="margin-left:auto;background:rgba(0,0,0,0.05);border:none;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;">✕</button>
         </div>
         <div id="storyBody" style="flex:1;overflow-y:auto;"></div>
@@ -74,7 +74,7 @@
         <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">짧은 메모</label>
         <textarea id="storyInput" rows="4" maxlength="500" placeholder="오늘 시술 이야기를 편하게…" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:12px;font-family:inherit;resize:vertical;font-size:14px;"></textarea>
 
-        <button id="storyGen" style="width:100%;margin-top:12px;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;font-weight:800;cursor:pointer;font-size:15px;">✨ AI 스토리 만들기</button>
+        <button id="storyGen" style="width:100%;margin-top:12px;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;font-weight:800;cursor:pointer;font-size:15px;">✨ AI 스토리 만들기</button>
       </div>
     `;
     document.getElementById('storyGen').addEventListener('click', _generate);
@@ -111,7 +111,7 @@
     _recognition.onerror = () => {};
     _recognition.onend = () => {
       _recognition = null;
-      btn.style.background = 'linear-gradient(135deg,#F18091,#D95F70)';
+      btn.style.background = 'linear-gradient(135deg,var(--brand),var(--brand-strong))';
       btn.textContent = '🎤';
       document.getElementById('storyMicStatus').textContent = _interimText ? '✓ 받아쓰기 완료' : '';
     };
@@ -168,7 +168,7 @@
           <div style="font-size:11px;color:#888;margin-bottom:6px;">배경 분위기</div>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
             ${Object.entries(MOODS).map(([k, m]) => `
-              <button data-mood="${k}" style="padding:10px 4px;border:2px solid ${r.mood === k ? '#F18091' : 'transparent'};border-radius:10px;background:linear-gradient(135deg,${m.gradient[0]},${m.gradient[1]});color:${m.accent};font-size:11px;font-weight:700;cursor:pointer;">${m.name}</button>
+              <button data-mood="${k}" style="padding:10px 4px;border:2px solid ${r.mood === k ? 'var(--brand)' : 'transparent'};border-radius:10px;background:linear-gradient(135deg,${m.gradient[0]},${m.gradient[1]});color:${m.accent};font-size:11px;font-weight:700;cursor:pointer;">${m.name}</button>
             `).join('')}
           </div>
         </div>

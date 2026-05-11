@@ -105,7 +105,7 @@
         </div>
         <button type="button" class="hv-bell" data-hv-act="bell" aria-label="알림" style="position:relative;">
           <svg width="14" height="14" aria-hidden="true"><use href="#ic-bell"/></svg>
-          <span id="dashBellBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#F18091;color:#fff;font-size:9px;font-weight:800;border-radius:50%;min-width:14px;height:14px;line-height:14px;text-align:center;padding:0 2px;"></span>
+          <span id="dashBellBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--brand);color:#fff;font-size:9px;font-weight:800;border-radius:50%;min-width:14px;height:14px;line-height:14px;text-align:center;padding:0 2px;"></span>
         </button>
       </div>
     `;
@@ -312,7 +312,7 @@
         cta: '안부',
         act: 'openInsights',
         icon: 'ic-star',
-        accent: '#F18091',
+        accent: 'var(--brand)',
       });
     }
     return cards;

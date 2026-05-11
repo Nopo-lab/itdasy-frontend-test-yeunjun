@@ -32,7 +32,7 @@
     const body = document.getElementById('migBody');
     body.innerHTML = `
       <!-- Hero -->
-      <div style="padding:18px;background:linear-gradient(135deg,#F18091 0%,#D95F70 100%);border-radius:16px;color:#fff;margin-bottom:16px;">
+      <div style="padding:18px;background:linear-gradient(135deg,var(--brand) 0%,var(--brand-strong) 100%);border-radius:16px;color:#fff;margin-bottom:16px;">
         <div style="font-size:13px;font-weight:700;margin-bottom:4px;opacity:0.9;">쌓아둔 데이터, 버리지 마세요</div>
         <div style="font-size:22px;font-weight:900;line-height:1.25;margin-bottom:8px;">3가지 중 편한 방법으로<br>잇데이로 옮겨드려요 🎀</div>
         <div style="font-size:12px;opacity:0.85;line-height:1.5;">완전 무료 · 중복 자동 제거 · 개인정보 안전</div>
@@ -73,14 +73,14 @@
       <!-- 방법 3: 카톡 복붙 -->
       <div data-mig="text" style="padding:14px;background:#fff;border:1px solid rgba(241,128,145,0.3);border-radius:14px;margin-bottom:10px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
         <div style="display:flex;gap:12px;align-items:flex-start;">
-          <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#F18091,#D95F70);display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;flex-shrink:0;">📋</div>
+          <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;flex-shrink:0;">📋</div>
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
               <strong style="font-size:14px;">카톡·메모 복사 붙여넣기</strong>
-              <span style="font-size:9px;padding:1px 6px;background:rgba(241,128,145,0.15);color:#D95F70;border-radius:3px;font-weight:700;">즉시</span>
+              <span style="font-size:9px;padding:1px 6px;background:rgba(241,128,145,0.15);color:var(--brand-strong);border-radius:3px;font-weight:700;">즉시</span>
             </div>
             <div style="font-size:11px;color:#666;line-height:1.5;margin-bottom:6px;">단골 카톡 대화나 메모장에 쌓아둔 고객 연락처를 텍스트로 복사 → 붙여넣기</div>
-            <div style="font-size:10px;color:#D95F70;font-weight:700;">관리 앱 없이도 시작 가능</div>
+            <div style="font-size:10px;color:var(--brand-strong);font-weight:700;">관리 앱 없이도 시작 가능</div>
           </div>
           <span style="color:#bbb;font-size:18px;">›</span>
         </div>

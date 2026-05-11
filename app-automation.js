@@ -41,12 +41,12 @@
         <div style="padding:14px 18px 8px;font-size:11px;color:#888;font-weight:700;letter-spacing:.4px;">추천 자동화 — 클릭으로 1초 등록</div>
         <div style="padding:0 14px;">
           ${(presets.presets || []).map(p => `
-            <button data-preset="${_esc(p.key)}" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:8px;background:#fff;border:1px solid ${have.has(p.name) ? '#F18091' : '#eee'};border-radius:12px;cursor:pointer;text-align:left;">
+            <button data-preset="${_esc(p.key)}" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:8px;background:#fff;border:1px solid ${have.has(p.name) ? 'var(--brand)' : '#eee'};border-radius:12px;cursor:pointer;text-align:left;">
               <div style="flex:1;">
                 <div style="font-size:13px;font-weight:700;">${_esc(p.name)}</div>
                 <div style="font-size:11px;color:#888;margin-top:2px;">${_trigger_desc(p.trigger_type, p.conditions)} · ${_action_desc(p.action_type)}</div>
               </div>
-              <span style="font-size:11px;color:${have.has(p.name) ? '#2B8C7E' : '#D95F70'};font-weight:700;">${have.has(p.name) ? '✓ 사용중' : '+ 등록'}</span>
+              <span style="font-size:11px;color:${have.has(p.name) ? '#2B8C7E' : 'var(--brand-strong)'};font-weight:700;">${have.has(p.name) ? '✓ 사용중' : '+ 등록'}</span>
             </button>
           `).join('')}
         </div>

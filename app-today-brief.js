@@ -92,7 +92,7 @@
     if (d.upcoming_count > 0 && d.next_booking) {
       const t = new Date(d.next_booking.starts_at);
       const hhmm = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
-      items.push({ ic: 'clock', label: `다음 예약 ${hhmm}${d.next_booking.customer_name ? ' · ' + _esc(d.next_booking.customer_name) : ''}`, color: '#F18091' });
+      items.push({ ic: 'clock', label: `다음 예약 ${hhmm}${d.next_booking.customer_name ? ' · ' + _esc(d.next_booking.customer_name) : ''}`, color: 'var(--brand)' });
     }
     if (d.revenue_total > 0) {
       items.push({ ic: 'dollar', label: `오늘 매출 ${d.revenue_total.toLocaleString('ko-KR')}원 (${d.revenue_count}건)`, color: '#388e3c' });
@@ -150,7 +150,7 @@
         items.push({
           ic: 'sparkles',
           label: title + (s.reason ? ` — ${s.reason}` : ''),
-          color: '#D95F70',
+          color: 'var(--brand-strong)',
           action: s.action || 'chat',
         });
         seen.add(title);
@@ -175,7 +175,7 @@
     return `
       <div style="padding:18px;border-radius:14px;background:linear-gradient(135deg,#1a0c10 0%,#3a1a22 100%);color:#fff;margin-bottom:14px;box-shadow:0 8px 24px rgba(26,12,16,0.25);">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-          <span style="display:inline-flex;color:#F18091;">${_ic('target')}</span>
+          <span style="display:inline-flex;color:var(--brand);">${_ic('target')}</span>
           <strong style="font-size:13px;letter-spacing:.2px;">AI가 추천하는 오늘 집중할 것</strong>
           <span style="font-size:11px;color:rgba(255,255,255,0.5);margin-left:auto;">${_esc(greet)}</span>
         </div>

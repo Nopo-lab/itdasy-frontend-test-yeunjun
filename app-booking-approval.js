@@ -50,7 +50,7 @@
           <div style="font-size:12px;color:#666;">${_esc(b.service_name || '시술')}</div>
           ${memo ? `<div style="font-size:11px;color:#888;margin-top:4px;">${_esc(memo)}</div>` : ''}
           <div style="margin-top:10px;display:flex;gap:6px;">
-            <button data-approve="${b.id}" style="flex:2;padding:10px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border:none;border-radius:8px;font-weight:800;font-size:12px;cursor:pointer;">✅ 입금 확인 · 승인</button>
+            <button data-approve="${b.id}" style="flex:2;padding:10px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border:none;border-radius:8px;font-weight:800;font-size:12px;cursor:pointer;">✅ 입금 확인 · 승인</button>
             <button data-reject="${b.id}" style="flex:1;padding:10px;background:#fff;color:#c00;border:1px solid #fcc;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">거절</button>
           </div>
         </div>`;

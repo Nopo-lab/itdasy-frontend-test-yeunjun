@@ -75,7 +75,7 @@
         </div>
         <div style="padding:14px;display:flex;gap:8px;">
           <input class="nl-q" placeholder="예: 이번 달 매출 8만원 넘는 건 몇 건?" style="flex:1;padding:11px 14px;border:1px solid #ddd;border-radius:10px;font-size:14px;">
-          <button class="nl-go" style="padding:11px 16px;border:none;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border-radius:10px;font-weight:800;cursor:pointer;">🔍</button>
+          <button class="nl-go" style="padding:11px 16px;border:none;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border-radius:10px;font-weight:800;cursor:pointer;">🔍</button>
         </div>
         <div style="padding:0 14px;display:flex;flex-wrap:wrap;gap:6px;">
           ${SUGGESTIONS.map(s => `<button data-sug="${_esc(s)}" style="padding:6px 10px;font-size:11px;border:1px solid #ddd;background:#fff;border-radius:100px;cursor:pointer;color:#666;">${_esc(s)}</button>`).join('')}

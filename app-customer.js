@@ -289,7 +289,7 @@
         </div>
         <!-- [2026-04-29 E2] 자동 세그먼트 chip 4개 -->
         <div id="customerSegments" style="display:flex;gap:6px;padding:0 4px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;">
-          <button data-seg="all" class="cust-seg-chip cust-seg-active" style="flex-shrink:0;padding:6px 14px;border:1px solid #F18091;background:#F18091;color:#fff;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">전체</button>
+          <button data-seg="all" class="cust-seg-chip cust-seg-active" style="flex-shrink:0;padding:6px 14px;border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">전체</button>
           <button data-seg="regular" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">⭐ 단골</button>
           <button data-seg="member" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">💳 회원권</button>
           <button data-seg="new" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">🌱 신규</button>
@@ -313,9 +313,9 @@
         sheet.querySelectorAll('.cust-seg-chip').forEach(b => {
           const on = b.dataset.seg === _activeSeg;
           b.classList.toggle('cust-seg-active', on);
-          b.style.background = on ? '#F18091' : '#fff';
+          b.style.background = on ? 'var(--brand)' : '#fff';
           b.style.color = on ? '#fff' : '#555';
-          b.style.borderColor = on ? '#F18091' : '#ddd';
+          b.style.borderColor = on ? 'var(--brand)' : '#ddd';
         });
         _windowSize = 50;
         _rerender();
@@ -375,7 +375,7 @@
         ? `<span title="안 옴 ${nsCount}회 — 예약 전 주의" style="font-size:10px;font-weight:700;color:#fff;background:#dc3545;padding:2px 7px;border-radius:100px;margin-left:6px;">🚩 안 옴 ${nsCount}</span>`
         : (nsCount > 0 ? `<span title="안 옴 ${nsCount}회" style="font-size:10px;font-weight:600;color:#B45309;background:#FEF3C7;padding:2px 6px;border-radius:100px;margin-left:6px;">안 옴 ${nsCount}</span>` : '');
       const regularBadge = c.is_regular
-        ? `<span title="단골" class="cm-badge cm-badge--regular" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#fff;background:#F18091;padding:2px 8px;border-radius:999px;margin-left:6px;line-height:1.4;"><svg width="10" height="10" aria-hidden="true" style="display:inline-block;"><use href="#ic-star"/></svg>단골</span>`
+        ? `<span title="단골" class="cm-badge cm-badge--regular" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#fff;background:var(--brand);padding:2px 8px;border-radius:999px;margin-left:6px;line-height:1.4;"><svg width="10" height="10" aria-hidden="true" style="display:inline-block;"><use href="#ic-star"/></svg>단골</span>`
         : '';
       const memberBadge = c.membership_active
         ? (() => {
@@ -635,12 +635,12 @@
           </div>
           <input data-pick-search placeholder="이름·연락처 검색 또는 새 고객 이름" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:14px;margin-bottom:10px;" />
           <div data-pick-list style="flex:1;overflow-y:auto;min-height:140px;"></div>
-          <div data-pick-create-row style="display:none;margin-top:8px;padding:10px;border:1px dashed var(--brand,#F18091);border-radius:14px;background:rgba(241,128,145,0.04);">
+          <div data-pick-create-row style="display:none;margin-top:8px;padding:10px;border:1px dashed var(--brand,var(--brand));border-radius:14px;background:rgba(241,128,145,0.04);">
             <div style="font-size:11px;color:var(--text-subtle,#888);margin-bottom:6px;">신규 고객으로 추가</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
               <input data-pick-new-name placeholder="이름" style="flex:1 1 90px;min-width:90px;padding:9px 10px;border:1px solid #ddd;border-radius:14px;font-size:13px;" />
               <input data-pick-new-phone placeholder="연락처 (선택)" inputmode="tel" style="flex:1 1 110px;min-width:110px;padding:9px 10px;border:1px solid #ddd;border-radius:14px;font-size:13px;" />
-              <button data-pick-create style="flex:0 0 auto;padding:9px 14px;background:linear-gradient(135deg,#F18091,#E96A7E);color:#fff;border:none;border-radius:14px;font-weight:700;font-size:13px;cursor:pointer;">+ 추가하고 선택</button>
+              <button data-pick-create style="flex:0 0 auto;padding:9px 14px;background:linear-gradient(135deg,var(--brand),#E96A7E);color:#fff;border:none;border-radius:14px;font-weight:700;font-size:13px;cursor:pointer;">+ 추가하고 선택</button>
             </div>
           </div>
           <button data-pick-clear style="margin-top:8px;padding:10px;border:1px solid #eee;border-radius:14px;background:#fafafa;color:#c00;cursor:pointer;font-size:12px;">지정 해제 (고객 없음)</button>
@@ -665,7 +665,7 @@
             // 검색어 있는데 결과 0건 → 즉석 신규 추가 UI 노출 + 1탭 버튼
             listEl.innerHTML = `
               <div style="padding:18px 12px 12px;text-align:center;color:#888;font-size:13px;">'${_esc(trimmed)}' 고객을 찾을 수 없어요</div>
-              <button data-pick-quick-add style="display:block;width:100%;padding:14px;margin:0 0 10px;border:none;border-radius:14px;background:linear-gradient(135deg,#F18091,#E96A7E);color:#fff;font-weight:700;font-size:14px;cursor:pointer;">+ 새 고객으로 '${_esc(trimmed)}' 추가</button>
+              <button data-pick-quick-add style="display:block;width:100%;padding:14px;margin:0 0 10px;border:none;border-radius:14px;background:linear-gradient(135deg,var(--brand),#E96A7E);color:#fff;font-weight:700;font-size:14px;cursor:pointer;">+ 새 고객으로 '${_esc(trimmed)}' 추가</button>
             `;
             createRow.style.display = 'block';
             newNameEl.value = trimmed;
@@ -688,7 +688,7 @@
           <div data-pick-id="${c.id}" style="padding:12px 8px;border-bottom:1px solid #eee;cursor:pointer;border-radius:14px;${c.id === opts.selectedId ? 'background:rgba(241,128,145,0.08);' : ''}">
             <strong style="font-size:14px;">${_esc(c.name)}</strong>
             ${c.phone ? `<span style="font-size:12px;color:#888;margin-left:6px;">${_esc(c.phone)}</span>` : ''}
-            ${c.visit_count ? `<span style="font-size:10px;color:var(--accent,#F18091);margin-left:6px;">방문 ${c.visit_count}</span>` : ''}
+            ${c.visit_count ? `<span style="font-size:10px;color:var(--accent,var(--brand));margin-left:6px;">방문 ${c.visit_count}</span>` : ''}
           </div>
         `).join('') + (moreCount > 0 ? `<div style="padding:12px;text-align:center;font-size:12px;color:#888;">검색어 입력 시 ${moreCount}명 더 볼 수 있어요</div>` : '');
         listEl.querySelectorAll('[data-pick-id]').forEach(row => {

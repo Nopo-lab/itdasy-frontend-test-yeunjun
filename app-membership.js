@@ -70,7 +70,7 @@
       const rows = items.map(it => {
         const isUse = it.kind === 'use';
         const sign = isUse ? '−' : '+';
-        const color = isUse ? '#0288D1' : '#F18091';
+        const color = isUse ? '#0288D1' : 'var(--brand)';
         const dt = (it.recorded_at || '').replace('T', ' ').slice(5, 16);
         const svc = it.service_name ? ` · ${(it.service_name + '').replace(/[<>&"]/g,'')}` : '';
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid #f3f3f3;">
@@ -113,7 +113,7 @@
           <option value="transfer">계좌이체</option>
         </select>
       </div>
-      <button id="msConfirm" style="width:100%;padding:16px;background:linear-gradient(135deg,#F18091,#FFA8B6);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;">충전하기</button>
+      <button id="msConfirm" style="width:100%;padding:16px;background:linear-gradient(135deg,var(--brand),#FFA8B6);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;">충전하기</button>
       <!-- [2026-04-29 B4] 최근 사용 history -->
       <div id="msHistoryWrap" style="margin-top:18px;"></div>
     `;
@@ -217,7 +217,7 @@
             <div style="font-weight:700;font-size:15px;">${(it.name || '').replace(/[<>&"]/g,'')}</div>
             <div style="color:var(--text-2,#666);font-size:12px;margin-top:3px;">잔액 ${_krw(it.membership_balance)} · ${it.days_until_expire ?? '-'}일 후 만료</div>
           </div>
-          <button class="ms-row-topup" data-id="${it.customer_id}" data-name="${(it.name || '').replace(/[<>&"]/g,'')}" style="padding:8px 14px;background:#F18091;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">충전 안내</button>
+          <button class="ms-row-topup" data-id="${it.customer_id}" data-name="${(it.name || '').replace(/[<>&"]/g,'')}" style="padding:8px 14px;background:var(--brand);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">충전 안내</button>
         </div>
       `).join('');
       sheet.querySelector('#msBody').innerHTML = list;

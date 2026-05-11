@@ -91,7 +91,7 @@
         + '  <div style="font-size:12px;color:#888;margin-bottom:4px;">' + _esc(when) + ' · ' + _esc(it.customer_name || '이름 없음') + '</div>'
         + '  <textarea readonly style="width:100%;min-height:90px;font-size:12px;padding:8px;border:1px solid #eee;border-radius:8px;background:#fafafa;resize:none;" data-ns-msg="' + i + '">' + _esc(it.message_template || '') + '</textarea>'
         + '  <div style="display:flex;gap:6px;margin-top:6px;">'
-        + '    <button type="button" data-ns-copy="' + i + '" style="flex:1;padding:8px;border:none;border-radius:8px;background:#F18091;color:#fff;font-weight:700;cursor:pointer;">📋 메시지 복사</button>'
+        + '    <button type="button" data-ns-copy="' + i + '" style="flex:1;padding:8px;border:none;border-radius:8px;background:var(--brand);color:#fff;font-weight:700;cursor:pointer;">📋 메시지 복사</button>'
         + '    <a href="kakaotalk://" style="padding:8px 12px;border:1px solid #FEE500;border-radius:8px;background:#FEE500;color:#3C1E1E;font-weight:700;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">카카오톡 열기</a>'
         + '  </div>'
         + '</div>';
@@ -217,7 +217,7 @@
       return '<span style="display:inline-block;padding:2px 6px;background:rgba(217,95,95,0.12);color:#d95f5f;border-radius:6px;font-size:10px;font-weight:700;margin-left:6px;">취소 요청</span>';
     }
     if (b.confirmation_sent_at) {
-      return '<span style="display:inline-block;padding:2px 6px;background:rgba(241,128,145,0.12);color:#D95F70;border-radius:6px;font-size:10px;font-weight:700;margin-left:6px;">대기중</span>';
+      return '<span style="display:inline-block;padding:2px 6px;background:rgba(241,128,145,0.12);color:var(--brand-strong);border-radius:6px;font-size:10px;font-weight:700;margin-left:6px;">대기중</span>';
     }
     return '';
   }

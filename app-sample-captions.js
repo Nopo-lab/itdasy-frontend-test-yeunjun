@@ -75,7 +75,7 @@
           </div>
           <div style="font-size:12px; color:#666; margin-bottom:14px;">인스타 연동 전에도 <b>이런 느낌</b>으로 캡션이 나와요. 연동하시면 <b>사장님 말투 그대로</b> 맞춤 생성됩니다.</div>
           <div id="_sampleList"></div>
-          <button id="_sampleConnectBtn" style="width:100%; margin-top:18px; padding:14px; border-radius:12px; border:none; background:linear-gradient(135deg,#f18091,#ff9aa8); color:#fff; font-size:14px; font-weight:800; cursor:pointer; min-height:48px;">내 말투로 맞춤 생성하기 →</button>
+          <button id="_sampleConnectBtn" style="width:100%; margin-top:18px; padding:14px; border-radius:12px; border:none; background:linear-gradient(135deg,var(--brand),#ff9aa8); color:#fff; font-size:14px; font-weight:800; cursor:pointer; min-height:48px;">내 말투로 맞춤 생성하기 →</button>
         </div>
       `;
       document.body.appendChild(popup);
@@ -91,10 +91,10 @@
     const list = document.getElementById('_sampleList');
     list.innerHTML = samples.map((s, i) => `
       <div style="background:#fafafa; border-radius:14px; padding:14px; margin-bottom:10px;">
-        <div style="font-size:11px; font-weight:800; color:var(--accent, #f18091); margin-bottom:6px;">${s.tone}</div>
+        <div style="font-size:11px; font-weight:800; color:var(--accent, var(--brand)); margin-bottom:6px;">${s.tone}</div>
         <div style="font-size:13px; color:#333; line-height:1.7; white-space:pre-wrap; margin-bottom:8px;">${s.caption.replace(/</g,'&lt;')}</div>
         <div style="font-size:11px; color:#888;">${s.hashtags.split(',').map(h => '#'+h.trim()).join(' ')}</div>
-        <button data-sample-idx="${i}" class="_sampleCopyBtn" style="margin-top:10px; padding:8px 14px; border-radius:8px; border:1px solid var(--accent, #f18091); background:#fff; color:var(--accent, #f18091); font-size:12px; font-weight:700; cursor:pointer; min-height:36px;">📋 이 톤으로 복사</button>
+        <button data-sample-idx="${i}" class="_sampleCopyBtn" style="margin-top:10px; padding:8px 14px; border-radius:8px; border:1px solid var(--accent, var(--brand)); background:#fff; color:var(--accent, var(--brand)); font-size:12px; font-weight:700; cursor:pointer; min-height:36px;">📋 이 톤으로 복사</button>
       </div>
     `).join('');
     list.querySelectorAll('._sampleCopyBtn').forEach(b => {

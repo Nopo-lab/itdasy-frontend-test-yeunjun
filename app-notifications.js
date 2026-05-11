@@ -353,13 +353,13 @@
     host.innerHTML = `
       <div role="status" aria-live="polite" style="background:linear-gradient(135deg,#fff5f7 0%,#ffe8ec 100%);border:1px solid rgba(241,128,145,0.35);border-radius:14px;padding:14px 14px 14px 16px;box-shadow:0 2px 10px rgba(241,128,145,0.10);position:relative;">
         <div style="display:flex;align-items:flex-start;gap:10px;">
-          <div style="flex-shrink:0;width:36px;height:36px;border-radius:12px;background:#f18091;display:flex;align-items:center;justify-content:center;font-size:17px;color:#fff;">📢</div>
+          <div style="flex-shrink:0;width:36px;height:36px;border-radius:12px;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:17px;color:#fff;">📢</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:11px;font-weight:600;color:#f18091;letter-spacing:0.2px;margin-bottom:2px;">잇데이 공지</div>
+            <div style="font-size:11px;font-weight:600;color:var(--brand);letter-spacing:0.2px;margin-bottom:2px;">잇데이 공지</div>
             <div style="font-size:14px;font-weight:700;color:#1f2330;line-height:1.35;">${_esc(a.title)}</div>
             <div style="font-size:12px;color:#525c70;margin-top:4px;line-height:1.5;white-space:pre-wrap;">${_esc(a.body || '')}</div>
             <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
-              <button data-ann-confirm="${a.id}" style="background:#f18091;color:#fff;border:none;padding:7px 14px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;">확인</button>
+              <button data-ann-confirm="${a.id}" style="background:var(--brand);color:#fff;border:none;padding:7px 14px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;">확인</button>
               ${more > 0 ? `<button data-ann-more style="background:none;border:none;color:#7a8294;font-size:11px;cursor:pointer;">공지 ${more}개 더 보기</button>` : ''}
               <span style="margin-left:auto;font-size:10px;color:#8b94a7;">${_esc(_relativeTime(a.scheduled_at))}</span>
             </div>

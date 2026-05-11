@@ -188,8 +188,8 @@
     if (!low.length) return '';
     return `
       <div style="display:flex; justify-content:space-between; align-items:baseline; padding:6px 16px; margin-bottom:8px;">
-        <span style="font-size:13px; color:var(--accent,#F18091); font-weight:700; letter-spacing:-0.2px;">지금 부족해요</span>
-        <span style="font-size:12px; color:var(--accent,#F18091); font-weight:600; white-space:nowrap;">자동 주문 가능 · ${low.length}건</span>
+        <span style="font-size:13px; color:var(--accent,var(--brand)); font-weight:700; letter-spacing:-0.2px;">지금 부족해요</span>
+        <span style="font-size:12px; color:var(--accent,var(--brand)); font-weight:600; white-space:nowrap;">자동 주문 가능 · ${low.length}건</span>
       </div>
       <div class="inv-list danger">
         ${low.map(r => _renderLowCard(r)).join('')}

@@ -26,7 +26,7 @@
   const _svg12 = (id) => `<svg width="12" height="12" style="vertical-align:-2px;" aria-hidden="true"><use href="#${id}"/></svg>`;
   const SEGMENT_STYLE = {
     vip:     { label: 'VIP', icon: _svg12('ic-star'), bg: 'linear-gradient(135deg,#FFD700,#FFA500)', color: '#fff' },
-    regular: { label: '단골', icon: _svg12('ic-star'), bg: 'linear-gradient(135deg,#F18091,#FF6B9D)', color: '#fff' },
+    regular: { label: '단골', icon: _svg12('ic-star'), bg: 'linear-gradient(135deg,var(--brand),#FF6B9D)', color: '#fff' },
     new:     { label: '신규', icon: _svg12('ic-sparkles'), bg: 'linear-gradient(135deg,#4ECDC4,#44A08D)', color: '#fff' },
     absent:  { label: '휴면', icon: _svg12('ic-moon'), bg: 'linear-gradient(135deg,#95A5A6,#7F8C8D)', color: '#fff' },
   };
@@ -486,10 +486,10 @@
       const errMsg = e.message || '네트워크 오류';
       body.innerHTML = `
         <div style="padding:40px 20px;text-align:center;">
-          <div style="margin-bottom:10px;color:#F18091;"><svg width="36" height="36" aria-hidden="true"><use href="#ic-alert-triangle"/></svg></div>
+          <div style="margin-bottom:10px;color:var(--brand);"><svg width="36" height="36" aria-hidden="true"><use href="#ic-alert-triangle"/></svg></div>
           <div style="font-size:13px;color:#c00;">대시보드를 불러오지 못했어요</div>
           <div style="font-size:11px;color:#888;margin-top:4px;">${_esc(errMsg)}</div>
-          <button id="cdRetryBtn" style="margin-top:14px;padding:10px 20px;border:1px solid #F18091;background:rgba(241,128,145,0.08);color:#F18091;border-radius:12px;font-weight:700;font-size:13px;cursor:pointer;">다시 시도</button>
+          <button id="cdRetryBtn" style="margin-top:14px;padding:10px 20px;border:1px solid var(--brand);background:rgba(241,128,145,0.08);color:var(--brand);border-radius:12px;font-weight:700;font-size:13px;cursor:pointer;">다시 시도</button>
         </div>
       `;
       body.querySelector('#cdRetryBtn')?.addEventListener('click', () => {

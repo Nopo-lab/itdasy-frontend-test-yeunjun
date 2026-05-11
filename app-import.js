@@ -97,7 +97,7 @@
 
         <!-- 입력 방식 탭 -->
         <div style="display:grid;grid-template-columns:repeat(${smartEnabled ? 3 : 1},1fr);gap:6px;padding:4px;background:rgba(0,0,0,0.04);border-radius:10px;margin-bottom:12px;">
-          <button data-imp-src="file" class="imp-src-btn" style="padding:10px 6px;border:none;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;background:#fff;color:var(--accent,#F18091);">📄 파일</button>
+          <button data-imp-src="file" class="imp-src-btn" style="padding:10px 6px;border:none;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;background:#fff;color:var(--accent,var(--brand));">📄 파일</button>
           ${smartEnabled ? `<button data-imp-src="photo" class="imp-src-btn" style="padding:10px 6px;border:none;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;background:transparent;color:#555;">📸 사진 OCR</button>` : ''}
           ${smartEnabled ? `<button data-imp-src="text" class="imp-src-btn" style="padding:10px 6px;border:none;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;background:transparent;color:#555;">📋 붙여넣기</button>` : ''}
         </div>
@@ -113,7 +113,7 @@
         b.style.color = '#555';
       });
       btn.style.background = '#fff';
-      btn.style.color = 'var(--accent,#F18091)';
+      btn.style.color = 'var(--accent,var(--brand))';
       _renderSourcePanel(btn.dataset.impSrc);
     }));
     _renderSourcePanel('file');
@@ -162,7 +162,7 @@
       panel.innerHTML = `
         <div style="margin-bottom:8px;font-size:12px;color:#666;">카카오톡·메모장에서 복사한 내용을 붙여넣으세요.</div>
         <textarea id="importPasteText" rows="8" placeholder="예)\n김지연 010-1234-5678 VIP\n박소영 010-2345-6789\n..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-family:inherit;resize:vertical;font-size:12px;"></textarea>
-        <button id="importPasteParse" style="width:100%;margin-top:10px;padding:12px;border:none;border-radius:10px;background:var(--accent,#F18091);color:#fff;font-weight:800;cursor:pointer;font-size:14px;">텍스트에서 추출하기 ✨</button>
+        <button id="importPasteParse" style="width:100%;margin-top:10px;padding:12px;border:none;border-radius:10px;background:var(--accent,var(--brand));color:#fff;font-weight:800;cursor:pointer;font-size:14px;">텍스트에서 추출하기 ✨</button>
       `;
       panel.querySelector('#importPasteParse').addEventListener('click', _parsePastedText);
     }
@@ -240,14 +240,14 @@
         <div style="max-height:280px;overflow-y:auto;background:#fff;border-radius:10px;border:1px solid rgba(0,0,0,0.06);">
           ${items.map((it, i) => `
             <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;${i>0?'border-top:1px solid rgba(0,0,0,0.05);':''}cursor:pointer;">
-              <input type="checkbox" data-smart-idx="${i}" checked style="width:18px;height:18px;accent-color:var(--accent,#F18091);" />
+              <input type="checkbox" data-smart-idx="${i}" checked style="width:18px;height:18px;accent-color:var(--accent,var(--brand));" />
               <div style="flex:1;min-width:0;font-size:12px;">
                 ${cols.map(c => `<span style="color:${it[c]?'#222':'#bbb'};margin-right:8px;">${_esc(it[c] != null && it[c] !== '' ? (c === 'amount' ? (+it[c]).toLocaleString('ko-KR')+'원' : it[c]) : '—')}</span>`).join('')}
               </div>
             </label>
           `).join('')}
         </div>
-        <button id="smartCommit" style="width:100%;margin-top:12px;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;font-weight:800;cursor:pointer;font-size:14px;">선택한 항목 저장 ✓</button>
+        <button id="smartCommit" style="width:100%;margin-top:12px;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;font-weight:800;cursor:pointer;font-size:14px;">선택한 항목 저장 ✓</button>
       </div>
     `;
 
@@ -346,7 +346,7 @@
             </table>
           </div>
         </div>
-        <button id="importCommitBtn" style="width:100%;margin-top:14px;padding:12px;border:none;border-radius:8px;background:var(--accent,#F18091);color:#fff;font-weight:700;cursor:pointer;font-size:15px;">${p.total_rows}건 가져오기</button>
+        <button id="importCommitBtn" style="width:100%;margin-top:14px;padding:12px;border:none;border-radius:8px;background:var(--accent,var(--brand));color:#fff;font-weight:700;cursor:pointer;font-size:15px;">${p.total_rows}건 가져오기</button>
       </div>
     `;
 
@@ -388,7 +388,7 @@
       } else {
         missingEl.innerHTML = '<span style="color:#388e3c;">✓ 필수 필드 모두 연결됨</span>';
         btn.disabled = false;
-        btn.style.background = 'var(--accent,#F18091)'; btn.style.color = '#fff'; btn.style.cursor = 'pointer';
+        btn.style.background = 'var(--accent,var(--brand))'; btn.style.color = '#fff'; btn.style.cursor = 'pointer';
       }
     };
     mapList.querySelectorAll('[data-map-field]').forEach(sel => sel.addEventListener('change', updateMissing));
@@ -444,7 +444,7 @@
             </div>
           </details>
         ` : ''}
-        <button onclick="window._importBack()" style="width:100%;padding:12px;border:none;border-radius:8px;background:var(--accent,#F18091);color:#fff;font-weight:700;cursor:pointer;font-size:15px;">다른 종류 가져오기</button>
+        <button onclick="window._importBack()" style="width:100%;padding:12px;border:none;border-radius:8px;background:var(--accent,var(--brand));color:#fff;font-weight:700;cursor:pointer;font-size:15px;">다른 종류 가져오기</button>
         <button onclick="closeImport()" style="width:100%;margin-top:8px;padding:10px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;">닫기</button>
       </div>
     `;

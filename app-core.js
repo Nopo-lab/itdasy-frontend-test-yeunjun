@@ -1716,9 +1716,9 @@ if ('serviceWorker' in navigator && !_isCapacitor) {
       if (!triggered) {
         triggered = true;
         LABEL.textContent    = '놓으면 새로고침!';
-        LABEL.style.color    = '#F18091';
+        LABEL.style.color    = 'var(--brand)';
         EMOJI.style.transform = 'scale(1.35)';
-        EMOJI.style.color     = '#F18091';
+        EMOJI.style.color     = 'var(--brand)';
       }
     } else {
       if (triggered) {

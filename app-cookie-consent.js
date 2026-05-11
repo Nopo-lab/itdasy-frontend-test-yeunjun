@@ -85,7 +85,7 @@
             · <a href="https://itdasy.com/privacy-en.html" target="_blank" rel="noopener" style="color:#FFB2BE;text-decoration:underline;">English</a>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button type="button" id="__cc_accept" style="flex:1;min-width:120px;padding:10px 12px;border-radius:10px;border:none;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;font-weight:800;cursor:pointer;font-size:12.5px;">✅ 전체 허용</button>
+            <button type="button" id="__cc_accept" style="flex:1;min-width:120px;padding:10px 12px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;font-weight:800;cursor:pointer;font-size:12.5px;">✅ 전체 허용</button>
             <button type="button" id="__cc_essential" style="flex:1;min-width:120px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:#fff;font-weight:700;cursor:pointer;font-size:12.5px;">필수만</button>
           </div>
         </div>

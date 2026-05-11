@@ -50,7 +50,7 @@
     create_customer:       { icon: 'ic-user',            label: '고객 추가', color: '#4ECDC4' },
     update_customer:       { icon: 'ic-edit-3',          label: '고객 수정', color: '#4ECDC4' },
     create_revenue:        { icon: 'ic-dollar-sign',     label: '매출 기록', color: '#388e3c' },
-    create_booking:        { icon: 'ic-calendar',        label: '예약 추가', color: '#F18091' },
+    create_booking:        { icon: 'ic-calendar',        label: '예약 추가', color: 'var(--brand)' },
     update_booking:        { icon: 'ic-edit-3',          label: '예약 수정', color: '#A78BFA' },
     cancel_booking:        { icon: 'ic-x',               label: '예약 취소', color: '#DC3545' },
     reschedule_booking:    { icon: 'ic-refresh-cw',      label: '예약 변경', color: '#0288D1' },
@@ -311,7 +311,7 @@
           <button id="asstPhoto" aria-label="사진 업로드" title="사진 업로드" style="flex-shrink:0;width:44px;height:44px;border:1px solid hsl(340,78%,85%);border-radius:14px;background:hsl(340,100%,98%);color:hsl(350,60%,40%);cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;transition:background 0.15s;">${_svg('ic-camera', 20)}</button>
           <input id="asstInput" placeholder="샵 관련해서 물어보세요…" maxlength="300" data-no-voice style="flex:1;padding:12px;border:1px solid #ddd;border-radius:14px;font-size:14px;min-width:0;" />
           <button id="asstMicBtn" type="button" aria-label="음성 입력" title="음성 입력" style="flex-shrink:0;width:44px;height:44px;border:1px solid hsl(340,78%,85%);border-radius:14px;background:hsl(340,100%,98%);color:hsl(350,60%,40%);cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;transition:background 0.15s, color 0.15s;">${_svg('ic-mic', 20)}</button>
-          <button id="asstSend" style="flex-shrink:0;padding:12px 18px;border:none;border-radius:14px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;cursor:pointer;font-weight:800;display:inline-flex;align-items:center;gap:6px;">${_svg('ic-send', 14)} 보내기</button>
+          <button id="asstSend" style="flex-shrink:0;padding:12px 18px;border:none;border-radius:14px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;cursor:pointer;font-weight:800;display:inline-flex;align-items:center;gap:6px;">${_svg('ic-send', 14)} 보내기</button>
         </div>
         <input id="asstCamera" type="file" accept="image/*" capture="environment" multiple style="display:none;" />
         <input id="asstGallery" type="file" accept="image/*" multiple style="display:none;" />
@@ -609,7 +609,7 @@
           photosHtml = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;max-width:280px;">${cells}</div>`;
         }
         const html = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-          <div style="max-width:85%;padding:10px 14px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border-radius:16px 16px 4px 16px;font-size:13px;line-height:1.5;">${photosHtml}${_esc(m.text)}</div>
+          <div style="max-width:85%;padding:10px 14px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border-radius:16px 16px 4px 16px;font-size:13px;line-height:1.5;">${photosHtml}${_esc(m.text)}</div>
         </div>`;
         try { m._cachedHtml = html; m._cachedIdx = idx; } catch (_e) { void _e; }
         return html;
@@ -725,7 +725,7 @@
     if (!action || !action.kind) return '';
     // 2026-04-24 — icon 은 Lucide sprite id (문자열), 렌더 시 _svg() 로 변환
     const kindBadge = {
-      create_booking:  { icon: 'ic-calendar',       label: '예약 추가',       color: '#F18091' },
+      create_booking:  { icon: 'ic-calendar',       label: '예약 추가',       color: 'var(--brand)' },
       create_revenue:  { icon: 'ic-dollar-sign',    label: '매출 기록',       color: '#388e3c' },
       create_customer: { icon: 'ic-user',           label: '고객 등록',       color: '#4ECDC4' },
       create_nps:      { icon: 'ic-star',           label: '후기 기록',       color: '#FFD700' },
@@ -1068,7 +1068,7 @@
         <button data-unified-edit="${historyIdx}" ${running ? 'disabled' : ''} style="flex:1;padding:10px;border:1px solid hsl(340,60%,70%);border-radius:10px;background:#fff;color:hsl(340,60%,40%);font-weight:800;cursor:${running ? 'not-allowed' : 'pointer'};font-size:12px;opacity:${running ? 0.5 : 1};display:inline-flex;align-items:center;justify-content:center;gap:5px;">
           ${_svg('ic-edit-3', 13)} 수정
         </button>
-        <button data-unified-runall="${historyIdx}" ${running || !hasRemaining ? 'disabled' : ''} class="${pulseClass}" style="flex:2;padding:10px;border:none;border-radius:10px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;font-weight:800;cursor:${running || !hasRemaining ? 'not-allowed' : 'pointer'};font-size:13px;opacity:${running || !hasRemaining ? 0.6 : 1};display:inline-flex;align-items:center;justify-content:center;gap:5px;">
+        <button data-unified-runall="${historyIdx}" ${running || !hasRemaining ? 'disabled' : ''} class="${pulseClass}" style="flex:2;padding:10px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;font-weight:800;cursor:${running || !hasRemaining ? 'not-allowed' : 'pointer'};font-size:13px;opacity:${running || !hasRemaining ? 0.6 : 1};display:inline-flex;align-items:center;justify-content:center;gap:5px;">
           ${runLabel}
         </button>
       </div>`;

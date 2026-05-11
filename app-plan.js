@@ -84,7 +84,7 @@
       btn.style.background = 'linear-gradient(135deg,#888,#aaa)';
     } else if (_selectedPlan === 'pro') {
       btn.textContent = (_currentPlan === 'free') ? '14일 무료체험 시작하기' : 'Pro 로 업그레이드';
-      btn.style.background = 'linear-gradient(135deg,#f18091,#ff9aa8)';
+      btn.style.background = 'linear-gradient(135deg,var(--brand),#ff9aa8)';
     } else if (_selectedPlan === 'premium') {
       btn.textContent = (_currentPlan === 'free') ? 'Premium 시작하기' : 'Premium 으로 업그레이드';
       btn.style.background = 'linear-gradient(135deg,#833ab4,#a052d2)';
@@ -129,7 +129,7 @@
     if (!badge) return;
     if (plan === 'pro') {
       badge.textContent = _planDisplayName(plan);
-      badge.style.background = 'linear-gradient(135deg,#f18091,#ff9aa8)';
+      badge.style.background = 'linear-gradient(135deg,var(--brand),#ff9aa8)';
       badge.style.color = '#fff';
     } else if (plan === 'premium') {
       badge.textContent = _planDisplayName(plan);

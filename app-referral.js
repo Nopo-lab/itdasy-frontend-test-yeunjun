@@ -35,19 +35,19 @@
           <div style="font-size:20px;font-weight:900;color:#222;margin-bottom:6px;letter-spacing:-0.3px;">친구 원장님을 초대하세요</div>
           <div style="font-size:13px;color:#666;line-height:1.6;">
             1명 가입할 때마다<br>
-            <strong style="color:#D95F70;font-weight:900;">3개월 Pro 무료</strong> 드려요
+            <strong style="color:var(--brand-strong);font-weight:900;">3개월 Pro 무료</strong> 드려요
           </div>
         </div>
 
         <div style="padding:0 24px 18px;">
-          <div style="background:#fff;border:1.5px dashed #F18091;border-radius:14px;padding:14px;text-align:center;margin-bottom:14px;">
+          <div style="background:#fff;border:1.5px dashed var(--brand);border-radius:14px;padding:14px;text-align:center;margin-bottom:14px;">
             <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:700;letter-spacing:1.5px;">내 추천 코드</div>
-            <div id="ref-code" style="font-family:ui-monospace,monospace;font-size:24px;font-weight:900;color:#D95F70;letter-spacing:4px;">${code}</div>
-            <button id="ref-copy-code" style="margin-top:10px;padding:7px 16px;background:#FEF4F5;border:none;border-radius:8px;color:#D95F70;font-weight:800;font-size:12px;cursor:pointer;">📋 코드 복사</button>
+            <div id="ref-code" style="font-family:ui-monospace,monospace;font-size:24px;font-weight:900;color:var(--brand-strong);letter-spacing:4px;">${code}</div>
+            <button id="ref-copy-code" style="margin-top:10px;padding:7px 16px;background:#FEF4F5;border:none;border-radius:8px;color:var(--brand-strong);font-weight:800;font-size:12px;cursor:pointer;">📋 코드 복사</button>
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-            <button id="ref-share-link" style="padding:12px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border:none;border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 4px 12px rgba(241,128,145,0.35);">🔗 링크 공유</button>
+            <button id="ref-share-link" style="padding:12px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border:none;border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 4px 12px rgba(241,128,145,0.35);">🔗 링크 공유</button>
             <button id="ref-share-kakao" style="padding:12px;background:#FEE500;color:#3C1E1E;border:none;border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;">💬 카톡 전송</button>
           </div>
 

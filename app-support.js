@@ -78,7 +78,7 @@
     if (isMine) {
       row.innerHTML = `
         <span style="font-size:10px;color:#999;align-self:flex-end;margin-bottom:2px;">${time}</span>
-        <div style="background:linear-gradient(135deg,#f18091,#ff9aa8);color:#fff;border-radius:14px 4px 14px 14px;padding:10px 14px;max-width:78%;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">${_escape(m.content)}</div>
+        <div style="background:linear-gradient(135deg,var(--brand),#ff9aa8);color:#fff;border-radius:14px 4px 14px 14px;padding:10px 14px;max-width:78%;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">${_escape(m.content)}</div>
       `;
     } else {
       const label = _resolveLabel(m.meta);
@@ -86,7 +86,7 @@
         ? `<div style="font-size:10px;font-weight:700;color:${label.color};margin-bottom:4px;">${_escape(label.text)}</div>`
         : '';
       row.innerHTML = `
-        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#f18091,#ff9aa8);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">잇</div>
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--brand),#ff9aa8);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">잇</div>
         <div style="max-width:78%;">
           ${labelHtml}
           <div style="background:#fff;border-radius:4px 14px 14px 14px;padding:10px 14px;font-size:13px;line-height:1.5;color:#333;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,0.05);">${_escape(m.content)}</div>

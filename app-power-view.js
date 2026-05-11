@@ -42,7 +42,7 @@
         r.phone || '—',
         (r.memo || '').slice(0, 30) || '—',
         r.is_regular
-          ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;background:#F18091;color:#fff;font-size:11px;font-weight:700;"><svg width="10" height="10" aria-hidden="true"><use href="#ic-star"/></svg>단골</span>`
+          ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;background:var(--brand);color:#fff;font-size:11px;font-weight:700;"><svg width="10" height="10" aria-hidden="true"><use href="#ic-star"/></svg>단골</span>`
           : '<span style="color:#bbb;font-size:11px;">—</span>',
         r.membership_active
           ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;background:#A78BFA;color:#fff;font-size:11px;font-weight:700;"><svg width="10" height="10" aria-hidden="true"><use href="#ic-sparkles"/></svg>가입</span>`
@@ -120,7 +120,7 @@
         _esc(r.customer_name || '—'),
         _esc(r.service_name || '—'),
         `<span style="font-weight:800;color:#1a1a1a;">${_krw(r.amount)}</span>`,
-        `<span style="padding:3px 9px;border-radius:100px;background:#FEF4F5;color:#D95F70;font-size:11px;font-weight:700;">${_esc(({card:'카드',cash:'현금',transfer:'계좌이체',bank_transfer:'계좌이체',etc:'기타'}[r.method])||r.method||'—')}</span>`,
+        `<span style="padding:3px 9px;border-radius:100px;background:#FEF4F5;color:var(--brand-strong);font-size:11px;font-weight:700;">${_esc(({card:'카드',cash:'현금',transfer:'계좌이체',bank_transfer:'계좌이체',etc:'기타'}[r.method])||r.method||'—')}</span>`,
         `<span style="color:#2B8C7E;font-weight:700;">${r.net_amount != null ? _krw(r.net_amount) : _krw(r.amount)}</span>`,
       ],
       editFields: [

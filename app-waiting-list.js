@@ -44,7 +44,7 @@
       return;
     }
     body.innerHTML = items.map(w => {
-      const color = w.status === 'matched' ? '#388e3c' : w.status === 'closed' ? '#888' : '#F18091';
+      const color = w.status === 'matched' ? '#388e3c' : w.status === 'closed' ? '#888' : 'var(--brand)';
       const badge = { waiting: '대기중', matched: '자리남', closed: '종료' }[w.status] || w.status;
       return `
       <div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:12px;margin-bottom:10px;">
@@ -102,7 +102,7 @@
         </div>
         <div style="display:flex;gap:10px;margin-top:18px;">
           <button class="wl-form-cancel" style="flex:1;padding:12px;border:1px solid #ddd;background:#fff;border-radius:10px;font-weight:700;cursor:pointer;">취소</button>
-          <button class="wl-form-save" style="flex:2;padding:12px;border:none;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border-radius:10px;font-weight:800;cursor:pointer;">등록</button>
+          <button class="wl-form-save" style="flex:2;padding:12px;border:none;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border-radius:10px;font-weight:800;cursor:pointer;">등록</button>
         </div>
       </div>`;
   }
@@ -152,7 +152,7 @@
           <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 14px;"></div>
           <div style="display:flex;align-items:center;gap:8px;">
             <strong style="font-size:17px;">📋 대기자 목록</strong>
-            <button class="wl-add" style="margin-left:auto;padding:8px 14px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border:none;border-radius:100px;font-weight:700;font-size:12px;cursor:pointer;">+ 새 대기자</button>
+            <button class="wl-add" style="margin-left:auto;padding:8px 14px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border:none;border-radius:100px;font-weight:700;font-size:12px;cursor:pointer;">+ 새 대기자</button>
             <button class="wl-close" style="background:none;border:none;font-size:18px;color:#888;cursor:pointer;">✕</button>
           </div>
           <div style="font-size:11px;color:#888;margin-top:6px;">예약 취소되면 자리 난 대기자에게 자동 알림</div>

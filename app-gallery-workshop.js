@@ -351,8 +351,8 @@ function _renderSlotCards() {
         <div class="ws-slot-card__name">${slot.label}${done ? `<svg class="ic ic--xs" style="color:var(--ok);" aria-hidden="true"><use href="#ic-check-circle"/></svg>` : ''}</div>
         <div class="ws-slot-card__count">${photoCount}장</div>
         ${slot.customer_name
-          ? `<div style="display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--accent,#F18091);font-weight:700;margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${slot.customer_name}</div>`
-          : `<button onclick="event.stopPropagation();_pickCustomerForWorkshopSlot('${slot.id}');" style="background:none;border:none;color:var(--accent,#F18091);font-size:11px;font-weight:700;cursor:pointer;padding:2px 0;display:inline-flex;align-items:center;gap:3px;margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>고객 지정하기 →</button>`
+          ? `<div style="display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--accent,var(--brand));font-weight:700;margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${slot.customer_name}</div>`
+          : `<button onclick="event.stopPropagation();_pickCustomerForWorkshopSlot('${slot.id}');" style="background:none;border:none;color:var(--accent,var(--brand));font-size:11px;font-weight:700;cursor:pointer;padding:2px 0;display:inline-flex;align-items:center;gap:3px;margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>고객 지정하기 →</button>`
         }
       </div>`;
 
@@ -376,12 +376,12 @@ function _renderSlotCards() {
   addCard.className = 'ws-slot-card-add';
   addCard.style.cssText = `grid-column:span ${span};aspect-ratio:${span}/1;border-radius:16px;background:var(--bg2,#f8f8f9);border:1.5px dashed var(--border,rgba(15,20,25,0.10));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;user-select:none;transition:border-color 0.15s;`;
   addCard.innerHTML = `
-    <div style="width:36px;height:36px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--accent,#F18091);">
+    <div style="width:36px;height:36px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--accent,var(--brand));">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </div>
     <div style="font-size:12px;font-weight:700;color:var(--text2,#5A6573);">사진 추가</div>
   `;
-  addCard.addEventListener('mouseenter', () => { addCard.style.borderColor = 'var(--accent,#F18091)'; });
+  addCard.addEventListener('mouseenter', () => { addCard.style.borderColor = 'var(--accent,var(--brand))'; });
   addCard.addEventListener('mouseleave', () => { addCard.style.borderColor = 'var(--border,rgba(15,20,25,0.10))'; });
   addCard.addEventListener('click', () => {
     const input = document.getElementById('galleryFileInput');
@@ -416,12 +416,12 @@ function _showAutoGroupBanner(count) {
   banner.style.display = 'block';
   banner.dataset.autoGroupCount = String(count);
   banner.innerHTML = `
-    <div style="background:var(--brand-bg,#FCEEF1);border:1px solid var(--accent,#F18091);border-radius:14px;padding:13px 14px;margin-bottom:14px;display:flex;align-items:center;gap:11px;">
-      <div style="width:32px;height:32px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--accent,#F18091);flex-shrink:0;">
+    <div style="background:var(--brand-bg,#FCEEF1);border:1px solid var(--accent,var(--brand));border-radius:14px;padding:13px 14px;margin-bottom:14px;display:flex;align-items:center;gap:11px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--accent,var(--brand));flex-shrink:0;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
       </div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:800;color:var(--accent,#F18091);letter-spacing:-0.2px;">${count}명 손님으로 자동 분류했어요</div>
+        <div style="font-size:13px;font-weight:800;color:var(--accent,var(--brand));letter-spacing:-0.2px;">${count}명 손님으로 자동 분류했어요</div>
         <div style="font-size:11px;color:var(--text2,#5A6573);margin-top:2px;">촬영 시각 30분 기준 · 다르면 수정/합치기</div>
       </div>
       <button onclick="if(typeof openAssignPopup==='function')openAssignPopup();" style="padding:6px 12px;background:#fff;border:1px solid var(--border,rgba(15,20,25,0.08));border-radius:999px;font-size:11px;font-weight:700;color:var(--text,#0F1419);cursor:pointer;flex-shrink:0;">수정</button>

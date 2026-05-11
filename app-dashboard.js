@@ -200,7 +200,7 @@
                   class="${active === o.key ? 'active' : ''}"
                   style="border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:${active === o.key ? '700' : '500'};
                          padding:6px 12px;border-radius:10px;
-                         background:${active === o.key ? 'linear-gradient(135deg,#F18091,#E96A7E)' : 'transparent'};
+                         background:${active === o.key ? 'linear-gradient(135deg,var(--brand),#E96A7E)' : 'transparent'};
                          color:${active === o.key ? '#fff' : 'var(--text)'};
                          transition:background .15s ease,color .15s ease;">
             ${o.label}

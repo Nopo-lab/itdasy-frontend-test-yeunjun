@@ -34,7 +34,7 @@
       <div style="background:linear-gradient(135deg,rgba(241,128,145,.08),rgba(241,128,145,.02));border:1px solid rgba(241,128,145,.18);border-radius:14px;padding:12px 14px;">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
           <span style="font-size:13px;">✨</span>
-          <strong style="font-size:12px;color:#D95F70;">AI 추천 · 오늘 할 일</strong>
+          <strong style="font-size:12px;color:var(--brand-strong);">AI 추천 · 오늘 할 일</strong>
         </div>
         <div style="font-size:11px;color:#aaa;">불러오는 중…</div>
       </div>`;
@@ -49,7 +49,7 @@
       <div style="background:linear-gradient(135deg,rgba(241,128,145,.08),rgba(241,128,145,.02));border:1px solid rgba(241,128,145,.18);border-radius:14px;padding:12px 14px;">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
           <span style="font-size:13px;">✨</span>
-          <strong style="font-size:12px;color:#D95F70;letter-spacing:.3px;">AI 추천 · 오늘 할 일</strong>
+          <strong style="font-size:12px;color:var(--brand-strong);letter-spacing:.3px;">AI 추천 · 오늘 할 일</strong>
         </div>
         ${d.items.map((it, i) => `
           <button data-ai-sug="${_esc(it.action || 'chat')}"

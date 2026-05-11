@@ -33,7 +33,7 @@
     if (typeof window.showToast === 'function') window.showToast(msg, opts);
   }
 
-  const COLORS = ['#F18091', '#0288D1', '#F59E0B', '#10B981', '#A78BFA', '#EC4899', '#6366F1', '#EF4444'];
+  const COLORS = ['var(--brand)', '#0288D1', '#F59E0B', '#10B981', '#A78BFA', '#EC4899', '#6366F1', '#EF4444'];
   function _pickColor(idx) { return COLORS[idx % COLORS.length]; }
 
   async function list(force) {
@@ -78,7 +78,7 @@
           <input id="stRole" type="text" placeholder="역할 (예: 스타일리스트)" maxlength="50" style="width:100%;padding:10px;border:1px solid var(--border,#e5e5e5);border-radius:8px;font-size:14px;margin-bottom:6px;">
           <input id="stPhone" type="tel" placeholder="전화번호 (선택)" maxlength="30" style="width:100%;padding:10px;border:1px solid var(--border,#e5e5e5);border-radius:8px;font-size:14px;margin-bottom:8px;">
           <div id="stColors" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"></div>
-          <button id="stAdd" style="width:100%;padding:12px;background:linear-gradient(135deg,#F18091,#FFA8B6);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;">추가</button>
+          <button id="stAdd" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--brand),#FFA8B6);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;">추가</button>
         </div>
       </div>
     `;

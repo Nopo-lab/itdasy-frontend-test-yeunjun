@@ -44,7 +44,7 @@
 
       <div style="display:flex;gap:8px;">
         <button id="pb-copy" style="flex:1;padding:12px;border:1px solid #ddd;background:#fff;border-radius:10px;font-weight:700;cursor:pointer;">📋 복사</button>
-        <button id="pb-share" style="flex:1;padding:12px;border:none;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border-radius:10px;font-weight:800;cursor:pointer;">📤 공유</button>
+        <button id="pb-share" style="flex:1;padding:12px;border:none;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border-radius:10px;font-weight:800;cursor:pointer;">📤 공유</button>
       </div>
 
       <div style="padding:14px;background:#FFFBEA;border-radius:10px;margin-top:14px;border:1px solid #FDE68A;">

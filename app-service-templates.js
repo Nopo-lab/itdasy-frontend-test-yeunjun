@@ -155,7 +155,7 @@
             <option value="nail">네일</option><option value="eye">속눈썹</option>
             <option value="skin">피부</option><option value="wax">왁싱</option>
           </select>
-          <button id="svc-add" style="padding:10px 16px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;">추가</button>
+          <button id="svc-add" style="padding:10px 16px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;">추가</button>
         </div>
       </div>
       <div id="svc-list">${_renderList(_cache)}</div>

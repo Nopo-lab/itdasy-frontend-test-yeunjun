@@ -86,7 +86,7 @@
 
     // 태그라인 (상단)
     if (tagLine) {
-      ctx.fillStyle = '#f18091';
+      ctx.fillStyle = 'var(--brand)';
       ctx.font = 'bold 36px Pretendard, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -140,7 +140,7 @@
             <input id="_storyTag" type="text" placeholder="예: 오늘의 시술 ✨" style="width:100%; margin-top:6px; padding:12px; border:1.5px solid #e0e0e0; border-radius:10px; font-size:14px; box-sizing:border-box; min-height:44px;">
           </label>
 
-          <button id="_storyRender" style="width:100%; margin-top:16px; padding:14px; border-radius:12px; border:none; background:linear-gradient(135deg,#f18091,#ff9aa8); color:#fff; font-size:14px; font-weight:800; cursor:pointer; min-height:48px;">✨ 만들기</button>
+          <button id="_storyRender" style="width:100%; margin-top:16px; padding:14px; border-radius:12px; border:none; background:linear-gradient(135deg,var(--brand),#ff9aa8); color:#fff; font-size:14px; font-weight:800; cursor:pointer; min-height:48px;">✨ 만들기</button>
 
           <div id="_storyPreview" style="margin-top:18px; display:none;">
             <img id="_storyImg" style="width:100%; border-radius:14px; border:1px solid #eee;">
