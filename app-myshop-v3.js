@@ -256,7 +256,7 @@
           <div class="ms-shop__avatar" aria-hidden="true">${avatarHTML}</div>
           <div class="ms-shop__info">
             <div class="ms-shop__name">${_esc(shop)}</div>
-            <div class="ms-shop__plan">✦ ${_esc(_planText())}</div>
+            <div class="ms-shop__plan">${_esc(_planText())}</div>
           </div>
           <button type="button" class="ms-shop__edit" data-mv-act="editShop" aria-label="샵 정보 편집">
             <i class="ph-duotone ph-pencil-simple" style="font-size:14px" aria-hidden="true"></i>
@@ -534,14 +534,8 @@
     return list.slice(0, 5);
   }
   function _feedIconSVG(kind) {
-    const map = {
-      check: '<polyline points="20 6 9 17 4 12"/>',
-      dm: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
-      msg: '<rect x="2" y="5" width="20" height="14" rx="2"/>',
-      stock: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>',
-      info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
-    };
-    return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${map[kind] || map.info}</svg>`;
+    const map = { check: 'ph-check-circle', dm: 'ph-chat-circle', msg: 'ph-envelope-simple', stock: 'ph-package', info: 'ph-info' };
+    return '<i class="ph-duotone ' + (map[kind] || map.info) + '" style="font-size:14px" aria-hidden="true"></i>';
   }
   function _renderPCFeed(brief) {
     const items = _buildActivityFeed(brief);
