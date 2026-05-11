@@ -1193,7 +1193,21 @@
     // pending · editing
     const editing = it.editing === true;
     const summary = _summarizeItem(it.action);
-    const rowHead = `<div style="font-size:12px;color:#222;font-weight:700;">${iIdx + 1}. ${_esc(summary)}</div>`;
+    // [2026-05-12 QA #3] confidence 3단계 색상 — 사용자가 직관적으로 신뢰도 인식.
+    // >=0.9 녹색 (배지 생략), 0.7~0.89 노랑 (참고), <0.7 빨강 (자동등록 차단).
+    const _conf = (it.action && typeof it.action.confidence === 'number') ? it.action.confidence : null;
+    let _confBadge = '';
+    if (_conf !== null) {
+      const pct = Math.round(_conf * 100);
+      if (_conf < 0.7) {
+        _confBadge = `<span style="display:inline-block;margin-left:6px;padding:1px 6px;background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;border-radius:4px;font-size:10px;font-weight:700;">⚠️ 확인 필요 ${pct}%</span>`;
+      } else if (_conf < 0.9) {
+        _confBadge = `<span style="display:inline-block;margin-left:6px;padding:1px 6px;background:#fefce8;color:#a16207;border:1px solid #fde68a;border-radius:4px;font-size:10px;font-weight:600;">참고 ${pct}%</span>`;
+      } else {
+        // >= 0.9 는 배지 생략 (깔끔)
+      }
+    }
+    const rowHead = `<div style="font-size:12px;color:#222;font-weight:700;">${iIdx + 1}. ${_esc(summary)}${_confBadge}</div>`;
 
     // 편집 가능 필드 (있는 것만 보여주기)
     const editFields = [];
@@ -2029,6 +2043,23 @@
       .map((it, i) => ({ it, i }))
       .filter(({ it }) => !it.skipped && it.status !== 'done' && it.status !== 'running');
     if (!targets.length) return;
+    // [2026-05-12 QA #3] confidence < 0.7 인 action 자동 [전체 추가] 차단.
+    // 사용자가 개별 [추가] 누르거나 [편집] 후 통과해야 commit.
+    const lowConf = targets.filter(({ it }) => {
+      const c = it.action && it.action.confidence;
+      return typeof c === 'number' && c < 0.7;
+    });
+    if (lowConf.length) {
+      if (window.showToast) window.showToast(`${lowConf.length}건은 신뢰도 낮아 확인 필요 — 빨간 항목 먼저 편집해 주세요`);
+      // 낮은 confidence 만 빼고 진행
+      const safe = targets.filter(({ it }) => {
+        const c = it.action && it.action.confidence;
+        return !(typeof c === 'number' && c < 0.7);
+      });
+      if (!safe.length) return;
+      targets.length = 0;
+      targets.push(...safe);
+    }
     group.bulkProgress = { current: 0, total: targets.length };
     // 모두 running 상태로 한번에 표시 → 사용자가 '동시 진행' 체감
     targets.forEach(({ it }) => { it.status = 'running'; });
