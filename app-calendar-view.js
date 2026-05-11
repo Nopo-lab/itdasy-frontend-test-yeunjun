@@ -1373,6 +1373,15 @@
 
   function _bindFormExtras(body, existing) {
     let custId = existing?.customer_id || null;
+    // 고객 dashboard → 예약잡기 진입: prefill 된 고객 정보 자동 적용.
+    // _pendingBookingCustomer 는 1회용 — 소비 후 비움 (다음 새 예약은 빈 상태로).
+    const _pendingCust = (!existing && window._pendingBookingCustomer) || null;
+    if (_pendingCust && _pendingCust.id) {
+      custId = _pendingCust.id;
+      window._pendingBookingCustomer = null;
+      const nameInput = body.querySelector('#bfCustName');
+      if (nameInput) nameInput.value = _pendingCust.name || '';
+    }
     let _durMin = 60;
     let _startH, _startM;
     // 현재 시작 시간 읽기
@@ -1618,6 +1627,17 @@
     // 취소 버튼
     body.querySelector('#cv-form-back2')?.addEventListener('click', () => _renderViewBody());
 
+    // 고객 dashboard 진입 prefill: 카드도 채우기 (이름 input 은 시작점에서 이미 채움)
+    if (_pendingCust && _pendingCust.id) {
+      try {
+        const _items = (window.Customer && window.Customer._cache) || [];
+        const _full = _items.find(c => String(c.id) === String(_pendingCust.id));
+        _renderCustCard(_full || { id: _pendingCust.id, name: _pendingCust.name });
+      } catch (_e) {
+        _renderCustCard({ id: _pendingCust.id, name: _pendingCust.name });
+      }
+    }
+
     // 공유 getter
     body._getCustId = () => custId;
     body._getStaffId = () => _staffId;
@@ -1846,6 +1866,12 @@
     // now-line 1분마다 갱신
     if (_nowLineTimer) clearInterval(_nowLineTimer);
     _nowLineTimer = setInterval(_placeNowLine, 60000);
+
+    // 고객 dashboard → "예약잡기" 진입: 자동으로 예약 추가 폼 표시.
+    // _pendingBookingCustomer 는 _bindFormExtras 가 소비하므로 여기선 트리거만.
+    if (window._pendingBookingCustomer) {
+      setTimeout(() => _openForm(_curDate, null), 50);
+    }
 
     if (typeof window._perfMark === 'function') window._perfMark('calendar:open:end');
   };

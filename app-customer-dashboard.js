@@ -88,9 +88,6 @@
     }
   }
 
-  // UUID v4 정규식 — 손상된 id 면 즉시 안내
-  const _UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
   async function _apiPatch(path, body) {
     if (!window.API || !window.authHeader) throw new Error('no-auth');
     const res = await fetch(window.API + path, {
@@ -397,11 +394,11 @@
           else if (typeof window.openBooking === 'function') window.openBooking();
         } else if (act === 'revenue') {
           closeCustomerDashboard();
-          if (typeof window.openRevenue === 'function') {
+          // _openRevenueAddFor 가 내부에서 openRevenue + prefill 모달까지 처리.
+          if (typeof window._openRevenueAddFor === 'function') {
+            window._openRevenueAddFor(id, name);
+          } else if (typeof window.openRevenue === 'function') {
             window.openRevenue();
-            if (typeof window._openRevenueAddFor === 'function') {
-              window._openRevenueAddFor(id, name);
-            }
           }
         } else if (act === 'nps') {
           closeCustomerDashboard();
@@ -437,8 +434,8 @@
     document.body.style.overflow = 'hidden';
     const body = sheet.querySelector('#cdBody');
 
-    // id 형식 검증 — UUID 아니면 즉시 안내
-    if (typeof id !== 'string' || !_UUID_RE.test(id)) {
+    // id 형식 검증 — 비어있거나 숫자/문자열 아니면 안내. 백엔드는 정수 PK 사용.
+    if (id == null || (typeof id !== 'number' && typeof id !== 'string') || String(id).trim() === '') {
       console.warn('[customer-dashboard] invalid id:', id);
       body.innerHTML = `
         <div style="padding:40px 20px;text-align:center;">

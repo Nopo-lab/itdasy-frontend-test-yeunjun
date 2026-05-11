@@ -728,9 +728,13 @@
   window._revenueBack = _rerender;
 
   // ── 자세히 입력 모달 (모바일·PC 공통) ────────────────────
-  function _openAddForm() {
+  function _openAddForm(prefill) {
     let modal = document.getElementById('rvAddModal');
-    if (modal) { modal.style.display = 'flex'; return; }
+    if (modal) {
+      // 기존 모달이 떠있는데 prefill 들어오면 강제 재생성. 그 외엔 그냥 보이기.
+      if (prefill) { modal.remove(); }
+      else { modal.style.display = 'flex'; return; }
+    }
     modal = document.createElement('div');
     modal.id = 'rvAddModal';
     modal.style.cssText = 'position:fixed;inset:0;z-index:9001;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;justify-content:center;';
@@ -765,7 +769,7 @@
     document.body.appendChild(modal);
     modal.addEventListener('click', (e) => { if (e.target === modal) _closeAddModal(); });
     modal.querySelector('[data-rv-modal-close]').addEventListener('click', _closeAddModal);
-    _wireAddForm(modal);
+    _wireAddForm(modal, prefill);
   }
 
   function _closeAddModal() {
@@ -829,8 +833,8 @@
       }
     };
   }
-  function _wireAddForm(modal) {
-    const ctx = { method: 'card', customer_id: null };
+  function _wireAddForm(modal, prefill) {
+    const ctx = { method: 'card', customer_id: prefill?.customer_id || null };
     const setMethod = (m) => {
       ctx.method = m;
       modal.querySelectorAll('[data-rf-method]').forEach(b => {
@@ -844,6 +848,12 @@
     modal.querySelectorAll('[data-rf-method]').forEach(b => b.addEventListener('click', () => setMethod(b.dataset.rfMethod)));
     modal.querySelector('#rfCustomerPick').addEventListener('click', _onPickCustomer(modal, ctx));
     modal.querySelector('#rfSave').addEventListener('click', _onSaveAddForm(modal, ctx));
+
+    // 고객 대시보드에서 "매출 입력" 진입 — 고객 정보 미리 채움.
+    // 멤버십 잔액·활성 여부는 prefill 만으론 부족 → 보고 싶으면 사용자가 "선택" 다시 눌러 갱신.
+    if (prefill?.customer_name) {
+      modal.querySelector('#rfCustomerName').value = prefill.customer_name;
+    }
   }
 
   // ── 삭제 ────────────────────────────────────────────────
@@ -912,6 +922,14 @@
       if (typeof window._registerSheet === 'function') window._registerSheet('revenue', window.closeRevenue);
       if (typeof window._markSheetOpen === 'function') window._markSheetOpen('revenue');
     } catch (_e) { void _e; }
+  };
+
+  // 고객 대시보드 → "매출 입력" 진입점. openRevenue 후 prefill 된 추가 모달 즉시 표시.
+  window._openRevenueAddFor = async function (customerId, customerName) {
+    try {
+      if (typeof window.openRevenue === 'function') await window.openRevenue();
+    } catch (_e) { /* openRevenue 실패해도 모달은 띄움 */ }
+    _openAddForm({ customer_id: customerId || null, customer_name: customerName || '' });
   };
 
   window.closeRevenue = function () {
