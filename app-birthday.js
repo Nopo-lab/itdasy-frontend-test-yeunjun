@@ -105,7 +105,7 @@
     const tmplOptions = d.message_templates || [];
     body.innerHTML = `
       <div style="margin-bottom:14px;padding:12px;background:rgba(139,92,246,0.06);border-radius:12px;">
-        <div style="font-size:11px;color:#6D28D9;font-weight:700;margin-bottom:6px;">💡 축하 메시지 팁</div>
+        <div style="font-size:11px;color:#6D28D9;font-weight:700;margin-bottom:6px;">축하 메시지 팁</div>
         <div style="font-size:11px;color:var(--text-muted);line-height:1.5;">템플릿을 복사해서 카카오톡으로 보내세요. 짧고 따뜻한 한마디면 충분해요.</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;">
@@ -114,11 +114,11 @@
             <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
               <strong style="font-size:15px;">${_esc(c.name)}</strong>
               <span style="font-size:11px;color:#8B5CF6;font-weight:700;">${_esc(_relativeLabel(c.days_until))}</span>
-              <span style="margin-left:auto;font-size:10px;color:var(--text-subtle);">🎂 ${_esc(c.birthday)}</span>
+              <span style="margin-left:auto;font-size:10px;color:var(--text-subtle);">${_esc(c.birthday)}</span>
             </div>
             <div style="font-size:11px;color:#888;margin-bottom:8px;">${c.phone ? _esc(c.phone) + ' · ' : ''}방문 ${c.visit_count}회</div>
             <div style="display:flex;gap:6px;">
-              <button data-copy-msg="${_esc(c.name)}" style="flex:1;padding:9px;border:1px solid rgba(139,92,246,0.3);border-radius:8px;background:rgba(139,92,246,0.05);color:#6D28D9;cursor:pointer;font-weight:700;font-size:12px;">📋 축하 메시지 복사</button>
+              <button data-copy-msg="${_esc(c.name)}" style="flex:1;padding:9px;border:1px solid rgba(139,92,246,0.3);border-radius:8px;background:rgba(139,92,246,0.05);color:#6D28D9;cursor:pointer;font-weight:700;font-size:12px;">축하 메시지 복사</button>
             </div>
           </div>
         `).join('')}

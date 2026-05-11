@@ -82,3 +82,23 @@
 [data-theme="dark"] .ic-box--violet { background: #2A1540; color: #B58AFF; }
 [data-theme="dark"] .ic-box--gray   { background: #2A2A28; color: #A0A09C; }
 [data-theme="dark"] .ic-box--red    { background: #351515; color: #E05A5A; }
+
+/* ── Phase 6: Phosphor <i> 사이징 보완 ───────────────────── */
+i[class*="ph-"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-style: normal;
+  line-height: 1;
+}
+/* 기존 .ic 클래스를 그대로 입은 <i> 태그의 svg 자리 사이징 호환 */
+i.ic         { font-size: 18px; }
+i.ic.ic--xs  { font-size: 14px; }
+i.ic.ic--md  { font-size: 24px; }
+i.ic.ic--lg  { font-size: 32px; }
+
+/* 컨텍스트별 보완 (Phase 6 STEP 1 교체 자리) */
+.ob-shop-icon i { font-size: 28px; }
+.ipc-icon i    { font-size: 24px; }
+.ws-toolbar__btn i      { font-size: 20px; }
+.ws-panel__title i      { font-size: 16px; margin-right: 4px; }

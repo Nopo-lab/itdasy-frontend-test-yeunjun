@@ -1,7 +1,7 @@
 /* ─────────────────────────────────────────────────────────────
    파워뷰 — 운영 분석 (Phase 4 · 2026-05-10)
 
-   매출 탭 합계행 옆 [📊 운영 분석] 버튼 → 모달 안에서:
+   매출 탭 합계행 옆 [운영 분석] 버튼 → 모달 안에서:
    · 월별 매출 추이 (최근 6개월 SVG bar chart)
    · 카드 수수료 추정 (3.4% 기본, 분기별 합계)
    · 직원·시술자별 매출 분포 (worker_name·staff_name 필드)
@@ -182,7 +182,7 @@
             <strong>운영 분석</strong>
             <span class="pv-ops-sub">매출 ${agg.totalCount}건 · 합계 ${_krw(agg.totalRevenue)}</span>
             <button type="button" class="pv-ops-close-btn" data-pv-ops-close aria-label="닫기">
-              <svg width="16" height="16" aria-hidden="true"><use href="#ic-x"/></svg>
+              <i class="ph-duotone ph-x" aria-hidden="true"></i>
             </button>
           </header>
           <section class="pv-ops-section">
@@ -225,7 +225,7 @@
 
   function button() {
     return `<button type="button" class="pv-ops-btn" data-pv-ops-open title="월별 매출 / 직원별 분포 / 카드 수수료 / 회원권 만료">
-      <svg width="14" height="14" aria-hidden="true"><use href="#ic-bar-chart-3"/></svg>
+      <i class="ph-duotone ph-chart-bar" aria-hidden="true"></i>
       운영 분석
     </button>`;
   }

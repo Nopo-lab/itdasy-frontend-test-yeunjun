@@ -25,7 +25,7 @@
     el.innerHTML = `
       <header class="ss-topbar">
         <button type="button" class="ss-back" data-bk-back aria-label="뒤로">
-          <svg class="ic" aria-hidden="true"><use href="#ic-arrow-left"/></svg>
+          <i class="ph-duotone ph-arrow-left" aria-hidden="true"></i>
         </button>
         <div class="ss-title">백업 · 로그아웃</div>
       </header>
@@ -34,20 +34,20 @@
           <div class="ss-card-tt">데이터 내보내기</div>
           <div class="ss-card-sub">매출·고객 데이터를 CSV 로 받아서 백업하실 수 있어요. 안전을 위해 정기적으로 받아두시는 걸 권장해요.</div>
           <div class="ss-list-it" data-bk-export="revenue" style="cursor:pointer">
-            <div class="ic"><svg><use href="#ic-trending-up"/></svg></div>
+            <div class="ic"><i class="ph-duotone ph-trend-up" aria-hidden="true"></i></div>
             <div class="meta">
               <div class="t1">매출 데이터 CSV</div>
               <div class="t2">최근 12개월 매출 내역</div>
             </div>
-            <svg class="ic" aria-hidden="true" style="width:16px;height:16px;color:var(--text3,#999)"><use href="#ic-download"/></svg>
+            <i class="ph-duotone ph-download-simple" aria-hidden="true"></i>
           </div>
           <div class="ss-list-it" data-bk-export="customers" style="cursor:pointer">
-            <div class="ic"><svg><use href="#ic-users"/></svg></div>
+            <div class="ic"><i class="ph-duotone ph-users" aria-hidden="true"></i></div>
             <div class="meta">
               <div class="t1">고객 데이터 CSV</div>
               <div class="t2">고객 목록·메모·시술 이력</div>
             </div>
-            <svg class="ic" aria-hidden="true" style="width:16px;height:16px;color:var(--text3,#999)"><use href="#ic-download"/></svg>
+            <i class="ph-duotone ph-download-simple" aria-hidden="true"></i>
           </div>
         </div>
 

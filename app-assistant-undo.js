@@ -51,7 +51,7 @@
     if (!confirm('방금 처리한 내용 되돌릴까요?')) return;
     try {
       const r = await _fetch('POST', `/assistant/undo/${logId}`);
-      if (window.showToast) window.showToast(r.message || '✅ 되돌렸어요');
+      if (window.showToast) window.showToast(r.message || '되돌렸어요');
       // 모든 데이터 캐시 무효화 (어떤 종류였는지 모르니 전부)
       try {
         ['customer','booking','revenue','inventory','nps','service'].forEach(k => sessionStorage.removeItem('pv_cache::' + k));
@@ -66,7 +66,7 @@
     if (!confirm('이 Chain 실행 전체를 되돌릴까요? (전부 취소됩니다)')) return;
     try {
       const r = await _fetch('POST', `/assistant/undo/chain/${chainId}`);
-      if (window.showToast) window.showToast(r.message || '✅ 되돌렸어요');
+      if (window.showToast) window.showToast(r.message || '되돌렸어요');
       try {
         ['customer','booking','revenue','inventory','nps','service'].forEach(k => sessionStorage.removeItem('pv_cache::' + k));
         window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'undo' } }));
@@ -123,7 +123,7 @@
         <div style="margin-top:10px;padding:12px;background:#FAF5FF;border-radius:10px;font-size:11px;line-height:1.5;color:#5B21B6;">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
             <input type="checkbox" id="uhsChainToggle">
-            <span style="display:inline-flex;align-items:center;gap:5px;"><svg width="12" height="12" style="vertical-align:-1px;"><use href="#ic-link"/></svg><strong>묶음 처리 모드</strong> — 여러 작업을 한 번에 확인해요</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;"><i class="ph-duotone ph-link" aria-hidden="true"></i><strong>묶음 처리 모드</strong> — 여러 작업을 한 번에 확인해요</span>
           </label>
           <div style="margin-top:6px;font-size:10px;color:#5B21B680;">민감한 작업(삭제·취소·메시지 발송)은 묶음 처리 모드여도 따로 확인. 실패 시 자동 되돌림.</div>
         </div>
@@ -179,7 +179,7 @@
           return `
             <div style="padding:10px 12px;background:#FAF5FF;border:1px solid #DDD6FE;border-radius:12px;margin-bottom:8px;">
               <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-                <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#5B21B6;background:#fff;padding:3px 8px;border-radius:99px;"><svg width="11" height="11" aria-hidden="true"><use href="#ic-link"/></svg>Chain ${group.length}건</span>
+                <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#5B21B6;background:#fff;padding:3px 8px;border-radius:99px;"><i class="ph-duotone ph-link" aria-hidden="true"></i>Chain ${group.length}건</span>
                 <span style="font-size:10px;color:var(--text-subtle);">${dt.toLocaleString('ko-KR', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
                 <button class="uhs-undo-chain" data-chain="${cid}" style="margin-left:auto;background:#7C3AED;border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">전체 되돌리기</button>
               </div>
@@ -195,7 +195,7 @@
               <div>${_esc(it.summary)}</div>
               <div style="font-size:10px;color:var(--text-subtle);margin-top:2px;">${dt.toLocaleString('ko-KR', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
             </div>
-            <button class="uhs-undo" data-id="${it.id}" style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #ddd;color:#555;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;"><svg width="11" height="11" aria-hidden="true"><use href="#ic-rotate-ccw"/></svg>되돌리기</button>
+            <button class="uhs-undo" data-id="${it.id}" style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #ddd;color:#555;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;"><i class="ph-duotone ph-arrow-counter-clockwise" aria-hidden="true"></i>되돌리기</button>
           </div>
         `;
       }).join('');

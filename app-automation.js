@@ -74,7 +74,7 @@
           btn.disabled = true;
           try {
             const r = await _api('/automation/rules/preset/' + btn.dataset.preset, { method: 'POST' });
-            if (window.showToast) window.showToast(r.created ? '✅ 자동화 등록' : '이미 등록됨');
+            if (window.showToast) window.showToast(r.created ? '자동화 등록' : '이미 등록됨');
             await _reload();
           } catch (e) {
             if (window.showToast) window.showToast('실패: ' + (window._humanError ? window._humanError(e) : e.message));

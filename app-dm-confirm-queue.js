@@ -26,9 +26,9 @@
 
   function _intentLabel(intent) {
     return {
-      pricing: '💰 견적', booking: '📅 예약', hours: '⏰ 영업시간',
-      location: '📍 위치', review: '✨ 후기', greeting: '👋 인사',
-      complaint: '⚠️ 위험', unknown: '❓ 모름',
+      pricing: '견적', booking: '예약', hours: '⏰ 영업시간',
+      location: '📍 위치', review: '후기', greeting: '👋 인사',
+      complaint: '위험', unknown: '❓ 모름',
     }[intent] || intent;
   }
 
@@ -49,10 +49,10 @@
     sheet.innerHTML = `
       <div id="dcqCard" style="width:100%;max-width:560px;background:#fff;border-radius:20px 20px 0 0;max-height:92vh;display:flex;flex-direction:column;padding:18px 18px max(18px,env(safe-area-inset-bottom));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <span style="display:inline-flex;align-items:center;color:#7C3AED;"><svg width="20" height="20" aria-hidden="true"><use href="#ic-bell"/></svg></span>
+          <span style="display:inline-flex;align-items:center;color:#7C3AED;"><i class="ph-duotone ph-bell" aria-hidden="true"></i></span>
           <strong style="font-size:17px;">DM 사장 확인 대기</strong>
           <span id="dcqCount" style="font-size:11px;background:#FEF3C7;color:#B45309;padding:2px 8px;border-radius:99px;font-weight:700;">0건</span>
-          <button id="dcqClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#888;display:inline-flex;align-items:center;"><svg width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
+          <button id="dcqClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#888;display:inline-flex;align-items:center;"><i class="ph-duotone ph-x" aria-hidden="true"></i></button>
         </div>
         <div style="font-size:11px;color:#888;margin-bottom:12px;line-height:1.5;">
           AI 가 초안 만들어둔 답장. 손님에겐 "잠시만요" 자동 발송됨. 30분 무응답 → template fallback 자동.
@@ -131,12 +131,12 @@
       const cnt = document.getElementById('dcqCount');
       if (cnt) cnt.textContent = count + '건';
       if (!count) {
-        list.innerHTML = `<div style="text-align:center;color:var(--text-subtle);padding:30px 0;font-size:13px;line-height:1.6;">대기 중인 메시지가 없어요. ✨<br>AI 가 자동 답변 잘 하고 있어요.</div>`;
+        list.innerHTML = `<div style="text-align:center;color:var(--text-subtle);padding:30px 0;font-size:13px;line-height:1.6;">대기 중인 메시지가 없어요.<br>AI 가 자동 답변 잘 하고 있어요.</div>`;
         return;
       }
       const _actionLabel = {
-        booking_action: '📅 예약 자동 생성',
-        revenue_action: '💰 결제 확인',
+        booking_action: '예약 자동 생성',
+        revenue_action: '결제 확인',
         cancel_action: '🗑 취소 처리',
         customer_register_action: '👤 신규 고객 자동 등록',
       };
@@ -149,7 +149,7 @@
           <div style="display:flex;flex-direction:column;gap:4px;padding:8px 10px;background:#FFF7E6;border:1px solid #FBBF24;border-radius:8px;margin-bottom:8px;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span style="font-size:12px;font-weight:800;color:#92400E;">${actLbl}</span>
-              ${actMeta.calendar_checked ? `<span style="font-size:10px;background:#10B981;color:#fff;padding:1px 7px;border-radius:99px;font-weight:700;">📅 캘린더 확인됨</span>` : ''}
+              ${actMeta.calendar_checked ? `<span style="font-size:10px;background:#10B981;color:#fff;padding:1px 7px;border-radius:99px;font-weight:700;">캘린더 확인됨</span>` : ''}
               <span style="margin-left:auto;font-size:10px;color:#92400E80;">승인 시 자동 실행</span>
             </div>
             ${actMeta.owner_label ? `<div style="font-size:12px;color:#92400E;font-weight:700;line-height:1.4;">${_esc(actMeta.owner_label)}</div>` : `

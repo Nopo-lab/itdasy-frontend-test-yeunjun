@@ -79,7 +79,7 @@ function _renderReviewPanel() {
 
   const stickerHtml = _reviewStickerCache.length ? `
     <div class="rv-section">
-      <div class="rv-section-label"><svg class="rv-section-ic" aria-hidden="true"><use href="#ic-image"/></svg> 업로드된 리뷰 (카드 탭 = 전체 사용)</div>
+      <div class="rv-section-label"><i class="ph-duotone ph-image" aria-hidden="true"></i> 업로드된 리뷰 (카드 탭 = 전체 사용)</div>
       ${guideHtml}
       <div class="rv-sticker-grid">
         ${_reviewStickerCache.map((s, i) => `
@@ -89,7 +89,7 @@ function _renderReviewPanel() {
                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectReviewSticker(${i});}">
             <img src="${s}" class="rv-sticker-img">
             <div class="rv-card-meta">
-              <div class="rv-stars">${'<svg class="rv-star" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-star"/></svg>'.repeat(5)}</div>
+              <div class="rv-stars">${'<i class="ph-duotone ph-star" aria-hidden="true"></i>'.repeat(5)}</div>
               <span class="rv-card-date">방금</span>
             </div>
             <div class="rv-sticker-actions" onclick="event.stopPropagation()">
@@ -104,9 +104,9 @@ function _renderReviewPanel() {
 
   body.innerHTML = `
     <div class="rv-section">
-      <div class="rv-section-label"><svg class="rv-section-ic" aria-hidden="true"><use href="#ic-image"/></svg> 리뷰 스크린샷 업로드</div>
+      <div class="rv-section-label"><i class="ph-duotone ph-image" aria-hidden="true"></i> 리뷰 스크린샷 업로드</div>
       <div class="rv-upload-zone" onclick="document.getElementById('reviewUploadInput').click()">
-        <svg class="rv-upload-icon" aria-hidden="true"><use href="#ic-image"/></svg>
+        <i class="ph-duotone ph-image" aria-hidden="true"></i>
         <div class="rv-upload-text">네이버/카톡 리뷰 캡처 올리기</div>
       </div>
       <input type="file" id="reviewUploadInput" accept="image/*" class="rv-file-input"

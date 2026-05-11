@@ -170,7 +170,7 @@
   async function _renderStory(imageSrc, caption) {
     // app-story-template.js 의 renderStory 가 등록되어 있으면 그걸 우선 사용
     if (typeof window._renderStoryTemplate === 'function') {
-      return window._renderStoryTemplate({ imageSrc, caption, tagLine: '오늘의 시술 ✨', watermark: '@itdasy' });
+      return window._renderStoryTemplate({ imageSrc, caption, tagLine: '오늘의 시술', watermark: '@itdasy' });
     }
 
     const canvas = document.createElement('canvas');
@@ -201,7 +201,7 @@
     ctx.font = 'bold 36px Pretendard, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('오늘의 시술 ✨', W / 2, 80);
+    ctx.fillText('오늘의 시술', W / 2, 80);
 
     // 캡션 (하단)
     if (caption) {
@@ -253,7 +253,7 @@
         <label style="display:block;">
           <input id="_icFile" type="file" accept="image/*" style="display:none;">
           <div id="_icPickBtn" style="padding:18px; border:2px dashed var(--brand); border-radius:14px; text-align:center; color:var(--brand); font-weight:700; font-size:14px; cursor:pointer; background:#fff5f7;">
-            📷 사진 고르기
+            사진 고르기
           </div>
         </label>
 
@@ -271,11 +271,11 @@
         <div id="_icResult" style="display:none; margin-top:18px;">
           <div style="font-size:13px; font-weight:700; margin-bottom:6px;">캡션</div>
           <textarea id="_icCaption" rows="5" style="width:100%; padding:12px; border:1.5px solid #e0e0e0; border-radius:10px; font-size:14px; box-sizing:border-box; resize:vertical;"></textarea>
-          <button id="_icCopyCaption" style="margin-top:6px; padding:8px 12px; border:1px solid #e0e0e0; border-radius:8px; background:#fff; font-size:12px; cursor:pointer; min-height:36px;">📋 캡션 복사</button>
+          <button id="_icCopyCaption" style="margin-top:6px; padding:8px 12px; border:1px solid #e0e0e0; border-radius:8px; background:#fff; font-size:12px; cursor:pointer; min-height:36px;">캡션 복사</button>
 
           <div style="font-size:13px; font-weight:700; margin:14px 0 6px;">해시태그</div>
           <div id="_icTags" style="display:flex; flex-wrap:wrap; gap:6px; padding:10px; background:#fafafa; border-radius:10px; font-size:12px;"></div>
-          <button id="_icCopyTags" style="margin-top:6px; padding:8px 12px; border:1px solid #e0e0e0; border-radius:8px; background:#fff; font-size:12px; cursor:pointer; min-height:36px;">📋 해시태그 복사</button>
+          <button id="_icCopyTags" style="margin-top:6px; padding:8px 12px; border:1px solid #e0e0e0; border-radius:8px; background:#fff; font-size:12px; cursor:pointer; min-height:36px;">해시태그 복사</button>
 
           <div style="font-size:13px; font-weight:700; margin:14px 0 6px;">9:16 스토리 미리보기</div>
           <img id="_icStory" style="width:60%; max-width:240px; border-radius:14px; border:1px solid #eee; display:block; margin:0 auto;">

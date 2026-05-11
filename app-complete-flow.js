@@ -117,7 +117,7 @@
       <!-- 금액 + 결제 (한 줄) -->
       <div style="display:flex;gap:10px;margin-bottom:12px;">
         <div style="flex:2;">
-          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">💰 금액 (원) *</label>
+          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">금액 (원) *</label>
           <input id="cfAmount" type="number" inputmode="numeric" value="${c.amount||''}" placeholder="50000" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;font-size:16px;font-weight:700;" />
         </div>
         <div style="flex:1;">
@@ -129,7 +129,7 @@
       </div>
 
       <!-- 메모 -->
-      <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">📝 메모 (선택)</label>
+      <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">메모 (선택)</label>
       <textarea id="cfMemo" rows="2" maxlength="200" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;resize:vertical;font-family:inherit;"></textarea>
 
       <!-- 버튼 -->
@@ -202,7 +202,7 @@
       if (_ctx.booking_id) _emitChange('update_booking', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
       _emitChange('create_revenue', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
       if (window.hapticSuccess) window.hapticSuccess();
-      if (window.showToast) window.showToast('✨ 매출 기록 완료!');
+      if (window.showToast) window.showToast('매출 기록 완료!');
       _close();
       _refreshConnectedViews();
     } catch (e) {

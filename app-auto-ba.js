@@ -95,7 +95,7 @@
         ${pair.after.image_url ? `<img src="${_esc(pair.after.image_url)}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;border:2px solid #fff;margin-left:-10px;">` : ''}
       </div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;font-weight:800;margin-bottom:2px;">✨ ${pair.customer_name ? _esc(pair.customer_name) + '님 ' : ''}비포·애프터 영상?</div>
+        <div style="font-size:12px;font-weight:800;margin-bottom:2px;">${pair.customer_name ? _esc(pair.customer_name) + '님 ' : ''}비포·애프터 영상?</div>
         <div style="font-size:10px;color:#888;line-height:1.4;">같은 고객 사진 2장 감지 — 탭 한 번에 릴스 완성</div>
       </div>
       <button data-auto-ba="make" style="padding:8px 14px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;cursor:pointer;font-weight:800;font-size:12px;flex-shrink:0;">만들기</button>

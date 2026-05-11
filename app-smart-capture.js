@@ -125,7 +125,7 @@
       progress.style.display = 'none';
       upArea.style.display = 'block';
       resultBox.style.display = 'block';
-      resultBox.innerHTML = `<div style="padding:14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;color:#991B1B;font-size:13px;line-height:1.5;">❌ ${_esc(e.message || '인식 실패')}</div>`;
+      resultBox.innerHTML = `<div style="padding:14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;color:#991B1B;font-size:13px;line-height:1.5;">${_esc(e.message || '인식 실패')}</div>`;
     }
   }
 
@@ -169,7 +169,7 @@
               ${it.starts_at ? `<div>시간: ${_esc(it.starts_at)}</div>` : ''}
               ${it.service_name ? `<div>시술: ${_esc(it.service_name)}</div>` : ''}
               ${it.amount ? `<div>금액: <strong>${_krw(it.amount)}</strong></div>` : ''}
-              ${it.rating ? `<div style="display:inline-flex;align-items:center;gap:2px;color:#F59E0B;">${'<svg width=\"12\" height=\"12\" style=\"fill:currentColor;\"><use href=\"#ic-star\"/></svg>'.repeat(it.rating)}</div>` : ''}
+              ${it.rating ? `<div style="display:inline-flex;align-items:center;gap:2px;color:#F59E0B;">${'<i class=\"ph-duotone ph-star\" style=\"font-size:12px;\" aria-hidden=\"true\"></i>'.repeat(it.rating)}</div>` : ''}
               ${it.comment ? `<div style="color:#555;">${_esc(it.comment)}</div>` : ''}
               ${it.memo ? `<div style="color:#888;font-size:11px;">${_esc(it.memo)}</div>` : ''}
             </div>
@@ -193,7 +193,7 @@
         });
         const cd = await cm.json().catch(() => ({}));
         if (!cm.ok) throw new Error(cd.detail || ('HTTP ' + cm.status));
-        if (window.showToast) window.showToast(`✅ ${cd.imported}건 등록 (실패 ${cd.failed}건)`);
+        if (window.showToast) window.showToast(`${cd.imported}건 등록 (실패 ${cd.failed}건)`);
         try {
           ['pv_cache::customer','pv_cache::booking','pv_cache::revenue','pv_cache::nps'].forEach(k => sessionStorage.removeItem(k));
           window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'kakao_import' } }));
@@ -221,7 +221,7 @@
     if (d.duplicate) {
       resultBox.innerHTML = `
         <div style="padding:14px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;color:#92400E;font-size:13px;line-height:1.5;margin-bottom:12px;">
-          ⚠️ 같은 이름·전화 고객이 이미 있어요: <strong>${_esc(d.existing_name)}</strong> (${_esc(d.existing_phone || '전화 없음')})
+          같은 이름·전화 고객이 이미 있어요: <strong>${_esc(d.existing_name)}</strong> (${_esc(d.existing_phone || '전화 없음')})
         </div>
         <button id="scCardClose" style="width:100%;padding:13px;border:1px solid #ddd;background:#fff;color:#555;border-radius:12px;font-weight:700;cursor:pointer;">확인</button>
       `;
@@ -230,7 +230,7 @@
     }
     resultBox.innerHTML = `
       <div style="padding:14px;background:#FAF5FF;border:1px solid #DDD6FE;border-radius:12px;margin-bottom:12px;">
-        <div style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#5B21B6;font-weight:700;margin-bottom:8px;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-sparkles"/></svg>인식 결과 (검토 후 등록)</div>
+        <div style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#5B21B6;font-weight:700;margin-bottom:8px;"><i class="ph-duotone ph-sparkle" aria-hidden="true"></i>인식 결과 (검토 후 등록)</div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <label style="font-size:11px;color:var(--text-muted);">이름 <input id="scCardName" value="${_esc(c.name || '')}" style="width:100%;margin-top:3px;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></label>
           <label style="font-size:11px;color:var(--text-muted);">전화 <input id="scCardPhone" value="${_esc(c.phone || '')}" style="width:100%;margin-top:3px;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></label>
@@ -258,7 +258,7 @@
           const ed = await cr.json().catch(() => ({}));
           throw new Error(typeof ed.detail === 'string' ? ed.detail : ('HTTP ' + cr.status));
         }
-        if (window.showToast) window.showToast('✨ 고객 등록 완료');
+        if (window.showToast) window.showToast('고객 등록 완료');
         try {
           sessionStorage.removeItem('pv_cache::customer');
           window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'card_import' } }));

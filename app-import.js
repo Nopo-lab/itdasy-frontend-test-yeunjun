@@ -56,7 +56,7 @@
       <div style="padding:4px;">
         <div style="font-size:12px;color:#888;line-height:1.5;margin-bottom:12px;">
           이전에 쓰시던 관리 앱에서 엑셀·CSV 로 내보낸 파일을 올리면 잇데이로 한 번에 가져와요.<br>
-          <span style="color:#c00;">⚠ 사용자 본인 데이터에 한함. 고객 개인정보 처리 동의 필수.</span>
+          <span style="color:#c00;">사용자 본인 데이터에 한함. 고객 개인정보 처리 동의 필수.</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr;gap:10px;">
           ${Object.entries(KIND_LABELS).map(([k, v]) => `
@@ -98,8 +98,8 @@
         <!-- 입력 방식 탭 -->
         <div style="display:grid;grid-template-columns:repeat(${smartEnabled ? 3 : 1},1fr);gap:6px;padding:4px;background:rgba(0,0,0,0.04);border-radius:10px;margin-bottom:12px;">
           <button data-imp-src="file" class="imp-src-btn" style="padding:10px 6px;border:none;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;background:#fff;color:var(--accent,var(--brand));">📄 파일</button>
-          ${smartEnabled ? `<button data-imp-src="photo" class="imp-src-btn" style="padding:10px 6px;border:none;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;background:transparent;color:#555;">📸 사진 OCR</button>` : ''}
-          ${smartEnabled ? `<button data-imp-src="text" class="imp-src-btn" style="padding:10px 6px;border:none;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;background:transparent;color:#555;">📋 붙여넣기</button>` : ''}
+          ${smartEnabled ? `<button data-imp-src="photo" class="imp-src-btn" style="padding:10px 6px;border:none;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;background:transparent;color:#555;">사진 OCR</button>` : ''}
+          ${smartEnabled ? `<button data-imp-src="text" class="imp-src-btn" style="padding:10px 6px;border:none;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;background:transparent;color:#555;">붙여넣기</button>` : ''}
         </div>
 
         <div id="importSourcePanel"></div>
@@ -133,7 +133,7 @@
           </div>
         </label>
         <div style="font-size:10px;color:var(--text-subtle);margin-top:8px;line-height:1.6;padding:0 4px;">
-          💡 아이폰·카톡으로 받은 엑셀이 .zip 으로 뜨면 그대로 선택하세요. 자동 변환됩니다.
+          아이폰·카톡으로 받은 엑셀이 .zip 으로 뜨면 그대로 선택하세요. 자동 변환됩니다.
         </div>
       `;
       panel.querySelector('#importFile').addEventListener('change', (e) => {
@@ -151,7 +151,7 @@
           </div>
         </label>
         <div style="font-size:10px;color:var(--text-subtle);margin-top:8px;line-height:1.6;padding:0 4px;">
-          ✨ <b>AI Vision</b> 이 화면에서 고객 목록/매출을 자동 추출해요. 2~3초 소요.
+          <b>AI Vision</b> 이 화면에서 고객 목록/매출을 자동 추출해요. 2~3초 소요.
         </div>
       `;
       panel.querySelector('#importPhotoFile').addEventListener('change', (e) => {
@@ -162,7 +162,7 @@
       panel.innerHTML = `
         <div style="margin-bottom:8px;font-size:12px;color:var(--text-muted);">카카오톡·메모장에서 복사한 내용을 붙여넣으세요.</div>
         <textarea id="importPasteText" rows="8" placeholder="예)\n김지연 010-1234-5678 VIP\n박소영 010-2345-6789\n..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-family:inherit;resize:vertical;font-size:12px;"></textarea>
-        <button id="importPasteParse" style="width:100%;margin-top:10px;padding:12px;border:none;border-radius:10px;background:var(--accent,var(--brand));color:#fff;font-weight:800;cursor:pointer;font-size:14px;">텍스트에서 추출하기 ✨</button>
+        <button id="importPasteParse" style="width:100%;margin-top:10px;padding:12px;border:none;border-radius:10px;background:var(--accent,var(--brand));color:#fff;font-weight:800;cursor:pointer;font-size:14px;">텍스트에서 추출하기</button>
       `;
       panel.querySelector('#importPasteParse').addEventListener('click', _parsePastedText);
     }
@@ -171,11 +171,11 @@
   // ── 스마트 임포트: 사진 OCR ─────────────────────────────
   async function _uploadPhotoOcr(file) {
     const status = document.getElementById('importStatus');
-    status.textContent = '📸 이미지 최적화 중…';
+    status.textContent = '이미지 최적화 중…';
     const compressed = (typeof window.compressImageForUpload === 'function')
       ? await window.compressImageForUpload(file)
       : file;
-    status.textContent = '📸 AI 가 화면을 읽는 중… (2~3초)';
+    status.textContent = 'AI 가 화면을 읽는 중… (2~3초)';
     const fd = new FormData();
     fd.append('image', compressed);
     fd.append('kind', _currentKind);
@@ -234,7 +234,7 @@
       <div style="padding:4px;">
         <button onclick="window._importBack()" style="background:none;border:none;font-size:13px;color:#888;margin-bottom:10px;cursor:pointer;">← 다시 선택</button>
         <div style="padding:10px 12px;background:linear-gradient(135deg,rgba(76,175,80,0.08),rgba(76,175,80,0.02));border-radius:10px;margin-bottom:10px;">
-          <strong style="font-size:13px;color:#388e3c;">✨ ${items.length}건 추출됨</strong>
+          <strong style="font-size:13px;color:#388e3c;">${items.length}건 추출됨</strong>
           <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">체크된 항목만 저장돼요. 잘못된 항목은 선택 해제.</div>
         </div>
         <div style="max-height:280px;overflow-y:auto;background:#fff;border-radius:10px;border:1px solid rgba(0,0,0,0.06);">
@@ -382,7 +382,7 @@
       const missingEl = body.querySelector('#importMissing');
       const btn = body.querySelector('#importCommitBtn');
       if (missing.length) {
-        missingEl.innerHTML = `<span style="color:#c00;">⚠ 필수 필드 누락: ${missing.map(f => FIELD_LABELS[f] || f).join(', ')}</span>`;
+        missingEl.innerHTML = `<span style="color:#c00;">필수 필드 누락: ${missing.map(f => FIELD_LABELS[f] || f).join(', ')}</span>`;
         btn.disabled = true;
         btn.style.background = '#ddd'; btn.style.color = '#888'; btn.style.cursor = 'not-allowed';
       } else {

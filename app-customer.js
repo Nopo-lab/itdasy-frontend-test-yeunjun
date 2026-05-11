@@ -293,7 +293,7 @@
           <button data-seg="regular" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">⭐ 단골</button>
           <button data-seg="member" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">💳 회원권</button>
           <button data-seg="new" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">🌱 신규</button>
-          <button data-seg="atrisk" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">⚠️ 이탈 임박</button>
+          <button data-seg="atrisk" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">이탈 임박</button>
         </div>
         <div id="customerList"></div>
       </div>
@@ -375,7 +375,7 @@
         ? `<span title="안 옴 ${nsCount}회 — 예약 전 주의" style="font-size:10px;font-weight:700;color:#fff;background:#dc3545;padding:2px 7px;border-radius:100px;margin-left:6px;">🚩 안 옴 ${nsCount}</span>`
         : (nsCount > 0 ? `<span title="안 옴 ${nsCount}회" style="font-size:10px;font-weight:600;color:#B45309;background:#FEF3C7;padding:2px 6px;border-radius:100px;margin-left:6px;">안 옴 ${nsCount}</span>` : '');
       const regularBadge = c.is_regular
-        ? `<span title="단골" class="cm-badge cm-badge--regular" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#fff;background:var(--brand);padding:2px 8px;border-radius:999px;margin-left:6px;line-height:1.4;"><svg width="10" height="10" aria-hidden="true" style="display:inline-block;"><use href="#ic-star"/></svg>단골</span>`
+        ? `<span title="단골" class="cm-badge cm-badge--regular" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#fff;background:var(--brand);padding:2px 8px;border-radius:999px;margin-left:6px;line-height:1.4;"><i class="ph-duotone ph-star" aria-hidden="true"></i>단골</span>`
         : '';
       const memberBadge = c.membership_active
         ? (() => {
@@ -383,7 +383,7 @@
             const low = bal > 0 && bal < 30000;
             const bg = low ? '#F97316' : '#A78BFA';
             const balText = bal >= 10000 ? `${Math.floor(bal/10000)}만원` : (bal > 0 ? `${bal.toLocaleString()}원` : '0원');
-            return `<span title="멤버십 잔액 ${bal.toLocaleString()}원" class="cm-badge cm-badge--member" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#fff;background:${bg};padding:2px 8px;border-radius:999px;margin-left:6px;line-height:1.4;"><svg width="10" height="10" aria-hidden="true" style="display:inline-block;"><use href="#ic-sparkles"/></svg>${balText}</span>`;
+            return `<span title="멤버십 잔액 ${bal.toLocaleString()}원" class="cm-badge cm-badge--member" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#fff;background:${bg};padding:2px 8px;border-radius:999px;margin-left:6px;line-height:1.4;"><i class="ph-duotone ph-sparkle" aria-hidden="true"></i>${balText}</span>`;
           })()
         : '';
       return `

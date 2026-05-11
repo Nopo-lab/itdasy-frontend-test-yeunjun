@@ -225,7 +225,7 @@ function generateReport() {
 
   report.push('# 주간 청소 리포트');
   report.push(`\n**생성일:** ${date} KST`);
-  report.push('\n## 📊 요약\n');
+  report.push('\n## 요약\n');
 
   // Run all analyses
   const fileSizeMismatches = analyzeFileSizes();
@@ -239,12 +239,12 @@ function generateReport() {
 
   // Summary
   if (fileSizeMismatches.length > 0) {
-    report.push(`- 📏 파일 크기 불일치: ${fileSizeMismatches.length}개`);
+    report.push(`- 파일 크기 불일치: ${fileSizeMismatches.length}개`);
     totalItems += fileSizeMismatches.length;
   }
 
   if (legacyTickets.length > 0) {
-    report.push(`- 🏷️ 구식 티켓 ID 남음: ${legacyTickets.length}개`);
+    report.push(`- 구식 티켓 ID 남음: ${legacyTickets.length}개`);
     totalItems += legacyTickets.length;
   }
 
@@ -254,21 +254,21 @@ function generateReport() {
   }
 
   if (unusedFiles.length > 0) {
-    report.push(`- 🗑️ 미사용 파일 후보: ${unusedFiles.length}개`);
+    report.push(`- 미사용 파일 후보: ${unusedFiles.length}개`);
     totalItems += unusedFiles.length;
   }
 
   if (onclickCount > 0) {
-    report.push(`- 🔗 인라인 핸들러: ${onclickCount}개 (마이그레이션 대상)`);
+    report.push(`- 인라인 핸들러: ${onclickCount}개 (마이그레이션 대상)`);
   }
 
   if (storageKeys.length > 0) {
-    report.push(`- 🔑 localStorage 키: ${storageKeys.length}개 활성`);
+    report.push(`- localStorage 키: ${storageKeys.length}개 활성`);
   }
 
   // Details
   if (fileSizeMismatches.length > 0) {
-    report.push('\n## 📏 파일 크기 불일치\n');
+    report.push('\n## 파일 크기 불일치\n');
     for (const item of fileSizeMismatches) {
       const diff = item.mismatch > 0 ? `+${item.mismatch}` : item.mismatch;
       report.push(`- \`${item.file}\`: 문서 ${item.docLines}줄 → 실제 ${item.actualLines}줄 (${diff})`);
@@ -276,7 +276,7 @@ function generateReport() {
   }
 
   if (legacyTickets.length > 0) {
-    report.push('\n## 🏷️ 구식 티켓 ID\n');
+    report.push('\n## 구식 티켓 ID\n');
     report.push('Phase 1 종료까지 모두 제거 예정:\n');
     for (const ticket of legacyTickets) {
       report.push(`- ${ticket}`);
@@ -292,7 +292,7 @@ function generateReport() {
   }
 
   if (unusedFiles.length > 0) {
-    report.push('\n## 🗑️ 미사용 파일 후보\n');
+    report.push('\n## 미사용 파일 후보\n');
     report.push('참조 없음 & 명시적 export 없음:\n');
     for (const file of unusedFiles) {
       report.push(`- \`${file.file}\`: ${file.lines}줄 (삭제 검토)`);
@@ -300,13 +300,13 @@ function generateReport() {
   }
 
   if (onclickCount > 0) {
-    report.push(`\n## 🔗 인라인 핸들러 추이\n`);
+    report.push(`\n## 인라인 핸들러 추이\n`);
     report.push(`현재: ${onclickCount}개\n`);
     report.push('→ `addEventListener` + 이벤트 위임 패턴으로 마이그레이션 필요\n');
   }
 
   if (storageKeys.length > 0) {
-    report.push('\n## 🔑 localStorage 키 사용 빈도\n');
+    report.push('\n## localStorage 키 사용 빈도\n');
     for (const item of storageKeys.slice(0, 10)) {
       report.push(`- \`${item.key}\`: ${item.count}회`);
     }
@@ -367,10 +367,10 @@ function saveReport(report) {
       hasUnusedFiles: report.hasUnusedFiles,
     }, null, 2), 'utf8');
 
-    console.log(`✅ Report saved: ${reportPath}`);
+    console.log(`Report saved: ${reportPath}`);
     return true;
   } catch (err) {
-    console.error(`❌ Failed to save report: ${err.message}`);
+    console.error(`Failed to save report: ${err.message}`);
     return false;
   }
 }
@@ -378,7 +378,7 @@ function saveReport(report) {
 // Main
 function main() {
   try {
-    console.log('🧹 GC Weekly Reporter started...\n');
+    console.log('GC Weekly Reporter started...\n');
 
     const report = generateReport();
 
@@ -386,17 +386,17 @@ function main() {
     console.log('\n');
 
     const changed = hasChanges(report);
-    console.log(`📊 Changes detected: ${changed ? 'YES' : 'NO'}`);
+    console.log(`Changes detected: ${changed ? 'YES' : 'NO'}`);
     console.log(`📋 Total items to review: ${report.totalItems}`);
 
     if (!isDryRun) {
       saveReport(report);
 
       if (changed) {
-        console.log(`\n✅ Issue should be created for: ${report.date}`);
+        console.log(`\nIssue should be created for: ${report.date}`);
         process.exit(0);
       } else {
-        console.log('\n⏭️ No changes since last week, skipping issue creation');
+        console.log('\nNo changes since last week, skipping issue creation');
         process.exit(1);
       }
     } else {
@@ -404,7 +404,7 @@ function main() {
       process.exit(0);
     }
   } catch (err) {
-    console.error(`❌ Error: ${err.message}`);
+    console.error(`Error: ${err.message}`);
     process.exit(2);
   }
 }

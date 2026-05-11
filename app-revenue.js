@@ -814,7 +814,7 @@
         });
         if (window.Fun && typeof window.Fun.celebrate === 'function') {
           window.Fun.celebrate(
-            useMem ? `💳 회원권 차감 ${amount.toLocaleString()}원` : `💰 매출 +${amount.toLocaleString()}원`,
+            useMem ? `💳 회원권 차감 ${amount.toLocaleString()}원` : `매출 +${amount.toLocaleString()}원`,
             { emojis: useMem ? ['💳', '✨', '🌷'] : ['💰', '💵', '🎉', '✨'], count: 16 }
           );
         } else {

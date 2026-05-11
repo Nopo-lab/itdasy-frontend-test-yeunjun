@@ -149,7 +149,7 @@
         <!-- 배경 사진 (선택) -->
         <div style="margin-bottom:10px;display:flex;gap:6px;">
           <label style="flex:1;padding:9px;border:1px dashed #ddd;border-radius:10px;background:#fafafa;text-align:center;font-size:12px;color:#555;cursor:pointer;font-weight:700;">
-            📸 배경 사진 올리기
+            배경 사진 올리기
             <input id="storyBgFile" type="file" accept="image/*" style="display:none;" />
           </label>
           <button id="storyBgClear" style="padding:9px 12px;border:1px solid #eee;border-radius:10px;background:#fff;color:#888;cursor:pointer;font-size:12px;">그라디언트로</button>
@@ -181,10 +181,10 @@
 
         <!-- 액션 버튼 -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <button id="storyDownload" style="padding:12px;border:1px solid #ddd;border-radius:10px;background:#fff;color:#555;font-weight:700;cursor:pointer;font-size:13px;">📥 이미지 저장</button>
+          <button id="storyDownload" style="padding:12px;border:1px solid #ddd;border-radius:10px;background:#fff;color:#555;font-weight:700;cursor:pointer;font-size:13px;">이미지 저장</button>
           <button id="storyShareIg" style="padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#833AB4,#FD1D1D);color:#fff;font-weight:800;cursor:pointer;font-size:13px;">🎀 인스타 공유</button>
         </div>
-        <button id="storyCopy" style="width:100%;margin-top:8px;padding:10px;border:1px solid #eee;border-radius:8px;background:transparent;color:#888;font-size:12px;cursor:pointer;">📋 해시태그만 복사</button>
+        <button id="storyCopy" style="width:100%;margin-top:8px;padding:10px;border:1px solid #eee;border-radius:8px;background:transparent;color:#888;font-size:12px;cursor:pointer;">해시태그만 복사</button>
       </div>
     `;
 

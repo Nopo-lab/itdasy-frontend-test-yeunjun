@@ -146,7 +146,7 @@
             <img id="_storyImg" style="width:100%; border-radius:14px; border:1px solid #eee;">
             <div style="display:flex; gap:8px; margin-top:12px;">
               <a id="_storyDownload" download="itdasy-story.png" style="flex:1; text-align:center; padding:12px; border-radius:12px; background:#4caf50; color:#fff; text-decoration:none; font-weight:700; font-size:13px; min-height:44px; display:flex; align-items:center; justify-content:center;">💾 저장</a>
-              <button id="_storyShareBtn" style="flex:1; padding:12px; border-radius:12px; border:none; background:#2196f3; color:#fff; font-weight:700; font-size:13px; min-height:44px; cursor:pointer;">📤 공유</button>
+              <button id="_storyShareBtn" style="flex:1; padding:12px; border-radius:12px; border:none; background:#2196f3; color:#fff; font-weight:700; font-size:13px; min-height:44px; cursor:pointer;">공유</button>
             </div>
             <div style="font-size:11px; color:#888; text-align:center; margin-top:8px;">저장 후 인스타 앱에서 스토리로 올리세요</div>
           </div>

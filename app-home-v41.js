@@ -104,7 +104,7 @@
           </div>
         </div>
         <button type="button" class="hv-bell" data-hv-act="bell" aria-label="알림" style="position:relative;">
-          <svg width="14" height="14" aria-hidden="true"><use href="#ic-bell"/></svg>
+          <i class="ph-duotone ph-bell" aria-hidden="true"></i>
           <span id="dashBellBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--brand);color:#fff;font-size:9px;font-weight:800;border-radius:50%;min-width:14px;height:14px;line-height:14px;text-align:center;padding:0 2px;"></span>
         </button>
       </div>
@@ -230,7 +230,7 @@
         <div class="hv-card__sub">${_esc(c.sub)}</div>
         <button type="button" class="hv-card__cta" data-hv-act="${_esc(c.act || '')}">
           ${_esc(c.cta)}
-          <svg width="13" height="13" aria-hidden="true"><use href="#ic-chevron-right"/></svg>
+          <i class="ph-duotone ph-caret-right" aria-hidden="true"></i>
         </button>
       </article>
     `).join('');
@@ -241,7 +241,7 @@
     // 2026-05-01 ── 캐러셀 좌우 화살표 버튼 추가 (사용자 요청). 4-5개 이상이면 옆이 안 보여서 한 칸씩 이동.
     return `
       <div class="hv-ai-label">
-        <span class="hv-ai-label__icon"><svg width="14" height="14" aria-hidden="true"><use href="#ic-sparkles"/></svg></span>
+        <span class="hv-ai-label__icon"><i class="ph-duotone ph-sparkle" aria-hidden="true"></i></span>
         <span class="hv-ai-label__text"><b>AI 비서</b>가 ${total}가지 추천했어요</span>
         <span class="hv-ai-label__count" data-hv-counter>1 / ${total}</span>
       </div>

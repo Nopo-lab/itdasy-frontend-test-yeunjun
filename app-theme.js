@@ -9,7 +9,8 @@
   const STORAGE_KEY = 'itdasy_theme';
   const MODES = ['light', 'dark'];
   const LABELS = { light: '라이트', dark: '다크' };
-  const ICON_HREFS = { light: '#ic-sun', dark: '#ic-moon' };
+  // Phase6: Phosphor 전환 — sprite href → ph-* class. themeToggleIcon은 <i>.
+  const ICON_CLASS = { light: 'ph-sun', dark: 'ph-moon' };
 
   function _current() {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -39,8 +40,12 @@
   function _updateButton(mode) {
     const btn = document.getElementById('themeToggleBtn');
     if (btn) {
-      const use = document.getElementById('themeToggleIcon');
-      if (use) use.setAttribute('href', ICON_HREFS[mode]);
+      const ic = document.getElementById('themeToggleIcon');
+      if (ic) {
+        // <i class="ph-duotone ph-sun"> → ph-moon 으로 토글
+        ic.classList.remove('ph-sun', 'ph-moon');
+        ic.classList.add(ICON_CLASS[mode]);
+      }
       btn.setAttribute('aria-label', `화면 모드: ${LABELS[mode]} (탭하면 전환)`);
       btn.setAttribute('title', `${LABELS[mode]} 모드`);
     }

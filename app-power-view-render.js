@@ -146,7 +146,7 @@
     const state = window._PVState;
     const { values, missing, schema, inputs } = _collectQaddValues();
     if (missing) {
-      if (window.showToast) window.showToast(`⚠️ 필수: ${missing}`);
+      if (window.showToast) window.showToast(`필수: ${missing}`);
       const el = document.querySelector(`#power-view-overlay .pv-qadd input[data-field="${missing}"]`);
       if (el) el.focus();
       return;
@@ -305,8 +305,8 @@
           return `<td><input data-pv-edit="${r.id}:${f.key}" data-pv-edit-type="${f.type || 'text'}" type="${f.type || 'text'}" value="${_esc(shown)}"${ph} style="width:100%;padding:7px 9px;border:1.5px solid hsl(350, 60%, 88%);border-radius:10px;font-size:12.5px;background:#fff;box-sizing:border-box;" /></td>`;
         }).join('');
         const actionCell = `<td style="text-align:right;white-space:nowrap;">
-          <button data-pv-row-save="${r.id}" aria-label="저장" title="저장" style="border:none;background:linear-gradient(135deg, hsl(350, 75%, 72%), hsl(350, 70%, 60%));color:#fff;cursor:pointer;padding:6px 9px;border-radius:10px;margin-right:4px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;"><svg width="13" height="13" aria-hidden="true"><use href="#ic-save"/></svg></button>
-          <button data-pv-row-delete="${r.id}" aria-label="삭제" title="삭제" style="border:1.5px solid #f0c0c0;background:#fff;color:#C62828;cursor:pointer;padding:5px 8px;border-radius:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;"><svg width="13" height="13" aria-hidden="true"><use href="#ic-trash-2"/></svg></button>
+          <button data-pv-row-save="${r.id}" aria-label="저장" title="저장" style="border:none;background:linear-gradient(135deg, hsl(350, 75%, 72%), hsl(350, 70%, 60%));color:#fff;cursor:pointer;padding:6px 9px;border-radius:10px;margin-right:4px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;"><i class="ph-duotone ph-floppy-disk" aria-hidden="true"></i></button>
+          <button data-pv-row-delete="${r.id}" aria-label="삭제" title="삭제" style="border:1.5px solid #f0c0c0;background:#fff;color:#C62828;cursor:pointer;padding:5px 8px;border-radius:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;"><i class="ph-duotone ph-trash" aria-hidden="true"></i></button>
         </td>`;
         return `<tr data-id="${r.id}" class="pv-row-editing">${editCells}${actionCell}</tr>`;
       }
@@ -330,9 +330,9 @@
         ${statusCell}
         ${primaryHtml}
         <button class="pv-actions-trigger" data-pv-actions-trigger data-row-id="${r.id}" aria-label="기타 액션" title="기타 액션">
-          <svg width="14" height="14" aria-hidden="true"><use href="#ic-more-horizontal"/></svg>
+          <i class="ph-duotone ph-dots-three" aria-hidden="true"></i>
         </button>
-        <button class="pv-row-edit" data-edit-id="${r.id}" aria-label="수정" title="수정" style="border:none;background:transparent;cursor:pointer;color:#888;padding:4px 8px;border-radius:6px;transition:all 0.12s;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-edit-3"/></svg></button>
+        <button class="pv-row-edit" data-edit-id="${r.id}" aria-label="수정" title="수정" style="border:none;background:transparent;cursor:pointer;color:#888;padding:4px 8px;border-radius:6px;transition:all 0.12s;display:inline-flex;align-items:center;justify-content:center;"><i class="ph-duotone ph-pencil-simple" aria-hidden="true"></i></button>
       </td>`;
       // Phase 2: 조건부 포맷 클래스 (선택 행 클래스와 공존)
       let fmtCls = '';
@@ -349,7 +349,7 @@
     const pendingHtml = pendingList.length ? `
       <div style="padding:12px 16px;background:#FFFBEB;border-bottom:1px solid #FFE58F;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="font-size:12px;font-weight:800;color:#B45309;">⏳ 쌓아둔 행 ${pendingList.length}개</div>
+          <div style="font-size:12px;font-weight:800;color:#B45309;">쌓아둔 행 ${pendingList.length}개</div>
           <div style="display:flex;gap:6px;">
             <button id="pv-batch-clear" style="padding:6px 10px;font-size:11px;border:1px solid #EAB308;background:#fff;color:#B45309;border-radius:7px;cursor:pointer;font-weight:700;">비우기</button>
             <button id="pv-batch-save" style="padding:6px 12px;font-size:11.5px;border:none;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border-radius:7px;cursor:pointer;font-weight:800;box-shadow:0 2px 6px rgba(241,128,145,0.3);">⚡ ${pendingList.length}개 한 번에 저장</button>
@@ -377,9 +377,9 @@
 
     const reportBannerHtml = state.currentTab === 'revenue' ? `
       <button onclick="if(typeof openRevenueReport==='function')openRevenueReport()" style="display:flex;align-items:center;gap:8px;width:100%;padding:11px 16px;margin-bottom:4px;background:#FEF4F5;border:none;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;color:var(--brand-strong);text-align:left;transition:background 0.15s;" onmouseover="this.style.background='#FDE8EB'" onmouseout="this.style.background='#FEF4F5'">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#ic-bar-chart-3"/></svg>
+        <i class="ph-duotone ph-chart-bar" aria-hidden="true"></i>
         상세 리포트
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;color:var(--brand);" aria-hidden="true"><use href="#ic-chevron-right"/></svg>
+        <i class="ph-duotone ph-caret-right" aria-hidden="true"></i>
       </button>` : '';
 
     body.innerHTML = `
@@ -393,16 +393,16 @@
       ${pendingHtml}
       <div class="pv-toolbar">
         <div style="position:relative;flex:1;max-width:280px;">
-          <svg class="ic" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text-subtle);" aria-hidden="true"><use href="#ic-search"/></svg>
+          <i class="ph-duotone ph-magnifying-glass" aria-hidden="true"></i>
           <input class="pv-search" id="pv-search" data-no-voice placeholder="검색 (⌘K)" value="${_esc(state.searchKW)}" style="padding-left:32px;padding-right:${state.searchKW ? '32px' : '12px'};" />
-          ${state.searchKW ? `<button id="pv-search-clear" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;padding:2px;color:var(--text-subtle);" aria-label="검색 지우기"><svg class="ic" aria-hidden="true"><use href="#ic-x"/></svg></button>` : ''}
+          ${state.searchKW ? `<button id="pv-search-clear" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;padding:2px;color:var(--text-subtle);" aria-label="검색 지우기"><i class="ph-duotone ph-x" aria-hidden="true"></i></button>` : ''}
         </div>
         <label class="pv-excel" for="pv-excel-file" title="엑셀/CSV AI 임포트">
-          📥 엑셀 불러오기
+          엑셀 불러오기
           <input type="file" id="pv-excel-file" accept=".xlsx,.xls,.csv" hidden />
         </label>
         ${window._PVExport ? `<button type="button" id="pv-export-btn" class="pv-export-btn" title="현재 보이는 행 CSV 내려받기">
-          <svg width="14" height="14" aria-hidden="true"><use href="#ic-download"/></svg>
+          <i class="ph-duotone ph-download-simple" aria-hidden="true"></i>
           내보내기
         </button>` : ''}
         ${(() => {
@@ -705,14 +705,14 @@
           ${upcoming.slice(0, 3).map(b => `
             <div class="list-menu__item">
               <div class="list-menu__icon-box list-menu__icon-box--neutral">
-                <svg class="ic" aria-hidden="true"><use href="#ic-calendar"/></svg>
+                <i class="ph-duotone ph-calendar-dots" aria-hidden="true"></i>
               </div>
               <div class="list-menu__body">
                 <div class="list-menu__title">${_esc(b.customer_name || '예약')}</div>
                 <div class="list-menu__sub">${_esc(b.service_name || '')}${b.time ? ' · ' + _esc(b.time) : ''}</div>
               </div>
               <div class="list-menu__right">
-                <svg class="ic ic--xs" aria-hidden="true"><use href="#ic-chevron-right"/></svg>
+                <i class="ph-duotone ph-caret-right" aria-hidden="true"></i>
               </div>
             </div>`).join('')}
         </div>`;

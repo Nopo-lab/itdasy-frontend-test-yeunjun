@@ -215,11 +215,11 @@
   }
 
   function _renderBookings(rows) {
-    if (!rows || !rows.length) return _emptySection('📅 예약 이력', '아직 예약이 없어요');
+    if (!rows || !rows.length) return _emptySection('예약 이력', '아직 예약이 없어요');
     return `
       <div style="margin-bottom:14px;">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-          <strong style="font-size:13px;">📅 예약 이력</strong>
+          <strong style="font-size:13px;">예약 이력</strong>
           <span style="font-size:10px;color:#888;">최근 ${rows.length}건</span>
         </div>
         <div style="background:#fff;border-radius:12px;border:1px solid rgba(0,0,0,0.05);overflow:hidden;">
@@ -271,7 +271,7 @@
     if (!d.customer.memo) return '';
     return `
       <div style="margin-bottom:14px;padding:12px;background:#FFF9E6;border-radius:12px;border-left:3px solid #FFD54F;">
-        <div style="font-size:11px;color:#888;margin-bottom:4px;">📝 원장님 메모</div>
+        <div style="font-size:11px;color:#888;margin-bottom:4px;">원장님 메모</div>
         <div style="font-size:13px;color:#555;line-height:1.5;white-space:pre-wrap;">${_esc(d.customer.memo)}</div>
       </div>
     `;
@@ -486,7 +486,7 @@
       const errMsg = e.message || '네트워크 오류';
       body.innerHTML = `
         <div style="padding:40px 20px;text-align:center;">
-          <div style="margin-bottom:10px;color:var(--brand);"><svg width="36" height="36" aria-hidden="true"><use href="#ic-alert-triangle"/></svg></div>
+          <div style="margin-bottom:10px;color:var(--brand);"><i class="ph-duotone ph-warning" aria-hidden="true"></i></div>
           <div style="font-size:13px;color:#c00;">대시보드를 불러오지 못했어요</div>
           <div style="font-size:11px;color:#888;margin-top:4px;">${_esc(errMsg)}</div>
           <button id="cdRetryBtn" style="margin-top:14px;padding:10px 20px;border:1px solid var(--brand);background:rgba(241,128,145,0.08);color:var(--brand);border-radius:12px;font-weight:700;font-size:13px;cursor:pointer;">다시 시도</button>

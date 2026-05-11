@@ -57,7 +57,7 @@
     _safe(() => navigator.vibrate(pattern));
   }
 
-  // 🎯 부드럽고 고급스러운 진동 패턴 (2026-04-20 조정)
+  // 부드럽고 고급스러운 진동 패턴 (2026-04-20 조정)
   // 네이티브: iOS UIImpactFeedbackGenerator, Android Android Vibrator API 로 섬세한 진동
   // 웹: navigator.vibrate 는 ms 만 제어 가능 → 짧게 + 간격 좁게 해서 "톡" 느낌
 

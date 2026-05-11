@@ -139,7 +139,7 @@
   function _aiSuggestBlock() {
     return `
       <button data-ai-suggest style="width:100%;padding:10px;border:1px solid rgba(241,128,145,0.3);border-radius:10px;background:rgba(241,128,145,0.05);color:var(--accent,var(--brand));cursor:pointer;font-size:12px;font-weight:700;margin-bottom:12px;">
-        ✨ AI 자막 추천 받기
+        AI 자막 추천 받기
       </button>
     `;
   }
@@ -147,7 +147,7 @@
   function _generateButton() {
     const ready = _slots.filter(s => s.file).length >= 2;
     return `
-      <button id="vGenerate" ${ready ? '' : 'disabled'} style="width:100%;padding:13px;border:none;border-radius:10px;background:${ready ? 'linear-gradient(135deg,var(--brand),var(--brand-strong))' : '#ddd'};color:${ready ? '#fff' : '#888'};font-weight:800;cursor:${ready ? 'pointer' : 'not-allowed'};font-size:15px;">${ready ? '🎬 영상 만들기' : '📸 사진 ' + (_mode === 'beforeafter' ? '2장' : '2~6장') + ' 선택'}</button>
+      <button id="vGenerate" ${ready ? '' : 'disabled'} style="width:100%;padding:13px;border:none;border-radius:10px;background:${ready ? 'linear-gradient(135deg,var(--brand),var(--brand-strong))' : '#ddd'};color:${ready ? '#fff' : '#888'};font-weight:800;cursor:${ready ? 'pointer' : 'not-allowed'};font-size:15px;">${ready ? '🎬 영상 만들기' : '사진 ' + (_mode === 'beforeafter' ? '2장' : '2~6장') + ' 선택'}</button>
       <div id="vStatus" style="margin-top:10px;min-height:20px;font-size:12px;color:#888;text-align:center;"></div>
     `;
   }
@@ -270,7 +270,7 @@
       } else if (_mode === 'sequence' && s.sequence) {
         s.sequence.slice(0, _slots.length).forEach((c, i) => { if (_slots[i]) _slots[i].caption = c || ''; });
       }
-      status.textContent = d.ai_used ? '✨ AI 추천 적용됨 — 편집 가능' : '💡 기본 추천 적용됨';
+      status.textContent = d.ai_used ? 'AI 추천 적용됨 — 편집 가능' : '기본 추천 적용됨';
       if (window.hapticLight) window.hapticLight();
       _render();
     } catch (e) {
@@ -319,7 +319,7 @@
       status.innerHTML = `
         <video src="${objUrl}" controls autoplay loop style="width:100%;max-height:360px;border-radius:12px;margin-top:8px;"></video>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-          <a href="${objUrl}" download="video_${Date.now()}.mp4" style="padding:10px;background:#fff;border:1px solid #ddd;border-radius:8px;color:#555;text-decoration:none;font-weight:700;font-size:13px;text-align:center;">📥 MP4 저장</a>
+          <a href="${objUrl}" download="video_${Date.now()}.mp4" style="padding:10px;background:#fff;border:1px solid #ddd;border-radius:8px;color:#555;text-decoration:none;font-weight:700;font-size:13px;text-align:center;">MP4 저장</a>
           <button data-share-ig style="padding:10px;background:linear-gradient(135deg,#833AB4,#FD1D1D);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">🎵 인스타로 이어편집</button>
         </div>
         <div style="font-size:11px;color:#888;text-align:center;margin-top:8px;">인스타 공유 → 릴스에서 BGM·스티커 추가하세요</div>

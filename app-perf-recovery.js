@@ -472,7 +472,7 @@
     b.className = 'itdasy-offline-banner';
     b.setAttribute('role', 'status');
     b.setAttribute('aria-live', 'polite');
-    b.innerHTML = `<svg width="14" height="14" style="vertical-align:-2px;margin-right:6px;"><use href="#ic-wifi-off"/></svg><span data-banner-text>오프라인 모드 — 마지막 동기화 데이터로 보고 있어요</span>`;
+    b.innerHTML = `<i class="ph-duotone ph-wifi-slash" aria-hidden="true"></i><span data-banner-text>오프라인 모드 — 마지막 동기화 데이터로 보고 있어요</span>`;
     document.body.appendChild(b);
     return b;
   }

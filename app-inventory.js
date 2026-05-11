@@ -239,7 +239,7 @@
     const lowBadge = sheet.querySelector('#invLowBadge');
     if (low > 0) {
       lowBadge.style.display = 'inline-block';
-      lowBadge.textContent = '⚠ 부족 ' + low;
+      lowBadge.textContent = '부족 ' + low;
     } else {
       lowBadge.style.display = 'none';
     }

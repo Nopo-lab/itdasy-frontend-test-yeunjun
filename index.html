@@ -621,31 +621,31 @@
     <div class="ob-title" style="margin-bottom:20px;">샵 종류를 선택해 주세요</div>
     <div class="ob-shop-grid">
       <div class="ob-shop-card" data-type="붙임머리" onclick="selectShopType(this)" role="button" tabindex="0" aria-label="붙임머리 선택">
-        <div class="ob-shop-icon"><svg width="28" height="28"><use href="#ic-scissors"/></svg></div>
+        <div class="ob-shop-icon"><i class="ph-duotone ph-scissors" style="font-size:28px" aria-hidden="true"></i></div>
         <div class="ob-shop-name">붙임머리</div>
       </div>
       <div class="ob-shop-card" data-type="네일아트" onclick="selectShopType(this)" role="button" tabindex="0" aria-label="네일아트 선택">
-        <div class="ob-shop-icon"><svg width="28" height="28"><use href="#ic-sparkles"/></svg></div>
+        <div class="ob-shop-icon"><i class="ph-duotone ph-sparkle" style="font-size:28px" aria-hidden="true"></i></div>
         <div class="ob-shop-name">네일아트</div>
       </div>
       <div class="ob-shop-card" data-type="헤어샵" onclick="selectShopType(this)" role="button" tabindex="0" aria-label="헤어샵 선택">
-        <div class="ob-shop-icon"><svg width="28" height="28"><use href="#ic-scissors"/></svg></div>
+        <div class="ob-shop-icon"><i class="ph-duotone ph-scissors" style="font-size:28px" aria-hidden="true"></i></div>
         <div class="ob-shop-name">헤어샵</div>
       </div>
       <div class="ob-shop-card" data-type="속눈썹" onclick="selectShopType(this)" role="button" tabindex="0" aria-label="속눈썹 선택">
-        <div class="ob-shop-icon"><svg width="28" height="28"><use href="#ic-star"/></svg></div>
+        <div class="ob-shop-icon"><i class="ph-duotone ph-star" style="font-size:28px" aria-hidden="true"></i></div>
         <div class="ob-shop-name">속눈썹</div>
       </div>
       <div class="ob-shop-card" data-type="왁싱" onclick="selectShopType(this)" role="button" tabindex="0" aria-label="왁싱 선택">
-        <div class="ob-shop-icon"><svg width="28" height="28"><use href="#ic-sparkles"/></svg></div>
+        <div class="ob-shop-icon"><i class="ph-duotone ph-sparkle" style="font-size:28px" aria-hidden="true"></i></div>
         <div class="ob-shop-name">왁싱</div>
       </div>
       <div class="ob-shop-card" data-type="피부" onclick="selectShopType(this)" role="button" tabindex="0" aria-label="피부 선택">
-        <div class="ob-shop-icon"><svg width="28" height="28"><use href="#ic-sun"/></svg></div>
+        <div class="ob-shop-icon"><i class="ph-duotone ph-sun" style="font-size:28px" aria-hidden="true"></i></div>
         <div class="ob-shop-name">피부관리</div>
       </div>
       <div class="ob-shop-card" data-type="반영구" onclick="selectShopType(this)" role="button" tabindex="0" aria-label="반영구 선택">
-        <div class="ob-shop-icon"><svg width="28" height="28"><use href="#ic-edit-3"/></svg></div>
+        <div class="ob-shop-icon"><i class="ph-duotone ph-pencil-simple" style="font-size:28px" aria-hidden="true"></i></div>
         <div class="ob-shop-name">반영구</div>
       </div>
     </div>
@@ -672,7 +672,7 @@
 
 <!-- Pull-to-Refresh 바 -->
 <div id="ptrBar">
-  <span id="ptrEmoji" style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;"><svg class="ic ic--md" style="transform-origin:center" aria-hidden="true"><use href="#ic-brand-loader"/></svg></span>
+  <span id="ptrEmoji" style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;"><i class="ph-duotone ph-circle-notch ic--md" style="transform-origin:center" aria-hidden="true"></i></span>
   <span id="ptrLabel">당겨서 새로고침</span>
 </div>
 
@@ -690,7 +690,7 @@
       </div>
     </div>
     <button id="planBadge" data-haptic="light" onclick="if(typeof openPlanPopup==='function')openPlanPopup();" style="padding:6px 12px;border-radius:8px;font-size:11px;font-weight:800;background:#e0e0e0;color:#888;cursor:pointer;min-height:32px;display:inline-flex;align-items:center;border:none;">Free</button>
-    <button id="themeToggleBtn" data-haptic="light" onclick="if(typeof toggleTheme==='function')toggleTheme();" aria-label="다크모드 전환" title="화면 모드 전환" style="background:none;border:none;padding:4px;cursor:pointer;min-width:36px;min-height:36px;display:inline-flex;align-items:center;justify-content:center;"><svg class="ic ic--md" aria-hidden="true"><use id="themeToggleIcon" href="#ic-moon"/></svg></button>
+    <button id="themeToggleBtn" data-haptic="light" onclick="if(typeof toggleTheme==='function')toggleTheme();" aria-label="다크모드 전환" title="화면 모드 전환" style="background:none;border:none;padding:4px;cursor:pointer;min-width:36px;min-height:36px;display:inline-flex;align-items:center;justify-content:center;"><i id="themeToggleIcon" class="ph-duotone ph-moon ic ic--md" aria-hidden="true"></i></button>
     <button class="btn-settings" onclick="openSettings()" aria-label="설정">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
         <path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/>
@@ -1086,7 +1086,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
         <div class="ipc-bubble-label">잇비가 하는 일</div>
 
         <div class="ipc-item">
-          <div class="ipc-icon"><svg viewBox="0 0 24 24"><use href="#ic-pen-line"/></svg></div>
+          <div class="ipc-icon"><i class="ph-duotone ph-pen" aria-hidden="true"></i></div>
           <div class="ipc-body">
             <div class="ipc-title">인스타 피드 글 자동 작성</div>
             <div class="ipc-sub">사장님 말투 그대로 — 해시태그까지</div>
@@ -1094,7 +1094,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
         </div>
 
         <div class="ipc-item">
-          <div class="ipc-icon"><svg viewBox="0 0 24 24"><use href="#ic-calendar"/></svg></div>
+          <div class="ipc-icon"><i class="ph-duotone ph-calendar-dots" aria-hidden="true"></i></div>
           <div class="ipc-body">
             <div class="ipc-title">"김서연 2시 예약 추가"</div>
             <div class="ipc-sub"><span class="ipc-arrow">→</span>캘린더에 자동 삽입</div>
@@ -1102,7 +1102,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
         </div>
 
         <div class="ipc-item">
-          <div class="ipc-icon"><svg viewBox="0 0 24 24"><use href="#ic-message-circle"/></svg></div>
+          <div class="ipc-icon"><i class="ph-duotone ph-chat-circle" aria-hidden="true"></i></div>
           <div class="ipc-body">
             <div class="ipc-title">손님 DM 답장 초안 자동 작성</div>
             <div class="ipc-sub">사장님 말투 그대로 — <span class="ipc-arrow">→</span>승인 한 번이면 발송 끝</div>
@@ -1218,7 +1218,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
         <button id="captionBtn" data-haptic="medium" onclick="generateCaption()" style="flex:1;padding:11px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:800;cursor:pointer;">만들기</button>
         <!-- E2: 음성 캡션 진입 — 음성으로 한 줄 → AI 캡션·해시태그 + 재방문 제안 -->
         <button id="captionVoiceBtn" type="button" data-haptic="medium" onclick="window.openVoiceCaption&&window.openVoiceCaption()" aria-label="음성 캡션" style="padding:11px 14px;border-radius:12px;border:1px solid var(--border-strong);background:transparent;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
-          <svg width="14" height="14" aria-hidden="true"><use href="#ic-mic"/></svg> 음성
+          <i class="ph-duotone ph-microphone" style="font-size:14px" aria-hidden="true"></i> 음성
         </button>
       </div>
 
@@ -1302,7 +1302,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
   <!-- 외부 JS 호환 hidden anchor — 보존 -->
   <header class="dashboard-topbar" style="display:none;" aria-hidden="true">
     <button class="drawer-trigger" type="button" data-drawer-trigger data-haptic="light" aria-label="메뉴 열기" aria-controls="shopDrawer">
-      <svg class="ic" aria-hidden="true"><use href="#ic-menu"/></svg>
+      <i class="ph-duotone ph-list ic" aria-hidden="true"></i>
     </button>
     <h1>내 샵 관리</h1>
   </header>
@@ -1497,19 +1497,19 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
   <!-- 하단 도구바 (ws-toolbar) -->
   <div id="slotToolbar" class="ws-toolbar">
     <button onclick="openBgPanel()" class="ws-toolbar__btn" aria-label="누끼따기">
-      <svg class="ic" aria-hidden="true"><use href="#ic-image"/></svg>누끼따기
+      <i class="ph-duotone ph-image ic" aria-hidden="true"></i>누끼따기
     </button>
     <button onclick="openEnhancePanel()" class="ws-toolbar__btn" aria-label="보정">
-      <svg class="ic" aria-hidden="true"><use href="#ic-sparkles"/></svg>보정
+      <i class="ph-duotone ph-sparkle ic" aria-hidden="true"></i>보정
     </button>
     <button id="baBtnToolbar" onclick="toggleBAMode()" class="ws-toolbar__btn" aria-label="전후합성">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3L4 7l4 4M4 7h16M16 21l4-4-4-4m4 4H4"/></svg>전후합성
     </button>
     <button onclick="openElementPanel()" class="ws-toolbar__btn" aria-label="로고">
-      <svg class="ic" aria-hidden="true"><use href="#ic-sparkles"/></svg>로고
+      <i class="ph-duotone ph-sparkle ic" aria-hidden="true"></i>로고
     </button>
     <button onclick="openReviewPanel()" class="ws-toolbar__btn" aria-label="리뷰">
-      <svg class="ic" aria-hidden="true"><use href="#ic-star"/></svg>리뷰
+      <i class="ph-duotone ph-star ic" aria-hidden="true"></i>리뷰
     </button>
     <button onclick="openTemplatePanel()" class="ws-toolbar__btn" aria-label="템플릿">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>템플릿
@@ -1521,7 +1521,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
 <div id="enhancePanel" class="ws-panel" onclick="if(event.target===this)closeEnhancePanel()">
   <div class="ws-panel__sheet ws-panel__sheet--md">
     <div class="ws-panel__hdr">
-      <span class="ws-panel__title"><svg class="ic" aria-hidden="true"><use href="#ic-sparkles"/></svg>사진 보정</span>
+      <span class="ws-panel__title"><i class="ph-duotone ph-sparkle ic" aria-hidden="true"></i>사진 보정</span>
       <button onclick="closeEnhancePanel()" class="ws-panel__close" aria-label="닫기">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
@@ -1534,7 +1534,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
 <div id="bgPanel" class="ws-panel" onclick="if(event.target===this)closeBgPanel()">
   <div class="ws-panel__sheet ws-panel__sheet--md">
     <div class="ws-panel__hdr">
-      <span class="ws-panel__title"><svg class="ic" aria-hidden="true"><use href="#ic-image"/></svg>배경창고</span>
+      <span class="ws-panel__title"><i class="ph-duotone ph-image ic" aria-hidden="true"></i>배경창고</span>
       <button onclick="closeBgPanel()" class="ws-panel__close" aria-label="닫기">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
@@ -1547,7 +1547,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
 <div id="elementPanel" class="ws-panel" onclick="if(event.target===this)closeElementPanel()">
   <div class="ws-panel__sheet ws-panel__sheet--md">
     <div class="ws-panel__hdr">
-      <span class="ws-panel__title"><svg class="ic" aria-hidden="true"><use href="#ic-sparkles"/></svg>요소창고</span>
+      <span class="ws-panel__title"><i class="ph-duotone ph-sparkle ic" aria-hidden="true"></i>요소창고</span>
       <button onclick="closeElementPanel()" class="ws-panel__close" aria-label="닫기">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
@@ -1594,7 +1594,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
 <div id="reviewPanel" class="ws-panel" onclick="if(event.target===this)closeReviewPanel()">
   <div class="ws-panel__sheet ws-panel__sheet--lg">
     <div class="ws-panel__hdr">
-      <span class="ws-panel__title"><svg class="ic" aria-hidden="true"><use href="#ic-star"/></svg>리뷰 스티커</span>
+      <span class="ws-panel__title"><i class="ph-duotone ph-star ic" aria-hidden="true"></i>리뷰 스티커</span>
       <button onclick="closeReviewPanel()" class="ws-panel__close" aria-label="닫기">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>

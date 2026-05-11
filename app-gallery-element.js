@@ -46,7 +46,7 @@ function _renderElementPanel() {
 
   body.innerHTML = `
     <div class="gp-section">
-      <p class="gp-section-lbl"><svg class="ic ic--xs" aria-hidden="true"><use href="#ic-sparkles"/></svg> 기본 텍스트</p>
+      <p class="gp-section-lbl"><i class="ph-duotone ph-sparkle" aria-hidden="true"></i> 기본 텍스트</p>
       <div class="gp-grid gp-grid--4">
         <div class="gp-card" onclick="selectDefaultElement('itdasy')">
           <div class="gp-card__thumb gp-card__thumb--brand">
@@ -57,7 +57,7 @@ function _renderElementPanel() {
       </div>
     </div>
     <div class="gp-section">
-      <p class="gp-section-lbl"><svg class="ic ic--xs" aria-hidden="true"><use href="#ic-package"/></svg> 내 요소 (로고, 브랜드 이미지)</p>
+      <p class="gp-section-lbl"><i class="ph-duotone ph-package" aria-hidden="true"></i> 내 요소 (로고, 브랜드 이미지)</p>
       <div class="gp-grid gp-grid--4">
         ${_userElements.map(el => {
           const _id = (el.id || '').replace(/['"<>&]/g, '');

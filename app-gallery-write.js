@@ -317,7 +317,7 @@ function _showCaptionPublishPreview(photos, caption) {
       </div>
       <!-- 발행 버튼 -->
       <div style="padding:0 12px 28px;">
-        <button onclick="doPublishFromCaption()" style="width:100%;height:48px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:14px;font-weight:800;cursor:pointer;">인스타에 올리기 🚀</button>
+        <button onclick="doPublishFromCaption()" style="width:100%;height:48px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:14px;font-weight:800;cursor:pointer;">인스타에 올리기</button>
       </div>
     </div>
   `;
@@ -418,13 +418,13 @@ async function doPublishFromCaption() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || '업로드 실패');
 
-    if (typeof setUploadProgress === 'function') setUploadProgress(100, '완료! 🎉');
+    if (typeof setUploadProgress === 'function') setUploadProgress(100, '완료!');
     setTimeout(() => {
       if (upPopup) upPopup.style.display = 'none';
       const donePopup = document.getElementById('uploadDonePopup');
       if (donePopup) donePopup.style.display = 'flex';
       const doneMsg = document.getElementById('uploadDoneMsg');
-      if (doneMsg) doneMsg.textContent = '인스타 피드에 올라갔어요 ✨';
+      if (doneMsg) doneMsg.textContent = '인스타 피드에 올라갔어요';
       if (typeof createConfetti === 'function') for (let i = 0; i < 20; i++) setTimeout(createConfetti, i * 100);
     }, 1200);
   } catch(e) {

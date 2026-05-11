@@ -327,7 +327,7 @@
     }
     sheet.addEventListener('click', (e) => { if (e.target === sheet) closeAssistant(); });
     sheet.querySelector('#asstSend').addEventListener('click', _send);
-    // 📸 사진 업로드 버튼 → 하단 action sheet
+    // 사진 업로드 버튼 → 하단 action sheet
     sheet.querySelector('#asstPhoto').addEventListener('click', _openPhotoSheet);
     // 숨겨진 file input 선택 시 업로드 실행
     sheet.querySelector('#asstCamera').addEventListener('change', (e) => {
@@ -516,7 +516,7 @@
       `${match.name} 정보 보기`,
     ];
     box.innerHTML = chips.map(c => `
-      <button data-typeahead="${_esc(c)}" style="padding:6px 11px;border:1px solid hsl(340,78%,85%);border-radius:14px;background:hsl(340,100%,98%);cursor:pointer;font-size:11px;color:hsl(350,60%,40%);white-space:nowrap;font-weight:700;">✨ ${_esc(c)}</button>
+      <button data-typeahead="${_esc(c)}" style="padding:6px 11px;border:1px solid hsl(340,78%,85%);border-radius:14px;background:hsl(340,100%,98%);cursor:pointer;font-size:11px;color:hsl(350,60%,40%);white-space:nowrap;font-weight:700;">${_esc(c)}</button>
     `).join('');
     box.style.display = 'flex';
   }
@@ -551,7 +551,7 @@
     const fallbackHtml = m.fallback ? _renderFallbackCard(m.fallback, idx, m.fallback_status) : '';
     const relatedHtml = (m.related && m.related.length) ? `
       <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;">
-        ${m.related.map(q => `<button data-suggest="${_esc(q)}" style="padding:5px 10px;border:1px solid #E2D6F7;border-radius:100px;background:#F7F2FD;cursor:pointer;font-size:11px;color:#6B21A8;white-space:nowrap;font-weight:700;transition:all 0.12s;">💬 ${_esc(q)}</button>`).join('')}
+        ${m.related.map(q => `<button data-suggest="${_esc(q)}" style="padding:5px 10px;border:1px solid #E2D6F7;border-radius:100px;background:#F7F2FD;cursor:pointer;font-size:11px;color:#6B21A8;white-space:nowrap;font-weight:700;transition:all 0.12s;">${_esc(q)}</button>`).join('')}
       </div>` : '';
     return `<div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;">
       <div style="width:28px;height:28px;border-radius:50%;background:rgba(139,92,246,0.15);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#7C3AED;">${_svg('ic-bot', 16)}</div>
@@ -1319,7 +1319,7 @@
           style="flex:1;padding:7px 10px;border:1px solid hsl(220,15%,88%);border-radius:10px;font-size:12px;background:#fff;" />
       </div>`;
     return `<div style="margin-top:6px;padding:12px;background:#fff;border:1px solid hsl(270,40%,88%);border-radius:14px;">
-      <div style="font-size:12px;font-weight:800;color:hsl(270,50%,45%);margin-bottom:8px;">💡 대충 이렇게 맞아요?</div>
+      <div style="font-size:12px;font-weight:800;color:hsl(270,50%,45%);margin-bottom:8px;">대충 이렇게 맞아요?</div>
       ${row('이름', 'name', extract.name, '김서연')}
       ${row('전화', 'phone', extract.phone, '010-0000-0000')}
       ${row('금액', 'amount', extract.amount, '50000')}
@@ -1930,7 +1930,7 @@
       msg.action_status = 'done';
       _renderHistory();
       if (d.kind === 'generate_bulk_message' && d.message_draft) {
-        _history.push({ role: 'assistant', text: '📋 초안을 클립보드에 복사했어요. 카톡·문자에 붙여넣으세요.\n\n---\n' + d.message_draft });
+        _history.push({ role: 'assistant', text: '초안을 클립보드에 복사했어요. 카톡·문자에 붙여넣으세요.\n\n---\n' + d.message_draft });
       } else {
         _history.push({ role: 'assistant', text: d.message || '✓ 완료했어요' });
       }
@@ -2142,7 +2142,7 @@
     box.innerHTML = suggestions.map((s, i) => {
       const text = _esc(s.text || '');
       const chat = _esc(s.chat_input || s.text || '');
-      return `<button data-proactive-chat="${chat}" style="flex:0 0 auto;max-width:260px;padding:10px 14px;border:1px solid #DDD6FE;border-radius:14px;background:linear-gradient(135deg,#FAF5FF,#F3E8FF);color:#5B21B6;cursor:pointer;font-size:12px;font-weight:600;text-align:left;line-height:1.35;white-space:normal;">✨ ${text}</button>`;
+      return `<button data-proactive-chat="${chat}" style="flex:0 0 auto;max-width:260px;padding:10px 14px;border:1px solid #DDD6FE;border-radius:14px;background:linear-gradient(135deg,#FAF5FF,#F3E8FF);color:#5B21B6;cursor:pointer;font-size:12px;font-weight:600;text-align:left;line-height:1.35;white-space:normal;">${text}</button>`;
     }).join('');
     box.querySelectorAll('[data-proactive-chat]').forEach(b => {
       b.addEventListener('click', () => {
@@ -2155,7 +2155,7 @@
     });
   }
 
-  // ── 📸 사진 업로드 (챗봇 입력바 좌측 버튼) ─────────────────
+  // ── 사진 업로드 (챗봇 입력바 좌측 버튼) ─────────────────
   function _openPhotoSheet() {
     // 이미 떠 있으면 닫고 끝
     const existing = document.getElementById('asstPhotoSheet');
@@ -2183,7 +2183,7 @@
     document.body.appendChild(box);
   }
 
-  // ─── 📷 라이트박스 (업로드한 사진 클릭 시 큰 화면) ────────────
+  // ─── 라이트박스 (업로드한 사진 클릭 시 큰 화면) ────────────
   // 2026-04-26 추가 — N장 사진을 좌우 화살표로 둘러보기.
   // 배경 어둡게 + ESC/배경 클릭 닫기 + 화살표 키 네비.
   let _lightboxState = null;

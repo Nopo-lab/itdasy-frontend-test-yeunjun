@@ -125,7 +125,7 @@
         memo: memo || undefined,
       });
       form.remove();
-      if (window.showToast) window.showToast('✅ 대기자 등록됨');
+      if (window.showToast) window.showToast('대기자 등록됨');
       await _reload();
     } catch (e) {
       if (window.showToast) window.showToast('실패: ' + (window._humanError ? window._humanError(e) : e.message));
@@ -151,7 +151,7 @@
         <div style="padding:18px 20px 14px;background:#fff;border-bottom:1px solid #eee;">
           <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 14px;"></div>
           <div style="display:flex;align-items:center;gap:8px;">
-            <strong style="font-size:17px;">📋 대기자 목록</strong>
+            <strong style="font-size:17px;">대기자 목록</strong>
             <button class="wl-add" style="margin-left:auto;padding:8px 14px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border:none;border-radius:100px;font-weight:700;font-size:12px;cursor:pointer;">+ 새 대기자</button>
             <button class="wl-close" style="background:none;border:none;font-size:18px;color:#888;cursor:pointer;">✕</button>
           </div>

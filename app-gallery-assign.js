@@ -48,7 +48,7 @@ function _renderAssignPopup() {
 
   if (unassigned.length === 0 && _slots.length > 0 && _slots.every(s => s.photos.length > 0)) {
     closeAssignPopup();
-    showToast('배정 완료! 슬롯 카드를 탭해서 편집하세요 ✨');
+    showToast('배정 완료! 슬롯 카드를 탭해서 편집하세요');
     return;
   }
 
@@ -71,13 +71,13 @@ function _renderAssignPopup() {
       <div style="display:flex;justify-content:center;padding:10px 0 4px;"><div style="width:40px;height:4px;border-radius:2px;background:rgba(0,0,0,0.12);"></div></div>
       <div style="padding:8px 16px 12px;border-bottom:1px solid var(--border);">
         <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div style="font-size:16px;font-weight:800;color:var(--text);">📷 사진 → 손님 배정</div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);">사진 → 손님 배정</div>
           <button onclick="closeAssignPopup()" style="background:transparent;border:none;font-size:24px;color:var(--text-subtle);cursor:pointer;padding:0 4px;">×</button>
         </div>
         <div style="font-size:11px;color:var(--text3);margin-top:4px;">사진 선택 후 아래 손님 카드를 탭하세요</div>
       </div>
       <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:#fafafa;">
-        <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px;">📸 미배정 ${unassigned.length}장</div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px;">미배정 ${unassigned.length}장</div>
         <div style="overflow-x:auto;">
           <div style="display:flex;gap:8px;min-width:max-content;padding:2px;">
             ${unassigned.length ? unassigned.map(photo => {

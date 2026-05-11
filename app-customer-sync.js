@@ -46,7 +46,7 @@
       if (names.length > 0) {
         sessionStorage.removeItem('ch_cache');
         if (window.CustomerHub?.refresh) window.CustomerHub.refresh();
-        if (window.showToast) window.showToast(`✅ 신규 고객 ${names.length}명 자동 등록됨`);
+        if (window.showToast) window.showToast(`신규 고객 ${names.length}명 자동 등록됨`);
       }
     }, 500);
   });

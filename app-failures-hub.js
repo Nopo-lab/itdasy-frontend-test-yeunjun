@@ -35,7 +35,7 @@
     el.innerHTML = `
       <header class="ss-topbar">
         <button type="button" class="ss-back" data-fh-back aria-label="뒤로">
-          <svg class="ic" aria-hidden="true"><use href="#ic-arrow-left"/></svg>
+          <i class="ph-duotone ph-arrow-left" aria-hidden="true"></i>
         </button>
         <div class="ss-title">자동화 실패 알림함</div>
         <button type="button" class="ss-action" data-fh-refresh>새로고침</button>
@@ -98,7 +98,7 @@
     if (!filtered.length) {
       list.innerHTML = `
         <div class="ss-empty">
-          <svg class="ic" aria-hidden="true"><use href="#ic-check-circle"/></svg>
+          <i class="ph-duotone ph-check-circle" aria-hidden="true"></i>
           <div class="ss-empty-tt">최근 7일간 실패 내역이 없어요</div>
           <div class="ss-empty-sub">자동화가 잘 돌아가고 있어요.<br>실패가 생기면 여기에 모아드릴게요.</div>
         </div>

@@ -24,7 +24,7 @@
       <div id="dataExportModal" style="display:none;position:fixed;inset:0;z-index:9850;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;padding:20px;">
         <div style="background:#fff;border-radius:16px;max-width:460px;width:100%;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.25);">
           <div style="padding:18px 20px 12px;background:linear-gradient(135deg,#ecfdf5,#d1fae5);border-bottom:1px solid #a7f3d0;">
-            <div style="font-size:18px;font-weight:800;color:#065f46;letter-spacing:-0.3px;">📦 내 데이터 내보내기</div>
+            <div style="font-size:18px;font-weight:800;color:#065f46;letter-spacing:-0.3px;">내 데이터 내보내기</div>
             <div style="font-size:12px;color:#064e3b;margin-top:4px;line-height:1.55;">GDPR Art. 20 / CCPA / PIPA — 내가 입력한 모든 데이터를 기계 판독 가능 형식으로 다운로드합니다.</div>
           </div>
           <div style="padding:16px 20px;">

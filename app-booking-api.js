@@ -58,7 +58,7 @@
   }
 
   // [P2] 백그라운드 fresh fetch — stale-while-revalidate 의 fresh 단계
-  // ⚠️ 절대 dispatch('itdasy:data-changed') 하지 말 것 — listener 가 cache invalidate + 재호출 → 무한 루프 (사용량 폭발).
+  // 절대 dispatch('itdasy:data-changed') 하지 말 것 — listener 가 cache invalidate + 재호출 → 무한 루프 (사용량 폭발).
   async function _fetchFreshBookings(fromISO, toISO, key) {
     const fetchId = ++_lastFetchId;  // [BUG-1] 이 요청의 고유 ID
     const qs = new URLSearchParams();

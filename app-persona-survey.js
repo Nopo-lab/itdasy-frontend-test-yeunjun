@@ -177,17 +177,17 @@
       <div class="psv-sub">분석된 말투로 어떤 메시지를 만들어볼까요?</div>
       <div class="psv-card-row">
         <button class="psv-card" data-survey="new">
-          <svg><use href="#ic-sparkles"/></svg>
+          <i class="ph-duotone ph-sparkle" aria-hidden="true"></i>
           <strong>신규 고객</strong>
           <p>처음 오신 분께<br/>보내는 환영 메시지</p>
         </button>
         <button class="psv-card" data-survey="regular">
-          <svg><use href="#ic-star"/></svg>
+          <i class="ph-duotone ph-star" aria-hidden="true"></i>
           <strong>단골 고객</strong>
           <p>오랜만에<br/>전하는 안부 인사</p>
         </button>
         <button class="psv-card" data-survey="custom">
-          <svg><use href="#ic-edit-3"/></svg>
+          <i class="ph-duotone ph-pencil-simple" aria-hidden="true"></i>
           <strong>직접 작성</strong>
           <p>메시지 의도를<br/>직접 입력</p>
         </button>

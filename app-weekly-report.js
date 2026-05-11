@@ -61,7 +61,7 @@
 
     // 신규 고객
     if (cust.new_count != null) {
-      frag.appendChild(_bubble(`신규 손님 ${cust.new_count}분이고요${cust.new_count >= 3 ? ' 🎉' : ''}`));
+      frag.appendChild(_bubble(`신규 손님 ${cust.new_count}분이고요${cust.new_count >= 3 ? '' : ''}`));
     }
 
     // 단골 미방문
@@ -71,7 +71,7 @@
 
     // 인기 시술
     if (top && top.name) {
-      frag.appendChild(_bubble(`이번 주 인기 시술은 "${top.name}" — ${top.count}건 진행하셨네요 ✨`));
+      frag.appendChild(_bubble(`이번 주 인기 시술은 "${top.name}" — ${top.count}건 진행하셨네요`));
     }
 
     // 다음 주 예약
@@ -95,7 +95,7 @@
     m.innerHTML = `
       <div style="width:100%; max-width:480px; background:#abc1d1; border-radius:24px 24px 0 0; padding:18px 16px calc(28px + env(safe-area-inset-bottom)); max-height:90vh; display:flex; flex-direction:column;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <div style="font-size:15px; font-weight:800; color:#1a1a1a;">📨 주간 보고서</div>
+          <div style="font-size:15px; font-weight:800; color:#1a1a1a;">주간 보고서</div>
           <button id="_wrClose" style="background:none; border:none; font-size:22px; width:44px; height:44px; cursor:pointer; color:#1a1a1a;">✕</button>
         </div>
         <div id="_wrBody" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; padding:6px 4px;">
@@ -162,7 +162,7 @@
     const btn = document.createElement('button');
     btn.id = '_wrQuickBtn';
     btn.type = 'button';
-    btn.textContent = '📨 이번 주 보고서';
+    btn.textContent = '이번 주 보고서';
     btn.style.cssText = 'padding:12px 16px; border:none; border-radius:14px; background:#fef0c7; color:#7a5b00; font-weight:800; font-size:14px; cursor:pointer; min-height:44px;';
     btn.addEventListener('click', openWeeklyReport);
     target.appendChild(btn);

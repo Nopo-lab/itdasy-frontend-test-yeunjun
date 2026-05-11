@@ -124,13 +124,13 @@
     o.style.cssText = `position:fixed;inset:0;z-index:10002;background:rgba(20,8,16,0.82);display:flex;align-items:center;justify-content:center;padding:16px;animation:pvFadeIn 0.2s ease;`;
     o.innerHTML = `
       <div style="width:100%;max-width:360px;background:#fff;border-radius:22px;overflow:hidden;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-        <div style="font-size:14px;font-weight:900;text-align:center;margin-bottom:12px;">🎉 ${report.year}.${report.month} 월간 성장 리포트</div>
+        <div style="font-size:14px;font-weight:900;text-align:center;margin-bottom:12px;">${report.year}.${report.month} 월간 성장 리포트</div>
         <div style="position:relative;aspect-ratio:9/16;border-radius:16px;overflow:hidden;margin-bottom:12px;box-shadow:0 10px 30px rgba(0,0,0,0.15);">
           <canvas id="gs-canvas" width="1080" height="1920" style="width:100%;height:100%;display:block;"></canvas>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <button id="gs-save" style="padding:12px;border:1px solid #ddd;border-radius:10px;background:#fff;color:#555;font-weight:700;cursor:pointer;font-size:13px;">📥 이미지 저장</button>
-          <button id="gs-share" style="padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;font-weight:800;cursor:pointer;font-size:13px;">📤 공유</button>
+          <button id="gs-save" style="padding:12px;border:1px solid #ddd;border-radius:10px;background:#fff;color:#555;font-weight:700;cursor:pointer;font-size:13px;">이미지 저장</button>
+          <button id="gs-share" style="padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#F18091,#D95F70);color:#fff;font-weight:800;cursor:pointer;font-size:13px;">공유</button>
         </div>
         <button id="gs-close" style="width:100%;margin-top:8px;padding:10px;border:none;background:#fafafa;color:#888;font-size:12px;cursor:pointer;border-radius:8px;">닫기</button>
       </div>

@@ -90,7 +90,7 @@
       if (_handleSocialLogin(u, url)) return;
 
       if (u.searchParams.get('connected') === 'success') {
-        if (window.showToast) window.showToast('인스타 연동 완료! 🎉');
+        if (window.showToast) window.showToast('인스타 연동 완료!');
 
         // 인스타 연동 상태 재조회 (app-instagram.js 내부 함수가 있을 경우)
         if (typeof window.checkInstagramStatus === 'function') {

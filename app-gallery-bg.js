@@ -15,7 +15,7 @@ const _mkIc = (p) => `<svg class="ic ic--xs" aria-hidden="true" viewBox="0 0 24 
 const _IC_PALETTE = _mkIc('<path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10a2.5 2.5 0 0 0 2.5-2.5c0-.63-.24-1.2-.64-1.67-.15-.17-.25-.38-.25-.62 0-.56.45-1.01 1-1.01H16c3.31 0 6-2.69 6-6C22 6.5 17.52 2 12 2z"/><circle cx="6.5" cy="11.5" r="1.5"/><circle cx="9.5" cy="7.5" r="1.5"/><circle cx="14.5" cy="7.5" r="1.5"/><circle cx="17.5" cy="11.5" r="1.5"/>');
 const _IC_SAVE    = _mkIc('<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>');
 const _IC_GRID    = _mkIc('<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>');
-const _IC_STAR    = '<svg class="ic ic--xs" aria-hidden="true"><use href="#ic-star"/></svg>';
+const _IC_STAR    = '<i class="ph-duotone ph-star" aria-hidden="true"></i>';
 
 function _loadUserBgs() {
   try { return JSON.parse(localStorage.getItem('itdasy_user_bgs') || '[]'); } catch(_) { return []; }

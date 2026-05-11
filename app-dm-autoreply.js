@@ -385,8 +385,8 @@
     const actInfo = isBookingAction ? `
       <div style="display:flex;flex-direction:column;gap:4px;padding:8px 10px;background:#FFF7E6;border:1px solid #FBBF24;border-radius:8px;margin:8px 0;">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-          <span style="font-size:11px;font-weight:800;color:#92400E;">📅 예약 승인 대기</span>
-          ${calChecked ? '<span style="font-size:10px;background:#10B981;color:#fff;padding:1px 7px;border-radius:99px;font-weight:700;">📅 캘린더 확인됨</span>' : ''}
+          <span style="font-size:11px;font-weight:800;color:#92400E;">예약 승인 대기</span>
+          ${calChecked ? '<span style="font-size:10px;background:#10B981;color:#fff;padding:1px 7px;border-radius:99px;font-weight:700;">캘린더 확인됨</span>' : ''}
         </div>
         ${actMeta.owner_label ? `<div style="font-size:11.5px;color:#92400E;font-weight:700;line-height:1.4;">${_esc(actMeta.owner_label)}</div>` : `
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#92400E;">
@@ -541,7 +541,7 @@
         });
         const d = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(d.detail || ('HTTP ' + res.status));
-        _toast(d.message || '✅ 처리 완료');
+        _toast(d.message || '처리 완료');
         _sendFeedback(tail, 'good');
         card.classList.add('is-sending');
         setTimeout(() => {
@@ -691,7 +691,7 @@
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.detail || ('HTTP ' + res.status));
-      _toast(d.message || `📅 대안 시간 안내 발송 (${d.alternatives_sent || 0}개)`);
+      _toast(d.message || `대안 시간 안내 발송 (${d.alternatives_sent || 0}개)`);
       card.classList.add('is-sending');
       setTimeout(() => { card.remove(); _notifyDMChanged(); }, 460);
     } catch (e) {

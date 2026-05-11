@@ -85,7 +85,7 @@
   function _settingsButton(scope) {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.innerHTML = '<svg class="ic ic--xs" aria-hidden="true"><use href="#ic-sparkles"/></svg>';
+    btn.innerHTML = '<i class="ph-duotone ph-sparkle" aria-hidden="true"></i>';
     btn.title = '이모지 창고';
     btn.style.cssText = 'width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--bg2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--accent);';
     btn.addEventListener('click', () => openEmojiPanel(scope));

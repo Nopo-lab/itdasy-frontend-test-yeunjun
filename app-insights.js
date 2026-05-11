@@ -84,7 +84,7 @@
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;">
           <span style="font-size:18px;">💝</span>
           <strong style="font-size:14px;">이탈 임박 고객</strong>
-          <span style="margin-left:auto;font-size:11px;color:#dc3545;font-weight:700;">⚠ ${s.at_risk + s.lost}명</span>
+          <span style="margin-left:auto;font-size:11px;color:#dc3545;font-weight:700;">${s.at_risk + s.lost}명</span>
         </div>
         ${items.map(c => `
           <div style="padding:8px 4px;border-top:1px solid rgba(0,0,0,0.05);">
@@ -101,7 +101,7 @@
             <div style="margin-top:6px;text-align:right;">
               <button data-draft-cid="${c.customer_id}" data-draft-name="${_esc(c.name)}" data-draft-phone="${_esc(c.phone || '')}"
                       style="padding:5px 10px;font-size:11px;font-weight:700;border:1px solid var(--brand);background:#fff;color:var(--brand-strong);border-radius:100px;cursor:pointer;">
-                💬 카톡 초안 만들기
+                카톡 초안 만들기
               </button>
             </div>
           </div>
@@ -111,7 +111,7 @@
           <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(0,0,0,0.06);">
             <button id="bulkDraftBtn" data-bulk-ids="${bulkIds.join(',')}"
                     style="width:100%;padding:11px 14px;font-size:13px;font-weight:700;border:none;background:linear-gradient(135deg,hsl(350,80%,72%),hsl(350,72%,60%));color:#fff;border-radius:14px;cursor:pointer;box-shadow:0 2px 6px rgba(217,95,112,0.22);">
-              💝 ${bulkCount}명에게 안부 문자 초안 일괄 생성
+              ${bulkCount}명에게 안부 문자 초안 일괄 생성
             </button>
             <div style="margin-top:6px;font-size:10.5px;color:var(--text-subtle);text-align:center;line-height:1.4;">
               초안만 준비해요 · 발송은 카톡 공유로 한 명씩 직접 승인
@@ -192,7 +192,7 @@
           <span style="color:var(--brand);font-weight:700;">예측</span>
         </div>
         <div style="font-size:12px;color:#555;line-height:1.5;padding:8px 10px;background:#fff;border-radius:8px;">
-          💡 ${_esc(data.action)}
+          ${_esc(data.action)}
         </div>
       </div>
     `;
@@ -253,7 +253,7 @@
       const name = btn.getAttribute('data-draft-name');
       if (!cid) return;
       const original = btn.innerHTML;
-      btn.innerHTML = '🤖 AI 작성 중…';
+      btn.innerHTML = 'AI 작성 중…';
       btn.disabled = true;
       try {
         const res = await fetch(window.API + '/retention/' + cid + '/message-draft', {
@@ -383,7 +383,7 @@
           건너뛰기
         </button>
         <button id="bulkShareBtn" style="flex:2;padding:12px;font-size:13.5px;font-weight:700;border:none;background:linear-gradient(135deg,hsl(350,80%,72%),hsl(350,72%,60%));color:#fff;border-radius:14px;cursor:pointer;">
-          💬 카톡 공유
+          카톡 공유
         </button>
       </div>
     `;

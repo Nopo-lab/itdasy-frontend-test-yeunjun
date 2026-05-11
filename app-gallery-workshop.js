@@ -65,14 +65,14 @@ async function renderHomeResume() {
           <div class="list-menu__icon-box" style="${imgSrc ? 'padding:0;overflow:hidden;' : ''}">
             ${imgSrc
               ? `<img src="${imgSrc}" alt="" style="width:36px;height:36px;object-fit:cover;display:block;" loading="lazy">`
-              : `<svg class="ic" aria-hidden="true"><use href="#ic-image"/></svg>`}
+              : `<i class="ph-duotone ph-image" aria-hidden="true"></i>`}
           </div>
           <div class="list-menu__body">
             <div class="list-menu__title">${slot.label || '제목 없음'}</div>
             <div class="list-menu__sub">${badgeText}</div>
           </div>
           <div class="list-menu__right">
-            <svg class="ic ic--xs" aria-hidden="true"><use href="#ic-chevron-right"/></svg>
+            <i class="ph-duotone ph-caret-right" aria-hidden="true"></i>
           </div>
         </div>`;
       }).join('')}
@@ -337,7 +337,7 @@ function _renderSlotCards() {
 
     const thumbHtml = thumb
       ? `<div class="ws-slot-card__thumb"><img src="${thumb.editedDataUrl || thumb.dataUrl}" alt="">${photoCount > 1 ? `<div class="ws-slot-card__thumb-count">+${photoCount}</div>` : ''}</div>`
-      : `<div class="ws-slot-card__empty" onclick="openAssignPopup()"><svg class="ic ic--md" aria-hidden="true"><use href="#ic-plus"/></svg></div>`;
+      : `<div class="ws-slot-card__empty" onclick="openAssignPopup()"><i class="ph-duotone ph-plus" aria-hidden="true"></i></div>`;
 
     card.innerHTML = `
       <button onclick="event.stopPropagation();deleteSlot('${slot.id}',event)" class="ws-slot-card__del" aria-label="삭제">
@@ -348,7 +348,7 @@ function _renderSlotCards() {
       </button>
       ${thumbHtml}
       <div class="ws-slot-card__meta">
-        <div class="ws-slot-card__name">${slot.label}${done ? `<svg class="ic ic--xs" style="color:var(--ok);" aria-hidden="true"><use href="#ic-check-circle"/></svg>` : ''}</div>
+        <div class="ws-slot-card__name">${slot.label}${done ? `<i class="ph-duotone ph-check-circle" aria-hidden="true"></i>` : ''}</div>
         <div class="ws-slot-card__count">${photoCount}장</div>
         ${slot.customer_name
           ? `<div style="display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--accent,var(--brand));font-weight:700;margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${slot.customer_name}</div>`
@@ -490,7 +490,7 @@ function _renderCompletionBanner() {
     const nextSlot = _slots.find(s => s.status !== 'done' && s.photos.length > 0)
                   || _slots.find(s => s.status !== 'done');
     if (allDone) {
-      banner.innerHTML = `<div style="background:rgba(76,175,80,0.1);border:1.5px solid rgba(76,175,80,0.3);border-radius:16px;padding:14px 16px;"><div style="font-size:13px;font-weight:700;color:#388e3c;margin-bottom:10px;">🎉 모든 작업 완료!</div><button onclick="showTab('caption',document.querySelector('.tab-bar__fab[data-tab=&quot;caption&quot;]')); initCaptionSlotPicker(); if(typeof renderCaptionKeywordTags==='function')renderCaptionKeywordTags();" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:13px;font-weight:800;cursor:pointer;">지금 글쓰기로 →</button></div>`;
+      banner.innerHTML = `<div style="background:rgba(76,175,80,0.1);border:1.5px solid rgba(76,175,80,0.3);border-radius:16px;padding:14px 16px;"><div style="font-size:13px;font-weight:700;color:#388e3c;margin-bottom:10px;">모든 작업 완료!</div><button onclick="showTab('caption',document.querySelector('.tab-bar__fab[data-tab=&quot;caption&quot;]')); initCaptionSlotPicker(); if(typeof renderCaptionKeywordTags==='function')renderCaptionKeywordTags();" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:13px;font-weight:800;cursor:pointer;">지금 글쓰기로 →</button></div>`;
     } else {
       const nextLabel = nextSlot ? nextSlot.label : '다음 손님';
       banner.innerHTML = `<div style="background:rgba(241,128,145,0.07);border:1.5px solid rgba(241,128,145,0.2);border-radius:16px;padding:14px 16px;"><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">${nextLabel} 작업할까요? <span style="color:var(--text3);font-weight:400;">(완료 ${done}/${total})</span></div><div style="display:flex;gap:8px;">${nextSlot ? `<button onclick="openSlotPopup('${nextSlot.id}')" style="flex:1;padding:10px 14px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:12px;font-weight:700;cursor:pointer;">${nextLabel} →</button>` : ''}<button onclick="showTab('caption',document.querySelector('.tab-bar__fab[data-tab=&quot;caption&quot;]')); initCaptionSlotPicker(); if(typeof renderCaptionKeywordTags==='function')renderCaptionKeywordTags();" style="flex:1;padding:10px 14px;border-radius:10px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;">지금 글쓰기로 →</button></div></div>`;

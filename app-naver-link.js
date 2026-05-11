@@ -24,14 +24,14 @@
     el.innerHTML = `
       <header class="ss-topbar">
         <button type="button" class="ss-back" data-nv-back aria-label="뒤로">
-          <svg class="ic" aria-hidden="true"><use href="#ic-arrow-left"/></svg>
+          <i class="ph-duotone ph-arrow-left" aria-hidden="true"></i>
         </button>
         <div class="ss-title">네이버 예약 연동</div>
       </header>
       <div class="ss-body">
         <div class="ss-card" style="background:#FFF7E6;border:1px solid #FFD666;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-            <svg class="ic" aria-hidden="true" style="width:18px;height:18px;color:#B45309;"><use href="#ic-clock"/></svg>
+            <i class="ph-duotone ph-clock" aria-hidden="true"></i>
             <div class="ss-card-tt" style="margin:0;color:#8a5d00;">준비 중 · Phase 1 출시 예정</div>
           </div>
           <div class="ss-card-sub" style="color:#8a5d00;">
@@ -97,7 +97,7 @@
             <button type="button" class="ss-action" data-nv-sync disabled>지금 동기화</button>
           </div>
           <div class="ss-empty" style="padding:24px 8px;">
-            <svg class="ic" aria-hidden="true"><use href="#ic-refresh-cw"/></svg>
+            <i class="ph-duotone ph-arrows-clockwise" aria-hidden="true"></i>
             <div class="ss-empty-tt">동기화 기록이 없어요</div>
             <div class="ss-empty-sub">연결 후 자동 동기화가 시작돼요.</div>
           </div>

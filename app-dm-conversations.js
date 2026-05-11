@@ -93,7 +93,7 @@
       <!-- 헤더: 인스타 다이렉트 스타일 -->
       <div style="display:flex;align-items:center;gap:8px;padding:max(14px,env(safe-area-inset-top)) 16px 12px;border-bottom:1px solid #DBDBDB;background:#fff;">
         <button id="dcvClose" aria-label="닫기" style="background:none;border:none;cursor:pointer;color:#262626;display:inline-flex;align-items:center;padding:4px;">
-          <svg width="22" height="22" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
+          <i class="ph-duotone ph-caret-left" aria-hidden="true"></i>
         </button>
         <strong style="font-size:18px;font-weight:700;color:#262626;letter-spacing:-0.3px;">메시지</strong>
         <span id="dcvCount" style="font-size:12px;color:#8E8E8E;margin-left:4px;"></span>
@@ -141,7 +141,7 @@
         list.innerHTML = `
           <div style="text-align:center;color:#8E8E8E;padding:60px 20px;font-size:14px;line-height:1.7;">
             <div style="width:80px;height:80px;border-radius:50%;background:#FAFAFA;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
-              <svg width="36" height="36" style="color:#C7C7C7;" aria-hidden="true"><use href="#ic-message-circle"/></svg>
+              <i class="ph-duotone ph-chat-circle" aria-hidden="true"></i>
             </div>
             <div style="color:#262626;font-weight:600;font-size:16px;margin-bottom:4px;">메시지</div>
             <div>아직 도착한 DM 이 없어요.</div>
@@ -173,7 +173,7 @@
               </div>
             </div>
             <button class="dcv-toggle-excl" data-sender="${_esc(c.sender_igsid)}" data-excluded="${excluded ? '1' : '0'}" aria-label="분석 제외 토글" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:${excluded ? '#B45309' : '#C7C7C7'};display:inline-flex;align-items:center;padding:8px;border-radius:50%;" title="${excluded ? '분석에 포함시키기' : '톤 분석에서 제외'}">
-              <svg width="20" height="20" aria-hidden="true"><use href="#ic-flag"/></svg>
+              <i class="ph-duotone ph-flag" aria-hidden="true"></i>
             </button>
           </div>
         `;
@@ -218,7 +218,7 @@
       <!-- 인스타 DM 헤더 -->
       <div style="display:flex;align-items:center;gap:10px;padding:max(14px,env(safe-area-inset-top)) 14px 10px;border-bottom:1px solid #DBDBDB;background:#fff;">
         <button id="dthBack" aria-label="뒤로" style="background:none;border:none;cursor:pointer;color:#262626;display:inline-flex;align-items:center;padding:4px;">
-          <svg width="24" height="24" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
+          <i class="ph-duotone ph-caret-left" aria-hidden="true"></i>
         </button>
         <div id="dthAvatar" style="width:36px;height:36px;border-radius:50%;background:${IG_GRADIENT};padding:2px;flex-shrink:0;">
           <div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,#FCE7F3,#FBCFE8);display:flex;align-items:center;justify-content:center;font-weight:700;color:#9D174D;font-size:14px;">?</div>
@@ -228,7 +228,7 @@
           <div id="dthMeta" style="font-size:11px;color:#8E8E8E;margin-top:1px;"></div>
         </div>
         <button id="dthExcludeToggle" aria-label="분석 제외 토글" style="background:none;border:none;cursor:pointer;color:#262626;display:inline-flex;align-items:center;gap:4px;padding:6px;border-radius:50%;">
-          <svg width="22" height="22" aria-hidden="true"><use href="#ic-flag"/></svg>
+          <i class="ph-duotone ph-flag" aria-hidden="true"></i>
         </button>
       </div>
       <!-- 메시지 -->
@@ -239,7 +239,7 @@
       <div style="padding:8px 12px max(12px,env(safe-area-inset-bottom));background:#fff;border-top:1px solid #EFEFEF;">
         <div style="display:flex;align-items:center;gap:8px;background:#FAFAFA;border:1px solid #EFEFEF;border-radius:99px;padding:8px 14px;">
           <span style="flex:1;font-size:13px;color:#8E8E8E;">답장은 인스타그램 앱에서 보낼 수 있어요</span>
-          <svg width="16" height="16" aria-hidden="true" style="color:#8E8E8E;"><use href="#ic-link"/></svg>
+          <i class="ph-duotone ph-link" aria-hidden="true"></i>
         </div>
       </div>
     `;
@@ -461,7 +461,7 @@
           : `background:${IG_GRADIENT};color:#fff;`;
         lines.push(`
           <div style="display:flex;flex-direction:column;align-items:flex-end;margin-bottom:2px;">
-            <div style="max-width:78%;${bubbleStyle}padding:9px 14px;border-radius:22px;font-size:14px;line-height:1.4;word-break:break-word;">${_esc(m.text)}${isPending ? '<div style="font-size:11px;margin-top:4px;font-weight:700;">⏳ 사장 확인 대기 중</div>' : ''}</div>
+            <div style="max-width:78%;${bubbleStyle}padding:9px 14px;border-radius:22px;font-size:14px;line-height:1.4;word-break:break-word;">${_esc(m.text)}${isPending ? '<div style="font-size:11px;margin-top:4px;font-weight:700;">사장 확인 대기 중</div>' : ''}</div>
             ${showTime ? `
               <div style="display:flex;align-items:center;gap:6px;margin:4px 8px 8px 0;">
                 ${sourceLbl ? `<span style="font-size:10px;color:#8E8E8E;font-weight:600;">${sourceLbl}</span>` : ''}

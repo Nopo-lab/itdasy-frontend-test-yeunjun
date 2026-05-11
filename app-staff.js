@@ -153,7 +153,7 @@
         await _fetch('POST', '/staff', { name, role: role || null, phone: phone || null, color });
         // [2026-04-29] 직원 등록 — 큰 축하 (Premium 사용 시작 마일스톤)
         if (window.Fun && window.Fun.celebrateBig) {
-          window.Fun.celebrateBig(`🎉 ${name}님 합류!`, '👥');
+          window.Fun.celebrateBig(`${name}님 합류!`, '👥');
         } else {
           _toast(`${name}님 추가 완료`);
         }

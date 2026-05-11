@@ -113,7 +113,7 @@
           _refreshTab();
         } else { _toast('노쇼 모듈을 불러오지 못했어요'); }
       }},
-      { icon: 'ic-send', label: '📤 확인 메시지 보내기', run: async () => {
+      { icon: 'ic-send', label: '확인 메시지 보내기', run: async () => {
         if (window.NoShow && typeof window.NoShow.sendConfirmation === 'function') {
           await window.NoShow.sendConfirmation(row.id);
         } else { _toast('확인 메시지 모듈을 불러오지 못했어요'); }

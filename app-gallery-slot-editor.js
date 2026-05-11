@@ -55,7 +55,7 @@ async function saveAndCloseSlotPopup() {
   if (nextSlot) {
     _showNextSlotGuide(nextSlot, done, total);
   } else if (done === total) {
-    showToast('🎉 모든 작업 완료! 글쓰기로 이동하세요');
+    showToast('모든 작업 완료! 글쓰기로 이동하세요');
   }
 }
 

@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
-   파워뷰 — 셀 옆 🤖 AI 비서 (Phase 3 · 2026-05-09)
+   파워뷰 — 셀 옆 AI 비서 (Phase 3 · 2026-05-09)
 
    행 옆 ⚡ 메뉴에 "AI 비서에게 묻기" 추가. 행 컨텍스트(고객명·시술·금액)
    를 prompt 에 주입해서 openAssistant 호출. 별도 모듈 — actions.js 와
@@ -106,7 +106,7 @@
   function aiAction(tab, row) {
     return {
       icon: 'ic-bot',
-      label: '🤖 AI 비서에게 묻기',
+      label: 'AI 비서에게 묻기',
       run: async () => ask(tab, row),
     };
   }

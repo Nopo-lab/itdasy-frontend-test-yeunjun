@@ -89,7 +89,7 @@
           return '<span class="' + tcls + '">#' + _esc(t) + '</span>';
         }).join('') + '</div>' : '',
         '<div class="cm-memo-meta">',
-          m.is_warning ? '<span style="color:#DC2626;font-weight:700;">⚠ 시술 전 확인</span>' : '',
+          m.is_warning ? '<span style="color:#DC2626;font-weight:700;">시술 전 확인</span>' : '',
           '<span>', _dateShort(m.created_at), '</span>',
           '<span style="margin-left:auto;">',
             '<button type="button" class="cm-memo-btn-ghost" data-cm-del="', m.id, '">삭제</button>',
@@ -177,10 +177,10 @@
       host.style.cssText = 'margin-bottom:14px;';
       host.innerHTML = [
         '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">',
-          '<svg width="14" height="14" aria-hidden="true" style="color:var(--brand);"><use href="#ic-edit-3"/></svg>',
+          '<i class="ph-duotone ph-pencil-simple" aria-hidden="true"></i>',
           '<strong style="font-size:13px;">시술 메모 <span style="font-size:10px;color:#9CA3AF;font-weight:400;">(AI 자동 태그)</span></strong>',
           '<span data-cm-quota style="font-size:11px;color:#9CA3AF;font-weight:600;margin-left:6px;"></span>',
-          '<button type="button" data-cm-search style="margin-left:auto;padding:4px 8px;border:1px solid #E5E7EB;border-radius:8px;background:#fff;font-size:11px;color:#555;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><svg width="11" height="11" aria-hidden="true"><use href="#ic-search"/></svg>전체 검색</button>',
+          '<button type="button" data-cm-search style="margin-left:auto;padding:4px 8px;border:1px solid #E5E7EB;border-radius:8px;background:#fff;font-size:11px;color:#555;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><i class="ph-duotone ph-magnifying-glass" aria-hidden="true"></i>전체 검색</button>',
         '</div>',
         '<div style="background:#FAFAFA;border:1px solid #E5E7EB;border-radius:12px;padding:10px;margin-bottom:10px;">',
           '<textarea data-cm-input class="cm-memo-textarea" placeholder="예: 알러지 있음 글루 X, 옴브레 좋아함, 8주 단위로 옴" maxlength="2000"></textarea>',
@@ -274,7 +274,7 @@
     }).join('');
     return [
       '<div class="cm-warn-banner" role="alert">',
-        '<strong>⚠ 시술 전 확인 필요</strong>',
+        '<strong>시술 전 확인 필요</strong>',
         '<ul>', items, '</ul>',
       '</div>',
     ].join('');
@@ -290,7 +290,7 @@
     sheet.innerHTML = [
       '<div style="position:absolute;inset:auto 0 0 0;background:#fff;border-radius:20px 20px 0 0;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">',
         '<div style="padding:16px 18px 12px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:8px;">',
-          '<strong style="font-size:15px;flex:1;">🔎 메모 검색</strong>',
+          '<strong style="font-size:15px;flex:1;">메모 검색</strong>',
           '<button type="button" data-cm-close style="background:none;border:none;font-size:20px;color:#9CA3AF;cursor:pointer;">✕</button>',
         '</div>',
         '<div style="padding:12px 18px;">',
@@ -326,7 +326,7 @@
             '<div class="', cls, '" data-cm-jump="', m.customer_id, '" style="cursor:pointer;">',
               '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">',
                 '<strong style="font-size:12px;color:#374151;">', _esc(m.customer_name || '고객'), '</strong>',
-                m.is_warning ? '<span style="font-size:10px;color:#DC2626;font-weight:700;">⚠ 경고</span>' : '',
+                m.is_warning ? '<span style="font-size:10px;color:#DC2626;font-weight:700;">경고</span>' : '',
                 '<span style="margin-left:auto;font-size:10px;color:#9CA3AF;">', _dateShort(m.created_at), '</span>',
               '</div>',
               '<div class="cm-memo-text">', _esc(m.text), '</div>',

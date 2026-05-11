@@ -18,7 +18,7 @@
     { key: 'same_day',  title: '당일 리마인드',   body: '#{고객명}님 오늘 #{시간} 예약이에요! 위치는 #{주소} 입니다.' },
     { key: 'cancel',    title: '취소 / 노쇼',     body: '예약 취소가 접수되었어요. 다음에 또 뵐게요🥰' },
     { key: 'gap_fill',  title: '빈슬롯 자동 채우기', body: '#{고객명}님, 마침 오늘 #{시간} 자리 비었어요! 혹시 가능하시면 답장 부탁드려요.' },
-    { key: 'birthday',  title: '생일 축하 (월 1회)', body: '#{고객명}님, 생일 축하드려요🎂 이달 방문 시 작은 선물 준비했어요!' },
+    { key: 'birthday',  title: '생일 축하 (월 1회)', body: '#{고객명}님, 생일 축하드려요이달 방문 시 작은 선물 준비했어요!' },
   ];
 
   function _ensureMounted() {
@@ -31,14 +31,14 @@
     el.innerHTML = `
       <header class="ss-topbar">
         <button type="button" class="ss-back" data-kk-back aria-label="뒤로">
-          <svg class="ic" aria-hidden="true"><use href="#ic-arrow-left"/></svg>
+          <i class="ph-duotone ph-arrow-left" aria-hidden="true"></i>
         </button>
         <div class="ss-title">카카오 알림톡</div>
       </header>
       <div class="ss-body">
         <div class="ss-card" style="background:#FFF7E6;border:1px solid #FFD666;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-            <svg class="ic" aria-hidden="true" style="width:18px;height:18px;color:#B45309;"><use href="#ic-clock"/></svg>
+            <i class="ph-duotone ph-clock" aria-hidden="true"></i>
             <div class="ss-card-tt" style="margin:0;color:#8a5d00;">준비 중 · 출시 예정 안내</div>
           </div>
           <div class="ss-card-sub" style="color:#8a5d00;">
@@ -72,7 +72,7 @@
         <div class="ss-card">
           <div class="ss-card-tt">최근 30일 발송 통계</div>
           <div class="ss-empty" style="padding:24px 8px;">
-            <svg class="ic" aria-hidden="true"><use href="#ic-message-circle"/></svg>
+            <i class="ph-duotone ph-chat-circle" aria-hidden="true"></i>
             <div class="ss-empty-tt">발송 내역이 없어요</div>
             <div class="ss-empty-sub">카카오 채널 연결 후 자동 발송이 시작돼요.</div>
           </div>

@@ -1194,7 +1194,7 @@
         starts_at: dropped.newStart.toISOString().replace(/\.\d{3}Z$/, '+00:00'),
         ends_at:   dropped.newEnd.toISOString().replace(/\.\d{3}Z$/, '+00:00'),
       });
-      if (window.showToast) window.showToast(`📅 ${dropped.hr}:00 으로 이동`);
+      if (window.showToast) window.showToast(`${dropped.hr}:00 으로 이동`);
       if (typeof window.hapticLight === 'function') window.hapticLight();
       window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'update_booking' } }));
     } catch (err) {
@@ -1362,7 +1362,7 @@
       </div>
     </div>`;
     // 충돌 경고
-    html += `<div id="bfConflict" class="dt-conflict">⚠️ 이 시간에 이미 예약이 있어요</div>`;
+    html += `<div id="bfConflict" class="dt-conflict">이 시간에 이미 예약이 있어요</div>`;
     // 하단 CTA
     html += `<div class="bf-cta">
       ${isEdit ? '<button type="button" id="bfDelete" class="bf-btn-danger">삭제</button>' : '<button type="button" id="cv-form-back2" class="bf-btn-secondary">취소</button>'}
@@ -1700,7 +1700,7 @@
           await window.Booking.update(existing.id, { status: newStatus });
           window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'update_booking', booking_id: existing.id, customer_id: existing.customer_id || null } }));
           if (window.hapticLight) window.hapticLight();
-          if (window.showToast) window.showToast(`✅ 상태를 '${STATUS_LABEL[newStatus]}'로 변경했어요`);
+          if (window.showToast) window.showToast(`상태를 '${STATUS_LABEL[newStatus]}'로 변경했어요`);
           if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
           _mappedCache = await _loadMonth(_curYear, _curMonth);
           _renderViewBody();

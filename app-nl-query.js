@@ -68,7 +68,7 @@
         <div style="padding:18px 20px 12px;background:#fff;border-bottom:1px solid #eee;">
           <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 14px;"></div>
           <div style="display:flex;align-items:center;gap:8px;">
-            <strong style="font-size:17px;">🔎 자연어 데이터 검색</strong>
+            <strong style="font-size:17px;">자연어 데이터 검색</strong>
             <button class="nl-close" style="margin-left:auto;background:none;border:none;font-size:18px;color:#888;cursor:pointer;">✕</button>
           </div>
           <div style="font-size:11px;color:#888;margin-top:6px;">말로 물어보세요 — AI 가 DB 조회해서 답해드려요</div>

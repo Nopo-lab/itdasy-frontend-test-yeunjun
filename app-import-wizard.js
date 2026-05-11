@@ -140,7 +140,7 @@
       <div style="width:100%;max-width:600px;max-height:92vh;background:var(--surface,#fff);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:pvSlideUp 0.3s cubic-bezier(0.22,1,0.36,1);">
         <div style="display:flex;align-items:center;padding:14px 18px 0;border-bottom:none;">
           <div style="font-size:15px;font-weight:900;color:var(--text,#222);flex:1;">AI 엑셀 자동 정리</div>
-          <button id="iw-close" aria-label="닫기" style="width:32px;height:32px;border:none;border-radius:10px;background:var(--surface-raised,#eee);cursor:pointer;color:var(--text,#555);display:flex;align-items:center;justify-content:center;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-x"/></svg></button>
+          <button id="iw-close" aria-label="닫기" style="width:32px;height:32px;border:none;border-radius:10px;background:var(--surface-raised,#eee);cursor:pointer;color:var(--text,#555);display:flex;align-items:center;justify-content:center;"><i class="ph-duotone ph-x" aria-hidden="true"></i></button>
         </div>
         ${_progressDots(idx, pct, etaSec)}
         <div id="iw-body" style="flex:1;overflow:auto;padding:18px;">${innerHtml}</div>

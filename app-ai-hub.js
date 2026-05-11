@@ -69,7 +69,7 @@
 
   // ── 행 우측 영역 마크업 ────────────────────────────────────────
   function _rightHtml(row) {
-    const chev = `<svg class="ms-aih__chev" width="14" height="14" aria-hidden="true"><use href="#ic-chevron-right"/></svg>`;
+    const chev = `<i class="ph-duotone ph-caret-right" aria-hidden="true"></i>`;
     if (row.type === 'toggle') {
       const on = _getToggle(row.toggleKey);
       return `
@@ -91,7 +91,7 @@
   }
 
   // ── 행 마크업 (NEW 배지는 이름 옆) ─────────────────────────────
-  // ⚠️ <button> 안에 <button>(토글) 중첩 invalid HTML — Safari가 분리시킴
+  // <button> 안에 <button>(토글) 중첩 invalid HTML — Safari가 분리시킴
   // 그래서 row 자체는 <div role="button"> 으로 래핑
   function _rowHtml(row) {
     const newBadge = row.type === 'badge'
@@ -145,7 +145,7 @@
     let sheet = document.getElementById('aiHubSheet');
     if (sheet) {
       sheet.innerHTML = _buildSheet();
-      // ⚠️ 핸들러는 sheet 엘리먼트에 1회만 attach (innerHTML 교체해도 부모 리스너는 살아남음)
+      // 핸들러는 sheet 엘리먼트에 1회만 attach (innerHTML 교체해도 부모 리스너는 살아남음)
       // 이전엔 매번 attach 해서 N번 open 후 N번 fire → 토글 / route 다중 발생 버그
       return sheet;
     }

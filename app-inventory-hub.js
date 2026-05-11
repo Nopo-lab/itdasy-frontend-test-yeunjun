@@ -123,14 +123,14 @@
   function _renderOcrCard() {
     return `<button class="ocr-card" data-act="ocr">
       <div class="ocr-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-camera"/></svg>
+        <i class="ph-duotone ph-camera" aria-hidden="true"></i>
       </div>
       <div class="ocr-text">
         <div class="ocr-title">가격표 사진 한 장으로 한 번에</div>
         <div class="ocr-sub">AI가 자동으로 재고 정리</div>
       </div>
       <span class="ocr-chev">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-chevron-right"/></svg>
+        <i class="ph-duotone ph-caret-right" aria-hidden="true"></i>
       </span>
     </button>`;
   }
@@ -147,11 +147,11 @@
   function _renderHeader() {
     return `<div class="hub-header">
       <button class="hub-back" data-act="close" aria-label="뒤로가기">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-chevron-left"/></svg>
+        <i class="ph-duotone ph-caret-left" aria-hidden="true"></i>
       </button>
       <span class="hub-title">재고관리</span>
       <div style="flex:1;position:relative;max-width:180px;">
-        <svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text-subtle);pointer-events:none;" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="#ic-search"/></svg>
+        <i class="ph-duotone ph-magnifying-glass" aria-hidden="true"></i>
         <input id="ih-search" placeholder="재고 검색" value="${_esc(_state.searchKW)}"
           style="width:100%;height:32px;padding:0 8px 0 26px;border:1.5px solid #E5E5EA;border-radius:10px;font-size:12px;box-sizing:border-box;-webkit-appearance:none;"/>
       </div>
@@ -175,7 +175,7 @@
     if (!items.length) return '';
     return `<div class="hub-pending">
       <div class="hub-pending-hd">
-        <span class="hub-pending-lbl">⏳ 쌓아둔 ${items.length}건</span>
+        <span class="hub-pending-lbl">쌓아둔 ${items.length}건</span>
         <div class="hub-pending-btns">
           <button class="hub-btn-clear" data-act="clear-pending">비우기</button>
           <button class="hub-btn-flush" data-act="flush">⚡ ${items.length}개 한 번에 저장</button>
@@ -219,7 +219,7 @@
           <button class="stepper-btn" data-act="step" data-id="${r.id}" data-delta="1">+</button>
         </div>
         <button class="inv-edit" data-act="edit" data-id="${r.id}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-edit-3"/></svg>
+          <i class="ph-duotone ph-pencil-simple" aria-hidden="true"></i>
         </button>
       </div>
     `;
@@ -228,7 +228,7 @@
   function _renderOkBlock(ok) {
     if (!ok.length && !_state.rows.length) {
       return `<div class="hub-empty">
-        <div class="hub-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-package"/></svg></div>
+        <div class="hub-empty-icon"><i class="ph-duotone ph-package" aria-hidden="true"></i></div>
         <div class="hub-empty-title">재고가 비어있어요</div>
         <div class="hub-empty-desc">품목 이름 적고 Enter 로 추가하세요</div>
       </div>`;
@@ -263,7 +263,7 @@
           <button class="stepper-btn" data-act="step" data-id="${r.id}" data-delta="1">+</button>
         </div>
         <button class="inv-edit" data-act="edit" data-id="${r.id}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-edit-3"/></svg>
+          <i class="ph-duotone ph-pencil-simple" aria-hidden="true"></i>
         </button>
       </div>
     `;
@@ -372,7 +372,7 @@
     const v = _collectInput(); if (!v) return;
     let body;
     try { body = _buildBody(v); } catch (e) {
-      if (window.showToast) window.showToast('⚠️ ' + e.message); return;
+      if (window.showToast) window.showToast('' + e.message); return;
     }
     try {
       const res = await fetch(`${API()}/inventory`, {
@@ -386,7 +386,7 @@
       _resetInput(); _render();
       _emitInventoryChanged('create', created);
       if (window.hapticLight) window.hapticLight();
-      if (window.showToast) window.showToast('✅ 추가 완료');
+      if (window.showToast) window.showToast('추가 완료');
     } catch (e) { if (window.showToast) window.showToast('저장 실패: ' + e.message); }
   }
 
@@ -394,7 +394,7 @@
     const v = _collectInput(); if (!v) return;
     let body;
     try { body = _buildBody(v); } catch (e) {
-      if (window.showToast) window.showToast('⚠️ ' + e.message); return;
+      if (window.showToast) window.showToast('' + e.message); return;
     }
     _state.pending.push(body);
     if (window.hapticLight) window.hapticLight();
@@ -416,7 +416,7 @@
       _render();
       _emitInventoryChanged('batch_create', null);
       if (window.hapticLight) window.hapticLight();
-      if (window.showToast) window.showToast(`✅ ${results.length}건 저장`);
+      if (window.showToast) window.showToast(`${results.length}건 저장`);
     } catch (e) { if (window.showToast) window.showToast('저장 실패: ' + e.message); }
   }
 

@@ -112,7 +112,7 @@
 
       <!-- 예약 요약 -->
       <div style="margin-bottom:14px;padding:14px;background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-        <div style="font-size:12px;font-weight:800;margin-bottom:10px;">📅 예약 현황</div>
+        <div style="font-size:12px;font-weight:800;margin-bottom:10px;">예약 현황</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;">
           <div style="padding:8px;background:rgba(0,0,0,0.03);border-radius:8px;">
             <div style="font-size:18px;font-weight:800;">${b.total}</div>

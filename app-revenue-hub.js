@@ -109,7 +109,7 @@
       </button>
       <div class="rv-header__title-wrap"><div class="rv-header__title">매출 기록</div></div>
       <button type="button" class="rv-header__action" data-act="excel">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-download"/></svg>엑셀
+        <i class="ph-duotone ph-download-simple" aria-hidden="true"></i>엑셀
       </button>
     </div>`;
   }
@@ -122,7 +122,7 @@
       <div class="rv-pc__title">매출 기록</div>
       <div class="rv-pc__spacer"></div>
       <button type="button" class="rv-pc__add" data-act="excel" style="background:var(--surface);color:var(--text);border:0.5px solid var(--border);">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-download"/></svg>엑셀 불러오기
+        <i class="ph-duotone ph-download-simple" aria-hidden="true"></i>엑셀 불러오기
       </button>
     </div>`;
   }
@@ -168,7 +168,7 @@
       </div>`).join('');
     return `<div style="margin:12px 0;padding:12px;background:var(--brand-bg);border:0.5px solid var(--border-strong);border-radius:var(--r-md);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <span style="font-size:13px;font-weight:700;color:var(--brand-strong);">⏳ 쌓아둔 ${items.length}건</span>
+        <span style="font-size:13px;font-weight:700;color:var(--brand-strong);">쌓아둔 ${items.length}건</span>
         <div style="display:flex;gap:6px;">
           <button type="button" data-act="clear-pending" style="background:none;border:0.5px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;color:var(--text-muted);cursor:pointer;">비우기</button>
           <button type="button" data-act="flush" style="background:var(--brand-strong);border:none;border-radius:8px;padding:5px 12px;font-size:11px;color:#fff;font-weight:700;cursor:pointer;">⚡ ${items.length}개 한 번에 저장</button>
@@ -181,9 +181,9 @@
   function _renderReportButton() {
     if (typeof window.openRevenueReport !== 'function') return '';
     return `<button type="button" data-act="report" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;margin:12px 0;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-md);font-size:13px;font-weight:600;color:var(--text);cursor:pointer;text-align:left;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#ic-bar-chart-3"/></svg>
+      <i class="ph-duotone ph-chart-bar" aria-hidden="true"></i>
       <span style="flex:1;">상세 리포트</span>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-subtle);"><use href="#ic-chevron-right"/></svg>
+      <i class="ph-duotone ph-caret-right" aria-hidden="true"></i>
     </button>`;
   }
 
@@ -203,7 +203,7 @@
         <div class="rv-section__meta">${list.length}건</div>
       </div>
       <div style="padding:0 0 8px;position:relative;">
-        <input class="rv-qa__input" id="rh-search" placeholder="🔎 검색 (고객/시술/방식)" value="${_esc(_state.searchKW)}" style="width:100%;padding:9px 12px;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-sm);" />
+        <input class="rv-qa__input" id="rh-search" placeholder="검색 (고객/시술/방식)" value="${_esc(_state.searchKW)}" style="width:100%;padding:9px 12px;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-sm);" />
       </div>
       <div class="rv-list">${list.map(r => _renderRow(r)).join('')}</div>`;
   }
@@ -218,7 +218,7 @@
         <div class="rv-list__meta">${tag}${r.customer_name ? `<span class="rv-list__customer">${_esc(r.customer_name)}</span>` : ''}</div>
       </div>
       <button type="button" class="rv-list__delete" data-act="edit" data-id="${_esc(r.id)}" aria-label="수정" style="color:var(--text-muted);">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-edit-3"/></svg>
+        <i class="ph-duotone ph-pencil-simple" aria-hidden="true"></i>
       </button>
       <button type="button" class="rv-list__delete" data-act="del-row" data-id="${_esc(r.id)}" aria-label="삭제">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -331,7 +331,7 @@
     if (!v) return;
     let body;
     try { body = _buildBody(v); } catch (e) {
-      if (window.showToast) window.showToast('⚠️ ' + e.message); return;
+      if (window.showToast) window.showToast('' + e.message); return;
     }
     try {
       const res = await fetch(`${API()}/revenue`, {
@@ -345,7 +345,7 @@
       _writeCache(_state.rows);
       _resetInput(); _render();
       if (window.hapticLight) window.hapticLight();
-      if (window.showToast) window.showToast('✅ 매출 추가 완료');
+      if (window.showToast) window.showToast('매출 추가 완료');
       try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_revenue', optimistic: false } })); } catch (_e) { void _e; }
     } catch (e) {
       if (window.showToast) window.showToast('저장 실패: ' + e.message);
@@ -357,7 +357,7 @@
     if (!v) return;
     let body;
     try { body = _buildBody(v); } catch (e) {
-      if (window.showToast) window.showToast('⚠️ ' + e.message); return;
+      if (window.showToast) window.showToast('' + e.message); return;
     }
     _state.pending.push(body);
     if (window.hapticLight) window.hapticLight();
@@ -380,7 +380,7 @@
       _writeCache(_state.rows);
       _render();
       if (window.hapticLight) window.hapticLight();
-      if (window.showToast) window.showToast(`✅ ${results.length}건 저장 완료`);
+      if (window.showToast) window.showToast(`${results.length}건 저장 완료`);
       try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_revenue', optimistic: false } })); } catch (_e) { void _e; }
     } catch (e) {
       if (window.showToast) window.showToast('저장 실패: ' + e.message);

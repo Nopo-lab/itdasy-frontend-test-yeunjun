@@ -46,7 +46,7 @@
   const _MOD_CAT_LABELS = {
     offensive:      '🤬 신고 답변 · 욕설/혐오',
     sexual:         '🔞 신고 답변 · 선정적',
-    violence:       '⚠️ 신고 답변 · 폭력',
+    violence:       '신고 답변 · 폭력',
     misinformation: '📛 신고 답변 · 거짓정보',
     privacy:        '🔒 신고 답변 · 개인정보',
     copyright:      '©️ 신고 답변 · 저작권',

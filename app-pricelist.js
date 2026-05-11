@@ -24,7 +24,7 @@
     sheet.innerHTML = `
       <div id="pricelistCard" style="width:100%;max-width:520px;background:#fff;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;padding:18px 18px max(18px,env(safe-area-inset-bottom));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <strong style="font-size:17px;">📋 가격표 사진으로 일괄 등록</strong>
+          <strong style="font-size:17px;">가격표 사진으로 일괄 등록</strong>
           <button id="plClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;font-size:22px;cursor:pointer;line-height:1;">×</button>
         </div>
         <div style="font-size:12px;color:#777;line-height:1.55;margin-bottom:14px;">
@@ -112,7 +112,7 @@
       resultBox.style.display = 'block';
       resultBox.innerHTML = `
         <div style="padding:14px;background:linear-gradient(135deg,#F0FDF4,#DCFCE7);border-radius:14px;margin-bottom:12px;">
-          <div style="font-size:15px;font-weight:800;color:#166534;margin-bottom:4px;">✅ ${items.length}개 시술 등록 완료</div>
+          <div style="font-size:15px;font-weight:800;color:#166534;margin-bottom:4px;">${items.length}개 시술 등록 완료</div>
           <div style="font-size:12px;color:#16653480;">신규 ${inserted}개 · 업데이트 ${updated}개${skipped ? ` · 제외 ${skipped}개` : ''}</div>
         </div>
         <div style="font-size:12px;color:var(--text-muted);font-weight:600;margin-bottom:8px;">등록된 시술</div>
@@ -142,15 +142,15 @@
         resultBox.style.display = 'none';
       });
       if (window.Fun && window.Fun.celebrate) {
-        try { window.Fun.celebrate(`✨ 시술 ${items.length}개 등록`, { emojis: ['💅','✨','🌷','💖'], count: 12 }); } catch (_e) { void _e; }
+        try { window.Fun.celebrate(`시술 ${items.length}개 등록`, { emojis: ['💅','✨','🌷','💖'], count: 12 }); } catch (_e) { void _e; }
       } else if (window.showToast) {
-        window.showToast(`✅ ${items.length}개 시술 등록`);
+        window.showToast(`${items.length}개 시술 등록`);
       }
     } catch (e) {
       progress.style.display = 'none';
       upArea.style.display = 'block';
       resultBox.style.display = 'block';
-      resultBox.innerHTML = `<div style="padding:14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;color:#991B1B;font-size:13px;line-height:1.5;">❌ ${_esc(e.message || '인식 실패')}<br><span style="font-size:11px;color:#991B1B80;">사진이 흐리거나 가격표가 아닌 것 같아요. 더 선명한 사진으로 다시 시도해 주세요.</span></div>`;
+      resultBox.innerHTML = `<div style="padding:14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;color:#991B1B;font-size:13px;line-height:1.5;">${_esc(e.message || '인식 실패')}<br><span style="font-size:11px;color:#991B1B80;">사진이 흐리거나 가격표가 아닌 것 같아요. 더 선명한 사진으로 다시 시도해 주세요.</span></div>`;
     }
   }
 

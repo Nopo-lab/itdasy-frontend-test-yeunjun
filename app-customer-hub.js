@@ -237,11 +237,11 @@
   function _renderHeader() {
     return `<div class="hub-header">
       <button class="hub-back" data-act="close" aria-label="뒤로가기">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-chevron-left"/></svg>
+        <i class="ph-duotone ph-caret-left" aria-hidden="true"></i>
       </button>
       <span class="hub-title">고객관리</span>
       <button class="ch-excel-btn" data-act="excel">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-download"/></svg>
+        <i class="ph-duotone ph-download-simple" aria-hidden="true"></i>
         엑셀 불러오기
       </button>
       <button class="ch-add-toggle${_state.addPanelOpen ? ' active' : ''}" data-act="toggle-add" aria-label="수동 추가">+</button>
@@ -251,7 +251,7 @@
   function _renderSearch() {
     return `<div class="ch-search-wrap">
       <div class="ch-search-inner">
-        <svg class="ch-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="#ic-search"/></svg>
+        <i class="ph-duotone ph-magnifying-glass" aria-hidden="true"></i>
         <input class="ch-search" id="ch-search" placeholder="이름·연락처·태그 검색" value="${_esc(_state.searchKW)}" />
       </div>
     </div>`;
@@ -288,14 +288,14 @@
 
     if (!list.length && !kw && f === 'all') {
       return `<div class="hub-empty">
-        <div class="hub-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-users"/></svg></div>
+        <div class="hub-empty-icon"><i class="ph-duotone ph-users" aria-hidden="true"></i></div>
         <div class="hub-empty-title">아직 고객이 없어요</div>
         <div class="hub-empty-desc">예약 잡으면 자동 등록돼요</div>
       </div>`;
     }
     if (!list.length) {
       return `<div class="hub-empty">
-        <div class="hub-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-search"/></svg></div>
+        <div class="hub-empty-icon"><i class="ph-duotone ph-magnifying-glass" aria-hidden="true"></i></div>
         <div class="hub-empty-title">해당 고객이 없어요</div>
         <div class="hub-empty-desc">필터를 바꾸거나 + 버튼으로 추가하세요</div>
       </div>`;
@@ -336,7 +336,7 @@
         </div>
       </div>
       <span class="cust-chev">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="#ic-chevron-right"/></svg>
+        <i class="ph-duotone ph-caret-right" aria-hidden="true"></i>
       </span>
     </div>`;
   }
@@ -381,7 +381,7 @@
     const overlay = document.getElementById(OID); if (!overlay) return;
     const v = {};
     overlay.querySelectorAll('.ch-add-panel [data-field]').forEach(i => { v[i.dataset.field] = i.value.trim(); });
-    if (!v.name) { if (window.showToast) window.showToast('⚠️ 이름 필수'); return; }
+    if (!v.name) { if (window.showToast) window.showToast('이름 필수'); return; }
     try {
       const res = await fetch(`${API()}/customers?force=true`, {
         method: 'POST', headers: { ...AUTH(), 'Content-Type': 'application/json' },
@@ -397,7 +397,7 @@
       _state.addPanelOpen = false;
       _render();
       if (window.hapticLight) window.hapticLight();
-      if (window.showToast) window.showToast(`✅ ${v.name} 추가 완료`);
+      if (window.showToast) window.showToast(`${v.name} 추가 완료`);
     } catch (e) { if (window.showToast) window.showToast('저장 실패: ' + e.message); }
   }
 

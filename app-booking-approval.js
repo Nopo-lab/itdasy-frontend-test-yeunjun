@@ -50,7 +50,7 @@
           <div style="font-size:12px;color:var(--text-muted);">${_esc(b.service_name || '시술')}</div>
           ${memo ? `<div style="font-size:11px;color:#888;margin-top:4px;">${_esc(memo)}</div>` : ''}
           <div style="margin-top:10px;display:flex;gap:6px;">
-            <button data-approve="${b.id}" style="flex:2;padding:10px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border:none;border-radius:8px;font-weight:800;font-size:12px;cursor:pointer;">✅ 입금 확인 · 승인</button>
+            <button data-approve="${b.id}" style="flex:2;padding:10px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border:none;border-radius:8px;font-weight:800;font-size:12px;cursor:pointer;">입금 확인 · 승인</button>
             <button data-reject="${b.id}" style="flex:1;padding:10px;background:#fff;color:#c00;border:1px solid #fcc;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">거절</button>
           </div>
         </div>`;
@@ -61,7 +61,7 @@
           btn.disabled = true;
           try {
             await _api('/public/book/admin/bookings/' + btn.dataset.approve + '/approve', { method: 'POST' });
-            if (window.showToast) window.showToast('✅ 예약 확정');
+            if (window.showToast) window.showToast('예약 확정');
             try { sessionStorage.removeItem('pv_cache::booking'); } catch (_e) { /* ignore */ }
             await _reload();
           } catch (e) {
@@ -97,7 +97,7 @@
         <div style="padding:18px 20px 12px;background:#fff;border-bottom:1px solid #eee;">
           <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 14px;"></div>
           <div style="display:flex;align-items:center;gap:8px;">
-            <strong style="font-size:17px;">⏳ 입금 대기 예약</strong>
+            <strong style="font-size:17px;">입금 대기 예약</strong>
             <button class="ba-close" style="margin-left:auto;background:none;border:none;font-size:18px;color:#888;cursor:pointer;">✕</button>
           </div>
           <div style="font-size:11px;color:#888;margin-top:6px;">입금 확인 후 "승인" 탭 → 캘린더 반영. 미입금은 "거절".</div>

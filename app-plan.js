@@ -178,7 +178,7 @@
           throw new Error(body.detail || '요청 실패');
         }
         if (window.hapticSuccess) window.hapticSuccess();
-        if (typeof window.showToast === 'function') window.showToast('14일 무료체험 시작! 🎉');
+        if (typeof window.showToast === 'function') window.showToast('14일 무료체험 시작!');
         _currentPlan = 'pro';
         _updateActionButton();
         _updatePlanBadgeUI('pro');

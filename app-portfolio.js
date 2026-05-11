@@ -517,8 +517,8 @@ function selectBgAsset(url) {
   });
   // 배경 창고 토글 버튼 텍스트로 선택 상태 표시
   const toggleBtn = document.getElementById('bgStoreToggle');
-  if (toggleBtn) toggleBtn.textContent = '📦 배경 창고 (1개 선택됨)';
-  showToast('배경 선택 완료! 합성 버튼을 눌러주세요 ✨');
+  if (toggleBtn) toggleBtn.textContent = '배경 창고 (1개 선택됨)';
+  showToast('배경 선택 완료! 합성 버튼을 눌러주세요');
   const panel = document.getElementById('bgStorePanel');
   if (panel) panel.style.display = 'none';
 }

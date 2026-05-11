@@ -35,7 +35,7 @@
     el.innerHTML = `
       <header class="ss-topbar">
         <button type="button" class="ss-back" data-ss-back aria-label="뒤로">
-          <svg class="ic" aria-hidden="true"><use href="#ic-arrow-left"/></svg>
+          <i class="ph-duotone ph-arrow-left" aria-hidden="true"></i>
         </button>
         <div class="ss-title">샵 정보 · 직원</div>
         <button type="button" class="ss-action" data-ss-save>저장</button>
@@ -84,7 +84,7 @@
           <div class="ss-card-sub" style="margin-bottom:10px;">제3자 플랫폼 검증 현황이에요. 통과 즉시 자동 활성화돼요.</div>
 
           <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bg2,#f0f0f0);">
-            <svg class="ic" aria-hidden="true" style="width:18px;height:18px;color:#B45309;"><use href="#ic-clock"/></svg>
+            <i class="ph-duotone ph-clock" aria-hidden="true"></i>
             <div style="flex:1;min-width:0;">
               <div style="font-size:13px;font-weight:700;color:var(--text,#222);">Meta 비즈니스 검증</div>
               <div style="font-size:11px;color:var(--text3,#999);margin-top:2px;">DM 자동응답·인스타 게시 · 예상 1~2주</div>
@@ -93,7 +93,7 @@
           </div>
 
           <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bg2,#f0f0f0);">
-            <svg class="ic" aria-hidden="true" style="width:18px;height:18px;color:#B45309;"><use href="#ic-clock"/></svg>
+            <i class="ph-duotone ph-clock" aria-hidden="true"></i>
             <div style="flex:1;min-width:0;">
               <div style="font-size:13px;font-weight:700;color:var(--text,#222);">Apple App Store 심사</div>
               <div style="font-size:11px;color:var(--text3,#999);margin-top:2px;">iOS 앱 출시 · 예상 1~2주</div>
@@ -102,7 +102,7 @@
           </div>
 
           <div style="display:flex;align-items:center;gap:10px;padding:10px 0;">
-            <svg class="ic" aria-hidden="true" style="width:18px;height:18px;color:#B45309;"><use href="#ic-clock"/></svg>
+            <i class="ph-duotone ph-clock" aria-hidden="true"></i>
             <div style="flex:1;min-width:0;">
               <div style="font-size:13px;font-weight:700;color:var(--text,#222);">Google Play 심사</div>
               <div style="font-size:11px;color:var(--text3,#999);margin-top:2px;">Android 앱 출시 · 예상 3~7일</div>

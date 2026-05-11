@@ -274,7 +274,7 @@ function obShowStep(n) {
     d.classList.toggle('active', i < n);
   });
   const btn = document.getElementById('obBtn');
-  btn.textContent = n === ONBOARD_STEPS ? '시작하기 🎉' : '계속하기';
+  btn.textContent = n === ONBOARD_STEPS ? '시작하기' : '계속하기';
   const skip = document.getElementById('obSkipBtn');
   if (skip) skip.style.display = n === 2 ? '' : 'none';
   obStep = n;
@@ -300,7 +300,7 @@ function _obFinish() {
   document.getElementById('onboardingOverlay').classList.add('hidden');
   applyShopType(obShopType);
   updateHeaderProfile(null, null, null);
-  showToast(`${name} 시작해요 🎉`, 'success');
+  showToast(`${name} 시작해요`, 'success');
 
   fetch(API + '/shop/settings', {
     method: 'PUT',
@@ -856,7 +856,7 @@ function checkCbt1Reset() {
 }
 
 async function fullReset() {
-  if (!(await nativeConfirm("확인", '⚠️ 모든 데이터(온보딩·샵설정·인스타연동·말투분석)가 초기화됩니다.\n정말 처음부터 시작할까요?'))) return;
+  if (!(await nativeConfirm("확인", '모든 데이터(온보딩·샵설정·인스타연동·말투분석)가 초기화됩니다.\n정말 처음부터 시작할까요?'))) return;
   try {
     const res = await fetch(API + '/admin/reset', { method: 'POST', headers: authHeader() });
     if (!res.ok) throw new Error('초기화 실패');
@@ -1068,7 +1068,7 @@ async function _offerBiometricEnroll(token) {
       if (!yes) return;
       try {
         await window.Biometric.enable(token);
-        if (window.showToast) window.showToast('✅ 생체 인증 등록됨');
+        if (window.showToast) window.showToast('생체 인증 등록됨');
       } catch (_) { /* ignore */ }
     }, 1200);
   } catch (_) { /* ignore */ }
@@ -1497,7 +1497,7 @@ window.addEventListener('load', function() {
     const tsEl2 = document.getElementById('consentTimestampDisplay');
     if (tsEl2) {
       if (consentedAt) {
-        tsEl2.textContent = `✅ 개인정보 동의 완료 · ${consentedAt}`;
+        tsEl2.textContent = `개인정보 동의 완료 · ${consentedAt}`;
         tsEl2.style.display = 'inline';
       } else {
         tsEl2.textContent = '';
@@ -1617,7 +1617,7 @@ document.addEventListener('DOMContentLoaded', function() {
       t.classList.add('on');
       window._customBgUrl = null;
       const toggleBtn = document.getElementById('bgStoreToggle');
-      if (toggleBtn && toggleBtn.textContent.includes('선택됨')) toggleBtn.textContent = '📦 배경 창고 열기';
+      if (toggleBtn && toggleBtn.textContent.includes('선택됨')) toggleBtn.textContent = '배경 창고 열기';
       document.querySelectorAll('#bgStoreGrid > div').forEach(cell => { cell.style.outline = ''; });
     });
   });
@@ -1831,7 +1831,7 @@ if ('serviceWorker' in navigator && !_isCapacitor) {
     springBack(() => {
       resetIndicator();
       loading = false;
-      showToast('✨ 최신 상태예요!');
+      showToast('최신 상태예요!');
     });
   });
 })();

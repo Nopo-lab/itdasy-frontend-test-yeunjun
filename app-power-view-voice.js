@@ -128,7 +128,7 @@
   function button() {
     if (!_isSupported()) return '';
     return `<button type="button" id="pv-voice-btn" class="pv-voice-btn" aria-label="음성으로 입력" aria-pressed="false" title="음성으로 입력">
-      <svg width="14" height="14" aria-hidden="true"><use href="#ic-mic"/></svg>
+      <i class="ph-duotone ph-microphone" aria-hidden="true"></i>
     </button>`;
   }
 

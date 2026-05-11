@@ -24,9 +24,9 @@
   }
 
   const _INTENT_LABEL = {
-    pricing: '💰 견적', booking: '📅 예약', hours: '⏰ 시간',
-    location: '📍 위치', review: '✨ 후기', greeting: '👋 인사',
-    complaint: '⚠️ 위험', unknown: '❓ 모름',
+    pricing: '견적', booking: '예약', hours: '⏰ 시간',
+    location: '📍 위치', review: '후기', greeting: '👋 인사',
+    complaint: '위험', unknown: '❓ 모름',
   };
   const _CUST_LABEL = { all: '모두', new: '신규', regular: '단골', vip: 'VIP' };
   const _MODE_LABEL = { exact: '그대로 발송', as_base: 'AI 가 톤 다듬어 발송' };
@@ -65,9 +65,9 @@
     sheet.innerHTML = `
       <div id="dmrCard" style="width:100%;max-width:580px;background:#fff;border-radius:20px 20px 0 0;max-height:94vh;display:flex;flex-direction:column;padding:16px 18px max(16px,env(safe-area-inset-bottom));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <span style="display:inline-flex;align-items:center;color:#7C3AED;"><svg width="20" height="20" aria-hidden="true"><use href="#ic-pen-line"/></svg></span>
+          <span style="display:inline-flex;align-items:center;color:#7C3AED;"><i class="ph-duotone ph-pen" aria-hidden="true"></i></span>
           <strong style="font-size:17px;">멘트 관리</strong>
-          <button id="dmrClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#888;display:inline-flex;align-items:center;"><svg width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
+          <button id="dmrClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#888;display:inline-flex;align-items:center;"><i class="ph-duotone ph-x" aria-hidden="true"></i></button>
         </div>
 
         <!-- 탭 -->
@@ -79,7 +79,7 @@
         <!-- 영역 (기본 멘트 6종) -->
         <div id="dmrBasicSection" style="flex:1;overflow-y:auto;display:block;">
           <button id="dmrAutoGen" type="button" style="width:100%;display:flex;align-items:center;gap:10px;padding:13px;border:1px solid #DDD6FE;border-radius:12px;background:linear-gradient(135deg,#FAF5FF,#E0E7FF);margin-bottom:14px;cursor:pointer;text-align:left;">
-            <svg width="20" height="20" aria-hidden="true" style="color:#5B21B6;flex-shrink:0;"><use href="#ic-wand-sparkles"/></svg>
+            <i class="ph-duotone ph-magic-wand" aria-hidden="true"></i>
             <div style="flex:1;">
               <div style="font-size:13px;font-weight:800;color:#5B21B6;">내 톤 분석 + 6종 멘트 자동 작성</div>
               <div style="font-size:11px;color:#5B21B680;margin-top:2px;line-height:1.4;">DM + 인스타 게시물에서 사장 말투 학습 → 자동 작성</div>
@@ -98,7 +98,7 @@
             예시: <span style="color:#5B21B6;font-weight:600;">"점심시간 12~13시 → 1시 이후 답"</span> / <span style="color:#5B21B6;font-weight:600;">"단골 + 인사 → 언니 또 와주셨네"</span>
           </div>
           <button id="dmrAdd" style="margin-bottom:14px;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#7C3AED,#A78BFA);color:#fff;font-weight:800;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;">
-            <svg width="14" height="14" aria-hidden="true"><use href="#ic-plus"/></svg>새 매뉴얼 추가
+            <i class="ph-duotone ph-plus" aria-hidden="true"></i>새 매뉴얼 추가
           </button>
           <div id="dmrList"><div style="text-align:center;color:var(--text-subtle);padding:30px 0;font-size:13px;">불러오는 중…</div></div>
         </div>
@@ -207,7 +207,7 @@
             <svg width="13" height="13" aria-hidden="true" style="color:#7C3AED;"><use href="#${icon}"/></svg>
             <span style="font-size:12px;font-weight:700;color:#555;">${label}</span>
             <button type="button" data-regen="${cat}" class="dmr-regen-btn" style="margin-left:auto;font-size:10px;font-weight:700;color:#5B21B6;background:#FAF5FF;border:1px solid #DDD6FE;padding:3px 8px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;">
-              <svg width="10" height="10" aria-hidden="true"><use href="#ic-wand-sparkles"/></svg>다시 작성
+              <i class="ph-duotone ph-magic-wand" aria-hidden="true"></i>다시 작성
             </button>
           </div>
           <textarea id="${taId}" placeholder="${ph}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:13px;box-sizing:border-box;min-height:54px;line-height:1.5;">${_esc(val)}</textarea>
@@ -359,7 +359,7 @@
       <div id="dmrEditCard" style="width:100%;max-width:560px;background:#fff;border-radius:20px 20px 0 0;max-height:94vh;overflow-y:auto;padding:18px 18px max(18px,env(safe-area-inset-bottom));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
           <strong style="font-size:16px;">${it.id ? '멘트 편집' : '새 멘트 추가'}</strong>
-          <button id="dmrEditClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#888;display:inline-flex;align-items:center;"><svg width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
+          <button id="dmrEditClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#888;display:inline-flex;align-items:center;"><i class="ph-duotone ph-x" aria-hidden="true"></i></button>
         </div>
 
         <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px;">제목 (사장만 보는 라벨)</label>
@@ -377,13 +377,13 @@
           <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:3px;">분류 (intent)</label>
           <select id="dmrIntent" style="width:100%;padding:9px;border:1px solid #FBBF24;background:#fff;border-radius:8px;font-size:12px;margin-bottom:8px;">
             <option value="">(모든 분류)</option>
-            <option value="pricing"  ${it.trigger_intent === 'pricing'  ? 'selected' : ''}>💰 견적</option>
-            <option value="booking"  ${it.trigger_intent === 'booking'  ? 'selected' : ''}>📅 예약</option>
+            <option value="pricing"  ${it.trigger_intent === 'pricing'  ? 'selected' : ''}>견적</option>
+            <option value="booking"  ${it.trigger_intent === 'booking'  ? 'selected' : ''}>예약</option>
             <option value="hours"    ${it.trigger_intent === 'hours'    ? 'selected' : ''}>⏰ 영업시간</option>
             <option value="location" ${it.trigger_intent === 'location' ? 'selected' : ''}>📍 위치</option>
-            <option value="review"   ${it.trigger_intent === 'review'   ? 'selected' : ''}>✨ 후기</option>
+            <option value="review"   ${it.trigger_intent === 'review'   ? 'selected' : ''}>후기</option>
             <option value="greeting" ${it.trigger_intent === 'greeting' ? 'selected' : ''}>👋 인사</option>
-            <option value="complaint"${it.trigger_intent === 'complaint'? 'selected' : ''}>⚠️ 위험/불만</option>
+            <option value="complaint"${it.trigger_intent === 'complaint'? 'selected' : ''}>위험/불만</option>
           </select>
 
           <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:3px;">시간대 (KST)</label>

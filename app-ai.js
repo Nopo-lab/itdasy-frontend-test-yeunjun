@@ -39,7 +39,7 @@ async function initAiRecommendTab() {
 function _renderAiRecommendTab(root, slots) {
   if (!slots.length) {
     root.innerHTML = `
-      <div class="sec-title" style="margin-bottom:4px;">AI 추천 ✨</div>
+      <div class="sec-title" style="margin-bottom:4px;">AI 추천</div>
       <div style="text-align:center;padding:60px 20px;">
         <div style="font-size:40px;margin-bottom:12px;">🌸</div>
         <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:6px;">올릴 게 없어요!</div>
@@ -87,7 +87,7 @@ function _renderAiRecommendTab(root, slots) {
     // 완성된 슬롯은 "인스타 즉시 올리기" 버튼 카드에 직접 노출
     const actionBtns = isComplete ? `
       <div style="margin-top:10px;">
-        <button onclick="_quickPublishFromAi('${slot.id}',event)" style="width:100%;min-height:44px;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:12px;font-weight:800;cursor:pointer;">🚀 인스타 바로 올리기</button>
+        <button onclick="_quickPublishFromAi('${slot.id}',event)" style="width:100%;min-height:44px;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:12px;font-weight:800;cursor:pointer;">인스타 바로 올리기</button>
       </div>
     ` : (hasPhotos && !hasCaption) ? `
       <div style="margin-top:10px;">
@@ -124,7 +124,7 @@ function _renderAiRecommendTab(root, slots) {
     : `미발행 ${slots.length}개 · 탭하면 마무리로 이동해요`;
 
   root.innerHTML = `
-    <div class="sec-title" style="margin-bottom:4px;">AI 추천 ✨</div>
+    <div class="sec-title" style="margin-bottom:4px;">AI 추천</div>
     <div class="sec-sub" style="margin-bottom:16px;">${subText}</div>
     ${cardsHtml}
     <div id="aiRecommendBatchBar" style="display:none;position:fixed;bottom:65px;left:0;right:0;z-index:200;padding:10px 16px;background:rgba(255,255,255,0.99);border-top:1px solid var(--border);box-shadow:0 -2px 16px rgba(0,0,0,0.1);">
@@ -251,7 +251,7 @@ async function doInstagramPublish(imageUrl, captionText) {
     upPopup.style.display = 'none';
     const donePopup = document.getElementById('uploadDonePopup');
     const doneMsg = document.getElementById('uploadDoneMsg');
-    if (doneMsg) doneMsg.textContent = '인스타 피드에 올라갔어요 ✨';
+    if (doneMsg) doneMsg.textContent = '인스타 피드에 올라갔어요';
     if (donePopup) donePopup.style.display = 'flex';
     return true;
   } catch(e) {

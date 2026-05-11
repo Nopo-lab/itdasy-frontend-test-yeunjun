@@ -43,12 +43,12 @@
       </label>
 
       <div style="display:flex;gap:8px;">
-        <button id="pb-copy" style="flex:1;padding:12px;border:1px solid #ddd;background:#fff;border-radius:10px;font-weight:700;cursor:pointer;">📋 복사</button>
-        <button id="pb-share" style="flex:1;padding:12px;border:none;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border-radius:10px;font-weight:800;cursor:pointer;">📤 공유</button>
+        <button id="pb-copy" style="flex:1;padding:12px;border:1px solid #ddd;background:#fff;border-radius:10px;font-weight:700;cursor:pointer;">복사</button>
+        <button id="pb-share" style="flex:1;padding:12px;border:none;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border-radius:10px;font-weight:800;cursor:pointer;">공유</button>
       </div>
 
       <div style="padding:14px;background:#FFFBEA;border-radius:10px;margin-top:14px;border:1px solid #FDE68A;">
-        <div style="font-size:12px;font-weight:700;color:#B45309;margin-bottom:4px;">💡 활용 팁</div>
+        <div style="font-size:12px;font-weight:700;color:#B45309;margin-bottom:4px;">활용 팁</div>
         <div style="font-size:11px;color:var(--text-muted);line-height:1.6;">
           · 인스타 프로필 "웹사이트" 자리에 붙여넣기<br>
           · 카톡 채널 홈 "링크" 로 추가<br>

@@ -86,17 +86,17 @@
         </div>
 
         <div class="sr-uploader">
-          <svg width="34" height="34" aria-hidden="true"><use href="#ic-camera"/></svg>
+          <i class="ph-duotone ph-camera" aria-hidden="true"></i>
           <p>손님 사진을 찍거나 갤러리에서 선택해 주세요</p>
           <p style="font-size:11px;color:var(--text-subtle);margin-top:4px;">10MB 이하 · JPG/PNG/WEBP</p>
         </div>
         <div class="sr-pick-row">
           <button type="button" class="sr-pick-btn" data-sr-camera>
-            <svg width="22" height="22" aria-hidden="true"><use href="#ic-camera"/></svg>
+            <i class="ph-duotone ph-camera" aria-hidden="true"></i>
             <span>카메라 촬영</span>
           </button>
           <button type="button" class="sr-pick-btn" data-sr-gallery>
-            <svg width="22" height="22" aria-hidden="true"><use href="#ic-image"/></svg>
+            <i class="ph-duotone ph-image" aria-hidden="true"></i>
             <span>갤러리에서 선택</span>
           </button>
         </div>

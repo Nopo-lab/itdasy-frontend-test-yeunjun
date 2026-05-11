@@ -148,6 +148,6 @@
     } catch (e) {
       info.diagnose_error = String(e);
     }
-    window.showDebug('📤 인스타 업로드 실패 진단', info);
+    window.showDebug('인스타 업로드 실패 진단', info);
   };
 })();

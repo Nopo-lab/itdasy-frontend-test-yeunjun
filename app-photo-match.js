@@ -134,10 +134,10 @@
             <strong style="font-size:15px;">혹시 이 고객 맞나요?</strong>
           </div>
           <div style="padding:12px;background:linear-gradient(135deg,rgba(241,128,145,0.1),rgba(241,128,145,0.02));border-radius:12px;margin-bottom:12px;">
-            <div style="font-size:11px;color:#888;margin-bottom:4px;">📸 사진 촬영 ${_formatTime(takenAt)}</div>
+            <div style="font-size:11px;color:#888;margin-bottom:4px;">사진 촬영 ${_formatTime(takenAt)}</div>
             <div style="font-size:15px;font-weight:800;color:#222;">${String(booking.customer_name || '').replace(/</g, '&lt;') || '(이름 없음)'}</div>
             <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
-              📅 ${_formatTime(new Date(booking.starts_at))}~${_formatTime(new Date(booking.ends_at))}
+              ${_formatTime(new Date(booking.starts_at))}~${_formatTime(new Date(booking.ends_at))}
               ${booking.service_name ? '· ' + String(booking.service_name).replace(/</g, '&lt;') : ''}
             </div>
           </div>

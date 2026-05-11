@@ -83,7 +83,7 @@
       '<span class="cust-info"><span class="cust-name-row"><span class="cust-name">' + _esc(c.name) + '</span>' +
       (cl.visits > 0 ? '<span class="cust-visits">방문 ' + cl.visits + '회</span>' : '') + '</span>' +
       '<span class="cust-meta">' + _customerBadges(c, cl) + (meta.length ? '<span>' + meta.join(' · ') + '</span>' : '') + '</span></span>' +
-      '<span class="cust-chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="#ic-chevron-right"/></svg></span>' +
+      '<span class="cust-chev"><i class="ph-duotone ph-caret-right" aria-hidden="true"></i></span>' +
     '</button>';
   }
 
@@ -121,7 +121,7 @@
     const selected = rows.find(c => String(c.id) === String(state.selectedId)) || rows[0] || null;
     const s = ctx.stats(state.enriched || []);
     return '<div class="hub-desktop-shell">' + _sidebar('고객관리') +
-      '<main class="hp-main"><div class="hp-header"><h2>고객관리</h2><div class="hp-search"><svg width="14" height="14"><use href="#ic-search"/></svg><input id="ch-search" placeholder="이름·연락처·태그 검색" value="' + _esc(state.searchKW) + '"></div><button class="pc-add-btn" data-act="toggle-add">+ 고객 추가</button></div>' +
+      '<main class="hp-main"><div class="hp-header"><h2>고객관리</h2><div class="hp-search"><i class="ph-duotone ph-magnifying-glass" aria-hidden="true"></i><input id="ch-search" placeholder="이름·연락처·태그 검색" value="' + _esc(state.searchKW) + '"></div><button class="pc-add-btn" data-act="toggle-add">+ 고객 추가</button></div>' +
       '<div class="hp-stats hp-stats--four"><div class="hub-stat-mini"><div class="lbl">전체 고객</div><div class="val">' + s.total + '명</div></div><div class="hub-stat-mini"><div class="lbl">이번달 신규</div><div class="val">' + s.newThisMonth + '명</div></div><div class="hub-stat-mini"><div class="lbl">회원권 보유</div><div class="val">' + s.member + '명</div></div><div class="hub-stat-mini"><div class="lbl">이탈 위험</div><div class="val danger">' + s.risk + '명</div></div></div>' +
       _customerFilterChips(state, ctx.classify, ctx.stats) +
       (state.addPanelOpen ? '<div class="ch-add-panel hp-add-panel"><input class="hub-input" data-field="name" placeholder="이름" list="ac-customer_name"><input class="hub-input" data-field="phone" placeholder="연락처"><input class="hub-input" data-field="memo" placeholder="메모·태그"><button class="hub-btn-add" data-act="add-customer">추가</button></div>' : '') +
@@ -151,7 +151,7 @@
       '<div class="hp-inv-cell"><span class="pc-inv-thresh">' + ctx.fmtNum(r.threshold, r.decimal_places) + _esc(r.unit || '') + '</span></div>' +
       '<div class="hp-inv-cell">' + (low ? '<span class="inv-forecast">' + forecast + '일 후 소진 예상</span>' : '<span class="pc-inv-last">' + (lastIn ? _dateShort(lastIn) : '-') + '</span>') + '</div>' +
       '<div class="hp-inv-cell"><span class="stepper"><button class="stepper-btn" data-act="step" data-id="' + _esc(r.id) + '" data-delta="-1">−</button><span class="stepper-val' + (low ? ' low' : '') + '">' + ctx.fmtQty(r) + '</span><button class="stepper-btn" data-act="step" data-id="' + _esc(r.id) + '" data-delta="1">+</button></span></div>' +
-      '<div class="hp-inv-cell"><button class="inv-edit" data-act="edit" data-id="' + _esc(r.id) + '"><svg width="14" height="14"><use href="#ic-edit-3"/></svg></button></div></div>';
+      '<div class="hp-inv-cell"><button class="inv-edit" data-act="edit" data-id="' + _esc(r.id) + '"><i class="ph-duotone ph-pencil-simple" aria-hidden="true"></i></button></div></div>';
   }
 
   function _invEditRow(r, low) {
@@ -179,7 +179,7 @@
     const parts = ctx.partition(state.rows || []);
     const stats = ctx.stats();
     return '<div class="hub-desktop-shell">' + _sidebar('재고관리') +
-      '<main class="hp-main"><div class="hp-header"><h2>재고관리</h2><div class="hp-search"><svg width="14" height="14"><use href="#ic-search"/></svg><input id="ih-search" placeholder="재고 검색" value="' + _esc(state.searchKW) + '"></div><button class="pc-ocr-btn" data-act="ocr">가격표 OCR</button><button class="pc-add-btn" data-act="focus-add">+ 재고 추가</button></div>' +
+      '<main class="hp-main"><div class="hp-header"><h2>재고관리</h2><div class="hp-search"><i class="ph-duotone ph-magnifying-glass" aria-hidden="true"></i><input id="ih-search" placeholder="재고 검색" value="' + _esc(state.searchKW) + '"></div><button class="pc-ocr-btn" data-act="ocr">가격표 OCR</button><button class="pc-add-btn" data-act="focus-add">+ 재고 추가</button></div>' +
       _invStatsCards(stats) +
       '<div class="hub-qadd hub-qadd--desktop"><input class="hub-input" data-field="name" placeholder="품목명" list="ac-item_name"><input class="hub-input" data-field="quantity" placeholder="수량" type="number" step="0.1"><input class="hub-input" data-field="unit" placeholder="단위" value="개"><input class="hub-input" data-field="threshold" placeholder="임계치" type="number" step="0.1" value="3"><input class="hub-input" data-field="category" placeholder="분류" list="ac-inv_category"><button class="hub-btn-add" data-act="add">추가</button></div>' +
       _inventoryTable('부족한 재고', parts.low, ctx, true) +

@@ -2,7 +2,7 @@
    In-app 알림 (2026-04-21)
 
    - 1분 주기 폴링 (포그라운드만)
-   - 대시보드 헤더에 🔔 배지 표시
+   - 대시보드 헤더에 배지 표시
    - 탭하면 시트로 목록 펼침 + 읽음 처리
    - 운영자 공지(kind=announcement) 도착 시 홈 상단에 인라인 카드 표시
    ──────────────────────────────────────────────────────────── */
@@ -285,15 +285,15 @@
       ? { bg: 'linear-gradient(135deg,#FEE2E2 0%,#FECACA 100%)', border: '#FCA5A5', icon: '#DC2626', label: '#991B1B', btn: '#DC2626', btnText: '#fff', subText: '#991B1B' }
       : { bg: 'linear-gradient(135deg,#FFFBEB 0%,#FEF3C7 100%)', border: '#FDE68A', icon: '#F59E0B', label: '#B45309', btn: '#F59E0B', btnText: '#fff', subText: '#92400E' };
     const headerLbl = isRisk
-      ? `🚨 위험 메시지 ${total > 1 ? `(${total}건)` : ''}`
+      ? `위험 메시지 ${total > 1 ? `(${total}건)` : ''}`
       : `DM 사장 확인 대기 ${total > 1 ? `(${total}건)` : ''}`;
-    const iconHref = isRisk ? '#ic-alert-triangle' : '#ic-bell';
+    const iconClass = isRisk ? 'ph-warning' : 'ph-bell';
 
     host.innerHTML = `
       <div role="status" style="background:${colors.bg};border:1px solid ${colors.border};border-radius:14px;padding:14px 14px 14px 16px;position:relative;">
         <div style="display:flex;align-items:flex-start;gap:10px;">
           <div style="flex-shrink:0;width:36px;height:36px;border-radius:12px;background:${colors.icon};display:flex;align-items:center;justify-content:center;color:#fff;">
-            <svg width="20" height="20" aria-hidden="true"><use href="${iconHref}"/></svg>
+            <i class="ph-duotone ${iconClass}" style="font-size:20px" aria-hidden="true"></i>
           </div>
           <div style="flex:1;min-width:0;">
             <div style="font-size:11px;font-weight:700;color:${colors.label};letter-spacing:0.2px;margin-bottom:2px;">${headerLbl}</div>

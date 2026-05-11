@@ -122,12 +122,12 @@ function renderPersonaDash(p, showTestBtn) {
   const _esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   content.innerHTML = `
     <div style="background:rgba(241,128,145,0.04); padding:14px; border-radius:14px; border:0.5px solid rgba(241,128,145,0.15); margin-bottom:16px;">
-      <div style="margin-bottom:8px; font-size:11px; color:var(--accent2); font-weight:700; letter-spacing:-0.2px;">💬 사장님 말투</div>
+      <div style="margin-bottom:8px; font-size:11px; color:var(--accent2); font-weight:700; letter-spacing:-0.2px;">사장님 말투</div>
       <div style="font-size:13px; color:var(--text); line-height:1.6; font-weight:500;">${_esc(summary)}</div>
     </div>
     <div style="display:flex; flex-direction:column; gap:8px;">
       ${showTestBtn ? `<button class="btn-primary" style="width:100%; height:44px; font-size:13px; font-weight:700;" onclick="showOnboardingCaptionPopup()">✍️ 내 말투로 테스트 글 만들기</button>` : ''}
-      <button class="btn-copy" style="width:100%; height:42px; font-size:13px; font-weight:600; border:1px solid var(--accent2); background:white; color:var(--accent2); border-radius:10px;" onclick="showDetailedAnalysis()">📋 전체 분석 리포트 확인</button>
+      <button class="btn-copy" style="width:100%; height:42px; font-size:13px; font-weight:600; border:1px solid var(--accent2); background:white; color:var(--accent2); border-radius:10px;" onclick="showDetailedAnalysis()">전체 분석 리포트 확인</button>
     </div>
   `;
 }
@@ -288,7 +288,7 @@ async function runPersonaAnalyze() {
     }));
 
     bar.style.width = '100%';
-    stepTxt.textContent = '분석 성공! 🎉';
+    stepTxt.textContent = '분석 성공!';
     subTxt.textContent  = '말투 데이터가 업데이트됐어요';
 
     // 헤더 + 대시보드 갱신
@@ -389,7 +389,7 @@ async function connectInstagram() {
         localStorage.setItem('itdasy_consented', 'true');
         localStorage.setItem('itdasy_consented_at', now);
         const tsEl = document.getElementById('consentTimestampDisplay');
-        if (tsEl) { tsEl.textContent = `✅ 동의 완료: ${now}`; tsEl.style.display = 'block'; }
+        if (tsEl) { tsEl.textContent = `동의 완료: ${now}`; tsEl.style.display = 'block'; }
       })
       .catch(e => {});
 

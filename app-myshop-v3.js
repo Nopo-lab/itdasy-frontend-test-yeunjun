@@ -415,7 +415,7 @@
         ${_sideHubHTML()}
         ${_sideAccountHTML()}
         <button type="button" class="ms-side__fab" data-mv-act="createShortcut">
-          <svg width="16" height="16" aria-hidden="true"><use href="#ic-sparkles"/></svg>
+          <i class="ph-duotone ph-sparkle" aria-hidden="true"></i>
           만들기
         </button>
       </aside>
