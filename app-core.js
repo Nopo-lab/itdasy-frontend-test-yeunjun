@@ -18,6 +18,15 @@
   }
 })();
 
+// ===== XSS 방어 유틸 (글로벌) =====
+// 사용자 입력 / API 응답을 innerHTML에 넣기 전 _esc()로 감싸기.
+// textContent 대체 가능하면 그쪽이 우선.
+window._esc = window._esc || function (s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+};
+
 // [UX-LOAD] 로딩 오버레이 해제 — fade out 후 display:none
 function _hideLoadingOverlay() {
   var lo = document.getElementById('appLoadingOverlay');
@@ -138,10 +147,10 @@ function updateHeaderProfile(handle, tone, picUrl) {
   if (avatarEl) {
     const badge = document.getElementById('headerProviderBadge');
     if (picUrl) {
-      avatarEl.innerHTML = `<img src="${picUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+      avatarEl.innerHTML = `<img src="${window._esc(picUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
     } else {
       const letter = (shopName || '사장님')[0]?.toUpperCase() || '✨';
-      avatarEl.innerHTML = `<span class="profile-avatar__initial">${letter}</span>`;
+      avatarEl.innerHTML = `<span class="profile-avatar__initial">${window._esc(letter)}</span>`;
     }
     // 배지 다시 붙이기 (innerHTML 로 날아갔으므로)
     if (badge) avatarEl.appendChild(badge);
@@ -157,10 +166,10 @@ function updateHeaderProfile(handle, tone, picUrl) {
   const fi = document.getElementById('frameAvatarInner');
   if (fi) {
     if (picUrl) {
-      fi.innerHTML = `<img src="${picUrl}" alt="" style="width:100%;height:100%;object-fit:cover;">`;
+      fi.innerHTML = `<img src="${window._esc(picUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;">`;
     } else {
       const letter = (shopName || '사장님')[0]?.toUpperCase() || '✨';
-      fi.innerHTML = `<span id="frameAvatarLetter">${letter}</span>`;
+      fi.innerHTML = `<span id="frameAvatarLetter">${window._esc(letter)}</span>`;
     }
   }
 }
@@ -759,7 +768,7 @@ function openSettings() {
   if (settingsAvatarEl && headerAvatarEl) {
     const img = headerAvatarEl.querySelector('img');
     if (img) {
-      settingsAvatarEl.innerHTML = `<img src="${img.src}" alt="">`;
+      settingsAvatarEl.innerHTML = `<img src="${window._esc(img.src)}" alt="">`;
     } else {
       const initialEl = headerAvatarEl.querySelector('.profile-avatar__initial');
       settingsAvatarEl.textContent = (initialEl ? initialEl.textContent : '') || shopName[0] || '잇';
