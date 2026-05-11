@@ -65,9 +65,16 @@
 }
 
 /* ── 바디 스크롤 ──────────────────────────────────────────────── */
+/* [2026-05-12 QA #1] iOS Safari/Capacitor 모바일 스크롤 부자연 fix:
+   - min-height:0 → flex column 자식이 overflow 작동하도록 (없으면 height 가 콘텐츠 따라 grow 해서 overflow:auto 무력화)
+   - -webkit-overflow-scrolling:touch → 모멘텀 스크롤
+   - overscroll-behavior:contain → 부모로 스크롤 전파 막음 (body scroll lock 충돌 방지) */
 .dt-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 16px 16px max(24px, calc(env(safe-area-inset-bottom) + 16px));
 }
 
