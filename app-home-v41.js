@@ -652,6 +652,8 @@
       _bindEvents(container, merged);
       _syncAvatar(container);
       _scheduleAvatarRetry(container);
+      // [Hotfix] 홈 첫 로딩 시 두 번째 innerHTML 교체로 스크롤이 밀리는 문제 — 한 프레임 뒤 리셋
+      requestAnimationFrame(() => { window.scrollTo(0, 0); });
     } finally {
       _inFlight = false;
     }

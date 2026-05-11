@@ -148,8 +148,21 @@ body:has(#tab-dashboard.active) #tab-dashboard.tab { max-width: none !important;
   flex-shrink: 0;
   color: var(--text);
 }
-.ms-menu__icon--brand { background: var(--brand-bg); color: var(--brand-strong); }
-.ms-menu__icon--purple { background: rgba(229, 88, 110, 0.08); color: var(--brand-strong); }
+/* 카테고리 컬러 — icons.css .ic-box 팔레트와 동일 (PC 사이드바와 일치) */
+.ms-menu__icon--teal   { background: #E1F5EE; color: #0F6E56; }
+.ms-menu__icon--blue   { background: #E6F1FB; color: #185FA5; }
+.ms-menu__icon--amber  { background: #FAEEDA; color: #854F0B; }
+.ms-menu__icon--coral  { background: #FAECE7; color: #993C1D; }
+.ms-menu__icon--purple { background: #EEEDFE; color: #534AB7; }
+.ms-menu__icon--gray   { background: #F1EFE8; color: #5F5E5A; }
+.ms-menu__icon--pink   { background: #FFF1F3; color: #E5586E; }
+[data-theme="dark"] .ms-menu__icon--teal   { background: #12302A; color: #5DD4B0; }
+[data-theme="dark"] .ms-menu__icon--blue   { background: #172A3F; color: #6DAFED; }
+[data-theme="dark"] .ms-menu__icon--amber  { background: #342510; color: #E6A832; }
+[data-theme="dark"] .ms-menu__icon--coral  { background: #2E1A14; color: #E8815A; }
+[data-theme="dark"] .ms-menu__icon--purple { background: #221F3D; color: #9B93E8; }
+[data-theme="dark"] .ms-menu__icon--gray   { background: #2A2A28; color: #A0A09C; }
+[data-theme="dark"] .ms-menu__icon--pink   { background: #3D1C22; color: #F18091; }
 .ms-menu__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .ms-menu__name { font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
 .ms-menu__meta { font-size: 11.5px; color: var(--text-subtle); font-weight: 500; }
