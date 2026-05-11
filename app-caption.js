@@ -1086,7 +1086,7 @@ function _renderCaptionActionBar(caption, hashtags) {
   actionBar.style.display = 'block';
   actionBar.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--brand-bg);border-radius:10px;font-size:11.5px;color:var(--accent);font-weight:600;margin-bottom:10px;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>
+      <i class="ph-duotone ph-pencil-simple" style="font-size:14px" aria-hidden="true"></i>
       직접 고치면 AI가 다음에 더 잘 써요
     </div>
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">

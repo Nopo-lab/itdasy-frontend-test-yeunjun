@@ -125,7 +125,7 @@
     return `
       <div class="dm-header">
         <button type="button" class="dm-header__back" data-act="close" aria-label="닫기">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="15 18 9 12 15 6"/></svg>
+          <i class="ph-duotone ph-caret-left" style="font-size:14px" aria-hidden="true"></i>
         </button>
         <div class="dm-header__title">DM 자동응답</div>
         <button type="button" class="dm-header__action" data-act="save">저장</button>
@@ -178,7 +178,7 @@
     return `
       <div class="dm-persona">
         <div class="dm-persona__icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M12 14c-4 0-7 2-7 6h14c0-4-3-6-7-6z"/></svg>
+          <i class="ph-duotone ph-user-circle" style="font-size:20px" aria-hidden="true"></i>
         </div>
         <div class="dm-persona__info">
           <div class="dm-persona__title"><b>원장님 말투</b>로 학습된 AI</div>
@@ -203,7 +203,7 @@
           ${cards.map(c => `
             <button type="button" class="dm-tone__card ${c.id === tone ? 'is-on' : ''}" data-tone="${c.id}">
               <div class="dm-tone__icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+                <i class="ph-duotone ph-question" style="font-size:18px" aria-hidden="true"></i>
               </div>
               <div class="dm-tone__name">${c.name}</div>
               <div class="dm-tone__sample">${c.sample}</div>
@@ -416,7 +416,7 @@
         ${_renderMiniTone(activeTone)}
         <div class="dm-actions" style="display:flex;flex-direction:column;gap:6px;">
           <button type="button" class="dm-action is-send" data-act="send" style="width:100%;justify-content:center;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            <i class="ph-duotone ph-paper-plane-tilt" style="font-size:12px" aria-hidden="true"></i>
             ${sendLabel}
           </button>
           ${showAltBtn ? `<button type="button" class="dm-action" data-act="alt" style="width:100%;justify-content:center;background:#FFFBEB;color:#92400E;border:1px solid #F59E0B;">⏰ 불가 및 대안 시간 제안</button>` : ''}
@@ -434,7 +434,7 @@
           style="width:100%;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,0.15);
             background:rgba(255,255,255,0.07);color:#fff;font-size:13px;font-weight:600;cursor:pointer;
             display:flex;align-items:center;justify-content:center;gap:6px;">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <i class="ph-duotone ph-clock" style="font-size:15px" aria-hidden="true"></i>
           45일+ 안 오신 손님 보기
         </button>
         <div id="dmRetentionList" style="margin-top:8px;"></div>

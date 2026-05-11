@@ -306,9 +306,9 @@ function _showCaptionPublishPreview(photos, caption) {
       ${photoHtml}
       <!-- 액션 아이콘 -->
       <div style="display:flex;align-items:center;padding:10px 12px 4px;">
-        <svg style="width:24px;height:24px;margin-right:14px;" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        <svg style="width:24px;height:24px;margin-right:14px;" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        <svg style="width:24px;height:24px;" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        <i class="ph-duotone ph-heart" style="font-size:2px" aria-hidden="true"></i>
+        <i class="ph-duotone ph-chat-circle" style="font-size:2px" aria-hidden="true"></i>
+        <i class="ph-duotone ph-paper-plane-tilt" style="font-size:2px" aria-hidden="true"></i>
         <svg style="width:24px;height:24px;margin-left:auto;" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="2"><polygon points="19 21 12 16 5 21 5 3 19 3 19 21"/></svg>
       </div>
       <!-- 캡션 -->

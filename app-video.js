@@ -51,7 +51,7 @@
     sheet.classList.add('dt-overlay');
     sheet.innerHTML = `
       <header class="dt-hdr">
-        <button class="dt-back" onclick="closeVideo()" aria-label="뒤로"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <button class="dt-back" onclick="closeVideo()" aria-label="뒤로"><i class="ph-duotone ph-caret-left" style="font-size:20px" aria-hidden="true"></i></button>
         <h1 class="dt-title">영상 만들기</h1>
         <span id="videoBadge" style="font-size:10px;padding:2px 6px;border-radius:4px;"></span>
       </header>

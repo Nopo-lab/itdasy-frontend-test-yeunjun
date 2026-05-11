@@ -349,7 +349,7 @@
     return `
       <div class="rv-header">
         <button type="button" class="rv-header__back" data-rv-act="close" aria-label="뒤로가기">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          <i class="ph-duotone ph-caret-left" style="font-size:14px" aria-hidden="true"></i>
         </button>
         <div class="rv-header__title-wrap">
           <div class="rv-header__title">매출관리</div>
@@ -364,7 +364,7 @@
       </div>
       <div class="rv-body" id="rvBody"></div>
       <button type="button" class="rv-fab" data-rv-act="add-form" aria-label="매출 입력">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        <i class="ph-duotone ph-plus" style="font-size:22px" aria-hidden="true"></i>
       </button>
       <datalist id="rvDataCustomer"></datalist>
       <datalist id="rvDataService"></datalist>`;
@@ -493,7 +493,7 @@
         <option value="card">카드</option><option value="cash">현금</option><option value="transfer">계좌</option><option value="membership">회원권</option>
       </select>
       <button type="button" class="rv-qa__add" data-rv-act="qa-add" aria-label="추가">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        <i class="ph-duotone ph-plus" style="font-size:18px" aria-hidden="true"></i>
       </button>
     </div>`;
   }
@@ -556,7 +556,7 @@
           </div>
         </div>
         <button type="button" class="rv-list__delete" data-rv-act="delete" data-id="${_esc(r.id)}" aria-label="삭제">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          <i class="ph-duotone ph-trash" style="font-size:14px" aria-hidden="true"></i>
         </button>
       </div>`;
   }
@@ -622,7 +622,7 @@
       <div class="rv-pc__spacer"></div>
       <div class="rv-pc__periods">${periods}</div>
       <button type="button" class="rv-pc__add" data-rv-act="add-form">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>매출 입력
+        <i class="ph-duotone ph-plus" style="font-size:14px" aria-hidden="true"></i>매출 입력
       </button>
     </div>`;
   }

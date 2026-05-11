@@ -110,7 +110,7 @@
       ${STEPS.map((label, i) => `
         <div style="display:flex;align-items:center;flex:1;min-width:0;">
           <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-            <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${i < activeIdx ? 'var(--brand,var(--brand))' : i === activeIdx ? 'var(--brand,var(--brand))' : 'var(--border-strong,#ddd)'};background:${i < activeIdx ? 'var(--brand,var(--brand))' : i === activeIdx ? 'var(--brand-bg,#FEF4F5)' : 'transparent'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:${i < activeIdx ? '#fff' : i === activeIdx ? 'var(--brand,var(--brand))' : 'var(--text-subtle,#bbb)'};">${i < activeIdx ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : i + 1}</div>
+            <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${i < activeIdx ? 'var(--brand,var(--brand))' : i === activeIdx ? 'var(--brand,var(--brand))' : 'var(--border-strong,#ddd)'};background:${i < activeIdx ? 'var(--brand,var(--brand))' : i === activeIdx ? 'var(--brand-bg,#FEF4F5)' : 'transparent'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:${i < activeIdx ? '#fff' : i === activeIdx ? 'var(--brand,var(--brand))' : 'var(--text-subtle,#bbb)'};">${i < activeIdx ? '<i class="ph-duotone ph-check" style="font-size:11px" aria-hidden="true"></i>' : i + 1}</div>
             <div style="font-size:10px;font-weight:700;color:${i === activeIdx ? 'var(--brand,var(--brand))' : 'var(--text-subtle,#aaa)'};white-space:nowrap;">${label}</div>
           </div>
           ${i < STEPS.length - 1 ? `<div style="flex:1;height:2px;background:${i < activeIdx ? 'var(--brand,var(--brand))' : 'var(--border,#eee)'};margin:0 4px;margin-bottom:16px;"></div>` : ''}
@@ -155,7 +155,7 @@
 
   // Step 1: 파일 선택 (drop zone)
   function _showStep1() {
-    const uploadSvg = `<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>`;
+    const uploadSvg = `<i class="ph-duotone ph-cloud-arrow-up" style="font-size:40px" aria-hidden="true"></i>`;
     _shell(`
       <div style="text-align:center;padding:8px 0 16px;">
         <div style="font-size:13px;color:var(--text-subtle,#666);margin-bottom:12px;line-height:1.6;">엑셀 파일만 올려주세요. AI가 알아서 정리해요.<br><span style="color:var(--text-subtle,#999);font-size:11.5px;">보통 30초~2분 정도 걸려요.</span></div>
@@ -167,7 +167,7 @@
           <div style="margin-top:12px;font-size:11px;color:var(--text-subtle,#aaa);">CSV · XLSX · XLS 지원 · 손님/예약/매출 정보</div>
         </div>
         ${state.file ? `<div style="margin-top:14px;padding:10px 16px;background:var(--surface-raised,#f2f2f2);border-radius:10px;display:flex;align-items:center;gap:10px;text-align:left;">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <i class="ph-duotone ph-file-text" style="font-size:18px" aria-hidden="true"></i>
           <div style="flex:1;font-size:12.5px;font-weight:700;color:var(--text,#333);">${_esc(state.file.name)}</div>
           <button id="iw-start" style="padding:8px 18px;background:var(--brand,var(--brand));color:#fff;border:none;border-radius:100px;font-weight:800;font-size:12px;cursor:pointer;">정리 시작</button>
         </div>` : ''}

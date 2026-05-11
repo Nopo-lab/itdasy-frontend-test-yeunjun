@@ -247,13 +247,13 @@
       </div>
       <div class="hv-carousel-wrap" style="position:relative;">
         <button type="button" class="hv-carousel-nav hv-carousel-nav--prev" data-hv-nav="prev" aria-label="이전 카드">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="15 18 9 12 15 6"/></svg>
+          <i class="ph-duotone ph-caret-left" style="font-size:18px" aria-hidden="true"></i>
         </button>
         <div class="hv-carousel" data-hv-carousel role="region" aria-label="AI 비서 추천">
           ${items}
         </div>
         <button type="button" class="hv-carousel-nav hv-carousel-nav--next" data-hv-nav="next" aria-label="다음 카드">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="9 18 15 12 9 6"/></svg>
+          <i class="ph-duotone ph-caret-right" style="font-size:18px" aria-hidden="true"></i>
         </button>
       </div>
       <div class="hv-dots" data-hv-dots>${dots}</div>

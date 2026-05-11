@@ -695,7 +695,7 @@
       <div class="pv-dialog" style="align-self:center;">
         <div class="pv-header">
           <button class="pv-close" onclick="window.closePowerView()" aria-label="닫기" title="닫기" style="margin-right:4px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            <i class="ph-duotone ph-caret-left" style="font-size:16px" aria-hidden="true"></i>
           </button>
           <div class="pv-title" style="flex:1;">빠른 입력</div>
           <span class="pv-save-chip" id="pv-save-chip">저장 완료</span>

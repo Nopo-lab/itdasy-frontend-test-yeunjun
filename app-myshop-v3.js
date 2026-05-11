@@ -215,7 +215,7 @@
           <div class="ms-header__sub">${_esc(shop)}</div>
         </div>
         <button type="button" class="ms-header__btn" data-mv-act="settings" aria-label="설정">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <i class="ph-duotone ph-gear-six" style="font-size:16px" aria-hidden="true"></i>
         </button>
       </header>
     `;
@@ -259,7 +259,7 @@
             <div class="ms-shop__plan">✦ ${_esc(_planText())}</div>
           </div>
           <button type="button" class="ms-shop__edit" data-mv-act="editShop" aria-label="샵 정보 편집">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <i class="ph-duotone ph-pencil-simple" style="font-size:14px" aria-hidden="true"></i>
           </button>
         </div>
         <div class="ms-shop__stats">
@@ -285,7 +285,7 @@
 
   // ─────────── 운영 메뉴 4개 ───────────
   // 메뉴 행 한 개를 만드는 헬퍼 (운영 / 허브 / 계정 공통)
-  const _CHEV_SVG = '<svg class="ms-menu__chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+  const _CHEV_SVG = '<i class="ph-duotone ph-caret-right ms-menu__chev" style="font-size:16px" aria-hidden="true"></i>';
   function _menuItemHTML(opt) {
     // opt: { act, iconSVG, iconClass, name, meta, metaClass, badge }
     const iconCls = opt.iconClass ? ` ${opt.iconClass}` : '';
@@ -325,10 +325,10 @@
   function _renderOpsMenu(brief) {
     const m = _opsMetaList(brief);
     const items = [
-      _menuItemHTML({ act: 'booking', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', name: '예약관리', meta: m.bookMeta }),
-      _menuItemHTML({ act: 'customer', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>', name: '고객관리', meta: m.custMeta, metaClass: m.atRiskN ? 'is-danger' : '' }),
-      _menuItemHTML({ act: 'revenue', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>', name: '매출관리', meta: m.revMeta, metaClass: 'is-ok' }),
-      _menuItemHTML({ act: 'inventory', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>', name: '재고관리', meta: m.stockMeta, metaClass: m.lowStock > 0 ? 'is-danger' : '', badge: m.lowStock > 0 ? m.lowStock : null }),
+      _menuItemHTML({ act: 'booking', iconSVG: '<i class="ph-duotone ph-calendar-dots" style="font-size:18px" aria-hidden="true"></i>', name: '예약관리', meta: m.bookMeta }),
+      _menuItemHTML({ act: 'customer', iconSVG: '<i class="ph-duotone ph-users" style="font-size:18px" aria-hidden="true"></i>', name: '고객관리', meta: m.custMeta, metaClass: m.atRiskN ? 'is-danger' : '' }),
+      _menuItemHTML({ act: 'revenue', iconSVG: '<i class="ph-duotone ph-currency-dollar" style="font-size:18px" aria-hidden="true"></i>', name: '매출관리', meta: m.revMeta, metaClass: 'is-ok' }),
+      _menuItemHTML({ act: 'inventory', iconSVG: '<i class="ph-duotone ph-package" style="font-size:18px" aria-hidden="true"></i>', name: '재고관리', meta: m.stockMeta, metaClass: m.lowStock > 0 ? 'is-danger' : '', badge: m.lowStock > 0 ? m.lowStock : null }),
     ].join('');
     return `<div class="ms-section"><div class="ms-section__title">운영 관리</div><div class="ms-menu">${items}</div></div>`;
   }
@@ -338,8 +338,8 @@
     const automationOn = _automationOnCount();
     const automationTotal = 7;
     const items = [
-      _menuItemHTML({ act: 'aiHub', iconClass: 'ms-menu__icon--brand', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg>', name: 'AI · 자동화', meta: `${automationOn}개 켜짐 · ${automationTotal - automationOn}개 꺼짐`, badge: automationTotal }),
-      _menuItemHTML({ act: 'settings', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/></svg>', name: '설정 · 연동', meta: '샵정보 · 직원 · 네이버 · 백업' }),
+      _menuItemHTML({ act: 'aiHub', iconClass: 'ms-menu__icon--brand', iconSVG: '<i class="ph-duotone ph-sparkle" style="font-size:18px" aria-hidden="true"></i>', name: 'AI · 자동화', meta: `${automationOn}개 켜짐 · ${automationTotal - automationOn}개 꺼짐`, badge: automationTotal }),
+      _menuItemHTML({ act: 'settings', iconSVG: '<i class="ph-duotone ph-gear-six" style="font-size:18px" aria-hidden="true"></i>', name: '설정 · 연동', meta: '샵정보 · 직원 · 네이버 · 백업' }),
     ].join('');
     return `<div class="ms-section"><div class="ms-section__title">통합 허브</div><div class="ms-menu">${items}</div></div>`;
   }
@@ -348,8 +348,8 @@
   function _renderAccountMenu() {
     const planLabel = _planLabel();
     const items = [
-      _menuItemHTML({ act: 'plan', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg>', name: '플랜 · 구독', meta: planLabel }),
-      _menuItemHTML({ act: 'support', iconSVG: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>', name: '도움말 · 문의', meta: '사용법 · 문의하기' }),
+      _menuItemHTML({ act: 'plan', iconSVG: '<i class="ph-duotone ph-sparkle" style="font-size:18px" aria-hidden="true"></i>', name: '플랜 · 구독', meta: planLabel }),
+      _menuItemHTML({ act: 'support', iconSVG: '<i class="ph-duotone ph-question" style="font-size:18px" aria-hidden="true"></i>', name: '도움말 · 문의', meta: '사용법 · 문의하기' }),
     ].join('');
     return `<div class="ms-section"><div class="ms-section__title">계정</div><div class="ms-menu">${items}</div></div>`;
   }
@@ -568,7 +568,7 @@
             <div class="ms-pc__sub">${_esc(_shopName())} · 좌측 메뉴에서 운영 / 허브 / 계정 진입</div>
           </div>
           <button type="button" class="ms-header__btn" data-mv-act="bell" aria-label="알림">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+            <i class="ph-duotone ph-bell" style="font-size:16px" aria-hidden="true"></i>
           </button>
         </header>
         ${_renderShopCard(brief)}

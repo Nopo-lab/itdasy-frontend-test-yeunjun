@@ -105,7 +105,7 @@
   function _renderMobileHeader() {
     return `<div class="rv-header">
       <button type="button" class="rv-header__back" data-act="close" aria-label="뒤로가기">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        <i class="ph-duotone ph-caret-left" style="font-size:14px" aria-hidden="true"></i>
       </button>
       <div class="rv-header__title-wrap"><div class="rv-header__title">매출 기록</div></div>
       <button type="button" class="rv-header__action" data-act="excel">
@@ -117,7 +117,7 @@
   function _renderPCHeader() {
     return `<div class="rv-pc__header">
       <button type="button" class="rv-header__back" data-act="close" aria-label="닫기" style="margin-right:8px;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <i class="ph-duotone ph-x" style="font-size:14px" aria-hidden="true"></i>
       </button>
       <div class="rv-pc__title">매출 기록</div>
       <div class="rv-pc__spacer"></div>
@@ -221,7 +221,7 @@
         <i class="ph-duotone ph-pencil-simple" aria-hidden="true"></i>
       </button>
       <button type="button" class="rv-list__delete" data-act="del-row" data-id="${_esc(r.id)}" aria-label="삭제">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        <i class="ph-duotone ph-trash" style="font-size:14px" aria-hidden="true"></i>
       </button>
     </div>`;
   }

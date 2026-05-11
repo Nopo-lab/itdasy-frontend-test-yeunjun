@@ -52,7 +52,7 @@ async function renderHomeResume() {
     <div class="sec-head" style="padding:0 2px;margin-bottom:10px;">
       <h2 class="home-sec-title">이어하기<span style="font-weight:500;font-size:12px;color:var(--text-subtle);margin-left:6px;">${active.length}개</span></h2>
       <button class="sec-more" onclick="showTab('finish', document.querySelector('.tab-bar__btn[data-tab=&quot;finish&quot;]'))" data-haptic="light" style="font-size:12px;color:var(--brand);">
-        전체<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        전체<i class="ph-duotone ph-caret-right" style="font-size:12px" aria-hidden="true"></i>
       </button>
     </div>
     <div class="list-menu">
@@ -127,10 +127,7 @@ function _buildWorkshopHTML() {
     oncontextmenu="return false">
     <input type="file" id="galleryFileInput" accept="image/*" multiple style="display:none;" onchange="handleGalleryUpload(this)">
     <div class="ws-empty__icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-        <circle cx="12" cy="13" r="4"/>
-      </svg>
+      <i class="ph-duotone ph-camera" style="font-size:32px" aria-hidden="true"></i>
     </div>
     <h2 class="ws-empty__title">사진 올려서 시작</h2>
     <p class="ws-empty__sub">최대 20장 · AI가 손님별 자동 정리</p>
@@ -341,18 +338,18 @@ function _renderSlotCards() {
 
     card.innerHTML = `
       <button onclick="event.stopPropagation();deleteSlot('${slot.id}',event)" class="ws-slot-card__del" aria-label="삭제">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        <i class="ph-duotone ph-x" style="font-size:10px" aria-hidden="true"></i>
       </button>
       <button onclick="event.stopPropagation();openSlotPopup('${slot.id}');" style="position:absolute;top:30px;right:6px;width:26px;height:26px;border-radius:999px;background:rgba(15,20,25,0.78);border:none;color:#fff;cursor:pointer;display:grid;place-items:center;z-index:2;" aria-label="사진 편집">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>
+        <i class="ph-duotone ph-pencil-simple" style="font-size:13px" aria-hidden="true"></i>
       </button>
       ${thumbHtml}
       <div class="ws-slot-card__meta">
         <div class="ws-slot-card__name">${slot.label}${done ? `<i class="ph-duotone ph-check-circle" aria-hidden="true"></i>` : ''}</div>
         <div class="ws-slot-card__count">${photoCount}장</div>
         ${slot.customer_name
-          ? `<div style="display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--accent,var(--brand));font-weight:700;margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${slot.customer_name}</div>`
-          : `<button onclick="event.stopPropagation();_pickCustomerForWorkshopSlot('${slot.id}');" style="background:none;border:none;color:var(--accent,var(--brand));font-size:11px;font-weight:700;cursor:pointer;padding:2px 0;display:inline-flex;align-items:center;gap:3px;margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>고객 지정하기 →</button>`
+          ? `<div style="display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--accent,var(--brand));font-weight:700;margin-top:2px;"><i class="ph-duotone ph-user" style="font-size:11px" aria-hidden="true"></i>${slot.customer_name}</div>`
+          : `<button onclick="event.stopPropagation();_pickCustomerForWorkshopSlot('${slot.id}');" style="background:none;border:none;color:var(--accent,var(--brand));font-size:11px;font-weight:700;cursor:pointer;padding:2px 0;display:inline-flex;align-items:center;gap:3px;margin-top:2px;"><i class="ph-duotone ph-user" style="font-size:11px" aria-hidden="true"></i>고객 지정하기 →</button>`
         }
       </div>`;
 
@@ -377,7 +374,7 @@ function _renderSlotCards() {
   addCard.style.cssText = `grid-column:span ${span};aspect-ratio:${span}/1;border-radius:16px;background:var(--bg2,#f8f8f9);border:1.5px dashed var(--border,rgba(15,20,25,0.10));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;user-select:none;transition:border-color 0.15s;`;
   addCard.innerHTML = `
     <div style="width:36px;height:36px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--accent,var(--brand));">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <i class="ph-duotone ph-plus" style="font-size:18px" aria-hidden="true"></i>
     </div>
     <div style="font-size:12px;font-weight:700;color:var(--text2,#5A6573);">사진 추가</div>
   `;
@@ -418,7 +415,7 @@ function _showAutoGroupBanner(count) {
   banner.innerHTML = `
     <div style="background:var(--brand-bg,#FCEEF1);border:1px solid var(--accent,var(--brand));border-radius:14px;padding:13px 14px;margin-bottom:14px;display:flex;align-items:center;gap:11px;">
       <div style="width:32px;height:32px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--accent,var(--brand));flex-shrink:0;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <i class="ph-duotone ph-check" style="font-size:16px" aria-hidden="true"></i>
       </div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:800;color:var(--accent,var(--brand));letter-spacing:-0.2px;">${count}명 손님으로 자동 분류했어요</div>
@@ -427,7 +424,7 @@ function _showAutoGroupBanner(count) {
       <button onclick="if(typeof openAssignPopup==='function')openAssignPopup();" style="padding:6px 12px;background:#fff;border:1px solid var(--border,rgba(15,20,25,0.08));border-radius:999px;font-size:11px;font-weight:700;color:var(--text,#0F1419);cursor:pointer;flex-shrink:0;">수정</button>
       <button onclick="if(typeof _mergeAutoGroups==='function')_mergeAutoGroups(${count});" style="padding:6px 12px;background:#fff;border:1px solid var(--border,rgba(15,20,25,0.08));border-radius:999px;font-size:11px;font-weight:700;color:var(--text,#0F1419);cursor:pointer;flex-shrink:0;">합치기</button>
       <button onclick="document.getElementById('wsBanner').style.display='none';" style="width:24px;height:24px;background:transparent;border:none;color:var(--text3,#98A1AC);cursor:pointer;display:grid;place-items:center;flex-shrink:0;" aria-label="닫기">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <i class="ph-duotone ph-x" style="font-size:14px" aria-hidden="true"></i>
       </button>
     </div>
   `;

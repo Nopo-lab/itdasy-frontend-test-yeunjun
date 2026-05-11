@@ -123,7 +123,7 @@
     sheet.classList.add('dt-overlay');
     sheet.innerHTML = `
       <header class="dt-hdr">
-        <button class="dt-back" onclick="closeNps()" aria-label="뒤로"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <button class="dt-back" onclick="closeNps()" aria-label="뒤로"><i class="ph-duotone ph-caret-left" style="font-size:20px" aria-hidden="true"></i></button>
         <h1 class="dt-title">고객 후기</h1>
         <span id="npsOfflineBadge" class="dt-offline-badge">오프라인</span>
       </header>
@@ -169,7 +169,7 @@
           <p class="dt-list-it__title">${face} <strong>${r.rating}</strong>${r.customer_name ? ` · ${_esc(r.customer_name)}` : ''}<span style="float:right;font-size:11px;font-weight:400;color:var(--text-subtle);">${date}</span></p>
           ${r.comment ? `<p class="dt-list-it__sub">${_esc(r.comment)}</p>` : ''}
         </div>
-        <button data-del="${r.id}" class="dt-back" style="color:var(--danger);" type="button" aria-label="삭제"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
+        <button data-del="${r.id}" class="dt-back" style="color:var(--danger);" type="button" aria-label="삭제"><i class="ph-duotone ph-trash" style="font-size:16px" aria-hidden="true"></i></button>
       </div>
     `;
   }
@@ -193,7 +193,7 @@
     if (!sheet) return;
     const listEl = sheet.querySelector('#npsList');
     listEl.innerHTML = `
-      <button onclick="window._npsBack()" class="dt-back" style="margin-bottom:12px;" aria-label="뒤로"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <button onclick="window._npsBack()" class="dt-back" style="margin-bottom:12px;" aria-label="뒤로"><i class="ph-duotone ph-caret-left" style="font-size:20px" aria-hidden="true"></i></button>
       <div class="dt-field-row"><label class="dt-field-lbl">추천 점수 (0~10) *</label><input id="nfRating" type="range" min="0" max="10" value="8" style="width:100%;margin-bottom:4px;" /></div>
       <div id="nfRatingLabel" style="text-align:center;font-size:32px;font-weight:800;color:var(--brand);margin-bottom:10px;">8</div>
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:12px;">

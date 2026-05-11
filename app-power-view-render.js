@@ -323,7 +323,7 @@
       // 행 단위 상태 표시 cell (UX 원칙 5: loading/success/error)
       const statusCell = `<span class="pv-row-status" aria-hidden="true">
         <svg class="pv-row-status__loading" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-        <svg class="pv-row-status__success" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <i class="ph-duotone ph-check pv-row-status__success" style="font-size:13px" aria-hidden="true"></i>
         <svg class="pv-row-status__error" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       </span>`;
       const actionCell = `<td style="text-align:right;white-space:nowrap;">

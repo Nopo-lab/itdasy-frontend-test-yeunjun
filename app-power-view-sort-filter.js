@@ -212,12 +212,12 @@
   // ── 렌더 헬퍼 ─────────────────────────────────────────
   function _arrowSvg(dir) {
     if (dir === 'asc') {
-      return '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-left:3px;color:var(--brand,var(--brand));"><polyline points="18 15 12 9 6 15"/></svg>';
+      return '<i class="ph-duotone ph-caret-up" style="font-size:10px" aria-hidden="true"></i>';
     }
     if (dir === 'desc') {
-      return '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-left:3px;color:var(--brand,var(--brand));"><polyline points="6 9 12 15 18 9"/></svg>';
+      return '<i class="ph-duotone ph-caret-down" style="font-size:10px" aria-hidden="true"></i>';
     }
-    return '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-left:3px;opacity:0.32;"><polyline points="18 15 12 9 6 15"/></svg>';
+    return '<i class="ph-duotone ph-caret-up" style="font-size:9px" aria-hidden="true"></i>';
   }
 
   function renderHeaderArrow(tab, headerIdx) {

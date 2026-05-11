@@ -184,7 +184,7 @@ function _renderPopupPhotoGrid(slot) {
   addCell.style.cssText = `grid-column:span ${span};aspect-ratio:${span}/1;border-radius:10px;background:var(--bg2,#f8f8f9);border:1.5px dashed var(--border,rgba(0,0,0,0.1));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;user-select:none;`;
   addCell.innerHTML = `
     <div style="width:32px;height:32px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--accent,var(--brand));">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <i class="ph-duotone ph-plus" style="font-size:16px" aria-hidden="true"></i>
     </div>
     <div style="font-size:11px;font-weight:700;color:var(--text2,#5A6573);">사진 더 추가</div>
   `;

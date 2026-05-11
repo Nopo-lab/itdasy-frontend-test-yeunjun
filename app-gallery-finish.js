@@ -40,7 +40,7 @@ function _renderFinishTab(root, galleryItems = []) {
       <div class="sec-title" style="margin-bottom:4px;">마무리</div>
       <div style="text-align:center;padding:60px 20px;">
         <div style="width:64px;height:64px;border-radius:999px;background:var(--brand-bg,#FCEEF1);display:grid;place-items:center;color:var(--accent,#F18091);margin:0 auto 16px;">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+          <i class="ph-duotone ph-tray" style="font-size:32px" aria-hidden="true"></i>
         </div>
         <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;">작업실에서 슬롯을 먼저 만들어보세요</div>
         <button onclick="showTab('workshop',document.querySelector('.tab-bar__btn[data-tab=&quot;workshop&quot;]')); initWorkshopTab();" style="margin-top:16px;padding:10px 20px;border-radius:12px;border:1.5px solid var(--accent2);background:transparent;color:var(--accent2);font-weight:700;cursor:pointer;font-size:12px;">작업실로 이동 →</button>
@@ -95,16 +95,16 @@ function _renderFinishTab(root, galleryItems = []) {
         <!-- 마무리 액션 -->
         <div style="display:flex;flex-direction:column;gap:6px;">
           <button data-action="publish" style="width:100%;min-height:48px;padding:12px;border-radius:12px;border:none;background:var(--accent,#F18091);color:#fff;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;letter-spacing:-0.2px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            <i class="ph-duotone ph-arrow-right" style="font-size:16px" aria-hidden="true"></i>
             발행하기
           </button>
           <div style="display:flex;justify-content:space-around;align-items:center;padding-top:12px;margin-top:6px;border-top:0.5px solid var(--border,rgba(15,20,25,0.06));gap:6px;">
             <button data-action="defer" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:600;color:var(--text2,#5A6573);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-radius:6px;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <i class="ph-duotone ph-clock" style="font-size:13px" aria-hidden="true"></i>
               나중에
             </button>
             <button data-action="pickCustomer" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:${slot.customer_name ? '800' : '600'};color:${slot.customer_name ? 'var(--accent,#F18091)' : 'var(--text2,#5A6573)'};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-radius:6px;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <i class="ph-duotone ph-user" style="font-size:13px" aria-hidden="true"></i>
               ${slot.customer_name ? slot.customer_name.slice(0,4) : '고객'}
             </button>
             <button data-action="delete" style="flex:1;background:none;border:none;padding:8px 4px;font-size:11px;font-weight:600;color:var(--text3,#98A1AC);cursor:pointer;border-radius:6px;">
@@ -146,7 +146,7 @@ function _renderFinishTab(root, galleryItems = []) {
     `).join('');
     return `
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
-        <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px;display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>갤러리 <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:2px;">${galleryItems.length}개</span></div>
+        <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px;display:inline-flex;align-items:center;gap:6px;"><i class="ph-duotone ph-folder" style="font-size:14px" aria-hidden="true"></i>갤러리 <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:2px;">${galleryItems.length}개</span></div>
         ${dateHtml}
       </div>`;
   })() : '';
@@ -195,9 +195,9 @@ function _galleryItemDetail(galleryId) {
         ${_buildPeekCarousel(photos, 'gd_carousel')}
         ${escapedCaption ? `<div style="margin-top:12px;font-size:13px;color:#333;white-space:pre-wrap;line-height:1.6;">${escapedCaption}</div>` : ''}
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px;">
-          <button id="_gd_republish" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>다시 올리기</button>
+          <button id="_gd_republish" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;"><i class="ph-duotone ph-camera" style="font-size:15px" aria-hidden="true"></i>다시 올리기</button>
           <div style="display:flex;gap:8px;">
-            <button id="_gd_download" style="flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--border);background:transparent;font-size:12px;color:var(--text2);cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>저장</button>
+            <button id="_gd_download" style="flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--border);background:transparent;font-size:12px;color:var(--text2);cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:5px;"><i class="ph-duotone ph-download-simple" style="font-size:13px" aria-hidden="true"></i>저장</button>
             <button id="_gd_delete" style="flex:1;padding:10px;border-radius:12px;border:1.5px solid rgba(220,53,69,0.3);background:transparent;font-size:12px;color:#dc3545;cursor:pointer;">삭제</button>
           </div>
         </div>
@@ -360,19 +360,19 @@ function _showPublishOptions(slotId) {
           <div style="font-size:11.5px;color:var(--text3);margin-top:2px;">어디로 보낼까요?</div>
         </div>
         <button onclick="document.getElementById('_publishOptionsPop').style.display='none'" style="width:30px;height:30px;border-radius:999px;background:var(--bg2,#f8f8f9);border:none;color:var(--text2);cursor:pointer;display:grid;place-items:center;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <i class="ph-duotone ph-x" style="font-size:14px" aria-hidden="true"></i>
         </button>
       </div>
       <div style="display:flex;flex-direction:column;">
         <button onclick="document.getElementById('_publishOptionsPop').style.display='none'; _previewSlotOnInsta('${slotId}');" style="display:flex;align-items:center;gap:14px;padding:14px 20px;border:none;background:var(--brand-bg,#FCEEF1);width:100%;cursor:pointer;text-align:left;border-bottom:1px solid var(--border);">
           <div style="width:40px;height:40px;border-radius:12px;background:#fff;display:grid;place-items:center;color:var(--accent,#F18091);">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+            <i class="ph-duotone ph-instagram-logo" style="font-size:20px" aria-hidden="true"></i>
           </div>
           <div style="flex:1;">
             <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.2px;">인스타에 올리기</div>
             <div style="font-size:11.5px;color:var(--text3);margin-top:2px;">미리보기 후 바로 발행</div>
           </div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent,#F18091)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <i class="ph-duotone ph-caret-right" style="font-size:16px" aria-hidden="true"></i>
         </button>
         <button onclick="document.getElementById('_publishOptionsPop').style.display='none'; _saveSlotToGallery('${slotId}');" style="display:flex;align-items:center;gap:14px;padding:14px 20px;border:none;background:transparent;width:100%;cursor:pointer;text-align:left;border-bottom:1px solid var(--border);">
           <div style="width:40px;height:40px;border-radius:12px;background:var(--bg2,#f8f8f9);display:grid;place-items:center;color:var(--text);">
@@ -382,17 +382,17 @@ function _showPublishOptions(slotId) {
             <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.2px;">앨범에 보관</div>
             <div style="font-size:11.5px;color:var(--text3);margin-top:2px;">서버 저장 · 포트폴리오에서 다시 보기</div>
           </div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <i class="ph-duotone ph-caret-right" style="font-size:16px" aria-hidden="true"></i>
         </button>
         <button onclick="document.getElementById('_publishOptionsPop').style.display='none'; downloadSlotPhotos('${slotId}');" style="display:flex;align-items:center;gap:14px;padding:14px 20px;border:none;background:transparent;width:100%;cursor:pointer;text-align:left;">
           <div style="width:40px;height:40px;border-radius:12px;background:var(--bg2,#f8f8f9);display:grid;place-items:center;color:var(--text);">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <i class="ph-duotone ph-download-simple" style="font-size:20px" aria-hidden="true"></i>
           </div>
           <div style="flex:1;">
             <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.2px;">내 폰에 저장</div>
             <div style="font-size:11.5px;color:var(--text3);margin-top:2px;">사진 + 캡션 폰 갤러리로</div>
           </div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <i class="ph-duotone ph-caret-right" style="font-size:16px" aria-hidden="true"></i>
         </button>
       </div>
     </div>
@@ -447,8 +447,8 @@ function _previewSlotOnInsta(slotId) {
       </div>
       <div style="display:flex;gap:14px;padding:10px 12px 6px;align-items:center;color:#262626;">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        <i class="ph-duotone ph-chat-circle" style="font-size:22px" aria-hidden="true"></i>
+        <i class="ph-duotone ph-paper-plane-tilt" style="font-size:22px" aria-hidden="true"></i>
         <span style="flex:1;"></span>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       </div>

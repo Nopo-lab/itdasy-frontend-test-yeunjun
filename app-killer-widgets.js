@@ -538,7 +538,7 @@
       </div>
       <p class="kw-t">${_esc(t)}</p>
       <p class="kw-s">${_esc(s)}</p>
-      <div class="kw-foot"><span>${_esc(cta)}</span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><polyline points="9 18 15 12 9 6"/></svg></div>
+      <div class="kw-foot"><span>${_esc(cta)}</span><i class="ph-duotone ph-caret-right" style="font-size:12px" aria-hidden="true"></i></div>
     </button>`;
   }
 
@@ -549,9 +549,9 @@
     const atRisk = brief.at_risk || [];
     const momPct = brief.mom_delta_pct;
     const emptySlots = brief.empty_slots || [];
-    const alertSvg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
-    const trendSvg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`;
-    const clockSvg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+    const alertSvg = `<i class="ph-duotone ph-warning" style="font-size:18px" aria-hidden="true"></i>`;
+    const trendSvg = `<i class="ph-duotone ph-trend-up" style="font-size:18px" aria-hidden="true"></i>`;
+    const clockSvg = `<i class="ph-duotone ph-clock" style="font-size:18px" aria-hidden="true"></i>`;
     const focusSvg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`;
 
     const c1 = _rowCard('warn', alertSvg, '위험', 'warn',

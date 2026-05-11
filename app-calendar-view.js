@@ -814,7 +814,7 @@
       <div class="cal-sheet" style="display:flex;flex-direction:column;height:100%;">
         <div class="bk-header">
           <button class="bk-header__back" id="bk-back" aria-label="닫기">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="15 18 9 12 15 6"/></svg>
+            <i class="ph-duotone ph-caret-left" style="font-size:14px" aria-hidden="true"></i>
           </button>
           <div class="bk-header__title-wrap">
             <div class="bk-header__month" id="bk-month-label">${_curYear}년 ${_curMonth}월</div>
@@ -826,7 +826,7 @@
         <div id="bk-toolbar-mount">${_renderToolbar()}</div>
         <div class="cal-body bk-body" id="bk-body" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div>
         <button class="bk-fab" id="bk-fab" aria-label="예약 추가">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>
+          <i class="ph-duotone ph-plus" style="font-size:22px" aria-hidden="true"></i>
         </button>
       </div>`;
     o.addEventListener('click', e => { if (e.target === o) _close(); });
@@ -848,16 +848,16 @@
     return `
         <div class="bk-pc__header">
           <button class="bk-header__back" id="bk-back" aria-label="닫기" title="ESC 또는 클릭으로 닫기">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <i class="ph-duotone ph-x" style="font-size:16px" aria-hidden="true"></i>
           </button>
           <div class="bk-pc__title">예약</div>
           <div class="bk-pc__month-nav">
             <button class="bk-pc__nav-btn" id="bk-pc-prev" aria-label="이전 달">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+              <i class="ph-duotone ph-caret-left" style="font-size:14px" aria-hidden="true"></i>
             </button>
             <div class="bk-pc__month-label" id="bk-month-label">${_curYear}년 ${_curMonth}월</div>
             <button class="bk-pc__nav-btn" id="bk-pc-next" aria-label="다음 달">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              <i class="ph-duotone ph-caret-right" style="font-size:14px" aria-hidden="true"></i>
             </button>
           </div>
           <button class="bk-today-btn" id="bk-today-btn" style="margin-left:4px;">오늘</button>
@@ -865,7 +865,7 @@
           <div class="bk-pc__stats" id="bk-pc-stats">${subTxt}</div>
           <div class="bk-view">${viewBtns}</div>
           <button class="bk-pc__add-btn" id="bk-pc-add">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>예약 추가
+            <i class="ph-duotone ph-plus" style="font-size:14px" aria-hidden="true"></i>예약 추가
           </button>
           <span id="cal-offline-badge" style="display:none;font-size:10px;font-weight:700;color:var(--danger);background:rgba(220,53,69,.1);padding:2px 8px;border-radius:999px;">오프라인</span>
         </div>`;
@@ -1286,16 +1286,16 @@
     let html = `<button class="cv-form-back" id="cv-form-back">← 뒤로</button>`;
     if (!isEdit && autoSlot) {
       html += `<div class="bf-auto-banner">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m12 3 1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg>
+        <i class="ph-duotone ph-sparkle" style="font-size:11px" aria-hidden="true"></i>
         빈 슬롯 ${defStart} 자동 선택 · 고객만 고르면 끝
       </div>`;
     }
     // 수정 모드 — 시술 완료 액션 카드
     if (isEdit && existing.status !== 'completed') {
       html += `<button type="button" class="bf-complete-action" id="bfComplete">
-        <div class="bf-ca-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="bf-ca-icon"><i class="ph-duotone ph-check" style="font-size:14px" aria-hidden="true"></i></div>
         <div style="flex:1"><div class="bf-ca-title">시술 완료 · 매출·후기 한 번에</div><div class="bf-ca-sub">금액 입력 + 캡션 만들기까지</div></div>
-        <svg class="bf-ca-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="9 18 15 12 9 6"/></svg>
+        <i class="ph-duotone ph-caret-right bf-ca-chev" style="font-size:14px" aria-hidden="true"></i>
       </button>`;
     }
     // 수정 모드 — 상태 4토글
@@ -1310,9 +1310,9 @@
     // 날짜 카드
     html += `<div class="bf-section"><div class="bf-label">날짜</div>
       <button type="button" class="bf-date-card" id="bfDateCard">
-        <div class="bf-date-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg></div>
+        <div class="bf-date-icon"><i class="ph-duotone ph-calendar-dots" style="font-size:16px" aria-hidden="true"></i></div>
         <div style="flex:1"><div class="bf-date-text" id="bfDateLabel">${dateLabel}</div><div class="bf-date-meta" id="bfDateMeta">${todayLabel} · ${dayCnt}건 예약됨</div></div>
-        <svg class="bf-date-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        <i class="ph-duotone ph-caret-right bf-date-chev" style="font-size:14px" aria-hidden="true"></i>
       </button>
       <input type="date" id="bfDate" class="bf-date-native" value="${dateStr}" />
     </div>`;
@@ -1335,9 +1335,9 @@
         ${existing?.customer_name
           ? `<div class="bf-cust-avatar">${_esc((existing.customer_name||'')[0])}</div>
              <div class="bf-cust-info"><div class="bf-cust-name">${_esc(existing.customer_name)}</div><div class="bf-cust-meta" id="bfCustMeta"></div></div>
-             <button type="button" class="bf-cust-clear" id="bfCustClear"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`
+             <button type="button" class="bf-cust-clear" id="bfCustClear"><i class="ph-duotone ph-x" style="font-size:11px" aria-hidden="true"></i></button>`
           : `<div class="bf-cust-avatar empty">+</div><div class="bf-cust-info"><div class="bf-cust-empty-text">고객을 골라주세요</div></div>
-             <svg class="bf-cust-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>`}
+             <i class="ph-duotone ph-caret-right bf-cust-chev" style="font-size:14px" aria-hidden="true"></i>`}
       </button>
       <input type="hidden" id="bfCustName" value="${_esc(existing?.customer_name || '')}" />
     </div>`;
@@ -1350,7 +1350,7 @@
     // 더보기 (직원 · 메모)
     html += `<div class="bf-section" id="bfMoreSection">
       <button type="button" class="bf-more-toggle" id="bfMoreToggle">
-        <svg class="bf-more-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg>
+        <i class="ph-duotone ph-caret-down bf-more-icon" style="font-size:13px" aria-hidden="true"></i>
         더보기 (직원 · 메모)
       </button>
       <div class="bf-more-fields" id="bfMoreFields" style="display:none">
@@ -1479,12 +1479,12 @@
         // 2026-05-01 ── X 버튼의 SVG 에 pointer-events:none 으로 자식 클릭을 X 버튼에 위임
         card.innerHTML = `<div class="bf-cust-avatar">${_esc((picked.name || '?')[0])}</div>
           <div class="bf-cust-info"><div class="bf-cust-name">${_esc(picked.name || '')} ${badge}</div><div class="bf-cust-meta" id="bfCustMeta">${meta}</div></div>
-          <button type="button" class="bf-cust-clear" id="bfCustClear" aria-label="고객 선택 해제"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+          <button type="button" class="bf-cust-clear" id="bfCustClear" aria-label="고객 선택 해제"><i class="ph-duotone ph-x" style="font-size:11px" aria-hidden="true"></i></button>`;
         body.querySelector('#bfCustName').value = picked.name || '';
       } else {
         card.className = 'bf-cust-card empty';
         card.innerHTML = `<div class="bf-cust-avatar empty">+</div><div class="bf-cust-info"><div class="bf-cust-empty-text">고객을 골라주세요</div></div>
-          <svg class="bf-cust-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="pointer-events:none;"><polyline points="9 18 15 12 9 6"/></svg>`;
+          <i class="ph-duotone ph-caret-right bf-cust-chev" style="font-size:14px" aria-hidden="true"></i>`;
       }
     }
     const _doPick = async () => {
