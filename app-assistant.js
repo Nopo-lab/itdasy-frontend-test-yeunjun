@@ -2592,7 +2592,25 @@
         _clearPending();
         return;
       }
-      _history.push({ role: 'assistant', text: '잠시 연결이 불안정해요. 다시 시도해 주세요. (' + (window._humanError ? window._humanError(e) : e.message) + ')' });
+      // [2026-05-12 QA #5] 모든 에러를 '연결 불안정' 으로 뭉뚱그리지 말고 원인별 분기.
+      let _errMsg = (e && e.message) || '';
+      let _errPrefix;
+      if (/409|conflict|중복|이미.*예약/.test(_errMsg)) {
+        _errPrefix = '⚠️ ' + _errMsg.replace(/^.*?(?:detail":\s*"|429:\s*|409:\s*)/, '').replace(/"\}.*$/, '');
+      } else if (/timeout|deadline|timed out|너무 오래/i.test(_errMsg)) {
+        _errPrefix = '⏱️ 응답이 너무 오래 걸려요. 잠시 후 다시 시도해 주세요.';
+      } else if (/503|maintenance|점검/.test(_errMsg)) {
+        _errPrefix = '🛠️ 서버 점검 중이에요. 5분 후 다시 시도해 주세요.';
+      } else if (/quota|429|rate.?limit/i.test(_errMsg)) {
+        _errPrefix = '⏰ 잠깐 요청이 몰려서 늦어져요. 1분 후 다시 보내주세요.';
+      } else if (/403|permission|denied/i.test(_errMsg)) {
+        _errPrefix = '🔒 권한 문제예요. 운영팀에 문의해 주세요.';
+      } else if (/network|failed to fetch|네트워크/i.test(_errMsg) || !navigator.onLine) {
+        _errPrefix = '📡 인터넷 연결을 확인해 주세요.';
+      } else {
+        _errPrefix = '에러: ' + (window._humanError ? window._humanError(e) : _errMsg);
+      }
+      _history.push({ role: 'assistant', text: _errPrefix });
       _renderHistory();
       _clearPending();
     } finally {
