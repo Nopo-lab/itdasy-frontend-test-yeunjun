@@ -77,7 +77,7 @@
 
     const html = `
       <div id="itdasyCookieBanner" style="position:fixed;left:0;right:0;bottom:0;z-index:9950;display:flex;justify-content:center;padding:12px calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));pointer-events:none;">
-        <div style="max-width:560px;width:100%;background:rgba(20,20,25,0.96);color:#fff;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,0.3);padding:16px 18px;font-size:12.5px;line-height:1.6;pointer-events:auto;backdrop-filter:saturate(140%) blur(8px);-webkit-backdrop-filter:saturate(140%) blur(8px);">
+        <div style="max-width:560px;width:100%;background:rgba(20,20,25,0.99);color:#fff;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,0.3);padding:16px 18px;font-size:12.5px;line-height:1.6;pointer-events:auto;">
           <div style="font-size:13.5px;font-weight:800;margin-bottom:6px;letter-spacing:-0.2px;">🍪 ${title}</div>
           <div style="opacity:0.85;margin-bottom:12px;">
             ${body}

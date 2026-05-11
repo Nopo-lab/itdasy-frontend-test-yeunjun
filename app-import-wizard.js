@@ -135,7 +135,7 @@
     const idx = typeof stepIdx === 'number' ? stepIdx : 0;
     const o = document.createElement('div');
     o.id = OVERLAY;
-    o.style.cssText = `position:fixed;inset:0;z-index:10000;background:rgba(20,8,16,0.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;animation:pvFadeIn 0.2s ease;`;
+    o.style.cssText = `position:fixed;inset:0;z-index:10000;background:rgba(20,8,16,0.78);display:flex;align-items:center;justify-content:center;padding:16px;animation:pvFadeIn 0.2s ease;`;
     o.innerHTML = `
       <div style="width:100%;max-width:600px;max-height:92vh;background:var(--surface,#fff);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:pvSlideUp 0.3s cubic-bezier(0.22,1,0.36,1);">
         <div style="display:flex;align-items:center;padding:14px 18px 0;border-bottom:none;">

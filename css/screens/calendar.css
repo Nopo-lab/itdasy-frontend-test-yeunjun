@@ -351,7 +351,6 @@
      안에서 정확히 잘리게. */
   flex: 1 1 auto;
   min-height: 0;
-  -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
   overscroll-behavior: contain;
 }

@@ -30,8 +30,8 @@
 
   // ── 스타일 1회 주입 ─────────────────────────────────────
   const PSV_CSS = `
-.psv-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(6px);
-  -webkit-backdrop-filter:blur(6px); z-index:9700; display:flex; align-items:flex-end;
+.psv-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7);
+  z-index:9700; display:flex; align-items:flex-end;
   justify-content:center; animation:psv-bg-in .2s ease; }
 @keyframes psv-bg-in { from{opacity:0} to{opacity:1} }
 .psv-sheet { width:100%; max-width:480px; background:#fff; border-radius:24px 24px 0 0;

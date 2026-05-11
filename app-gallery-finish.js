@@ -128,7 +128,7 @@ function _renderFinishTab(root, galleryItems = []) {
     const dateHtml = Object.entries(byDate).map(([date, items]) => `
       <div style="margin-bottom:14px;">
         <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px;">${date}</div>
-        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;">
+        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">
           ${items.map(item => {
             const thumb = item.photos?.[0];
             return thumb ? `

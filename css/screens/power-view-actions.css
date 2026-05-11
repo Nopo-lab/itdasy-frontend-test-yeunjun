@@ -772,8 +772,7 @@ html[data-theme="dark"] tr[data-pv-error="true"] { background: rgba(220, 53, 69,
 .pv-ops-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(20, 8, 16, 0.62);
-  backdrop-filter: blur(6px);
+  background: rgba(20, 8, 16, 0.78);
 }
 .pv-ops-card {
   position: relative;
@@ -871,7 +870,7 @@ html[data-theme="dark"] tr[data-pv-error="true"] { background: rgba(220, 53, 69,
 }
 .pv-quota-chip:hover { transform: translateY(-1px); }
 .pv-quota-chip__bar { width: 50px; height: 4px; background: rgba(0, 0, 0, 0.08); border-radius: 100px; overflow: hidden; }
-.pv-quota-chip__fill { display: block; height: 100%; background: currentColor; transition: width 0.18s; }
+.pv-quota-chip__fill { display: block; height: 100%; background: currentColor; }
 
 html[data-theme="dark"] .pv-ops-card { background: var(--surface, #18181A); color: var(--text, #FAFAFA); }
 html[data-theme="dark"] .pv-ops-li { background: var(--surface-2, #232325); }
@@ -892,7 +891,6 @@ html[data-theme="dark"] .pv-ops-empty { background: var(--surface-2, #232325); }
   display: block;
   height: 100%;
   border-radius: 100px;
-  transition: width 0.18s;
 }
 
 .pv-balance-gauge {
@@ -909,7 +907,6 @@ html[data-theme="dark"] .pv-ops-empty { background: var(--surface-2, #232325); }
   display: block;
   height: 100%;
   border-radius: 100px;
-  transition: width 0.18s;
 }
 
 .pv-stock-bar {
@@ -926,7 +923,6 @@ html[data-theme="dark"] .pv-ops-empty { background: var(--surface-2, #232325); }
   display: block;
   height: 100%;
   border-radius: 100px;
-  transition: width 0.18s;
 }
 
 .pv-time-badge {

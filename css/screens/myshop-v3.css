@@ -168,9 +168,7 @@ body:has(#tab-dashboard.active) #tab-dashboard.tab { max-width: none !important;
    ───────────────────────────────────────────────────────────── */
 .ms-sheet__overlay {
   position: absolute; inset: 0;
-  background: rgba(15, 20, 25, 0.42);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(15, 20, 25, 0.62);
   z-index: 5;
 }
 .ms-sheet {

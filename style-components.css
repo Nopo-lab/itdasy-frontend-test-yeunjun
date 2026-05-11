@@ -16,8 +16,7 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
 /* ───── 온보딩 캡션 테스트 팝업 ───── */
 #onboardingCaptionPopup {
   position: fixed; inset: 0; z-index: 6000;
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  background: rgba(var(--bg-rgb,255,255,255),0.97);
   display: none; align-items: center; justify-content: center; padding: 20px;
 }
 #onboardingCaptionPopup .ocp-card {
@@ -64,8 +63,7 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
 /* ───── 업로드 진행 팝업 ───── */
 #uploadProgressPopup {
   position: fixed; inset: 0; z-index: 5000;
-  background: rgba(255,255,255,0.7);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  background: rgba(var(--bg-rgb,255,255,255),0.95);
   display: none; align-items: center; justify-content: center; padding: 20px;
 }
 #uploadProgressPopup .up-card {
@@ -95,8 +93,7 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
 /* ───── 업로드 완료 팝업 ───── */
 #uploadDonePopup {
   position: fixed; inset: 0; z-index: 5001;
-  background: rgba(255,255,255,0.7);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  background: rgba(var(--bg-rgb,255,255,255),0.95);
   display: none; align-items: center; justify-content: center; padding: 20px;
 }
 #uploadDonePopup .ud-card {
@@ -232,7 +229,6 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
      padding-top 에 safe-area 로 핸들 영역이 노치/상단 카메라 침범 안 하게 */
   max-height: calc(88vh - env(safe-area-inset-top));
   overflow-y: auto;            /* 내부 스크롤 */
-  -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   background: #fff;
   border-radius: 28px 28px 0 0;

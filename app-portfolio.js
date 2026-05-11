@@ -226,7 +226,7 @@ async function loadPortfolio() {
       cell.innerHTML = `
         <img src="${safeSrc}" style="width:100%; height:100%; object-fit:cover; pointer-events:none;">
         <div style="position:absolute; top:4px; right:4px; background:${ptypeColor[pt]}; border-radius:20px; padding:2px 6px; font-size:8px; color:#fff; font-weight:800; opacity:0.92;">${ptypeLabel[pt]}</div>
-        ${item.main_tag ? `<div style="position:absolute; top:4px; left:4px; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); border-radius:20px; padding:2px 6px; font-size:8px; color:#fff; font-weight:700;">${safeMainTag}</div>` : ''}
+        ${item.main_tag ? `<div style="position:absolute; top:4px; left:4px; background:rgba(0,0,0,0.78); border-radius:20px; padding:2px 6px; font-size:8px; color:#fff; font-weight:700;">${safeMainTag}</div>` : ''}
         ${item.tags ? `<div style="position:absolute; bottom:0; left:0; right:0; padding:5px 6px; background:linear-gradient(0deg,rgba(0,0,0,0.7),transparent); font-size:9px; color:#fff; line-height:1.4; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${safeTags}</div>` : ''}
         <div data-open-portfolio style="position:absolute; inset:0; background:transparent; cursor:pointer;"></div>
       `;

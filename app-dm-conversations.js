@@ -105,7 +105,7 @@
         </div>
       </div>
       <!-- 리스트 -->
-      <div id="dcvList" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+      <div id="dcvList" style="flex:1;overflow-y:auto;">
         <div style="text-align:center;color:#8E8E8E;padding:40px 0;font-size:13px;">불러오는 중…</div>
       </div>
     `;
@@ -232,7 +232,7 @@
         </button>
       </div>
       <!-- 메시지 -->
-      <div id="dthMessages" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;padding:14px 12px 6px;">
+      <div id="dthMessages" style="flex:1;overflow-y:auto;background:#fff;padding:14px 12px 6px;">
         <div style="text-align:center;color:#8E8E8E;padding:30px 0;font-size:13px;">불러오는 중…</div>
       </div>
       <!-- 입력창 (인스타 흉내 — 실제로 발송 X, IG 본앱에서) -->

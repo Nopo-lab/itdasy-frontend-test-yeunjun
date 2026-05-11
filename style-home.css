@@ -473,8 +473,7 @@ body.itdasy-locked > :not(#lockOverlay, #signupOverlay, script, style, svg) {
 /* ───── 캡션 로딩 팝업 (슬롯머신) ───── */
 #captionLoadingPopup {
   position: fixed; inset: 0; z-index: 5000;
-  background: rgba(255,255,255,0.82);
-  backdrop-filter: blur(14px);
+  background: rgba(var(--bg-rgb,255,255,255),0.97);
   display: none; align-items: center; justify-content: center; padding: 20px;
 }
 

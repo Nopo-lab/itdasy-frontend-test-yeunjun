@@ -27,7 +27,7 @@
 
     o = document.createElement('div');
     o.id = OVERLAY;
-    o.style.cssText = `position:fixed;inset:0;z-index:10002;background:rgba(20,8,16,0.6);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:pvFadeIn 0.2s ease;`;
+    o.style.cssText = `position:fixed;inset:0;z-index:10002;background:rgba(20,8,16,0.78);display:flex;align-items:center;justify-content:center;padding:16px;animation:pvFadeIn 0.2s ease;`;
     o.innerHTML = `
       <div style="width:100%;max-width:440px;background:linear-gradient(180deg,#FEF4F5 0%,#fff 40%);border-radius:24px;overflow:hidden;box-shadow:0 20px 60px rgba(241,128,145,0.25);">
         <div style="padding:28px 24px 16px;text-align:center;">

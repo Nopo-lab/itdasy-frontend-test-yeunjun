@@ -682,8 +682,7 @@
     overlay = document.createElement('div');
     overlay.id = OVERLAY_ID;
     overlay.style.cssText = [
-      'position:fixed;inset:0;z-index:9999;background:rgba(20,8,16,0.62);',
-      'backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);',
+      'position:fixed;inset:0;z-index:9999;background:rgba(20,8,16,0.78);',
       'display:flex;align-items:flex-end;justify-content:center;padding:20px;',
       'padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));',
     ].join('');

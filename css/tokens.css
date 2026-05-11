@@ -21,6 +21,9 @@
   --danger: #EF4444;
   --info:   #3B82F6;
 
+  /* PerfFix-CSS: backdrop-filter 제거용 RGB 변수 (rgba(var(--bg-rgb),0.97)) */
+  --bg-rgb: 255,255,255;
+
   /* §3 반경 */
   --r-sm:   8px;
   --r-md:   14px;
@@ -61,6 +64,7 @@ html[data-theme="dark"] {
   --border:        rgba(255,255,255,.18);
   --border-strong: rgba(255,255,255,.28);
   --info:   #60A5FA;
+  --bg-rgb: 26,26,26;
   --shadow-md:    0 8px 24px rgba(0,0,0,.40);
   --shadow-brand: 0 10px 24px rgba(255,143,163,.35);
 }

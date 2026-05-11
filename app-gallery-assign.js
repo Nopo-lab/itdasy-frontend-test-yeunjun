@@ -78,7 +78,7 @@ function _renderAssignPopup() {
       </div>
       <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:#fafafa;">
         <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px;">📸 미배정 ${unassigned.length}장</div>
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <div style="overflow-x:auto;">
           <div style="display:flex;gap:8px;min-width:max-content;padding:2px;">
             ${unassigned.length ? unassigned.map(photo => {
               const sel = _selectedIds.has(photo.id);
@@ -95,7 +95,7 @@ function _renderAssignPopup() {
           <div style="font-size:11px;font-weight:700;color:var(--text3);">👤 손님 슬롯 ${_slots.length}개</div>
           <button onclick="_addSlotInPopup()" style="padding:5px 10px;border-radius:6px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;">+ 추가</button>
         </div>
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px;">
+        <div style="overflow-x:auto;padding-bottom:8px;">
           <div style="display:flex;gap:10px;min-width:max-content;">
             ${slotsHtml || '<div style="padding:20px;color:var(--text3);font-size:12px;">슬롯이 없어요. + 추가를 눌러주세요</div>'}
           </div>

@@ -2134,7 +2134,7 @@
       if (!target) return;
       box = document.createElement('div');
       box.id = 'asstProactive';
-      box.style.cssText = 'display:flex;gap:8px;overflow-x:auto;margin-top:6px;padding:4px 0;-webkit-overflow-scrolling:touch;';
+      box.style.cssText = 'display:flex;gap:8px;overflow-x:auto;margin-top:6px;padding:4px 0;';
       target.parentNode.insertBefore(box, target);
     }
     if (!suggestions || !suggestions.length) { box.style.display = 'none'; box.innerHTML = ''; return; }

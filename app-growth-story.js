@@ -121,7 +121,7 @@
     if (o) o.remove();
     o = document.createElement('div');
     o.id = OVERLAY;
-    o.style.cssText = `position:fixed;inset:0;z-index:10002;background:rgba(20,8,16,0.65);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:pvFadeIn 0.2s ease;`;
+    o.style.cssText = `position:fixed;inset:0;z-index:10002;background:rgba(20,8,16,0.82);display:flex;align-items:center;justify-content:center;padding:16px;animation:pvFadeIn 0.2s ease;`;
     o.innerHTML = `
       <div style="width:100%;max-width:360px;background:#fff;border-radius:22px;overflow:hidden;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
         <div style="font-size:14px;font-weight:900;text-align:center;margin-bottom:12px;">🎉 ${report.year}.${report.month} 월간 성장 리포트</div>

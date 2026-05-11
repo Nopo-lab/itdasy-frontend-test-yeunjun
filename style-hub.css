@@ -9,8 +9,7 @@
 #undoHistorySheet,
 #assistantFactsSheet,
 #pricelistSheet {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(var(--bg-rgb,255,255,255),0.95);
 }
 
 /* ── 허브 카드 인터랙션 (AI hub) ───────────────────────── */

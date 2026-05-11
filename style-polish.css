@@ -1,9 +1,7 @@
 /* ───── 인스타 프레임 결과 ───── */
 .insta-frame {
   display: none;
-  background: rgba(255,255,255,0.88);
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  background: rgba(var(--bg-rgb,255,255,255),0.97);
   border: 1px solid rgba(241,128,145,0.18);
   border-radius: 24px;
   margin-top: 14px;
@@ -98,8 +96,7 @@
   bottom: calc(96px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%) translateY(16px);
-  background: rgba(25,31,40,0.92);
-  backdrop-filter: blur(10px);
+  background: rgba(25,31,40,0.97);
   color: #fff;
   padding: 13px 24px;
   border-radius: 30px;
@@ -292,7 +289,6 @@ input[type="url"], textarea, select {
 }
 
 /* 모멘텀 스크롤 */
-.scroll-momentum, [data-scroll] { -webkit-overflow-scrolling: touch; }
 
 /* position:sticky 수직 스크롤 컨테이너 필수 */
 .sticky-top { position: -webkit-sticky; position: sticky; top: 0; }
@@ -304,8 +300,8 @@ button, a, [role="button"] { -webkit-tap-highlight-color: transparent; }
 .safe-top { padding-top: env(safe-area-inset-top, 0); }
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0); }
 
-/* iOS 는 backdrop-filter prefix 필요 */
-.backdrop-blur { -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+/* PerfFix: backdrop-filter 유틸 제거 (성능). 호출처는 불투명 배경으로 대체됨 */
+.backdrop-blur { background: rgba(var(--bg-rgb,255,255,255),0.95); }
 
 /* date/time input 중앙정렬 (기본은 iOS 는 왼쪽) */
 input[type="date"], input[type="time"] { -webkit-appearance: none; appearance: none; text-align: left; }
@@ -361,7 +357,6 @@ button:active:not(:disabled), .btn:active, .sheet-row:active {
 
 /* 6. 스크롤 부드럽게 */
 html, body, * { scroll-behavior: smooth; }
-html, body { -webkit-overflow-scrolling: touch; }
 
 /* 7. 리스트 stagger — 최근 활동 · 고객 목록 등 */
 @keyframes list-fade-slide {

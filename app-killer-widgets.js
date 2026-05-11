@@ -354,7 +354,7 @@
     if (existing) existing.remove();
     const o = document.createElement('div');
     o.id = id;
-    o.style.cssText = `position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;animation:pvFadeIn 0.2s ease;`;
+    o.style.cssText = `position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;padding:16px;animation:pvFadeIn 0.2s ease;`;
 
     const hasBulk = bulkDrafts && bulkDrafts.length > 0;
 

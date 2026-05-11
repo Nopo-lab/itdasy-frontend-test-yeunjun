@@ -45,7 +45,7 @@
         height: 140px !important;
         overflow-y: scroll !important;
         scroll-snap-type: y mandatory !important;
-        -webkit-overflow-scrolling: touch !important;
+        
         scrollbar-width: none;
         position: relative;
       }
@@ -1722,7 +1722,7 @@
     const dateStr = _ds(defDate);
     const defS = existing ? _fmt(new Date(existing.starts_at)) : (pendS ? _fmt(pendS) : slots[0]);
     const defE = existing ? _fmt(new Date(existing.ends_at))   : (pendE ? _fmt(pendE) : (slots[2] || slots[slots.length - 1]));
-    body.innerHTML = '<div class="cv-form-wrap bf-wrap" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;">' + _buildFormHTML(existing, slots, dateStr, defS, defE, !!pendS) + '</div>';
+    body.innerHTML = '<div class="cv-form-wrap bf-wrap" style="flex:1;overflow-y:auto;padding:16px;">' + _buildFormHTML(existing, slots, dateStr, defS, defE, !!pendS) + '</div>';
     body.querySelector('#cv-form-back').addEventListener('click', () => _renderViewBody());
     _bindFormExtras(body, existing);
     _bindFormSave(body, existing, date);

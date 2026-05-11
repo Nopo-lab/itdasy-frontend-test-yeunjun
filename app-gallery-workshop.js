@@ -343,7 +343,7 @@ function _renderSlotCards() {
       <button onclick="event.stopPropagation();deleteSlot('${slot.id}',event)" class="ws-slot-card__del" aria-label="삭제">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
-      <button onclick="event.stopPropagation();openSlotPopup('${slot.id}');" style="position:absolute;top:30px;right:6px;width:26px;height:26px;border-radius:999px;background:rgba(15,20,25,0.6);border:none;color:#fff;cursor:pointer;display:grid;place-items:center;z-index:2;backdrop-filter:blur(4px);" aria-label="사진 편집">
+      <button onclick="event.stopPropagation();openSlotPopup('${slot.id}');" style="position:absolute;top:30px;right:6px;width:26px;height:26px;border-radius:999px;background:rgba(15,20,25,0.78);border:none;color:#fff;cursor:pointer;display:grid;place-items:center;z-index:2;" aria-label="사진 편집">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>
       </button>
       ${thumbHtml}
