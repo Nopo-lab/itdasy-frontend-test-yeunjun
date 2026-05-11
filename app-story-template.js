@@ -123,9 +123,9 @@
         <div style="width:100%; max-width:480px; background:#fff; border-radius:24px 24px 0 0; padding:24px 20px calc(32px + env(safe-area-inset-bottom)); max-height:92vh; overflow-y:auto;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
             <div style="font-size:17px; font-weight:800;">📱 스토리 9:16 만들기</div>
-            <button id="_storyClose" style="background:none; border:none; font-size:22px; width:44px; height:44px; cursor:pointer; color:#999;">✕</button>
+            <button id="_storyClose" style="background:none; border:none; font-size:22px; width:44px; height:44px; cursor:pointer; color:var(--text-subtle);">✕</button>
           </div>
-          <div style="font-size:12px; color:#666; margin-bottom:16px;">인스타 스토리에 바로 올릴 수 있는 세로 이미지를 만들어드려요 (1080x1920).</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">인스타 스토리에 바로 올릴 수 있는 세로 이미지를 만들어드려요 (1080x1920).</div>
 
           <label style="font-size:12px; color:#555;">사진 (URL 또는 파일 선택)
             <input id="_storyImgUrl" type="url" placeholder="이미지 URL" style="width:100%; margin-top:6px; padding:12px; border:1.5px solid #e0e0e0; border-radius:10px; font-size:14px; box-sizing:border-box; min-height:44px;">
@@ -137,10 +137,10 @@
           </label>
 
           <label style="font-size:12px; color:#555; display:block; margin-top:14px;">상단 태그라인 (선택)
-            <input id="_storyTag" type="text" placeholder="예: 오늘의 시술 ✨" style="width:100%; margin-top:6px; padding:12px; border:1.5px solid #e0e0e0; border-radius:10px; font-size:14px; box-sizing:border-box; min-height:44px;">
+            <input id="_storyTag" type="text" placeholder="예: 오늘의 시술" style="width:100%; margin-top:6px; padding:12px; border:1.5px solid #e0e0e0; border-radius:10px; font-size:14px; box-sizing:border-box; min-height:44px;">
           </label>
 
-          <button id="_storyRender" style="width:100%; margin-top:16px; padding:14px; border-radius:12px; border:none; background:linear-gradient(135deg,var(--brand),#ff9aa8); color:#fff; font-size:14px; font-weight:800; cursor:pointer; min-height:48px;">✨ 만들기</button>
+          <button id="_storyRender" style="width:100%; margin-top:16px; padding:14px; border-radius:12px; border:none; background:linear-gradient(135deg,var(--brand),#ff9aa8); color:#fff; font-size:14px; font-weight:800; cursor:pointer; min-height:48px;">만들기</button>
 
           <div id="_storyPreview" style="margin-top:18px; display:none;">
             <img id="_storyImg" style="width:100%; border-radius:14px; border:1px solid #eee;">
@@ -181,7 +181,7 @@
           document.getElementById('_storyDownload').href = dataUrl;
           document.getElementById('_storyPreview').style.display = 'block';
         } finally {
-          btn.disabled = false; btn.textContent = '✨ 다시 만들기';
+          btn.disabled = false; btn.textContent = '다시 만들기';
         }
       });
 

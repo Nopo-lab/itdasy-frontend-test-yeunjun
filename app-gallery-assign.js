@@ -59,7 +59,7 @@ function _renderAssignPopup() {
       : '<div style="font-size:11px;color:var(--text3);">비어있음</div>';
 
     return `<div data-slot-drop="${slot.id}" onclick="${_selectedIds.size > 0 ? `_assignToSlotFromPopup('${slot.id}')` : ''}" style="flex-shrink:0;width:140px;background:#fff;border:2px solid ${_selectedIds.size > 0 ? 'var(--accent)' : 'var(--border)'};border-radius:14px;padding:10px;position:relative;${_selectedIds.size > 0 ? 'cursor:pointer;' : ''}">
-      <button onclick="_deleteSlotInPopup('${slot.id}');event.stopPropagation();" style="position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,0.08);border:none;color:#999;font-size:10px;cursor:pointer;z-index:2;">✕</button>
+      <button onclick="_deleteSlotInPopup('${slot.id}');event.stopPropagation();" style="position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,0.08);border:none;color:var(--text-subtle);font-size:10px;cursor:pointer;z-index:2;">✕</button>
       <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:6px;">${slot.label}</div>
       <div style="display:flex;gap:4px;overflow-x:auto;min-height:32px;align-items:center;">${photosPreview}</div>
       ${_selectedIds.size > 0 ? `<div style="margin-top:8px;padding:6px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:11px;font-weight:700;text-align:center;">여기에 넣기</div>` : ''}
@@ -72,7 +72,7 @@ function _renderAssignPopup() {
       <div style="padding:8px 16px 12px;border-bottom:1px solid var(--border);">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <div style="font-size:16px;font-weight:800;color:var(--text);">📷 사진 → 손님 배정</div>
-          <button onclick="closeAssignPopup()" style="background:transparent;border:none;font-size:24px;color:#aaa;cursor:pointer;padding:0 4px;">×</button>
+          <button onclick="closeAssignPopup()" style="background:transparent;border:none;font-size:24px;color:var(--text-subtle);cursor:pointer;padding:0 4px;">×</button>
         </div>
         <div style="font-size:11px;color:var(--text3);margin-top:4px;">사진 선택 후 아래 손님 카드를 탭하세요</div>
       </div>

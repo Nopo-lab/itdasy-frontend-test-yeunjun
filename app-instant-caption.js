@@ -244,9 +244,9 @@
       <div style="width:100%; max-width:480px; background:#fff; border-radius:24px 24px 0 0; padding:24px 20px calc(32px + env(safe-area-inset-bottom)); max-height:92vh; overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
           <div style="font-size:17px; font-weight:800;">1초 캡션</div>
-          <button id="_icClose" style="background:none; border:none; font-size:22px; width:44px; height:44px; cursor:pointer; color:#999;">✕</button>
+          <button id="_icClose" style="background:none; border:none; font-size:22px; width:44px; height:44px; cursor:pointer; color:var(--text-subtle);">✕</button>
         </div>
-        <div style="font-size:12px; color:#666; margin-bottom:14px; line-height:1.5;">
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:14px; line-height:1.5;">
           시술 끝난 사진 1장만 골라주세요. 캡션 · 해시태그 · 9:16 스토리까지 한 번에 만들어드려요.
         </div>
 

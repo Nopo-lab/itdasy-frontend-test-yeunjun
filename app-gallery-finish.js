@@ -190,7 +190,7 @@ function _galleryItemDetail(galleryId) {
       <div style="width:100%;max-width:480px;background:#fff;border-radius:20px 20px 0 0;max-height:90vh;overflow-y:auto;padding:16px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <div style="font-size:14px;font-weight:800;">${escapeHtml(item.label)} <span style="font-size:11px;color:var(--text3);font-weight:400;">${escapeHtml(item.date)}</span></div>
-          <button onclick="document.getElementById('_galleryDetailPop').style.display='none'" style="background:transparent;border:none;font-size:20px;color:#aaa;cursor:pointer;">×</button>
+          <button onclick="document.getElementById('_galleryDetailPop').style.display='none'" style="background:transparent;border:none;font-size:20px;color:var(--text-subtle);cursor:pointer;">×</button>
         </div>
         ${_buildPeekCarousel(photos, 'gd_carousel')}
         ${escapedCaption ? `<div style="margin-top:12px;font-size:13px;color:#333;white-space:pre-wrap;line-height:1.6;">${escapedCaption}</div>` : ''}
@@ -236,7 +236,7 @@ async function _republishGalleryItem(galleryId) {
     const imgUrl = upData.image_url?.startsWith('http') ? upData.image_url : API + (upData.image_url || '');
     if (typeof doInstagramPublish === 'function') {
       const success = await doInstagramPublish(imgUrl, fullCaption);
-      if (success) showToast('다시 업로드 완료! ✨');
+      if (success) showToast('다시 업로드 완료!');
     }
   } catch(e) { showToast('오류: ' + (window._humanError ? window._humanError(e) : e.message)); }
 }
@@ -256,7 +256,7 @@ async function downloadGalleryItem(galleryId) {
       }));
       if (navigator.canShare({ files })) {
         await navigator.share({ files, title: '사진 저장' });
-        showToast('공유/저장 완료 ✨');
+        showToast('공유/저장 완료!');
         return;
       }
     } catch(e) {
@@ -522,7 +522,7 @@ async function downloadSlotPhotos(slotId) {
       }));
       if (navigator.canShare({ files })) {
         await navigator.share({ files, title: '사진 저장' });
-        showToast('공유/저장 완료 ✨');
+        showToast('공유/저장 완료!');
         return;
       }
     } catch(e) {

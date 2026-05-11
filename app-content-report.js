@@ -35,15 +35,15 @@
             <div style="font-size:12px;color:#78350f;margin-top:4px;line-height:1.5;">24시간 내 검토 후 처리해 드립니다.</div>
           </div>
           <div style="padding:16px 20px;max-height:60vh;overflow-y:auto;">
-            <div style="font-size:12px;color:#666;margin-bottom:4px;">신고 대상</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">신고 대상</div>
             <div id="aiReportSnippet" style="background:#f7f7f9;padding:10px 12px;border-radius:8px;font-size:12px;color:#333;line-height:1.6;margin-bottom:14px;max-height:80px;overflow:hidden;text-overflow:ellipsis;"></div>
 
-            <label style="display:block;font-size:12px;color:#666;margin-bottom:6px;">분류 *</label>
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;">분류 *</label>
             <select id="aiReportCategory" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:14px;box-sizing:border-box;">
               ${Object.entries(CATEGORY_LABELS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}
             </select>
 
-            <label style="display:block;font-size:12px;color:#666;margin-bottom:6px;">상세 설명 (선택)</label>
+            <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;">상세 설명 (선택)</label>
             <textarea id="aiReportDetail" maxlength="1000" rows="3" placeholder="구체적인 문제점을 적어주시면 처리가 빨라져요." style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;resize:vertical;box-sizing:border-box;font-family:inherit;"></textarea>
 
             <div id="aiReportError" style="display:none;margin-top:8px;font-size:12px;color:#b00020;"></div>

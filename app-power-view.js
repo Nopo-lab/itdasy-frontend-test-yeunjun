@@ -80,7 +80,7 @@
       row: (r) => [
         _esc(r.customer_name || '—'),
         _esc(r.service_name || '—'),
-        `<span style="color:#666;font-variant-numeric:tabular-nums;">${(r.starts_at || '').replace('T', ' ').slice(0, 16)}</span>`,
+        `<span style="color:var(--text-muted);font-variant-numeric:tabular-nums;">${(r.starts_at || '').replace('T', ' ').slice(0, 16)}</span>`,
         `<span style="padding:3px 9px;border-radius:100px;background:#E8F4F1;color:#2B8C7E;font-size:11px;font-weight:700;">${_esc(({confirmed:'확정',completed:'완료',cancelled:'취소',no_show:'안 옴'}[r.status])||r.status||'확정')}</span>`,
       ],
       editFields: [
@@ -238,7 +238,7 @@
       row: (r) => [
         `<strong>${_esc(r.name)}</strong>`,
         `<span style="font-weight:700;">${_krw(r.default_price)}</span>`,
-        `<span style="color:#666;">${r.default_duration_min || 0}분</span>`,
+        `<span style="color:var(--text-muted);">${r.default_duration_min || 0}분</span>`,
         `<span style="padding:3px 9px;border-radius:100px;background:#F3E8FF;color:#6B21A8;font-size:11px;font-weight:700;">${_esc(({nail:'네일',hair:'헤어',lash:'속눈썹',skin:'피부',eye:'속눈썹',wax:'왁싱',hair_extension:'붙임머리',etc:'기타'}[r.category])||r.category||'기타')}</span>`,
       ],
       editFields: [

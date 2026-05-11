@@ -118,7 +118,7 @@
         </div>
         <div style="font-size:11px;color:#888;margin-bottom:10px;">챗봇이 추가/변경한 항목들. 클릭하면 되돌려요.</div>
         <div id="uhsList" style="flex:1;overflow-y:auto;">
-          <div style="text-align:center;color:#aaa;padding:30px 0;font-size:13px;">불러오는 중…</div>
+          <div style="text-align:center;color:var(--text-subtle);padding:30px 0;font-size:13px;">불러오는 중…</div>
         </div>
         <div style="margin-top:10px;padding:12px;background:#FAF5FF;border-radius:10px;font-size:11px;line-height:1.5;color:#5B21B6;">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
@@ -161,7 +161,7 @@
     try {
       const items = await _fetch('GET', '/assistant/undo');
       if (!items || !items.length) {
-        list.innerHTML = `<div style="text-align:center;color:#aaa;padding:30px 0;font-size:13px;">되돌릴 작업이 없어요.</div>`;
+        list.innerHTML = `<div style="text-align:center;color:var(--text-subtle);padding:30px 0;font-size:13px;">되돌릴 작업이 없어요.</div>`;
         return;
       }
       // chain_id 별 묶음 표시
@@ -180,7 +180,7 @@
             <div style="padding:10px 12px;background:#FAF5FF;border:1px solid #DDD6FE;border-radius:12px;margin-bottom:8px;">
               <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
                 <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#5B21B6;background:#fff;padding:3px 8px;border-radius:99px;"><svg width="11" height="11" aria-hidden="true"><use href="#ic-link"/></svg>Chain ${group.length}건</span>
-                <span style="font-size:10px;color:#999;">${dt.toLocaleString('ko-KR', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+                <span style="font-size:10px;color:var(--text-subtle);">${dt.toLocaleString('ko-KR', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
                 <button class="uhs-undo-chain" data-chain="${cid}" style="margin-left:auto;background:#7C3AED;border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">전체 되돌리기</button>
               </div>
               ${group.map(g => `<div style="font-size:12px;color:#333;padding:4px 0 4px 20px;">${_esc(g.summary)}</div>`).join('')}
@@ -193,7 +193,7 @@
           <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#FAFAFA;border-radius:12px;margin-bottom:6px;">
             <div style="flex:1;font-size:13px;color:#333;">
               <div>${_esc(it.summary)}</div>
-              <div style="font-size:10px;color:#999;margin-top:2px;">${dt.toLocaleString('ko-KR', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+              <div style="font-size:10px;color:var(--text-subtle);margin-top:2px;">${dt.toLocaleString('ko-KR', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
             </div>
             <button class="uhs-undo" data-id="${it.id}" style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #ddd;color:#555;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;"><svg width="11" height="11" aria-hidden="true"><use href="#ic-rotate-ccw"/></svg>되돌리기</button>
           </div>

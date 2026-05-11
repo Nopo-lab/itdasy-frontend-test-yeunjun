@@ -68,7 +68,7 @@
             로그아웃
           </button>
           <button type="button" class="ss-cta-secondary" data-bk-delete
-            style="color:#999;margin-top:8px;font-size:12px;">
+            style="color:var(--text-subtle);margin-top:8px;font-size:12px;">
             계정 삭제 안내
           </button>
         </div>

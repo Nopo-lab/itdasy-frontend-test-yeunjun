@@ -68,7 +68,7 @@
         <div style="position:absolute;top:-12px;right:-12px;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,${grad});opacity:0.2;"></div>
         <div style="font-size:10px;color:#888;font-weight:700;margin-bottom:6px;position:relative;">${_esc(label)}</div>
         <div style="font-size:22px;font-weight:900;color:#1a1a1a;line-height:1.1;letter-spacing:-0.3px;">${_esc(value)}</div>
-        <div style="font-size:10px;color:#999;margin-top:4px;">${_esc(sub)}</div>
+        <div style="font-size:10px;color:var(--text-subtle);margin-top:4px;">${_esc(sub)}</div>
       </div>
     `;
   }
@@ -80,7 +80,7 @@
     const empty = (r.total || 0) === 0 && (c.unique_visitors || 0) === 0;
     if (empty) {
       body.innerHTML = `
-        <div style="padding:40px 20px;text-align:center;color:#aaa;">
+        <div style="padding:40px 20px;text-align:center;color:var(--text-subtle);">
           <div style="font-size:36px;margin-bottom:10px;">🌱</div>
           <div style="font-size:13px;line-height:1.5;">이 달은 아직 기록이 없어요.<br>매출·고객을 쌓으면 자동으로 리포트가 만들어져요.</div>
         </div>
@@ -134,7 +134,7 @@
   async function _load() {
     _renderNav();
     const body = document.getElementById('reportBody');
-    body.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa;">불러오는 중…</div>';
+    body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-subtle);">불러오는 중…</div>';
     try {
       const d = await _fetch(_currentY, _currentM);
       _renderBody(d);

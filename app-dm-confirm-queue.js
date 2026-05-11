@@ -58,7 +58,7 @@
           AI 가 초안 만들어둔 답장. 손님에겐 "잠시만요" 자동 발송됨. 30분 무응답 → template fallback 자동.
         </div>
         <div id="dcqList" style="flex:1;overflow-y:auto;">
-          <div style="text-align:center;color:#aaa;padding:30px 0;font-size:13px;">불러오는 중…</div>
+          <div style="text-align:center;color:var(--text-subtle);padding:30px 0;font-size:13px;">불러오는 중…</div>
         </div>
       </div>
     `;
@@ -131,7 +131,7 @@
       const cnt = document.getElementById('dcqCount');
       if (cnt) cnt.textContent = count + '건';
       if (!count) {
-        list.innerHTML = `<div style="text-align:center;color:#aaa;padding:30px 0;font-size:13px;line-height:1.6;">대기 중인 메시지가 없어요. ✨<br>AI 가 자동 답변 잘 하고 있어요.</div>`;
+        list.innerHTML = `<div style="text-align:center;color:var(--text-subtle);padding:30px 0;font-size:13px;line-height:1.6;">대기 중인 메시지가 없어요. ✨<br>AI 가 자동 답변 잘 하고 있어요.</div>`;
         return;
       }
       const _actionLabel = {

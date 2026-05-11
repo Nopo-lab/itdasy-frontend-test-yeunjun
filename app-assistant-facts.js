@@ -63,7 +63,7 @@
           <button id="afsAddBtn" style="padding:11px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#7C3AED,#A78BFA);color:#fff;font-weight:700;font-size:13px;cursor:pointer;">+ 추가</button>
         </div>
         <div id="afsList" style="flex:1;overflow-y:auto;padding-bottom:18px;">
-          <div style="text-align:center;color:#aaa;padding:30px 0;font-size:13px;">불러오는 중…</div>
+          <div style="text-align:center;color:var(--text-subtle);padding:30px 0;font-size:13px;">불러오는 중…</div>
         </div>
       </div>
     `;
@@ -98,7 +98,7 @@
     try {
       const facts = await _fetch('GET', '/assistant/facts');
       if (!facts || !facts.length) {
-        list.innerHTML = `<div style="text-align:center;color:#aaa;padding:30px 0;font-size:13px;line-height:1.6;">
+        list.innerHTML = `<div style="text-align:center;color:var(--text-subtle);padding:30px 0;font-size:13px;line-height:1.6;">
           아직 메모가 없어요.<br>챗봇한테 "기억해" 라고 말하거나 위에 직접 적어주세요.
         </div>`;
         return;
@@ -107,7 +107,7 @@
         <div style="display:flex;align-items:flex-start;gap:8px;padding:11px 12px;background:#FAFAFA;border-radius:12px;margin-bottom:8px;">
           <span style="flex-shrink:0;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:${_kindColor(f.kind)};background:${_kindColor(f.kind)}15;padding:3px 8px;border-radius:99px;line-height:1.3;"><svg width="10" height="10" aria-hidden="true"><use href="#${_kindIcon(f.kind)}"/></svg>${_kindLabel(f.kind)}</span>
           <div style="flex:1;font-size:13px;line-height:1.45;color:#333;word-break:break-word;">${_esc(f.text)}</div>
-          <button class="afs-del" data-id="${f.id}" style="flex-shrink:0;background:none;border:none;color:#aaa;cursor:pointer;font-size:14px;padding:0 4px;line-height:1;" title="삭제">✕</button>
+          <button class="afs-del" data-id="${f.id}" style="flex-shrink:0;background:none;border:none;color:var(--text-subtle);cursor:pointer;font-size:14px;padding:0 4px;line-height:1;" title="삭제">✕</button>
         </div>
       `).join('');
       list.querySelectorAll('.afs-del').forEach(b => {

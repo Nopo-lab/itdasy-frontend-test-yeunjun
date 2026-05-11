@@ -100,7 +100,7 @@
           <button id="dmrAdd" style="margin-bottom:14px;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#7C3AED,#A78BFA);color:#fff;font-weight:800;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;">
             <svg width="14" height="14" aria-hidden="true"><use href="#ic-plus"/></svg>새 매뉴얼 추가
           </button>
-          <div id="dmrList"><div style="text-align:center;color:#aaa;padding:30px 0;font-size:13px;">불러오는 중…</div></div>
+          <div id="dmrList"><div style="text-align:center;color:var(--text-subtle);padding:30px 0;font-size:13px;">불러오는 중…</div></div>
         </div>
       </div>
     `;
@@ -271,7 +271,7 @@
     try {
       const items = await _fetch('GET', '/dm-autoreply/manual-replies');
       if (!items.length) {
-        list.innerHTML = `<div style="text-align:center;color:#aaa;padding:30px 0;font-size:13px;line-height:1.6;">아직 등록된 멘트가 없어요.<br>"새 멘트 추가" 로 첫 매뉴얼 만들어보세요.</div>`;
+        list.innerHTML = `<div style="text-align:center;color:var(--text-subtle);padding:30px 0;font-size:13px;line-height:1.6;">아직 등록된 멘트가 없어요.<br>"새 멘트 추가" 로 첫 매뉴얼 만들어보세요.</div>`;
         return;
       }
       list.innerHTML = items.map(it => {
@@ -289,7 +289,7 @@
               <span style="font-size:10px;font-weight:700;color:${modeColor};background:${modeColor}15;padding:2px 7px;border-radius:99px;">${_MODE_LABEL[it.mode] || it.mode}</span>
               ${it.use_count > 0 ? `<span style="font-size:10px;color:#888;">${it.use_count}회 사용</span>` : ''}
             </div>
-            <div style="font-size:11px;color:#666;margin-bottom:6px;">${triggerSummary}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">${triggerSummary}</div>
             <div style="font-size:12px;color:#333;background:#fff;padding:8px 10px;border-radius:8px;line-height:1.5;margin-bottom:8px;">${_esc(it.reply_text)}</div>
             <div style="display:flex;gap:6px;">
               <button class="dmr-toggle" data-id="${it.id}" data-enabled="${it.enabled}" style="flex:1;padding:7px;border:1px solid #ddd;background:#fff;color:#555;font-weight:600;font-size:11px;border-radius:8px;cursor:pointer;">${it.enabled ? '⏸ 비활성' : '▶ 활성'}</button>

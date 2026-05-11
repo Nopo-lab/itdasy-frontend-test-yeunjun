@@ -28,13 +28,13 @@
     switch (tab) {
       case 'customer':
         return `<strong>${esc(p.name || '')}</strong>` +
-          (p.phone ? ` · <span style="color:#666;">${esc(p.phone)}</span>` : '') +
+          (p.phone ? ` · <span style="color:var(--text-muted);">${esc(p.phone)}</span>` : '') +
           (p.memo ? ` · <span style="color:#888;">${esc(String(p.memo).slice(0, 30))}</span>` : '');
       case 'booking': {
         const t = (p.starts_at || '').replace('T', ' ').slice(0, 16);
         return `<strong>${esc(p.customer_name || '고객 없음')}</strong>` +
           (p.service_name ? ` · ${esc(p.service_name)}` : '') +
-          (t ? ` · <span style="color:#666;">${esc(t)}</span>` : '');
+          (t ? ` · <span style="color:var(--text-muted);">${esc(t)}</span>` : '');
       }
       case 'revenue':
         return `<strong>${krw(p.amount)}</strong>` +
@@ -42,11 +42,11 @@
           (p.service_name ? ` · ${esc(p.service_name)}` : '') +
           (p.customer_name ? ` · <span style="color:#888;">${esc(p.customer_name)}</span>` : '');
       case 'inventory':
-        return `<strong>${esc(p.name)}</strong> · <span style="color:#666;">${p.quantity}${esc(p.unit || '개')}</span>` +
+        return `<strong>${esc(p.name)}</strong> · <span style="color:var(--text-muted);">${p.quantity}${esc(p.unit || '개')}</span>` +
           (p.category ? ` · <span style="color:#888;font-size:11px;">${esc(p.category)}</span>` : '');
       case 'nps':
         return `<strong style="color:#E6A100;">★${p.rating}</strong>` +
-          (p.comment ? ` · <span style="color:#666;">${esc(String(p.comment).slice(0, 40))}</span>` : '');
+          (p.comment ? ` · <span style="color:var(--text-muted);">${esc(String(p.comment).slice(0, 40))}</span>` : '');
       case 'service':
         return `<strong>${esc(p.name)}</strong>` +
           (p.default_price ? ` · ${krw(p.default_price)}` : '') +
@@ -371,7 +371,7 @@
         <div class="pv-empty">
           <div class="pv-empty-icon">${schema.empty.icon}</div>
           <div style="font-weight:800;color:#555;margin-bottom:6px;">${state.searchKW ? '검색 결과가 없어요' : schema.empty.title}</div>
-          <div style="font-size:12px;color:#aaa;">${state.searchKW ? `"${_esc(state.searchKW)}" 에 해당하는 ${schema.empty.title.replace(' 없어요','').replace('아직 ','')} 없음` : schema.empty.desc}</div>
+          <div style="font-size:12px;color:var(--text-subtle);">${state.searchKW ? `"${_esc(state.searchKW)}" 에 해당하는 ${schema.empty.title.replace(' 없어요','').replace('아직 ','')} 없음` : schema.empty.desc}</div>
         </div>
       </td></tr>` : '';
 
@@ -393,9 +393,9 @@
       ${pendingHtml}
       <div class="pv-toolbar">
         <div style="position:relative;flex:1;max-width:280px;">
-          <svg class="ic" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#999;" aria-hidden="true"><use href="#ic-search"/></svg>
+          <svg class="ic" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text-subtle);" aria-hidden="true"><use href="#ic-search"/></svg>
           <input class="pv-search" id="pv-search" data-no-voice placeholder="검색 (⌘K)" value="${_esc(state.searchKW)}" style="padding-left:32px;padding-right:${state.searchKW ? '32px' : '12px'};" />
-          ${state.searchKW ? `<button id="pv-search-clear" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;padding:2px;color:#aaa;" aria-label="검색 지우기"><svg class="ic" aria-hidden="true"><use href="#ic-x"/></svg></button>` : ''}
+          ${state.searchKW ? `<button id="pv-search-clear" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;padding:2px;color:var(--text-subtle);" aria-label="검색 지우기"><svg class="ic" aria-hidden="true"><use href="#ic-x"/></svg></button>` : ''}
         </div>
         <label class="pv-excel" for="pv-excel-file" title="엑셀/CSV AI 임포트">
           📥 엑셀 불러오기
@@ -480,7 +480,7 @@
         return '';
       })()}
       <div class="pv-footer">
-        <div><span class="pv-count">${list.length}</span><span style="color:#999"> / 총 ${(state.data[state.currentTab] || []).length}건</span></div>
+        <div><span class="pv-count">${list.length}</span><span style="color:var(--text-subtle)"> / 총 ${(state.data[state.currentTab] || []).length}건</span></div>
         <div class="pv-hotkeys">단축: <kbd>Enter</kbd> 즉시 · <kbd>Shift+Enter</kbd> 쌓기 · <kbd>⌘K</kbd> 검색 · <kbd>Esc</kbd> 닫기</div>
       </div>
     `;

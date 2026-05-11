@@ -122,7 +122,7 @@ async function handleReviewUpload(input) {
   if (!file) return;
   const resultDiv = document.getElementById('reviewExtractResult');
   resultDiv.style.display = 'block';
-  resultDiv.innerHTML = `<div class="rv-loading">스크린샷 준비 중... ✨</div>`;
+  resultDiv.innerHTML = `<div class="rv-loading">스크린샷 준비 중...</div>`;
   try {
     const rawUrl = await _fileToDataUrl(file);
     const dataUrl = await _smartCropScreenshot(rawUrl);
@@ -134,7 +134,7 @@ async function handleReviewUpload(input) {
         <img src="${dataUrl}" class="rv-screenshot-img">
       </div>`;
     _renderReviewPanel();
-    showToast('스크린샷이 추가됐어요! 아래에서 선택해 사진에 붙이세요 ✨');
+    showToast('스크린샷이 추가됐어요! 아래에서 선택해 사진에 붙이세요!');
   } catch(e) {
     resultDiv.innerHTML = `<div class="rv-error">업로드 실패: ${e.message}</div>`;
   }

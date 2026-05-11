@@ -139,7 +139,7 @@
     wrap.innerHTML = `
       <div class="itd-empty-icon">${icon}</div>
       <div style="font-size:15px;font-weight:700;color:#333;margin-top:14px;">${title}</div>
-      ${sub ? `<div style="font-size:12px;color:#999;margin-top:6px;line-height:1.5;">${sub}</div>` : ''}
+      ${sub ? `<div style="font-size:12px;color:var(--text-subtle);margin-top:6px;line-height:1.5;">${sub}</div>` : ''}
     `;
     if (action) {
       const btn = document.createElement('button');

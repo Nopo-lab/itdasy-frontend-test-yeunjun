@@ -38,8 +38,8 @@
       body.innerHTML = `
         <div style="padding:40px 20px;text-align:center;">
           <div style="font-size:40px;margin-bottom:10px;">📋</div>
-          <div style="font-size:13px;color:#666;">대기자가 없어요</div>
-          <div style="font-size:11px;color:#aaa;margin-top:4px;">"+ 새 대기자" 로 등록</div>
+          <div style="font-size:13px;color:var(--text-muted);">대기자가 없어요</div>
+          <div style="font-size:11px;color:var(--text-subtle);margin-top:4px;">"+ 새 대기자" 로 등록</div>
         </div>`;
       return;
     }
@@ -53,7 +53,7 @@
           <span style="font-size:11px;color:${color};background:${color}15;padding:2px 8px;border-radius:100px;font-weight:700;">${badge}</span>
           <button class="wl-del" data-id="${w.id}" style="margin-left:auto;background:transparent;border:none;color:#ccc;cursor:pointer;font-size:15px;">✕</button>
         </div>
-        <div style="font-size:12px;color:#666;">
+        <div style="font-size:12px;color:var(--text-muted);">
           ${w.phone ? `📞 ${_esc(w.phone)} · ` : ''}${_fmt(w.preferred_date_from)} ~ ${_fmt(w.preferred_date_to)}
           ${w.preferred_service ? ` · ${_esc(w.preferred_service)}` : ''}
         </div>
@@ -75,7 +75,7 @@
   async function _reload() {
     if (!_overlay) return;
     const body = _overlay.querySelector('.wl-body');
-    body.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa;">불러오는 중…</div>';
+    body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-subtle);">불러오는 중…</div>';
     try {
       const d = await _apiGet('/waiting-list');
       _renderList(body, d.items || []);

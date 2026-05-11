@@ -30,7 +30,7 @@
   async function _reload() {
     if (!_overlay) return;
     const body = _overlay.querySelector('.au-body');
-    body.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa;">불러오는 중…</div>';
+    body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-subtle);">불러오는 중…</div>';
     try {
       const [presets, rules] = await Promise.all([
         _api('/automation/presets'),
@@ -58,15 +58,15 @@
               <div style="display:flex;align-items:center;gap:8px;">
                 <strong style="font-size:13px;">${_esc(r.name)}</strong>
                 <span style="font-size:10px;color:${r.enabled ? '#2B8C7E' : '#888'};background:${r.enabled ? '#E8F5E9' : '#F2F2F2'};padding:2px 6px;border-radius:100px;font-weight:700;">${r.enabled ? 'ON' : 'OFF'}</span>
-                <span style="margin-left:auto;font-size:10px;color:#aaa;">실행 ${r.fire_count || 0}회</span>
+                <span style="margin-left:auto;font-size:10px;color:var(--text-subtle);">실행 ${r.fire_count || 0}회</span>
               </div>
-              <div style="font-size:11px;color:#666;margin-top:4px;">${_trigger_desc(r.trigger_type, r.conditions)} → ${_action_desc(r.action_type)}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${_trigger_desc(r.trigger_type, r.conditions)} → ${_action_desc(r.action_type)}</div>
               <div style="margin-top:8px;display:flex;gap:6px;">
                 <button data-toggle="${r.id}" data-enabled="${r.enabled}" style="flex:1;padding:6px;border:1px solid #ddd;background:#fff;border-radius:6px;font-size:11px;cursor:pointer;">${r.enabled ? 'OFF' : 'ON'}</button>
                 <button data-del="${r.id}" style="flex:1;padding:6px;border:1px solid #fcc;background:#fff;color:#c00;border-radius:6px;font-size:11px;cursor:pointer;">삭제</button>
               </div>
             </div>
-          `).join('')) : '<div style="padding:20px;text-align:center;color:#aaa;font-size:12px;">아직 활성 규칙 없음</div>'}
+          `).join('')) : '<div style="padding:20px;text-align:center;color:var(--text-subtle);font-size:12px;">아직 활성 규칙 없음</div>'}
         </div>
       `;
       body.querySelectorAll('[data-preset]').forEach(btn => {

@@ -69,7 +69,7 @@
             </button>
           `).join('')}
         </div>
-        <div style="margin-top:16px;padding:10px;background:#fafafa;border-radius:8px;font-size:11px;color:#666;line-height:1.6;">
+        <div style="margin-top:16px;padding:10px;background:#fafafa;border-radius:8px;font-size:11px;color:var(--text-muted);line-height:1.6;">
           <strong>지원 포맷</strong><br>
           · CSV (UTF-8 / CP949 / EUC-KR 자동 감지)<br>
           · Excel (.xlsx, .xlsm)<br>
@@ -103,7 +103,7 @@
         </div>
 
         <div id="importSourcePanel"></div>
-        <div id="importStatus" style="margin-top:12px;font-size:12px;color:#666;text-align:center;"></div>
+        <div id="importStatus" style="margin-top:12px;font-size:12px;color:var(--text-muted);text-align:center;"></div>
       </div>
     `;
 
@@ -128,11 +128,11 @@
           <input type="file" accept=".csv,.xlsx,.xlsm,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream" hidden id="importFile" />
           <div style="border:2px dashed #ccc;border-radius:12px;padding:36px 16px;text-align:center;cursor:pointer;">
             <div style="font-size:32px;margin-bottom:8px;">📥</div>
-            <div style="font-size:14px;color:#666;">CSV·엑셀 파일을 탭하세요</div>
-            <div style="font-size:10px;color:#aaa;margin-top:4px;">CSV · XLSX · 최대 10MB</div>
+            <div style="font-size:14px;color:var(--text-muted);">CSV·엑셀 파일을 탭하세요</div>
+            <div style="font-size:10px;color:var(--text-subtle);margin-top:4px;">CSV · XLSX · 최대 10MB</div>
           </div>
         </label>
-        <div style="font-size:10px;color:#aaa;margin-top:8px;line-height:1.6;padding:0 4px;">
+        <div style="font-size:10px;color:var(--text-subtle);margin-top:8px;line-height:1.6;padding:0 4px;">
           💡 아이폰·카톡으로 받은 엑셀이 .zip 으로 뜨면 그대로 선택하세요. 자동 변환됩니다.
         </div>
       `;
@@ -146,11 +146,11 @@
           <input type="file" accept="image/*" capture="environment" hidden id="importPhotoFile" />
           <div style="border:2px dashed #FFB347;border-radius:12px;padding:36px 16px;text-align:center;cursor:pointer;background:rgba(255,179,71,0.05);">
             <div style="font-size:32px;margin-bottom:8px;">📸</div>
-            <div style="font-size:14px;color:#666;font-weight:700;">스크린샷·사진 업로드</div>
-            <div style="font-size:10px;color:#aaa;margin-top:4px;">이전 앱 화면 그대로 찍어 올리세요</div>
+            <div style="font-size:14px;color:var(--text-muted);font-weight:700;">스크린샷·사진 업로드</div>
+            <div style="font-size:10px;color:var(--text-subtle);margin-top:4px;">이전 앱 화면 그대로 찍어 올리세요</div>
           </div>
         </label>
-        <div style="font-size:10px;color:#aaa;margin-top:8px;line-height:1.6;padding:0 4px;">
+        <div style="font-size:10px;color:var(--text-subtle);margin-top:8px;line-height:1.6;padding:0 4px;">
           ✨ <b>AI Vision</b> 이 화면에서 고객 목록/매출을 자동 추출해요. 2~3초 소요.
         </div>
       `;
@@ -160,7 +160,7 @@
       });
     } else if (src === 'text') {
       panel.innerHTML = `
-        <div style="margin-bottom:8px;font-size:12px;color:#666;">카카오톡·메모장에서 복사한 내용을 붙여넣으세요.</div>
+        <div style="margin-bottom:8px;font-size:12px;color:var(--text-muted);">카카오톡·메모장에서 복사한 내용을 붙여넣으세요.</div>
         <textarea id="importPasteText" rows="8" placeholder="예)\n김지연 010-1234-5678 VIP\n박소영 010-2345-6789\n..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-family:inherit;resize:vertical;font-size:12px;"></textarea>
         <button id="importPasteParse" style="width:100%;margin-top:10px;padding:12px;border:none;border-radius:10px;background:var(--accent,var(--brand));color:#fff;font-weight:800;cursor:pointer;font-size:14px;">텍스트에서 추출하기 ✨</button>
       `;
@@ -235,7 +235,7 @@
         <button onclick="window._importBack()" style="background:none;border:none;font-size:13px;color:#888;margin-bottom:10px;cursor:pointer;">← 다시 선택</button>
         <div style="padding:10px 12px;background:linear-gradient(135deg,rgba(76,175,80,0.08),rgba(76,175,80,0.02));border-radius:10px;margin-bottom:10px;">
           <strong style="font-size:13px;color:#388e3c;">✨ ${items.length}건 추출됨</strong>
-          <div style="font-size:11px;color:#666;margin-top:3px;">체크된 항목만 저장돼요. 잘못된 항목은 선택 해제.</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">체크된 항목만 저장돼요. 잘못된 항목은 선택 해제.</div>
         </div>
         <div style="max-height:280px;overflow-y:auto;background:#fff;border-radius:10px;border:1px solid rgba(0,0,0,0.06);">
           ${items.map((it, i) => `
@@ -439,7 +439,7 @@
         ${(d.errors && d.errors.length) ? `
           <details style="margin-bottom:12px;padding:10px;background:#fff8e1;border-radius:8px;">
             <summary style="cursor:pointer;font-size:12px;color:#f57c00;">건너뛴 ${d.errors.length}건 보기</summary>
-            <div style="margin-top:8px;font-size:11px;color:#666;line-height:1.5;max-height:180px;overflow-y:auto;">
+            <div style="margin-top:8px;font-size:11px;color:var(--text-muted);line-height:1.5;max-height:180px;overflow-y:auto;">
               ${d.errors.map(e => `<div>${_esc(e)}</div>`).join('')}
             </div>
           </details>

@@ -77,7 +77,7 @@
 
     if (isMine) {
       row.innerHTML = `
-        <span style="font-size:10px;color:#999;align-self:flex-end;margin-bottom:2px;">${time}</span>
+        <span style="font-size:10px;color:var(--text-subtle);align-self:flex-end;margin-bottom:2px;">${time}</span>
         <div style="background:linear-gradient(135deg,var(--brand),#ff9aa8);color:#fff;border-radius:14px 4px 14px 14px;padding:10px 14px;max-width:78%;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">${_escape(m.content)}</div>
       `;
     } else {
@@ -91,7 +91,7 @@
           ${labelHtml}
           <div style="background:#fff;border-radius:4px 14px 14px 14px;padding:10px 14px;font-size:13px;line-height:1.5;color:#333;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,0.05);">${_escape(m.content)}</div>
         </div>
-        <span style="font-size:10px;color:#999;align-self:flex-end;margin-bottom:2px;">${time}</span>
+        <span style="font-size:10px;color:var(--text-subtle);align-self:flex-end;margin-bottom:2px;">${time}</span>
       `;
     }
     box.appendChild(row);

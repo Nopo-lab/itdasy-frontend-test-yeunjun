@@ -688,7 +688,7 @@
             style="padding:0;border:1px solid hsl(0,60%,85%);border-radius:8px;background:hsl(0,70%,98%);color:hsl(0,60%,45%);cursor:pointer;font-size:${sz.fs};height:100%;display:inline-flex;align-items:center;justify-content:center;">${_svg('ic-trash-2', compact ? 12 : 13)}</button>
         </div>`;
     }).join('');
-    const emptyHint = list.length ? '' : `<div style="font-size:11px;color:#999;padding:6px 2px;">품목이 없어요. 아래 버튼으로 추가하세요.</div>`;
+    const emptyHint = list.length ? '' : `<div style="font-size:11px;color:var(--text-subtle);padding:6px 2px;">품목이 없어요. 아래 버튼으로 추가하세요.</div>`;
     return `
       <div style="display:flex;flex-direction:column;gap:${sz.gap};">${rows}${emptyHint}</div>
       <button data-${addAttr}="${keyPrefix}"
@@ -1012,7 +1012,7 @@
         statusRight = `<span style="font-size:10px;color:${meta.color};font-weight:700;flex-shrink:0;">저장 중…</span>`;
       } else if (f.it.skipped) {
         rowOpacity = 0.45;
-        statusRight = `<span style="font-size:10px;color:#999;font-weight:700;flex-shrink:0;">제외</span>`;
+        statusRight = `<span style="font-size:10px;color:var(--text-subtle);font-weight:700;flex-shrink:0;">제외</span>`;
       }
       // 2026-04-26 버그B 픽스 — 실패 행에 사유(it.errorMsg) 함께 노출
       const errorLine = (f.it.status === 'failed' && f.it.errorMsg)
@@ -1186,7 +1186,7 @@
     if (it.skipped) {
       return `<div style="padding:9px 10px;border-radius:10px;background:#f5f5f5;border:1px dashed #ccc;opacity:0.55;display:flex;align-items:center;gap:8px;">
         <div style="flex:1;font-size:12px;color:#888;text-decoration:line-through;">${iIdx + 1}. ${_esc(_summarizeItem(it.action))}</div>
-        <button data-row-unskip="${key}" style="padding:5px 9px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#666;font-size:11px;font-weight:700;cursor:pointer;">되돌리기</button>
+        <button data-row-unskip="${key}" style="padding:5px 9px;border:1px solid #ccc;border-radius:8px;background:#fff;color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;">되돌리기</button>
       </div>`;
     }
 
@@ -1278,7 +1278,7 @@
     const buttons = editing
       ? `<div style="display:flex;gap:6px;margin-top:4px;">
           <button data-row-save="${key}" style="flex:1;padding:7px;border:none;border-radius:8px;background:${meta.color};color:#fff;font-weight:700;cursor:pointer;font-size:11px;display:inline-flex;align-items:center;justify-content:center;gap:4px;">${_svg('ic-save', 12)} 저장</button>
-          <button data-row-editcancel="${key}" style="flex:1;padding:7px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#666;font-weight:700;cursor:pointer;font-size:11px;">취소</button>
+          <button data-row-editcancel="${key}" style="flex:1;padding:7px;border:1px solid #ddd;border-radius:8px;background:#fff;color:var(--text-muted);font-weight:700;cursor:pointer;font-size:11px;">취소</button>
         </div>`
       : `<div style="display:flex;gap:6px;margin-top:4px;">
           <button data-row-run="${key}" style="flex:1;padding:7px;border:none;border-radius:8px;background:${meta.color};color:#fff;font-weight:700;cursor:pointer;font-size:11px;display:inline-flex;align-items:center;justify-content:center;gap:4px;">${_svg('ic-check', 12)} 추가</button>
@@ -2167,7 +2167,7 @@
       <div style="width:100%;max-width:460px;background:#fff;border-radius:20px 20px 0 0;padding:12px 12px max(12px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;">
         <button data-photo-choice="camera" style="padding:16px;border:none;border-radius:14px;background:hsl(340,100%,98%);color:hsl(350,60%,40%);font-size:15px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;">${_svg('ic-camera', 18)} 사진 찍기</button>
         <button data-photo-choice="gallery" style="padding:16px;border:none;border-radius:14px;background:hsl(340,100%,98%);color:hsl(350,60%,40%);font-size:15px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;">${_svg('ic-image-plus', 18)} 갤러리에서</button>
-        <button data-photo-choice="cancel" style="padding:14px;border:none;border-radius:14px;background:#f2f2f2;color:#666;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;">취소</button>
+        <button data-photo-choice="cancel" style="padding:14px;border:none;border-radius:14px;background:#f2f2f2;color:var(--text-muted);font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;">취소</button>
       </div>
     `;
     const close = () => { try { box.remove(); } catch (_e) { void _e; } };

@@ -32,7 +32,7 @@
         <div style="font-size:15px;font-weight:800;color:#222;margin-bottom:6px;">${_esc(title)}</div>
         <div style="font-size:12px;color:#888;line-height:1.6;margin-bottom:18px;">${_esc(desc)}</div>
         <button data-empty-cta style="padding:12px 22px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;font-weight:800;cursor:pointer;font-size:13px;box-shadow:0 4px 14px rgba(241,128,145,0.35);">${_esc(ctaText)}</button>
-        ${sampleHint ? `<div style="font-size:10px;color:#aaa;margin-top:14px;line-height:1.5;">${_esc(sampleHint)}</div>` : ''}
+        ${sampleHint ? `<div style="font-size:10px;color:var(--text-subtle);margin-top:14px;line-height:1.5;">${_esc(sampleHint)}</div>` : ''}
       </div>
     `;
   };

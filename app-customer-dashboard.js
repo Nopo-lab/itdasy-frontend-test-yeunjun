@@ -255,9 +255,9 @@
                 <div style="flex:1;min-width:0;">
                   <div style="display:flex;align-items:baseline;gap:6px;">
                     <strong style="color:${color};font-size:14px;">${n.rating}</strong>
-                    <span style="font-size:10px;color:#aaa;margin-left:auto;">${_dateShort(n.responded_at)}</span>
+                    <span style="font-size:10px;color:var(--text-subtle);margin-left:auto;">${_dateShort(n.responded_at)}</span>
                   </div>
-                  ${n.comment ? `<div style="font-size:11px;color:#666;margin-top:2px;">${_esc(n.comment)}</div>` : ''}
+                  ${n.comment ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${_esc(n.comment)}</div>` : ''}
                 </div>
               </div>
             `;
@@ -291,7 +291,7 @@
     return `
       <div style="margin-bottom:14px;">
         <div style="font-size:13px;font-weight:700;margin-bottom:8px;">${title}</div>
-        <div style="padding:16px;background:#fafafa;border-radius:12px;text-align:center;font-size:12px;color:#aaa;">${msg}</div>
+        <div style="padding:16px;background:#fafafa;border-radius:12px;text-align:center;font-size:12px;color:var(--text-subtle);">${msg}</div>
       </div>
     `;
   }

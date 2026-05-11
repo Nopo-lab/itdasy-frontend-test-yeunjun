@@ -672,7 +672,7 @@
             const quickBtn = listEl.querySelector('[data-pick-quick-add]');
             if (quickBtn) quickBtn.addEventListener('click', () => onCreate());
           } else {
-            listEl.innerHTML = '<div style="padding:30px;text-align:center;color:#aaa;font-size:13px;">' +
+            listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-subtle);font-size:13px;">' +
               '등록된 고객이 없어요. 아래에서 바로 추가할 수 있어요.' +
               '</div>';
             createRow.style.display = 'block';

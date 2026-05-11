@@ -79,7 +79,7 @@
 
   function _renderWidgets(brief) {
     if (!brief) {
-      return `<div style="padding:20px;color:#999;font-size:13px;text-align:center;">AI 위젯 데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>`;
+      return `<div style="padding:20px;color:var(--text-subtle);font-size:13px;text-align:center;">AI 위젯 데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>`;
     }
     const alertCount = brief.alert_count || 0;
     const todayCount = (brief.today_bookings || []).length;
@@ -114,7 +114,7 @@
           📅 오늘 예약 <strong>${todayCount}건</strong>${atRisk.length ? ` · 중 이탈 위험 <strong>${atRisk.filter(a => (brief.today_bookings || []).some(b => b.customer_name === a.name)).length}명</strong>` : ''}<br>
           🎂 이번 주 생일 <strong>${birthdays.length}명</strong> · 📦 재고 부족 <strong>${lowStock.length}종</strong>
         </div>
-        <div style="margin-top:12px;font-size:11.5px;opacity:0.85;">${atRisk.length ? `이탈 위험: ${atRisk.slice(0,3).map(a=>_esc(a.name)).join(', ')}${atRisk.length>3 ? ' 외' : ''}` : '오늘 큰 이슈 없어요 ✨'}</div>
+        <div style="margin-top:12px;font-size:11.5px;opacity:0.85;">${atRisk.length ? `이탈 위험: ${atRisk.slice(0,3).map(a=>_esc(a.name)).join(', ')}${atRisk.length>3 ? ' 외' : ''}` : '오늘 큰 이슈 없어요'}</div>
       </div>`;
 
     // 2. 매출 이상 감지
@@ -122,7 +122,7 @@
     const widget2 = `
       <div class="kw-card" style="background:#fff;padding:16px;border-radius:16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,0.04);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <div style="font-size:11px;letter-spacing:1.5px;color:#666;font-weight:800;">⚠️ 매출 흐름</div>
+          <div style="font-size:11px;letter-spacing:1.5px;color:var(--text-muted);font-weight:800;">⚠️ 매출 흐름</div>
           ${momPct != null ? `<div style="color:${_riskColor(momPct)};font-weight:900;font-size:16px;">${_arrow(momPct)} ${momPct > 0 ? '+' : ''}${momPct}%</div>` : ''}
         </div>
         <div style="font-size:13px;color:#222;line-height:1.5;">
@@ -170,13 +170,13 @@
     const widgetGoal = goal > 0 ? `
       <div class="kw-card" style="background:#fff;padding:16px;border-radius:16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,0.04);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <div style="font-size:11px;letter-spacing:1.5px;color:#666;font-weight:800;">🎯 이번 달 목표</div>
+          <div style="font-size:11px;letter-spacing:1.5px;color:var(--text-muted);font-weight:800;">🎯 이번 달 목표</div>
           <div style="font-weight:900;font-size:14px;color:#222;">${progress}%</div>
         </div>
         <div style="height:10px;background:#f0f0f0;border-radius:100px;overflow:hidden;position:relative;">
           <div style="height:100%;background:linear-gradient(90deg,var(--brand),#FFB347);width:${progress}%;border-radius:100px;transition:width 1.2s cubic-bezier(0.2,0.9,0.3,1);box-shadow:0 0 10px rgba(241,128,145,0.45);"></div>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#666;margin-top:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-muted);margin-top:8px;">
           <span>${_money(thisMonth)}</span>
           <span>${_money(goal)}</span>
         </div>
@@ -449,7 +449,7 @@
       const list = o.querySelector('#kw-sms-list');
       if (!list) return;
       if (!phones.length) {
-        list.innerHTML = `<div style="padding:14px;text-align:center;font-size:12px;color:#aaa;">전화번호 등록된 이탈 위험 고객이 없어요. 전체 복사 후 직접 보내주세요.</div>`;
+        list.innerHTML = `<div style="padding:14px;text-align:center;font-size:12px;color:var(--text-subtle);">전화번호 등록된 이탈 위험 고객이 없어요. 전체 복사 후 직접 보내주세요.</div>`;
         return;
       }
       list.innerHTML = `<div style="font-size:11px;color:#888;margin-bottom:8px;font-weight:700;">대상 ${phones.length}명 — 각 버튼 탭 시 해당 번호로 문자 열립니다</div>` +
@@ -521,7 +521,7 @@
     const el = document.getElementById(containerId);
     if (!el) return;
     _lastRendered.full = containerId;
-    el.innerHTML = `<div style="padding:16px 0;color:#aaa;font-size:12px;">AI 브리핑 불러오는 중…</div>`;
+    el.innerHTML = `<div style="padding:16px 0;color:var(--text-subtle);font-size:12px;">AI 브리핑 불러오는 중…</div>`;
     const brief = await _fetchBrief();
     el.innerHTML = _renderWidgets(brief);
     _bindWidgets();

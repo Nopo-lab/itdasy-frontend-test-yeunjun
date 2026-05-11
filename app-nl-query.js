@@ -31,20 +31,20 @@
         <div style="padding:20px;text-align:center;color:#888;">
           <div style="font-size:30px;margin-bottom:8px;">🔍</div>
           <div style="font-size:13px;">해당하는 데이터 없음</div>
-          <div style="margin-top:12px;background:#f5f5f5;padding:10px;border-radius:8px;text-align:left;font-family:monospace;font-size:11px;color:#666;word-break:break-all;">${_esc(d.sql || '')}</div>
+          <div style="margin-top:12px;background:#f5f5f5;padding:10px;border-radius:8px;text-align:left;font-family:monospace;font-size:11px;color:var(--text-muted);word-break:break-all;">${_esc(d.sql || '')}</div>
         </div>`;
       return;
     }
     const cols = d.columns || [];
     body.innerHTML = `
-      <div style="padding:14px 16px;font-size:12px;color:#666;">
+      <div style="padding:14px 16px;font-size:12px;color:var(--text-muted);">
         ${d.row_count}개 결과
       </div>
       <div style="padding:0 14px 20px;overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
             <tr style="background:#FAFAFA;">
-              ${cols.map(c => `<th style="padding:8px;text-align:left;border:1px solid #eee;font-size:11px;color:#666;">${_esc(c)}</th>`).join('')}
+              ${cols.map(c => `<th style="padding:8px;text-align:left;border:1px solid #eee;font-size:11px;color:var(--text-muted);">${_esc(c)}</th>`).join('')}
             </tr>
           </thead>
           <tbody>
@@ -55,7 +55,7 @@
         </table>
         <details style="margin-top:14px;">
           <summary style="font-size:11px;color:#888;cursor:pointer;">사용된 SQL 보기</summary>
-          <div style="margin-top:6px;background:#f5f5f5;padding:10px;border-radius:8px;font-family:monospace;font-size:11px;color:#666;word-break:break-all;">${_esc(d.sql || '')}</div>
+          <div style="margin-top:6px;background:#f5f5f5;padding:10px;border-radius:8px;font-family:monospace;font-size:11px;color:var(--text-muted);word-break:break-all;">${_esc(d.sql || '')}</div>
         </details>
       </div>`;
   }
@@ -78,7 +78,7 @@
           <button class="nl-go" style="padding:11px 16px;border:none;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;border-radius:10px;font-weight:800;cursor:pointer;">🔍</button>
         </div>
         <div style="padding:0 14px;display:flex;flex-wrap:wrap;gap:6px;">
-          ${SUGGESTIONS.map(s => `<button data-sug="${_esc(s)}" style="padding:6px 10px;font-size:11px;border:1px solid #ddd;background:#fff;border-radius:100px;cursor:pointer;color:#666;">${_esc(s)}</button>`).join('')}
+          ${SUGGESTIONS.map(s => `<button data-sug="${_esc(s)}" style="padding:6px 10px;font-size:11px;border:1px solid #ddd;background:#fff;border-radius:100px;cursor:pointer;color:var(--text-muted);">${_esc(s)}</button>`).join('')}
         </div>
         <div class="nl-body" style="flex:1;overflow-y:auto;padding:10px 0;"></div>
       </div>`;
@@ -95,7 +95,7 @@
       if (!q) return;
       body.innerHTML = `<div style="padding:40px;text-align:center;">
         <div style="font-size:30px;animation:nl-pulse 1.2s ease-in-out infinite;">🤖</div>
-        <div style="font-size:12px;color:#666;margin-top:8px;">AI 가 데이터 찾는 중…</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">AI 가 데이터 찾는 중…</div>
         <style>@keyframes nl-pulse{0%,100%{opacity:.4;}50%{opacity:1;}}</style>
       </div>`;
       try {

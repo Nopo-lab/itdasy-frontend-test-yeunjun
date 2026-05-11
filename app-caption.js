@@ -182,7 +182,7 @@ function showCaptionLoader() {
     setTimeout(() => _spinReel(i), i * 120);
   });
   document.getElementById('clMsg').textContent = '원장님 말투로 조합 중...';
-  document.getElementById('clHint').textContent = '키워드 조합 중이에요 ✨';
+  document.getElementById('clHint').textContent = '키워드 조합 중이에요...';
 
   // 메시지 순환
   const _clMsgs = ['원장님 말투 불러오는 중...', 'AI가 글 구상 중이에요...', '해시태그 고르는 중...', '거의 다 됐어요...'];
@@ -252,7 +252,7 @@ async function showOnboardingCaptionPopup() {
       const errMsg = (await res.text().catch(() => '')) || `HTTP ${res.status}`;
       console.warn('[caption] 생성 실패:', errMsg);
       if (typeof showToast === 'function') {
-        showToast('AI 캡션 생성 실패 — 잠시 후 다시 시도해주세요', 'error');
+        showToast('AI 글 만들기에 실패했어요 — 잠시 후 다시 시도해주세요', 'error');
       }
       ta.value = '직접 평소 쓰시는 말투로 한 문단 입력해주시면 학습할게요!';
     }
@@ -283,7 +283,7 @@ async function saveOnboardingCaption() {
     });
     if (!res.ok) throw new Error();
     closeOnboardingCaptionPopup();
-    showToast('학습 완료! 앞으로 모든 글에 반영됩니다! 🎉');
+    showToast('학습 완료! 앞으로 모든 글에 반영됩니다!');
   } catch(e) {
     showToast('저장에 실패했어요. 다시 시도해주세요.');
   }
@@ -309,7 +309,7 @@ function _renderCaptionPhotoRow() {
     ? _slots.find(s => s.id === _captionSlotId) : null;
 
   if (!slot) {
-    strip.innerHTML = `<div onclick="_captionOpenSlotPicker()" style="width:72px;height:72px;border-radius:10px;border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--text3);cursor:pointer;flex-shrink:0;">📷</div>`;
+    strip.innerHTML = `<div onclick="_captionOpenSlotPicker()" style="width:72px;height:72px;border-radius:10px;border:1.5px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--text3);cursor:pointer;flex-shrink:0;"><i class="ph-duotone ph-camera" style="font-size:22px;color:var(--text-subtle);"></i></div>`;
     return;
   }
 
@@ -528,7 +528,7 @@ const _CAP_ERR_MSG = {
   'consent_missing':      'AI 처리 동의가 필요합니다',
   'insufficient_posts':   '인스타 게시물이 더 모이면 사장님 말투에 맞춰 글이 나와요.',
   'fingerprint_missing':  '인스타 게시물이 더 모이면 사장님 말투에 맞춰 글이 나와요.',
-  'generation_failed':    'AI 캡션 생성이 실패했어요. 시나리오 다시 선택하거나, 1분 후 다시 시도해 주세요.',
+  'generation_failed':    'AI 글 만들기에 실패했어요. 어떤 분위기로 만들까요? 다시 선택하시거나 1분 후 다시 시도해 주세요.',
   'content_filtered':     'AI 가 안전 정책상 이 내용을 생성할 수 없어요. 키워드를 바꿔서 다시 시도해 주세요.',
   'quota_exceeded':       '오늘 캡션 사용량을 다 쓰셨어요. 내일 다시 시도하거나 Pro 로 업그레이드해 주세요.',
   'gemini_unavailable':   'AI 서버가 잠시 불안정해요. 1~2분 후 다시 시도해 주세요.',
@@ -584,7 +584,7 @@ function openCaptionScenarioPopup() {
   });
 
   window.renderScenarioSelector(selectorWrap, async (result) => {
-    selectorWrap.innerHTML = '<div style="text-align:center;padding:32px 0;color:#aaa;font-size:14px;">캡션 만드는 중 ✨</div>';
+    selectorWrap.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--text-subtle);font-size:14px;">캡션 만드는 중...</div>';
     title.textContent = '잠깐만요!';
     await _doGenerateCaption(result, () => _closeCaptionScenarioPopup(overlay));
   });
@@ -595,7 +595,7 @@ function _closeCaptionScenarioPopup(overlay) {
   overlay.style.transition = 'opacity .15s';
   setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 160);
   const btn = document.getElementById('captionBtn');
-  if (btn) { btn.innerHTML = '만들기 ✨'; btn.disabled = false; }
+  if (btn) { btn.innerHTML = '만들기'; btn.disabled = false; }
 }
 
 async function _doGenerateCaption(scenario, closePopup) {
@@ -697,7 +697,7 @@ async function _doGenerateCaption(scenario, closePopup) {
       }
 
       _renderCaptionActionBar(finalCaption, hashes);
-      if (btn) { btn.innerHTML = '만들기 ✨'; btn.disabled = false; }
+      if (btn) { btn.innerHTML = '만들기'; btn.disabled = false; }
 
       // [2026-05-05 19차-B] 인스타 시뮬 사진 미리보기 업데이트
       try { _updateCaptionPreviewImage(); } catch (_e) { void _e; }
@@ -754,7 +754,7 @@ async function _doGenerateCaption(scenario, closePopup) {
             const hashEl = document.getElementById('captionHash');
             if (hashEl) hashEl.value = '';
             _renderCaptionActionBar(finalCaption2, '');
-            if (btn) { btn.innerHTML = '만들기 ✨'; btn.disabled = false; }
+            if (btn) { btn.innerHTML = '만들기'; btn.disabled = false; }
           });
           return;
         } catch (e2) {
@@ -872,14 +872,14 @@ async function doActualPublish() {
 
     setUploadProgress(95, '마무리 중...');
     await new Promise(r => setTimeout(r, 400));
-    setUploadProgress(100, withStory ? '피드+스토리 완료! 🎉' : '완료! 🎉');
+    setUploadProgress(100, withStory ? '피드+스토리 완료!' : '완료!');
 
     setTimeout(() => {
       upPopup.style.display = 'none';
       closePublishPreview();
       document.getElementById('uploadDonePopup').style.display = 'flex';
       document.getElementById('uploadDoneMsg').textContent =
-        withStory ? '피드 + 스토리에 올라갔어요 ✨' : '인스타 피드에 올라갔어요 ✨';
+        withStory ? '피드 + 스토리에 올라갔어요!' : '인스타 피드에 올라갔어요!';
       for(let i = 0; i < 20; i++) setTimeout(createConfetti, i * 100);
     }, 1200);
 
@@ -1026,7 +1026,7 @@ async function regenerateCaption(overrides = {}) {
   const payload = { ..._lastGeneratePayload, ...overrides };
   _lastGeneratePayload = payload;
   const ta = document.getElementById('captionText');
-  if (ta) { ta.value = '✨ 새로 쓰는 중…'; _capAutoGrow(ta); }
+  if (ta) { ta.value = '새로 쓰는 중...'; _capAutoGrow(ta); }
   try {
     // [2026-04-26 픽스] _personaFetch 는 이미 파싱된 JSON 반환. res.json() 재호출 버그 제거.
     const data = await _personaFetch('POST', '/persona/generate', payload);
@@ -1091,7 +1091,7 @@ function _renderCaptionActionBar(caption, hashtags) {
     </div>
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
       <button data-report-ai="caption" data-snippet="${(caption || '').replace(/"/g,'&quot;')}" data-source="/caption/generate" title="AI 캡션 신고" aria-label="AI 캡션 신고"
-        style="background:transparent;border:none;cursor:pointer;font-size:13px;color:#999;padding:4px 6px;">🚩 신고</button>
+        style="background:transparent;border:none;cursor:pointer;font-size:13px;color:var(--text-subtle);padding:4px 6px;">🚩 신고</button>
     </div>
     ${hasNextSlot ? `
     <div style="background:rgba(241,128,145,0.07);border:1.5px solid rgba(241,128,145,0.2);border-radius:14px;padding:14px;">

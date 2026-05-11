@@ -293,10 +293,10 @@ function _showCaptionPublishPreview(photos, caption) {
         </div>
         <div style="flex:1;">
           <div style="font-size:13px;font-weight:700;line-height:1.2;">${shopName}</div>
-          <div style="font-size:10px;color:#999;">sponsored</div>
+          <div style="font-size:10px;color:var(--text-subtle);">sponsored</div>
         </div>
         <button style="padding:4px 12px;border-radius:6px;border:1.5px solid #dbdbdb;background:transparent;font-size:12px;font-weight:600;color:#262626;cursor:pointer;">팔로우</button>
-        <button style="background:transparent;border:none;font-size:18px;color:#999;cursor:pointer;margin-left:8px;" onclick="document.getElementById('_captionPubPreviewPop').style.display='none'">×</button>
+        <button style="background:transparent;border:none;font-size:18px;color:var(--text-subtle);cursor:pointer;margin-left:8px;" onclick="document.getElementById('_captionPubPreviewPop').style.display='none'">×</button>
       </div>
       <!-- 사진 캐러셀 -->
       ${photoHtml}

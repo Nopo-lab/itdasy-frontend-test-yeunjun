@@ -49,7 +49,7 @@
 
       <div style="padding:14px;background:#FFFBEA;border-radius:10px;margin-top:14px;border:1px solid #FDE68A;">
         <div style="font-size:12px;font-weight:700;color:#B45309;margin-bottom:4px;">💡 활용 팁</div>
-        <div style="font-size:11px;color:#666;line-height:1.6;">
+        <div style="font-size:11px;color:var(--text-muted);line-height:1.6;">
           · 인스타 프로필 "웹사이트" 자리에 붙여넣기<br>
           · 카톡 채널 홈 "링크" 로 추가<br>
           · 명함 QR 코드 생성
@@ -94,7 +94,7 @@
         <strong style="font-size:17px;">🔗 온라인 예약 링크</strong>
         <div style="font-size:12px;color:#888;margin-top:4px;margin-bottom:18px;">인스타 프로필·카톡 채널에 링크 걸면 고객이 직접 예약</div>
         <div class="pb-body">
-          <div style="padding:40px;text-align:center;color:#aaa;">불러오는 중…</div>
+          <div style="padding:40px;text-align:center;color:var(--text-subtle);">불러오는 중…</div>
         </div>
         <button class="pb-close" style="margin-top:20px;width:100%;padding:13px;border:1px solid #ddd;background:#fff;border-radius:10px;font-weight:700;cursor:pointer;">닫기</button>
       </div>

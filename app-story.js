@@ -47,7 +47,7 @@
     sheet.innerHTML = `
       <div style="position:absolute;inset:auto 0 0 0;background:var(--bg,#fff);border-radius:20px 20px 0 0;max-height:92vh;display:flex;flex-direction:column;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-          <span style="font-size:22px;">✨</span>
+          <i class="ph-duotone ph-sparkle" style="font-size:22px;"></i>
           <strong style="font-size:17px;">스토리 자동 만들기</strong>
           <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(241,128,145,0.15);color:var(--brand-strong);font-weight:700;">AI</span>
           <button onclick="closeStory()" style="margin-left:auto;background:rgba(0,0,0,0.05);border:none;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;">✕</button>
@@ -71,10 +71,10 @@
           </div>
         </div>
 
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">짧은 메모</label>
+        <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">짧은 메모</label>
         <textarea id="storyInput" rows="4" maxlength="500" placeholder="오늘 시술 이야기를 편하게…" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:12px;font-family:inherit;resize:vertical;font-size:14px;"></textarea>
 
-        <button id="storyGen" style="width:100%;margin-top:12px;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;font-weight:800;cursor:pointer;font-size:15px;">✨ AI 스토리 만들기</button>
+        <button id="storyGen" style="width:100%;margin-top:12px;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;font-weight:800;cursor:pointer;font-size:15px;">AI 스토리 만들기</button>
       </div>
     `;
     document.getElementById('storyGen').addEventListener('click', _generate);
@@ -130,7 +130,7 @@
       _result = await _apiPost('/stories/generate', { text });
       _renderResult();
     } catch (e) {
-      btn.disabled = false; btn.textContent = '✨ AI 스토리 만들기';
+      btn.disabled = false; btn.textContent = 'AI 스토리 만들기';
       if (window.showToast) window.showToast('실패: ' + (window._humanError ? window._humanError(e) : e.message));
     }
   }

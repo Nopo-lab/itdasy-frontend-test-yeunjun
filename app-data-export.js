@@ -31,7 +31,7 @@
             <div id="__dx_summary" style="background:#f7f7f9;padding:12px 14px;border-radius:10px;font-size:12.5px;line-height:1.8;color:#333;margin-bottom:14px;min-height:80px;">
               <span style="color:#888;">집계 중...</span>
             </div>
-            <div style="font-size:12px;color:#666;line-height:1.6;margin-bottom:10px;">
+            <div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:10px;">
               포함: 고객·예약·매출·재고.<br>
               제외: 비밀번호·토큰·제3자(Apple/Google/Meta) 보유 데이터.
             </div>

@@ -99,7 +99,7 @@
         <div style="font-size:10px;color:#888;line-height:1.4;">같은 고객 사진 2장 감지 — 탭 한 번에 릴스 완성</div>
       </div>
       <button data-auto-ba="make" style="padding:8px 14px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;cursor:pointer;font-weight:800;font-size:12px;flex-shrink:0;">만들기</button>
-      <button data-auto-ba="dismiss" style="background:none;border:none;color:#aaa;font-size:18px;cursor:pointer;flex-shrink:0;" aria-label="닫기">✕</button>
+      <button data-auto-ba="dismiss" style="background:none;border:none;color:var(--text-subtle);font-size:18px;cursor:pointer;flex-shrink:0;" aria-label="닫기">✕</button>
     `;
     el.querySelector('[data-auto-ba="make"]').addEventListener('click', () => {
       if (window.hapticMedium) window.hapticMedium();

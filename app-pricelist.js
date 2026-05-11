@@ -115,7 +115,7 @@
           <div style="font-size:15px;font-weight:800;color:#166534;margin-bottom:4px;">✅ ${items.length}개 시술 등록 완료</div>
           <div style="font-size:12px;color:#16653480;">신규 ${inserted}개 · 업데이트 ${updated}개${skipped ? ` · 제외 ${skipped}개` : ''}</div>
         </div>
-        <div style="font-size:12px;color:#666;font-weight:600;margin-bottom:8px;">등록된 시술</div>
+        <div style="font-size:12px;color:var(--text-muted);font-weight:600;margin-bottom:8px;">등록된 시술</div>
         <div style="max-height:280px;overflow-y:auto;border:1px solid #f0f0f0;border-radius:10px;">
           ${items.map(s => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #f5f5f5;">

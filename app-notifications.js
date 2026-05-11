@@ -151,7 +151,7 @@
     if (!body) return;
     if (!_items.length) {
       body.innerHTML = `
-        <div style="padding:40px 20px;text-align:center;color:#aaa;">
+        <div style="padding:40px 20px;text-align:center;color:var(--text-subtle);">
           <div style="font-size:36px;margin-bottom:10px;">🌿</div>
           <div style="font-size:13px;">새 알림 없음</div>
         </div>
@@ -163,8 +163,8 @@
         <div style="width:40px;height:40px;border-radius:12px;background:rgba(241,128,145,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${_iconByKind(n.kind)}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:13px;font-weight:700;color:#222;">${_esc(n.title)}</div>
-          <div style="font-size:11px;color:#666;margin-top:2px;line-height:1.4;">${_esc(n.body || '')}</div>
-          <div style="font-size:10px;color:#aaa;margin-top:3px;">${_esc(_relativeTime(n.scheduled_at))}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.4;">${_esc(n.body || '')}</div>
+          <div style="font-size:10px;color:var(--text-subtle);margin-top:3px;">${_esc(_relativeTime(n.scheduled_at))}</div>
         </div>
       </div>
     `).join('');

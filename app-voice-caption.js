@@ -268,9 +268,9 @@
       + '<div style="width:100%; max-width:480px; background:#fff; border-radius:24px 24px 0 0; padding:24px 20px calc(32px + env(safe-area-inset-bottom)); max-height:92vh; overflow-y:auto;">'
       +   '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">'
       +     '<div style="font-size:17px; font-weight:800;">음성 캡션</div>'
-      +     '<button id="_vcClose" type="button" aria-label="닫기" style="background:none; border:none; width:44px; height:44px; cursor:pointer; color:#999;">' + _svg('ic-x', 22) + '</button>'
+      +     '<button id="_vcClose" type="button" aria-label="닫기" style="background:none; border:none; width:44px; height:44px; cursor:pointer; color:var(--text-subtle);">' + _svg('ic-x', 22) + '</button>'
       +   '</div>'
-      +   '<div style="font-size:12px; color:#666; margin-bottom:14px; line-height:1.5;">'
+      +   '<div style="font-size:12px; color:var(--text-muted); margin-bottom:14px; line-height:1.5;">'
       +     '시술 끝난 뒤 짧게 말해주세요. 예: "김서연 자연스러운 옴브레, 길이 25cm, 8주 유지 가능"'
       +   '</div>'
 
@@ -315,10 +315,10 @@
       // 재방문 제안 (옵션, 시간 키워드 감지 시 표시)
       +     '<div id="_vcRevisit" style="display:none; margin-top:14px; padding:12px; border:1.5px solid var(--brand); border-radius:12px; background:#fff5f7;">'
       +       '<div style="font-size:13px; font-weight:800; color:#1a1a1a; margin-bottom:6px; display:flex; align-items:center; gap:6px;">' + _svg('ic-calendar', 16) + ' 다음 방문 추천 알림</div>'
-      +       '<div id="_vcRevisitMsg" style="font-size:12px; color:#666; line-height:1.5; margin-bottom:8px;"></div>'
+      +       '<div id="_vcRevisitMsg" style="font-size:12px; color:var(--text-muted); line-height:1.5; margin-bottom:8px;"></div>'
       +       '<div style="display:flex; gap:8px;">'
       +         '<button id="_vcRevisitOk" type="button" data-haptic="success" style="flex:1; padding:10px; border-radius:10px; border:none; background:#1a1a1a; color:#fff; font-weight:700; font-size:12px; min-height:40px; cursor:pointer;">예약 등록</button>'
-      +         '<button id="_vcRevisitSkip" type="button" style="flex:1; padding:10px; border-radius:10px; border:1px solid #e0e0e0; background:#fff; color:#666; font-weight:700; font-size:12px; min-height:40px; cursor:pointer;">건너뛰기</button>'
+      +         '<button id="_vcRevisitSkip" type="button" style="flex:1; padding:10px; border-radius:10px; border:1px solid #e0e0e0; background:#fff; color:var(--text-muted); font-weight:700; font-size:12px; min-height:40px; cursor:pointer;">건너뛰기</button>'
       +       '</div>'
       +     '</div>'
 
@@ -455,7 +455,7 @@
     } catch (e) {
       const msg = (e && e.message) ? String(e.message) : '오류';
       _setProgress('실패: ' + msg.slice(0, 80), 0);
-      _toast('캡션 생성 실패 — ' + msg.slice(0, 60));
+      _toast('AI 글 만들기 실패 — ' + msg.slice(0, 60));
     }
   }
 

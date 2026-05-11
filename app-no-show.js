@@ -102,7 +102,7 @@
       + '    <strong style="flex:1;font-size:16px;">예약 확인 메시지 (' + items.length + '건)</strong>'
       + '    <button type="button" id="nsCopyClose" style="background:#eee;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;">✕</button>'
       + '  </div>'
-      + '  <div style="font-size:12px;color:#666;margin-bottom:10px;">메시지를 복사해서 카톡으로 붙여넣어 주세요.</div>'
+      + '  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">메시지를 복사해서 카톡으로 붙여넣어 주세요.</div>'
       + '  <div style="overflow-y:auto;flex:1;">' + rows + '</div>'
       + '</div>';
     document.body.appendChild(sheet);

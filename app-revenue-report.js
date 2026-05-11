@@ -66,7 +66,7 @@
   }
 
   function _renderTop(top) {
-    if (!top.length) return '<div style="padding:16px 20px;color:#aaa;font-size:13px;">시술 데이터가 없어요</div>';
+    if (!top.length) return '<div style="padding:16px 20px;color:var(--text-subtle);font-size:13px;">시술 데이터가 없어요</div>';
     const max = Math.max(...top.map(x => x.amount || 0), 1);
     return `<div class="rr-top">
       <h2 class="rr-sec-title">인기 시술 TOP ${Math.min(top.length, 5)}</h2>

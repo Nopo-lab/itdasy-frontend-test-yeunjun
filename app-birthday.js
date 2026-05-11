@@ -37,7 +37,7 @@
         <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#A78BFA,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;flex-shrink:0;">🎂</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:12px;font-weight:800;margin-bottom:2px;color:#6D28D9;">${labelLead} 생일 · ${items.length}명</div>
-          <div style="font-size:11px;color:#666;line-height:1.4;">${namesStr}${items.length > priority.length ? ` 외 ${items.length - priority.length}명` : ''}</div>
+          <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">${namesStr}${items.length > priority.length ? ` 외 ${items.length - priority.length}명` : ''}</div>
         </div>
         <div style="padding:6px 12px;border-radius:8px;background:#fff;color:#6D28D9;font-size:11px;font-weight:700;">축하하기 →</div>
       </div>
@@ -94,7 +94,7 @@
     const body = document.getElementById('bdBody');
     if (!items.length) {
       body.innerHTML = `
-        <div style="padding:40px 20px;text-align:center;color:#aaa;">
+        <div style="padding:40px 20px;text-align:center;color:var(--text-subtle);">
           <div style="font-size:40px;margin-bottom:10px;">🎈</div>
           <div style="font-size:13px;line-height:1.5;">이번 2주 내 생일인 고객이 없어요.<br>고객 등록 시 생일(MM-DD)을 입력해 두면 자동 감지해요.</div>
         </div>
@@ -106,7 +106,7 @@
     body.innerHTML = `
       <div style="margin-bottom:14px;padding:12px;background:rgba(139,92,246,0.06);border-radius:12px;">
         <div style="font-size:11px;color:#6D28D9;font-weight:700;margin-bottom:6px;">💡 축하 메시지 팁</div>
-        <div style="font-size:11px;color:#666;line-height:1.5;">템플릿을 복사해서 카카오톡으로 보내세요. 짧고 따뜻한 한마디면 충분해요.</div>
+        <div style="font-size:11px;color:var(--text-muted);line-height:1.5;">템플릿을 복사해서 카카오톡으로 보내세요. 짧고 따뜻한 한마디면 충분해요.</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;">
         ${items.map(c => `
@@ -114,7 +114,7 @@
             <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
               <strong style="font-size:15px;">${_esc(c.name)}</strong>
               <span style="font-size:11px;color:#8B5CF6;font-weight:700;">${_esc(_relativeLabel(c.days_until))}</span>
-              <span style="margin-left:auto;font-size:10px;color:#aaa;">🎂 ${_esc(c.birthday)}</span>
+              <span style="margin-left:auto;font-size:10px;color:var(--text-subtle);">🎂 ${_esc(c.birthday)}</span>
             </div>
             <div style="font-size:11px;color:#888;margin-bottom:8px;">${c.phone ? _esc(c.phone) + ' · ' : ''}방문 ${c.visit_count}회</div>
             <div style="display:flex;gap:6px;">
@@ -149,7 +149,7 @@
     document.getElementById('birthdaySheet').style.display = 'block';
     document.body.style.overflow = 'hidden';
     const body = document.getElementById('bdBody');
-    body.innerHTML = '<div style="padding:30px;text-align:center;color:#aaa;">불러오는 중…</div>';
+    body.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-subtle);">불러오는 중…</div>';
     _cached = await _fetch(14);
     if (!_cached) {
       body.innerHTML = '<div style="padding:30px;text-align:center;color:#c00;">불러오기 실패</div>';

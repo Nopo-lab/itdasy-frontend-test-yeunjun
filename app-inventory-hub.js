@@ -151,7 +151,7 @@
       </button>
       <span class="hub-title">재고관리</span>
       <div style="flex:1;position:relative;max-width:180px;">
-        <svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#999;pointer-events:none;" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="#ic-search"/></svg>
+        <svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text-subtle);pointer-events:none;" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="#ic-search"/></svg>
         <input id="ih-search" placeholder="재고 검색" value="${_esc(_state.searchKW)}"
           style="width:100%;height:32px;padding:0 8px 0 26px;border:1.5px solid #E5E5EA;border-radius:10px;font-size:12px;box-sizing:border-box;-webkit-appearance:none;"/>
       </div>

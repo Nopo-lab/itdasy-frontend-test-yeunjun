@@ -75,3 +75,45 @@ svg {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* ── Phase 5: 글로벌 포커스링 시스템 ───────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline-offset: 3px;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 0;
+  box-shadow: 0 0 0 3px var(--brand-bg);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Skip navigation — 본문 바로가기 */
+.skip-nav {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  z-index: 99999;
+  padding: 12px 20px;
+  background: var(--brand);
+  color: #fff;
+  border-radius: var(--r-md);
+  font-weight: 700;
+  text-decoration: none;
+  transition: top .2s;
+}
+.skip-nav:focus {
+  top: 16px;
+}

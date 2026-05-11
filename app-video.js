@@ -92,7 +92,7 @@
           </div>
           <div style="flex:1;min-width:0;">
             <div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">${label}</div>
-            ${empty ? '<div style="font-size:12px;color:#aaa;">탭해서 사진 선택</div>' : `
+            ${empty ? '<div style="font-size:12px;color:var(--text-subtle);">탭해서 사진 선택</div>' : `
               <input data-slot-caption="${i}" value="${_esc(slot.caption || '')}" maxlength="${TEXT_MAX}" placeholder="자막 (예: ${label})" style="width:100%;padding:6px 8px;border:1px solid #eee;border-radius:6px;font-size:12px;" />
             `}
           </div>
@@ -127,8 +127,8 @@
           `).join('')}
         </div>
         <div style="display:flex;gap:10px;align-items:baseline;margin-bottom:6px;">
-          <span style="font-size:11px;color:#666;flex:1;">정지 <b id="vHoldLabel">${_hold}</b>초</span>
-          <span style="font-size:11px;color:#666;flex:1;">전환 <b id="vTransLabel">${_trans}</b>초</span>
+          <span style="font-size:11px;color:var(--text-muted);flex:1;">정지 <b id="vHoldLabel">${_hold}</b>초</span>
+          <span style="font-size:11px;color:var(--text-muted);flex:1;">전환 <b id="vTransLabel">${_trans}</b>초</span>
         </div>
         <input id="vHold" type="range" min="0.4" max="3.0" step="0.1" value="${_hold}" style="width:100%;margin-bottom:4px;" />
         <input id="vTrans" type="range" min="0.2" max="2.0" step="0.1" value="${_trans}" style="width:100%;" />

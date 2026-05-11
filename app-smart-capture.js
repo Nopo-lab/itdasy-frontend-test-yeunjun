@@ -232,9 +232,9 @@
       <div style="padding:14px;background:#FAF5FF;border:1px solid #DDD6FE;border-radius:12px;margin-bottom:12px;">
         <div style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#5B21B6;font-weight:700;margin-bottom:8px;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-sparkles"/></svg>인식 결과 (검토 후 등록)</div>
         <div style="display:flex;flex-direction:column;gap:8px;">
-          <label style="font-size:11px;color:#666;">이름 <input id="scCardName" value="${_esc(c.name || '')}" style="width:100%;margin-top:3px;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></label>
-          <label style="font-size:11px;color:#666;">전화 <input id="scCardPhone" value="${_esc(c.phone || '')}" style="width:100%;margin-top:3px;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></label>
-          <label style="font-size:11px;color:#666;">메모 <textarea id="scCardMemo" rows="2" style="width:100%;margin-top:3px;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:12px;resize:none;">${_esc(c.memo || '')}${c.company ? `\n회사: ${c.company}` : ''}${c.role ? `\n직책: ${c.role}` : ''}${c.email ? `\n이메일: ${c.email}` : ''}</textarea></label>
+          <label style="font-size:11px;color:var(--text-muted);">이름 <input id="scCardName" value="${_esc(c.name || '')}" style="width:100%;margin-top:3px;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></label>
+          <label style="font-size:11px;color:var(--text-muted);">전화 <input id="scCardPhone" value="${_esc(c.phone || '')}" style="width:100%;margin-top:3px;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></label>
+          <label style="font-size:11px;color:var(--text-muted);">메모 <textarea id="scCardMemo" rows="2" style="width:100%;margin-top:3px;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:12px;resize:none;">${_esc(c.memo || '')}${c.company ? `\n회사: ${c.company}` : ''}${c.role ? `\n직책: ${c.role}` : ''}${c.email ? `\n이메일: ${c.email}` : ''}</textarea></label>
         </div>
         <div style="font-size:10px;color:#888;margin-top:6px;">신뢰도 ${Math.round((d.confidence || 0) * 100)}%</div>
       </div>

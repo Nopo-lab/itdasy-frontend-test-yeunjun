@@ -71,9 +71,9 @@
         <div style="width:100%; max-width:480px; background:#fff; border-radius:24px 24px 0 0; padding:24px 20px calc(32px + env(safe-area-inset-bottom)); max-height:92vh; overflow-y:auto;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <div style="font-size:17px; font-weight:800;">🎁 미리 체험해보기</div>
-            <button id="_sampleClose" style="background:none; border:none; font-size:22px; width:44px; height:44px; cursor:pointer; color:#999;">✕</button>
+            <button id="_sampleClose" style="background:none; border:none; font-size:22px; width:44px; height:44px; cursor:pointer; color:var(--text-subtle);">✕</button>
           </div>
-          <div style="font-size:12px; color:#666; margin-bottom:14px;">인스타 연동 전에도 <b>이런 느낌</b>으로 캡션이 나와요. 연동하시면 <b>사장님 말투 그대로</b> 맞춤 생성됩니다.</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">인스타 연동 전에도 <b>이런 느낌</b>으로 캡션이 나와요. 연동하시면 <b>사장님 말투 그대로</b> 맞춤 생성됩니다.</div>
           <div id="_sampleList"></div>
           <button id="_sampleConnectBtn" style="width:100%; margin-top:18px; padding:14px; border-radius:12px; border:none; background:linear-gradient(135deg,var(--brand),#ff9aa8); color:#fff; font-size:14px; font-weight:800; cursor:pointer; min-height:48px;">내 말투로 맞춤 생성하기 →</button>
         </div>

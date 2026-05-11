@@ -37,7 +37,7 @@
 #${SHEET_ID} .sr-close { background: transparent; border: 0; font-size: 22px; cursor: pointer; color: #888; }
 #${SHEET_ID} .sr-uploader { border: 2px dashed #d8d8e0; border-radius: 16px; padding: 22px 16px; text-align: center;
   background: #fafafd; transition: background .15s; }
-#${SHEET_ID} .sr-uploader p { color: #666; margin: 6px 0 0; font-size: 13px; }
+#${SHEET_ID} .sr-uploader p { color:var(--text-muted); margin: 6px 0 0; font-size: 13px; }
 #${SHEET_ID} .sr-pick-row { display: flex; gap: 10px; margin-top: 14px; }
 #${SHEET_ID} .sr-pick-btn { flex: 1; padding: 14px 10px; border-radius: 14px; border: 1.5px solid #e0d8ff;
   background: #fff; color: #5a3ee8; font-weight: 700; font-size: 14px; cursor: pointer;
@@ -88,7 +88,7 @@
         <div class="sr-uploader">
           <svg width="34" height="34" aria-hidden="true"><use href="#ic-camera"/></svg>
           <p>손님 사진을 찍거나 갤러리에서 선택해 주세요</p>
-          <p style="font-size:11px;color:#aaa;margin-top:4px;">10MB 이하 · JPG/PNG/WEBP</p>
+          <p style="font-size:11px;color:var(--text-subtle);margin-top:4px;">10MB 이하 · JPG/PNG/WEBP</p>
         </div>
         <div class="sr-pick-row">
           <button type="button" class="sr-pick-btn" data-sr-camera>

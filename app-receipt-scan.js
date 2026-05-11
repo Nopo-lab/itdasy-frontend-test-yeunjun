@@ -147,7 +147,7 @@
     holder.innerHTML = `
       <div style="margin-top:16px;padding:12px 14px;background:#f4f4f6;border:1px dashed #ccc;border-radius:12px;text-align:left;">
         <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:700;">💡 미리보기 — AI 가 더 정확하게 정리 중...</div>
-        <div style="font-size:12px;color:#666;font-style:italic;white-space:pre-wrap;line-height:1.5;max-height:180px;overflow:auto;">${_esc(cleaned)}</div>
+        <div style="font-size:12px;color:var(--text-muted);font-style:italic;white-space:pre-wrap;line-height:1.5;max-height:180px;overflow:auto;">${_esc(cleaned)}</div>
       </div>`;
   }
 
@@ -170,11 +170,11 @@
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
           <input type="checkbox" class="rs-ck" data-idx="${idx}" checked style="width:18px;height:18px;flex-shrink:0;">
           <strong style="font-size:12px;color:#888;">#${idx + 1}</strong>
-          <button class="rs-del" data-idx="${idx}" style="margin-left:auto;background:transparent;border:none;color:#aaa;cursor:pointer;font-size:13px;">✕</button>
+          <button class="rs-del" data-idx="${idx}" style="margin-left:auto;background:transparent;border:none;color:var(--text-subtle);cursor:pointer;font-size:13px;">✕</button>
         </div>
         ${fields.map(f => `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-            <label style="font-size:11px;color:#666;min-width:56px;">${_esc(labels[f] || f)}</label>
+            <label style="font-size:11px;color:var(--text-muted);min-width:56px;">${_esc(labels[f] || f)}</label>
             <input class="rs-fld" data-idx="${idx}" data-field="${f}" type="text"
                    value="${_esc(it[f] == null ? '' : String(it[f]))}"
                    placeholder="${_esc(placeholders[f] || '')}"
@@ -236,13 +236,13 @@
         <div style="padding:40px;text-align:center;color:#888;">
           <div style="font-size:36px;margin-bottom:10px;">🤷</div>
           <div style="font-size:13px;">이미지에서 데이터를 찾지 못했어요</div>
-          <div style="font-size:11px;color:#aaa;margin-top:6px;">영수증이 선명한지 확인해주세요</div>
+          <div style="font-size:11px;color:var(--text-subtle);margin-top:6px;">영수증이 선명한지 확인해주세요</div>
         </div>`;
       return;
     }
 
     body.innerHTML = `
-      <div style="padding:14px 18px 6px;font-size:12px;color:#666;">
+      <div style="padding:14px 18px 6px;font-size:12px;color:var(--text-muted);">
         AI 가 <strong>${items.length}개</strong> 항목을 찾았어요. 확인 후 "추가하기" 를 누르세요.
       </div>
       <div class="rs-items" style="padding:0 12px;">
@@ -271,8 +271,8 @@
     body.innerHTML = `
       <div style="padding:40px 20px 20px;text-align:center;">
         <div style="font-size:36px;animation:rs-pulse 1.2s ease-in-out infinite;">🤖</div>
-        <div class="rs-progress-label" style="font-size:13px;color:#666;margin-top:10px;">이미지 최적화 중…</div>
-        <div style="font-size:11px;color:#aaa;margin-top:4px;">보통 5~15초 걸려요</div>
+        <div class="rs-progress-label" style="font-size:13px;color:var(--text-muted);margin-top:10px;">이미지 최적화 중…</div>
+        <div style="font-size:11px;color:var(--text-subtle);margin-top:4px;">보통 5~15초 걸려요</div>
         <div class="rs-tess-preview"></div>
       </div>
       <style>@keyframes rs-pulse{0%,100%{opacity:.4;}50%{opacity:1;}}</style>`;

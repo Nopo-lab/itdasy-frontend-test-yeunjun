@@ -36,7 +36,7 @@
           <span style="font-size:13px;">✨</span>
           <strong style="font-size:12px;color:var(--brand-strong);">AI 추천 · 오늘 할 일</strong>
         </div>
-        <div style="font-size:11px;color:#aaa;">불러오는 중…</div>
+        <div style="font-size:11px;color:var(--text-subtle);">불러오는 중…</div>
       </div>`;
 
     const d = await _fetch();

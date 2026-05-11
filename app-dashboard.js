@@ -74,30 +74,34 @@
     return document.getElementById('dashboardMetrics');
   }
 
-  // ── SVG 헬퍼 ─────────────────────────────────────────
-  function _ic(paths, w) {
+  // ── 아이콘 헬퍼 ─────────────────────────────────────────
+  // Phase 5: Phosphor 이름 (ph-*)이면 <i> 렌더, 그 외엔 레거시 SVG path 폴백.
+  function _ic(nameOrPaths, w) {
     const s = w || 18;
-    return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+    if (typeof nameOrPaths === 'string' && nameOrPaths.startsWith('ph-')) {
+      return `<i class="ph-duotone ${nameOrPaths}" style="font-size:${s}px;" aria-hidden="true"></i>`;
+    }
+    return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${nameOrPaths}</svg>`;
   }
 
   const IC = {
-    dollar:    '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
-    trendUp:   '<path d="M7 17l5-5 4 4 5-5"/><path d="M14 7h7v7"/>',
-    trendDown: '<path d="M7 7l5 5 4-4 5 5"/><path d="M14 17h7v-7"/>',
-    chart:     '<path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/>',
-    users:     '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-    calendar:  '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
-    box:       '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/>',
-    userPlus:  '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
-    calPlus:   '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4"/>',
-    card:      '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
-    check:     '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
-    msg:       '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/>',
-    star:      '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>',
-    video:     '<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>',
-    upload:    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/>',
-    sparkles:  '<path d="M12 3l1.5 4.5H18l-3.75 2.7 1.5 4.5L12 12l-3.75 2.7 1.5-4.5L6 7.5h4.5L12 3z"/>',
-    chevRight: '<path d="M9 18l6-6-6-6"/>',
+    dollar:    'ph-currency-dollar',
+    trendUp:   'ph-trend-up',
+    trendDown: 'ph-trend-down',
+    chart:     'ph-chart-line-up',
+    users:     'ph-users-three',
+    calendar:  'ph-calendar-check',
+    box:       'ph-package',
+    userPlus:  'ph-user-plus',
+    calPlus:   'ph-calendar-plus',
+    card:      'ph-credit-card',
+    check:     'ph-check-square',
+    msg:       'ph-chat-circle-dots',
+    star:      'ph-star',
+    video:     'ph-video-camera',
+    upload:    'ph-upload',
+    sparkles:  'ph-sparkle',
+    chevRight: 'ph-caret-right',
   };
 
   // ── 기간 라벨 / 비교 라벨 ─────────────────────────────
@@ -270,10 +274,10 @@
       ? `신규 ${naverData.new_count || 0}건 · 평균 ${naverData.avg_score}점`
       : '네이버 리뷰 관리';
     return [
-      { ic: IC.star,     pink: true,  label: '네이버 리뷰',   sub: naverSub,                          badge: naverBadge,                              fn: 'openNaverReviews' },
-      { ic: IC.video,    pink: false, label: '영상 리포트',   sub: '릴스/쇼츠 분석',                  badge: '',                                     fn: 'openVideo' },
-      { ic: IC.upload,   pink: false, label: '데이터 불러오기', sub: '엑셀/CSV · 전자영수증 연동',    badge: '',                                     fn: 'openImport' },
-      { ic: IC.sparkles, pink: true,  label: 'AI 인사이트',   sub: '"이번주 집중할 3가지" 자동 추천', badge: '<span class="db-badge">NEW</span>',    fn: 'openInsights' },
+      { ic: IC.star,     pink: true,  boxColor: 'amber',  label: '네이버 리뷰',   sub: naverSub,                          badge: naverBadge,                              fn: 'openNaverReviews' },
+      { ic: IC.video,    pink: false, boxColor: 'purple', label: '영상 리포트',   sub: '릴스/쇼츠 분석',                  badge: '',                                     fn: 'openVideo' },
+      { ic: IC.upload,   pink: false, boxColor: 'teal',   label: '데이터 불러오기', sub: '엑셀/CSV · 전자영수증 연동',    badge: '',                                     fn: 'openImport' },
+      { ic: IC.sparkles, pink: true,  boxColor: 'pink',   label: 'AI 인사이트',   sub: '"이번주 집중할 3가지" 자동 추천', badge: '<span class="db-badge">NEW</span>',    fn: 'openInsights' },
     ];
   }
 
@@ -283,7 +287,7 @@
       <div class="db-menu">
         ${items.map(it => `
           <button class="db-menu-it" data-list="${_esc(it.fn)}">
-            <div class="db-menu__ic ${it.pink ? 'db-menu__ic--pink' : ''}">${_ic(it.ic)}</div>
+            <div class="db-menu__ic"><span class="ic-box ic-box--sm ic-box--${_esc(it.boxColor)}">${_ic(it.ic, 14)}</span></div>
             <div class="db-menu__tx">
               <p class="db-menu__t">${_esc(it.label)}</p>
               <p class="db-menu__s">${_esc(it.sub)}</p>
