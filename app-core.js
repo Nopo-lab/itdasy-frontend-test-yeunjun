@@ -42,11 +42,52 @@ const _TOKEN_KEY = 'itdasy_token::' + (API.includes('staging') ? 'staging' : (AP
 
 let _instaHandle = '';  // checkInstaStatus에서 저장
 
-function showToast(msg) {
-  const t = document.getElementById('copyToast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2000);
+// ─── 토스트 시스템 v2 (큐 기반, 타입별 색상) ────────────────────
+const _toastQueue = [];
+let _toastActive = false;
+
+function showToast(msg, opts) {
+  const o = typeof opts === 'object' ? opts : { type: opts || 'info' };
+  _toastQueue.push({ msg, type: o.type || 'info', duration: o.duration || 2400 });
+  if (!_toastActive) _nextToast();
+}
+
+function _nextToast() {
+  if (!_toastQueue.length) { _toastActive = false; return; }
+  _toastActive = true;
+  const { msg, type, duration } = _toastQueue.shift();
+
+  let el = document.getElementById('itdToast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'itdToast';
+    el.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px) + 16px);left:50%;transform:translateX(-50%) translateY(-120%);z-index:99999;padding:12px 20px;border-radius:var(--r-md,14px);font-size:14px;font-weight:600;box-shadow:var(--shadow-md);transition:transform .3s cubic-bezier(.4,0,.2,1),opacity .3s;opacity:0;pointer-events:none;max-width:calc(100vw - 32px);text-align:center;';
+    document.body.appendChild(el);
+  }
+
+  const colors = {
+    info:    { bg: 'var(--surface)', color: 'var(--text)' },
+    success: { bg: '#E8F8EF', color: '#0F6E56' },
+    warning: { bg: '#FEF3E2', color: '#854F0B' },
+    error:   { bg: '#FEE8E8', color: '#A32D2D' },
+  };
+  const c = colors[type] || colors.info;
+  el.style.background = c.bg;
+  el.style.color = c.color;
+  el.textContent = msg;
+
+  requestAnimationFrame(() => {
+    el.style.opacity = '1';
+    el.style.transform = 'translateX(-50%) translateY(0)';
+    el.style.pointerEvents = 'auto';
+  });
+
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(-50%) translateY(-120%)';
+    el.style.pointerEvents = 'none';
+    setTimeout(_nextToast, 320);
+  }, duration);
 }
 
 function showWelcome(shopName) {
@@ -199,6 +240,9 @@ function selectShopType(card) {
   obShopType = card.dataset.type;
 }
 
+// Phase3: 3단계 축약 — Step1(환영+핵심가치) → Step2(업종, 건너뛰기 허용) → Step3(매장명, 즉시 완료)
+const ONBOARD_STEPS = 3;
+
 function obShowStep(n) {
   document.querySelectorAll('.ob-step').forEach(s => s.classList.remove('active'));
   document.getElementById('ob-step-' + n).classList.add('active');
@@ -206,8 +250,39 @@ function obShowStep(n) {
     d.classList.toggle('active', i < n);
   });
   const btn = document.getElementById('obBtn');
-  btn.textContent = n === 4 ? '시작하기 🎉' : '계속하기';
+  btn.textContent = n === ONBOARD_STEPS ? '시작하기 🎉' : '계속하기';
+  const skip = document.getElementById('obSkipBtn');
+  if (skip) skip.style.display = n === 2 ? '' : 'none';
   obStep = n;
+}
+
+function obSkipShopType() {
+  obShopType = '';
+  obShowStep(3);
+  setTimeout(() => document.getElementById('obShopNameInput').focus(), 300);
+}
+
+function _obFinish() {
+  const name = document.getElementById('obShopNameInput').value.trim();
+  if (!name) {
+    document.getElementById('obShopNameInput').style.borderBottomColor = '#E05555';
+    setTimeout(() => document.getElementById('obShopNameInput').style.borderBottomColor = '', 1200);
+    return;
+  }
+  localStorage.setItem('onboarding_done', '1');
+  localStorage.setItem('shop_name', name);
+  if (obShopType) localStorage.setItem('shop_type', obShopType);
+
+  document.getElementById('onboardingOverlay').classList.add('hidden');
+  applyShopType(obShopType);
+  updateHeaderProfile(null, null, null);
+  showToast(`${name} 시작해요 🎉`, 'success');
+
+  fetch(API + '/shop/settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ shop_name: name })
+  }).catch(() => {});
 }
 
 async function obNext() {
@@ -215,7 +290,6 @@ async function obNext() {
     obShowStep(2);
   } else if (obStep === 2) {
     if (!obShopType) {
-      // 선택 안 했으면 카드 살짝 흔들기
       document.querySelectorAll('.ob-shop-card:not(.disabled)').forEach(c => {
         c.style.transition = 'transform 0.1s';
         c.style.transform = 'scale(0.96)';
@@ -226,30 +300,7 @@ async function obNext() {
     obShowStep(3);
     setTimeout(() => document.getElementById('obShopNameInput').focus(), 300);
   } else if (obStep === 3) {
-    const name = document.getElementById('obShopNameInput').value.trim();
-    if (!name) {
-      document.getElementById('obShopNameInput').style.borderBottomColor = '#E05555';
-      setTimeout(() => document.getElementById('obShopNameInput').style.borderBottomColor = '', 1200);
-      return;
-    }
-    localStorage.setItem('shop_name', name); // 로컬에도 저장해서 즉시 반영
-    document.getElementById('obCompleteName').textContent = name;
-    obShowStep(4);
-    // 백엔드에 샵 이름 저장 (에러 무시)
-    fetch(API + '/shop/settings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ...authHeader() },
-      body: JSON.stringify({ shop_name: name })
-    }).catch(() => {});
-  } else if (obStep === 4) {
-    const name = document.getElementById('obShopNameInput').value.trim();
-    localStorage.setItem('onboarding_done', '1');
-    localStorage.setItem('shop_type', obShopType);
-    if (name) localStorage.setItem('shop_name', name);
-
-    document.getElementById('onboardingOverlay').classList.add('hidden');
-    applyShopType(obShopType);
-    updateHeaderProfile(null, null, null);
+    _obFinish();
   }
 }
 
@@ -853,8 +904,8 @@ async function confirmDeleteAccount() {
         await Promise.all(keys.map(k => caches.delete(k)));
       } catch (_) { /* ignore */ }
     }
-    alert('계정이 완전히 삭제되었습니다. 이용해 주셔서 감사합니다.');
-    location.href = 'index.html';
+    showToast('계정이 완전히 삭제되었습니다. 이용해 주셔서 감사합니다.', 'success');
+    setTimeout(() => { location.href = 'index.html'; }, 1200);
   } catch (e) {
     if (err) { err.textContent = e.message || '삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'; err.style.display = 'block'; }
     if (btn) { btn.textContent = '영구 삭제'; btn.disabled = false; }
@@ -1141,7 +1192,7 @@ window.startGoogleLogin = async function () {
     }
   } catch (e) {
     const msg = window._humanError ? window._humanError(e) : (e.message || 'Google 로그인 오류');
-    alert(msg);
+    showToast(msg, 'error');
   }
 };
 
@@ -1162,7 +1213,7 @@ window.startKakaoLogin = async function () {
     }
   } catch (e) {
     const msg = window._humanError ? window._humanError(e) : (e.message || '카카오 로그인 오류');
-    alert(msg);
+    showToast(msg, 'error');
   }
 };
 
@@ -1186,8 +1237,7 @@ window.startNaverLogin = async function () {
     }
   } catch (e) {
     const msg = window._humanError ? window._humanError(e) : (e.message || '네이버 로그인 오류');
-    if (window.showToast) window.showToast('네이버 로그인을 시작할 수 없어요');
-    else alert(msg);
+    showToast(msg || '네이버 로그인을 시작할 수 없어요', 'error');
   }
 };
 

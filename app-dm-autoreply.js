@@ -24,9 +24,8 @@
     }[ch]));
   }
 
-  function _toast(msg) {
-    if (window.showToast) window.showToast(msg);
-    else alert(msg);
+  function _toast(msg, type) {
+    if (window.showToast) window.showToast(msg, type);
   }
 
   function _haptic() { window.hapticLight?.(); }

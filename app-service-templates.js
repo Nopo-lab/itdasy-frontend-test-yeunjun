@@ -166,7 +166,7 @@
       const addBtn = document.getElementById('svc-add');
       if (addBtn) addBtn.addEventListener('click', async () => {
         const name = document.getElementById('svc-name').value.trim();
-        if (!name) return alert('시술 이름을 입력해주세요.');
+        if (!name) return showToast('시술 이름을 입력해주세요.', 'warning');
         const price = parseInt(document.getElementById('svc-price').value) || 0;
         const material = parseInt(document.getElementById('svc-material').value) || 0;
         const retouch = parseInt(document.getElementById('svc-retouch').value) || null;
@@ -184,7 +184,7 @@
           const ret = document.getElementById('svc-retouch');
           if (ret) ret.value = '';
         } catch (e) {
-          alert('추가 실패: ' + (window._humanError ? window._humanError(e) : e.message));
+          showToast('추가 실패: ' + (window._humanError ? window._humanError(e) : e.message), 'error');
         }
       });
       document.getElementById('svc-list')?.addEventListener('click', async (e) => {
@@ -200,7 +200,7 @@
           await loadServiceTemplates();
           document.getElementById('svc-list').innerHTML = _renderList(_cache);
         } catch (err) {
-          alert('삭제 실패');
+          showToast('삭제 실패', 'error');
         }
       });
     }, 50);
@@ -212,14 +212,14 @@
     const val = prompt('리터치 안내를 며칠 뒤에 띄울까요?', String(cur));
     if (val == null) return;
     const days = parseInt(val, 10);
-    if (!days || days < 1) return alert('1 이상의 숫자를 입력해 주세요.');
+    if (!days || days < 1) return showToast('1 이상의 숫자를 입력해 주세요.', 'warning');
     try {
       await updateTemplate(id, { retouch_period_days: days });
       await loadServiceTemplates();
       const list = document.getElementById('svc-list');
       if (list) list.innerHTML = _renderList(_cache);
     } catch (e) {
-      alert('저장 실패');
+      showToast('저장 실패', 'error');
     }
   }
 
@@ -262,7 +262,7 @@
     document.getElementById('cons-add')?.addEventListener('click', async () => {
       const inventoryId = parseInt(document.getElementById('cons-inv')?.value, 10);
       const qty = parseFloat(document.getElementById('cons-qty')?.value);
-      if (!inventoryId || !qty || qty <= 0) return alert('재료와 소모량을 입력해 주세요.');
+      if (!inventoryId || !qty || qty <= 0) return showToast('재료와 소모량을 입력해 주세요.', 'warning');
       await createConsumption(serviceId, { inventory_id: inventoryId, consumption_qty: qty });
       const rows = await loadConsumptions(serviceId);
       document.getElementById('cons-list').innerHTML = _renderConsRows(serviceId, rows);

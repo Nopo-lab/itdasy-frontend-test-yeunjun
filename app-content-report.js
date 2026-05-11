@@ -106,7 +106,7 @@
       }
       const data = await res.json();
       closeContentReport();
-      alert(`신고가 접수되었어요.\n티켓: ${data.ticket_id}\n24시간 내에 검토해드릴게요.`);
+      showToast(`신고 접수 완료 · 티켓 ${data.ticket_id} · 24h 내 검토`, { type: 'success', duration: 3600 });
     } catch (e) {
       if (err) { err.textContent = e.message || '신고 제출 중 오류. 잠시 후 다시 시도해주세요.'; err.style.display = 'block'; }
       if (btn) { btn.disabled = false; btn.textContent = '신고 제출'; }

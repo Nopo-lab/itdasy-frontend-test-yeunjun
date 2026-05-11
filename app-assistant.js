@@ -374,11 +374,7 @@
     const btn = document.getElementById('asstMicBtn');
     if (!SR) {
       // Capacitor / 미지원 브라우저 폴백
-      if (typeof window.showToast === 'function') {
-        window.showToast('이 환경은 음성 입력을 지원하지 않아요. 키보드로 입력해주세요.');
-      } else {
-        alert('이 환경은 음성 입력을 지원하지 않아요.');
-      }
+      showToast('이 환경은 음성 입력을 지원하지 않아요. 키보드로 입력해주세요.', 'warning');
       return;
     }
     // 이미 녹음 중이면 토글로 중지 (사용자 의도)

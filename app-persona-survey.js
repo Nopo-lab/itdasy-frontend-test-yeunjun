@@ -121,9 +121,8 @@
   }
 
   // ── 토스트 (showToast 가 있으면 활용) ──────────────────
-  function _toast(msg) {
-    if (typeof window.showToast === 'function') return window.showToast(msg);
-    alert(msg);
+  function _toast(msg, type) {
+    if (typeof window.showToast === 'function') return window.showToast(msg, type);
   }
 
   // ── Step 0: 인스타 연동/분석 안 된 경우 ────────────────

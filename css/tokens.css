@@ -65,6 +65,9 @@ html[data-theme="dark"] {
   --shadow-brand: 0 10px 24px rgba(255,143,163,.35);
 }
 
+/* §3.5 토스트 v2 다크모드 그림자 강화 */
+html[data-theme="dark"] #itdToast { box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+
 /* §4 SVG 전역 기본값 — Lucide 라인 스타일 */
 svg {
   stroke-width: var(--stroke);

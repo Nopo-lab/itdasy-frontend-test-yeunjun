@@ -597,21 +597,20 @@
   </div>
 </div>
 
-<!-- ───── 온보딩 오버레이 ───── -->
+<!-- ───── 온보딩 오버레이 (Phase3: 3단계 축약) ───── -->
 <div class="ob-overlay hidden" id="onboardingOverlay">
   <!-- 진행 점 -->
   <div class="ob-dots">
     <div class="ob-dot active" id="obDot1"></div>
     <div class="ob-dot" id="obDot2"></div>
     <div class="ob-dot" id="obDot3"></div>
-    <div class="ob-dot" id="obDot4"></div>
   </div>
 
-  <!-- Step 1: 환영 -->
+  <!-- Step 1: 환영 + 핵심가치 -->
   <div class="ob-step active" id="ob-step-1">
-    <div class="ob-emoji">👋</div>
-    <div class="ob-title">안녕하세요!<br>어떤 샵을 운영하고 계세요?</div>
-    <div class="ob-sub">딱 맞는 AI 비서를 세팅해 드릴게요</div>
+    <div class="ob-emoji">📸</div>
+    <div class="ob-title">사진만 올리면<br>AI가 글을 만들어드려요</div>
+    <div class="ob-sub">잇데이는 1인 샵 원장님 전용 AI 비서예요</div>
   </div>
 
   <!-- Step 2: 샵 종류 — [2026-04-29] 헤어샵·속눈썹·왁싱·피부·반영구 활성화 -->
@@ -661,17 +660,11 @@
     </div>
   </div>
 
-  <!-- Step 4: 완료 -->
-  <div class="ob-step" id="ob-step-4">
-    <div class="ob-emoji">🎉</div>
-    <div class="ob-title">준비됐어요!</div>
-    <div class="ob-sub">
-      <span class="ob-complete-name" id="obCompleteName"></span>만을 위한<br>
-      AI 비서가 지금 시작됩니다
-    </div>
-  </div>
-
   <button class="ob-btn" id="obBtn" onclick="obNext()">계속하기</button>
+  <button type="button" id="obSkipBtn" onclick="obSkipShopType()"
+          style="display:none;margin-top:10px;background:none;border:none;color:var(--text-muted,#888);font-size:14px;font-weight:600;padding:8px 16px;cursor:pointer;">
+    건너뛰기
+  </button>
 </div>
 
 <!-- Pull-to-Refresh 바 -->
