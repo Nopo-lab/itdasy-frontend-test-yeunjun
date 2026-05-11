@@ -41,10 +41,13 @@
     } catch (_e) { return null; }
   }
   async function _fetchBrief() {
+    // [2026-05-12 QA] 내샵 화면이 기대하는 필드 (today_bookings 배열, at_risk 배열, low_stock 배열,
+    // this_month_total, total_customers, new_customer_count 등) 는 /assistant/brief 에 있음.
+    // /today/brief 는 *_count 만 반환해서 카운트 0건 표시되던 문제 픽스.
     const headers = _authHeaders();
     if (!window.API || !headers) return null;
     try {
-      const res = await fetch(window.API + '/today/brief', { headers });
+      const res = await fetch(window.API + '/assistant/brief', { headers });
       if (!res.ok) return null;
       const data = await res.json();
       _writeSWR(data);

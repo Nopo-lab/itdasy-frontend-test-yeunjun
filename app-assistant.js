@@ -1478,6 +1478,40 @@
   function _bindActionButtons() {
     if (_delegationBound) return;
     _delegationBound = true;
+    // [2026-05-12 QA #4] 편집 모드 input 변경 즉시 action state 에 반영.
+    // 이전엔 저장 버튼 누를 때만 반영 → 다른 액션으로 _renderHistory 가 호출되면 입력값 사라짐.
+    // 이제 input/change 이벤트마다 즉시 _applyEditField 로 state 갱신 (re-render 안 함, 포커스 유지).
+    document.addEventListener('input', (e) => {
+      const fld = e.target.closest('[data-row-field]');
+      if (!fld || !document.getElementById('asstBody')?.contains(fld)) return;
+      const parts = fld.getAttribute('data-row-field').split(':');
+      if (parts.length < 4) return;
+      const [hi, gi, ii] = [parseInt(parts[0], 10), parseInt(parts[1], 10), parseInt(parts[2], 10)];
+      const field = parts.slice(3).join(':');
+      const it = _history[hi]?.action_groups?.[gi]?.items?.[ii];
+      const msg = _history[hi];
+      // single action (msg.action) 도 동일 패턴
+      const target = it ? it.action : (msg && msg.action ? msg.action : null);
+      if (!target) return;
+      if (!target.payload) target.payload = {};
+      try { _applyEditField(target, field, fld.value); } catch (_e) { /* ignore */ }
+    });
+    // select 변경도 동일 처리
+    document.addEventListener('change', (e) => {
+      if (e.target.tagName !== 'SELECT') return;
+      const fld = e.target.closest('[data-row-field]');
+      if (!fld || !document.getElementById('asstBody')?.contains(fld)) return;
+      const parts = fld.getAttribute('data-row-field').split(':');
+      if (parts.length < 4) return;
+      const [hi, gi, ii] = [parseInt(parts[0], 10), parseInt(parts[1], 10), parseInt(parts[2], 10)];
+      const field = parts.slice(3).join(':');
+      const it = _history[hi]?.action_groups?.[gi]?.items?.[ii];
+      const msg = _history[hi];
+      const target = it ? it.action : (msg && msg.action ? msg.action : null);
+      if (!target) return;
+      if (!target.payload) target.payload = {};
+      try { _applyEditField(target, field, fld.value); } catch (_e) { /* ignore */ }
+    });
     document.addEventListener('click', (e) => {
       // 2026-04-26 픽스 — 업로드 사진 썸네일 클릭 → 라이트박스
       const photoEl = e.target.closest('[data-asst-photo]');
