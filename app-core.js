@@ -1810,6 +1810,7 @@ if ('serviceWorker' in navigator && !_isCapacitor) {
 
     const dy   = e.touches[0].clientY - startY;
     if (dy <= 0) { pulling = false; return; }
+    e.preventDefault();  // PTR 당기는 동안 브라우저 스크롤 차단 (iOS standalone PTR 복구)
 
     const move = dy * RESISTANCE;
     applyMove(move);
@@ -1831,7 +1832,7 @@ if ('serviceWorker' in navigator && !_isCapacitor) {
         EMOJI.style.color     = '';
       }
     }
-  }, { passive: true });
+  }, { passive: false });
 
   document.addEventListener('touchend', async () => {
     if (!pulling) return;
