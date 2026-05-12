@@ -251,6 +251,112 @@ function renderDetailedPopup(data) {
     `;
 }
 
+// [2026-05-13 QA #blocker1] 인스타 연동 직후 자동 분석 진입점 — backend 가 _auto_analyze_persona_bg
+// 를 백그라운드 실행하지만 프론트가 시각 피드백을 안 줘서 "연동만 되고 끝" 인상이던 문제.
+// 흐름:
+//  1) 진입 즉시 analyzeOverlay + "AI 말투 분석 시작했어요" 토스트
+//  2) /instagram/status 3초마다 폴 (max 90초) — persona.style_summary 채워지면 success
+//  3) 90초 timeout → /instagram/analyze?force=true 1회 시도 (BG task 실패 fallback)
+async function runAutoAnalysisAfterConnect() {
+  const overlay = document.getElementById('analyzeOverlay');
+  const bar     = document.getElementById('analyzeProgressBar');
+  const stepTxt = document.getElementById('analyzeStepText');
+  const subTxt  = document.getElementById('analyzeSubText');
+  if (overlay) overlay.style.display = 'flex';
+  if (bar) bar.style.width = '10%';
+  if (stepTxt) stepTxt.textContent = 'AI 말투 분석 시작했어요';
+  if (subTxt)  subTxt.textContent  = '게시물 가져오고 사장님 문체 학습 중이에요…';
+  try { if (typeof showToast === 'function') showToast('🪄 AI 말투 분석을 시작했어요. 결과 곧 보여드릴게요'); } catch (_e) { void _e; }
+
+  const startedAt = Date.now();
+  const MAX_MS = 90_000;
+  const STEP_MS = 3_000;
+  let progressPct = 10;
+  let success = false;
+  let lastStatusData = null;
+
+  // 백그라운드 task 진행 시각화 — 시간 흐름에 따라 prograss bar 자연스럽게 증가
+  while (Date.now() - startedAt < MAX_MS) {
+    try {
+      const res = await fetch(API + '/instagram/status', { headers: authHeader() });
+      if (res.ok) {
+        const d = await res.json();
+        lastStatusData = d;
+        const p = (d && d.persona) || null;
+        if (p && (p.style_summary || '').trim()) {
+          success = true;
+          break;
+        }
+      }
+    } catch (_e) { /* network blip ok */ }
+    // bar progress 흐름 (10 → 88% 까지 점진적)
+    progressPct = Math.min(88, progressPct + 6);
+    if (bar) bar.style.width = progressPct + '%';
+    if (stepTxt) {
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+      if (elapsed < 15) stepTxt.textContent = '게시물 가져오는 중…';
+      else if (elapsed < 35) stepTxt.textContent = '문체 패턴 분석 중…';
+      else if (elapsed < 60) stepTxt.textContent = '해시태그·이모지 추출 중…';
+      else stepTxt.textContent = '분석 마무리 중…';
+    }
+    await new Promise(r => setTimeout(r, STEP_MS));
+  }
+
+  if (success && lastStatusData) {
+    const p = lastStatusData.persona || {};
+    if (bar) bar.style.width = '100%';
+    if (stepTxt) stepTxt.textContent = '분석 성공!';
+    if (subTxt)  subTxt.textContent  = '말투 데이터가 업데이트됐어요';
+    try { localStorage.setItem('itdasy_latest_analysis', JSON.stringify(p)); } catch (_e) { void _e; }
+    try {
+      const curPic = document.getElementById('headerAvatar')?.querySelector('img')?.src || '';
+      updateHeaderProfile(_instaHandle, p.tone, curPic);
+      renderPersonaDash(p, true);
+    } catch (_e) { void _e; }
+    setTimeout(() => {
+      if (overlay) overlay.style.display = 'none';
+      try { if (typeof showToast === 'function') showToast('✅ 말투 분석 완료! 캡션·DM 답장이 사장님 말투로 자동 생성돼요'); } catch (_e) { void _e; }
+    }, 1000);
+    return;
+  }
+
+  // Timeout fallback — BG task 가 실패했거나 너무 느림. force 재분석 1회.
+  if (stepTxt) stepTxt.textContent = '한 번 더 시도하는 중…';
+  try {
+    const r2 = await fetch(API + '/instagram/analyze?force=true', { method: 'POST', headers: authHeader() });
+    if (r2.ok) {
+      const d2 = await r2.json();
+      const p = d2.persona || {};
+      if (p.style_summary) {
+        try { localStorage.setItem('itdasy_latest_analysis', JSON.stringify({ ...(d2.raw_analysis || {}), ...p })); } catch (_e) { void _e; }
+        try {
+          const curPic = document.getElementById('headerAvatar')?.querySelector('img')?.src || '';
+          updateHeaderProfile(_instaHandle, p.tone, curPic);
+          renderPersonaDash(p, true);
+        } catch (_e) { void _e; }
+        if (overlay) overlay.style.display = 'none';
+        try { if (typeof showToast === 'function') showToast('✅ 말투 분석 완료!'); } catch (_e) { void _e; }
+        return;
+      }
+    } else {
+      let friendly = '분석에 실패했어요. 설정에서 "말투 새로 분석" 을 눌러주세요.';
+      try {
+        const j = await r2.json();
+        const detail = (j && j.detail) || '';
+        if (typeof detail === 'string' && detail) friendly = detail;
+      } catch (_e) { void _e; }
+      if (overlay) overlay.style.display = 'none';
+      try { if (typeof showToast === 'function') showToast(friendly); } catch (_e) { void _e; }
+      return;
+    }
+  } catch (_e) { /* ignore */ }
+
+  if (overlay) overlay.style.display = 'none';
+  try { if (typeof showToast === 'function') showToast('분석이 평소보다 오래 걸려요. 설정 > 말투 새로 분석 으로 다시 시도해주세요'); } catch (_e) { void _e; }
+}
+window.runAutoAnalysisAfterConnect = runAutoAnalysisAfterConnect;
+
+
 async function reAnalyzePersona() {
   if (await nativeConfirm("확인", '최신 게시물들을 바탕으로 말투와 성과 비결을 다시 분석하시겠습니까?')) {
     // [QA #8] 사용자가 명시적으로 "다시 분석" — force=true 로 5분 캐시 우회.

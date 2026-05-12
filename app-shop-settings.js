@@ -241,36 +241,78 @@
     return out;
   }
 
+  // [2026-05-13 QA] 캘린더/예약앱 느낌 — 큰 토글 + native time picker + 일괄 적용 + 시각적 휴무
   function _renderHoursGrid(hours) {
     const wrap = document.getElementById('ssShopHoursGrid');
     if (!wrap) return;
-    wrap.innerHTML = _DAY_KEYS.map(k => {
-      const h = hours[k] || { open: '10:00', close: '20:00', off: false };
-      const off = !!h.off;
-      return `
-        <div class="ss-hours-row" data-day="${k}" style="display:flex;align-items:center;gap:8px;padding:6px 0;">
-          <span style="width:24px;font-size:13px;font-weight:700;color:var(--text,#222);">${_DAY_LABELS[k]}</span>
-          <input type="time" class="ss-time-input" data-hr-field="open" value="${h.open || '10:00'}" ${off ? 'disabled' : ''} style="height:36px;padding:0 8px;border:1.5px solid #E5E5EA;border-radius:8px;font-size:13px;flex:1;min-width:88px;${off ? 'opacity:0.4;' : ''}">
-          <span style="font-size:12px;color:var(--text3,#999);">~</span>
-          <input type="time" class="ss-time-input" data-hr-field="close" value="${h.close || '20:00'}" ${off ? 'disabled' : ''} style="height:36px;padding:0 8px;border:1.5px solid #E5E5EA;border-radius:8px;font-size:13px;flex:1;min-width:88px;${off ? 'opacity:0.4;' : ''}">
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:${off ? 'var(--accent2,#D95F70)' : 'var(--text3,#999)'};white-space:nowrap;">
-            <input type="checkbox" data-hr-field="off" ${off ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;">휴무
-          </label>
-        </div>
-      `;
-    }).join('');
-    // off 토글 → 같은 행의 time input enable/disable
+    wrap.innerHTML = `
+      <div class="ss-hr-bulk" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+        <button type="button" data-hr-bulk="weekday" style="flex:1;min-width:90px;padding:8px;border:1px solid #E5E5EA;border-radius:10px;background:#F8F9FB;font-size:12px;font-weight:700;color:#444;cursor:pointer;">평일 일괄 적용</button>
+        <button type="button" data-hr-bulk="weekend" style="flex:1;min-width:90px;padding:8px;border:1px solid #E5E5EA;border-radius:10px;background:#F8F9FB;font-size:12px;font-weight:700;color:#444;cursor:pointer;">주말 일괄 적용</button>
+        <button type="button" data-hr-bulk="all" style="flex:1;min-width:90px;padding:8px;border:1px solid #E5E5EA;border-radius:10px;background:#FCEEF1;font-size:12px;font-weight:700;color:#D95F70;cursor:pointer;">모든 요일 적용</button>
+      </div>
+      ${_DAY_KEYS.map(k => {
+        const h = hours[k] || { open: '10:00', close: '20:00', off: false };
+        const off = !!h.off;
+        return `
+          <div class="ss-hours-row" data-day="${k}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${off ? '#FAFAFA' : '#fff'};border:1px solid ${off ? 'rgba(217,95,112,0.15)' : 'rgba(0,0,0,0.06)'};border-radius:14px;margin-bottom:8px;transition:background 0.15s;">
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:44px;flex-shrink:0;">
+              <span style="font-size:15px;font-weight:800;color:${off ? '#bbb' : 'var(--text,#222)'};line-height:1;">${_DAY_LABELS[k]}</span>
+              <span style="font-size:10px;color:${off ? '#bbb' : 'var(--text3,#999)'};margin-top:2px;">요일</span>
+            </div>
+            <div style="flex:1;display:flex;align-items:center;gap:6px;${off ? 'opacity:0.35;pointer-events:none;' : ''}">
+              <input type="time" data-hr-field="open" value="${h.open || '10:00'}" ${off ? 'disabled' : ''}
+                style="flex:1;min-width:0;height:42px;padding:0 10px;border:1.5px solid #E5E5EA;border-radius:10px;font-size:15px;font-weight:600;text-align:center;background:#fff;-webkit-appearance:none;">
+              <span style="font-size:12px;color:var(--text3,#999);font-weight:600;">~</span>
+              <input type="time" data-hr-field="close" value="${h.close || '20:00'}" ${off ? 'disabled' : ''}
+                style="flex:1;min-width:0;height:42px;padding:0 10px;border:1.5px solid #E5E5EA;border-radius:10px;font-size:15px;font-weight:600;text-align:center;background:#fff;-webkit-appearance:none;">
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;flex-shrink:0;padding:6px 10px;border-radius:999px;background:${off ? 'var(--accent2,#D95F70)' : 'transparent'};color:${off ? '#fff' : 'var(--text3,#888)'};font-size:11px;font-weight:700;border:1px solid ${off ? 'var(--accent2,#D95F70)' : 'transparent'};">
+              <input type="checkbox" data-hr-field="off" ${off ? 'checked' : ''} style="display:none;">
+              <span>${off ? '✕ 휴무' : '휴무'}</span>
+            </label>
+          </div>
+        `;
+      }).join('')}
+      <div style="margin-top:6px;padding:10px 12px;background:rgba(241,128,145,0.05);border-radius:10px;font-size:11px;color:#888;line-height:1.5;">💡 시간 칸을 누르면 모바일에서 시간 휠이 떠요. 휴무 토글로 요일별 영업/휴무를 바꿀 수 있어요.</div>
+    `;
+    // off 토글 → 행 전체 dim + 휴무 배지 색
     wrap.querySelectorAll('[data-hr-field="off"]').forEach(chk => {
       chk.addEventListener('change', () => {
-        const row = chk.closest('.ss-hours-row');
-        if (!row) return;
-        const disabled = chk.checked;
-        row.querySelectorAll('input[type="time"]').forEach(t => {
-          t.disabled = disabled;
-          t.style.opacity = disabled ? '0.4' : '';
-        });
+        _renderHoursGrid(_collectHoursForceFresh());
       });
     });
+    // 클릭으로 토글 (label 전체 클릭 가능하게)
+    wrap.querySelectorAll('label').forEach(lbl => {
+      lbl.addEventListener('click', (e) => {
+        const chk = lbl.querySelector('[data-hr-field="off"]');
+        if (chk && e.target !== chk) {
+          e.preventDefault();
+          chk.checked = !chk.checked;
+          chk.dispatchEvent(new Event('change'));
+        }
+      });
+    });
+    // 일괄 적용 — 첫 번째 활성 요일의 open/close 시간을 weekday(월~금) / weekend(토일) / all 에 복사
+    wrap.querySelectorAll('[data-hr-bulk]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.dataset.hrBulk;
+        const cur = _collectHoursForceFresh();
+        // 기준 요일: 평일=mon, 주말=sat, all=mon
+        const refDay = (target === 'weekend') ? 'sat' : 'mon';
+        const ref = cur[refDay] || { open: '10:00', close: '20:00', off: false };
+        const setKeys = target === 'weekday' ? ['mon','tue','wed','thu','fri']
+                       : target === 'weekend' ? ['sat','sun']
+                       : _DAY_KEYS;
+        setKeys.forEach(k => { cur[k] = { open: ref.open, close: ref.close, off: ref.off }; });
+        _renderHoursGrid(cur);
+        try { _haptic(); } catch (_e) { void _e; }
+      });
+    });
+  }
+
+  function _collectHoursForceFresh() {
+    return _collectHours() || _defaultHours();
   }
 
   function _collectHours() {

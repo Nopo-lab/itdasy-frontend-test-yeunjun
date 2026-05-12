@@ -1473,8 +1473,8 @@ window.addEventListener('load', function() {
       } catch (_) { /* ignore */ }
       _hideLoadingOverlay();
     })();
-    // [2026-05-08 v117] OAuth 직후면 분석 즉시 시작 — checkInstaStatus 네트워크 응답 기다리지 않음.
-    //   사장님이 잇비카드 → 메인홈 → 분석중 깜빡임 보던 거 차단. 분석중 오버레이만 보임.
+    // [2026-05-13 QA #blocker1] OAuth 직후 — 백엔드 BG 자동분석을 status 폴링으로 대기.
+    // runAutoAnalysisAfterConnect 가 즉시 toast + overlay + 90초 polling + timeout fallback.
     const _params0 = new URLSearchParams(window.location.search);
     const _justOAuthed = _params0.get('connected') === 'success';
     if (_justOAuthed) {
@@ -1483,7 +1483,13 @@ window.addEventListener('load', function() {
         const pd = document.getElementById('personaDash');
         if (pd) pd.style.display = 'none';
       } catch (_e) { void _e; }
-      try { runPersonaAnalyze(); } catch (_e) { void _e; }
+      try {
+        if (typeof window.runAutoAnalysisAfterConnect === 'function') {
+          window.runAutoAnalysisAfterConnect();
+        } else if (typeof runPersonaAnalyze === 'function') {
+          runPersonaAnalyze();
+        }
+      } catch (_e) { void _e; }
     }
     checkInstaStatus().then(() => {
       // (connected=success 는 위에서 이미 처리됨 — runPersonaAnalyze 즉시 호출)
@@ -1882,22 +1888,33 @@ async function loadStatsCard() {
 (function wrapFetchFor429() {
   const origFetch = window.fetch;
   let lastOpened = 0;
+  let lastRateToast = 0;
   window.fetch = async function(...args) {
     const r = await origFetch.apply(this, args);
     if (r.status === 429) {
       const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
-      // API 도메인에 한정 (외부 요청 무시)
       if (url.startsWith(API)) {
+        // [2026-05-13 QA] backend detail 검사 — quota_exceeded:* 만 plan popup,
+        // rate_limit_exceeded 는 단순 toast (재고 +버튼 1회 클릭에 플랜창 오발화 차단).
+        let detail = '';
+        try {
+          const clone = r.clone();
+          const j = await clone.json().catch(() => ({}));
+          detail = (j && j.detail) || '';
+          if (typeof detail !== 'string') detail = JSON.stringify(detail);
+        } catch (_) { /* ignore */ }
+        const isQuota = /^quota_exceeded:/.test(detail);
+        const isRate = /^rate_limit/.test(detail) || detail.includes('요청이 잠깐') || detail.includes('요청이 너무 많');
         const now = Date.now();
-        if (now - lastOpened > 3000 && typeof window.openPlanPopup === 'function') {
+        if (isQuota && now - lastOpened > 3000 && typeof window.openPlanPopup === 'function') {
           lastOpened = now;
-          try {
-            const clone = r.clone();
-            const j = await clone.json().catch(() => ({}));
-            showToast(j.detail || '사용 한도 초과 — 플랜을 확인해주세요');
-          } catch (_) { /* ignore */ }
+          showToast(detail || '사용 한도 초과 — 플랜을 확인해주세요');
           setTimeout(() => window.openPlanPopup(), 600);
+        } else if (isRate && now - lastRateToast > 3000) {
+          lastRateToast = now;
+          showToast('요청이 잠깐 몰렸어요. 잠시 후 자동으로 풀려요 😊');
         }
+        // 그 외(인증 만료 등) 는 호출자가 처리.
       }
     }
     return r;

@@ -108,13 +108,16 @@
         const homeTabBtn = document.querySelector('.tab-bar__btn[data-tab="home"]');
         if (homeTabBtn) homeTabBtn.click();
 
-        // [2026-05-12 QA #2] 연동 직후 자동 말투 분석 트리거 (native 경로 누락 수정).
-        // BE _auto_analyze_persona_bg 이 백그라운드로 돌고 있어도 FE 가 분석중 UI 를 안 띄우면
-        // 사장님은 "연동만 되고 아무 분석도 안 함" 인상. /analyze 5분 캐시 가드로 quota 중복 차단됨.
+        // [2026-05-13 QA #blocker1] 연동 직후 자동 분석 — runAutoAnalysisAfterConnect 가
+        // 즉시 진행 토스트 + analyzeOverlay + status 90초 폴링 + force fallback 처리.
         try {
           setTimeout(() => {
             try {
-              if (typeof window.runPersonaAnalyze === 'function') window.runPersonaAnalyze();
+              if (typeof window.runAutoAnalysisAfterConnect === 'function') {
+                window.runAutoAnalysisAfterConnect();
+              } else if (typeof window.runPersonaAnalyze === 'function') {
+                window.runPersonaAnalyze();
+              }
             } catch (_e2) { /* ignore */ }
           }, 800);
         } catch (_e3) { /* ignore */ }
