@@ -775,9 +775,13 @@
     <span class="ms-side__icon"><span class="ic-box ic-box--amber"><i class="ph-duotone ph-star"></i></span></span>
     <span class="ms-side__label">플랜 · Free</span>
   </button>
-  <button type="button" class="ms-side__item" onclick="setTimeout(function(){(window.openSupport || window.openSupportChat)?.();},0);" aria-label="도움말">
+  <button type="button" class="ms-side__item" onclick="setTimeout(function(){(window.openHelpGuide)?.();},0);" aria-label="사용 가이드">
+    <span class="ms-side__icon"><span class="ic-box ic-box--teal"><i class="ph-duotone ph-book-open"></i></span></span>
+    <span class="ms-side__label">사용 가이드</span>
+  </button>
+  <button type="button" class="ms-side__item" onclick="setTimeout(function(){(window.openSupport || window.openSupportChat)?.();},0);" aria-label="문의하기">
     <span class="ms-side__icon"><span class="ic-box ic-box--teal"><i class="ph-duotone ph-chat-circle-dots"></i></span></span>
-    <span class="ms-side__label">도움말</span>
+    <span class="ms-side__label">문의하기</span>
   </button>
 
   <button type="button" class="ms-side__fab" onclick="openNavSheet()" aria-label="만들기" data-haptic="light">
@@ -816,10 +820,13 @@
       <span data-last-sync style="margin-left:auto;font-size:10.5px;color:var(--text-subtle,#aaa);font-weight:500;"></span>
       <span class="hint" style="flex-basis:100%;margin-left:28px;font-size:11px;color:var(--text3);font-weight:400;margin-top:2px;">예약·매출·고객·재고를 서버에서 다시 받아와요. 다른 기기랑 다르게 보일 때 누르세요.</span>
     </button>
-    <button class="sheet-row" onclick="closeSettings(); runPersonaAnalyze();">내 말투 새로 분석하기</button>
+    <button class="sheet-row" onclick="closeSettings(); runPersonaAnalyze(true);">내 말투 새로 분석하기</button>
     <button class="sheet-row" onclick="closeSettings(); resetShopSetup();">샵 정보 다시 설정하기</button>
+    <button class="sheet-row" data-haptic="light" onclick="closeSettings(); openHelpGuide();">
+      <span class="ic-box ic-box--sm ic-box--teal" style="margin-right:6px;"><i class="ph-duotone ph-book-open"></i></span> 사용 가이드 (워크플로우)
+    </button>
     <button class="sheet-row" data-haptic="light" onclick="closeSettings(); openSupportChat();">
-      <span class="ic-box ic-box--sm ic-box--blue" style="margin-right:6px;"><i class="ph-duotone ph-headset"></i></span> 고객센터
+      <span class="ic-box ic-box--sm ic-box--blue" style="margin-right:6px;"><i class="ph-duotone ph-headset"></i></span> 고객센터 (문의하기)
       <span id="supportUnreadBadge" style="display:none;margin-left:8px;background:var(--brand);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;"></span>
     </button>
     <!-- 2026-05-01 ── 친구초대 제거 (사용자 요청) -->
@@ -1831,6 +1838,7 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-theme.js" defer></script>
 <script src="app-plan.js?v=20260504-1" defer></script>
 <script src="app-support.js" defer></script>
+<script src="app-help-guide.js" defer></script>
 <script src="app-customer-cache.js?v=20260506-v100" defer></script>
 <script src="app-customer.js?v=20260506-v100" defer></script>
 <script src="app-customer-dashboard.js?v=20260506-v100" defer></script>

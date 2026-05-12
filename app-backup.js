@@ -32,11 +32,27 @@
       <div class="ss-body">
         <div class="ss-card">
           <div class="ss-card-tt">데이터 내보내기</div>
-          <div class="ss-card-sub">매출·고객 데이터를 CSV 로 받아서 백업하실 수 있어요. 안전을 위해 정기적으로 받아두시는 걸 권장해요.</div>
+          <div class="ss-card-sub">고객·예약·매출·재고·지출 전체를 한 번에 받으세요. PIPA·GDPR 준수 — 민감정보(토큰·비밀번호·결제)는 제외돼요.</div>
+          <div class="ss-list-it" data-bk-export="full-zip" style="cursor:pointer">
+            <div class="ic"><i class="ph-duotone ph-archive" aria-hidden="true"></i></div>
+            <div class="meta">
+              <div class="t1">전체 데이터 ZIP (CSV)</div>
+              <div class="t2">고객·예약·매출·재고 · UTF-8 BOM (Excel 한글)</div>
+            </div>
+            <i class="ph-duotone ph-download-simple" aria-hidden="true"></i>
+          </div>
+          <div class="ss-list-it" data-bk-export="full-json" style="cursor:pointer">
+            <div class="ic"><i class="ph-duotone ph-file-code" aria-hidden="true"></i></div>
+            <div class="meta">
+              <div class="t1">전체 데이터 JSON</div>
+              <div class="t2">전체 구조·메타데이터 포함 · 다른 시스템 이관용</div>
+            </div>
+            <i class="ph-duotone ph-download-simple" aria-hidden="true"></i>
+          </div>
           <div class="ss-list-it" data-bk-export="revenue" style="cursor:pointer">
             <div class="ic"><i class="ph-duotone ph-trend-up" aria-hidden="true"></i></div>
             <div class="meta">
-              <div class="t1">매출 데이터 CSV</div>
+              <div class="t1">매출 데이터만 CSV</div>
               <div class="t2">최근 12개월 매출 내역</div>
             </div>
             <i class="ph-duotone ph-download-simple" aria-hidden="true"></i>
@@ -44,7 +60,7 @@
           <div class="ss-list-it" data-bk-export="customers" style="cursor:pointer">
             <div class="ic"><i class="ph-duotone ph-users" aria-hidden="true"></i></div>
             <div class="meta">
-              <div class="t1">고객 데이터 CSV</div>
+              <div class="t1">고객 데이터만 CSV</div>
               <div class="t2">고객 목록·메모·시술 이력</div>
             </div>
             <i class="ph-duotone ph-download-simple" aria-hidden="true"></i>
@@ -110,6 +126,27 @@
   // ── CSV 내보내기 ─────────────────────────────────────
   async function _exportCSV(kind) {
     _haptic();
+    // [2026-05-12 QA #12] 전체 ZIP / JSON 은 백엔드 /data-export 엔드포인트 위임 (PIPA 호환).
+    if (kind === 'full-zip' || kind === 'full-json') {
+      const endpoint = kind === 'full-zip' ? '/data-export/csv' : '/data-export/json';
+      const filename = (kind === 'full-zip' ? `itdasy_full_${_today()}.zip` : `itdasy_full_${_today()}.json`);
+      _toast('전체 데이터 받아오는 중... 잠시 걸릴 수 있어요');
+      try {
+        const res = await fetch(_api() + endpoint, { headers: { ..._auth() } });
+        if (!res.ok) {
+          let detail = '';
+          try { const j = await res.json(); detail = j.detail || ''; } catch (_e) { void _e; }
+          _toast('내보내기 실패 — ' + (detail || ('HTTP ' + res.status)));
+          return;
+        }
+        const blob = await res.blob();
+        _downloadBlob(blob, filename);
+        _toast('내보내기 완료 (' + filename + ')');
+      } catch (e) {
+        _toast('내보내기 실패 — ' + (e && e.message || ''));
+      }
+      return;
+    }
     _toast('데이터 받아오는 중...');
     try {
       let rows = [];
@@ -158,6 +195,14 @@
     const d = new Date();
     const p = (n) => String(n).padStart(2, '0');
     return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate());
+  }
+
+  function _downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch (_e) { void _e; } }, 100);
   }
 
   function _downloadCSV(filename, header, rows) {

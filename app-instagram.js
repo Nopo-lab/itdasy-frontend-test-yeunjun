@@ -87,7 +87,23 @@ async function checkInstaStatus(fromLogin = false) {
       // 첫 글 완성 여부는 generationLog 기반. 백엔드 지원 전까진 localStorage hint로
       updateStep('stepCaption', !!localStorage.getItem('_first_caption_done'));
     } else {
-      try { localStorage.removeItem('itdasy:ig_connected_cache'); } catch (_e) { /* ignore */ }
+      // [2026-05-12 QA #1 CRITICAL] disconnect 직후 다른 화면 (내샵관리·캡션·갤러리) 이 아직 옛 IG 핸들·
+      // 프로필 사진 들고 있던 문제. ig_connected_cache 만 지워서 캐시 분기들이 OLD value 노출.
+      // 모든 IG 캐시 + global var + 헤더까지 한 번에 청소.
+      try {
+        localStorage.removeItem('itdasy:ig_connected_cache');
+        localStorage.removeItem('itdasy:ig_handle');
+        localStorage.removeItem('itdasy:ig_profile_pic');
+        // 이전 분석 결과도 미연결 표시와 맞춤 (재연동 시 갱신)
+        localStorage.removeItem('itdasy_latest_analysis');
+      } catch (_e) { /* ignore */ }
+      _instaHandle = '';
+      try { if (typeof window !== 'undefined') window._instaHandle = ''; } catch (_e) { /* ignore */ }
+      try {
+        if (typeof updateHeaderProfile === 'function') updateHeaderProfile('', null, '');
+      } catch (_e) { /* ignore */ }
+      // 페르소나 대시 카드 즉시 숨김 (옛 분석 결과가 잠시 보이는 문제 방지)
+      try { const pd = document.getElementById('personaDash'); if (pd) pd.style.display = 'none'; } catch (_e) { /* ignore */ }
       // [2026-05-08 28차 hotfix] 잇비 카드 / 메인홈 교차 표시 — 둘 다 보이면 스크롤 어색.
       //   미연결 + 카드 visible       → 잇비 카드만
       //   미연결 + 카드 dismissed     → 메인홈만
@@ -237,11 +253,12 @@ function renderDetailedPopup(data) {
 
 async function reAnalyzePersona() {
   if (await nativeConfirm("확인", '최신 게시물들을 바탕으로 말투와 성과 비결을 다시 분석하시겠습니까?')) {
-    runPersonaAnalyze();
+    // [QA #8] 사용자가 명시적으로 "다시 분석" — force=true 로 5분 캐시 우회.
+    runPersonaAnalyze(true);
   }
 }
 
-async function runPersonaAnalyze() {
+async function runPersonaAnalyze(force) {
   const overlay = document.getElementById('analyzeOverlay');
   const bar     = document.getElementById('analyzeProgressBar');
   const stepTxt = document.getElementById('analyzeStepText');
@@ -269,7 +286,8 @@ async function runPersonaAnalyze() {
   }, 2200);
 
   try {
-    const res = await fetch(API + '/instagram/analyze', {
+    const _url = API + '/instagram/analyze' + (force ? '?force=true' : '');
+    const res = await fetch(_url, {
       method: 'POST',
       headers: authHeader()
     });
@@ -362,11 +380,24 @@ async function disconnectInstagram() {
       const txt = await res.text().catch(() => '');
       throw new Error(`해제 실패 (HTTP ${res.status}) ${txt.slice(0, 60)}`);
     }
+    // [2026-05-12 QA #1] 캐시 클린업 — checkInstaStatus 가 미연결 분기에서도 처리하지만
+    // 다른 화면이 다음 렌더 전까지 stale 값 노출 가능 → disconnect 시점에 선제 청소.
+    try {
+      localStorage.removeItem('itdasy:ig_connected_cache');
+      localStorage.removeItem('itdasy:ig_handle');
+      localStorage.removeItem('itdasy:ig_profile_pic');
+      localStorage.removeItem('itdasy_latest_analysis');
+    } catch (_e) { /* ignore */ }
+    try { if (typeof window !== 'undefined') window._instaHandle = ''; } catch (_e) { /* ignore */ }
     showToast('✓ 인스타 해제됨');
     // [QA #8] single source-of-truth — 모든 IG 상태 listener 에게 변경 통보.
     try {
       window.dispatchEvent(new CustomEvent('itdasy:ig:changed', {
         detail: { connected: false, source: 'disconnect' },
+      }));
+      // 내샵관리·홈 다른 위젯들 동기 갱신 — 헤더·아바타·핸들 즉시 반영.
+      window.dispatchEvent(new CustomEvent('itdasy:data-changed', {
+        detail: { kind: 'ig_disconnect' },
       }));
     } catch (_e) { /* ignore */ }
     // 상태 카드 즉시 재조회 (로그아웃 대신).

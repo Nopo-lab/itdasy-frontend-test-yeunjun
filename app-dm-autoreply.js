@@ -700,6 +700,9 @@
   }
 
   function _bindCard(card) {
+    // [2026-05-12 QA #6] inbox 폴링 시 동일 card element 재바인딩 방어 — 한 번만 바인딩.
+    if (card.dataset.bound === '1') return;
+    card.dataset.bound = '1';
     card.querySelector('[data-act="send"]')?.addEventListener('click', () => _handleSend(card));
     card.querySelector('[data-act="reject"]')?.addEventListener('click', () => _handleReject(card));
     card.querySelector('[data-act="regen"]')?.addEventListener('click', () => _handleRegen(card));
@@ -944,13 +947,19 @@
     }
   }
 
-  function _bindEvents(sheet) {
-    _bindHeader(sheet);
-    _bindToneCards(sheet);
-    _bindHours(sheet);
-    _bindBan(sheet);
-    _bindAdvanced(sheet);
-    _bindRetention(sheet);
+  function _bindEvents(sheet, opts) {
+    // [2026-05-12 QA #6 CRITICAL] _refreshInbox() 가 8초마다 _bindEvents 재호출 → save 버튼에
+    // 리스너 누적되면서 "저장됐어요" 토스트 N번 + POST N번 중복. 폴링 경로(inboxOnly)는
+    // inbox 카드만 다시 바인딩하고 header/tone/hours/ban/advanced/retention 은 skip.
+    const inboxOnly = !!(opts && opts.inboxOnly);
+    if (!inboxOnly) {
+      _bindHeader(sheet);
+      _bindToneCards(sheet);
+      _bindHours(sheet);
+      _bindBan(sheet);
+      _bindAdvanced(sheet);
+      _bindRetention(sheet);
+    }
     sheet.querySelectorAll('.dm-card').forEach(card => _bindCard(card));
   }
 
@@ -1096,8 +1105,8 @@
       const conversations = data.conversations || [];
       const tone = (_settings && _settings.tone) || 'friendly';
       mount.innerHTML = _renderInbox(conversations, tone);
-      // 새로 그려진 inbox 안의 버튼들 재바인딩
-      if (_sheet) _bindEvents(_sheet);
+      // 새로 그려진 inbox 안의 버튼들만 재바인딩 — header/tone/save 는 skip (리스너 누적 방지)
+      if (_sheet) _bindEvents(_sheet, { inboxOnly: true });
     } catch (_e) { /* 조용히 실패 — 다음 틱에 재시도 */ }
   }
 

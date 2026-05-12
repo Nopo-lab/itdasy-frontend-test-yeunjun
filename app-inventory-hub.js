@@ -159,11 +159,15 @@
   }
 
   function _renderInputBar() {
+    // [2026-05-12 QA #14] step / decimal_places 품목별 입력 가능하도록 분리.
+    //   step="any" → 0.01 (염색약·세럼) ~ 1 (피스 단위) 모두 허용.
+    //   자리 수 (decimal_places) 는 표시 자릿수 결정 (0~3).
     return `<div class="hub-qadd">
       <input class="hub-input" data-field="name"      placeholder="품목 이름" list="ac-item_name" style="flex:1.5;"/>
-      <input class="hub-input" data-field="quantity"  placeholder="수량" type="number" step="0.1" style="flex:0.6;min-width:60px;"/>
+      <input class="hub-input" data-field="quantity"  placeholder="수량" type="number" step="any" style="flex:0.6;min-width:60px;"/>
       <input class="hub-input" data-field="unit" placeholder="단위" value="개" style="flex:0.45;min-width:50px;"/>
-      <input class="hub-input" data-field="threshold" placeholder="임계" type="number" step="0.1" value="3" style="flex:0.6;min-width:60px;"/>
+      <input class="hub-input" data-field="threshold" placeholder="임계" type="number" step="any" value="3" style="flex:0.6;min-width:60px;"/>
+      <input class="hub-input" data-field="decimal_places" placeholder="자리" type="number" min="0" max="3" value="1" title="소수 자릿수 (0~3)" style="flex:0.35;min-width:44px;"/>
       <input class="hub-input" data-field="category"  placeholder="네일|헤어|속눈썹|왁싱|피부|반영구" list="ac-inv_category" style="flex:0.9;"/>
       <button class="hub-btn-stack" data-act="stack">⊕ 쌓기</button>
       <button class="hub-btn-add"  data-act="add">즉시 추가 ↵</button>
@@ -352,18 +356,30 @@
     const o = document.getElementById(OID);
     if (!o) return;
     o.querySelectorAll('.hub-qadd [data-field]').forEach(i => {
-      i.value = i.dataset.field === 'threshold' ? '3' : '';
-      if (i.dataset.field === 'unit') i.value = '개';
+      const f = i.dataset.field;
+      if (f === 'threshold') i.value = '3';
+      else if (f === 'unit') i.value = '개';
+      else if (f === 'decimal_places') i.value = '1';
+      else i.value = '';
     });
     o.querySelector('.hub-qadd [data-field="name"]')?.focus();
   }
   function _buildBody(v) {
-    if (!v.name) throw new Error('품목 이름 필수');
+    if (!v.name) throw new Error('품목 이름부터 입력해주세요');
+    // [2026-05-12 QA #14] decimal_places 사용자 직접 지정 (0~3).
+    // 미지정 시 quantity 에 소수점 있으면 1, 없으면 0 으로 추정 (이전 동작 유지).
+    let dp;
+    if (v.decimal_places != null && v.decimal_places !== '') {
+      const parsed = parseInt(v.decimal_places, 10);
+      dp = (Number.isFinite(parsed) && parsed >= 0 && parsed <= 3) ? parsed : 1;
+    } else {
+      dp = String(v.quantity || '').includes('.') ? 1 : 0;
+    }
     return {
       name: v.name, unit: v.unit || '개',
       quantity:  parseFloat(v.quantity)  || 0,
       threshold: parseFloat(v.threshold) || 3,
-      decimal_places: String(v.quantity || '').includes('.') ? 1 : 0,
+      decimal_places: dp,
       category:  v.category || 'etc',
     };
   }
@@ -372,7 +388,13 @@
     const v = _collectInput(); if (!v) return;
     let body;
     try { body = _buildBody(v); } catch (e) {
-      if (window.showToast) window.showToast('' + e.message); return;
+      if (window.showToast) window.showToast('' + e.message);
+      // [QA #14] 이름 누락 시 사용자 시각 피드백 — 첫 입력칸 포커스
+      try {
+        const nameEl = document.getElementById(OID)?.querySelector('.hub-qadd [data-field="name"]');
+        if (nameEl) { nameEl.focus(); nameEl.style.borderColor = '#dc2626'; setTimeout(() => { nameEl.style.borderColor = ''; }, 1500); }
+      } catch (_e) { void _e; }
+      return;
     }
     try {
       const res = await fetch(`${API()}/inventory`, {

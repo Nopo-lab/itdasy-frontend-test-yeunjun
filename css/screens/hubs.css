@@ -22,6 +22,11 @@
   border-radius: 0;
   box-shadow: none;
   overscroll-behavior: contain;
+  /* [2026-05-12 QA #14] iOS Safari/Capacitor 모바일 스크롤 부자연 fix —
+     -webkit-overflow-scrolling:touch 누락 시 swipe drift 가 0px 에서 멈춤. */
+  -webkit-overflow-scrolling: touch;
+  /* iOS 키보드 올라올 때 입력칸 가려지는 문제 — 키보드 영역만큼 여유 padding. */
+  padding-bottom: env(keyboard-inset-height, 0);
   animation: hub-fade-in 0.08s ease-out;
 }
 .hub-overlay::before, .rr-overlay::before {

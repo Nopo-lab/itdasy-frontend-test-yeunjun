@@ -208,7 +208,7 @@
     const $v = document.getElementById('psv-view-report');
     if ($r) $r.addEventListener('click', () => {
       close();
-      if (typeof window.runPersonaAnalyze === 'function') window.runPersonaAnalyze();
+      if (typeof window.runPersonaAnalyze === 'function') window.runPersonaAnalyze(true);
       else _toast('인스타 연동 후 분석할 수 있어요');
     });
     if ($v) $v.addEventListener('click', () => {

@@ -108,9 +108,16 @@
         const homeTabBtn = document.querySelector('.tab-bar__btn[data-tab="home"]');
         if (homeTabBtn) homeTabBtn.click();
 
-        // [2026-04-24] OAuth 콜백 직후 말투 테스트 자동 오픈 제거
-        // window.openPersonaSurveyModal() 함수는 app-persona-survey.js 에 남아있음.
-        // 사용자가 설정 메뉴 등에서 명시적으로 트리거하면 그대로 작동.
+        // [2026-05-12 QA #2] 연동 직후 자동 말투 분석 트리거 (native 경로 누락 수정).
+        // BE _auto_analyze_persona_bg 이 백그라운드로 돌고 있어도 FE 가 분석중 UI 를 안 띄우면
+        // 사장님은 "연동만 되고 아무 분석도 안 함" 인상. /analyze 5분 캐시 가드로 quota 중복 차단됨.
+        try {
+          setTimeout(() => {
+            try {
+              if (typeof window.runPersonaAnalyze === 'function') window.runPersonaAnalyze();
+            } catch (_e2) { /* ignore */ }
+          }, 800);
+        } catch (_e3) { /* ignore */ }
       } else if (u.searchParams.get('error')) {
         const err = u.searchParams.get('error');
         if (window.showToast) window.showToast('연동 실패: ' + err);

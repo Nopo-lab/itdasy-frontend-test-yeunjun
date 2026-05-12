@@ -49,8 +49,9 @@
             <input class="ss-input" id="ssShopPhone" placeholder="010-0000-0000" inputmode="tel"></div>
           <div class="ss-row"><span class="lbl">주소</span>
             <input class="ss-input" id="ssShopAddr" placeholder="도로명 주소"></div>
-          <div class="ss-row"><span class="lbl">영업시간</span>
-            <input class="ss-input" id="ssShopHours" placeholder="예) 10:00 - 21:00 (월 휴무)"></div>
+          <div class="ss-row" style="flex-direction:column;align-items:stretch;"><span class="lbl" style="margin-bottom:8px;">영업시간 (요일별)</span>
+            <div id="ssShopHoursGrid" style="display:flex;flex-direction:column;gap:6px;"></div>
+          </div>
         </div>
 
         <div class="ss-card">
@@ -72,9 +73,10 @@
         </div>
 
         <div class="ss-card" id="ssStaffCard" style="display:none;">
-          <div class="ss-card-tt">직원 (스텁)</div>
-          <div class="ss-card-sub">2인 이상 운영 모드에서 직원 등록 가능. 백엔드 연결 후 활성화.</div>
-          <button type="button" class="ss-cta-secondary" disabled>직원 추가</button>
+          <div class="ss-card-tt">직원</div>
+          <div class="ss-card-sub" id="ssStaffSub">2인 이상 운영 모드에서 직원 등록 가능 (플랜에 따라 인원 한도 다름).</div>
+          <div id="ssStaffList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+          <button type="button" class="ss-cta-secondary" id="ssAddStaffBtn">+ 직원 추가</button>
         </div>
 
         <div class="ss-card">
@@ -122,6 +124,10 @@
     el.addEventListener('click', (e) => {
       if (e.target.closest('[data-ss-back]')) { closeShopSettings(); return; }
       if (e.target.closest('[data-ss-save]')) { _save(); return; }
+      // [2026-05-12 QA #11] 직원 추가 버튼 활성화 — 백엔드 /staff API 호출.
+      if (e.target.closest('#ssAddStaffBtn')) { _onAddStaff(); return; }
+      const _staffDel = e.target.closest('[data-staff-del]');
+      if (_staffDel) { _onDeleteStaff(_staffDel.dataset.staffDel); return; }
       const sw = e.target.closest('.ss-switch');
       if (sw) { sw.classList.toggle('is-on');
         sw.setAttribute('aria-checked', sw.classList.contains('is-on') ? 'true' : 'false');
@@ -137,7 +143,148 @@
     const card = document.getElementById('ssStaffCard');
     const solo = document.getElementById('ssSoloSwitch');
     if (!card || !solo) return;
-    card.style.display = solo.classList.contains('is-on') ? 'none' : 'block';
+    const visible = !solo.classList.contains('is-on');
+    card.style.display = visible ? 'block' : 'none';
+    if (visible) _hydrateStaffList().catch(() => {});
+  }
+
+  async function _hydrateStaffList() {
+    const list = document.getElementById('ssStaffList');
+    const sub  = document.getElementById('ssStaffSub');
+    if (!list) return;
+    list.innerHTML = '<div style="font-size:12px;color:var(--text3,#999);">불러오는 중…</div>';
+    try {
+      const res = await fetch(_api() + '/staff', { headers: { ..._auth() } });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const items = Array.isArray(data.items) ? data.items : (data || []);
+      const limit = data.plan_limit != null ? data.plan_limit : null;
+      const plan = data.plan || '';
+      if (sub && limit !== null) {
+        sub.textContent = `현재 ${items.length}명 등록 · ${plan || '플랜'} 한도 ${limit}명. 한도 초과 시 Pro/Premium 업그레이드 필요.`;
+      }
+      if (!items.length) {
+        list.innerHTML = '<div style="font-size:12px;color:var(--text3,#999);">아직 등록된 직원이 없어요.</div>';
+        return;
+      }
+      list.innerHTML = items.map(s => `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#F6F8FA;border-radius:10px;">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${(s.color || '#ccc')};"></span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:700;color:var(--text,#222);">${_esc(s.name || '이름없음')}</div>
+            <div style="font-size:11px;color:var(--text3,#999);">${_esc(s.role || '')}</div>
+          </div>
+          <button type="button" data-staff-del="${s.id}" style="background:transparent;border:none;color:#dc2626;font-size:11px;cursor:pointer;">삭제</button>
+        </div>
+      `).join('');
+    } catch (e) {
+      list.innerHTML = `<div style="font-size:12px;color:#dc2626;">직원 목록 불러오기 실패 (${e && e.message || ''})</div>`;
+    }
+  }
+
+  function _esc(s) {
+    return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+
+  async function _onAddStaff() {
+    const name = prompt('직원 이름을 입력해주세요 (예: 이지수)');
+    if (!name || !name.trim()) return;
+    const role = prompt('역할 (선택사항, 예: 디자이너) — 비워도 됩니다') || '';
+    _haptic();
+    try {
+      const res = await fetch(_api() + '/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ..._auth() },
+        body: JSON.stringify({ name: name.trim(), role: role.trim() || null }),
+      });
+      if (!res.ok) {
+        let detail = '';
+        try { const j = await res.json(); detail = j.detail || ''; } catch (_e) { void _e; }
+        if (res.status === 402 || res.status === 403) {
+          _toast(detail || '플랜 한도를 초과했어요. Pro/Premium 업그레이드가 필요해요.');
+        } else {
+          _toast('직원 추가 실패 — ' + (detail || ('HTTP ' + res.status)));
+        }
+        return;
+      }
+      _toast('직원 추가 완료');
+      await _hydrateStaffList();
+    } catch (e) {
+      _toast('직원 추가 실패 — ' + (e && e.message || ''));
+    }
+  }
+
+  async function _onDeleteStaff(id) {
+    if (!id) return;
+    if (!confirm('이 직원을 삭제할까요?')) return;
+    try {
+      const res = await fetch(_api() + '/staff/' + encodeURIComponent(id), {
+        method: 'DELETE',
+        headers: { ..._auth() },
+      });
+      if (!res.ok) { _toast('삭제 실패 (HTTP ' + res.status + ')'); return; }
+      _toast('삭제 완료');
+      await _hydrateStaffList();
+    } catch (e) {
+      _toast('삭제 실패 — ' + (e && e.message || ''));
+    }
+  }
+
+  // [2026-05-12 QA #10] 영업시간 자유텍스트 → 요일별 캘린더 UI.
+  // business_hours_json 스키마: {"mon":{"open":"10:00","close":"20:00","off":false}, ...}
+  const _DAY_KEYS = ['mon','tue','wed','thu','fri','sat','sun'];
+  const _DAY_LABELS = { mon:'월', tue:'화', wed:'수', thu:'목', fri:'금', sat:'토', sun:'일' };
+
+  function _defaultHours() {
+    const out = {};
+    _DAY_KEYS.forEach(k => { out[k] = { open: '10:00', close: '20:00', off: (k === 'sun') }; });
+    return out;
+  }
+
+  function _renderHoursGrid(hours) {
+    const wrap = document.getElementById('ssShopHoursGrid');
+    if (!wrap) return;
+    wrap.innerHTML = _DAY_KEYS.map(k => {
+      const h = hours[k] || { open: '10:00', close: '20:00', off: false };
+      const off = !!h.off;
+      return `
+        <div class="ss-hours-row" data-day="${k}" style="display:flex;align-items:center;gap:8px;padding:6px 0;">
+          <span style="width:24px;font-size:13px;font-weight:700;color:var(--text,#222);">${_DAY_LABELS[k]}</span>
+          <input type="time" class="ss-time-input" data-hr-field="open" value="${h.open || '10:00'}" ${off ? 'disabled' : ''} style="height:36px;padding:0 8px;border:1.5px solid #E5E5EA;border-radius:8px;font-size:13px;flex:1;min-width:88px;${off ? 'opacity:0.4;' : ''}">
+          <span style="font-size:12px;color:var(--text3,#999);">~</span>
+          <input type="time" class="ss-time-input" data-hr-field="close" value="${h.close || '20:00'}" ${off ? 'disabled' : ''} style="height:36px;padding:0 8px;border:1.5px solid #E5E5EA;border-radius:8px;font-size:13px;flex:1;min-width:88px;${off ? 'opacity:0.4;' : ''}">
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:${off ? 'var(--accent2,#D95F70)' : 'var(--text3,#999)'};white-space:nowrap;">
+            <input type="checkbox" data-hr-field="off" ${off ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;">휴무
+          </label>
+        </div>
+      `;
+    }).join('');
+    // off 토글 → 같은 행의 time input enable/disable
+    wrap.querySelectorAll('[data-hr-field="off"]').forEach(chk => {
+      chk.addEventListener('change', () => {
+        const row = chk.closest('.ss-hours-row');
+        if (!row) return;
+        const disabled = chk.checked;
+        row.querySelectorAll('input[type="time"]').forEach(t => {
+          t.disabled = disabled;
+          t.style.opacity = disabled ? '0.4' : '';
+        });
+      });
+    });
+  }
+
+  function _collectHours() {
+    const wrap = document.getElementById('ssShopHoursGrid');
+    if (!wrap) return null;
+    const out = {};
+    wrap.querySelectorAll('.ss-hours-row').forEach(row => {
+      const d = row.dataset.day;
+      const open = row.querySelector('[data-hr-field="open"]')?.value || '10:00';
+      const close = row.querySelector('[data-hr-field="close"]')?.value || '20:00';
+      const off = !!row.querySelector('[data-hr-field="off"]')?.checked;
+      out[d] = { open, close, off };
+    });
+    return out;
   }
 
   async function _hydrate() {
@@ -146,7 +293,6 @@
       ssShopName:  get('itdasy_shop_name') || get('shop_name') || '',
       ssShopPhone: await _safeGet('itdasy_shop_phone'),
       ssShopAddr:  await _safeGet('itdasy_shop_addr'),
-      ssShopHours: get('itdasy_shop_hours') || '',
     };
     Object.keys(fields).forEach(id => {
       const el = document.getElementById(id);
@@ -157,15 +303,43 @@
     const sw = document.getElementById('ssSoloSwitch');
     if (sw && solo === '0') sw.classList.remove('is-on');
     _refreshStaffVisibility();
+    // 영업시간 hydrate — 백엔드 GET /shop/settings 우선, 실패 시 localStorage, 그것도 없으면 default
+    let hours = _defaultHours();
+    try {
+      const res = await fetch(_api() + '/shop/settings', { headers: { ..._auth() } });
+      if (res.ok) {
+        const data = await res.json();
+        let bh = data && data.business_hours_json;
+        if (typeof bh === 'string') { try { bh = JSON.parse(bh); } catch (_e) { bh = null; } }
+        if (bh && typeof bh === 'object' && !Array.isArray(bh)) {
+          _DAY_KEYS.forEach(k => { if (bh[k]) hours[k] = { ...hours[k], ...bh[k] }; });
+        }
+      }
+    } catch (_e) { /* ignore — fallback to default */ }
+    try {
+      const localBH = localStorage.getItem('itdasy_business_hours_json');
+      if (localBH) {
+        const parsed = JSON.parse(localBH);
+        if (parsed && typeof parsed === 'object') {
+          _DAY_KEYS.forEach(k => { if (parsed[k]) hours[k] = { ...hours[k], ...parsed[k] }; });
+        }
+      }
+    } catch (_e) { /* ignore */ }
+    _renderHoursGrid(hours);
   }
 
   async function _save() {
     const get = (id) => (document.getElementById(id) || { value: '' }).value.trim();
+    const hoursObj = _collectHours();
+    // 사람이 읽을 수 있는 hours 문자열 (백엔드 free-text 필드 호환용)
+    const _hrText = hoursObj ? _DAY_KEYS.filter(k => !hoursObj[k].off)
+      .map(k => `${_DAY_LABELS[k]} ${hoursObj[k].open}-${hoursObj[k].close}`).join(', ') : '';
     const payload = {
       shop_name: get('ssShopName'),
       phone: get('ssShopPhone'),
       address: get('ssShopAddr'),
-      hours: get('ssShopHours'),
+      hours: _hrText,
+      business_hours_json: hoursObj ? JSON.stringify(hoursObj) : null,
       solo_mode: document.getElementById('ssSoloSwitch')?.classList.contains('is-on') ? 1 : 0,
       auto_confirm: document.getElementById('ssAutoConfirmSwitch')?.classList.contains('is-on') ? 1 : 0,
     };
@@ -176,7 +350,8 @@
       localStorage.setItem('itdasy_shop_name', payload.shop_name);
       await _safeSet('itdasy_shop_phone', payload.phone);
       await _safeSet('itdasy_shop_addr', payload.address);
-      localStorage.setItem('itdasy_shop_hours', payload.hours);
+      localStorage.setItem('itdasy_shop_hours', _hrText);
+      if (payload.business_hours_json) localStorage.setItem('itdasy_business_hours_json', payload.business_hours_json);
       localStorage.setItem('itdasy_solo_mode', String(payload.solo_mode));
     } catch (_e) { void _e; }
 

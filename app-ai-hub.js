@@ -175,6 +175,12 @@
       const row = e.target.closest('.ms-aih__row');
       if (row) {
         const act = row.dataset.act;
+        // [2026-05-12 QA #7] 진입점 함수가 없을 때 sheet 만 닫혀서 사용자가
+        // "다른 이상한 페이지로 이동한" 인상 받던 문제. 함수 존재 선검증.
+        if (!_canRoute(act)) {
+          if (window.showToast) window.showToast('아직 준비 중이에요. 잠시 후 다시 시도해주세요.');
+          return; // sheet 유지
+        }
         close();
         setTimeout(() => _route(act), 200);
       }
@@ -185,6 +191,10 @@
       if (!row) return;
       e.preventDefault();
       const act = row.dataset.act;
+      if (!_canRoute(act)) {
+        if (window.showToast) window.showToast('아직 준비 중이에요.');
+        return;
+      }
       close();
       setTimeout(() => _route(act), 200);
     });
@@ -210,24 +220,37 @@
   }
 
   // ── 7개 항목 라우터 (동작 변경 X) ─────────────────────────────
+  const _ROUTE_MAP = {
+    dm:      'openDMAutoreplySettings',
+    kakao:   'openKakaoHub',
+    persona: 'openPersonaSurveyModal',
+    caption: 'openCaptionScenarioPopup',
+    posts:   null,
+    memo:    'openAssistantFactsSheet',
+    capture: 'openSmartCapture',
+  };
+
+  function _canRoute(act) {
+    if (act === 'posts') return typeof window.showTab === 'function';
+    const fn = _ROUTE_MAP[act];
+    return !!(fn && typeof window[fn] === 'function');
+  }
+
   function _route(act) {
-    const map = {
-      dm:      'openDMAutoreplySettings',
-      kakao:   'openKakaoHub',
-      persona: 'openPersonaSurveyModal',
-      caption: 'openCaptionScenarioPopup',
-      posts:   null,
-      memo:    'openAssistantFactsSheet',
-      capture: 'openSmartCapture',
-    };
+    const map = _ROUTE_MAP;
     if (act === 'posts') {
       try {
         if (typeof window.showTab === 'function') {
           const finishBtn = document.querySelector('.tab-bar__btn[data-tab="finish"]');
           window.showTab('finish', finishBtn || null);
+          if (window.showToast) window.showToast('마무리 탭으로 이동했어요');
+        } else if (window.showToast) {
+          window.showToast('게시물 관리 화면을 찾을 수 없어요');
         }
         if (typeof window.initFinishTab === 'function') window.initFinishTab();
-      } catch (_e) { void _e; }
+      } catch (e) {
+        if (window.showToast) window.showToast('게시물 관리 진입 실패 — ' + (e && e.message || ''));
+      }
       return;
     }
     const fnName = map[act];
