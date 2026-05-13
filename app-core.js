@@ -597,6 +597,32 @@ function authHeader() {
   const RETRY_STATUSES = new Set([500, 502, 503, 504]);
   const MAX_RETRIES = 3;              // 총 4회 시도 (초기 + 3회 재시도)
   const BACKOFF_MS = [500, 1500, 4000]; // exponential backoff (cold start 대응)
+  // [2026-05-13] Cloud Run cold start 대응 — 인스턴스 0→1 기동에 5~15초.
+  // 기본 fetch 는 timeout 없어 모바일에서 무한 hang → "Failed to fetch" 토스트가 안 떠도
+  // 화면이 멈춤. 첫 시도는 넉넉히 20초, 재시도는 12초 (인스턴스 warm 이면 빠름).
+  const FETCH_TIMEOUT_FIRST_MS = 20000;
+  const FETCH_TIMEOUT_RETRY_MS = 12000;
+
+  // 호출자 signal 보존하면서 timeout 까지 보호하는 fetch 헬퍼.
+  // timeout 으로 abort 된 경우는 wrapper 의 retry 분기가 받아서 재시도하도록
+  // 호출자의 init.signal 은 건드리지 않는다 (catch 에서 caller-abort 판단 그대로 유지).
+  function _fetchWithTimeout(input, init, timeoutMs) {
+    const ctl = new AbortController();
+    const callerSignal = init && init.signal;
+    const onCallerAbort = () => ctl.abort();
+    if (callerSignal) {
+      if (callerSignal.aborted) ctl.abort();
+      else callerSignal.addEventListener('abort', onCallerAbort, { once: true });
+    }
+    const timer = setTimeout(() => ctl.abort(), timeoutMs);
+    const newInit = { ...(init || {}), signal: ctl.signal };
+    return _origFetch(input, newInit).finally(() => {
+      clearTimeout(timer);
+      if (callerSignal) {
+        try { callerSignal.removeEventListener('abort', onCallerAbort); } catch (_) { /* ignore */ }
+      }
+    });
+  }
 
   function _isRetryableMethod(init) {
     const m = (init && init.method ? String(init.method).toUpperCase() : 'GET');
@@ -679,8 +705,9 @@ function authHeader() {
     let attempt = 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
+      const _tmo = attempt === 0 ? FETCH_TIMEOUT_FIRST_MS : FETCH_TIMEOUT_RETRY_MS;
       try {
-        const res = await _origFetch(input, init);
+        const res = await _fetchWithTimeout(input, init, _tmo);
         if (res.status === 401 && getToken()) {
           // /auth/refresh 자체가 401이면 무한루프 방지
           const url = typeof input === 'string' ? input : (input.url || '');
@@ -690,9 +717,9 @@ function authHeader() {
           }
           try {
             const newTok = await _tryRefresh();
-            // 갱신된 토큰으로 원 요청 재시도
+            // 갱신된 토큰으로 원 요청 재시도 (refresh 후 fetch 는 timeout 짧게)
             const newInit = { ...init, headers: { ...(init && init.headers), 'Authorization': 'Bearer ' + newTok } };
-            return await _origFetch(input, newInit);
+            return await _fetchWithTimeout(input, newInit, FETCH_TIMEOUT_RETRY_MS);
           } catch (_e) {
             _handle401();
             return res;
