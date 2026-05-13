@@ -124,7 +124,21 @@
       // fingerprint: 길이 + role + text 첫 80자 + action_status + edit_mode + action_groups 길이
       let sig = _history.length + '|' + last.role + '|' + String(last.text || '').slice(0, 80)
         + '|' + (last.action_status || '') + '|' + (last.edit_mode ? '1' : '0')
-        + '|' + ((last.action_groups && last.action_groups.length) || 0);
+        + '|' + ((last.action_groups && last.action_groups.length) || 0)
+        + '|u' + (last.unified_mode ? '1' : '0');
+      // [2026-05-13 blocker] group.expanded / item.editing / item.status 도 sig 에 포함.
+      // 이전엔 누락 → "수정하기" 토글 후 g.expanded 가 바뀌어도 sig 동일 → _renderHistory 가
+      // 변경 없음으로 판단해 skip. sheet 닫았다 열어야(_lastRenderedSig='') 반영되는 버그.
+      if (Array.isArray(last.action_groups)) {
+        for (const g of last.action_groups) {
+          sig += '|g' + (g && g.expanded ? '1' : '0');
+          if (g && Array.isArray(g.items)) {
+            for (const it of g.items) {
+              sig += (it && it.editing ? 'e' : '') + (it && it.status ? it.status[0] : '');
+            }
+          }
+        }
+      }
       // loading 표시 중이면 진행 시간(초)도 sig 에 포함 — 1초 단위 갱신 보장
       if (last.role === 'loading') {
         sig += '|t' + Math.floor(Date.now() / 1000);
