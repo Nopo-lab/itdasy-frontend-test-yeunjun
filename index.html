@@ -39,7 +39,7 @@
 <meta name="theme-color" content="#F2F4F6">
 <title>잇데이 스튜디오</title>
 <script>
-  window.__LATEST_BUILD__ = '20260514-v121-pwa-recover';
+  window.__LATEST_BUILD__ = '20260514-v122-whitescreen-watchdog';
   setTimeout(function(){
     if (window.APP_BUILD && window.APP_BUILD !== window.__LATEST_BUILD__ && !sessionStorage.getItem('build_busted')) {
       console.warn('[BUILD] stale JS 감지 — HTML=' + window.__LATEST_BUILD__ + ' / JS=' + window.APP_BUILD + ' → 캐시 파괴');
@@ -438,12 +438,54 @@
 </div>
 
 <!-- [UX-LOAD] 앱 초기 로딩 오버레이 — 데이터 준비 완료 시 숨김 -->
-<div id="appLoadingOverlay" style="display:none;position:fixed;inset:0;z-index:99999;background:var(--surface,#fff);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.3s;">
+<div id="appLoadingOverlay" style="display:none;position:fixed;inset:0;z-index:99999;background:var(--surface,#fff);flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.3s;">
   <div style="font-size:22px;font-weight:800;color:var(--accent,var(--brand));letter-spacing:-0.5px;">잇데이</div>
   <div style="font-size:11px;color:var(--text3,#999);margin-top:4px;">준비 중이에요...</div>
   <div style="margin-top:20px;width:36px;height:36px;border:3px solid var(--border,#eee);border-top-color:var(--accent,var(--brand));border-radius:50%;animation:_ldSpin 0.7s linear infinite;"></div>
+  <div id="appLoadingDiag" style="margin-top:24px;max-width:300px;font-size:10px;color:#c33;text-align:center;white-space:pre-wrap;word-break:break-word;display:none;"></div>
 </div>
 <style>@keyframes _ldSpin{to{transform:rotate(360deg)}}</style>
+<script>
+  // [2026-05-14 흰화면-fix] 로딩 오버레이 watchdog — 12초 후에도 안 사라지면 강제 hide.
+  //   원인 후보: _preloadTabs() hang 또는 throw / JS init 단계 unhandled error.
+  //   appLoadingOverlay 가 z-index 99999 + display:flex 인 채로 멈추면 사용자가 흰화면 경험.
+  (function () {
+    var WATCHDOG_MS = 12000;
+    setTimeout(function () {
+      try {
+        var lo = document.getElementById('appLoadingOverlay');
+        if (!lo) return;
+        var st = window.getComputedStyle(lo);
+        if (st.display !== 'none' && parseFloat(st.opacity || '1') > 0.1) {
+          console.warn('[WATCHDOG] appLoadingOverlay 12초 후에도 표시 중 — 강제 hide');
+          lo.style.opacity = '0';
+          setTimeout(function () { lo.style.display = 'none'; }, 400);
+        }
+      } catch (_e) { /* ignore */ }
+    }, WATCHDOG_MS);
+  })();
+  // 글로벌 unhandled error 캐치 → 로딩 오버레이에 메시지 표시 (모바일 자가 진단용)
+  window.addEventListener('error', function (e) {
+    try {
+      var d = document.getElementById('appLoadingDiag');
+      if (!d) return;
+      var msg = (e && e.message) ? e.message : 'unknown';
+      var src = (e && e.filename) ? String(e.filename).split('/').pop() : '';
+      d.textContent = '[ERR] ' + msg + (src ? ' @ ' + src + ':' + (e.lineno || '?') : '');
+      d.style.display = 'block';
+    } catch (_) { /* ignore */ }
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    try {
+      var d = document.getElementById('appLoadingDiag');
+      if (!d) return;
+      var r = e && e.reason;
+      var msg = (r && r.message) ? r.message : (typeof r === 'string' ? r : 'promise rejected');
+      d.textContent = '[PROMISE] ' + msg;
+      d.style.display = 'block';
+    } catch (_) { /* ignore */ }
+  });
+</script>
 
 <!-- 2026-05-04 ── 로그인 전에는 앱 화면 조각을 숨긴다. 토큰 확인은 app-core.js 의 getToken() 이 담당. -->
 <div class="lock-overlay" id="lockOverlay" style="display:none">
