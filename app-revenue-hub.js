@@ -367,12 +367,17 @@
   async function _flushBatch() {
     const items = [..._state.pending];
     if (!items.length) return;
+    // [QA-r5] Promise.all + .then(r => r.json()) 가 4xx/5xx 응답을 success 로 흘려보내던 버그.
+    // res.ok 가드 추가. 일부 실패 시 전체 에러로 잡아 fake-success 토스트/캐시 오염 차단.
     try {
       const results = await Promise.all(items.map(b =>
         fetch(`${API()}/revenue`, {
           method: 'POST', headers: { ...AUTH(), 'Content-Type': 'application/json' },
           body: JSON.stringify(b),
-        }).then(r => r.json())
+        }).then(r => {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
       ));
       _state.rows.unshift(...results.reverse());
       _state.pending = [];

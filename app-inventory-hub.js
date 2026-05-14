@@ -425,12 +425,17 @@
 
   async function _flushBatch() {
     const items = [..._state.pending]; if (!items.length) return;
+    // [QA-r5] res.ok 가드 — 4xx/5xx 응답 JSON 이 _state.rows 에 섞여 들어가 저장 토스트가
+    // 떠도 실제로는 실패한 fake-success 를 차단.
     try {
       const results = await Promise.all(items.map(b =>
         fetch(`${API()}/inventory`, {
           method: 'POST', headers: { ...AUTH(), 'Content-Type': 'application/json' },
           body: JSON.stringify(b),
-        }).then(r => r.json())
+        }).then(r => {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
       ));
       _state.rows.push(...results);
       _state.pending = [];
