@@ -450,6 +450,9 @@
   async function _adjustQuantity(rowId, delta) {
     const row = _state.rows.find(r => String(r.id) === String(rowId));
     if (!row) return;
+    // [QA-r6] 같은 row PATCH in-flight 중 재호출 차단 — 연타 시 다중 API + 진동 폭주 방지.
+    if (row._adjusting) return;
+    row._adjusting = true;
     const step = row.decimal_places > 0 ? delta / 10 : delta;
     const next = Math.max(0, Number(row.quantity || 0) + step);
     try {
@@ -463,7 +466,11 @@
       _render();
       _emitInventoryChanged('quantity', row);
       if (window.hapticLight) window.hapticLight();
-    } catch (e) { if (window.showToast) window.showToast('실패: ' + e.message); }
+    } catch (e) {
+      if (window.showToast) window.showToast('실패: ' + e.message);
+    } finally {
+      row._adjusting = false;
+    }
   }
 
   async function _saveEdit(rowId) {

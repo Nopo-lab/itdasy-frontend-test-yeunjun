@@ -19,6 +19,9 @@
   const OFFLINE_KEY = 'itdasy_inventory_offline_v1';
   let _items = [];
   let _isOffline = false;
+  // [QA-r6] +/- 버튼 연타 시 동시 fire 차단 — innerHTML 재생성으로 btn 인스턴스가 바뀌어
+  // btn._adjusting 보호가 무력화되므로 module-scope Set 으로 row id 단위 lock.
+  const _adjustingIds = new Set();
 
   function _uuid() {
     if (crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -276,13 +279,18 @@
     }).join('') + '</div>';
     listEl.querySelectorAll('[data-inv-delta]').forEach(btn => {
       btn.addEventListener('click', async () => {
+        const id = btn.dataset.invTarget;
+        if (_adjustingIds.has(id)) return;
+        _adjustingIds.add(id);
         const d = parseInt(btn.dataset.invDelta, 10);
         try {
-          await adjust(btn.dataset.invTarget, d);
+          await adjust(id, d);
           if (window.hapticLight) window.hapticLight();
           _rerender();
         } catch (e) {
           if (window.showToast) window.showToast('조정 실패');
+        } finally {
+          _adjustingIds.delete(id);
         }
       });
     });

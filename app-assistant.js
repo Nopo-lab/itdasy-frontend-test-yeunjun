@@ -2534,6 +2534,15 @@
         if (_shouldUseUnifiedCard(msg.action_groups)) msg.unified_mode = true;
         _history.push(msg);
       } else {
+        // [QA-r6] actions=0 + answer 에 가격 패턴이 있는 모순 케이스 차단.
+        // 백엔드가 "0건 추출 + 영수증 prose 본문" 으로 응답하면 사용자는 가격은 보이는데
+        // 저장 카드가 없어 혼란. 메시지를 명확한 안내로 치환해 prose 노출 자체를 막음.
+        const _ans = (d.answer || '').trim();
+        const _hasPrice = /([0-9]{2,3},[0-9]{3}|[0-9]{4,})\s*원/.test(_ans);
+        const _wasImageUpload = !!(pending && pending.kind === 'images');
+        if (_wasImageUpload && _hasPrice && _ans.length > 30) {
+          msg.text = '분석은 됐지만 자동 저장 가능한 형태로 정리가 안 됐어요.\n사진을 다시 찍거나 직접 추가해주세요.';
+        }
         _history.push(msg);
       }
       _renderHistory();
