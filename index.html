@@ -4,13 +4,14 @@
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://*.supabase.co https://*.cloudflare.com https://*.r2.cloudflarestorage.com; connect-src 'self' https://*.run.app wss://*.run.app https://*.supabase.co https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://unpkg.com; worker-src 'self';"
 >
-<!-- [2026-04-28 NUCLEAR] 옛 SW + 옛 캐시 강제 청소 (한 번만, sw_kill_v3 가드)
+<!-- [2026-05-14 NUCLEAR v4] 옛 PWA 흰화면 회복 — KILL_KEY bump (v3→v4)
+     v3 가드 이미 통과한 PWA 들이 다시 옛 SW 캐시에 갇혀 흰화면 → 한번 더 강제 청소.
      기존 SW 가 sw.js·app-core.js 자체를 캐싱해서 영원히 옛 코드 서빙되던 catch-22 해결.
      이 inline script 는 SW 등록 전에 실행됨 — 옛 SW 의 모든 reg 와 cache 비우고 reload. -->
 <script>
 (function () {
   try {
-    var KILL_KEY = 'itdasy_sw_killed_v3';
+    var KILL_KEY = 'itdasy_sw_killed_v4';
     if (localStorage.getItem(KILL_KEY) === '1') return;
     if (!('serviceWorker' in navigator)) return;
     navigator.serviceWorker.getRegistrations().then(function (regs) {
@@ -38,7 +39,7 @@
 <meta name="theme-color" content="#F2F4F6">
 <title>잇데이 스튜디오</title>
 <script>
-  window.__LATEST_BUILD__ = '20260506-v101-phase3-5';
+  window.__LATEST_BUILD__ = '20260514-v121-pwa-recover';
   setTimeout(function(){
     if (window.APP_BUILD && window.APP_BUILD !== window.__LATEST_BUILD__ && !sessionStorage.getItem('build_busted')) {
       console.warn('[BUILD] stale JS 감지 — HTML=' + window.__LATEST_BUILD__ + ' / JS=' + window.APP_BUILD + ' → 캐시 파괴');
