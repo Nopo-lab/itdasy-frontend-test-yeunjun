@@ -25,6 +25,9 @@
   /* [2026-05-12 QA #14] iOS Safari/Capacitor 모바일 스크롤 부자연 fix —
      -webkit-overflow-scrolling:touch 누락 시 swipe drift 가 0px 에서 멈춤. */
   -webkit-overflow-scrolling: touch;
+  /* [2026-05-15 QA-r7] vertical-only gesture lock — 가로 스와이프 인식 비용 제거.
+     재고/고객/매출 hub 의 세로 스크롤 안정화. 다른 hub 도 모두 세로 위주라 회귀 없음. */
+  touch-action: pan-y;
   /* iOS 키보드 올라올 때 입력칸 가려지는 문제 — 키보드 영역만큼 여유 padding. */
   padding-bottom: env(keyboard-inset-height, 0);
   animation: hub-fade-in 0.08s ease-out;
