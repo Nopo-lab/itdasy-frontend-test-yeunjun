@@ -2832,14 +2832,58 @@
     if (!q) return;
 
     // [2026-04-29 W5] 챗봇 keyword shortcut — 자주 쓰는 진입점은 LLM 호출 없이 즉시 시트 open
+    // [QA-r11 PR4-A 2026-05-16] 확장 — 갤러리/DM/영업시간/통계/백업/캡션/음성/리뷰/이탈/플랜.
     const ql = q.toLowerCase();
+    const _shortcut = (fn) => { input.value = ''; try { fn(); } catch (_e) { void _e; } };
     if (/직원\s*(추가|관리|등록|보여|목록|리스트)/.test(q) || /스타일리스트.*(추가|등록)/.test(q)) {
-      input.value = '';
-      if (window.StaffUI && typeof window.StaffUI.open === 'function') { window.StaffUI.open(); return; }
+      if (window.StaffUI && typeof window.StaffUI.open === 'function') { _shortcut(() => window.StaffUI.open()); return; }
     }
     if (/회원권.*(만료|임박)/.test(q) || /만료.*회원권/.test(q)) {
-      input.value = '';
-      if (window.MembershipUI && typeof window.MembershipUI.openExpiringList === 'function') { window.MembershipUI.openExpiringList(30); return; }
+      if (window.MembershipUI && typeof window.MembershipUI.openExpiringList === 'function') { _shortcut(() => window.MembershipUI.openExpiringList(30)); return; }
+    }
+    // 갤러리·포트폴리오 — showTab 으로 갤러리 탭 진입
+    if (/(갤러리|포트폴리오|작품)\s*(열|보여|이동|가)/.test(q) || /^(갤러리|포트폴리오)$/.test(q.trim())) {
+      if (typeof window.showTab === 'function') { _shortcut(() => window.showTab('gallery', document.querySelector('.tab-bar__btn[data-tab="gallery"]'))); return; }
+    }
+    // DM 자동응답 설정
+    if (/(dm|디엠|자동\s*응답|자동\s*답장).*(설정|관리|편집|룰)/.test(q) || /자동\s*응답\s*(켜|꺼|on|off)/.test(q)) {
+      if (typeof window.openDMAutoreplySettings === 'function') { _shortcut(() => window.openDMAutoreplySettings()); return; }
+    }
+    // 영업시간·매장 정보 — 설정 허브
+    if (/(영업\s*시간|매장\s*정보|가게\s*정보|샵\s*정보|설정).*(변경|수정|확인|보기|열|관리)?/.test(q)) {
+      // "설정" 단독 또는 "영업시간 변경" 같은 패턴만 매치 — "고객 설정" 등은 fall-through
+      if (/^설정\s*$|영업\s*시간|매장\s*정보|가게\s*정보|샵\s*정보/.test(q)) {
+        if (typeof window.openSettingsHub === 'function') { _shortcut(() => window.openSettingsHub()); return; }
+      }
+    }
+    // 통계·매출 분석
+    if (/(통계|분석|인사이트|insight|매출\s*(요약|리포트|추이|분석))/.test(q)) {
+      if (typeof window.openInsights === 'function') { _shortcut(() => window.openInsights()); return; }
+    }
+    // 백업·복구
+    if (/(백업|복구|backup|데이터.*(내보내|받|export))/.test(q)) {
+      if (typeof window.openBackupScreen === 'function') { _shortcut(() => window.openBackupScreen()); return; }
+    }
+    // 캡션·문구 생성
+    if (/(캡션|문구|글|insta.*글|인스타.*글).*(만들|생성|작성|뽑)/.test(q) || /^(캡션|글)\s*(생성|만들기)$/.test(q.trim())) {
+      if (typeof window.openInstantCaption === 'function') { _shortcut(() => window.openInstantCaption()); return; }
+    }
+    // 음성 캡션·받아쓰기
+    if (/(음성|녹음|받아쓰|마이크|보이스|voice).*(캡션|글|입력|문구)?/.test(q)) {
+      if (typeof window.openVoiceCaption === 'function') { _shortcut(() => window.openVoiceCaption()); return; }
+    }
+    // 리뷰·후기 요청
+    if (/(리뷰|후기)\s*(요청|보내|부탁|발송)/.test(q)) {
+      if (typeof window.openReviewRequests === 'function') { _shortcut(() => window.openReviewRequests()); return; }
+    }
+    // 이탈·위험 고객
+    if (/(이탈|위험|복귀|재방문)\s*(고객|손님|관리)?/.test(q) || /retention/i.test(q)) {
+      if (typeof window.openRetentionAI === 'function') { _shortcut(() => window.openRetentionAI()); return; }
+    }
+    // 결제·플랜 변경
+    if (/(결제|플랜|구독|업그레이드|pro|premium)\s*(변경|선택|보|관리|업)?/.test(q)) {
+      if (typeof window.openPlanPopup === 'function') { _shortcut(() => window.openPlanPopup()); return; }
+      if (typeof window.openPlan === 'function') { _shortcut(() => window.openPlan()); return; }
     }
     void ql;
 
