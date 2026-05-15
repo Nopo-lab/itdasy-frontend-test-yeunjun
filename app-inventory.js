@@ -188,6 +188,30 @@
     return updated;
   }
 
+  // [QA-r10 2026-05-15] 단위 기반 기본 step — 빗/피스/개 = 1, ml/g = 0.5
+  function _defaultStep(item) {
+    const unit = String((item && item.unit) || '').trim().toLowerCase();
+    if (/^(ml|g|kg|l|oz|cc|ℓ)$/.test(unit)) return 0.5;
+    if (Number((item && item.decimal_places) || 0) > 0) return 0.5;
+    return 1;
+  }
+  // [QA-r10] row-level DOM 패치 — 전체 _rerender 회피.
+  function _patchInvRowDom(item) {
+    const sheet = document.getElementById('inventorySheet');
+    if (!sheet) return false;
+    const node = sheet.querySelector(`.dt-list-it[data-inv-id="${item.id}"]`);
+    if (!node) return false;
+    const wasLow = node.style.background && node.style.background.indexOf('rgba(220,53,69') >= 0;
+    const isLow = (Number(item.quantity || 0) <= Number(item.threshold || 0));
+    if (wasLow !== isLow) return false;
+    const val = node.querySelector('.dt-stepper__val');
+    if (val) {
+      val.classList.toggle('dt-stepper__val--low', isLow);
+      val.innerHTML = `${_fmtQty(item)}<span style="font-size:12px;font-weight:400;color:var(--text-subtle);margin-left:4px;">${_esc(item.unit || '개')}</span>`;
+    }
+    return true;
+  }
+
   async function remove(id) {
     if (_isOffline) {
       const all = _loadOffline().filter(x => x.id !== id);
@@ -278,20 +302,57 @@
       `;
     }).join('') + '</div>';
     listEl.querySelectorAll('[data-inv-delta]').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', () => {
         const id = btn.dataset.invTarget;
-        if (_adjustingIds.has(id)) return;
-        _adjustingIds.add(id);
-        const d = parseInt(btn.dataset.invDelta, 10);
-        try {
-          await adjust(id, d);
-          if (window.hapticLight) window.hapticLight();
-          _rerender();
-        } catch (e) {
-          if (window.showToast) window.showToast('조정 실패');
-        } finally {
-          _adjustingIds.delete(id);
-        }
+        const direction = parseInt(btn.dataset.invDelta, 10);
+        const item = _items.find(x => x.id === id);
+        if (!item) return;
+        // [QA-r10] optimistic — 즉시 화면 반영 + 디바운스 PATCH.
+        const step = _defaultStep(item);
+        const signed = (direction > 0 ? step : -step);
+        if (typeof item._optimisticBase !== 'number') item._optimisticBase = Number(item.quantity || 0);
+        item.quantity = Math.max(0, Number(item.quantity || 0) + signed);
+        if (window.hapticLight) window.hapticLight();
+        const patched = _patchInvRowDom(item);
+        if (!patched) _rerender();
+        // 디바운스 동기화 (220ms — 연타 흡수)
+        if (item._patchTimer) clearTimeout(item._patchTimer);
+        item._patchTimer = setTimeout(async () => {
+          item._patchTimer = null;
+          if (item._patchInFlight) { item._patchNeedsRetry = true; return; }
+          item._patchInFlight = true;
+          const base = Number(item._optimisticBase || 0);
+          const target = Number(item.quantity || 0);
+          const delta = target - base;
+          try {
+            if (delta !== 0) await adjust(id, delta);
+            item._optimisticBase = target;
+          } catch (e) {
+            item.quantity = base;
+            const p = _patchInvRowDom(item);
+            if (!p) _rerender();
+            if (window.showToast) window.showToast('수량 변경 실패 — 되돌렸어요');
+          } finally {
+            item._patchInFlight = false;
+            if (item._patchNeedsRetry) {
+              item._patchNeedsRetry = false;
+              if (item._patchTimer) clearTimeout(item._patchTimer);
+              item._patchTimer = setTimeout(() => {
+                // 재진입 — 같은 핸들러 다시 호출하면 재귀 위험. 직접 동기화.
+                (async () => {
+                  if (item._patchInFlight) return;
+                  item._patchInFlight = true;
+                  const b = Number(item._optimisticBase || 0);
+                  const t = Number(item.quantity || 0);
+                  const d = t - b;
+                  try { if (d !== 0) await adjust(id, d); item._optimisticBase = t; }
+                  catch (_err) { item.quantity = b; const pp = _patchInvRowDom(item); if (!pp) _rerender(); if (window.showToast) window.showToast('수량 변경 실패 — 되돌렸어요'); }
+                  finally { item._patchInFlight = false; }
+                })();
+              }, 80);
+            }
+          }
+        }, 220);
       });
     });
     listEl.querySelectorAll('[data-inv-edit]').forEach(btn => {

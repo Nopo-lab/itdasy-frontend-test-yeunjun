@@ -62,6 +62,72 @@
   function _catMeta(kind) {
     return CATEGORY[kind] || { icon: 'ic-check', label: kind || '작업', color: '#666' };
   }
+  // [QA-r10 2026-05-15] OCR fallback repair 중복 폭주 차단 (실기기 보고: 동일 14,500원 24회 복제).
+  // 백엔드 prose-repair 가 같은 vendor·amount 로 N회 반복 append 한 경우를 프론트에서 방어.
+  //   - kind 별 핵심 식별자 (vendor/amount/customer_name/service_name/starts_at/items[0]) 조합으로 키 생성
+  //   - 첫 등장만 유지, 동일 키는 모두 drop (low-confidence "확인 필요" 도 포함)
+  //   - kind 당 최대 8개 cap (영수증 1장 = 통상 5~8 품목)
+  //   - 전체 최대 20개 cap (다수 영수증 동시 업로드 상한)
+  //   - kind 없거나 payload 빈 fallback 액션은 drop
+  // 반환: { actions, dropped, droppedKinds[] }
+  function _dedupeAndCapActions(actions) {
+    if (!Array.isArray(actions) || actions.length === 0) {
+      return { actions: [], dropped: 0, droppedKinds: [] };
+    }
+    const PER_KIND_CAP = 8;
+    const TOTAL_CAP = 20;
+    function _keyOf(a) {
+      const p = (a && a.payload) || {};
+      const kind = a && a.kind;
+      const _img = p.image_hash || p.source_image || p._image_idx || '';
+      if (kind === 'create_expense') {
+        const items = Array.isArray(p.items) && p.items.length ? p.items.map(i => (i && (i.name || '')).trim().toLowerCase()).join(',').slice(0, 60) : '';
+        return `expense|${(p.vendor || '').trim().toLowerCase()}|${p.amount || 0}|${(p.memo || '').trim().slice(0, 30).toLowerCase()}|${items}|${_img}`;
+      }
+      if (kind === 'upsert_inventory') {
+        const it0 = (Array.isArray(p.items) && p.items[0]) || {};
+        return `inv|${(it0.name || '').trim().toLowerCase()}|${it0.quantity || 0}|${(it0.unit || '').trim()}|${_img}`;
+      }
+      if (kind === 'create_revenue') {
+        return `rev|${(p.customer_name || p.name || '').trim()}|${(p.service_name || '').trim()}|${p.amount || 0}|${p.starts_at || ''}|${_img}`;
+      }
+      if (kind === 'create_customer') {
+        return `cust|${(p.customer_name || p.name || '').trim()}|${(p.customer_phone || p.phone || '').trim()}`;
+      }
+      if (kind === 'create_booking') {
+        return `book|${(p.customer_name || p.name || '').trim()}|${(p.service_name || '').trim()}|${p.starts_at || ''}`;
+      }
+      try { return `${kind}|${JSON.stringify(p).slice(0, 100)}`; }
+      catch (_e) { void _e; return `${kind}|?`; }
+    }
+    const seen = new Map();
+    const perKind = {};
+    const droppedKindsSet = new Set();
+    let dropped = 0;
+    for (const a of actions) {
+      if (!a || !a.kind) { dropped++; continue; }
+      // payload 가 완전히 빈 fallback action (가게/상품/고객 모두 없음) drop
+      const p = a.payload || {};
+      const hasAnySignal = !!(
+        p.vendor || p.customer_name || p.name || p.service_name ||
+        p.amount || p.memo || p.customer_phone || p.phone || p.starts_at ||
+        (Array.isArray(p.items) && p.items.length && (p.items[0] && (p.items[0].name || p.items[0].quantity)))
+      );
+      if (!hasAnySignal) {
+        dropped++; droppedKindsSet.add(a.kind);
+        continue;
+      }
+      const k = _keyOf(a);
+      if (seen.has(k)) { dropped++; droppedKindsSet.add(a.kind); continue; }
+      const kc = perKind[a.kind] || 0;
+      if (kc >= PER_KIND_CAP) { dropped++; droppedKindsSet.add(a.kind); continue; }
+      if (seen.size >= TOTAL_CAP) { dropped++; droppedKindsSet.add(a.kind); continue; }
+      seen.set(k, a);
+      perKind[a.kind] = kc + 1;
+    }
+    return { actions: Array.from(seen.values()), dropped, droppedKinds: Array.from(droppedKindsSet) };
+  }
+
   // actions[] 을 kind 순서대로 그룹핑 (첫 등장 순서 유지)
   function _groupActions(actions) {
     // 2026-04-24 디버그 — actions 배열의 customer_name·service_name·amount 매핑이 행 인덱스와 일치하는지 추적
@@ -2502,9 +2568,15 @@
         try { localStorage.setItem('assistant_session_id', String(_sessionId)); } catch (_e) { void _e; }
       }
 
-      const actionsList = (Array.isArray(d.actions) && d.actions.length)
+      const _rawActionsList = (Array.isArray(d.actions) && d.actions.length)
         ? d.actions
         : (d.action && d.action.kind ? [d.action] : []);
+      // [QA-r10] OCR fallback repair 24개 복제 차단 — 프론트엔드 defensive dedupe.
+      const _dedupeRes = _dedupeAndCapActions(_rawActionsList);
+      const actionsList = _dedupeRes.actions;
+      if (_dedupeRes.dropped > 0) {
+        try { console.warn('[assistant] OCR actions dedupe', { raw: _rawActionsList.length, kept: actionsList.length, dropped: _dedupeRes.dropped, kinds: _dedupeRes.droppedKinds }); } catch (_e) { void _e; }
+      }
       // [QA-NEXT #4] 각 action 의 AI 원본 payload 스냅샷 저장 → execute 시 original_payload 로 동봉.
       const _imgQ = (window._lastAssistantQuestion || '');
       actionsList.forEach(a => {
@@ -2540,10 +2612,19 @@
         const _ans = (d.answer || '').trim();
         const _hasPrice = /([0-9]{2,3},[0-9]{3}|[0-9]{4,})\s*원/.test(_ans);
         const _wasImageUpload = !!(pending && pending.kind === 'images');
-        if (_wasImageUpload && _hasPrice && _ans.length > 30) {
+        // [QA-r10] dedupe 후 0건이 된 케이스도 동일 안내 (raw 가 많았지만 전부 중복/빈 fallback 였던 경우)
+        if (_wasImageUpload && (_hasPrice && _ans.length > 30 || _rawActionsList.length > 0)) {
           msg.text = '분석은 됐지만 자동 저장 가능한 형태로 정리가 안 됐어요.\n사진을 다시 찍거나 직접 추가해주세요.';
         }
         _history.push(msg);
+      }
+      // [QA-r10] dedupe 가 절반 이상 잘라낸 경우 사용자에게 알림 (예: 24건 → 1건)
+      // 액션이 남아있을 때만 — 0건 케이스는 위에서 안내 처리됨.
+      if (actionsList.length > 0 && _dedupeRes.dropped > Math.max(2, actionsList.length)) {
+        try {
+          const _tail = ' (중복/빈 ' + _dedupeRes.dropped + '건은 제외했어요)';
+          msg.text = (msg.text || '사진을 확인했어요.') + _tail;
+        } catch (_e) { void _e; }
       }
       _renderHistory();
       if (window.hapticLight) window.hapticLight();
@@ -2614,9 +2695,15 @@
       }
 
       // 복수 액션 지원 — actions[] 우선, 없으면 단일 action 을 배열로
-      const actionsList = (Array.isArray(d.actions) && d.actions.length)
+      const _rawActionsList = (Array.isArray(d.actions) && d.actions.length)
         ? d.actions
         : (d.action && d.action.kind ? [d.action] : []);
+      // [QA-r10] 텍스트 /ask 경로에도 동일 dedupe — LLM 환각으로 같은 액션 반복 출력하는 경우 방어.
+      const _dedupeResAsk = _dedupeAndCapActions(_rawActionsList);
+      const actionsList = _dedupeResAsk.actions;
+      if (_dedupeResAsk.dropped > 0) {
+        try { console.warn('[assistant] /ask actions dedupe', { raw: _rawActionsList.length, kept: actionsList.length, dropped: _dedupeResAsk.dropped, kinds: _dedupeResAsk.droppedKinds }); } catch (_e) { void _e; }
+      }
       // [QA-NEXT #4] AI 원본 payload 스냅샷 저장 (텍스트 /ask 경로)
       actionsList.forEach(a => {
         try {

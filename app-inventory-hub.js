@@ -447,29 +447,92 @@
     } catch (e) { if (window.showToast) window.showToast('저장 실패: ' + e.message); }
   }
 
+  // [QA-r10 2026-05-15] 단위 기반 기본 step.
+  //   - 빗/피스/개/장/병/통 등 셀 수 있는 단위: 1
+  //   - ml/g/kg/l/oz/cc 등 연속 단위: 0.5
+  //   - decimal_places > 0 인 경우도 0.5 (사용자가 소수 자리 설정한 케이스)
+  function _defaultStep(row) {
+    const unit = String((row && row.unit) || '').trim().toLowerCase();
+    if (/^(ml|g|kg|l|oz|cc|ℓ)$/.test(unit)) return 0.5;
+    if (Number((row && row.decimal_places) || 0) > 0) return 0.5;
+    return 1;
+  }
+
+  // [QA-r10] row-level DOM 패치 — 전체 _render() 회피로 스크롤·포커스 유지.
+  // 부족 ↔ 정상 전환은 블록 이동이 필요해서 _render() 폴백.
+  function _patchRowDom(row) {
+    const overlay = document.getElementById(OID);
+    if (!overlay) return false;
+    const node = overlay.querySelector(`.inv-item[data-id="${row.id}"]`);
+    if (!node) return false;
+    const wasLow = node.classList.contains('low');
+    const isLow = Number(row.quantity || 0) < Number(row.threshold || 0);
+    if (wasLow !== isLow) return false;
+    const val = node.querySelector('.stepper-val');
+    if (val) {
+      val.classList.toggle('low', isLow);
+      val.textContent = `${_fmtQty(row)}${row.unit || ''}`;
+    }
+    return true;
+  }
+
+  // [QA-r10 2026-05-15] optimistic + debounce.
+  //   - 탭 즉시: row.quantity 갱신 + DOM 패치 + haptic 1회.
+  //   - 220ms 디바운스 후 PATCH (연타 흡수 — 5번 탭하면 최종값 한 번만 서버 동기화).
+  //   - 실패 시 quantity 롤백 + DOM 갱신 + 토스트.
+  //   - 단위별 기본 step (빗/피스/개 = 1, ml/g = 0.5).
   async function _adjustQuantity(rowId, delta) {
     const row = _state.rows.find(r => String(r.id) === String(rowId));
     if (!row) return;
-    // [QA-r6] 같은 row PATCH in-flight 중 재호출 차단 — 연타 시 다중 API + 진동 폭주 방지.
-    if (row._adjusting) return;
-    row._adjusting = true;
-    const step = row.decimal_places > 0 ? delta / 10 : delta;
-    const next = Math.max(0, Number(row.quantity || 0) + step);
+    if (typeof row._optimisticBase !== 'number') row._optimisticBase = Number(row.quantity || 0);
+    const step = _defaultStep(row);
+    const signed = (delta > 0 ? step : -step);
+    const next = Math.max(0, Number(row.quantity || 0) + signed);
+    row.quantity = next;
+    // 햅틱 즉시 — 1회 (탭당 1회. 디바운스 후 서버 응답에서는 추가 햅틱 없음)
+    if (window.hapticLight) window.hapticLight();
+    // 즉시 DOM 반영 — 전체 _render() 피함 (스크롤 안정 / 입력 포커스 유지)
+    const patched = _patchRowDom(row);
+    if (!patched) _render();
+    // 디바운스 후 PATCH (이미 예약돼 있으면 갱신)
+    if (row._patchTimer) clearTimeout(row._patchTimer);
+    row._patchTimer = setTimeout(() => { _flushPatch(row).catch(_e => void _e); }, 220);
+  }
+
+  async function _flushPatch(row) {
+    row._patchTimer = null;
+    if (row._patchInFlight) {
+      // 진행 중인 PATCH 있으면 끝난 뒤 한 번 더 (마지막 값 반영 보장)
+      row._patchNeedsRetry = true;
+      return;
+    }
+    row._patchInFlight = true;
+    const base = row._optimisticBase;
+    const target = Number(row.quantity || 0);
     try {
-      const res = await fetch(`${API()}/inventory/${rowId}`, {
+      const res = await fetch(`${API()}/inventory/${row.id}`, {
         method: 'PATCH', headers: { ...AUTH(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quantity: next }),
+        body: JSON.stringify({ quantity: target }),
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      row.quantity = next;
+      // 성공 — base 갱신 (다음 롤백 기준점)
+      row._optimisticBase = target;
       sessionStorage.removeItem(CACHE_KEY); _writeCache(_state.rows);
-      _render();
       _emitInventoryChanged('quantity', row);
-      if (window.hapticLight) window.hapticLight();
     } catch (e) {
-      if (window.showToast) window.showToast('실패: ' + e.message);
+      // 롤백 — 사용자 마지막 base 값으로 복구
+      row.quantity = Number(base || 0);
+      const patched = _patchRowDom(row);
+      if (!patched) _render();
+      if (window.showToast) window.showToast('수량 변경 실패 — 되돌렸어요');
     } finally {
-      row._adjusting = false;
+      row._patchInFlight = false;
+      if (row._patchNeedsRetry) {
+        row._patchNeedsRetry = false;
+        // 디바운스 더 짧게 — 진행 중 쌓인 변경 즉시 동기화
+        if (row._patchTimer) clearTimeout(row._patchTimer);
+        row._patchTimer = setTimeout(() => { _flushPatch(row).catch(_e => void _e); }, 80);
+      }
     }
   }
 
