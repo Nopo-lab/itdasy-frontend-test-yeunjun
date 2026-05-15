@@ -76,20 +76,24 @@
     }
     const PER_KIND_CAP = 8;
     const TOTAL_CAP = 20;
+    // [QA-r10b 2026-05-15] 키는 _summarizeItem 의 표시 필드와 1:1 매칭 — 사용자가 화면에서
+    // 구분할 수 없는 카드는 메모리/내부 필드(items[], image_hash) 가 달라도 같은 것으로 본다.
+    // 그래야 24장 카드 → 1장 (시각적으로 동일) 으로 정상 축소.
     function _keyOf(a) {
       const p = (a && a.payload) || {};
       const kind = a && a.kind;
-      const _img = p.image_hash || p.source_image || p._image_idx || '';
       if (kind === 'create_expense') {
-        const items = Array.isArray(p.items) && p.items.length ? p.items.map(i => (i && (i.name || '')).trim().toLowerCase()).join(',').slice(0, 60) : '';
-        return `expense|${(p.vendor || '').trim().toLowerCase()}|${p.amount || 0}|${(p.memo || '').trim().slice(0, 30).toLowerCase()}|${items}|${_img}`;
+        // 카드 표시: vendor · memo · amount
+        return `expense|${(p.vendor || '').trim().toLowerCase()}|${(p.memo || '').trim().slice(0, 30).toLowerCase()}|${p.amount || 0}`;
       }
       if (kind === 'upsert_inventory') {
+        // 카드 표시: items[0].name · quantity
         const it0 = (Array.isArray(p.items) && p.items[0]) || {};
-        return `inv|${(it0.name || '').trim().toLowerCase()}|${it0.quantity || 0}|${(it0.unit || '').trim()}|${_img}`;
+        return `inv|${(it0.name || '').trim().toLowerCase()}|${it0.quantity || 0}|${(it0.unit || '').trim()}`;
       }
       if (kind === 'create_revenue') {
-        return `rev|${(p.customer_name || p.name || '').trim()}|${(p.service_name || '').trim()}|${p.amount || 0}|${p.starts_at || ''}|${_img}`;
+        // 카드 표시: customer_name · service_name · amount
+        return `rev|${(p.customer_name || p.name || '').trim()}|${(p.service_name || '').trim()}|${p.amount || 0}|${p.starts_at || ''}`;
       }
       if (kind === 'create_customer') {
         return `cust|${(p.customer_name || p.name || '').trim()}|${(p.customer_phone || p.phone || '').trim()}`;

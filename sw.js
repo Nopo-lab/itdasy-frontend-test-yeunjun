@@ -7,7 +7,7 @@
 //    - /api/, /auth/, /data-export/  → network-first (항상 최신)
 //    - app-*.js, *.css, *.html       → cache-first + 백그라운드 revalidate
 // ─────────────────────────────────────────────
-const CACHE_VERSION = '20260515-v128-qa-r10-ocr-dedupe-inv-optimistic';
+const CACHE_VERSION = '20260515-v128b-qa-r10b-boot-rescue-kill-v6';
 const CACHE_NAME    = `itdasy-${CACHE_VERSION}`;
 const API_CACHE_NAME = `itdasy-api-${CACHE_VERSION}`;
 
@@ -183,12 +183,45 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // [A10] cache-first + stale-while-revalidate
-  //   1. 캐시 hit → 즉시 응답 (빠름)
-  //   2. 동시에 네트워크로 백그라운드 revalidate → 다음 로드부터 최신
-  //   3. 캐시 miss → 네트워크 fetch + 캐시 저장
-  //   4. 네트워크 실패 + 캐시 hit → 캐시 사용
-  //   5. 네트워크 실패 + 캐시 miss → offline.html (HTML 요청만)
+  // [QA-r10b 2026-05-15] HTML / navigation 은 network-first 로 분리.
+  //   배경: cache-first 로 처리하던 시절, 잘린 index.html 이 캐시에 박히면 새로고침해도
+  //         같은 잘린 응답이 반복 재생 → "Uncaught SyntaxError @ index.html:2053" 부팅 깨짐.
+  //         (사용자 보고 실측 — 2026-05-15 iPhone Safari)
+  //   전략: HTML 은 항상 네트워크 우선, 실패 시 캐시 폴백, 캐시도 없으면 offline.html.
+  //         JS/CSS/이미지 는 기존 cache-first + stale-while-revalidate 유지 (속도 우선).
+  const isHTML =
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('/') ||
+    event.request.mode === 'navigate' ||
+    (event.request.headers.get('accept') || '').includes('text/html');
+
+  if (isHTML) {
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(event.request);
+        if (fresh && fresh.ok) {
+          const clone = fresh.clone();
+          caches.open(CACHE_NAME).then(c => c.put(event.request, clone)).catch(() => {});
+          return fresh;
+        }
+        // 5xx → 캐시 폴백
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        const offline = await caches.match(OFFLINE_URL);
+        if (offline) return offline;
+        return fresh;  // 그 외 — 그대로 반환 (브라우저가 에러 처리)
+      } catch (_e) {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        const offline = await caches.match(OFFLINE_URL);
+        if (offline) return offline;
+        return Response.error();
+      }
+    })());
+    return;
+  }
+
+  // JS/CSS/이미지 — cache-first + stale-while-revalidate
   event.respondWith((async () => {
     const cached = await caches.match(event.request);
     const networkPromise = fetch(event.request).then(response => {
@@ -200,21 +233,12 @@ self.addEventListener('fetch', event => {
     }).catch(() => null);
 
     if (cached) {
-      // 백그라운드 revalidate — 결과는 다음 요청에서 반영
       networkPromise.catch(() => {});
       return cached;
     }
     const fresh = await networkPromise;
     if (fresh) return fresh;
-    if (event.request.mode === 'navigate' || (event.request.headers.get('accept') || '').includes('text/html')) {
-      const offline = await caches.match(OFFLINE_URL);
-      if (offline) return offline;
-    }
-    // [v127] script/css 등 정적 파일은 빈 503 응답을 절대 만들지 않는다.
-    //   <script> 태그가 빈 본문 받으면 "Uncaught SyntaxError: Unexpected end of input"
-    //   → 부팅 흐름 전체 중단 + 홈 위젯 미렌더 + 사용자 화면 깨짐.
-    //   Response.error() 는 NetworkError 로 reject → 브라우저가 단순 로드 실패 처리,
-    //   다음 새로고침에 재시도 기회. (옛 빈 503 정책은 catch-22 의 원흉.)
+    // [v127] script/css 등은 빈 503 만들지 않음 — Response.error() 로 NetworkError reject.
     return Response.error();
   })());
 });
