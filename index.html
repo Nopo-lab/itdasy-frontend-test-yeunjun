@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://*.supabase.co https://*.cloudflare.com https://*.r2.cloudflarestorage.com; connect-src 'self' https://*.run.app wss://*.run.app https://*.supabase.co https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://unpkg.com; worker-src 'self';"
 >
-<!-- [2026-05-14 NUCLEAR v4] 옛 PWA 흰화면 회복 — KILL_KEY bump (v3→v4)
-     v3 가드 이미 통과한 PWA 들이 다시 옛 SW 캐시에 갇혀 흰화면 → 한번 더 강제 청소.
-     기존 SW 가 sw.js·app-core.js 자체를 캐싱해서 영원히 옛 코드 서빙되던 catch-22 해결.
+<!-- [2026-05-15 NUCLEAR v5] v125 캐시 stale rescue — KILL_KEY bump (v4→v5)
+     v125 배포 중 일부 클라이언트에서 truncated JS 가 SW 캐시에 박혀 SyntaxError + 홈
+     메인 미렌더 보고. cache-first 라 같은 잘린 응답이 계속 재생됨. 한번 더 강제 청소.
      이 inline script 는 SW 등록 전에 실행됨 — 옛 SW 의 모든 reg 와 cache 비우고 reload. -->
 <script>
 (function () {
   try {
-    var KILL_KEY = 'itdasy_sw_killed_v4';
+    var KILL_KEY = 'itdasy_sw_killed_v5';
     if (localStorage.getItem(KILL_KEY) === '1') return;
     if (!('serviceWorker' in navigator)) return;
     navigator.serviceWorker.getRegistrations().then(function (regs) {
@@ -39,15 +39,33 @@
 <meta name="theme-color" content="#F2F4F6">
 <title>잇데이 스튜디오</title>
 <script>
-  window.__LATEST_BUILD__ = '20260515-v125-qa-r7-prose-repair';
+  window.__LATEST_BUILD__ = '20260515-v126-qa-r8-cache-rescue';
   setTimeout(function(){
-    if (window.APP_BUILD && window.APP_BUILD !== window.__LATEST_BUILD__ && !sessionStorage.getItem('build_busted')) {
-      console.warn('[BUILD] stale JS 감지 — HTML=' + window.__LATEST_BUILD__ + ' / JS=' + window.APP_BUILD + ' → 캐시 파괴');
-      sessionStorage.setItem('build_busted', '1');
-      if ('caches' in window) caches.keys().then(function(ks){ ks.forEach(function(k){ caches.delete(k); }); });
-      location.reload(true);
+    // [v126] app-core.js 가 truncated 돼서 window.APP_BUILD 자체가 undefined 인 케이스도
+    // stale 로 간주해 캐시·SW 일괄 청소 후 reload. 기존 mismatch 가드는 APP_BUILD 정의 시에만
+    // 발동해서 정작 가장 흔한 fail 모드(파일 잘림) 를 못 잡았음.
+    if (sessionStorage.getItem('build_busted')) return;
+    var stale = false;
+    if (!window.APP_BUILD) {
+      console.warn('[BUILD] APP_BUILD 미정의 — app-core.js 로드 실패 의심, 캐시·SW 일괄 청소');
+      stale = true;
+    } else if (window.APP_BUILD !== window.__LATEST_BUILD__) {
+      console.warn('[BUILD] stale JS 감지 — HTML=' + window.__LATEST_BUILD__ + ' / JS=' + window.APP_BUILD);
+      stale = true;
     }
-  }, 500);
+    if (!stale) return;
+    sessionStorage.setItem('build_busted', '1');
+    var jobs = [];
+    if ('caches' in window) {
+      jobs.push(caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }));
+    }
+    if ('serviceWorker' in navigator) {
+      jobs.push(navigator.serviceWorker.getRegistrations().then(function(regs){
+        return Promise.all((regs || []).map(function(r){ try { return r.unregister(); } catch (_) { return Promise.resolve(); } }));
+      }));
+    }
+    Promise.all(jobs).catch(function(){}).then(function(){ location.reload(); });
+  }, 1500);
 </script>
 <link rel="manifest" href="manifest.json">
 <!-- iOS 홈 스크린 아이콘 (180x180 권장, 없으면 icon.svg 폴백) -->
