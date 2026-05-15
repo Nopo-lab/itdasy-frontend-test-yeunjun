@@ -788,6 +788,72 @@
         style="margin-top:6px;padding:7px 10px;border:1px dashed ${color};border-radius:8px;background:#fff;color:${color};font-size:${sz.fs};font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">${_svg('ic-plus', 12)} 품목 추가</button>`;
   }
 
+  // [QA-r11 PR3 2026-05-16] 영수증 receipt-level expense — 할인·쿠폰·포인트·세금 편집기.
+  // _renderItemsEditor 형태와 동일한 패턴. payload.adjustments[i] = {kind, amount}.
+  function _renderAdjustmentsEditor(keyPrefix, adjustments, opts) {
+    const o = opts || {};
+    const fieldAttr = o.fieldAttr || 'row-field';
+    const addAttr = o.addAttr || 'row-adjustment-add';
+    const delAttr = o.delAttr || 'row-adjustment-delete';
+    const compact = o.compact === true;
+    const color = o.color || '#E07A5F';
+    const list = Array.isArray(adjustments) ? adjustments : [];
+    const sz = compact
+      ? { fs: '10px', pad: '5px 7px', gap: '5px', btn: '28px' }
+      : { fs: '11px', pad: '7px 9px', gap: '6px', btn: '32px' };
+    const _kindOpts = (sel) => {
+      const opts2 = [
+        ['card_discount', '카드할인'],
+        ['coupon', '쿠폰'],
+        ['point', '포인트사용'],
+        ['tax', '부가세'],
+        ['service', '봉사료'],
+        ['membership', '멤버십'],
+      ];
+      return opts2.map(([v, l]) => `<option value="${v}"${v === sel ? ' selected' : ''}>${l}</option>`).join('');
+    };
+    const rows = list.map((ad, i) => {
+      const k = (ad && ad.kind) || '';
+      const amt = (ad && ad.amount) != null ? ad.amount : '';
+      return `
+        <div style="display:grid;grid-template-columns:1.2fr 1fr ${sz.btn};gap:${sz.gap};align-items:center;">
+          <select data-${fieldAttr}="${keyPrefix}:adjustments:${i}:kind"
+            style="padding:${sz.pad};border:1px solid hsl(220,15%,85%);border-radius:8px;font-size:${sz.fs};background:#fff;min-width:0;">
+            <option value=""${k ? '' : ' selected'}>종류</option>
+            ${_kindOpts(k)}
+          </select>
+          <input data-${fieldAttr}="${keyPrefix}:adjustments:${i}:amount" type="number" inputmode="numeric" min="0" value="${_esc(amt === '' ? '' : amt)}" placeholder="차감액"
+            style="padding:${sz.pad};border:1px solid hsl(220,15%,85%);border-radius:8px;font-size:${sz.fs};background:#fff;min-width:0;" />
+          <button data-${delAttr}="${keyPrefix}:${i}" aria-label="할인 삭제" title="할인 삭제"
+            style="padding:0;border:1px solid hsl(0,60%,85%);border-radius:8px;background:hsl(0,70%,98%);color:hsl(0,60%,45%);cursor:pointer;font-size:${sz.fs};height:100%;display:inline-flex;align-items:center;justify-content:center;">${_svg('ic-trash-2', compact ? 12 : 13)}</button>
+        </div>`;
+    }).join('');
+    const emptyHint = list.length ? '' : `<div style="font-size:11px;color:var(--text-subtle);padding:6px 2px;">할인·쿠폰·포인트가 있으면 추가하세요.</div>`;
+    return `
+      <div style="display:flex;flex-direction:column;gap:${sz.gap};">${rows}${emptyHint}</div>
+      <button data-${addAttr}="${keyPrefix}"
+        style="margin-top:6px;padding:7px 10px;border:1px dashed ${color};border-radius:8px;background:#fff;color:${color};font-size:${sz.fs};font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">${_svg('ic-plus', 12)} 할인/쿠폰 추가</button>`;
+  }
+
+  // [QA-r11 PR3] 영수증 expense 편집 폼 하단의 합계 검증 라인.
+  // 정가합 X - 할인 Y = 결제 Z. amount 와 다르면 ⚠ 차액 표시.
+  function _renderExpenseSummary(p) {
+    const items = Array.isArray(p && p.items) ? p.items : [];
+    const adj = Array.isArray(p && p.adjustments) ? p.adjustments : [];
+    const itemsTotal = items.reduce((s, it) => s + (Number(it && it.total) || 0), 0);
+    const adjTotal = adj.reduce((s, a) => s + (Number(a && a.amount) || 0), 0);
+    const expected = itemsTotal - adjTotal;
+    const amount = Number((p && p.amount) || 0);
+    const _f = (n) => Number(n || 0).toLocaleString() + '원';
+    if (!itemsTotal && !adjTotal) return '';
+    const diff = expected - amount;
+    const warn = (itemsTotal > 0 && amount > 0 && Math.abs(diff) > 100);
+    return `<div style="margin-top:10px;padding:8px 10px;background:hsl(220,20%,97%);border:1px solid hsl(220,15%,90%);border-radius:8px;font-size:11px;color:hsl(220,10%,30%);line-height:1.6;">
+      정가합 <b>${_f(itemsTotal)}</b> ${adjTotal > 0 ? `− 할인 <b style="color:#E07A5F;">${_f(adjTotal)}</b>` : ''} = 예상 <b>${_f(expected)}</b>
+      ${amount > 0 ? `<br/>결제금액 <b style="color:hsl(220,10%,15%);">${_f(amount)}</b>${warn ? ` <span style="color:#C2410C;font-weight:700;">⚠ 차이 ${_f(Math.abs(diff))}</span>` : (itemsTotal ? ' <span style="color:#388e3c;font-weight:700;">✓</span>' : '')}` : ''}
+    </div>`;
+  }
+
   // ─── 중복 의심 경고 카드 (영수증·주문내역 여러 장 업로드 시) ───
   // warnings: [{action_index, reason, prev, confidence, dismissed}]
   // 특정 action_index 에 해당하는 경고만 필터해서 렌더. 없으면 빈 문자열.
@@ -896,20 +962,30 @@
           })}`;
         if ('memo' in p) addField('memo', '메모', p.memo);
       } else if (action.kind === 'create_expense') {
-        // 지출: vendor / amount / category / memo + items[]
+        // [QA-r11 PR3 2026-05-16] receipt-level expense 편집:
+        //   vendor / amount(결제금액) / category / memo + items[] + adjustments[] + 합계 요약.
         addField('vendor', '가게', p.vendor == null ? '' : p.vendor);
-        addField('amount', '총액', p.amount == null ? '' : p.amount, { type: 'number' });
+        addField('amount', '결제', p.amount == null ? '' : p.amount, { type: 'number' });
         addField('category', '분류', p.category == null ? '' : p.category, { select: true });
         addField('memo', '메모', p.memo == null ? '' : p.memo);
         if (!Array.isArray(p.items)) p.items = [];
+        if (!Array.isArray(p.adjustments)) p.adjustments = [];
         itemsHtml = `
-          <div style="font-size:11px;font-weight:700;color:hsl(220,10%,50%);margin:10px 0 4px;">품목 (선택)</div>
+          <div style="font-size:11px;font-weight:700;color:hsl(220,10%,50%);margin:10px 0 4px;">품목 (정가 기준)</div>
           ${_renderItemsEditor(String(historyIdx), p.items, {
             fieldAttr: 'single-field',
             addAttr: 'single-item-add',
             delAttr: 'single-item-delete',
             color: kindBadge.color,
-          })}`;
+          })}
+          <div style="font-size:11px;font-weight:700;color:hsl(220,10%,50%);margin:10px 0 4px;">할인·쿠폰·포인트</div>
+          ${_renderAdjustmentsEditor(String(historyIdx), p.adjustments, {
+            fieldAttr: 'single-field',
+            addAttr: 'single-adjustment-add',
+            delAttr: 'single-adjustment-delete',
+            color: kindBadge.color,
+          })}
+          ${_renderExpenseSummary(p)}`;
       } else {
         // 기존 고객/매출/예약 필드
         if ('customer_name' in p || 'name' in p) addField('customer_name', '이름', p.customer_name ?? p.name);
@@ -1364,20 +1440,31 @@
           })}`;
         if ('memo' in p) addField('memo', '메모', p.memo);
       } else if (kind === 'create_expense') {
+        // [QA-r11 PR3 2026-05-16] receipt-level — items + adjustments + 합계 요약 (그룹-행 모드).
         addField('vendor', '가게', p.vendor == null ? '' : p.vendor);
-        addField('amount', '총액', p.amount == null ? '' : p.amount, { type: 'number' });
+        addField('amount', '결제', p.amount == null ? '' : p.amount, { type: 'number' });
         addField('category', '분류', p.category == null ? '' : p.category, { select: true });
         addField('memo', '메모', p.memo == null ? '' : p.memo);
         if (!Array.isArray(p.items)) p.items = [];
+        if (!Array.isArray(p.adjustments)) p.adjustments = [];
         itemsHtml = `
-          <div style="font-size:10px;font-weight:700;color:#888;margin:8px 0 2px;">품목 (선택)</div>
+          <div style="font-size:10px;font-weight:700;color:#888;margin:8px 0 2px;">품목 (정가)</div>
           ${_renderItemsEditor(key, p.items, {
             fieldAttr: 'row-field',
             addAttr: 'row-item-add',
             delAttr: 'row-item-delete',
             color: meta.color,
             compact: true,
-          })}`;
+          })}
+          <div style="font-size:10px;font-weight:700;color:#888;margin:8px 0 2px;">할인·쿠폰·포인트</div>
+          ${_renderAdjustmentsEditor(key, p.adjustments, {
+            fieldAttr: 'row-field',
+            addAttr: 'row-adjustment-add',
+            delAttr: 'row-adjustment-delete',
+            color: meta.color,
+            compact: true,
+          })}
+          ${_renderExpenseSummary(p)}`;
       } else {
         if ('customer_name' in p || 'name' in p) addField('customer_name', '이름', p.customer_name ?? p.name);
         if ('customer_phone' in p || 'phone' in p) addField('customer_phone', '전화', p.customer_phone ?? p.phone);
@@ -1557,12 +1644,27 @@
       action.payload.items[i][sub] = _coerceFieldValue(sub, raw);
       return;
     }
+    // [QA-r11 PR3] adjustments[i].{kind,amount} 필드 전파
+    if (field.indexOf('adjustments:') === 0) {
+      const [, idxStr, sub] = field.split(':');
+      const i = parseInt(idxStr, 10);
+      if (isNaN(i)) return;
+      if (!Array.isArray(action.payload.adjustments)) action.payload.adjustments = [];
+      if (!action.payload.adjustments[i]) action.payload.adjustments[i] = {};
+      action.payload.adjustments[i][sub] = _coerceFieldValue(sub, raw);
+      return;
+    }
     action.payload[field] = _coerceFieldValue(field, raw);
   }
   // 이름 비어있는 items 제거 (저장 시)
   function _stripEmptyItems(payload) {
     if (!payload || !Array.isArray(payload.items)) return;
     payload.items = payload.items.filter(it => it && (String(it.name || '').trim() !== ''));
+  }
+  // [QA-r11 PR3] kind 비었거나 amount 0 이하인 adjustment 제거 (저장 시)
+  function _stripEmptyAdjustments(payload) {
+    if (!payload || !Array.isArray(payload.adjustments)) return;
+    payload.adjustments = payload.adjustments.filter(a => a && String(a.kind || '').trim() !== '' && Number(a.amount) > 0);
   }
   // 품목 추가·삭제 전에 현재 입력값을 payload 로 먼저 회수 (재렌더 시 입력값 유실 방지)
   function _flushSingleInputs(idx) {
@@ -1697,6 +1799,7 @@
               _applyEditField(msg.action, field, inp.value);
             });
             _stripEmptyItems(msg.action.payload);
+            _stripEmptyAdjustments(msg.action.payload);
           }
           msg.edit_mode = false;
           _renderHistory();
@@ -1727,6 +1830,33 @@
         if (msg && msg.action && msg.action.payload && Array.isArray(msg.action.payload.items)) {
           _flushSingleInputs(idx);
           msg.action.payload.items.splice(iItem, 1);
+          _renderHistory();
+        }
+        return;
+      }
+      // [QA-r11 PR3] 단일 액션 — 할인 추가/삭제
+      const singleAdjAdd = e.target.closest('[data-single-adjustment-add]');
+      if (singleAdjAdd && document.getElementById('asstBody')?.contains(singleAdjAdd)) {
+        const idx = parseInt(singleAdjAdd.dataset.singleAdjustmentAdd, 10);
+        const msg = _history[idx];
+        if (msg && msg.action) {
+          _flushSingleInputs(idx);
+          if (!msg.action.payload) msg.action.payload = {};
+          if (!Array.isArray(msg.action.payload.adjustments)) msg.action.payload.adjustments = [];
+          msg.action.payload.adjustments.push({ kind: '', amount: 0 });
+          _renderHistory();
+        }
+        return;
+      }
+      const singleAdjDel = e.target.closest('[data-single-adjustment-delete]');
+      if (singleAdjDel && document.getElementById('asstBody')?.contains(singleAdjDel)) {
+        const parts = singleAdjDel.dataset.singleAdjustmentDelete.split(':');
+        const idx = parseInt(parts[0], 10);
+        const iAdj = parseInt(parts[1], 10);
+        const msg = _history[idx];
+        if (msg && msg.action && msg.action.payload && Array.isArray(msg.action.payload.adjustments)) {
+          _flushSingleInputs(idx);
+          msg.action.payload.adjustments.splice(iAdj, 1);
           _renderHistory();
         }
         return;
@@ -1891,6 +2021,7 @@
               _applyEditField(it.action, field, inp.value);
             });
             _stripEmptyItems(it.action.payload);
+            _stripEmptyAdjustments(it.action.payload);
           }
           it.editing = false;
           _renderHistory();
@@ -1923,6 +2054,35 @@
         if (it && it.action?.payload?.items) {
           _flushRowInputs(hi, gi, ii);
           it.action.payload.items.splice(iItem, 1);
+          _renderHistory();
+        }
+        return;
+      }
+      // [QA-r11 PR3] 행 — 할인 추가/삭제
+      const rowAdjAdd = e.target.closest('[data-row-adjustment-add]');
+      if (rowAdjAdd && document.getElementById('asstBody')?.contains(rowAdjAdd)) {
+        const [hi, gi, ii] = rowAdjAdd.dataset.rowAdjustmentAdd.split(':').map(n => parseInt(n, 10));
+        const it = _history[hi]?.action_groups?.[gi]?.items?.[ii];
+        if (it) {
+          _flushRowInputs(hi, gi, ii);
+          if (!it.action.payload) it.action.payload = {};
+          if (!Array.isArray(it.action.payload.adjustments)) it.action.payload.adjustments = [];
+          it.action.payload.adjustments.push({ kind: '', amount: 0 });
+          _renderHistory();
+        }
+        return;
+      }
+      const rowAdjDel = e.target.closest('[data-row-adjustment-delete]');
+      if (rowAdjDel && document.getElementById('asstBody')?.contains(rowAdjDel)) {
+        const parts = rowAdjDel.dataset.rowAdjustmentDelete.split(':');
+        const hi = parseInt(parts[0], 10);
+        const gi = parseInt(parts[1], 10);
+        const ii = parseInt(parts[2], 10);
+        const iAdj = parseInt(parts[3], 10);
+        const it = _history[hi]?.action_groups?.[gi]?.items?.[ii];
+        if (it && it.action?.payload?.adjustments) {
+          _flushRowInputs(hi, gi, ii);
+          it.action.payload.adjustments.splice(iAdj, 1);
           _renderHistory();
         }
         return;

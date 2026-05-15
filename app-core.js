@@ -1673,7 +1673,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260516-v129-qa-r11-receipt-level-frontend';
+window.APP_BUILD = '20260516-v129b-qa-r11-pr3-expense-expanded';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;
