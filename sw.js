@@ -7,7 +7,7 @@
 //    - /api/, /auth/, /data-export/  → network-first (항상 최신)
 //    - app-*.js, *.css, *.html       → cache-first + 백그라운드 revalidate
 // ─────────────────────────────────────────────
-const CACHE_VERSION = '20260515-v126-qa-r8-cache-rescue';
+const CACHE_VERSION = '20260515-v127-qa-r9-sw-503-fix';
 const CACHE_NAME    = `itdasy-${CACHE_VERSION}`;
 const API_CACHE_NAME = `itdasy-api-${CACHE_VERSION}`;
 
@@ -43,6 +43,8 @@ const STATIC_ASSETS = [
   './style-dark.css',
   './style-hub.css',
   './app-core.js',
+  './app-home-v41.js',
+  './app-home-v41-config.js',
   './app-perf-recovery.js',
   './app-instagram.js',
   './app-caption.js',
@@ -77,10 +79,17 @@ const STATIC_ASSETS = [
 ];
 
 // ── install: 새 버전 캐시 준비 ──
+// [v127] cache.addAll → allSettled(map(cache.add)) — 한 asset 이 4xx/네트워크 fail
+// 이어도 install 자체는 진행. 옛 install-all-or-nothing 정책 때문에 부분 누락 시
+// 옛 SW 에 갇혀있던 사용자 회복 불가했음.
 self.addEventListener('install', event => {
   self.skipWaiting(); // 대기 없이 즉시 활성화
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then(cache =>
+      Promise.allSettled(STATIC_ASSETS.map(url => cache.add(url).catch(err => {
+        console.warn('[SW] install: ' + url + ' fail —', err && err.message);
+      })))
+    )
   );
 });
 
@@ -201,6 +210,11 @@ self.addEventListener('fetch', event => {
       const offline = await caches.match(OFFLINE_URL);
       if (offline) return offline;
     }
-    return new Response('', { status: 503, statusText: 'Offline' });
+    // [v127] script/css 등 정적 파일은 빈 503 응답을 절대 만들지 않는다.
+    //   <script> 태그가 빈 본문 받으면 "Uncaught SyntaxError: Unexpected end of input"
+    //   → 부팅 흐름 전체 중단 + 홈 위젯 미렌더 + 사용자 화면 깨짐.
+    //   Response.error() 는 NetworkError 로 reject → 브라우저가 단순 로드 실패 처리,
+    //   다음 새로고침에 재시도 기회. (옛 빈 503 정책은 catch-22 의 원흉.)
+    return Response.error();
   })());
 });

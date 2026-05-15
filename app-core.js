@@ -1673,7 +1673,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260515-v126-qa-r8-cache-rescue';
+window.APP_BUILD = '20260515-v127-qa-r9-sw-503-fix';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;
