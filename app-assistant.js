@@ -76,15 +76,24 @@
     }
     const PER_KIND_CAP = 8;
     const TOTAL_CAP = 20;
-    // [QA-r10b 2026-05-15] 키는 _summarizeItem 의 표시 필드와 1:1 매칭 — 사용자가 화면에서
-    // 구분할 수 없는 카드는 메모리/내부 필드(items[], image_hash) 가 달라도 같은 것으로 본다.
-    // 그래야 24장 카드 → 1장 (시각적으로 동일) 으로 정상 축소.
+    // [QA-r11 2026-05-16] receipt-level dedupe — vendor+amount 만으로 dedupe 절대 금지.
+    // 올리브영 같은 매장은 같은 금액 영수증이 흔해 오탐. 영수증 메타 (image_hash + transaction_time +
+    // approval_no) 조합만 사용. 메타 부재 시에는 dedupe 보류 (안전 — keep all).
     function _keyOf(a) {
       const p = (a && a.payload) || {};
       const kind = a && a.kind;
       if (kind === 'create_expense') {
-        // 카드 표시: vendor · memo · amount
-        return `expense|${(p.vendor || '').trim().toLowerCase()}|${(p.memo || '').trim().slice(0, 30).toLowerCase()}|${p.amount || 0}`;
+        // 영수증 메타 우선 — 셋 중 하나라도 있으면 그것으로 키 생성.
+        const rmeta = (p.receipt_meta && typeof p.receipt_meta === 'object') ? p.receipt_meta : {};
+        const _img = (p.image_hash || rmeta.image_hash || '').toString();
+        const _txn = (rmeta.transaction_time || '').toString();
+        const _appr = (rmeta.approval_no || '').toString();
+        if (_img || _txn || _appr) {
+          return `expense|hash:${_img}|txn:${_txn}|appr:${_appr}`;
+        }
+        // 메타 부재 — JSON 전체 stringify 로 비교 (완전 동일 payload 만 같은 것으로 봄, 보수적).
+        try { return `expense|nometa|${JSON.stringify(p).slice(0, 200)}`; }
+        catch (_e) { void _e; return `expense|nometa|?`; }
       }
       if (kind === 'upsert_inventory') {
         // 카드 표시: items[0].name · quantity
@@ -962,12 +971,26 @@
     const _fmtDate = (s) => { try { const d = new Date(s); return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + '시'; } catch (_e) { return ''; } };
 
     if (kind === 'create_expense') {
-      // 가게명(vendor) 우선 — 없으면 "지출처 미상"
+      // [QA-r11 2026-05-16] receipt-level 표시: vendor · amount · 품목수
       const v = (p.vendor || '').trim();
       parts.push(v || '지출처 미상');
-      const m = (p.memo || '').trim();
-      if (m) parts.push(m.slice(0, 20));
       if (p.amount) parts.push(_fmtAmt(p.amount));
+      // items[] 가 있으면 품목수 노출, memo 는 폴백
+      if (Array.isArray(p.items) && p.items.length) {
+        parts.push(`품목 ${p.items.length}건`);
+      } else {
+        const m = (p.memo || '').trim();
+        if (m) parts.push(m.slice(0, 20));
+      }
+      // 정가합 vs 결제금액 차액 (할인 의심) 인라인 표시
+      try {
+        const _itemsTotal = (Array.isArray(p.items) ? p.items : [])
+          .reduce((s, it) => s + (Number(it && it.total) || 0), 0);
+        if (_itemsTotal > 0 && p.amount && Math.abs(_itemsTotal - Number(p.amount)) > 100) {
+          const diff = _itemsTotal - Number(p.amount);
+          if (diff > 0) parts.push(`할인 -${_fmtAmt(diff)}`);
+        }
+      } catch (_e) { void _e; }
     } else if (kind === 'upsert_inventory') {
       const items = Array.isArray(p.items) ? p.items : [];
       if (items.length) {
@@ -2622,14 +2645,9 @@
         }
         _history.push(msg);
       }
-      // [QA-r10] dedupe 가 절반 이상 잘라낸 경우 사용자에게 알림 (예: 24건 → 1건)
-      // 액션이 남아있을 때만 — 0건 케이스는 위에서 안내 처리됨.
-      if (actionsList.length > 0 && _dedupeRes.dropped > Math.max(2, actionsList.length)) {
-        try {
-          const _tail = ' (중복/빈 ' + _dedupeRes.dropped + '건은 제외했어요)';
-          msg.text = (msg.text || '사진을 확인했어요.') + _tail;
-        } catch (_e) { void _e; }
-      }
+      // [QA-r11 2026-05-16] dedupe 안내문 제거. 백엔드가 짧은 요약 (예: "영수증 7장 분석했어요. 지출 7건 추가할까요?")
+      // 을 직접 생성하므로 프론트가 "(중복/빈 N건은 제외했어요)" 같은 내부 처리 문구를 덧붙이지 않음.
+      // 사용자 멘탈모델: 영수증 N장 = action N개 — 그대로 매칭.
       _renderHistory();
       if (window.hapticLight) window.hapticLight();
       // [2026-04-26] 답변 도착 — pending 정리 + 챗봇 닫혀있으면 알림
