@@ -730,8 +730,16 @@
         });
       };
 
-      // 즉석 신규 고객 생성 → 바로 선택
+      // [QA-r10b 2026-05-15] 같은 사람 2번 등록 보고 (게시물 업로드 워크플로 고객 추가):
+      // 사용자가 빠른 더블클릭 또는 Enter+버튼 클릭 → onCreate 가 병렬 실행 →
+      // create() POST /customers 2회 → DB 에 같은 이름 2건 INSERT.
+      // [F-A] re-entry 가드: 첫 호출만 진행, 진행 중엔 무시.
+      // [F-B] 이름·전화 기반 dedupe: 캐시에 일치 고객이 이미 있으면 POST 안 보내고 그것 선택.
+      let _creatingInFlight = false;
+      const _normName = (s) => String(s || '').trim().toLowerCase();
+      const _normPhone = (s) => String(s || '').replace(/[^0-9]/g, '');
       const onCreate = async () => {
+        if (_creatingInFlight) return;  // [F-A] 재진입 차단
         const name = (newNameEl.value || '').trim();
         const phone = (newPhoneEl.value || '').trim();
         if (!name) {
@@ -739,20 +747,41 @@
           newNameEl.focus();
           return;
         }
+        _creatingInFlight = true;
         createBtn.disabled = true;
         createBtn.textContent = '추가 중…';
+        // 진행 중 quickBtn 도 비활성 (검색 결과 0건일 때 노출되는 큰 버튼)
+        try { listEl.querySelectorAll('[data-pick-quick-add]').forEach(b => { b.disabled = true; b.style.opacity = '0.6'; }); } catch (_e) { void _e; }
         try {
+          // [F-B] 캐시에 이미 같은 이름·전화 고객이 있으면 신규 POST 없이 그것 사용.
+          //   - 전화번호 있으면 (이름 일치 + 전화 일치) 우선
+          //   - 전화번호 없으면 (이름 정확히 일치, 전화 비어있는 첫 매치)
+          const _nName = _normName(name);
+          const _nPhone = _normPhone(phone);
+          const existing = (_cache || []).find(c => {
+            if (!c || c._optimistic) return false;
+            if (_normName(c.name) !== _nName) return false;
+            if (_nPhone) return _normPhone(c.phone) === _nPhone;
+            return !c.phone || _normPhone(c.phone) === '';
+          });
+          if (existing) {
+            if (window.hapticLight) window.hapticLight();
+            if (window.showToast) window.showToast(`${existing.name} 기존 고객으로 연결했어요`);
+            close({ id: existing.id, name: existing.name });
+            return;
+          }
           const created = await create({ name, phone: phone || null });
           if (window.hapticLight) window.hapticLight();
           if (window.showToast) window.showToast(`${created.name} 새 고객으로 추가됐어요`);
-          // 데이터 변경 이벤트 (대시보드·목록 자동 새로고침)
           try {
             window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_customer' } }));
           } catch (_e) { /* ignore */ }
           close({ id: created.id, name: created.name });
         } catch (err) {
+          _creatingInFlight = false;
           createBtn.disabled = false;
           createBtn.textContent = '+ 추가하고 선택';
+          try { listEl.querySelectorAll('[data-pick-quick-add]').forEach(b => { b.disabled = false; b.style.opacity = ''; }); } catch (_e) { void _e; }
           if (err && err.message === 'free-limit-reached') return;  // create() 내부에서 토스트 처리됨
           console.warn('[customer.pick] 신규 추가 실패:', err);
           if (window.showToast) window.showToast('고객 추가 실패');
