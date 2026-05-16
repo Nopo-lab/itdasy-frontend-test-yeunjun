@@ -1229,7 +1229,7 @@
     btn.addEventListener('pointerdown', e => {
       if (e.button !== 0 && e.pointerType !== 'touch') return;
       ctx.startY = e.clientY; ctx.startX = e.clientX;
-      ctx.item = _mappedCache.find(m => m.id === btn.dataset.bookingId);
+      ctx.item = _mappedCache.find(m => String(m.id) === btn.dataset.bookingId);
       ctx.pressTimer = setTimeout(() => {
         if (!ctx.item) return;
         ctx.dragMode = true; _enterDragMode(btn, e);
@@ -1247,7 +1247,16 @@
     btn.addEventListener('pointerup', async e => {
       if (!ctx.dragMode) {
         clearTimeout(ctx.pressTimer); e.stopPropagation();
-        if (ctx.item) _openForm(new Date(ctx.item._raw.starts_at), ctx.item._raw);
+        // 폴백: ctx.item이 null이면 재탐색 (strict + loose)
+        if (!ctx.item) {
+          ctx.item = _mappedCache.find(m => String(m.id) === btn.dataset.bookingId)
+                  || _mappedCache.find(m => m.id == btn.dataset.bookingId);
+        }
+        if (ctx.item) {
+          _openForm(new Date(ctx.item._raw.starts_at), ctx.item._raw);
+        } else {
+          console.warn('[BK] 블록 클릭 매칭 실패:', btn.dataset.bookingId, _mappedCache.map(m => m.id));
+        }
         return;
       }
       e.preventDefault();
@@ -1546,6 +1555,13 @@
           _renderChips(names);
           const ci = body.querySelector('#bfSvcCustom');
           if (ci) ci.style.display = 'none';
+          // [Step 4 · 2026-05-16] 프리셋 매칭 → 소요시간 자동 갱신 + 안내 토스트
+          const tpl = _selectedSvc && (window._serviceTemplatesCache || []).find(t => t.name === _selectedSvc);
+          if (tpl && tpl.default_duration_min > 0) { _durMin = tpl.default_duration_min; _updateDur(); }
+          if (tpl && window.showToast) {
+            const priceLbl = tpl.default_price ? _krwShort(tpl.default_price) + '원 · ' : '';
+            window.showToast(`프리셋 기준: ${priceLbl}${tpl.default_duration_min || 0}분`);
+          }
         });
       });
       body.querySelector('#bfSvcAddBtn')?.addEventListener('click', () => {
