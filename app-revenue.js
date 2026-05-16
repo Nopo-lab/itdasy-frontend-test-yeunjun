@@ -219,28 +219,61 @@
     return { ok: true };
   }
 
-  // ── 인센티브 ────────────────────────────────────────────
+  // ── 인센티브 / 비용 설정 ─────────────────────────────────
   const INCENTIVE_KEY = 'itdasy_incentive_settings_v1';
   function _incentiveSettings() {
     try { const raw = localStorage.getItem(INCENTIVE_KEY); if (raw) return JSON.parse(raw); } catch (_) { /* silent */ }
-    return { material_pct: 15, fixed_monthly: 0 };
+    return { material_pct: 15, fixed_monthly: 0, card_fee_pct: 3.5 };
   }
   function _calcIncentive(totalKRW) {
     const s = _incentiveSettings();
     const material = Math.round(totalKRW * (s.material_pct / 100));
     return { gross: totalKRW, material, fixed: s.fixed_monthly || 0, net: totalKRW - material - (s.fixed_monthly || 0), settings: s };
   }
+  // [Step 5 · 2026-05-16] prompt 2개 → 작은 모달 1개. 카드 수수료 필드도 추가.
   function _openIncentiveSettings() {
     const s = _incentiveSettings();
-    const pct = prompt('재료비율 (%) — 매출 중 재료비로 차감할 비율', String(s.material_pct));
-    if (pct === null) return;
-    const fixed = prompt('월 고정비 (원) — 월세·통신·보험 등', String(s.fixed_monthly));
-    if (fixed === null) return;
-    const np = Math.max(0, Math.min(100, parseFloat(pct) || 0));
-    const nf = Math.max(0, parseInt(fixed, 10) || 0);
-    try { localStorage.setItem(INCENTIVE_KEY, JSON.stringify({ material_pct: np, fixed_monthly: nf })); } catch (_) { /* silent */ }
-    if (window.showToast) window.showToast('설정 저장됨');
-    _rerender();
+    let modal = document.getElementById('rvCostModal');
+    if (modal) modal.remove();
+    modal = document.createElement('div');
+    modal.id = 'rvCostModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9002;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;justify-content:center;';
+    modal.innerHTML = `
+      <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:420px;padding:20px;padding-bottom:max(20px,env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+          <strong style="font-size:17px;color:#191F28;">비용 설정</strong>
+          <button type="button" data-rv-cost-close style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;color:#8B95A1;" aria-label="닫기">✕</button>
+        </div>
+        <div style="font-size:12px;color:#8B95A1;margin-bottom:14px;line-height:1.5;">매출 화면의 순수익 / 마진 계산에 쓰이는 값이에요.</div>
+
+        <label style="display:block;font-size:12px;color:#4E5968;font-weight:600;margin-bottom:6px;">재료비 비율 (%)</label>
+        <input id="rvCostMaterial" type="number" min="0" max="100" step="0.1" value="${Number(s.material_pct || 0)}" style="width:100%;padding:12px;border:1px solid #E5E8EB;border-radius:10px;margin-bottom:14px;font-size:15px;" />
+
+        <label style="display:block;font-size:12px;color:#4E5968;font-weight:600;margin-bottom:6px;">월 고정비 (원) <span style="color:#8B95A1;font-weight:400;">· 월세·통신·보험 등</span></label>
+        <input id="rvCostFixed" type="number" min="0" step="1000" value="${Number(s.fixed_monthly || 0)}" style="width:100%;padding:12px;border:1px solid #E5E8EB;border-radius:10px;margin-bottom:14px;font-size:15px;" />
+
+        <label style="display:block;font-size:12px;color:#4E5968;font-weight:600;margin-bottom:6px;">카드 수수료율 (%)</label>
+        <input id="rvCostCardFee" type="number" min="0" max="10" step="0.1" value="${Number(s.card_fee_pct || 3.5)}" style="width:100%;padding:12px;border:1px solid #E5E8EB;border-radius:10px;margin-bottom:6px;font-size:15px;" />
+        <div style="font-size:11px;color:#8B95A1;margin-bottom:16px;line-height:1.5;">* 화면 표시 기준입니다. 실제 매출 자동 기록의 수수료는 BE 설정과 동기화돼야 정확히 반영돼요.</div>
+
+        <div style="display:flex;gap:8px;">
+          <button type="button" data-rv-cost-close style="flex:1;padding:13px;border:1px solid #E5E8EB;border-radius:12px;background:#fff;cursor:pointer;color:#4E5968;font-weight:700;font-size:13px;">취소</button>
+          <button type="button" id="rvCostSave" style="flex:2;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#F18091,#E5586E);color:#fff;cursor:pointer;font-weight:800;font-size:14px;">저장</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    const close = () => { modal.remove(); };
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    modal.querySelectorAll('[data-rv-cost-close]').forEach(b => b.addEventListener('click', close));
+    modal.querySelector('#rvCostSave').addEventListener('click', () => {
+      const np = Math.max(0, Math.min(100, parseFloat(modal.querySelector('#rvCostMaterial').value) || 0));
+      const nf = Math.max(0, parseInt(modal.querySelector('#rvCostFixed').value, 10) || 0);
+      const fee = Math.max(0, Math.min(10, parseFloat(modal.querySelector('#rvCostCardFee').value) || 0));
+      try { localStorage.setItem(INCENTIVE_KEY, JSON.stringify({ material_pct: np, fixed_monthly: nf, card_fee_pct: fee })); } catch (_) { /* silent */ }
+      if (window.showToast) window.showToast('비용 설정 저장됨');
+      close();
+      _rerender();
+    });
   }
 
   // ── 도넛 (today 뷰가 사용) ───────────────────────────────
