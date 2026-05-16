@@ -1,12 +1,19 @@
 /* ─────────────────────────────────────────────────────────────
-   매출관리 — 이번달 뷰 (Step 3A · 2026-05-16, mockup-revenue-v4 기반)
+   매출관리 — 이번달 뷰 (Step 5 · 2026-05-17, mockup-revenue-v5 기반)
 
-   - BE GET /revenue/summary?period=month 호출 (실패 시 FE 폴백 계산)
-   - 4 stat 카드 / 동기간 대비 / 결제수단 분포 / 일별 + AI 목표 / 매출 내역
-   - AI 일일 목표 localStorage('itdasy_daily_goal_v1') · 미설정 시 저번달 일평균 추천
+   v5 핵심:
+   - 히어로 한 줄 (금액 + 건수)
+   - AI 예상 인라인 row
+   - 순수익 / 재료비 2-stat row
+   - 결제수단 (260px) + 일별 매출 (flex) 2컬럼
+   - 일별 매출: 목표 배너 + bar + 목표선
+   - 매출 내역: 간단한 li (날짜 · 이름 · 금액 · ›)
+   - 월 네비게이션 (← 2026년 5월 →) — 시각만, 이전달 토스트
 
-   외부 API: window.RevenueMonth = { fetchSummary, fallbackSummary, renderPC, renderMobile }
+   외부 API: window.RevenueMonth = { fetchSummary, fallbackSummary, renderPC, renderMobile, _ensureStyles }
    의존: window.Revenue (내부 헬퍼)
+
+   호환: today/week 가 사용하는 rvm-* (rvm-pcg4, rvm-pcstat, rvm-cd 등) 스타일도 함께 주입
    ──────────────────────────────────────────────────────────── */
 (function () {
   'use strict';
@@ -28,7 +35,6 @@
     return await res.json();
   }
 
-  // 일요일 제외 영업일 계산 (BE 와 동일 규칙)
   function _bizDaysBetween(fromD, toD) {
     let n = 0;
     const d = new Date(fromD.getFullYear(), fromD.getMonth(), fromD.getDate());
@@ -40,7 +46,6 @@
     return n;
   }
 
-  // BE 실패 시 GET /revenue?period=month items 로부터 클라이언트 계산
   function fallbackSummary(items) {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -102,7 +107,6 @@
     try { localStorage.removeItem(GOAL_KEY); } catch (_e) { /* silent */ }
   }
   function recommendedGoal(summary) {
-    // 저번달 일평균 — prev_full_month / 저번달 영업일 수 (BE 가 안 주면 22일 가정)
     const prev = +summary.prev_full_month || 0;
     if (!prev) return 0;
     return Math.max(1000, Math.round(prev / 22 / 1000) * 1000);
@@ -111,19 +115,6 @@
   // ── 헬퍼 ───────────────────────────────────────────────
   const _esc = (s) => (_R()._esc ? _R()._esc(s) : String(s == null ? '' : s));
   const _krw = (n) => (((+n) || 0)).toLocaleString('ko-KR') + '원';
-  const _man = (n) => (_R()._formatMan ? _R()._formatMan(n) : _krw(n));
-  function _pctDelta(cur, prev) { if (!prev) return null; return Math.round((cur - prev) * 1000 / prev) / 10; }
-  function _diffSign(v, suffix) {
-    if (v == null) return '<span class="rvm-diff">—</span>';
-    const cls = v >= 0 ? 'rvm-diff rvm-up' : 'rvm-diff rvm-dn';
-    const sign = v > 0 ? '+' : '';
-    return `<span class="${cls}">${sign}${v}${suffix || ''}</span>`;
-  }
-  function _ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
-  function _shortDate(s) {
-    const t = new Date(s);
-    return (t.getMonth() + 1) + '/' + t.getDate();
-  }
   function _dayLabel(s, today) {
     const t = new Date(s);
     const dn = ['일', '월', '화', '수', '목', '금', '토'][t.getDay()];
@@ -131,14 +122,128 @@
     return same ? `${t.getMonth() + 1}/${t.getDate()} 오늘` : `${t.getMonth() + 1}/${t.getDate()} (${dn})`;
   }
   const TAG_LABEL = { card: '카드', cash: '현금', transfer: '계좌', bank_transfer: '계좌', membership: '회원권', etc: '기타' };
-  const METHOD_COLOR = { card: 'var(--bs)', cash: 'var(--brand)', transfer: '#F5A3B0', bank_transfer: '#F5A3B0', membership: '#F8C4CC', etc: '#E5E8EB' };
+  const METHOD_COLOR = { card: '#E5586E', cash: '#F18091', transfer: '#F5A3B0', bank_transfer: '#F5A3B0', membership: '#F8C4CC', etc: '#E5E8EB' };
 
-  // ── 스타일 주입 (목업 v4 톤, rvm- prefix 로 격리) ────────
+  // ── 스타일 주입 ──────────────────────────────────────────
+  // rvm5-* (mockup v5 — 이번달 전용) + rvm-* (today/week 호환용, 옛 v4 톤)
   function _ensureStyles() {
     if (document.getElementById(STYLE_ID)) return;
     const s = document.createElement('style');
     s.id = STYLE_ID;
     s.textContent = `
+      /* ═════ mockup-v5 (이번달 메인) ═════ */
+      .rvm5-body{padding:24px}
+      .rvm5-mnav{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+      .rvm5-mnav .arrow{width:30px;height:30px;border-radius:50%;border:1px solid #E5E8EB;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:#191F28;line-height:1;padding:0}
+      .rvm5-mnav .arrow:hover:not(:disabled){background:#F2F4F6}
+      .rvm5-mnav .arrow:disabled{opacity:0.3;cursor:not-allowed}
+      .rvm5-mnav .label{font-size:15px;font-weight:700;color:#191F28;letter-spacing:-0.4px}
+
+      .rvm5-hero{background:#FFF1F3;border-radius:14px;padding:22px 26px;margin-bottom:14px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+      .rvm5-hero .amt{font-size:32px;font-weight:800;color:#E5586E;letter-spacing:-1.5px;line-height:1}
+      .rvm5-hero .cnt{font-size:13px;font-weight:600;color:#E5586E;opacity:0.7}
+
+      .rvm5-ai{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#F2F4F6;border-radius:8px;margin-bottom:14px}
+      .rvm5-ai .badge{padding:3px 8px;border-radius:6px;background:#E5586E;color:#fff;font-size:9px;font-weight:800;flex-shrink:0;letter-spacing:0.3px}
+      .rvm5-ai .txt{font-size:13px;color:#191F28}
+      .rvm5-ai .txt b{font-weight:700;color:#191F28}
+
+      .rvm5-stats{display:flex;gap:10px;margin-bottom:18px}
+      .rvm5-stat{flex:1;padding:14px 16px;background:#F2F4F6;border-radius:8px}
+      .rvm5-stat .l{font-size:10px;color:#191F28;margin-bottom:3px;opacity:0.7}
+      .rvm5-stat .v{font-size:18px;font-weight:700;letter-spacing:-0.5px;color:#191F28}
+
+      .rvm5-g2{display:grid;grid-template-columns:260px 1fr;gap:14px;margin-bottom:18px}
+      @media (max-width: 720px){.rvm5-g2{grid-template-columns:1fr}}
+      .rvm5-card{background:#fff;border:1px solid #E5E8EB;border-radius:14px;padding:16px}
+      .rvm5-card-t{font-size:11px;font-weight:600;color:#191F28;margin-bottom:10px;letter-spacing:-0.2px}
+
+      .rvm5-br{display:flex;align-items:center;gap:7px;padding:5px 0}
+      .rvm5-br .lb{font-size:11px;width:36px;text-align:right;color:#191F28;flex-shrink:0}
+      .rvm5-br .tk{flex:1;height:14px;background:#F2F4F6;border-radius:3px;overflow:hidden}
+      .rvm5-br .fl{height:100%;border-radius:3px}
+      .rvm5-br .pc{font-size:11px;font-weight:600;width:32px;text-align:right;color:#191F28;flex-shrink:0}
+
+      .rvm5-dr{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #F2F4F6}
+      .rvm5-dr:last-child{border:none}
+      .rvm5-dr .d{font-size:11px;color:#191F28;width:78px;flex-shrink:0;letter-spacing:-0.2px}
+      .rvm5-dr .bar{flex:1;height:6px;background:#F2F4F6;border-radius:3px;overflow:hidden;position:relative;min-width:60px}
+      .rvm5-dr .f{height:100%;border-radius:3px}
+      .rvm5-dr .gl{position:absolute;top:-2px;bottom:-2px;width:1.5px;background:#191F28;border-radius:1px;opacity:0.18}
+      .rvm5-dr .a{font-size:12px;font-weight:600;width:90px;text-align:right;letter-spacing:-0.3px;flex-shrink:0}
+      .rvm5-dr .a.over{color:#0F6E56}
+      .rvm5-dr .a.under{color:#4E5968}
+      .rvm5-dr .c{font-size:10px;color:#191F28;width:28px;text-align:right;opacity:0.6;flex-shrink:0}
+
+      .rvm5-gb{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;margin-bottom:8px;background:#FFF1F3}
+      .rvm5-gb .t{font-size:11px;font-weight:600;color:#E5586E;flex:1;letter-spacing:-0.2px}
+      .rvm5-gb .btn{padding:4px 12px;border-radius:999px;font-size:10px;font-weight:600;border:1px solid #E5E8EB;background:#fff;color:#E5586E;cursor:pointer}
+      .rvm5-gb .btn:hover{background:#F7F8FA}
+
+      .rvm5-sl{font-size:12px;font-weight:600;color:#191F28;margin:18px 0 8px;letter-spacing:-0.2px}
+      .rvm5-list{border:1px solid #E5E8EB;border-radius:14px;overflow:hidden;background:#fff}
+      .rvm5-li{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #E5E8EB;cursor:pointer}
+      .rvm5-li:last-child{border:none}
+      .rvm5-li:hover{background:#F7F8FA}
+      .rvm5-li .dt{font-size:11px;color:#191F28;width:34px;opacity:0.6;flex-shrink:0}
+      .rvm5-li .nm{font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .rvm5-li .am{font-size:13px;font-weight:700;letter-spacing:-0.3px;flex-shrink:0}
+      .rvm5-li .ch{font-size:13px;color:#C5CBD2;margin-left:2px;flex-shrink:0}
+      .rvm5-empty{padding:24px;text-align:center;color:#8B95A1;font-size:13px;background:#fff;border:1px solid #E5E8EB;border-radius:14px}
+
+      /* ── 모바일 v5 ── */
+      .rvm5-mbody{padding:14px}
+      .rvm5-mmnav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px}
+      .rvm5-mmnav .ar{width:26px;height:26px;border-radius:50%;border:1px solid #E5E8EB;display:flex;align-items:center;justify-content:center;font-size:12px;color:#191F28;background:#fff;cursor:pointer;padding:0;line-height:1}
+      .rvm5-mmnav .ar:disabled{opacity:0.3;cursor:not-allowed}
+      .rvm5-mmnav .ml{font-size:14px;font-weight:700;letter-spacing:-0.3px}
+
+      .rvm5-mhero{background:#FFF1F3;border-radius:14px;padding:16px;margin-bottom:8px}
+      .rvm5-mhero-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+      .rvm5-mhero-top .amt{font-size:26px;font-weight:800;color:#E5586E;letter-spacing:-1.2px;line-height:1}
+      .rvm5-mhero-top .cnt{font-size:12px;font-weight:600;color:#E5586E;opacity:0.7}
+      .rvm5-mhero-sub{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#E5E8EB;border-radius:8px;overflow:hidden;margin-top:12px}
+      .rvm5-mhero-sub .c{background:#fff;padding:10px}
+      .rvm5-mhero-sub .l{font-size:9px;color:#191F28;opacity:0.7}
+      .rvm5-mhero-sub .v{font-size:13px;font-weight:700;margin-top:2px;letter-spacing:-0.3px}
+
+      .rvm5-mai{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fff;border:1px solid #E5E8EB;border-radius:14px;margin-bottom:8px}
+      .rvm5-mai .badge{padding:2px 7px;border-radius:5px;background:#E5586E;color:#fff;font-size:8px;font-weight:800;flex-shrink:0}
+      .rvm5-mai .txt{font-size:12px;color:#191F28}
+      .rvm5-mai .txt b{font-weight:700}
+
+      .rvm5-mc{background:#fff;border:1px solid #E5E8EB;border-radius:14px;padding:12px;margin-bottom:8px}
+      .rvm5-mc .t{font-size:10px;font-weight:600;color:#191F28;margin-bottom:6px}
+
+      .rvm5-mbr{display:flex;align-items:center;gap:5px;padding:4px 0}
+      .rvm5-mbr .lb{font-size:10px;width:30px;text-align:right;color:#191F28;flex-shrink:0}
+      .rvm5-mbr .tk{flex:1;height:10px;background:#F2F4F6;border-radius:3px;overflow:hidden}
+      .rvm5-mbr .fl{height:100%;border-radius:3px}
+      .rvm5-mbr .pc{font-size:10px;font-weight:600;width:28px;text-align:right;color:#191F28;flex-shrink:0}
+
+      .rvm5-md{display:flex;align-items:center;gap:5px;padding:6px 0;border-bottom:1px solid #F2F4F6}
+      .rvm5-md:last-child{border:none}
+      .rvm5-md .d{font-size:10px;color:#191F28;width:58px;flex-shrink:0}
+      .rvm5-md .bar{flex:1;height:4px;background:#F2F4F6;border-radius:2px;overflow:hidden;position:relative;min-width:40px}
+      .rvm5-md .f{height:100%;border-radius:2px}
+      .rvm5-md .gl{position:absolute;top:-1px;bottom:-1px;width:1.5px;background:#191F28;opacity:0.18;border-radius:1px}
+      .rvm5-md .a{font-size:11px;font-weight:600;width:74px;text-align:right;letter-spacing:-0.3px;flex-shrink:0}
+      .rvm5-md .a.over{color:#0F6E56}
+      .rvm5-md .a.under{color:#4E5968}
+      .rvm5-md .c{font-size:9px;color:#191F28;width:24px;text-align:right;opacity:0.6;flex-shrink:0}
+
+      .rvm5-mli{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #E5E8EB;cursor:pointer}
+      .rvm5-mli:last-child{border:none}
+      .rvm5-mli .dt{font-size:10px;color:#191F28;width:30px;opacity:0.6;flex-shrink:0}
+      .rvm5-mli .nm{font-size:12px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .rvm5-mli .am{font-size:12px;font-weight:700;letter-spacing:-0.2px;flex-shrink:0}
+      .rvm5-mli .ch{font-size:11px;color:#C5CBD2;margin-left:1px;flex-shrink:0}
+
+      .rvm5-mgb{display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:8px;margin-bottom:6px;background:#FFF1F3}
+      .rvm5-mgb .t{font-size:10px;font-weight:600;color:#E5586E;flex:1}
+      .rvm5-mgb .btn{padding:3px 10px;border-radius:999px;font-size:9px;font-weight:600;border:1px solid #E5E8EB;background:#fff;color:#E5586E;cursor:pointer}
+
+      /* ═════ today/week 호환 — 옛 v4 톤 (변경 X) ═════ */
       .rvm-body{padding:20px}
       .rvm-pcg4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:16px}
       .rvm-pcg2{display:grid;grid-template-columns:300px 1fr;gap:16px;margin-top:16px;margin-bottom:16px}
@@ -150,26 +255,14 @@
       .rvm-pcstat.hi .l,.rvm-pcstat.hi .v{color:#E5586E}
       .rvm-pcstat.predict{background:#fff;border:1px solid #E5E8EB}
       .rvm-pcstat.predict .v{color:#E5586E}
-
       .rvm-cd{background:#fff;border:1px solid #E5E8EB;border-radius:14px;padding:16px}
       .rvm-sl{font-size:12px;font-weight:600;color:#8B95A1;margin:20px 0 8px;letter-spacing:-0.2px}
       .rvm-sl:first-child{margin-top:0}
-
-      .rvm-compare{background:#fff;border:1px solid #E5E8EB;border-radius:14px;padding:16px;margin-top:16px}
-      .rvm-compare h4{font-size:13px;font-weight:700;margin-bottom:10px}
-      .rvm-cmpg{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}
-      .rvm-cmpitem .l{font-size:10px;color:#8B95A1}
-      .rvm-cmpitem .vals{font-size:13px;font-weight:600;margin-top:2px}
-      .rvm-diff{font-size:12px;font-weight:700;margin-top:2px;display:block}
-      .rvm-diff.rvm-up{color:#0F6E56}
-      .rvm-diff.rvm-dn{color:#E5586E}
-
       .rvm-barrow{display:flex;align-items:center;gap:8px;padding:7px 0}
       .rvm-blabel{font-size:12px;width:50px;text-align:right;color:#8B95A1;flex-shrink:0}
       .rvm-btrack{flex:1;height:18px;background:#F2F4F6;border-radius:4px;overflow:hidden}
       .rvm-bfill{height:100%;border-radius:4px}
       .rvm-bval{font-size:12px;font-weight:600;width:54px;flex-shrink:0;text-align:right;letter-spacing:-0.3px}
-
       .rvm-dayrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #E5E8EB}
       .rvm-dayrow:last-child{border-bottom:none}
       .rvm-dd{font-size:12px;color:#8B95A1;width:92px;flex-shrink:0}
@@ -182,25 +275,6 @@
       .rvm-damt.over{color:#0F6E56}
       .rvm-damt.under{color:#E5586E}
       .rvm-dcnt{font-size:11px;color:#8B95A1;width:36px;flex-shrink:0;text-align:right}
-
-      .rvm-goal{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:10px;margin-bottom:12px;border:1px dashed #E5E8EB;background:#F2F4F6}
-      .rvm-goal.set{border:1px solid #E5E8EB;background:#FFF1F3;border-style:solid}
-      .rvm-goal .icon{font-size:13px;font-weight:800;color:#E5586E;flex-shrink:0}
-      .rvm-goal .info{flex:1;min-width:0}
-      .rvm-goal .gt{font-size:12px;font-weight:600;color:#E5586E}
-      .rvm-goal .gd{font-size:11px;color:#4E5968;margin-top:2px}
-      .rvm-gbtn{padding:6px 14px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid #E5E8EB;background:#fff;color:#E5586E;cursor:pointer;flex-shrink:0}
-
-      .rvm-tbl{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid #E5E8EB;border-radius:14px;overflow:hidden}
-      .rvm-tbl th{text-align:left;font-weight:600;font-size:11px;color:#8B95A1;padding:10px 14px;border-bottom:2px solid #E5E8EB;white-space:nowrap}
-      .rvm-tbl td{padding:12px 14px;border-bottom:1px solid #E5E8EB;vertical-align:middle}
-      .rvm-tbl tbody tr:last-child td{border-bottom:none}
-      .rvm-tbl tbody tr:hover{background:#F7F8FA}
-      .rvm-bg{font-size:10px;padding:3px 9px;border-radius:999px;font-weight:600;white-space:nowrap;display:inline-block}
-      .rvm-bg.cd,.rvm-bg.cs,.rvm-bg.tf,.rvm-bg.mb,.rvm-bg.au{background:#FFF1F3;color:#E5586E}
-      .rvm-bg.mn{background:#F2F4F6;color:#8B95A1}
-
-      /* 모바일 */
       .rvm-mbody{padding:14px}
       .rvm-mcard{background:#fff;border-radius:14px;border:1px solid #E5E8EB;padding:16px;margin-bottom:10px}
       .rvm-mpad{padding:12px 14px}
@@ -212,12 +286,6 @@
       .rvm-mg3 .c{background:#fff;padding:10px}
       .rvm-mg3 .c .l{font-size:9px;color:#8B95A1}
       .rvm-mg3 .c .v{font-size:14px;font-weight:600;margin-top:2px;letter-spacing:-0.3px}
-      .rvm-mg3 .c .v.up{color:#0F6E56}
-      .rvm-mg3 .c .v.dn{color:#E5586E}
-      .rvm-mpredict{background:#fff;border:1px solid #E5E8EB;padding:14px;border-radius:14px;margin-bottom:10px}
-      .rvm-mpredict .l{font-size:11px;color:#4E5968;font-weight:600}
-      .rvm-mpredict .v{font-size:22px;font-weight:700;color:#E5586E;margin-top:4px;letter-spacing:-0.8px}
-      .rvm-mpredict .d{font-size:10px;color:#4E5968;margin-top:4px;line-height:1.5}
       .rvm-mli{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #E5E8EB}
       .rvm-mli:last-child{border-bottom:none}
       .rvm-mdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:#0F6E56}
@@ -230,272 +298,184 @@
     document.head.appendChild(s);
   }
 
-  // ── 결제수단 분포 (PC/모바일 공용) ──────────────────────
-  function _renderPaymentBars(by_method, total) {
+  // ── 결제수단 분포 (v5) ──────────────────────────────────
+  function _renderPaymentBarsV5(by_method, total, isMobile) {
     const order = ['card', 'cash', 'transfer', 'bank_transfer', 'membership', 'etc'];
     const rows = order
       .filter(k => by_method && by_method[k])
       .map(k => ({ k, label: TAG_LABEL[k] || k, total: by_method[k] || 0 }))
       .filter(x => x.total > 0)
       .sort((a, b) => b.total - a.total);
+    const cls = isMobile ? 'rvm5-mbr' : 'rvm5-br';
     if (!rows.length || !total) {
-      return `<div style="font-size:12px;color:#8B95A1;padding:8px 0;">아직 데이터가 없어요</div>`;
+      return `<div style="font-size:11px;color:#8B95A1;padding:6px 0;">아직 데이터가 없어요</div>`;
     }
     return rows.map(r => {
       const pct = Math.round(r.total * 100 / total);
       const color = METHOD_COLOR[r.k] || '#E5E8EB';
-      return `<div class="rvm-barrow">
-        <div class="rvm-blabel">${_esc(r.label)}</div>
-        <div class="rvm-btrack"><div class="rvm-bfill" style="width:${pct}%;background:${color};"></div></div>
-        <div class="rvm-bval">${pct}%</div>
+      return `<div class="${cls}">
+        <div class="lb">${_esc(r.label)}</div>
+        <div class="tk"><div class="fl" style="width:${pct}%;background:${color};"></div></div>
+        <div class="pc">${pct}%</div>
       </div>`;
     }).join('');
   }
 
-  // ── 일별 매출 (PC/모바일 공용) ──────────────────────────
-  function _renderDailyList(summary, goal) {
-    const list = (summary.daily || []).slice(0, 12);  // 최근 12일만 표시
-    if (!list.length) return `<div style="font-size:12px;color:#8B95A1;padding:8px 0;">아직 데이터가 없어요</div>`;
+  // ── 일별 매출 (v5) ──────────────────────────────────────
+  function _renderDailyListV5(summary, goal, isMobile) {
+    const list = (summary.daily || []).slice(0, 14);
+    if (!list.length) return `<div style="font-size:11px;color:#8B95A1;padding:6px 0;">아직 데이터가 없어요</div>`;
     const goalAmt = goal && goal.amount > 0 ? goal.amount : 0;
-    const maxVal = Math.max(goalAmt, ...list.map(d => d.total));
+    const maxVal = Math.max(goalAmt * 1.4, ...list.map(d => d.total));
     const today = new Date();
+    const cls = isMobile ? 'rvm5-md' : 'rvm5-dr';
     return list.map(d => {
       const ratio = maxVal ? Math.min(100, Math.round(d.total * 100 / maxVal)) : 0;
-      const over = goalAmt && d.total >= goalAmt;
-      const fillCls = over ? 'over' : (goalAmt && d.total > 0 ? 'under' : 'over');
-      const amtCls = goalAmt ? (over ? 'over' : 'under') : '';
+      const over = goalAmt > 0 && d.total >= goalAmt;
+      const fillColor = over ? '#0F6E56' : (d.total > 0 ? '#F18091' : 'transparent');
+      const amtCls = goalAmt > 0 ? (over ? 'over' : 'under') : '';
       const goalPct = goalAmt && maxVal ? Math.round(goalAmt * 100 / maxVal) : 0;
-      return `<div class="rvm-dayrow">
-        <div class="rvm-dd">${_esc(_dayLabel(d.date, today))}</div>
-        <div class="rvm-db">
-          ${d.total > 0 ? `<div class="rvm-df ${fillCls}" style="width:${ratio}%;"></div>` : ''}
-          ${goalAmt ? `<div class="rvm-dgoal" style="left:${goalPct}%;"></div>` : ''}
+      return `<div class="${cls}">
+        <div class="d">${_esc(_dayLabel(d.date, today))}</div>
+        <div class="bar">
+          ${d.total > 0 ? `<div class="f" style="width:${ratio}%;background:${fillColor};"></div>` : ''}
+          ${goalAmt ? `<div class="gl" style="left:${goalPct}%;"></div>` : ''}
         </div>
-        <div class="rvm-damt ${amtCls}">${_krw(d.total)}</div>
-        <div class="rvm-dcnt">${d.count}건</div>
+        <div class="a ${amtCls}">${_krw(d.total)}</div>
+        <div class="c">${d.count}건</div>
       </div>`;
     }).join('');
   }
 
-  function _renderGoalBanner(summary, goal) {
+  function _renderGoalBannerV5(summary, goal, isMobile) {
+    const cls = isMobile ? 'rvm5-mgb' : 'rvm5-gb';
     if (goal && goal.amount > 0) {
       const list = summary.daily || [];
       const days = list.filter(d => d.total > 0).length;
       const hit = list.filter(d => d.total >= goal.amount).length;
       const rate = days ? Math.round(hit * 100 / days) : 0;
-      return `<div class="rvm-goal set">
-        <div class="icon">AI</div>
-        <div class="info">
-          <div class="gt">일일 목표: ${_krw(goal.amount)}</div>
-          <div class="gd">달성률 ${rate}% (${hit}/${days}일)${summary.prev_full_month ? ' · 저번달 기반 AI 추천' : ''}</div>
-        </div>
-        <button type="button" class="rvm-gbtn" data-rvm-act="edit-goal">수정</button>
+      return `<div class="${cls}">
+        <div class="t">목표 ${_krw(goal.amount)}/일 · 달성 ${rate}%</div>
+        <button type="button" class="btn" data-rvm-act="edit-goal">수정</button>
       </div>`;
     }
     const rec = recommendedGoal(summary);
     if (!rec) {
-      return `<div class="rvm-goal">
-        <div class="icon">AI</div>
-        <div class="info">
-          <div class="gt">일일 목표를 설정해 보세요</div>
-          <div class="gd">매출 데이터가 쌓이면 저번달 기반 추천이 표시돼요</div>
-        </div>
-        <button type="button" class="rvm-gbtn" data-rvm-act="edit-goal">설정</button>
+      return `<div class="${cls}">
+        <div class="t">일일 목표를 설정해보세요</div>
+        <button type="button" class="btn" data-rvm-act="edit-goal">설정</button>
       </div>`;
     }
-    return `<div class="rvm-goal">
-      <div class="icon">AI</div>
-      <div class="info">
-        <div class="gt">저번달 일평균 ${_krw(rec)} 기반</div>
-        <div class="gd">이번달 일일 목표를 ${_krw(rec)}로 설정할까요?</div>
-      </div>
-      <button type="button" class="rvm-gbtn" data-rvm-act="accept-goal" data-amount="${rec}">설정</button>
+    return `<div class="${cls}">
+      <div class="t">저번달 일평균 ${_krw(rec)} 기반 추천</div>
+      <button type="button" class="btn" data-rvm-act="accept-goal" data-amount="${rec}">설정</button>
     </div>`;
   }
 
-  // ── PC: stat 카드 / compare 카드 / 매출 내역 테이블 ─────
-  function _renderPCStatCards(summary, now) {
-    const monthLbl = (now.getMonth() + 1) + '월 매출';
-    const matPct = summary.total ? Math.round((summary.material_cost_total || 0) * 100 / summary.total) : 0;
-    return `
-      <div class="rvm-pcg4">
-        <div class="rvm-pcstat hi">
-          <div class="l">${_esc(monthLbl)} (1~${now.getDate()}일)</div>
-          <div class="v">${_krw(summary.total)}</div>
-          <div class="s">완료 ${summary.count}건 · 영업일 ${summary.business_days}일</div>
-        </div>
-        <div class="rvm-pcstat predict">
-          <div class="l">이번달 예상 매출</div>
-          <div class="v">≈ ${_krw(summary.projected_total)}</div>
-          <div class="s">현재 추세 유지 시 (일평균 × 남은 영업일)</div>
-        </div>
-        <div class="rvm-pcstat">
-          <div class="l">순수익 (재료비 제외)</div>
-          <div class="v">${_krw(summary.net_profit)}</div>
-          <div class="s">재료비 ${_krw(summary.material_cost_total)}${matPct ? ` (${matPct}%)` : ''}</div>
-        </div>
-        <div class="rvm-pcstat">
-          <div class="l">평균 객단가</div>
-          <div class="v">${_krw(summary.avg_per_customer)}</div>
-          <div class="s">일평균 ${_krw(summary.daily_avg)} 매출</div>
-        </div>
-      </div>`;
-  }
-  function _renderCompareCard(summary, now) {
-    const prevMonth = ((now.getMonth() + 11) % 12 + 1) + '월';
-    const ps = summary.prev_same_period || { total: 0, count: 0, avg_per_customer: 0 };
-    const dTotal = _pctDelta(summary.total, ps.total);
-    const dCount = summary.count - (ps.count || 0);
-    const dAvg = _pctDelta(summary.avg_per_customer, ps.avg_per_customer);
-    const dProj = _pctDelta(summary.projected_total, summary.prev_full_month);
-    return `
-      <div class="rvm-compare">
-        <h4>${_esc(prevMonth)} 같은 기간 (1~${now.getDate()}일) 대비</h4>
-        <div class="rvm-cmpg">
-          <div class="rvm-cmpitem"><div class="l">매출</div><div class="vals">${_krw(ps.total)} → ${_krw(summary.total)}</div>${_diffSign(dTotal, '%')}</div>
-          <div class="rvm-cmpitem"><div class="l">완료 건수</div><div class="vals">${ps.count}건 → ${summary.count}건</div>${_diffSign(dCount, '건')}</div>
-          <div class="rvm-cmpitem"><div class="l">객단가</div><div class="vals">${_krw(ps.avg_per_customer)} → ${_krw(summary.avg_per_customer)}</div>${_diffSign(dAvg, '%')}</div>
-          <div class="rvm-cmpitem"><div class="l">예상 vs 저번달 전체</div><div class="vals">${_krw(summary.prev_full_month)} → ${_krw(summary.projected_total)}</div>${_diffSign(dProj, '% 예상')}</div>
-        </div>
-      </div>`;
-  }
-  function _methodBadge(m) {
-    const cls = ({ card: 'cd', cash: 'cs', transfer: 'tf', bank_transfer: 'tf', membership: 'mb' })[m] || 'cd';
-    return `<span class="rvm-bg ${cls}">${_esc(TAG_LABEL[m] || m || '카드')}</span>`;
-  }
-  function _renderTransactionTable(items) {
+  // ── 매출 내역 (v5) ──────────────────────────────────────
+  function _renderTransactionListV5(items, isMobile) {
     const sorted = [...items].sort((a, b) => new Date(b.recorded_at || b.created_at) - new Date(a.recorded_at || a.created_at));
-    const visible = sorted.slice(0, 10);
-    if (!visible.length) {
-      return `<div style="padding:24px;text-align:center;color:#8B95A1;font-size:13px;background:#fff;border:1px solid #E5E8EB;border-radius:14px;">아직 매출 내역이 없어요</div>`;
-    }
+    const visible = sorted.slice(0, isMobile ? 8 : 12);
+    if (!visible.length) return `<div class="rvm5-empty">아직 매출 내역이 없어요</div>`;
+    const liCls = isMobile ? 'rvm5-mli' : 'rvm5-li';
     const rows = visible.map(r => {
       const t = new Date(r.recorded_at || r.created_at);
-      const date = (t.getMonth() + 1) + '/' + t.getDate() + ' ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
-      const isAuto = /\[auto_booking:/.test(r.memo || '');
-      const who = r.customer_name ? `<strong>${_esc(r.customer_name)}</strong>` : '제품 판매';
+      const date = (t.getMonth() + 1) + '/' + t.getDate();
+      const who = r.customer_name ? _esc(r.customer_name) : '제품 판매';
       const svc = r.service_name ? ` · ${_esc(r.service_name)}` : '';
-      return `<tr>
-        <td>${_esc(date)}</td>
-        <td>${who}${svc}</td>
-        <td style="font-weight:600">${_krw(r.amount)}</td>
-        <td>${_methodBadge(r.method || 'card')}</td>
-        <td>${isAuto ? '<span class="rvm-bg au">자동</span>' : '<span class="rvm-bg mn">수동</span>'}</td>
-      </tr>`;
+      return `<div class="${liCls}">
+        <div class="dt">${_esc(date)}</div>
+        <div class="nm">${who}${svc}</div>
+        <div class="am">${_krw(r.amount)}</div>
+        <span class="ch">›</span>
+      </div>`;
     }).join('');
-    const moreRow = sorted.length > visible.length
-      ? `<tr><td colspan="5" style="text-align:center;padding:14px;font-size:12px;color:#8B95A1;">${sorted.length}건 중 ${visible.length}건 표시</td></tr>`
-      : '';
-    return `<table class="rvm-tbl">
-      <thead><tr><th>날짜</th><th>고객 · 시술</th><th>금액</th><th>결제</th><th>구분</th></tr></thead>
-      <tbody>${rows}${moreRow}</tbody>
-    </table>`;
+    return `<div class="rvm5-list">${rows}</div>`;
   }
 
+  // ── PC 렌더 ─────────────────────────────────────────────
   function renderPC(container, summary, items) {
     _ensureStyles();
     const R = _R();
     const goal = readGoal();
     const now = new Date();
+    const monthLabel = now.getFullYear() + '년 ' + (now.getMonth() + 1) + '월';
+    const aiRow = summary.projected_total
+      ? `<div class="rvm5-ai"><span class="badge">AI</span><span class="txt">이번달 예상 <b>${_krw(summary.projected_total)}</b></span></div>`
+      : '';
+
     container.innerHTML = (R._renderPCHeaderHTML ? R._renderPCHeaderHTML('month') : '') + `
-      <div class="rvm-body">
-        ${_renderPCStatCards(summary, now)}
-        ${_renderCompareCard(summary, now)}
-        <div class="rvm-pcg2">
-          <div class="rvm-cd"><div class="rvm-sl" style="margin-top:0">결제수단 분포</div>${_renderPaymentBars(summary.by_method, summary.total)}</div>
-          <div class="rvm-cd"><div class="rvm-sl" style="margin-top:0">일별 매출${goal && goal.amount ? ` (목표: ${_krw(goal.amount)}/일)` : ''}</div>${_renderGoalBanner(summary, goal)}${_renderDailyList(summary, goal)}</div>
+      <div class="rvm5-body">
+        <div class="rvm5-mnav">
+          <button type="button" class="arrow" data-rvm-act="prev-month" aria-label="이전달">‹</button>
+          <div class="label">${_esc(monthLabel)}</div>
+          <button type="button" class="arrow" data-rvm-act="next-month" aria-label="다음달" disabled>›</button>
         </div>
-        <div class="rvm-sl">이번달 매출 내역</div>
-        ${_renderTransactionTable(items)}
+        <div class="rvm5-hero">
+          <span class="amt">${_krw(summary.total)}</span>
+          <span class="cnt">${summary.count}건 완료</span>
+        </div>
+        ${aiRow}
+        <div class="rvm5-stats">
+          <div class="rvm5-stat"><div class="l">순수익</div><div class="v">${_krw(summary.net_profit)}</div></div>
+          <div class="rvm5-stat"><div class="l">재료비</div><div class="v">${_krw(summary.material_cost_total)}</div></div>
+        </div>
+        <div class="rvm5-g2">
+          <div class="rvm5-card">
+            <div class="rvm5-card-t">결제수단</div>
+            ${_renderPaymentBarsV5(summary.by_method, summary.total, false)}
+          </div>
+          <div class="rvm5-card">
+            <div class="rvm5-card-t">일별 매출</div>
+            ${_renderGoalBannerV5(summary, goal, false)}
+            ${_renderDailyListV5(summary, goal, false)}
+          </div>
+        </div>
+        <div class="rvm5-sl">매출 내역</div>
+        ${_renderTransactionListV5(items, false)}
       </div>`;
     _bindEvents(container);
   }
 
-  // ── 모바일 ──────────────────────────────────────────────
-  function _renderMobileHero(summary, now) {
-    return `
-      <div class="rvm-mcard rvm-mmain">
-        <div class="ml">${now.getMonth() + 1}월 매출 (1~${now.getDate()}일)</div>
-        <div class="mv">${_krw(summary.total)}</div>
-        <div class="ms">완료 ${summary.count}건 · 영업일 ${summary.business_days}일</div>
-        <div class="rvm-mg3">
-          <div class="c"><div class="l">순수익</div><div class="v">${_krw(summary.net_profit)}</div></div>
-          <div class="c"><div class="l">재료비</div><div class="v">${_krw(summary.material_cost_total)}</div></div>
-          <div class="c"><div class="l">객단가</div><div class="v">${_krw(summary.avg_per_customer)}</div></div>
-        </div>
-      </div>`;
-  }
-  function _renderMobilePredict(summary) {
-    const dProj = _pctDelta(summary.projected_total, summary.prev_full_month);
-    const projTxt = dProj == null ? '저번달 데이터 없음' : `저번달 전체 (${_krw(summary.prev_full_month)}) 대비 ${dProj >= 0 ? '+' : ''}${dProj}% 예상`;
-    return `
-      <div class="rvm-mpredict">
-        <div class="l">이번달 예상 매출</div>
-        <div class="v">≈ ${_krw(summary.projected_total)}</div>
-        <div class="d">현재 추세 유지 시 (일평균 ${_krw(summary.daily_avg)} × 남은 영업일 ${summary.remaining_business_days}일)<br>${_esc(projTxt)}</div>
-      </div>`;
-  }
-  function _renderMobileCompare(summary, now) {
-    const prevMonth = ((now.getMonth() + 11) % 12 + 1) + '월';
-    const ps = summary.prev_same_period || { total: 0, count: 0, avg_per_customer: 0 };
-    const dTotal = _pctDelta(summary.total, ps.total);
-    const dCount = summary.count - (ps.count || 0);
-    const dAvg = _pctDelta(summary.avg_per_customer, ps.avg_per_customer);
-    const cell = (val, suffix) => {
-      if (val == null) return `<div class="v">—</div>`;
-      const cls = val >= 0 ? 'up' : 'dn';
-      return `<div class="v ${cls}">${val >= 0 ? '+' : ''}${val}${suffix || ''}</div>`;
-    };
-    return `
-      <div class="rvm-mcard rvm-mpad">
-        <div style="font-size:11px;font-weight:600;margin-bottom:8px;">${_esc(prevMonth)} 같은 기간 (1~${now.getDate()}일) 대비</div>
-        <div class="rvm-mg3">
-          <div class="c"><div class="l">매출</div>${cell(dTotal, '%')}</div>
-          <div class="c"><div class="l">건수</div>${cell(dCount, '건')}</div>
-          <div class="c"><div class="l">객단가</div>${cell(dAvg, '%')}</div>
-        </div>
-      </div>`;
-  }
-  function _renderMobileTransactions(items) {
-    const sorted = [...items].sort((a, b) => new Date(b.recorded_at || b.created_at) - new Date(a.recorded_at || a.created_at));
-    const visible = sorted.slice(0, 5);
-    if (!visible.length) {
-      return `<div class="rvm-mcard" style="text-align:center;color:#8B95A1;font-size:13px;padding:18px;">아직 매출 내역이 없어요</div>`;
-    }
-    const rows = visible.map(r => {
-      const t = new Date(r.recorded_at || r.created_at);
-      const time = (t.getMonth() + 1) + '/' + t.getDate() + ' ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
-      const isAuto = /\[auto_booking:/.test(r.memo || '');
-      const who = r.customer_name ? _esc(r.customer_name) : '제품 판매';
-      const svc = r.service_name ? ` · ${_esc(r.service_name)}` : '';
-      return `<div class="rvm-mli">
-        <div class="rvm-mdot ${isAuto ? '' : 'man'}"></div>
-        <div class="rvm-minf">
-          <div class="rvm-mln">${who}${svc}</div>
-          <div class="rvm-mlsub">${_esc(time)} ${isAuto ? '<span class="rvm-bg au">자동</span>' : '<span class="rvm-bg mn">수동</span>'}</div>
-        </div>
-        <div class="rvm-mlamt">${_krw(r.amount)}</div>
-      </div>`;
-    }).join('');
-    return `<div class="rvm-mcard" style="padding:0 14px;">${rows}</div>`;
-  }
-
+  // ── 모바일 렌더 ─────────────────────────────────────────
   function renderMobile(container, summary, items) {
     _ensureStyles();
     const goal = readGoal();
     const now = new Date();
+    const monthLabel = now.getFullYear() + '년 ' + (now.getMonth() + 1) + '월';
+    const aiRow = summary.projected_total
+      ? `<div class="rvm5-mai"><span class="badge">AI</span><span class="txt">이번달 예상 <b>${_krw(summary.projected_total)}</b></span></div>`
+      : '';
+
     container.innerHTML = `
-      <div class="rvm-mbody">
-        ${_renderMobileHero(summary, now)}
-        ${_renderMobilePredict(summary)}
-        ${_renderMobileCompare(summary, now)}
-        <div class="rvm-sl">결제수단</div>
-        <div class="rvm-mcard rvm-mpad">${_renderPaymentBars(summary.by_method, summary.total)}</div>
-        <div class="rvm-sl">일별 매출</div>
-        ${_renderGoalBanner(summary, goal)}
-        <div class="rvm-mcard rvm-mpad">${_renderDailyList(summary, goal)}</div>
-        <div class="rvm-sl">최근 매출</div>
-        ${_renderMobileTransactions(items)}
+      <div class="rvm5-mbody">
+        <div class="rvm5-mmnav">
+          <button type="button" class="ar" data-rvm-act="prev-month" aria-label="이전달">‹</button>
+          <div class="ml">${_esc(monthLabel)}</div>
+          <button type="button" class="ar" data-rvm-act="next-month" aria-label="다음달" disabled>›</button>
+        </div>
+        <div class="rvm5-mhero">
+          <div class="rvm5-mhero-top">
+            <span class="amt">${_krw(summary.total)}</span>
+            <span class="cnt">${summary.count}건 완료</span>
+          </div>
+          <div class="rvm5-mhero-sub">
+            <div class="c"><div class="l">순수익</div><div class="v">${_krw(summary.net_profit)}</div></div>
+            <div class="c"><div class="l">재료비</div><div class="v">${_krw(summary.material_cost_total)}</div></div>
+          </div>
+        </div>
+        ${aiRow}
+        <div class="rvm5-mc">
+          <div class="t">결제수단</div>
+          ${_renderPaymentBarsV5(summary.by_method, summary.total, true)}
+        </div>
+        <div class="rvm5-mc">
+          <div class="t">일별 매출</div>
+          ${_renderGoalBannerV5(summary, goal, true)}
+          ${_renderDailyListV5(summary, goal, true)}
+        </div>
+        <div class="rvm5-sl" style="margin:14px 0 6px;font-size:11px;">매출 내역</div>
+        ${_renderTransactionListV5(items, true)}
       </div>`;
     _bindEvents(container);
   }
@@ -521,6 +501,8 @@
           if (!n || n <= 0) { clearGoal(); if (window.showToast) window.showToast('일일 목표 해제됨'); }
           else { writeGoal(n); if (window.showToast) window.showToast(`일일 목표 ${_krw(n)} 설정됨`); }
           _triggerRerender();
+        } else if (act === 'prev-month' || act === 'next-month') {
+          if (window.showToast) window.showToast('월 단위 이력 조회는 곧 추가됩니다');
         }
       });
     });
@@ -530,6 +512,5 @@
     if (typeof fn === 'function') { try { fn(); } catch (_e) { /* silent */ } }
   }
 
-  // [Step 5] _ensureStyles export — today.js 가 같은 rvm- 스타일을 보장 (로드 순서 무관)
   window.RevenueMonth = { fetchSummary, fallbackSummary, renderPC, renderMobile, readGoal, writeGoal, clearGoal, _ensureStyles };
 })();
