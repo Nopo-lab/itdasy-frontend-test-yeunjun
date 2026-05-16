@@ -1252,10 +1252,15 @@
                   || _mappedCache.find(m => m.id == btn.dataset.bookingId);
         }
         if (ctx.item) {
-          // [2026-05-16 UX] 진행중 예약 = 바로 CompleteFlow. 이미 완료/취소면 편집폼.
+          // [2026-05-16 v137] 블록 클릭:
+          //   - confirmed/completed → CompleteFlow (금액/결제수단 확인·수정 흐름)
+          //     · completed 라도 매출이 아직 안 만들어졌으면 (amount=null 등) 여기서 보강 가능
+          //   - cancelled → 편집폼 (재활성화 등 수정 필요)
+          //   "예약 시간·고객 수정" 링크로 편집폼 진입은 그대로 가능.
           const raw = ctx.item._raw;
-          const done = raw.status === 'completed' || raw.status === 'cancelled';
-          if (!done && window.CompleteFlow?.startFromBooking) {
+          if (raw.status === 'cancelled') {
+            _openForm(new Date(raw.starts_at), raw);
+          } else if (window.CompleteFlow?.startFromBooking) {
             window.CompleteFlow.startFromBooking(raw);
           } else {
             _openForm(new Date(raw.starts_at), raw);
