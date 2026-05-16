@@ -89,14 +89,17 @@
     if (sheet) return sheet;
     sheet = document.createElement('div');
     sheet.id = 'completeFlowSheet';
-    sheet.style.cssText = 'position:fixed;inset:0;z-index:10000;display:none;background:rgba(0,0,0,0.45);align-items:flex-end;';
+    sheet.className = 'cf-backdrop';
     sheet.innerHTML = `
-      <div style="width:100%;background:#fff;border-radius:20px 20px 0 0;max-height:92vh;display:flex;flex-direction:column;padding:18px;padding-bottom:max(18px,env(safe-area-inset-bottom));">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-          <strong style="font-size:17px;color:#191F28;">시술 완료</strong>
-          <button id="cfClose" style="margin-left:auto;background:rgba(0,0,0,0.05);border:none;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;color:#4E5968;" aria-label="닫기">✕</button>
+      <div class="cf-card">
+        <div class="cf-header">
+          <div class="cf-title-wrap">
+            <div class="cf-title">시술 완료</div>
+            <div class="cf-subtitle">결제 정보를 확인하고 마무리해 주세요</div>
+          </div>
+          <button id="cfClose" class="cf-close" aria-label="닫기">✕</button>
         </div>
-        <div id="cfBody" style="flex:1;overflow-y:auto;"></div>
+        <div id="cfBody" class="cf-body"></div>
       </div>
     `;
     document.body.appendChild(sheet);
@@ -111,21 +114,165 @@
     const s = document.createElement('style');
     s.id = 'cfStyles';
     s.textContent = `
-      .cf-section-label { font-size:12px; font-weight:600; color:#8B95A1; margin-bottom:8px; letter-spacing:-0.2px; }
-      .cf-info-box { padding:14px 16px; background:#F7F8FA; border-radius:14px; margin-bottom:16px; }
-      .cf-info-name { font-size:18px; font-weight:800; color:#191F28; letter-spacing:-0.4px; }
-      .cf-info-svc  { font-size:13px; color:#4E5968; font-weight:500; margin-top:4px; }
-      .cf-amount-row { display:flex; align-items:baseline; gap:8px; margin-bottom:14px; padding:14px 16px; background:#F7F8FA; border-radius:14px; }
-      .cf-amount-row input { font-size:22px; font-weight:800; color:#191F28; letter-spacing:-0.4px; }
-      .cf-method-pills { display:flex; gap:8px; margin-bottom:14px; }
-      .cf-pill { flex:1; padding:12px 0; border:none; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; background:#F7F8FA; color:#4E5968; transition:background .15s ease, color .15s ease, box-shadow .15s ease; }
-      .cf-pill.active { background:#FFF1F3; color:#E5586E; box-shadow:inset 0 0 0 1.5px #E5586E; }
-      .cf-auto-preview { margin-bottom:16px; padding:14px 16px; background:#F7F8FA; border-radius:14px; }
-      .cf-preview-row { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; color:#4E5968; }
-      .cf-check { color:#0F6E56; font-weight:700; }
-      .cf-sub-actions { display:flex; gap:8px; margin-top:12px; }
-      .cf-sub-btn { flex:1; padding:13px; border:1px solid #E5E8EB; border-radius:12px; background:#fff; cursor:pointer; color:#4E5968; font-weight:600; font-size:13px; }
-      .cf-sub-btn:hover { background:#F7F8FA; }
+      /* ── 백드롭 (모바일=바텀시트, PC=센터 모달) ── */
+      .cf-backdrop {
+        position:fixed; inset:0; z-index:10000; display:none;
+        background:rgba(17, 24, 39, 0.5);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        align-items:flex-end; justify-content:center;
+      }
+      .cf-card {
+        width:100%;
+        background:#fff;
+        border-radius:24px 24px 0 0;
+        max-height:92vh;
+        display:flex; flex-direction:column;
+        padding:22px 20px 20px;
+        padding-bottom:max(20px,env(safe-area-inset-bottom));
+        box-shadow:0 -8px 40px rgba(0,0,0,0.18);
+        animation: cfSlideUp .28s cubic-bezier(.2,.7,.2,1);
+      }
+      @keyframes cfSlideUp { from { transform:translateY(40px); opacity:0; } to { transform:none; opacity:1; } }
+      @keyframes cfFadeIn  { from { transform:translateY(8px) scale(.985); opacity:0; } to { transform:none; opacity:1; } }
+      /* PC — 센터 모달, max-width 제한 */
+      @media (min-width: 768px) {
+        .cf-backdrop { align-items:center; }
+        .cf-card {
+          width:auto;
+          min-width:440px;
+          max-width:460px;
+          border-radius:24px;
+          padding:26px 26px 24px;
+          padding-bottom:24px;
+          max-height:88vh;
+          box-shadow:0 24px 60px rgba(0,0,0,0.22), 0 4px 12px rgba(0,0,0,0.08);
+          animation: cfFadeIn .22s cubic-bezier(.2,.7,.2,1);
+        }
+      }
+
+      /* ── 헤더 ── */
+      .cf-header { display:flex; align-items:flex-start; gap:12px; margin-bottom:20px; }
+      .cf-title-wrap { flex:1; min-width:0; }
+      .cf-title { font-size:19px; font-weight:800; color:#111827; letter-spacing:-0.5px; line-height:1.2; }
+      .cf-subtitle { font-size:12.5px; color:#6B7280; margin-top:4px; font-weight:500; letter-spacing:-0.2px; }
+      .cf-close {
+        background:rgba(0,0,0,0.04); border:none;
+        width:34px; height:34px; border-radius:50%;
+        font-size:15px; cursor:pointer; color:#4B5563;
+        transition: background .15s ease;
+        flex-shrink:0;
+      }
+      .cf-close:hover { background:rgba(0,0,0,0.08); }
+
+      .cf-body { flex:1; overflow-y:auto; }
+
+      /* ── 섹션 ── */
+      .cf-section-label {
+        font-size:11.5px; font-weight:700; color:#9CA3AF;
+        margin-bottom:8px; letter-spacing:0.2px;
+        text-transform:uppercase;
+      }
+
+      /* ── 고객 정보 카드 ── */
+      .cf-info-box {
+        padding:16px 18px;
+        background:linear-gradient(135deg, #FFF5F7 0%, #FFEFF3 100%);
+        border-radius:16px; margin-bottom:18px;
+        border:1px solid rgba(229, 88, 110, 0.08);
+      }
+      .cf-info-box .cf-section-label { color:#9F4858; }
+      .cf-info-name { font-size:20px; font-weight:800; color:#111827; letter-spacing:-0.5px; line-height:1.2; }
+      .cf-info-svc  { font-size:13.5px; color:#6B7280; font-weight:600; margin-top:6px; letter-spacing:-0.2px; }
+
+      /* ── 금액 입력 ── */
+      .cf-amount-row {
+        display:flex; align-items:baseline; gap:6px;
+        margin-bottom:16px; padding:16px 18px;
+        background:#F9FAFB; border:1.5px solid #E5E7EB;
+        border-radius:16px;
+        transition: border-color .15s ease, background .15s ease;
+      }
+      .cf-amount-row:focus-within {
+        border-color:#E5586E;
+        background:#fff;
+        box-shadow:0 0 0 4px rgba(229, 88, 110, 0.08);
+      }
+      .cf-amount-row input {
+        font-size:24px; font-weight:800; color:#111827;
+        letter-spacing:-0.6px;
+        font-family:inherit;
+      }
+      .cf-amount-row input::placeholder { color:#D1D5DB; font-weight:700; }
+
+      /* ── 결제수단 pills ── */
+      .cf-method-pills { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-bottom:18px; }
+      .cf-pill {
+        padding:13px 8px; border:1.5px solid #E5E7EB; border-radius:14px;
+        font-size:13.5px; font-weight:700; cursor:pointer;
+        background:#fff; color:#4B5563;
+        transition: all .15s ease;
+        font-family:inherit;
+        letter-spacing:-0.2px;
+      }
+      .cf-pill:hover { background:#F9FAFB; border-color:#D1D5DB; }
+      .cf-pill.active {
+        background:linear-gradient(135deg, #FFE8EC 0%, #FFD9DF 100%);
+        color:#C53A52;
+        border-color:#E5586E;
+        box-shadow:0 2px 8px rgba(229, 88, 110, 0.15);
+      }
+
+      /* ── 자동 처리 안내 ── */
+      .cf-auto-preview {
+        margin-bottom:20px; padding:14px 16px;
+        background:#F9FAFB; border:1px solid #F3F4F6;
+        border-radius:14px;
+      }
+      .cf-preview-row {
+        display:flex; align-items:center; gap:10px;
+        padding:4px 0; font-size:13px; color:#4B5563;
+        font-weight:500; letter-spacing:-0.2px;
+      }
+      .cf-check {
+        display:inline-flex; align-items:center; justify-content:center;
+        width:18px; height:18px; border-radius:50%;
+        background:#10B981; color:#fff;
+        font-size:10px; font-weight:900;
+        flex-shrink:0;
+      }
+
+      /* ── 메인 액션 ── */
+      .cf-actions { display:flex; gap:10px; }
+      .cf-btn-skip {
+        flex:1; padding:15px; border:1.5px solid #E5E7EB; border-radius:14px;
+        background:#fff; cursor:pointer; color:#4B5563;
+        font-weight:700; font-size:14px;
+        font-family:inherit; letter-spacing:-0.2px;
+        transition: all .15s ease;
+      }
+      .cf-btn-skip:hover { background:#F9FAFB; border-color:#D1D5DB; }
+      .cf-btn-save {
+        flex:2; padding:15px; border:none; border-radius:14px;
+        background:linear-gradient(135deg, #F18091 0%, #E5586E 100%);
+        color:#fff; cursor:pointer; font-weight:800; font-size:15px;
+        font-family:inherit; letter-spacing:-0.3px;
+        box-shadow:0 4px 14px rgba(229, 88, 110, 0.32);
+        transition: transform .12s ease, box-shadow .15s ease;
+      }
+      .cf-btn-save:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(229, 88, 110, 0.4); }
+      .cf-btn-save:active { transform:translateY(0); }
+
+      /* ── 보조 액션 ── */
+      .cf-sub-actions { display:flex; gap:8px; margin-top:14px; padding-top:14px; border-top:1px solid #F3F4F6; }
+      .cf-sub-btn {
+        flex:1; padding:12px; border:1px solid #E5E7EB; border-radius:12px;
+        background:#fff; cursor:pointer; color:#4B5563;
+        font-weight:600; font-size:13px; font-family:inherit;
+        letter-spacing:-0.2px;
+        transition: all .15s ease;
+      }
+      .cf-sub-btn:hover { background:#F9FAFB; color:#111827; border-color:#D1D5DB; }
     `;
     document.head.appendChild(s);
   }
@@ -176,9 +323,9 @@
       ${_renderMethodPills()}
       ${_renderAutoPreview()}
 
-      <div style="display:flex;gap:8px;">
-        <button id="cfSkip" type="button" style="flex:1;padding:14px;border:1px solid #E5E8EB;border-radius:14px;background:#fff;cursor:pointer;color:#4E5968;font-weight:700;font-size:13px;">건너뛰기</button>
-        <button id="cfSave" type="button" style="flex:2;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#F18091,#E5586E);color:#fff;cursor:pointer;font-weight:800;font-size:15px;">시술 완료</button>
+      <div class="cf-actions">
+        <button id="cfSkip" type="button" class="cf-btn-skip">건너뛰기</button>
+        <button id="cfSave" type="button" class="cf-btn-save">시술 완료</button>
       </div>
       <div class="cf-sub-actions">
         <button id="cfEditBooking" type="button" class="cf-sub-btn">예약 시간·고객 수정</button>
