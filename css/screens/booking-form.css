@@ -684,3 +684,52 @@
 .bf-svc-input::placeholder {
   color: var(--text-subtle, #98A1AC);
 }
+
+/* ── [2026-05-17 mockup-booking-form] 이모지 제거 + 정리 ── */
+
+/* AUTO 배지 — phosphor ph-sparkle 대체 */
+.bf-auto-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  background: var(--brand-strong, #E5586E);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  border-radius: 5px;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+  line-height: 1.3;
+}
+
+/* unicode chevron 톤 (›) — phosphor ph-caret-right 대체 */
+.bf-date-chev,
+.bf-cust-chev {
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  margin-left: auto;
+  color: var(--text-subtle, #98A1AC);
+  flex-shrink: 0;
+}
+
+/* close × 텍스트 — phosphor ph-x 대체 */
+.bf-cust-clear {
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 500;
+}
+
+/* 더보기 ▾ 텍스트 — phosphor ph-caret-down 대체 */
+.bf-more-icon {
+  font-size: 11px;
+  line-height: 1;
+  display: inline-block;
+}
+
+/* 날짜 카드 — 아이콘 박스 제거된 깔끔한 카드 (mockup v5) */
+.bf-card--clean {
+  gap: 10px;
+}
+

@@ -1320,7 +1320,7 @@
     let html = `<button class="cv-form-back" id="cv-form-back">← 뒤로</button>`;
     if (!isEdit && autoSlot) {
       html += `<div class="bf-auto-banner">
-        <i class="ph-duotone ph-sparkle" style="font-size:11px" aria-hidden="true"></i>
+        <span class="bf-auto-badge">AUTO</span>
         빈 슬롯 ${defStart} 자동 선택 · 고객만 고르면 끝
       </div>`;
     }
@@ -1334,12 +1334,14 @@
         <button type="button" data-bf-status="cancelled" class="bf-status-btn${existing.status==='cancelled'?' on bf-st-cancelled':''}">취소</button>
       </div></div>`;
     }
-    // 날짜 카드
+    // 날짜 카드 — 이모지/아이콘 박스 제거, 텍스트 위주 + chevron
     html += `<div class="bf-section"><div class="bf-label">날짜</div>
-      <button type="button" class="bf-date-card" id="bfDateCard">
-        <div class="bf-date-icon"><i class="ph-duotone ph-calendar-dots" style="font-size:16px" aria-hidden="true"></i></div>
-        <div style="flex:1"><div class="bf-date-text" id="bfDateLabel">${dateLabel}</div><div class="bf-date-meta" id="bfDateMeta">${todayLabel} · ${dayCnt}건 예약됨</div></div>
-        <i class="ph-duotone ph-caret-right bf-date-chev" style="font-size:14px" aria-hidden="true"></i>
+      <button type="button" class="bf-date-card bf-card--clean" id="bfDateCard">
+        <div style="flex:1;text-align:left;min-width:0">
+          <div class="bf-date-text" id="bfDateLabel">${dateLabel}</div>
+          <div class="bf-date-meta" id="bfDateMeta">${todayLabel} · ${dayCnt}건 예약됨</div>
+        </div>
+        <span class="bf-date-chev" aria-hidden="true">›</span>
       </button>
       <input type="date" id="bfDate" class="bf-date-native" value="${dateStr}" />
     </div>`;
@@ -1356,15 +1358,15 @@
         <div class="bf-dur-stepper"><button type="button" id="bfDurMinus">−</button><button type="button" id="bfDurPlus">+</button></div>
       </div>
     </div>`;
-    // 고객 카드
+    // 고객 카드 — phosphor 아이콘 → unicode 치환
     html += `<div class="bf-section"><div class="bf-label">고객</div>
       <button type="button" class="bf-cust-card${existing?.customer_name ? '' : ' empty'}" id="bfCustCard">
         ${existing?.customer_name
           ? `<div class="bf-cust-avatar">${_esc((existing.customer_name||'')[0])}</div>
              <div class="bf-cust-info"><div class="bf-cust-name">${_esc(existing.customer_name)}</div><div class="bf-cust-meta" id="bfCustMeta"></div></div>
-             <button type="button" class="bf-cust-clear" id="bfCustClear"><i class="ph-duotone ph-x" style="font-size:11px" aria-hidden="true"></i></button>`
+             <button type="button" class="bf-cust-clear" id="bfCustClear" aria-label="고객 해제">×</button>`
           : `<div class="bf-cust-avatar empty">+</div><div class="bf-cust-info"><div class="bf-cust-empty-text">고객을 골라주세요</div></div>
-             <i class="ph-duotone ph-caret-right bf-cust-chev" style="font-size:14px" aria-hidden="true"></i>`}
+             <span class="bf-cust-chev" aria-hidden="true">›</span>`}
       </button>
       <input type="hidden" id="bfCustName" value="${_esc(existing?.customer_name || '')}" />
     </div>`;
@@ -1377,7 +1379,7 @@
     // 더보기 (직원 · 메모)
     html += `<div class="bf-section" id="bfMoreSection">
       <button type="button" class="bf-more-toggle" id="bfMoreToggle">
-        <i class="ph-duotone ph-caret-down bf-more-icon" style="font-size:13px" aria-hidden="true"></i>
+        <span class="bf-more-icon" aria-hidden="true">▾</span>
         더보기 (직원 · 메모)
       </button>
       <div class="bf-more-fields" id="bfMoreFields" style="display:none">
