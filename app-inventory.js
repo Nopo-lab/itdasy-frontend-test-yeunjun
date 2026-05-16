@@ -19,6 +19,8 @@
   const OFFLINE_KEY = 'itdasy_inventory_offline_v1';
   let _items = [];
   let _isOffline = false;
+  // [2026-05-16] 필터 pill — '전체' | '부족 임박' | '재고없음'
+  let _filter = '전체';
   // [QA-r6] +/- 버튼 연타 시 동시 fire 차단 — innerHTML 재생성으로 btn 인스턴스가 바뀌어
   // btn._adjusting 보호가 무력화되므로 module-scope Set 으로 row id 단위 lock.
   const _adjustingIds = new Set();
@@ -248,6 +250,8 @@
         <span id="invOfflineBadge" class="dt-offline-badge">오프라인</span>
       </header>
       <div class="dt-body">
+        <div id="inventoryStats"></div>
+        <div id="inventoryFilters"></div>
         <div id="inventoryList"></div>
       </div>
       <footer class="dt-footer">
@@ -256,7 +260,78 @@
     `;
     document.body.appendChild(sheet);
     sheet.querySelector('#inventoryAddBtn').addEventListener('click', () => _openAddForm());
+    _ensureStyles();
     return sheet;
+  }
+
+  function _ensureStyles() {
+    if (document.getElementById('invStyles')) return;
+    const s = document.createElement('style');
+    s.id = 'invStyles';
+    s.textContent = `
+      .inv-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:10px 0 12px; }
+      .inv-stat { background:#fff; border-radius:14px; padding:14px 10px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06); }
+      .inv-stat-v { font-size:22px; font-weight:800; color:#191F28; line-height:1; margin-bottom:4px; }
+      .inv-stat-v.ok     { color:#0F6E56; }
+      .inv-stat-v.warn   { color:#C2710C; }
+      .inv-stat-v.danger { color:#C92A2A; }
+      .inv-stat-l { font-size:12px; color:#8B95A1; font-weight:600; }
+
+      .inv-filters { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+      .inv-filters .pill { padding:8px 14px; border:none; border-radius:999px; background:#F2F4F6; color:#4E5968; font-size:13px; font-weight:600; cursor:pointer; }
+      .inv-filters .pill.on { background:#FFF1F3; color:#E5586E; box-shadow:inset 0 0 0 1.5px #E5586E; }
+
+      .inv-progress { height:6px; background:#F2F4F6; border-radius:999px; margin-top:6px; overflow:hidden; }
+      .inv-progress__fill { height:100%; border-radius:999px; transition:width .25s ease; }
+      .inv-progress__fill.ok     { background:#22C58B; }
+      .inv-progress__fill.danger { background:#E5586E; }
+
+      .inv-badge { font-size:9px; padding:1px 5px; border-radius:3px; font-weight:700; }
+      .inv-badge.auto { background:#FFF1F3; color:#E5586E; }
+      .inv-badge.man  { background:#F2F4F6; color:#4E5968; }
+    `;
+    document.head.appendChild(s);
+  }
+
+  function _filteredItems() {
+    if (_filter === '부족 임박') {
+      return _items.filter(x => (x.quantity || 0) <= (x.threshold || 0) && (x.quantity || 0) > 0);
+    }
+    if (_filter === '재고없음') {
+      return _items.filter(x => (x.quantity || 0) <= 0);
+    }
+    return _items;
+  }
+
+  function _renderSummary() {
+    const total  = _items.length;
+    const normal = _items.filter(i => (i.quantity || 0) >  (i.threshold || 0)).length;
+    const low    = _items.filter(i => (i.quantity || 0) <= (i.threshold || 0) && (i.quantity || 0) > 0).length;
+    const empty  = _items.filter(i => (i.quantity || 0) <= 0).length;
+    return `
+      <div class="inv-stats">
+        <div class="inv-stat"><div class="inv-stat-v">${total}</div><div class="inv-stat-l">전체 품목</div></div>
+        <div class="inv-stat"><div class="inv-stat-v ok">${normal}</div><div class="inv-stat-l">정상</div></div>
+        <div class="inv-stat"><div class="inv-stat-v warn">${low}</div><div class="inv-stat-l">부족 임박</div></div>
+        <div class="inv-stat"><div class="inv-stat-v danger">${empty}</div><div class="inv-stat-l">재고 없음</div></div>
+      </div>`;
+  }
+
+  function _renderFilters() {
+    const filters = ['전체', '부족 임박', '재고없음'];
+    return `<div class="inv-filters">${filters.map(f =>
+      `<button type="button" class="pill ${f === _filter ? 'on' : ''}" data-filter="${_esc(f)}">${_esc(f)}</button>`
+    ).join('')}</div>`;
+  }
+
+  // 잔량 프로그레스 — 임계치의 3배를 100% 로 본다 (명세).
+  function _progressBarHTML(item) {
+    const qty = Number(item.quantity || 0);
+    const th  = Number(item.threshold || 0);
+    if (th <= 0) return '';
+    const ratio = Math.max(0, Math.min(qty / (th * 3), 1));
+    const cls = qty <= th ? 'danger' : 'ok';
+    return `<div class="inv-progress"><div class="inv-progress__fill ${cls}" style="width:${(ratio*100).toFixed(1)}%"></div></div>`;
   }
 
   function _rerender() {
@@ -272,13 +347,35 @@
     }
     sheet.querySelector('#invOfflineBadge').style.display = _isOffline ? 'inline-block' : 'none';
 
+    const statsEl = sheet.querySelector('#inventoryStats');
+    const filtersEl = sheet.querySelector('#inventoryFilters');
     const listEl = sheet.querySelector('#inventoryList');
+
     if (!_items.length) {
+      if (statsEl) statsEl.innerHTML = '';
+      if (filtersEl) filtersEl.innerHTML = '';
       listEl.innerHTML = '<div class="dt-empty">아직 소모품이 없어요. 아래 버튼으로 추가해 주세요.</div>';
       return;
     }
+
+    if (statsEl) statsEl.innerHTML = _renderSummary();
+    if (filtersEl) {
+      filtersEl.innerHTML = _renderFilters();
+      filtersEl.querySelectorAll('[data-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          _filter = btn.dataset.filter;
+          _rerender();
+        });
+      });
+    }
+
+    const visible = _filteredItems();
+    if (!visible.length) {
+      listEl.innerHTML = '<div class="dt-empty">조건에 맞는 품목이 없어요.</div>';
+      return;
+    }
     // 부족한 것 위로 정렬
-    const sorted = [..._items].sort((a, b) => {
+    const sorted = [...visible].sort((a, b) => {
       const aLow = (a.quantity || 0) <= (a.threshold || 0);
       const bLow = (b.quantity || 0) <= (b.threshold || 0);
       if (aLow !== bLow) return aLow ? -1 : 1;
@@ -286,18 +383,23 @@
     });
     listEl.innerHTML = '<div class="dt-list">' + sorted.map(x => {
       const isLow = (x.quantity || 0) <= (x.threshold || 0);
+      const isEmpty = (x.quantity || 0) <= 0;
+      const bg = isEmpty ? 'background:rgba(201,42,42,0.05);' : (isLow ? 'background:rgba(220,53,69,0.04);' : '');
       return `
-        <div class="dt-list-it" data-inv-id="${x.id}" style="${isLow ? 'background:rgba(220,53,69,0.04);' : ''}cursor:default;">
-          <div class="dt-list-it__main">
-            <p class="dt-list-it__title">${_esc(x.name)}${isLow ? ' <span style="font-size:9px;padding:1px 5px;background:var(--danger);color:#fff;border-radius:3px;font-weight:700;">부족</span>' : ''}</p>
-            <p class="dt-list-it__sub">임계 ${x.threshold}${_esc(x.unit||'개')}</p>
+        <div class="dt-list-it" data-inv-id="${x.id}" style="${bg}cursor:default;flex-direction:column;align-items:stretch;">
+          <div style="display:flex;align-items:center;gap:8px;width:100%;">
+            <div class="dt-list-it__main" style="flex:1;min-width:0;">
+              <p class="dt-list-it__title">${_esc(x.name)}${isLow ? ' <span class="inv-badge" style="background:var(--danger);color:#fff;">부족</span>' : ''}</p>
+              <p class="dt-list-it__sub">임계 ${x.threshold}${_esc(x.unit||'개')}</p>
+            </div>
+            <div class="dt-stepper">
+              <button class="dt-stepper__btn" data-inv-delta="-1" data-inv-target="${x.id}" type="button">−</button>
+              <span class="dt-stepper__val${isLow ? ' dt-stepper__val--low' : ''}">${_fmtQty(x)}<span style="font-size:12px;font-weight:400;color:var(--text-subtle);margin-left:4px;">${_esc(x.unit||'개')}</span></span>
+              <button class="dt-stepper__btn" data-inv-delta="1" data-inv-target="${x.id}" type="button">+</button>
+              <button data-inv-edit="${x.id}" class="btn-secondary" style="padding:8px 10px;" type="button">⚙</button>
+            </div>
           </div>
-          <div class="dt-stepper">
-            <button class="dt-stepper__btn" data-inv-delta="-1" data-inv-target="${x.id}" type="button">−</button>
-            <span class="dt-stepper__val${isLow ? ' dt-stepper__val--low' : ''}">${_fmtQty(x)}<span style="font-size:12px;font-weight:400;color:var(--text-subtle);margin-left:4px;">${_esc(x.unit||'개')}</span></span>
-            <button class="dt-stepper__btn" data-inv-delta="1" data-inv-target="${x.id}" type="button">+</button>
-            <button data-inv-edit="${x.id}" class="btn-secondary" style="padding:8px 10px;" type="button">⚙</button>
-          </div>
+          ${_progressBarHTML(x)}
         </div>
       `;
     }).join('') + '</div>';
