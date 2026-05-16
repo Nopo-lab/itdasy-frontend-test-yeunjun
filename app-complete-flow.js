@@ -1,25 +1,35 @@
 /* ─────────────────────────────────────────────────────────────
-   시술 완료 액션 번들 (#3 · 2026-04-20)
+   시술 완료 액션 (#3 · 2026-05-16 리뉴얼)
 
-   예약 '완료' 처리 시 매출을 한 팝업에서 바로 기록.
-   별도 예약·매출 시트를 돌아다닐 필요 없음.
+   변경:
+   - 매출은 BE 가 PATCH /bookings/{id} 처리할 때 자동 생성한다 (Step 1).
+   - FE 는 결제수단(payment_method) 만 같이 보내고, 응답의 completion_effects
+     로 토스트만 보여준다. 별도 POST /revenue 호출 없음.
+   - 금액 직접 입력 제거. 프리셋 금액(booking.amount) 그대로 사용,
+     수정 필요 시 매출관리에서 보정.
 
    공개 API:
-   - CompleteFlow.startFromBooking(booking)   예약 완료 → 번들 팝업
+   - CompleteFlow.startFromBooking(booking)
    - CompleteFlow.show({customer_id, customer_name, service_name, default_amount})
    ──────────────────────────────────────────────────────────── */
 (function () {
   'use strict';
 
-  let _ctx = null;  // { customer_id, customer_name, service_name, amount, method, memo, booking_id }
+  let _ctx = null;  // { booking_id, customer_id, customer_name, service_name, amount, method }
+
+  const METHODS = [
+    { key: 'card',       label: '카드' },
+    { key: 'cash',       label: '현금' },
+    { key: 'transfer',   label: '계좌이체' },
+    { key: 'membership', label: '회원권' },
+  ];
 
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
   }
-  function _num(v) {
-    const n = Number(v);
-    return Number.isFinite(n) && n > 0 ? n : null;
-  }
+  function _num(v) { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; }
+  function _fmt(n)  { const v = _num(n); return v ? v.toLocaleString('ko-KR') + '원' : '0원'; }
+
   function _servicePriceFor(svc) {
     const k = String(svc || '').trim().toLowerCase();
     const list = window._serviceTemplatesCache || [];
@@ -33,43 +43,32 @@
     }
     return _num(hit?.default_price);
   }
+
   async function _hydrateAmountFromServices() {
     if (!_ctx?.service_name || _ctx.amount) return;
     try {
       if (typeof window.loadServiceTemplates === 'function') await window.loadServiceTemplates();
       const amount = _servicePriceFor(_ctx.service_name);
-      if (!amount) return;
-      _ctx.amount = amount;
-      const input = document.getElementById('cfAmount');
-      if (input && !input.value) input.value = String(amount);
-    } catch (e) {
-      console.warn('[complete-flow] 기본 금액 자동입력 실패:', e);
-    }
+      if (amount) {
+        _ctx.amount = amount;
+        _render();   // 금액 채워서 다시 그리기
+      }
+    } catch (e) { console.warn('[complete-flow] 기본 금액 자동입력 실패:', e); }
   }
+
   function _emitChange(kind, extra) {
     try {
       window.dispatchEvent(new CustomEvent('itdasy:data-changed', {
         detail: { kind, optimistic: false, ...(extra || {}) },
       }));
-    } catch (e) {
-      console.warn('[complete-flow] 화면 갱신 알림 실패:', e);
-    }
+    } catch (e) { console.warn('[complete-flow] 화면 갱신 알림 실패:', e); }
   }
   function _refreshConnectedViews() {
-    try { if (window.Dashboard?.refresh) Promise.resolve(window.Dashboard.refresh(true)).catch(e => console.warn('[complete-flow] 대시보드 갱신 실패:', e)); } catch (e) { console.warn('[complete-flow] 대시보드 갱신 실패:', e); }
-    try { if (window.MyShopV3?.refresh) Promise.resolve(window.MyShopV3.refresh()).catch(e => console.warn('[complete-flow] 내샵 갱신 실패:', e)); } catch (e) { console.warn('[complete-flow] 내샵 갱신 실패:', e); }
-    try { if (window.RevenueHub?.refresh) Promise.resolve(window.RevenueHub.refresh()).catch(e => console.warn('[complete-flow] 매출 화면 갱신 실패:', e)); } catch (e) { console.warn('[complete-flow] 매출 화면 갱신 실패:', e); }
+    try { if (window.Dashboard?.refresh)  Promise.resolve(window.Dashboard.refresh(true)).catch(()=>{}); } catch(e){}
+    try { if (window.MyShopV3?.refresh)   Promise.resolve(window.MyShopV3.refresh()).catch(()=>{}); } catch(e){}
+    try { if (window.RevenueHub?.refresh) Promise.resolve(window.RevenueHub.refresh()).catch(()=>{}); } catch(e){}
   }
 
-  async function _apiPost(path, body) {
-    const res = await fetch(window.API + path, {
-      method: 'POST',
-      headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return await res.json();
-  }
   async function _apiPatch(path, body) {
     const res = await fetch(window.API + path, {
       method: 'PATCH',
@@ -78,6 +77,11 @@
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return await res.json();
+  }
+  // BE 응답 그대로 반환 (completion_effects 포함)
+  function _patchBooking(id, patch) {
+    if (window.Booking?.update) return window.Booking.update(id, patch);
+    return _apiPatch('/bookings/' + id, patch);
   }
 
   function _ensureSheet() {
@@ -99,13 +103,66 @@
     document.body.appendChild(sheet);
     sheet.querySelector('#cfClose')?.addEventListener('click', _close);
     sheet.addEventListener('click', (e) => { if (e.target === sheet) _close(); });
+    _ensureStyles();
     return sheet;
+  }
+
+  function _ensureStyles() {
+    if (document.getElementById('cfStyles')) return;
+    const s = document.createElement('style');
+    s.id = 'cfStyles';
+    s.textContent = `
+      .cf-section-label { font-size:13px; font-weight:600; color:#8B95A1; margin-bottom:8px; }
+      .cf-amount-row { display:flex; align-items:baseline; gap:8px; margin-bottom:14px; padding:14px 16px; background:#F7F8FA; border-radius:14px; }
+      .cf-amount-row .cf-amount { font-size:24px; font-weight:800; color:#191F28; }
+      .cf-amount-row .cf-amount-cap { font-size:12px; color:#8B95A1; }
+      .cf-method-pills { display:flex; gap:8px; margin-bottom:14px; }
+      .cf-pill { flex:1; padding:12px 0; border:none; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; background:#F7F8FA; color:#4E5968; transition:background .15s ease, color .15s ease, box-shadow .15s ease; }
+      .cf-pill.active { background:#FFF1F3; color:#E5586E; box-shadow:inset 0 0 0 1.5px #E5586E; }
+      .cf-auto-preview { margin-bottom:14px; padding:14px 16px; background:#F7F8FA; border-radius:14px; }
+      .cf-preview-row { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; color:#4E5968; }
+      .cf-check { color:#0F6E56; font-weight:700; }
+    `;
+    document.head.appendChild(s);
+  }
+
+  function _renderAmount() {
+    const amt = _ctx.amount;
+    if (!amt) {
+      return `
+        <div class="cf-amount-row">
+          <span class="cf-amount" style="font-size:15px;color:#8B95A1;font-weight:600;">금액 미지정</span>
+          <span class="cf-amount-cap">시술 프리셋이 없어 매출 자동 기록은 건너뜁니다</span>
+        </div>`;
+    }
+    return `
+      <div class="cf-amount-row">
+        <span class="cf-amount">${_esc(_fmt(amt))}</span>
+        <span class="cf-amount-cap">프리셋 기준 · 수정은 매출관리에서</span>
+      </div>`;
+  }
+  function _renderMethodPills() {
+    return `
+      <div class="cf-section-label">결제수단</div>
+      <div class="cf-method-pills">
+        ${METHODS.map(m => `
+          <button class="cf-pill ${m.key === _ctx.method ? 'active' : ''}" data-method="${m.key}" type="button">${m.label}</button>
+        `).join('')}
+      </div>`;
+  }
+  function _renderAutoPreview() {
+    const willRevenue = !!_ctx.amount && _ctx.amount > 0;
+    return `
+      <div class="cf-auto-preview">
+        <div class="cf-preview-row"><span class="cf-check">✓</span><span>${willRevenue ? `매출 ${_esc(_fmt(_ctx.amount))} 자동 기록` : '매출은 기록되지 않아요 (금액 없음)'}</span></div>
+        <div class="cf-preview-row"><span class="cf-check">✓</span><span>소모재료 자동 차감 (프리셋 설정 기준)</span></div>
+        <div class="cf-preview-row"><span class="cf-check">✓</span><span>리터치 알림 자동 등록 (프리셋 설정 주기)</span></div>
+      </div>`;
   }
 
   function _render() {
     const c = _ctx;
     document.getElementById('cfBody').innerHTML = `
-      <!-- 고객 헤더 -->
       <div style="padding:12px;background:linear-gradient(135deg,rgba(241,128,145,0.1),rgba(241,128,145,0.02));border-radius:12px;margin-bottom:14px;">
         <div style="font-size:11px;color:#888;margin-bottom:2px;">방금 완료된 시술</div>
         <div style="font-size:15px;font-weight:800;">
@@ -114,105 +171,81 @@
         </div>
       </div>
 
-      <!-- 금액 + 결제 (한 줄) -->
-      <div style="display:flex;gap:10px;margin-bottom:12px;">
-        <div style="flex:2;">
-          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">금액 (원) *</label>
-          <input id="cfAmount" type="number" inputmode="numeric" value="${c.amount||''}" placeholder="50000" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;font-size:16px;font-weight:700;" />
-        </div>
-        <div style="flex:1;">
-          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">결제</label>
-          <select id="cfMethod" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;font-size:14px;">
-            ${['card','cash','transfer','etc'].map(m => `<option value="${m}" ${c.method===m?'selected':''}>${({card:'카드',cash:'현금',transfer:'계좌이체',etc:'기타'})[m]}</option>`).join('')}
-          </select>
-        </div>
-      </div>
+      ${_renderAmount()}
+      ${_renderMethodPills()}
+      ${_renderAutoPreview()}
 
-      <!-- 메모 -->
-      <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">메모 (선택)</label>
-      <textarea id="cfMemo" rows="2" maxlength="200" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;resize:vertical;font-family:inherit;"></textarea>
-
-      <!-- 버튼 -->
       <div style="display:flex;gap:8px;">
-        <button id="cfSkip" style="flex:1;padding:13px;border:1px solid #ddd;border-radius:10px;background:#fff;cursor:pointer;color:#555;font-weight:700;font-size:13px;">건너뛰기</button>
-        <button id="cfSave" style="flex:2;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;cursor:pointer;font-weight:800;font-size:15px;">한 번에 기록 ✓</button>
+        <button id="cfSkip" type="button" style="flex:1;padding:13px;border:1px solid #ddd;border-radius:12px;background:#fff;cursor:pointer;color:#555;font-weight:700;font-size:13px;">매출 미기록 완료</button>
+        <button id="cfSave" type="button" style="flex:2;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;cursor:pointer;font-weight:800;font-size:15px;">완료 ✓</button>
       </div>
-      <button id="cfInventory" style="width:100%;margin-top:8px;padding:12px;border:1px solid #eee;border-radius:10px;background:#fafafa;cursor:pointer;color:#555;font-weight:700;font-size:13px;">재고 확인</button>
+      <button id="cfInventory" type="button" style="width:100%;margin-top:8px;padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa;cursor:pointer;color:#555;font-weight:700;font-size:13px;">재고 확인</button>
     `;
 
     document.getElementById('cfSkip').addEventListener('click', _skipAndComplete);
     document.getElementById('cfSave').addEventListener('click', _saveAll);
     document.getElementById('cfInventory').addEventListener('click', _openInventory);
-  }
-
-  // 예약만 완료 처리하고 닫기
-  async function _skipAndComplete() {
-    try {
-      await _markBookingCompleted();
-      _emitChange('update_booking', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
-      if (window.showToast) window.showToast('예약 완료 처리됨');
-      _close();
-      _refreshConnectedViews();
-    } catch (e) {
-      console.warn('[complete-flow] 예약 완료 처리 실패:', e);
-      if (window.showToast) window.showToast('완료 처리 실패: ' + (e.message || ''));
-    }
-  }
-
-  async function _markBookingCompleted() {
-    if (!_ctx.booking_id) return;
-    if (window.Booking?.update) return window.Booking.update(_ctx.booking_id, { status: 'completed' });
-    return _apiPatch('/bookings/' + _ctx.booking_id, { status: 'completed' });
+    document.querySelectorAll('.cf-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _ctx.method = btn.dataset.method;
+        document.querySelectorAll('.cf-pill').forEach(b => b.classList.toggle('active', b === btn));
+      });
+    });
   }
 
   function _openInventory() {
     _close();
-    if (typeof window.openInventoryHub === 'function') {
-      window.openInventoryHub();
-    } else if (window.showToast) {
-      window.showToast('재고 화면을 불러올 수 없어요');
+    if (typeof window.openInventoryHub === 'function') window.openInventoryHub();
+    else if (window.showToast) window.showToast('재고 화면을 불러올 수 없어요');
+  }
+
+  // 매출 미기록 — BE에 skip_revenue 플래그 전달 (리터치/재고는 그대로 처리됨)
+  async function _skipAndComplete() {
+    if (!_ctx.booking_id) { _close(); return; }
+    const btn = document.getElementById('cfSkip');
+    if (btn) { btn.disabled = true; btn.textContent = '처리 중…'; }
+    try {
+      await _patchBooking(_ctx.booking_id, { status: 'completed', skip_revenue: true });
+      _emitChange('update_booking', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
+      if (window.showToast) window.showToast('예약 완료 (매출 미기록)');
+      _close();
+      _refreshConnectedViews();
+    } catch (e) {
+      console.warn('[complete-flow] 매출 미기록 완료 실패:', e);
+      if (btn) { btn.disabled = false; btn.textContent = '매출 미기록 완료'; }
+      if (window.showToast) window.showToast('완료 처리 실패: ' + (e.message || ''));
     }
   }
 
   async function _saveAll() {
-    const amount = parseInt(document.getElementById('cfAmount').value, 10);
-    const method = document.getElementById('cfMethod').value;
-    const memo = document.getElementById('cfMemo').value.trim() || null;
-
-    if (!amount || amount < 1) {
-      if (window.showToast) window.showToast('금액을 입력해 주세요');
-      return;
-    }
-
     const btn = document.getElementById('cfSave');
-    btn.disabled = true;
-    btn.textContent = '저장 중…';
-
+    btn.disabled = true; btn.textContent = '저장 중…';
+    const payload = { status: 'completed', payment_method: _ctx.method || 'card' };
     try {
-      await Promise.all([
-        _markBookingCompleted(),
-        _apiPost('/revenue', {
-          amount, method,
-          service_name: _ctx.service_name || null,
-          customer_id: _ctx.customer_id || null,
-          customer_name: _ctx.customer_name || null,
-          memo,
-        }),
-      ]);
+      const res = await _patchBooking(_ctx.booking_id, payload);
+      const eff = res?.completion_effects || {};
       if (_ctx.booking_id) _emitChange('update_booking', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
-      _emitChange('create_revenue', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
+      if (eff.revenue_created) _emitChange('create_revenue', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id, revenue_id: eff.revenue_id });
       if (window.hapticSuccess) window.hapticSuccess();
-      if (window.showToast) window.showToast('매출 기록 완료!');
+      if (window.showToast) {
+        if (eff.revenue_created) window.showToast(`${_fmt(_ctx.amount)} 매출 자동 기록됨`);
+        else if (eff.revenue_skipped) window.showToast('예약 완료 (매출 미기록)');
+        else window.showToast('예약 완료');
+      }
       _close();
       _refreshConnectedViews();
     } catch (e) {
-      btn.disabled = false;
-      btn.textContent = '한 번에 기록 ✓';
+      btn.disabled = false; btn.textContent = '완료 ✓';
       if (window.showToast) window.showToast('실패: ' + (e.message || ''));
     }
   }
 
-  // ── 공개 API ──────────────────────────────────────────
+  function _close() {
+    const sheet = document.getElementById('completeFlowSheet');
+    if (sheet) sheet.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
   window.CompleteFlow = {
     startFromBooking(booking) {
       if (!booking) return;
@@ -221,7 +254,8 @@
         customer_id: booking.customer_id || null,
         customer_name: booking.customer_name || null,
         service_name: booking.service_name || null,
-        amount: _num(booking.amount) || _servicePriceFor(booking.service_name), method: 'card',
+        amount: _num(booking.amount) || _servicePriceFor(booking.service_name),
+        method: booking.payment_method || 'card',
       };
       _ensureSheet();
       document.getElementById('completeFlowSheet').style.display = 'flex';
@@ -231,24 +265,19 @@
     },
     show(opts) {
       _ctx = {
-        booking_id: null,
+        booking_id: opts?.booking_id || null,
         customer_id: opts?.customer_id || null,
         customer_name: opts?.customer_name || null,
         service_name: opts?.service_name || null,
-        amount: opts?.default_amount || null,
+        amount: _num(opts?.default_amount) || _servicePriceFor(opts?.service_name),
         method: 'card',
       };
       _ensureSheet();
       document.getElementById('completeFlowSheet').style.display = 'flex';
       document.body.style.overflow = 'hidden';
       _render();
+      _hydrateAmountFromServices();
     },
   };
-
-  function _close() {
-    const sheet = document.getElementById('completeFlowSheet');
-    if (sheet) sheet.style.display = 'none';
-    document.body.style.overflow = '';
-  }
   window.closeCompleteFlow = _close;
 })();

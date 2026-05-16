@@ -1,6 +1,10 @@
-/* 매출 관리 v5 — 3탭 + 도넛 + 인센티브 + 빠른 추가 + PC 레이아웃
-   mockup: ../mockups/05-revenue.html · styles: css/screens/revenue-v5.css
-   외부: openRevenue/closeRevenue, window.Revenue, window._revenueBack */
+/* 매출 관리 v5 — 메인 컨트롤러 + period 디스패처 (Step 3A · 2026-05-16 분할)
+   - today/week 뷰: window.RevenueToday  (app-revenue-today.js)
+   - month 뷰:     window.RevenueMonth   (app-revenue-month.js · BE /revenue/summary)
+   - 본 파일: 데이터·시트·이벤트·CRUD·빠른추가·자세히 입력 모달·도넛·인센티브 등 공용 액션.
+
+   외부: openRevenue / closeRevenue / window.Revenue / window._revenueBack
+   mockup: ../mockup-revenue-v4.html · styles: css/screens/revenue-v5.css */
 (function () {
   'use strict';
 
@@ -19,18 +23,11 @@
     bank_transfer: '계좌', membership: '회원권', etc: '기타',
   };
 
-  // [2026-05-16] shop_type 별 예시 시술명 — placeholder 자동 매핑. fallback = 붙임머리.
-  // 기존 SHOP_SERVICE_POOL (app-power-view-render.js) / SHOP_CONFIG (app-core.js) 와 톤 일치.
+  // shop_type 별 시술명 예시 (빠른 입력 placeholder)
   const _RV_EXAMPLE_BY_SHOP = {
-    '붙임머리': '24인치',
-    '네일':     '젤네일',
-    '네일아트': '젤네일',
-    '속눈썹':   '클래식 연장',
-    '피부':     '기본 관리',
-    '헤어':     '커트',
-    '헤어샵':   '커트',
-    '왁싱':     '브라질리언',
-    '반영구':   '눈썹 콤보',
+    '붙임머리': '24인치', '네일': '젤네일', '네일아트': '젤네일',
+    '속눈썹': '클래식 연장', '피부': '기본 관리', '헤어': '커트', '헤어샵': '커트',
+    '왁싱': '브라질리언', '반영구': '눈썹 콤보',
   };
   function _rvShopExample() {
     try {
@@ -59,14 +56,12 @@
   };
   const _tagHTML = (m) => `<span class="rv-tag ${TAG_CLS[m] || ''}">${TAG_LABEL[m] || _esc(m || '카드')}</span>`;
 
-  // ── 기간 계산 ────────────────────────────────────────────
+  // ── 기간 ────────────────────────────────────────────────
   function _periodRange(period, baseDate) {
     const now = baseDate ? new Date(baseDate) : new Date();
-    const start = new Date(now);
-    const end = new Date(now);
+    const start = new Date(now); const end = new Date(now);
     if (period === 'today') {
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
+      start.setHours(0, 0, 0, 0); end.setHours(23, 59, 59, 999);
     } else if (period === 'week') {
       const day = start.getDay();
       const mondayOffset = (day + 6) % 7;
@@ -74,17 +69,15 @@
       start.setHours(0, 0, 0, 0);
       end.setTime(start.getTime() + 7 * 24 * 3600 * 1000 - 1);
     } else {
-      start.setDate(1);
-      start.setHours(0, 0, 0, 0);
-      end.setMonth(end.getMonth() + 1, 0);
-      end.setHours(23, 59, 59, 999);
+      start.setDate(1); start.setHours(0, 0, 0, 0);
+      end.setMonth(end.getMonth() + 1, 0); end.setHours(23, 59, 59, 999);
     }
     return { start, end };
   }
 
-  // ── 오프라인 스토어 ─────────────────────────────────────
+  // ── 오프라인 ────────────────────────────────────────────
   const _loadOffline = () => { try { return JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]'); } catch (_) { return []; } };
-  const _saveOffline = (list) => { try { localStorage.setItem(OFFLINE_KEY, JSON.stringify(list)); } catch (_) { void _; } };
+  const _saveOffline = (list) => { try { localStorage.setItem(OFFLINE_KEY, JSON.stringify(list)); } catch (_) { /* silent */ } };
 
   // ── 네트워크 ────────────────────────────────────────────
   async function _api(method, path, body) {
@@ -99,7 +92,7 @@
     return res.status === 204 ? null : await res.json();
   }
 
-  // ── SWR 캐시 ────────────────────────────────────────────
+  // ── SWR ────────────────────────────────────────────────
   const _SWR_TTL = 60 * 1000;
   const _swrKey = (p) => 'pv_cache::revenue::' + p;
   function _readSWRPeriod(p) {
@@ -125,26 +118,17 @@
       try { localStorage.removeItem('pv_cache::revenue'); sessionStorage.removeItem('pv_cache::revenue'); } catch (_e) { void _e; }
     } catch (_) { /* silent */ }
   }
-
   async function _fetchPeriodData(p) {
     if (_periodInflight[p]) return _periodInflight[p];
     _periodInflight[p] = _api('GET', '/revenue?period=' + p)
-      .then(d => {
-        const items = d.items || [];
-        _writeSWRPeriod(p, items);
-        return items;
-      })
+      .then(d => { const items = d.items || []; _writeSWRPeriod(p, items); return items; })
       .finally(() => { _periodInflight[p] = null; });
     return _periodInflight[p];
   }
-
   async function _fetchPeriod(p) {
     const items = await _fetchPeriodData(p);
-    _isOffline = false;
-    _items = items;
-    return _items;
+    _isOffline = false; _items = items; return _items;
   }
-
   function _prefetchAllPeriods() {
     PERIODS.forEach(p => {
       if (p === _currentPeriod) return;
@@ -154,6 +138,7 @@
     });
   }
 
+  // ── CRUD ───────────────────────────────────────────────
   async function list(period) {
     const p = PERIODS.includes(period) ? period : 'today';
     const swr = _readSWRPeriod(p);
@@ -161,7 +146,6 @@
       _items = swr.items;
       if (!swr.fresh) {
         _fetchPeriod(p).then(fresh => {
-          // [BUG-R2-4] JSON.stringify 전체 비교 제거 — 건수/첫ID 간이 비교로 전환
           if (fresh.length !== _items.length || (fresh[0] && _items[0] && fresh[0].id !== _items[0].id)) {
             _items = fresh;
             try { _rerender && _rerender(); } catch (_e) { void _e; }
@@ -170,16 +154,15 @@
       }
       return _items;
     }
-    try {
-      return await _fetchPeriod(p);
-    } catch (e) {
+    try { return await _fetchPeriod(p); }
+    catch (e) {
       if (e.message === 'endpoint-missing' || e.message === 'no-token') {
         _isOffline = true;
         const { start, end } = _periodRange(p);
         const all = _loadOffline();
         _items = all.filter(r => {
           const t = new Date(r.recorded_at || r.created_at).getTime();
-          if (!t || isNaN(t)) return true;  // [BUG-R2-4] 날짜 없는 항목은 포함
+          if (!t || isNaN(t)) return true;
           return t >= start.getTime() && t <= end.getTime();
         });
         return _items;
@@ -187,7 +170,6 @@
       throw e;
     }
   }
-
   async function create(payload) {
     if (!payload || !(+payload.amount > 0)) throw new Error('amount-required');
     const data = {
@@ -223,7 +205,6 @@
       throw err;
     }
   }
-
   async function remove(id) {
     if (_isOffline) {
       const all = _loadOffline().filter(r => r.id !== id);
@@ -241,7 +222,7 @@
   // ── 인센티브 ────────────────────────────────────────────
   const INCENTIVE_KEY = 'itdasy_incentive_settings_v1';
   function _incentiveSettings() {
-    try { const raw = localStorage.getItem(INCENTIVE_KEY); if (raw) return JSON.parse(raw); } catch (_) { void _; }
+    try { const raw = localStorage.getItem(INCENTIVE_KEY); if (raw) return JSON.parse(raw); } catch (_) { /* silent */ }
     return { material_pct: 15, fixed_monthly: 0 };
   }
   function _calcIncentive(totalKRW) {
@@ -257,12 +238,12 @@
     if (fixed === null) return;
     const np = Math.max(0, Math.min(100, parseFloat(pct) || 0));
     const nf = Math.max(0, parseInt(fixed, 10) || 0);
-    try { localStorage.setItem(INCENTIVE_KEY, JSON.stringify({ material_pct: np, fixed_monthly: nf })); } catch (_) { void _; }
+    try { localStorage.setItem(INCENTIVE_KEY, JSON.stringify({ material_pct: np, fixed_monthly: nf })); } catch (_) { /* silent */ }
     if (window.showToast) window.showToast('설정 저장됨');
     _rerender();
   }
 
-  // ── 도넛 + 레전드 (CSS conic-gradient) ───────────────────
+  // ── 도넛 (today 뷰가 사용) ───────────────────────────────
   function _renderDonut(breakdown, opts) {
     const total = breakdown && breakdown.total ? breakdown.total : 0;
     if (!total) {
@@ -279,8 +260,7 @@
     }
     let acc = 0;
     const slices = rowsAll.map((m, i) => {
-      const start = acc;
-      acc += m.total / total;
+      const start = acc; acc += m.total / total;
       m.color = DONUT_COLORS[Math.min(i, DONUT_COLORS.length - 1)];
       return `${m.color} ${(start * 360).toFixed(2)}deg ${(acc * 360).toFixed(2)}deg`;
     }).join(', ');
@@ -291,7 +271,7 @@
     return `<div class="rv-chart__body"><div class="rv-donut" style="background:conic-gradient(${slices});"><div class="rv-donut__center"><div class="rv-donut__total">${_formatMan(total)}</div><div class="rv-donut__label">${_esc(centerLbl)}</div></div></div><div class="rv-legend">${legend}</div></div>`;
   }
 
-  // ── 인센티브 카드 마크업 ─────────────────────────────────
+  // ── 인센티브 카드 (today 뷰가 사용) ──────────────────────
   function _renderIncentiveCardHTML(totalKRW, extraStyle) {
     const c = _calcIncentive(totalKRW);
     return `
@@ -309,7 +289,45 @@
       </div>`;
   }
 
-  // ── 시트 (overlay) ──────────────────────────────────────
+  // ── 도넛 비동기 로딩 (today 뷰가 호출) ───────────────────
+  async function _loadDonutAsync(chartEl) {
+    if (!chartEl) return;
+    const bodyEl = chartEl.querySelector('.rv-chart__body');
+    const subEl = chartEl.querySelector('.rv-chart__sub');
+    try {
+      const r = await _api('GET', '/memberships/revenue-breakdown?period=' + _currentPeriod);
+      if (!r) {
+        if (bodyEl) bodyEl.outerHTML = _renderDonut({ total: 0 }, { centerLabel: '데이터 없음' });
+        if (subEl) subEl.textContent = '데이터 없음';
+        return;
+      }
+      const html = _renderDonut(r, { centerLabel: PERIOD_LABEL[_currentPeriod] + ' 합계' });
+      if (bodyEl) bodyEl.outerHTML = html;
+      if (subEl) {
+        const cnt = r.by_method ? Object.keys(r.by_method).filter(k => (r.by_method[k] || {}).total > 0).length : 0;
+        subEl.textContent = `${PERIOD_LABEL[_currentPeriod]} · ${cnt}가지`;
+      }
+    } catch (_e) {
+      const total = _items.reduce((s, r) => s + (r.amount || 0), 0);
+      if (!total) {
+        if (bodyEl) bodyEl.outerHTML = _renderDonut({ total: 0 }, { centerLabel: '데이터 없음' });
+        if (subEl) subEl.textContent = '데이터 없음';
+        return;
+      }
+      const by = {};
+      _items.forEach(r => {
+        const m = r.method || 'card';
+        if (!by[m]) by[m] = { total: 0, count: 0 };
+        by[m].total += r.amount || 0;
+        by[m].count += 1;
+      });
+      const html = _renderDonut({ total, by_method: by }, { centerLabel: PERIOD_LABEL[_currentPeriod] + ' 합계' });
+      if (bodyEl) bodyEl.outerHTML = html;
+      if (subEl) subEl.textContent = `${PERIOD_LABEL[_currentPeriod]} · 로컬 집계`;
+    }
+  }
+
+  // ── 시트 ────────────────────────────────────────────────
   function _ensureSheet() {
     let sheet = document.getElementById('revenueSheet');
     if (sheet) return sheet;
@@ -324,11 +342,9 @@
     sheet.addEventListener('keydown', _onRootKeydown);
     return sheet;
   }
-
   function _onRootKeydown(e) {
     if (e.key === 'Escape') { e.preventDefault(); window.closeRevenue(); }
   }
-
   function _onRootClick(e) {
     const btn = e.target.closest('[data-rv-act]');
     if (!btn) return;
@@ -337,10 +353,8 @@
     if (act === 'period') {
       const p = btn.dataset.period;
       if (!PERIODS.includes(p) || p === _currentPeriod) return;
-      _currentPeriod = p;
-      _revWindow = 50;
-      _loadAndRender();
-      _prefetchAllPeriods();
+      _currentPeriod = p; _revWindow = 50;
+      _loadAndRender(); _prefetchAllPeriods();
       return;
     }
     if (act === 'incentive-cfg') return _openIncentiveSettings();
@@ -364,7 +378,7 @@
     }
   }
 
-  // ── 마크업: 모바일 ──────────────────────────────────────
+  // ── 모바일 셸 ────────────────────────────────────────────
   function _mobileLayoutHTML() {
     return `
       <div class="rv-header">
@@ -390,7 +404,7 @@
       <datalist id="rvDataService"></datalist>`;
   }
 
-  // ── 마크업: PC ──────────────────────────────────────────
+  // ── PC 셸 ────────────────────────────────────────────────
   function _pcSidebarHTML() {
     const item = (act, iconId, label, active) => `
       <button type="button" class="ms-side__item${active ? ' is-active' : ''}" data-rv-act="side-go" data-go="${act}"${active ? ' aria-current="page"' : ''}>
@@ -412,7 +426,6 @@
         ${item('settings', 'ic-settings', '설정 · 연동', false)}
       </aside>`;
   }
-
   function _pcLayoutHTML() {
     return `
       <div class="ms-root" style="flex-direction:row;min-height:100vh;">
@@ -422,8 +435,27 @@
       <datalist id="rvDataCustomer"></datalist>
       <datalist id="rvDataService"></datalist>`;
   }
-
-  // ── 렌더 디스패처 ────────────────────────────────────────
+  // today/month 가 공용으로 사용 — period 인자 받음
+  function _renderPCHeaderHTML(period) {
+    const cur = period || _currentPeriod;
+    const periods = PERIODS.map(p =>
+      `<button type="button" class="rv-pc__period-btn${p === cur ? ' is-on' : ''}" data-rv-act="period" data-period="${p}">${PERIOD_LABEL[p]}</button>`
+    ).join('');
+    return `<div class="rv-pc__header">
+      <div class="rv-pc__title">매출관리</div>
+      <div class="rv-pc__spacer"></div>
+      <div class="rv-pc__periods">${periods}</div>
+      <button type="button" class="rv-pc__add" data-rv-act="add-form">
+        <i class="ph-duotone ph-plus" style="font-size:14px" aria-hidden="true"></i>매출 입력
+      </button>
+    </div>`;
+  }
+  function _renderPCChartShellHTML() {
+    return `<div class="rv-pc-chart" id="rvPCChart">
+      <div class="rv-chart__head"><div><div class="rv-chart__title">결제 방식별 분포</div><div class="rv-chart__sub">불러오는 중…</div></div></div>
+      <div class="rv-chart__body"><div class="rv-donut" style="background:var(--surface-2);"></div><div class="rv-legend"></div></div>
+    </div>`;
+  }
   async function _renderRoot() {
     const sheet = _ensureSheet();
     _cachedIsPC = _isPC();
@@ -438,7 +470,7 @@
     }
   }
 
-  // ── 빠른추가 (모바일/PC 공통) ────────────────────────────
+  // ── 빠른추가 ────────────────────────────────────────────
   function _qaContainer() {
     const sheet = document.getElementById('revenueSheet');
     if (!sheet) return null;
@@ -473,286 +505,25 @@
     }
     try {
       await create({
-        amount,
-        method: v.method || 'card',
-        customer_name: v.customer_name || null,
-        service_name: v.service_name || null,
+        amount, method: v.method || 'card',
+        customer_name: v.customer_name || null, service_name: v.service_name || null,
       });
       if (window.Fun && typeof window.Fun.confetti === 'function') {
         try { const btn = _qaContainer()?.querySelector('[data-rv-act="qa-add"]'); if (btn) window.Fun.confetti(btn); } catch (_e) { void _e; }
       }
       if (window.showToast) window.showToast(`매출 +${amount.toLocaleString()}원`);
-      _resetQA();
-      await _loadAndRender();
+      _resetQA(); await _loadAndRender();
     } catch (e) {
       console.warn('[revenue] qa-add 실패:', e);
       if (window.showToast) window.showToast('저장 실패 — 다시 시도해 주세요');
     }
   }
 
-  // ── 모바일 본문 렌더 ─────────────────────────────────────
-  function _renderHeroHTML(total, count) {
-    const monthLbl = `${new Date().getFullYear()}년 ${new Date().getMonth() + 1}월 매출`;
-    const heroLbl = _currentPeriod === 'month' ? monthLbl : (PERIOD_LABEL[_currentPeriod] + ' 매출');
-    return `<div class="rv-hero">
-      <div class="rv-hero__label">${_esc(heroLbl)}</div>
-      <div class="rv-hero__value" id="rvHeroValue">${_formatMan(total)}</div>
-      <div class="rv-hero__meta"><div><b>${count}건</b> 거래</div><div class="rv-hero__trend" id="rvHeroTrend"></div></div>
-    </div>`;
-  }
-  function _renderChartShellHTML() {
-    return `<div class="rv-chart" id="rvChart">
-      <div class="rv-chart__head"><div><div class="rv-chart__title">결제 방식별 분포</div><div class="rv-chart__sub">불러오는 중…</div></div></div>
-      <div class="rv-chart__body"><div class="rv-donut" style="background:var(--surface-2);"></div><div class="rv-legend"></div></div>
-    </div>`;
-  }
-  function _renderQAMobileHTML() {
-    return `<div class="rv-qa" data-rv-qa>
-      <input class="rv-qa__input" data-rv-field="amount" type="number" inputmode="numeric" placeholder="금액 입력" />
-      <select class="rv-qa__method" data-rv-field="method" data-rv-method-default="card">
-        <option value="card">카드</option><option value="cash">현금</option><option value="transfer">계좌</option><option value="membership">회원권</option>
-      </select>
-      <button type="button" class="rv-qa__add" data-rv-act="qa-add" aria-label="추가">
-        <i class="ph-duotone ph-plus" style="font-size:18px" aria-hidden="true"></i>
-      </button>
-    </div>`;
-  }
-  function _renderListBlockHTML(visible, sorted, count, hasMore, withStaff) {
-    if (!visible.length) return `<div style="padding:30px;text-align:center;color:var(--text-subtle);font-size:13px;">아직 기록이 없어요</div>`;
-    const items = visible.map(r => _renderListItemHTML(r, withStaff)).join('');
-    const more = hasMore ? `<button type="button" class="rv-load-more" data-rv-act="load-more">더 보기 (${sorted.length - _revWindow}건)</button>` : '';
-    return `<div class="rv-section-row">
-      <div class="rv-section__title">${PERIOD_LABEL[_currentPeriod]} 매출 내역</div>
-      <div class="rv-section__meta">${count}건${visible.length < count ? ` 중 ${visible.length}건` : ''}</div>
-    </div><div class="rv-list">${items}</div>${more}`;
-  }
-  function _attachCommonHandlers(root, total) {
-    if (window.Fun && typeof window.Fun.countUp === 'function') {
-      const el = root.querySelector('#rvHeroValue, #rvPCStatTotal');
-      if (el) {
-        try { window.Fun.countUp(el, 0, total, { duration: 720, format: (n) => _formatMan(Math.round(n)) }); }
-        catch (_e) { void _e; }
-      }
-    }
-    root.querySelectorAll('[data-rv-qa] [data-rv-field]').forEach(el => {
-      el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); _submitQuickAdd(); } });
-    });
-  }
-  function _rerenderMobile() {
-    const sheet = document.getElementById('revenueSheet');
-    if (!sheet) return;
-    const bodyEl = sheet.querySelector('#rvBody');
-    if (!bodyEl) return;
-    sheet.querySelectorAll('.rv-periods__btn').forEach(b => b.classList.toggle('is-on', b.dataset.period === _currentPeriod));
-    const total = _items.reduce((s, r) => s + (r.amount || 0), 0);
-    const count = _items.length;
-    const offlineBadge = sheet.querySelector('#rvOfflineBadge');
-    if (offlineBadge) offlineBadge.style.display = _isOffline ? 'block' : 'none';
-    const sorted = [..._items].sort((a, b) => new Date(b.recorded_at || b.created_at) - new Date(a.recorded_at || a.created_at));
-    const visible = sorted.slice(0, _revWindow);
-    const hasMore = sorted.length > _revWindow;
-    const monthBlock = _currentPeriod === 'month' ? (_renderChartShellHTML() + _renderIncentiveCardHTML(total)) : '';
-    bodyEl.innerHTML = _renderHeroHTML(total, count) + monthBlock + _renderQAMobileHTML() + _renderListBlockHTML(visible, sorted, count, hasMore, false);
-    _attachCommonHandlers(bodyEl, total);
-    if (_currentPeriod === 'month') _loadDonutAsync(bodyEl.querySelector('#rvChart'));
-  }
-
-  function _renderListItemHTML(r, withStaff) {
-    const t = new Date(r.recorded_at || r.created_at);
-    const hhmm = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
-    const dd = String(t.getMonth() + 1) + '월 ' + String(t.getDate());
-    const timeLbl = _currentPeriod === 'today' ? hhmm : `${dd} ${hhmm}`;
-    const staffLbl = withStaff && r.staff_name ? ` · ${_esc(r.staff_name)}` : '';
-    const tag = _tagHTML(r.method || 'card');
-    return `
-      <div class="rv-list__item" data-rid="${_esc(r.id)}">
-        <div class="rv-list__amount">${_formatMan(r.amount)}</div>
-        <div class="rv-list__info">
-          <div class="rv-list__service">${_esc(r.service_name || '—')}</div>
-          <div class="rv-list__meta">
-            ${tag}
-            ${r.customer_name ? `<span class="rv-list__customer">${_esc(r.customer_name)}</span> · ` : ''}
-            ${timeLbl}${staffLbl}
-          </div>
-        </div>
-        <button type="button" class="rv-list__delete" data-rv-act="delete" data-id="${_esc(r.id)}" aria-label="삭제">
-          <i class="ph-duotone ph-trash" style="font-size:14px" aria-hidden="true"></i>
-        </button>
-      </div>`;
-  }
-
-  // ── PC 본문 렌더 ────────────────────────────────────────
-  function _calcPCStats(items, totalForIncentive) {
-    const total = items.reduce((s, r) => s + (r.amount || 0), 0);
-    const count = items.length;
-    const avg = count > 0 ? Math.round(total / count) : 0;
-    const inc = _calcIncentive(totalForIncentive != null ? totalForIncentive : total);
-    return { total, count, avg, net: inc.net };
-  }
-
-  function _renderPCStatsHTML(stats) {
-    return `
-      <div class="rv-pc-stats">
-        <div class="rv-pc-stat">
-          <div class="rv-pc-stat__label">${PERIOD_LABEL[_currentPeriod]} 매출</div>
-          <div class="rv-pc-stat__value" id="rvPCStatTotal">${_formatMan(stats.total)}</div>
-          <div class="rv-pc-stat__trend is-neutral">—</div>
-        </div>
-        <div class="rv-pc-stat">
-          <div class="rv-pc-stat__label">거래 건수</div>
-          <div class="rv-pc-stat__value">${stats.count}건</div>
-          <div class="rv-pc-stat__trend is-neutral">${PERIOD_LABEL[_currentPeriod]}</div>
-        </div>
-        <div class="rv-pc-stat">
-          <div class="rv-pc-stat__label">평균 객단가</div>
-          <div class="rv-pc-stat__value">${_formatMan(stats.avg)}</div>
-          <div class="rv-pc-stat__trend is-neutral">건당 평균</div>
-        </div>
-        <div class="rv-pc-stat">
-          <div class="rv-pc-stat__label">순수익</div>
-          <div class="rv-pc-stat__value" style="color:var(--brand-strong);">${_formatMan(stats.net)}</div>
-          <div class="rv-pc-stat__trend is-neutral">재료15% 기본</div>
-        </div>
-      </div>`;
-  }
-
-  function _renderPCQAHTML() {
-    return `
-      <div class="rv-pc-qa" data-rv-qa>
-        <div class="rv-pc-qa__label">빠른 입력</div>
-        <input class="rv-pc-qa__input rv-pc-qa__input--amount" data-rv-field="amount" type="number" inputmode="numeric" placeholder="금액 (예: 45000)" />
-        <input class="rv-pc-qa__input" data-rv-field="service_name" list="rvDataService" placeholder="시술 (예: ${_rvShopExample()})" />
-        <input class="rv-pc-qa__input" data-rv-field="customer_name" list="rvDataCustomer" placeholder="고객명" />
-        <div class="rv-pc-qa__methods">
-          ${['card', 'cash', 'transfer', 'membership'].map((m, i) => `
-            <button type="button" class="rv-pc-qa__method${i === 0 ? ' is-on' : ''}" data-rv-pc-method="${m}">${TAG_LABEL[m]}</button>
-          `).join('')}
-        </div>
-        <input type="hidden" data-rv-field="method" data-rv-method-default="card" value="card" />
-        <button type="button" class="rv-pc-qa__add" data-rv-act="qa-add">기록</button>
-      </div>`;
-  }
-
-  function _renderPCHeaderHTML() {
-    const periods = PERIODS.map(p =>
-      `<button type="button" class="rv-pc__period-btn${p === _currentPeriod ? ' is-on' : ''}" data-rv-act="period" data-period="${p}">${PERIOD_LABEL[p]}</button>`
-    ).join('');
-    return `<div class="rv-pc__header">
-      <div class="rv-pc__title">매출관리</div>
-      <div class="rv-pc__spacer"></div>
-      <div class="rv-pc__periods">${periods}</div>
-      <button type="button" class="rv-pc__add" data-rv-act="add-form">
-        <i class="ph-duotone ph-plus" style="font-size:14px" aria-hidden="true"></i>매출 입력
-      </button>
-    </div>`;
-  }
-  function _renderPCChartShellHTML() {
-    return `<div class="rv-pc-chart" id="rvPCChart">
-      <div class="rv-chart__head"><div><div class="rv-chart__title">결제 방식별 분포</div><div class="rv-chart__sub">불러오는 중…</div></div></div>
-      <div class="rv-chart__body"><div class="rv-donut" style="background:var(--surface-2);"></div><div class="rv-legend"></div></div>
-    </div>`;
-  }
-  function _attachPCMethodToggles(main) {
-    main.querySelectorAll('.rv-pc-qa__method').forEach(btn => {
-      btn.addEventListener('click', () => {
-        main.querySelectorAll('.rv-pc-qa__method').forEach(b => b.classList.remove('is-on'));
-        btn.classList.add('is-on');
-        const hid = main.querySelector('[data-rv-field="method"]');
-        if (hid) hid.value = btn.dataset.rvPcMethod || 'card';
-      });
-    });
-  }
-  function _renderPCMain() {
-    const sheet = document.getElementById('revenueSheet');
-    if (!sheet) return;
-    const main = sheet.querySelector('#rvPCMain');
-    if (!main) return;
-    const total = _items.reduce((s, r) => s + (r.amount || 0), 0);
-    const stats = _calcPCStats(_items, total);
-    const sorted = [..._items].sort((a, b) => new Date(b.recorded_at || b.created_at) - new Date(a.recorded_at || a.created_at));
-    const visible = sorted.slice(0, _revWindow);
-    const hasMore = sorted.length > _revWindow;
-    main.innerHTML = _renderPCHeaderHTML() + _renderPCStatsHTML(stats) +
-      `<div class="rv-pc-grid">${_renderPCChartShellHTML()}${_renderIncentiveCardHTML(total, 'margin-bottom:0;')}</div>` +
-      _renderPCQAHTML() + _renderListBlockHTML(visible, sorted, stats.count, hasMore, true);
-    _attachPCMethodToggles(main);
-    _attachCommonHandlers(main, total);
-    _loadDonutAsync(main.querySelector('#rvPCChart'));
-  }
-
-  // ── 도넛 비동기 로딩 ─────────────────────────────────────
-  async function _loadDonutAsync(chartEl) {
-    if (!chartEl) return;
-    const bodyEl = chartEl.querySelector('.rv-chart__body');
-    const subEl = chartEl.querySelector('.rv-chart__sub');
-    try {
-      const r = await _api('GET', '/memberships/revenue-breakdown?period=' + _currentPeriod);
-      if (!r) {
-        if (bodyEl) bodyEl.outerHTML = _renderDonut({ total: 0 }, { centerLabel: '데이터 없음' });
-        if (subEl) subEl.textContent = '데이터 없음';
-        return;
-      }
-      const html = _renderDonut(r, { centerLabel: PERIOD_LABEL[_currentPeriod] + ' 합계' });
-      if (bodyEl) bodyEl.outerHTML = html;
-      if (subEl) {
-        const cnt = r.by_method ? Object.keys(r.by_method).filter(k => (r.by_method[k] || {}).total > 0).length : 0;
-        subEl.textContent = `${PERIOD_LABEL[_currentPeriod]} · ${cnt}가지`;
-      }
-    } catch (_e) {
-      // 폴백: 로컬 _items 으로 도넛
-      const total = _items.reduce((s, r) => s + (r.amount || 0), 0);
-      if (!total) {
-        if (bodyEl) bodyEl.outerHTML = _renderDonut({ total: 0 }, { centerLabel: '데이터 없음' });
-        if (subEl) subEl.textContent = '데이터 없음';
-        return;
-      }
-      const by = {};
-      _items.forEach(r => {
-        const m = r.method || 'card';
-        if (!by[m]) by[m] = { total: 0, count: 0 };
-        by[m].total += r.amount || 0;
-        by[m].count += 1;
-      });
-      const html = _renderDonut({ total, by_method: by }, { centerLabel: PERIOD_LABEL[_currentPeriod] + ' 합계' });
-      if (bodyEl) bodyEl.outerHTML = html;
-      if (subEl) subEl.textContent = `${PERIOD_LABEL[_currentPeriod]} · 로컬 집계`;
-    }
-  }
-
-  // ── 자동완성 (datalist) ─────────────────────────────────
-  function _refreshDatalists() {
-    const sheet = document.getElementById('revenueSheet');
-    if (!sheet) return;
-    const cust = sheet.querySelector('#rvDataCustomer');
-    const svc = sheet.querySelector('#rvDataService');
-    if (!cust && !svc) return;
-    if (window.AppAutocomplete && typeof window.AppAutocomplete.rebuild === 'function') {
-      try { window.AppAutocomplete.rebuild({ revenue: _items }); } catch (_e) { void _e; }
-    }
-    const custSet = new Set(), svcSet = new Set();
-    _items.forEach(r => {
-      if (r.customer_name) custSet.add(r.customer_name);
-      if (r.service_name) svcSet.add(r.service_name);
-    });
-    if (cust) cust.innerHTML = Array.from(custSet).slice(0, 200).map(v => `<option value="${_esc(v)}"></option>`).join('');
-    if (svc) svc.innerHTML = Array.from(svcSet).slice(0, 200).map(v => `<option value="${_esc(v)}"></option>`).join('');
-  }
-
-  // ── rerender 디스패처 ───────────────────────────────────
-  function _rerender() {
-    if (!document.getElementById('revenueSheet')) return;
-    _refreshDatalists();
-    if (_cachedIsPC) _renderPCMain();
-    else _rerenderMobile();
-  }
-  window._revenueBack = _rerender;
-
-  // ── 자세히 입력 모달 (모바일·PC 공통) ────────────────────
+  // ── 자세히 입력 모달 ────────────────────────────────────
   function _openAddForm(prefill) {
     let modal = document.getElementById('rvAddModal');
     if (modal) {
-      // 기존 모달이 떠있는데 prefill 들어오면 강제 재생성. 그 외엔 그냥 보이기.
-      if (prefill) { modal.remove(); }
+      if (prefill) modal.remove();
       else { modal.style.display = 'flex'; return; }
     }
     modal = document.createElement('div');
@@ -791,12 +562,10 @@
     modal.querySelector('[data-rv-modal-close]').addEventListener('click', _closeAddModal);
     _wireAddForm(modal, prefill);
   }
-
   function _closeAddModal() {
     const m = document.getElementById('rvAddModal');
     if (m) m.remove();
   }
-
   function _onPickCustomer(modal, ctx) {
     return async () => {
       if (!window.Customer || !window.Customer.pick) {
@@ -828,8 +597,7 @@
       const useMem = !!modal.querySelector('#rfUseMembership')?.checked;
       try {
         await create({
-          amount,
-          method: useMem ? 'membership' : ctx.method,
+          amount, method: useMem ? 'membership' : ctx.method,
           service_name: modal.querySelector('#rfService').value.trim() || null,
           customer_id: ctx.customer_id,
           customer_name: modal.querySelector('#rfCustomerName').value.trim() || null,
@@ -868,54 +636,80 @@
     modal.querySelectorAll('[data-rf-method]').forEach(b => b.addEventListener('click', () => setMethod(b.dataset.rfMethod)));
     modal.querySelector('#rfCustomerPick').addEventListener('click', _onPickCustomer(modal, ctx));
     modal.querySelector('#rfSave').addEventListener('click', _onSaveAddForm(modal, ctx));
-
-    // 고객 대시보드에서 "매출 입력" 진입 — 고객 정보 미리 채움.
-    // 멤버십 잔액·활성 여부는 prefill 만으론 부족 → 보고 싶으면 사용자가 "선택" 다시 눌러 갱신.
-    if (prefill?.customer_name) {
-      modal.querySelector('#rfCustomerName').value = prefill.customer_name;
-    }
+    if (prefill?.customer_name) modal.querySelector('#rfCustomerName').value = prefill.customer_name;
   }
 
   // ── 삭제 ────────────────────────────────────────────────
   async function _deleteEntry(id) {
     const ok = window._confirm2 ? window._confirm2('이 매출 기록을 삭제할까요?') : confirm('이 매출 기록을 삭제할까요?');
     if (!ok) return;
-    try {
-      await remove(id);
-      if (window.hapticLight) window.hapticLight();
-      await _loadAndRender();
-    } catch (_e) {
-      if (window.showToast) window.showToast('삭제 실패');
+    try { await remove(id); if (window.hapticLight) window.hapticLight(); await _loadAndRender(); }
+    catch (_e) { if (window.showToast) window.showToast('삭제 실패'); }
+  }
+
+  // ── 자동완성 ────────────────────────────────────────────
+  function _refreshDatalists() {
+    const sheet = document.getElementById('revenueSheet');
+    if (!sheet) return;
+    const cust = sheet.querySelector('#rvDataCustomer');
+    const svc = sheet.querySelector('#rvDataService');
+    if (!cust && !svc) return;
+    if (window.AppAutocomplete && typeof window.AppAutocomplete.rebuild === 'function') {
+      try { window.AppAutocomplete.rebuild({ revenue: _items }); } catch (_e) { void _e; }
+    }
+    const custSet = new Set(), svcSet = new Set();
+    _items.forEach(r => {
+      if (r.customer_name) custSet.add(r.customer_name);
+      if (r.service_name) svcSet.add(r.service_name);
+    });
+    if (cust) cust.innerHTML = Array.from(custSet).slice(0, 200).map(v => `<option value="${_esc(v)}"></option>`).join('');
+    if (svc) svc.innerHTML = Array.from(svcSet).slice(0, 200).map(v => `<option value="${_esc(v)}"></option>`).join('');
+  }
+
+  // ── 디스패처 ────────────────────────────────────────────
+  async function _rerender() {
+    const sheet = document.getElementById('revenueSheet');
+    if (!sheet) return;
+    _refreshDatalists();
+    // 모바일 period 버튼 상태 + 오프라인 배지
+    sheet.querySelectorAll('.rv-periods__btn').forEach(b => b.classList.toggle('is-on', b.dataset.period === _currentPeriod));
+    const offlineBadge = sheet.querySelector('#rvOfflineBadge');
+    if (offlineBadge) offlineBadge.style.display = _isOffline ? 'block' : 'none';
+
+    const target = _cachedIsPC ? sheet.querySelector('#rvPCMain') : sheet.querySelector('#rvBody');
+    if (!target) return;
+
+    if (_currentPeriod === 'month' && window.RevenueMonth) {
+      let summary;
+      try { summary = await window.RevenueMonth.fetchSummary(); }
+      catch (_e) {
+        console.warn('[revenue] summary fetch 실패 — 클라이언트 폴백:', _e);
+        summary = window.RevenueMonth.fallbackSummary(_items);
+      }
+      if (_cachedIsPC) window.RevenueMonth.renderPC(target, summary, _items);
+      else window.RevenueMonth.renderMobile(target, summary, _items);
+      return;
+    }
+
+    if (window.RevenueToday) {
+      if (_cachedIsPC) window.RevenueToday.renderPC(target, _items, _currentPeriod);
+      else window.RevenueToday.renderMobile(target, _items, _currentPeriod);
     }
   }
+  window._revenueBack = _rerender;
 
   // ── 로드 + 렌더 ─────────────────────────────────────────
-  function _renderSkeletonInto(container) {
-    if (!container) return;
-    container.innerHTML = (typeof window._renderSkeleton === 'function')
-      ? window._renderSkeleton(5)
-      : '<div style="padding:30px;text-align:center;color:var(--text-subtle);">불러오는 중…</div>';
-  }
-
   async function _loadAndRender() {
     const sheet = document.getElementById('revenueSheet');
     if (!sheet) return;
     const swr = _readSWRPeriod(_currentPeriod);
     if (swr) {
-      _items = swr.items;
-      _rerender();
-      if (!swr.fresh) {
-        list(_currentPeriod).then(() => _rerender()).catch(() => {});
-      }
+      _items = swr.items; _rerender();
+      if (!swr.fresh) { list(_currentPeriod).then(() => _rerender()).catch(() => {}); }
       return;
     }
-    // [2026-05-04] 캐시 없을 때: skeleton 으로 #rvPCMain 통째 교체하지 않음.
-    // 빈 _items 로 layout 만 보여주고 (0원 표시) fetch 완료 시 _rerender 로 채움.
-    // 이전: _renderSkeletonInto 가 main innerHTML 덮어써서 layout 안 보였음.
-    try {
-      await list(_currentPeriod);
-      _rerender();
-    } catch (_e) {
+    try { await list(_currentPeriod); _rerender(); }
+    catch (_e) {
       console.warn('[revenue] load 실패:', _e);
       const target = sheet.querySelector(_cachedIsPC ? '#rvPCMain' : '#rvBody');
       if (target) target.innerHTML = '<div style="padding:30px;text-align:center;color:var(--danger);">불러오기 실패</div>';
@@ -924,11 +718,6 @@
 
   // ── open / close ────────────────────────────────────────
   window.openRevenue = async function () {
-    // [2026-05-04 v88] 즉시 layout 표시 + 백그라운드 fetch.
-    // 1) _renderRoot 로 사이드바 + #rvPCMain 빈 컨테이너
-    // 2) _rerender 로 0원 / 0건 placeholder 즉시 표시 (Fun.countUp 가 알아서 0→실제값)
-    // 3) display:flex 로 보이기
-    // 4) _loadAndRender 백그라운드 (SWR 캐시 / 네트워크)
     const sheet = _ensureSheet();
     _cachedIsPC = _isPC();
     await _renderRoot();
@@ -943,15 +732,11 @@
       if (typeof window._markSheetOpen === 'function') window._markSheetOpen('revenue');
     } catch (_e) { void _e; }
   };
-
-  // 고객 대시보드 → "매출 입력" 진입점. openRevenue 후 prefill 된 추가 모달 즉시 표시.
   window._openRevenueAddFor = async function (customerId, customerName) {
-    try {
-      if (typeof window.openRevenue === 'function') await window.openRevenue();
-    } catch (_e) { /* openRevenue 실패해도 모달은 띄움 */ }
+    try { if (typeof window.openRevenue === 'function') await window.openRevenue(); }
+    catch (_e) { /* openRevenue 실패해도 모달은 띄움 */ }
     _openAddForm({ customer_id: customerId || null, customer_name: customerName || '' });
   };
-
   window.closeRevenue = function () {
     const sheet = document.getElementById('revenueSheet');
     if (sheet) sheet.style.display = 'none';
@@ -961,13 +746,24 @@
     try { if (typeof window._markSheetClosed === 'function') window._markSheetClosed('revenue'); } catch (_e) { void _e; }
   };
 
+  // ── public 객체 + 내부 API export (today/month 가 참조) ─
   window.Revenue = {
     list, create, remove,
+    // 내부 헬퍼·유틸 (분할 파일이 참조)
+    _esc, _formatMan, _isPC, _tagHTML, _rvShopExample,
+    PERIODS, PERIOD_LABEL, TAG_LABEL,
     get _items() { return _items; },
+    get _currentPeriod() { return _currentPeriod; },
+    get _revWindow() { return _revWindow; },
+    set _revWindow(n) { _revWindow = +n || 0; },
     get isOffline() { return _isOffline; },
+    _calcIncentive, _renderIncentiveCardHTML,
+    _renderDonut, _loadDonutAsync,
+    _renderPCHeaderHTML, _renderPCChartShellHTML,
+    _submitQuickAdd, _rerender,
   };
 
-  // ── resize 시 PC↔모바일 전환 ────────────────────────────
+  // ── resize ──────────────────────────────────────────────
   let _resizeTimer = null;
   window.addEventListener('resize', () => {
     const sheet = document.getElementById('revenueSheet');
