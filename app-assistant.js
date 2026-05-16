@@ -57,6 +57,13 @@
     upsert_inventory:      { icon: 'ic-package',         label: '재고 입고', color: '#2B8C7E' },
     create_nps:            { icon: 'ic-star',            label: '후기', color: '#FFD700' },
     generate_bulk_message: { icon: 'ic-message-square',  label: '메시지', color: '#FF8A5C' },
+    // [QA-r11 PR4-C 2026-05-16] 신규 6종
+    charge_membership:     { icon: 'ic-credit-card',     label: '회원권 충전', color: '#7C3AED' },
+    use_membership:        { icon: 'ic-credit-card',     label: '회원권 사용', color: '#6D28D9' },
+    mark_booking_no_show:  { icon: 'ic-x-octagon',       label: '노쇼 처리', color: '#DC3545' },
+    mark_booking_completed:{ icon: 'ic-check-circle',    label: '시술 완료', color: '#15803D' },
+    refund_revenue:        { icon: 'ic-corner-up-left',  label: '환불 처리', color: '#F97316' },
+    update_service_price:  { icon: 'ic-dollar-sign',     label: '가격 변경', color: '#0EA5E9' },
   };
   function _catMeta(kind) {
     return CATEGORY[kind] || { icon: 'ic-check', label: kind || '작업', color: '#666' };
@@ -891,6 +898,13 @@
       create_expense:  { icon: 'ic-credit-card',    label: '지출 기록',       color: '#E07A5F' },
       upsert_inventory: { icon: 'ic-package',       label: '재고 추가',       color: '#2B8C7E' },
       generate_bulk_message: { icon: 'ic-message-square', label: '단체 메시지 초안', color: '#FF8A5C' },
+      // [QA-r11 PR4-C 2026-05-16] 신규 6종 배지
+      charge_membership:     { icon: 'ic-credit-card',  label: '회원권 충전',   color: '#7C3AED' },
+      use_membership:        { icon: 'ic-credit-card',  label: '회원권 사용',   color: '#6D28D9' },
+      mark_booking_no_show:  { icon: 'ic-x-octagon',    label: '노쇼 처리',     color: '#DC3545' },
+      mark_booking_completed:{ icon: 'ic-check-circle', label: '시술 완료',     color: '#15803D' },
+      refund_revenue:        { icon: 'ic-corner-up-left', label: '환불 처리',   color: '#F97316' },
+      update_service_price:  { icon: 'ic-dollar-sign',  label: '가격 변경',     color: '#0EA5E9' },
     }[action.kind] || { icon: 'ic-check', label: action.kind, color: '#666' };
 
     if (status === 'done') {
@@ -1097,6 +1111,25 @@
       if (p.service_name) parts.push(p.service_name);
       if (p.amount) parts.push(_fmtAmt(p.amount));
       if (!p.amount && (p.customer_phone || p.phone)) parts.push(p.customer_phone || p.phone);
+    } else if (kind === 'charge_membership' || kind === 'use_membership') {
+      // [QA-r11 PR4-C] 회원권 충전/사용 — 고객 + 금액
+      if (p.customer_name || p.name) parts.push(p.customer_name || p.name);
+      else parts.push('고객 미상');
+      if (p.amount) parts.push((kind === 'charge_membership' ? '+' : '−') + _fmtAmt(p.amount));
+    } else if (kind === 'mark_booking_no_show' || kind === 'mark_booking_completed') {
+      if (p.customer_name || p.name) parts.push(p.customer_name || p.name);
+      if (p.starts_at) { const t = _fmtDate(p.starts_at); if (t) parts.push(t); }
+      else if (p.booking_id) parts.push('#' + p.booking_id);
+      parts.push(kind === 'mark_booking_no_show' ? '노쇼' : '완료');
+    } else if (kind === 'refund_revenue') {
+      if (p.revenue_id) parts.push('매출 #' + p.revenue_id);
+      if (p.reason) parts.push(String(p.reason).slice(0, 20));
+      if (p.amount) parts.push('환불 ' + _fmtAmt(p.amount));
+    } else if (kind === 'update_service_price') {
+      if (p.service_name) parts.push(p.service_name);
+      else if (p.service_id) parts.push('#' + p.service_id);
+      const np = p.new_price != null ? p.new_price : p.amount;
+      if (np != null) parts.push('→ ' + _fmtAmt(np));
     } else {
       // 기본 — 이름·금액·시술 순
       if (p.customer_name || p.name) parts.push(p.customer_name || p.name);
