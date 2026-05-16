@@ -715,8 +715,12 @@
         console.warn('[revenue] summary fetch 실패 — 클라이언트 폴백:', _e);
         summary = window.RevenueMonth.fallbackSummary(_items);
       }
-      if (_cachedIsPC) window.RevenueMonth.renderPC(target, summary, _items);
-      else window.RevenueMonth.renderMobile(target, summary, _items);
+      // [2026-05-17] 과거 월: RevenueMonth 가 fetch 한 items 사용. 이번달: SWR _items.
+      const view = window.RevenueMonth.getView ? window.RevenueMonth.getView() : null;
+      const viewItems = window.RevenueMonth.getViewItems ? window.RevenueMonth.getViewItems() : null;
+      const itemsToRender = (view && !view.isCurrent && Array.isArray(viewItems)) ? viewItems : _items;
+      if (_cachedIsPC) window.RevenueMonth.renderPC(target, summary, itemsToRender);
+      else window.RevenueMonth.renderMobile(target, summary, itemsToRender);
       return;
     }
 
