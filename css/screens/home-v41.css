@@ -321,32 +321,155 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
   border-radius: var(--r-pill);
   font-weight: 500;
 }
+/* 슬롯 = row 형태: 시간 · 핑크 bar · 이름/서비스 · 상태 배지 (2026-05-16) */
 .hv-slots {
   display: flex;
-  gap: 6px;
-}
-.hv-slot {
-  flex: 1;
-  height: 32px;
+  flex-direction: column;
+  gap: 0;
   background: var(--surface-2);
   border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.hv-slot {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 11.5px;
-  color: var(--text-subtle);
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  outline: 0;
+  text-align: left;
+  cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  border: 0;
-  outline: 0;
-  cursor: pointer;
   font-family: inherit;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
 }
-.hv-slot.is-now {
-  background: var(--text);
-  color: var(--surface);
+.hv-slot:last-child { border-bottom: none; }
+.hv-slot.is-now { background: var(--brand-bg); }
+.hv-slot__time {
+  width: 44px;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+}
+.hv-slot.is-now .hv-slot__time { color: var(--brand-strong); }
+.hv-slot__bar {
+  width: 3px;
+  height: 26px;
+  border-radius: 2px;
+  background: var(--brand-strong);
+  flex-shrink: 0;
+}
+.hv-slot__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.hv-slot__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hv-slot__svc {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hv-slot__status {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+}
+.hv-slot--more {
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+/* 슬롯 상태 배지 — 캘린더 컬러코딩과 동일 톤 */
+.st-done   { background: #E1F5EE;        color: #0F6E56; }
+.st-conf   { background: var(--brand-bg); color: var(--brand-strong); }
+.st-canc   { background: var(--surface-2); color: var(--text-subtle); text-decoration: line-through; }
+.st-noshow { background: #FEF3C7;        color: #92400E; }
+
+/* ============ 오늘 매출 카드 (헤더 아래) ============ */
+.hv-today-rev {
+  margin: 4px 16px 12px;
+  padding: 18px 18px 14px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-lg);
+}
+.hv-today-rev__label {
+  font-size: 11px;
+  color: var(--text-subtle);
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+.hv-today-rev__amount {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -1.2px;
+  margin: 4px 0 2px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.hv-today-rev__diff {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+.hv-today-rev__grid {
+  display: flex;
+  gap: 1px;
+  margin-top: 14px;
+  background: var(--border);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.hv-today-rev__cell {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--surface-2);
+}
+.hv-today-rev__cell-label {
+  font-size: 10.5px;
+  color: var(--text-subtle);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hv-today-rev__cell-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 2px;
+  letter-spacing: -0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ============ 운영 3카드 ============ */

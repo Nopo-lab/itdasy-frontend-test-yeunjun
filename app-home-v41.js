@@ -111,6 +111,46 @@
     `;
   }
 
+  // ─────────── 오늘 매출 카드 (헤더 바로 아래, 승인센터 위) ───────────
+  // BE 의 brief.today_total / brief.yesterday_total / brief.this_month_total 사용.
+  // 누락 시 0 fallback — 신규 가입자도 깨지지 않게.
+  function _renderTodayRevenue(brief) {
+    brief = brief || {};
+    const todayTotal = Number(brief.today_total) || 0;
+    const yesterdayTotal = Number(brief.yesterday_total) || 0;
+    const diff = todayTotal - yesterdayTotal;
+    const monthTotal = Number(brief.this_month_total) || 0;
+    const bk = Array.isArray(brief.today_bookings) ? brief.today_bookings : [];
+    const doneCnt = bk.filter(b => b && b.status === 'completed').length;
+    const leftCnt = bk.filter(b => b && b.status === 'confirmed').length;
+    const diffSign = diff >= 0 ? '+' : '-';
+    const diffColor = diff >= 0 ? 'var(--ok)' : 'var(--danger)';
+    const diffLine = (yesterdayTotal > 0 && diff !== 0)
+      ? `<div class="hv-today-rev__diff" style="color:${diffColor}">어제보다 ${diffSign}${_won(Math.abs(diff))}</div>`
+      : '';
+    return `
+      <section class="hv-today-rev" aria-label="오늘 매출">
+        <div class="hv-today-rev__label">오늘 매출</div>
+        <div class="hv-today-rev__amount">${_won(todayTotal)}</div>
+        ${diffLine}
+        <div class="hv-today-rev__grid">
+          <div class="hv-today-rev__cell">
+            <div class="hv-today-rev__cell-label">완료</div>
+            <div class="hv-today-rev__cell-val">${doneCnt}건</div>
+          </div>
+          <div class="hv-today-rev__cell">
+            <div class="hv-today-rev__cell-label">남은 예약</div>
+            <div class="hv-today-rev__cell-val">${leftCnt}건</div>
+          </div>
+          <div class="hv-today-rev__cell">
+            <div class="hv-today-rev__cell-label">이번 달</div>
+            <div class="hv-today-rev__cell-val">${_won(monthTotal)}</div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
   // 인스타 프사 미러링: 글로벌 #headerAvatar img.src 를 v4.1 헤더 아바타에 복사.
   // 미연동/미동기 시 이니셜 표시. data-changed 이벤트 + 5초 지연 재시도로 동기화.
   function _syncAvatar(container) {
@@ -345,6 +385,25 @@
   }
 
   // ─────────── 오늘의 예약 ───────────
+  // 상태 → 배지 라벨/클래스 (캘린더 컬러코딩과 톤 일치)
+  function _slotStatusLabel(s) {
+    switch (s) {
+      case 'completed': return '완료';
+      case 'confirmed': return '확정';
+      case 'cancelled': return '취소';
+      case 'no_show':   return '안 옴';
+      default: return '';
+    }
+  }
+  function _slotStatusCls(s) {
+    switch (s) {
+      case 'completed': return 'st-done';
+      case 'confirmed': return 'st-conf';
+      case 'cancelled': return 'st-canc';
+      case 'no_show':   return 'st-noshow';
+      default: return '';
+    }
+  }
   function _hhmm(iso) {
     try {
       const d = new Date(iso);
@@ -397,9 +456,22 @@
     const more = all.length - visible.length;
     const slotsHtml = visible.map((b, i) => {
       const cls = (i === idxNext) ? ' is-now' : '';
-      return `<button type="button" class="hv-slot${cls}" data-hv-slot="${i}" data-hv-time="${_esc(b.starts_at || '')}">${_esc(_hhmm(b.starts_at))}</button>`;
+      const stLabel = _slotStatusLabel(b.status);
+      const stCls = _slotStatusCls(b.status);
+      const stBadge = stLabel ? `<span class="hv-slot__status ${stCls}">${stLabel}</span>` : '';
+      const name = _esc(b.customer_name || b.name || '');
+      const svc  = _esc(b.service_name || '');
+      return `<button type="button" class="hv-slot${cls}" data-hv-slot="${i}" data-hv-time="${_esc(b.starts_at || '')}">`
+        + `<span class="hv-slot__time">${_esc(_hhmm(b.starts_at))}</span>`
+        + `<span class="hv-slot__bar" aria-hidden="true"></span>`
+        + `<span class="hv-slot__info">`
+        +   `<span class="hv-slot__name">${name}</span>`
+        +   (svc ? `<span class="hv-slot__svc">${svc}</span>` : '')
+        + `</span>`
+        + stBadge
+        + `</button>`;
     }).join('');
-    const moreChip = more > 0 ? `<div class="hv-slot" aria-label="추가 예약">+${more}건 더</div>` : '';
+    const moreChip = more > 0 ? `<div class="hv-slot hv-slot--more" aria-label="추가 예약">+${more}건 더</div>` : '';
     return `
       <section class="hv-booking" aria-label="오늘의 예약">
         <div class="hv-booking__top">
@@ -606,6 +678,7 @@
     const cards = _buildCarouselCards(brief, slots);
     return [
       _renderHeader(),
+      _renderTodayRevenue(brief),
       _renderApprovalCenter(brief, dmQueueCount || 0, onlinePendingCount || 0),
       _renderCarousel(cards),
       _renderBooking(brief),

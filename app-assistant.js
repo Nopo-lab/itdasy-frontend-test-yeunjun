@@ -14,11 +14,10 @@
   }
 
   const SUGGESTIONS = [
-    '이번 주 매출 어때?',
-    '김서연 2시 예약 추가',
-    '오늘 속눈썹 5만원 카드 기록',
-    '이탈 임박 고객 알려줘',
-    '제일 잘 팔리는 시술 뭐야?',
+    '오늘 예약 알려줘',
+    '캡션 만들어줘',
+    '재고 부족한 거?',
+    '이번 달 매출',
   ];
 
   // 재고·지출 공용 카테고리 (드롭다운)
@@ -398,7 +397,8 @@
           <button onclick="closeAssistant()" aria-label="닫기" title="닫기" style="margin-left:auto;background:rgba(0,0,0,0.05);border:none;width:32px;height:32px;border-radius:50%;color:#555;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">${_svg('ic-x', 16)}</button>
         </div>
         <div id="asstBody" style="flex:1;overflow-y:auto;padding:4px;"></div>
-        <div id="asstSuggest" style="display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding:4px 0;"></div>
+        <div id="asstQuickLabel" style="font-size:11px;color:#8B95A1;padding:8px 4px 4px;font-weight:600;">이런 것도 돼요</div>
+        <div id="asstSuggest" style="display:flex;gap:6px;overflow-x:auto;margin-top:0;padding:4px 0;"></div>
         <div id="asstTypeahead" style="display:none;gap:6px;overflow-x:auto;margin-top:6px;padding:2px 0;"></div>
         <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
           <button id="asstPhoto" aria-label="사진 업로드" title="사진 업로드" style="flex-shrink:0;width:44px;height:44px;border:1px solid hsl(340,78%,85%);border-radius:14px;background:hsl(340,100%,98%);color:hsl(350,60%,40%);cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;transition:background 0.15s;">${_svg('ic-camera', 20)}</button>
@@ -2429,7 +2429,7 @@
     if (!el) return;
     // data-suggest 만 두고 클릭은 document 위임 (중복 방지)
     el.innerHTML = SUGGESTIONS.map(s => `
-      <button data-suggest="${_esc(s)}" style="padding:8px 12px;border:1px solid #ddd;border-radius:100px;background:#fff;cursor:pointer;font-size:11px;color:#555;white-space:nowrap;">${_esc(s)}</button>
+      <button data-suggest="${_esc(s)}" style="flex-shrink:0;padding:8px 16px;border:1px solid rgba(0,0,0,.07);border-radius:999px;font-size:12px;color:#191F28;background:#fff;cursor:pointer;white-space:nowrap;">${_esc(s)}</button>
     `).join('');
   }
 
@@ -2894,6 +2894,13 @@
       const tb = document.getElementById('asstTypeahead');
       if (tb) { tb.style.display = 'none'; tb.innerHTML = ''; }
     } catch (_e) { void _e; }
+    // [2026-05-16] 전송 시 퀵액션 라벨+칩 숨기기 (대화 시작 후엔 빈 시그널 의미 없음)
+    try {
+      const ql = document.getElementById('asstQuickLabel');
+      const qs = document.getElementById('asstSuggest');
+      if (ql) ql.style.display = 'none';
+      if (qs) qs.style.display = 'none';
+    } catch (_e) { void _e; }
     _history.push({ role: 'user', text: q });
     _history.push({ role: 'loading', text: '' });
     _renderHistory();
@@ -3164,6 +3171,17 @@
     _loadServerHistory();
     // [2026-04-29 F1] 능동 제안 carousel — chat 입력창 위
     _loadProactiveSuggestions();
+    // [2026-05-16] 대화 없으면 퀵액션(이런 것도 돼요 + chips) 표시, 있으면 숨김.
+    // 챗봇 닫았다 다시 열 때 _history 가 비어있을 수도/있을 수도 → 상태에 맞춰 갱신.
+    try {
+      const ql = document.getElementById('asstQuickLabel');
+      const qs = document.getElementById('asstSuggest');
+      if (ql && qs) {
+        const show = !_history || _history.length === 0;
+        ql.style.display = show ? '' : 'none';
+        qs.style.display = show ? 'flex' : 'none';
+      }
+    } catch (_e) { void _e; }
     setTimeout(() => document.getElementById('asstInput')?.focus(), 60);
     // [2026-04-26 A5] popstate 등록 + 스와이프 다운 닫기
     try {
