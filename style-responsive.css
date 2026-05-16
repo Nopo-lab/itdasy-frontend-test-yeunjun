@@ -36,6 +36,13 @@
     padding: 28px 32px calc(48px + env(safe-area-inset-bottom));
   }
 
+  /* [2026-05-17 v6] 홈 탭은 풀폭 — 내부 .hv5 가 자체 max-width(1280px) 로 가운데 정렬.
+     기존 .tab 의 1280 + 사이드바 232px 가운데 정렬로 큰 모니터에서 좁아 보이던 문제 해결. */
+  #tab-home.tab {
+    max-width: none;
+    padding: 28px 24px calc(48px + env(safe-area-inset-bottom));
+  }
+
   /* ── 좌측 사이드 nav ───────────────────────────────────── */
   .side-nav {
     display: flex;

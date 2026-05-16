@@ -1463,34 +1463,20 @@
   background: #C5CBD2 !important;
 }
 
-/* [v6] 완료 — 회색 배경 + 회색 바 + 텍스트 흐림 + 우측 ✓ 표시 */
+/* [v6] 완료 — 살짝 흐림 + 우측 ✓ 마크. 좌측 바는 고객 색 유지. strikethrough X. */
 .bk-block--v6.bk-st-completed,
 .bk-pc-day__block--v6.bk-st-completed,
 .bk-week__block--v6.bk-st-completed,
 .bk-week-m__block--v6.bk-st-completed {
-  background: #F7F8FA !important;
-  border-color: #E5E8EB !important;
-  box-shadow: none !important;
+  background: #FBFCFD !important;
+  opacity: 0.78;
 }
-.bk-st-completed .bk-bar {
-  background: #C5CBD2 !important;
+.bk-block--v6.bk-st-completed:hover,
+.bk-pc-day__block--v6.bk-st-completed:hover,
+.bk-week__block--v6.bk-st-completed:hover {
+  opacity: 1;
 }
-.bk-block--v6.bk-st-completed .bk-block__title,
-.bk-pc-day__block--v6.bk-st-completed .bk-pc-day__block-title,
-.bk-week__block--v6.bk-st-completed .bk-week__block-title {
-  color: #6B7684 !important;
-  text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
-  text-decoration-color: #C5CBD2;
-}
-.bk-block--v6.bk-st-completed .bk-block__svc,
-.bk-pc-day__block--v6.bk-st-completed .bk-pc-day__block-svc,
-.bk-block--v6.bk-st-completed .bk-block__sub,
-.bk-pc-day__block--v6.bk-st-completed .bk-pc-day__block-time,
-.bk-week__block--v6.bk-st-completed .bk-week__block-sub {
-  color: #8B95A1 !important;
-}
-/* ✓ 완료 마크 — 우측 끝에 작은 동그라미 */
+/* ✓ 완료 마크 — 우측 끝에 초록 동그라미 (구분용) */
 .bk-block--v6.bk-st-completed::after,
 .bk-pc-day__block--v6.bk-st-completed::after,
 .bk-week__block--v6.bk-st-completed::after {
