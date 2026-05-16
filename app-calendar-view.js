@@ -82,12 +82,12 @@
   const HOUR_PX_MOBILE_DAY  = 60;
   const HOUR_PX_MOBILE_WEEK = 50;
   const HOUR_PX_PC_WEEK     = 60;
-  const HOUR_PX_PC_DAY      = 50;   // [Step 5 · 2026-05-16] 80→50 컴팩트 (CSS 와 동일)
+  const HOUR_PX_PC_DAY      = 60;   // [Step 5 · 2026-05-16] 60px — 1시간 블록에 3줄(고객/시각/시술) 여유 + CSS 와 동일
   const PC_BREAKPOINT       = 1100;
 
   // === 상태 ===
   let _curYear, _curMonth;
-  let _curView = 'day';          // 'month' | 'week' | 'day'
+  let _curView = 'month';        // 'month' | 'week' | 'day' — [2026-05-16] 월 뷰 기본 진입
 
   // 상태별 CSS 클래스 매핑
   function _stCls(status) {
@@ -292,14 +292,15 @@
     h += `<div class="${p}__num">${d}</div>`;
     const its = byDay[d] || [];
     if (its.length) {
+      // [2026-05-16] PC/모바일 모두 시간 + 이름만 (시술명 제거), 최대 5줄.
+      const MAX = isPC ? 5 : 3;
       h += `<div class="${p}__events">`;
-      its.slice(0, 3).forEach(it => {
+      its.slice(0, MAX).forEach(it => {
         const s2 = it.staff_idx >= 1 ? ' is-staff2' : '';
-        const tm = isPC ? (_fmt(new Date(it._raw.starts_at)) + ' ') : '';
-        const svc = (isPC && it.svc) ? ' · ' + _esc(it.svc) : '';
-        h += `<div class="${p}__evt${s2}${_stCls(it.status)}">${tm}${_esc(it.cust)}${svc}</div>`;
+        const tm = _fmt(new Date(it._raw.starts_at));
+        h += `<div class="${p}__evt${s2}${_stCls(it.status)}">${tm} ${_esc(it.cust)}</div>`;
       });
-      if (its.length > 3) h += `<div class="${p}__more">+${its.length - 3}</div>`;
+      if (its.length > MAX) h += `<div class="${p}__more">+${its.length - MAX}</div>`;
       h += '</div>';
     }
     return h + '</div>';
@@ -1879,14 +1880,14 @@
     const now = new Date();
     if (saved && saved.dateISO) {
       _curDate = new Date(saved.dateISO + 'T00:00:00');
-      _curView = saved.view || 'day';
+      _curView = saved.view || 'month';
       _curYear = saved.y || now.getFullYear();
       _curMonth = saved.m || (now.getMonth() + 1);
     } else {
       _curYear = now.getFullYear();
       _curMonth = now.getMonth() + 1;
       _curDate = now;
-      _curView = 'day';
+      _curView = 'month';   // [2026-05-16] 예약관리 첫 진입 = 월 캘린더
     }
     _miniMonth = { y: _curYear, m: _curMonth };
     _cachedIsPC = _isPC();
