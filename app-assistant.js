@@ -2156,6 +2156,13 @@
       upsert_inventory: ['inventory', 'inventories', 'today'],
       create_expense: ['expense', 'expenses', 'revenue', 'revenues', 'today', 'dashboard'],
       generate_bulk_message: [],
+      // [QA-r11 P0-2 2026-05-16] PR4-C 6종 누락 fix — 실행 후 화면 즉시 반영.
+      charge_membership: ['customer', 'customers', 'membership', 'today', 'dashboard'],
+      use_membership: ['customer', 'customers', 'membership', 'today', 'dashboard'],
+      mark_booking_no_show: ['booking', 'bookings', 'bookings_all', 'customer', 'customers', 'today'],
+      mark_booking_completed: ['booking', 'bookings', 'bookings_all', 'customer', 'customers', 'today'],
+      refund_revenue: ['revenue', 'revenues', 'customer', 'customers', 'today', 'dashboard'],
+      update_service_price: ['service', 'services', 'today'],
     }[kind] || [];
     _invalidateKinds.forEach(k => {
       try { sessionStorage.removeItem('pv_cache::' + k); } catch (_e) { void _e; }
@@ -2215,6 +2222,20 @@
       // nps / revenue 관련 키도 전부 제거 (날짜·페이지 variants 방지)
       if (k === 'nps' || k === 'revenue' || k === 'revenues') {
         const prefix = 'pv_cache::' + (k === 'revenues' ? 'revenue' : k);
+        try {
+          for (let i = sessionStorage.length - 1; i >= 0; i--) {
+            const key = sessionStorage.key(i);
+            if (key && key.startsWith(prefix)) sessionStorage.removeItem(key);
+          }
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(prefix)) localStorage.removeItem(key);
+          }
+        } catch (_e) { void _e; }
+      }
+      // [P0-2 2026-05-16] membership / service 관련 키도 variants 싹쓸이
+      if (k === 'membership' || k === 'memberships' || k === 'service' || k === 'services') {
+        const prefix = 'pv_cache::' + (k === 'memberships' ? 'membership' : (k === 'services' ? 'service' : k));
         try {
           for (let i = sessionStorage.length - 1; i >= 0; i--) {
             const key = sessionStorage.key(i);

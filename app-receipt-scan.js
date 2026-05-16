@@ -187,6 +187,54 @@
     return await res.json();
   }
 
+  // [QA-r11 P0-1 2026-05-16] receipt-level 영수증 = 1 entry — items/adjustments 편집 sub-section.
+  // expense kind 일 때만 노출. AI 비서 OCR 의 _renderExpenseExpanded 와 동일 패턴.
+  function _buildExpenseReceiptSection(it, idx) {
+    const items = Array.isArray(it.items) ? it.items : [];
+    const adj = Array.isArray(it.adjustments) ? it.adjustments : [];
+    const _f = (n) => Number(n || 0).toLocaleString() + '원';
+    const itemsTotal = items.reduce((s, x) => s + (Number(x && x.total) || 0), 0);
+    const adjTotal = adj.reduce((s, a) => s + (Number(a && a.amount) || 0), 0);
+    const amount = Number(it.amount || 0);
+    const expected = itemsTotal - adjTotal;
+    const warn = itemsTotal > 0 && amount > 0 && Math.abs(expected - amount) > 100;
+    const itemRows = items.map((x, ii) => `
+      <div style="display:grid;grid-template-columns:2fr 0.7fr 1fr 1fr 28px;gap:5px;margin-bottom:4px;align-items:center;">
+        <input class="rs-it-fld" data-idx="${idx}" data-iidx="${ii}" data-sub="name" value="${_esc(x.name || '')}" placeholder="품목명" style="padding:5px 7px;border:1px solid #ddd;border-radius:6px;font-size:11px;">
+        <input class="rs-it-fld" data-idx="${idx}" data-iidx="${ii}" data-sub="quantity" type="number" min="0" value="${_esc(x.quantity == null ? 1 : x.quantity)}" placeholder="수량" style="padding:5px 7px;border:1px solid #ddd;border-radius:6px;font-size:11px;">
+        <input class="rs-it-fld" data-idx="${idx}" data-iidx="${ii}" data-sub="unit_price" type="number" min="0" value="${_esc(x.unit_price == null ? '' : x.unit_price)}" placeholder="단가" style="padding:5px 7px;border:1px solid #ddd;border-radius:6px;font-size:11px;">
+        <input class="rs-it-fld" data-idx="${idx}" data-iidx="${ii}" data-sub="total" type="number" min="0" value="${_esc(x.total == null ? '' : x.total)}" placeholder="합계" style="padding:5px 7px;border:1px solid #ddd;border-radius:6px;font-size:11px;">
+        <button class="rs-it-del" data-idx="${idx}" data-iidx="${ii}" type="button" style="padding:0;border:1px solid #fca5a5;border-radius:6px;background:#fef2f2;color:#dc2626;cursor:pointer;font-size:10px;">×</button>
+      </div>`).join('');
+    const adjKinds = [
+      ['card_discount', '카드할인'], ['coupon', '쿠폰'], ['point', '포인트'],
+      ['tax', '부가세'], ['service', '봉사료'], ['membership', '멤버십'],
+    ];
+    const adjRows = adj.map((a, ai) => `
+      <div style="display:grid;grid-template-columns:1.2fr 1fr 28px;gap:5px;margin-bottom:4px;align-items:center;">
+        <select class="rs-adj-fld" data-idx="${idx}" data-aidx="${ai}" data-sub="kind" style="padding:5px 7px;border:1px solid #ddd;border-radius:6px;font-size:11px;background:#fff;">
+          <option value=""${a.kind ? '' : ' selected'}>종류</option>
+          ${adjKinds.map(([v, l]) => `<option value="${v}"${v === a.kind ? ' selected' : ''}>${l}</option>`).join('')}
+        </select>
+        <input class="rs-adj-fld" data-idx="${idx}" data-aidx="${ai}" data-sub="amount" type="number" min="0" value="${_esc(a.amount == null ? '' : a.amount)}" placeholder="차감액" style="padding:5px 7px;border:1px solid #ddd;border-radius:6px;font-size:11px;">
+        <button class="rs-adj-del" data-idx="${idx}" data-aidx="${ai}" type="button" style="padding:0;border:1px solid #fca5a5;border-radius:6px;background:#fef2f2;color:#dc2626;cursor:pointer;font-size:10px;">×</button>
+      </div>`).join('');
+    return `
+      <div style="margin-top:8px;padding:8px 10px;background:hsl(220,20%,98%);border:1px solid hsl(220,15%,90%);border-radius:8px;">
+        <div style="font-size:10px;font-weight:700;color:#666;margin-bottom:4px;">품목 (정가 기준)</div>
+        ${itemRows}
+        <button class="rs-it-add" data-idx="${idx}" type="button" style="margin-top:3px;padding:5px 8px;border:1px dashed #999;border-radius:6px;background:#fff;color:#666;font-size:10px;font-weight:700;cursor:pointer;">+ 품목 추가</button>
+        <div style="font-size:10px;font-weight:700;color:#666;margin:8px 0 4px;">할인·쿠폰·포인트</div>
+        ${adjRows}
+        <button class="rs-adj-add" data-idx="${idx}" type="button" style="margin-top:3px;padding:5px 8px;border:1px dashed #E07A5F;border-radius:6px;background:#fff;color:#E07A5F;font-size:10px;font-weight:700;cursor:pointer;">+ 할인 추가</button>
+        ${(itemsTotal > 0 || adjTotal > 0) ? `
+        <div style="margin-top:8px;padding:6px 8px;background:#fff;border:1px solid #ddd;border-radius:6px;font-size:10px;color:#444;line-height:1.5;">
+          정가합 <b>${_f(itemsTotal)}</b>${adjTotal > 0 ? ` − 할인 <b style="color:#E07A5F;">${_f(adjTotal)}</b>` : ''} = 예상 <b>${_f(expected)}</b>
+          ${amount > 0 ? `<br>결제금액 <b>${_f(amount)}</b>${warn ? ` <span style="color:#C2410C;font-weight:700;">⚠ 차이 ${_f(Math.abs(expected - amount))}</span>` : ' <span style="color:#388e3c;font-weight:700;">✓</span>'}` : ''}
+        </div>` : ''}
+      </div>`;
+  }
+
   function _buildItemHtml(it, idx, fields, labels, placeholders, meta) {
     const reqSet = new Set([
       ...(meta.requiredNumeric || []),
@@ -195,6 +243,8 @@
     const itemBad = !_itemValid(it, meta);
     const reqAnyUnmet = Array.isArray(meta.requiredNumericAny)
       && !meta.requiredNumericAny.some(f => _toInt(it[f]) > 0);
+    // expense 만 receipt-level sub-section 추가
+    const isExpense = meta && meta.fields && meta.fields.includes('vendor') && meta.fields.includes('amount') && !meta.fields.includes('item_name');
     return `
       <div class="rs-item" data-idx="${idx}" style="background:#fff;border:1px solid ${itemBad ? '#fca5a5' : '#eee'};border-radius:12px;padding:12px;margin-bottom:10px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -222,6 +272,7 @@
             </div>
           `;
         }).join('')}
+        ${isExpense ? _buildExpenseReceiptSection(it, idx) : ''}
       </div>`;
   }
 
@@ -241,6 +292,50 @@
           item[f] = v || null;
         }
       });
+      // [QA-r11 P0-1 2026-05-16] expense receipt-level — items[]/adjustments[] 추출.
+      const itemRows = [...row.querySelectorAll('.rs-it-fld')];
+      if (itemRows.length) {
+        const grouped = {};
+        itemRows.forEach(inp => {
+          const i = inp.dataset.iidx;
+          const s = inp.dataset.sub;
+          if (!grouped[i]) grouped[i] = {};
+          const v = inp.value.trim();
+          if (['quantity', 'unit_price', 'total'].includes(s)) {
+            grouped[i][s] = v ? (parseInt(v.replace(/[^\d-]/g, ''), 10) || 0) : null;
+          } else {
+            grouped[i][s] = v || null;
+          }
+        });
+        const itemsArr = Object.keys(grouped).sort((a, b) => +a - +b)
+          .map(k => grouped[k])
+          .filter(x => x.name && String(x.name).trim());
+        if (itemsArr.length) item.items = itemsArr;
+        else delete item.items;
+      }
+      const adjRows = [...row.querySelectorAll('.rs-adj-fld')];
+      if (adjRows.length) {
+        const grouped = {};
+        adjRows.forEach(inp => {
+          const i = inp.dataset.aidx;
+          const s = inp.dataset.sub;
+          if (!grouped[i]) grouped[i] = {};
+          const v = inp.value.trim();
+          if (s === 'amount') {
+            grouped[i][s] = v ? (parseInt(v.replace(/[^\d-]/g, ''), 10) || 0) : 0;
+          } else {
+            grouped[i][s] = v || '';
+          }
+        });
+        const adjArr = Object.keys(grouped).sort((a, b) => +a - +b)
+          .map(k => grouped[k])
+          .filter(x => x.kind && Number(x.amount) > 0);
+        if (adjArr.length) item.adjustments = adjArr;
+        else delete item.adjustments;
+      }
+      // receipt_meta — 원본 items[idx] 에 있던 receipt_meta 그대로 (편집 안 함, 백엔드 dedupe 키)
+      if (items[idx] && items[idx].receipt_meta) item.receipt_meta = items[idx].receipt_meta;
+      if (items[idx] && items[idx].image_hash) item.image_hash = items[idx].image_hash;
       selected.push(item);
     });
     return selected;
@@ -364,6 +459,83 @@
     });
     body.querySelectorAll('.rs-ck').forEach(ck => {
       ck.addEventListener('change', _revalidate);
+    });
+    // [QA-r11 P0-1 2026-05-16] receipt-level — items[] / adjustments[] add·del 핸들러.
+    // re-render 전에 현재 입력 회수 → items[idx] 에 반영 (다른 칸 손실 방지).
+    const _flushInputsTo = (idx) => {
+      const row = body.querySelector(`.rs-item[data-idx="${idx}"]`);
+      if (!row) return;
+      const target = items[idx]; if (!target) return;
+      // top fields
+      row.querySelectorAll('.rs-fld').forEach(fld => {
+        const f = fld.dataset.field; const v = fld.value.trim();
+        if (['amount','quantity','unit_price','total'].includes(f)) target[f] = v ? (parseInt(v.replace(/[^\d-]/g,''),10) || 0) : null;
+        else target[f] = v || null;
+      });
+      // items[] sub-fields
+      const grouped = {};
+      row.querySelectorAll('.rs-it-fld').forEach(inp => {
+        const i = inp.dataset.iidx, s = inp.dataset.sub;
+        if (!grouped[i]) grouped[i] = {};
+        const v = inp.value.trim();
+        grouped[i][s] = (['quantity','unit_price','total'].includes(s))
+          ? (v ? (parseInt(v.replace(/[^\d-]/g,''),10) || 0) : null)
+          : (v || null);
+      });
+      target.items = Object.keys(grouped).sort((a,b)=>+a-+b).map(k=>grouped[k]);
+      // adjustments[] sub-fields
+      const gAdj = {};
+      row.querySelectorAll('.rs-adj-fld').forEach(inp => {
+        const i = inp.dataset.aidx, s = inp.dataset.sub;
+        if (!gAdj[i]) gAdj[i] = {};
+        const v = inp.value.trim();
+        gAdj[i][s] = (s === 'amount') ? (v ? (parseInt(v.replace(/[^\d-]/g,''),10) || 0) : 0) : (v || '');
+      });
+      target.adjustments = Object.keys(gAdj).sort((a,b)=>+a-+b).map(k=>gAdj[k]);
+    };
+    body.querySelectorAll('.rs-it-add').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        _flushInputsTo(idx);
+        if (!Array.isArray(items[idx].items)) items[idx].items = [];
+        items[idx].items.push({ name: '', quantity: 1, unit_price: null, total: null });
+        _renderPreview(overlay, kind, items);
+      });
+    });
+    body.querySelectorAll('.rs-it-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx, 10); const ii = parseInt(btn.dataset.iidx, 10);
+        _flushInputsTo(idx);
+        if (Array.isArray(items[idx].items)) items[idx].items.splice(ii, 1);
+        _renderPreview(overlay, kind, items);
+      });
+    });
+    body.querySelectorAll('.rs-adj-add').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        _flushInputsTo(idx);
+        if (!Array.isArray(items[idx].adjustments)) items[idx].adjustments = [];
+        items[idx].adjustments.push({ kind: '', amount: 0 });
+        _renderPreview(overlay, kind, items);
+      });
+    });
+    body.querySelectorAll('.rs-adj-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx, 10); const ai = parseInt(btn.dataset.aidx, 10);
+        _flushInputsTo(idx);
+        if (Array.isArray(items[idx].adjustments)) items[idx].adjustments.splice(ai, 1);
+        _renderPreview(overlay, kind, items);
+      });
+    });
+    // 합계 라인 라이브 업데이트 — items/adjustments 입력 시 _renderPreview 까진 안 하지만
+    // 사용자가 합계 차이 인지하려면 재렌더가 가장 확실. input 종료 (blur) 에 재렌더.
+    body.querySelectorAll('.rs-it-fld, .rs-adj-fld').forEach(fld => {
+      fld.addEventListener('blur', () => {
+        const idx = parseInt(fld.dataset.idx, 10);
+        if (!Number.isFinite(idx)) return;
+        _flushInputsTo(idx);
+        _renderPreview(overlay, kind, items);
+      });
     });
     body.querySelector('.rs-cancel').addEventListener('click', () => overlay.remove());
     body.querySelector('.rs-commit').addEventListener('click', () => {

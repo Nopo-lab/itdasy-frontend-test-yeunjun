@@ -1673,7 +1673,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260516-v131-qa-r11-pr4c-merged-v130';
+window.APP_BUILD = '20260517-v144-qa-r11-p0-receipt-unify-merge';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;
