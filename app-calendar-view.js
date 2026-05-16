@@ -165,14 +165,9 @@
     return hit && hit.default_price ? hit.default_price : null;
   }
   function _krwShort(n) {
+    // [2026-05-17 v6] 사용자 보고 — K/M(만/천) 단위 풀자릿수로 통일. "129만" → "1,290,000원"
     if (!n || n <= 0) return '';
-    if (n >= 10000) {
-      const v = n / 10000;
-      const fixed = (Math.round(v * 10) / 10);
-      return (fixed % 1 === 0 ? fixed.toFixed(0) : fixed.toFixed(1)) + '만';
-    }
-    if (n >= 1000) return Math.round(n / 1000) + '천';
-    return n + '원';
+    return Number(n).toLocaleString('ko-KR') + '원';
   }
 
   function _mapItems(items) {
