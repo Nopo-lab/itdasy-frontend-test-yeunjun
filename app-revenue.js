@@ -397,9 +397,7 @@
         </div>
       </div>
       <div class="rv-body" id="rvBody"></div>
-      <button type="button" class="rv-fab" data-rv-act="add-form" aria-label="매출 입력">
-        <i class="ph-duotone ph-plus" style="font-size:22px" aria-hidden="true"></i>
-      </button>
+      <button type="button" class="rv-fab" data-rv-act="add-form" aria-label="매출 입력" style="font-size:24px;font-weight:600;line-height:1;">+</button>
       <datalist id="rvDataCustomer"></datalist>
       <datalist id="rvDataService"></datalist>`;
   }
@@ -445,9 +443,7 @@
       <div class="rv-pc__title">매출관리</div>
       <div class="rv-pc__spacer"></div>
       <div class="rv-pc__periods">${periods}</div>
-      <button type="button" class="rv-pc__add" data-rv-act="add-form">
-        <i class="ph-duotone ph-plus" style="font-size:14px" aria-hidden="true"></i>매출 입력
-      </button>
+      <button type="button" class="rv-pc__add" data-rv-act="add-form">+ 매출 입력</button>
     </div>`;
   }
   function _renderPCChartShellHTML() {

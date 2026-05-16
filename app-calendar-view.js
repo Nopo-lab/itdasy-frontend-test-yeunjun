@@ -839,9 +839,7 @@
         </div>
         <div id="bk-toolbar-mount">${_renderToolbar()}</div>
         <div class="cal-body bk-body" id="bk-body" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div>
-        <button class="bk-fab" id="bk-fab" aria-label="예약 추가">
-          <i class="ph-duotone ph-plus" style="font-size:22px" aria-hidden="true"></i>
-        </button>
+        <button class="bk-fab" id="bk-fab" aria-label="예약 추가" style="font-size:26px;font-weight:600;line-height:1;">+</button>
       </div>`;
     o.addEventListener('click', e => { if (e.target === o) _close(); });
     document.body.appendChild(o);
@@ -878,9 +876,7 @@
           <div class="bk-pc__spacer"></div>
           <div class="bk-pc__stats" id="bk-pc-stats">${subTxt}</div>
           <div class="bk-view">${viewBtns}</div>
-          <button class="bk-pc__add-btn" id="bk-pc-add">
-            <i class="ph-duotone ph-plus" style="font-size:14px" aria-hidden="true"></i>예약 추가
-          </button>
+          <button class="bk-pc__add-btn" id="bk-pc-add">+ 예약 추가</button>
           <span id="cal-offline-badge" style="display:none;font-size:10px;font-weight:700;color:var(--danger);background:rgba(220,53,69,.1);padding:2px 8px;border-radius:999px;">오프라인</span>
         </div>`;
   }

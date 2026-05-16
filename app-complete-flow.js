@@ -246,13 +246,22 @@
     try {
       const res = await _patchBooking(_ctx.booking_id, payload);
       const eff = res?.completion_effects || {};
+      console.log('[complete-flow] PATCH 응답:', { payload, completion_effects: eff, amount: res?.amount });
+      // 매출 SWR 캐시 강제 무효화 — Revenue 화면 다음 진입 시 fresh fetch
+      try {
+        ['today', 'week', 'month'].forEach(p => {
+          try { localStorage.removeItem('pv_cache::revenue::' + p); } catch (_e) { /* silent */ }
+          try { sessionStorage.removeItem('pv_cache::revenue::' + p); } catch (_e) { /* silent */ }
+        });
+      } catch (_e) { /* silent */ }
       if (_ctx.booking_id) _emitChange('update_booking', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
       if (eff.revenue_created) _emitChange('create_revenue', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id, revenue_id: eff.revenue_id });
       if (window.hapticSuccess) window.hapticSuccess();
       if (window.showToast) {
         if (eff.revenue_created) window.showToast(`${_fmt(_ctx.amount)} 매출 자동 기록됨`);
         else if (eff.revenue_skipped) window.showToast('예약 완료 (매출 미기록)');
-        else window.showToast('예약 완료');
+        else if (res && 'completion_effects' in res) window.showToast('예약 완료 (매출 기록은 다음 화면에서 확인하세요)');
+        else window.showToast('예약 완료 · 옛 버전 BE — 화면 새로고침 필요');
       }
       _close();
       _refreshConnectedViews();
