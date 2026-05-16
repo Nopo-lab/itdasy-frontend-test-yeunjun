@@ -18,6 +18,26 @@
     card: '카드', cash: '현금', transfer: '계좌',
     bank_transfer: '계좌', membership: '회원권', etc: '기타',
   };
+
+  // [2026-05-16] shop_type 별 예시 시술명 — placeholder 자동 매핑. fallback = 붙임머리.
+  // 기존 SHOP_SERVICE_POOL (app-power-view-render.js) / SHOP_CONFIG (app-core.js) 와 톤 일치.
+  const _RV_EXAMPLE_BY_SHOP = {
+    '붙임머리': '24인치',
+    '네일':     '젤네일',
+    '네일아트': '젤네일',
+    '속눈썹':   '클래식 연장',
+    '피부':     '기본 관리',
+    '헤어':     '커트',
+    '헤어샵':   '커트',
+    '왁싱':     '브라질리언',
+    '반영구':   '눈썹 콤보',
+  };
+  function _rvShopExample() {
+    try {
+      const t = localStorage.getItem('shop_type') || '붙임머리';
+      return _RV_EXAMPLE_BY_SHOP[t] || _RV_EXAMPLE_BY_SHOP['붙임머리'];
+    } catch (_) { return '24인치'; }
+  }
   const DONUT_COLORS = ['#E5586E', '#F4A6B8', '#FBE0E7', '#C4C9D1', '#E5E7EB'];
 
   let _currentPeriod = 'month';
@@ -601,7 +621,7 @@
       <div class="rv-pc-qa" data-rv-qa>
         <div class="rv-pc-qa__label">빠른 입력</div>
         <input class="rv-pc-qa__input rv-pc-qa__input--amount" data-rv-field="amount" type="number" inputmode="numeric" placeholder="금액 (예: 45000)" />
-        <input class="rv-pc-qa__input" data-rv-field="service_name" list="rvDataService" placeholder="시술 (예: 젤 리무브)" />
+        <input class="rv-pc-qa__input" data-rv-field="service_name" list="rvDataService" placeholder="시술 (예: ${_rvShopExample()})" />
         <input class="rv-pc-qa__input" data-rv-field="customer_name" list="rvDataCustomer" placeholder="고객명" />
         <div class="rv-pc-qa__methods">
           ${['card', 'cash', 'transfer', 'membership'].map((m, i) => `
@@ -752,7 +772,7 @@
           `).join('')}
         </div>
         <label style="display:block;font-size:12px;color:var(--text-subtle);margin-bottom:4px;">서비스</label>
-        <input id="rfService" list="rvDataService" style="width:100%;padding:10px;border:0.5px solid var(--border);border-radius:8px;margin-bottom:10px;background:var(--surface);" placeholder="속눈썹 풀세트" maxlength="50" />
+        <input id="rfService" list="rvDataService" style="width:100%;padding:10px;border:0.5px solid var(--border);border-radius:8px;margin-bottom:10px;background:var(--surface);" placeholder="${_rvShopExample()}" maxlength="50" />
         <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">
           <input id="rfCustomerName" readonly style="flex:1;padding:10px;border:0.5px solid var(--border);border-radius:8px;background:var(--surface-2);" placeholder="고객 (선택)" />
           <button type="button" id="rfCustomerPick" style="padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-size:12px;color:var(--text);">👤 선택</button>
