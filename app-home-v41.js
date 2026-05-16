@@ -77,6 +77,41 @@
     } catch (_e) { return 0; }
   }
 
+  // [v6] 이번달 AI 예상 매출 — /revenue/summary 의 projected_total 사용
+  async function _fetchProjectedTotal() {
+    const headers = _authHeaders();
+    if (!window.API || !headers) return 0;
+    try {
+      const res = await fetch(window.API + '/revenue/summary?period=month', { headers });
+      if (!res.ok) return 0;
+      const data = await res.json();
+      return Number(data.projected_total) || 0;
+    } catch (_e) { return 0; }
+  }
+
+  // [v6] 카운트업 (easeOutCubic 0.8s) — 히어로 / stat 값
+  function _countUp(el, target, ms) {
+    if (!el || !Number.isFinite(target) || target <= 0) return;
+    if (el.dataset.hvCountDone === '1') return;
+    el.dataset.hvCountDone = '1';
+    const prefix = (el.textContent.indexOf('+') === 0) ? '+' : (el.textContent.indexOf('≈') === 0 ? '≈ ' : '');
+    const start = performance.now();
+    function tick(now) {
+      const p = Math.min((now - start) / ms, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      el.textContent = prefix + Math.round(target * ease).toLocaleString('ko-KR') + '원';
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  function _runCountUps(container) {
+    const targets = container.querySelectorAll('[data-hv-count]');
+    targets.forEach(el => {
+      const t = parseInt(el.dataset.hvCount, 10);
+      _countUp(el, t, 800);
+    });
+  }
+
   // ─────────── 헤더 ───────────
   function _todayKor() {
     const d = new Date();
@@ -200,39 +235,51 @@
 
   function _buildCarouselCards(brief, slots) {
     const cards = [];
+    // [v6] 운영 데이터 흡수 — 재고 부족
+    const lowStock = (brief && brief.low_stock) || [];
+    const lowStockCnt = Array.isArray(lowStock) ? lowStock.length : (Number(lowStock) || 0);
+    if (lowStockCnt > 0) {
+      const names = Array.isArray(lowStock) ? lowStock.slice(0, 2).map(s => s.name || s).filter(Boolean).join(', ') : '';
+      cards.push({
+        kind: 'low_stock', dot: 'amber', cat: '재고 부족',
+        headline: `재고 ${lowStockCnt}개 곧 떨어져요`,
+        sub: names ? `${names}${lowStockCnt > 2 ? ' 외' : ''}` : '미리 주문해두세요',
+        cta: '재고 보기', act: 'openInventory',
+      });
+    }
+    // [v6] 신규 손님
+    const newCust = Number(brief && brief.new_customer_count) || 0;
+    if (newCust > 0) {
+      cards.push({
+        kind: 'new_customer', dot: 'purple', cat: '신규 손님',
+        headline: `이번주 신규 ${newCust}명 등록`,
+        sub: '안내 메시지 보내볼까요?',
+        cta: '고객 관리', act: 'openCustomers',
+      });
+    }
+    // 캡션 (발행 대기)
     const hasCaption = _hasUnpublishedPhotoSlot(slots);
-    // 1) AI 캡션 (featured)
     if (hasCaption) {
       const cnt = slots.filter(s => s.status !== 'done' && Array.isArray(s.photos) && s.photos.length > 0).length;
       cards.push({
-        kind: 'caption', featured: true, dot: 'pink', cat: '캡션 추천',
+        kind: 'caption', dot: 'cyan', cat: '캡션 추천',
         headline: `사진 ${cnt}장, 캡션 만들까요?`,
         sub: '갤러리에 발행 대기 중인 작업이 있어요',
         cta: '캡션 만들기', act: 'openCaption',
       });
     }
-    // 2) 이탈 위험
+    // 이탈 위험 단골
     const atRisk = (brief && brief.at_risk) || [];
     if (atRisk.length > 0) {
       const first = atRisk[0] && atRisk[0].name ? atRisk[0].name : '단골';
       cards.push({
-        kind: 'risk', dot: 'amber', cat: '단골 관리',
+        kind: 'risk', dot: 'pink', cat: '단골 관리',
         headline: `${first}님 다녀가신 지 오래`,
         sub: atRisk.length > 1 ? `이탈 위험 손님 ${atRisk.length}명` : '안부 한 통 보낼 타이밍이에요',
         cta: '안부 보내기', act: 'openInsights',
       });
     }
-    // 3) 입금 대기 예약
-    const pendingCount = (brief && brief.pending_booking_count) || 0;
-    if (pendingCount > 0) {
-      cards.push({
-        kind: 'booking-pending', dot: 'amber', cat: '예약 승인',
-        headline: `입금 대기 예약 ${pendingCount}건`,
-        sub: '입금 확인 후 승인하면 캘린더에 반영돼요',
-        cta: '확인하기', act: 'openBookingApproval',
-      });
-    }
-    // 4) 이어하기 (캡션 카드 있으면 dedup — 같은 갤러리 상태 가리킴)
+    // 이어하기
     if (!hasCaption && _hasInProgressSlot(slots)) {
       cards.push({
         kind: 'resume', dot: 'green', cat: '이어하기',
@@ -241,18 +288,18 @@
         cta: '이어서 작업', act: 'openGallery',
       });
     }
-    // 5) 내일 예약
+    // 내일 예약
     if (_hasTomorrowBooking(brief)) {
       cards.push({
-        kind: 'tomorrow', dot: 'purple', cat: '내일 예약',
+        kind: 'tomorrow', dot: 'brand', cat: '내일 예약',
         headline: '내일도 예약이 있어요',
         sub: '미리 자료 챙겨두면 편해요',
         cta: '캘린더 보기', act: 'openCalendar',
       });
     }
-    // 빈 상태 → 온보딩 카드로 채워서 첫 화면이 비지 않게
+    // 빈 상태 → 온보딩 카드 (첫 화면)
     const final = cards.length ? cards : _onboardingCards();
-    return final.slice(0, CFG().CAROUSEL_MAX_CARDS || 6);
+    return final.slice(0, CFG().CAROUSEL_MAX_CARDS || 8);
   }
 
   // ─────────── 캐러셀 렌더 ───────────
@@ -672,18 +719,31 @@
   let _lastContainerId = null;
   let _inFlight = false;
 
-  // 2026-05-17 — mockup-home-v5 적용. 헤더 / 히어로 / 알림 / 슬롯 / AI 추천 / 운영 6섹션.
-  // 이모지 (💳 💬) 제거 → 색상 + 점 마커. ₩ → 원 표기.
+  // [2026-05-17 v6] mockup-home-v6 적용. PC wide 1280px.
+  //   순서: 헤더 / 히어로(이번달매출+예상) / 2-row[예약+알림] / AI 추천
+  //   운영관리 카드 제거 → AI 비서가 재고/단골/신규 흡수.
   function _composeHTML(brief, slots, dmQueueCount, onlinePendingCount) {
     _ensureStylesV5();
     const cards = _buildCarouselCards(brief, slots);
+    const bookingHtml = _renderBookingV5(brief);
+    const alertsHtml = _renderAlertsV5(brief, dmQueueCount || 0, onlinePendingCount || 0);
+    // 2-row: 둘 다 있을 때는 7+5, 한쪽만 있으면 col-12 (CSS 가 자동 stack)
+    let middleRow = '';
+    if (bookingHtml && alertsHtml) {
+      middleRow = `<div class="hv5-row">
+        <div class="hv5-col-7">${bookingHtml}</div>
+        <div class="hv5-col-5">${alertsHtml}</div>
+      </div>`;
+    } else if (bookingHtml) {
+      middleRow = `<div class="hv5-row"><div style="grid-column:span 12">${bookingHtml}</div></div>`;
+    } else if (alertsHtml) {
+      middleRow = `<div class="hv5-row"><div style="grid-column:span 12">${alertsHtml}</div></div>`;
+    }
     return [
       _renderHeaderV5(),
       _renderHeroV5(brief),
-      _renderAlertsV5(brief, dmQueueCount || 0, onlinePendingCount || 0),
-      _renderBookingV5(brief),
+      middleRow,
       _renderAIRecsV5(cards),
-      _renderOpsV5(brief),
     ].join('');
   }
 
@@ -696,126 +756,140 @@
     const s = document.createElement('style');
     s.id = 'hv5Styles';
     s.textContent = `
-      #homeV41Root{background:#ECEEF0;min-height:100vh;padding:16px}
-      .hv5{max-width:780px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);overflow:hidden}
+      /* [2026-05-17 v6] PC wide 1280px + 12-col 그리드. 모바일은 자동 stack. */
+      #homeV41Root{background:#ECEEF0;min-height:100vh;padding:24px 16px}
+      .hv5{max-width:1280px;margin:0 auto}
 
-      /* 헤더 */
-      .hv5-hdr{display:flex;align-items:center;padding:22px 24px 0;gap:14px}
-      .hv5-hdr .av{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#FFF1F3,#fde2e7);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#E5586E;flex-shrink:0;overflow:hidden}
+      /* 헤더 — wide PC 전용 */
+      .hv5-hdr{display:flex;align-items:center;padding:0 4px 18px;gap:14px}
+      .hv5-hdr .av{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#FFF1F3,#fde2e7);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#E5586E;flex-shrink:0;overflow:hidden}
       .hv5-hdr .av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
       .hv5-hdr .meta{flex:1;min-width:0}
-      .hv5-hdr .date{font-size:11px;color:#6B7684;font-weight:500;letter-spacing:-0.2px}
-      .hv5-hdr .shop{font-size:17px;font-weight:700;margin-top:2px;letter-spacing:-0.3px;color:#191F28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .hv5-bell{width:38px;height:38px;border-radius:50%;background:#F7F8FA;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#191F28;position:relative;flex-shrink:0}
-      .hv5-bell:hover{background:#E5E8EB}
-      .hv5-bell svg{width:18px;height:18px}
+      .hv5-hdr .date{font-size:12px;color:#6B7684;font-weight:500;letter-spacing:-0.2px}
+      .hv5-hdr .shop{font-size:19px;font-weight:700;margin-top:2px;letter-spacing:-0.4px;color:#191F28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .hv5-bell{width:40px;height:40px;border-radius:50%;background:#fff;border:1px solid #E5E8EB;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#191F28;position:relative;flex-shrink:0;transition:background .15s}
+      .hv5-bell:hover{background:#F7F8FA}
+      .hv5-bell svg{width:20px;height:20px}
       .hv5-bell-badge{position:absolute;top:-1px;right:-1px;min-width:16px;height:16px;border-radius:999px;background:#E5586E;color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid #fff}
 
-      /* 매출 히어로 */
-      .hv5-hero{padding:18px 24px 20px}
-      .hv5-hero-label{font-size:12px;font-weight:600;color:#333D4B;margin-bottom:8px;letter-spacing:-0.2px}
-      .hv5-hero-main{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-      .hv5-hero-amt{font-size:34px;font-weight:800;letter-spacing:-2px;line-height:1;color:#191F28}
-      .hv5-hero-cnt{font-size:13px;font-weight:600;color:#6B7684}
-      .hv5-hero-meta{display:flex;gap:20px;margin-top:10px;flex-wrap:wrap}
-      .hv5-hero-chip{font-size:12px;color:#6B7684;font-weight:500}
-      .hv5-hero-chip b{font-weight:700;color:#333D4B}
-      .hv5-divider{height:1px;background:#E5E8EB;margin:18px 24px 0}
+      /* 12-col 그리드 */
+      .hv5-row{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;margin-bottom:14px}
+      .hv5-col-7{grid-column:span 7}
+      .hv5-col-5{grid-column:span 5}
+      .hv5-card{background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);padding:22px 24px;display:flex;flex-direction:column;height:100%}
+      .hv5-card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+      .hv5-card-title{font-size:14px;font-weight:700;letter-spacing:-0.3px;color:#191F28}
+      .hv5-card-link{font-size:12px;color:#6B7684;text-decoration:none;font-weight:600;cursor:pointer;transition:color .12s;background:none;border:none;font-family:inherit;padding:0}
+      .hv5-card-link:hover{color:#191F28}
 
-      /* 알림 배너 */
-      .hv5-alerts{padding:16px 24px 0;display:flex;flex-direction:column;gap:8px}
-      .hv5-noti{display:flex;align-items:center;gap:12px;padding:13px 16px;background:#F7F8FA;border-radius:10px;cursor:pointer;border:none;width:100%;text-align:left;font-family:inherit;transition:background .12s}
-      .hv5-noti:hover{background:#ECEEF0}
-      .hv5-noti-icon{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-      .hv5-noti-icon.amber{background:#FEF3C7;color:#D97706}
-      .hv5-noti-icon.purple{background:#F3EEFF;color:#7C3AED}
-      .hv5-noti-icon.pink{background:#FFF1F3;color:#E5586E}
-      .hv5-noti-icon.cyan{background:#E0F2FE;color:#0891B2}
-      .hv5-noti-icon svg{width:16px;height:16px}
+      /* 매출 히어로 (와이드) */
+      .hv5-hero{background:linear-gradient(135deg,#FFF8FA 0%,#fff 60%);border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);padding:26px 28px;display:flex;align-items:center;gap:32px;border:1px solid #FFF1F3;margin-bottom:14px}
+      .hv5-hero-l{flex:0 0 auto;min-width:280px}
+      .hv5-hero-label{font-size:12px;font-weight:600;color:#333D4B;margin-bottom:8px;letter-spacing:-0.2px;display:flex;align-items:center;gap:8px}
+      .hv5-hero-label-month{padding:2px 8px;border-radius:999px;background:#FFF1F3;color:#E5586E;font-size:10px;font-weight:700}
+      .hv5-hero-amt{font-size:44px;font-weight:800;letter-spacing:-1.5px;line-height:1;color:#191F28;font-variant-numeric:tabular-nums}
+      .hv5-hero-meta{display:flex;gap:16px;margin-top:14px;align-items:center;flex-wrap:wrap}
+      .hv5-hero-chip{font-size:13px;color:#6B7684;font-weight:500;letter-spacing:-0.2px}
+      .hv5-hero-chip b{font-weight:700;color:#333D4B}
+      .hv5-hero-r{flex:1;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+      .hv5-hero-r-link{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#6B7684;font-weight:600;cursor:pointer;text-decoration:none;padding:5px 10px;border-radius:999px;background:#F7F8FA;border:1px solid #E5E8EB;font-family:inherit;transition:color .12s,border-color .12s}
+      .hv5-hero-r-link:hover{color:#E5586E;border-color:#F18091}
+      .hv5-hero-stats{display:flex;gap:10px}
+      .hv5-hero-stat{flex:0 0 155px;background:rgba(255,255,255,0.7);border:1px solid #E5E8EB;border-radius:12px;padding:14px 16px}
+      .hv5-hero-stat-l{font-size:11px;font-weight:600;color:#6B7684;letter-spacing:-0.2px}
+      .hv5-hero-stat-v{font-size:17px;font-weight:700;margin-top:4px;letter-spacing:-0.3px;color:#191F28;font-variant-numeric:tabular-nums}
+      .hv5-hero-stat-v.pred{color:#E5586E}
+
+      /* 알림 (간결한 dot 리스트) */
+      .hv5-noti-list{display:flex;flex-direction:column;gap:2px}
+      .hv5-noti{display:flex;align-items:center;gap:10px;padding:12px 14px;background:transparent;border-radius:10px;cursor:pointer;border:none;width:100%;text-align:left;font-family:inherit;transition:background .12s;border-bottom:1px solid #F7F8FA}
+      .hv5-noti:last-child{border-bottom:none}
+      .hv5-noti:hover{background:#F7F8FA}
+      .hv5-noti-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+      .hv5-noti-dot.amber{background:#D97706}
+      .hv5-noti-dot.purple{background:#7C3AED}
+      .hv5-noti-dot.pink{background:#E5586E}
+      .hv5-noti-dot.cyan{background:#0891B2}
       .hv5-noti-body{flex:1;min-width:0}
-      .hv5-noti-title{font-size:13px;font-weight:600;letter-spacing:-0.2px;color:#191F28}
+      .hv5-noti-title{font-size:13px;font-weight:600;letter-spacing:-0.3px;color:#191F28}
       .hv5-noti-desc{font-size:11px;color:#6B7684;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .hv5-noti-count{padding:4px 10px;border-radius:999px;background:#fff;font-size:11px;font-weight:700;color:#333D4B;border:1px solid #E5E8EB;flex-shrink:0}
-      .hv5-noti-arrow{color:#C5CBD2;font-size:18px;margin-left:2px;line-height:1;flex-shrink:0}
+      .hv5-noti-count{font-size:11px;font-weight:700;color:#6B7684;flex-shrink:0}
+      .hv5-noti-arrow{color:#C5CBD2;font-size:16px;line-height:1;flex-shrink:0}
 
       /* 오늘의 예약 */
-      .hv5-bk{padding:18px 24px}
-      .hv5-bk-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-      .hv5-bk-title{font-size:15px;font-weight:700;letter-spacing:-0.3px;color:#191F28}
-      .hv5-bk-link{font-size:12px;color:#6B7684;text-decoration:none;font-weight:600;background:none;border:none;cursor:pointer;font-family:inherit;padding:0}
-      .hv5-bk-link:hover{color:#191F28}
-      .hv5-slots{border-radius:10px;overflow:hidden;border:1px solid #E5E8EB}
-      .hv5-slot{display:flex;align-items:center;gap:14px;padding:13px 16px;background:#fff;border:none;border-bottom:1px solid #F7F8FA;cursor:pointer;width:100%;text-align:left;font-family:inherit;transition:background .1s}
-      .hv5-slot:last-child{border-bottom:none}
+      .hv5-slots{display:flex;flex-direction:column}
+      .hv5-slot{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:10px;border:none;background:transparent;cursor:pointer;text-align:left;width:100%;font-family:inherit;transition:background .1s;border-bottom:1px solid #F7F8FA}
+      .hv5-slot:last-of-type{border-bottom:none}
       .hv5-slot:hover{background:#F7F8FA}
       .hv5-slot.now{background:#FFF1F3}
       .hv5-slot.now:hover{background:#FFE8EC}
-      .hv5-s-time{width:48px;font-size:12.5px;font-weight:700;color:#6B7684;font-variant-numeric:tabular-nums;flex-shrink:0}
+      .hv5-s-time{width:50px;font-size:13px;font-weight:700;color:#6B7684;font-variant-numeric:tabular-nums;flex-shrink:0;letter-spacing:-0.3px}
       .hv5-slot.now .hv5-s-time{color:#E5586E}
-      .hv5-s-bar{width:3px;height:28px;border-radius:2px;background:#F18091;flex-shrink:0}
+      .hv5-s-bar{width:3px;height:32px;border-radius:2px;background:#F18091;flex-shrink:0}
       .hv5-slot.now .hv5-s-bar{background:#E5586E}
-      .hv5-s-info{flex:1;min-width:0}
-      .hv5-s-name{font-size:13.5px;font-weight:600;letter-spacing:-0.2px;color:#191F28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .hv5-s-svc{font-size:11px;color:#6B7684;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .hv5-s-badge{padding:4px 11px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:-0.2px;flex-shrink:0}
+      /* 인덱스 % 5 컬러 — 같은 날 5색 순환 */
+      .hv5-slot-pink .hv5-s-bar{background:#E5586E}
+      .hv5-slot-blue .hv5-s-bar{background:#3B82F6}
+      .hv5-slot-teal .hv5-s-bar{background:#0D9488}
+      .hv5-slot-purple .hv5-s-bar{background:#7C3AED}
+      .hv5-slot-orange .hv5-s-bar{background:#EA580C}
+      .hv5-s-info{flex:1;min-width:0;display:flex;align-items:center;gap:0}
+      .hv5-s-name{font-size:13px;font-weight:700;letter-spacing:-0.3px;flex:0 0 80px;color:#191F28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .hv5-s-svc{font-size:12px;color:#333D4B;letter-spacing:-0.2px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .hv5-s-amt{font-size:12px;color:#333D4B;letter-spacing:-0.2px;font-variant-numeric:tabular-nums;margin-left:auto;text-align:right;flex-shrink:0}
+      .hv5-s-badge{padding:4px 11px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:-0.2px;flex-shrink:0;margin-left:10px}
       .hv5-s-badge.conf{background:#FFF1F3;color:#E5586E}
       .hv5-s-badge.done{background:#E8F5E9;color:#0F6E56}
       .hv5-s-badge.cncl{background:#F7F8FA;color:#8B95A1}
-      .hv5-s-more{text-align:center;padding:11px;font-size:12px;font-weight:600;color:#6B7684;background:#F7F8FA;cursor:pointer;border:none;width:100%;font-family:inherit}
-      .hv5-bk-empty{padding:24px;text-align:center;font-size:13px;color:#8B95A1;background:#F7F8FA;border-radius:10px;cursor:pointer;border:none;width:100%;font-family:inherit}
+      .hv5-s-more{text-align:center;padding:11px;font-size:12px;font-weight:600;color:#6B7684;background:#F7F8FA;cursor:pointer;border:none;width:100%;font-family:inherit;border-radius:10px;margin-top:6px}
+      .hv5-s-more:hover{background:#ECEEF0}
+      .hv5-bk-empty{padding:32px 24px;text-align:center;font-size:13px;color:#8B95A1;cursor:pointer;border:none;width:100%;font-family:inherit;background:transparent}
 
       /* AI 추천 */
-      .hv5-ai{padding:4px 24px 18px}
-      .hv5-ai-label{display:flex;align-items:center;gap:6px;margin-bottom:12px}
-      .hv5-ai-sparkle{color:#E5586E;font-size:14px;line-height:1}
-      .hv5-ai-label-t{font-size:12.5px;font-weight:600;color:#333D4B}
+      .hv5-ai{margin-top:8px}
+      .hv5-ai-label{display:flex;align-items:center;gap:7px;margin-bottom:14px;padding:0 4px}
+      .hv5-ai-sparkle{color:#E5586E;font-size:15px;line-height:1}
+      .hv5-ai-label-t{font-size:13px;font-weight:600;color:#333D4B}
       .hv5-ai-label-t b{font-weight:700;color:#191F28}
-      .hv5-ai-scroll{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding:2px 0;margin:0 -24px;padding-left:24px;padding-right:24px}
+      .hv5-ai-label-count{font-size:11px;color:#6B7684;margin-left:auto;font-weight:600}
+      .hv5-ai-scroll{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding:2px 4px 4px}
       .hv5-ai-scroll::-webkit-scrollbar{display:none}
-      .hv5-ai-card{flex:0 0 240px;padding:18px;border-radius:16px;border:1px solid #E5E8EB;cursor:pointer;background:#fff;transition:transform .18s,box-shadow .18s;font-family:inherit;text-align:left}
-      .hv5-ai-card:hover{transform:translateY(-3px);box-shadow:0 4px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04)}
-      .hv5-ai-card.feat{background:linear-gradient(170deg,#FFF1F3 0%,#fff 60%);border-color:#F18091}
+      .hv5-ai-card{flex:0 0 260px;padding:20px;border-radius:16px;border:1px solid #E5E8EB;cursor:pointer;background:#fff;transition:transform .18s,box-shadow .18s;font-family:inherit;text-align:left;display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+      .hv5-ai-card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(0,0,0,0.07),0 2px 6px rgba(0,0,0,0.05)}
       .hv5-ai-tag{display:inline-flex;align-items:center;gap:5px;margin-bottom:12px}
       .hv5-ai-dot{width:6px;height:6px;border-radius:50%}
       .hv5-ai-dot.pink{background:#E5586E}
       .hv5-ai-dot.amber{background:#D97706}
       .hv5-ai-dot.purple{background:#7C3AED}
       .hv5-ai-dot.green{background:#0F6E56}
-      .hv5-ai-tag-t{font-size:10px;font-weight:600;color:#6B7684;letter-spacing:-0.2px}
-      .hv5-ai-hl{font-size:15px;font-weight:700;line-height:1.35;letter-spacing:-0.3px;margin-bottom:6px;color:#191F28}
-      .hv5-ai-desc{font-size:11.5px;color:#6B7684;line-height:1.4;margin-bottom:14px}
-      .hv5-ai-btn{display:inline-flex;align-items:center;gap:4px;padding:8px 16px;border-radius:999px;background:#191F28;color:#fff;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:inherit}
+      .hv5-ai-dot.cyan{background:#0891B2}
+      .hv5-ai-dot.brand{background:#F18091}
+      .hv5-ai-tag-t{font-size:10.5px;font-weight:600;color:#6B7684;letter-spacing:-0.1px}
+      .hv5-ai-hl{font-size:15px;font-weight:700;line-height:1.35;letter-spacing:-0.4px;margin-bottom:6px;color:#191F28}
+      .hv5-ai-desc{font-size:11.5px;color:#6B7684;line-height:1.45;margin-bottom:16px;flex:1}
+      .hv5-ai-btn{display:inline-flex;align-items:center;gap:4px;padding:8px 16px;border-radius:999px;background:#191F28;color:#fff;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:inherit;align-self:flex-start}
       .hv5-ai-btn:active{transform:scale(0.96)}
-      .hv5-ai-card.feat .hv5-ai-btn{background:#E5586E}
 
-      /* 운영 관리 */
-      .hv5-ops{padding:0 24px 24px}
-      .hv5-ops-title{font-size:13px;font-weight:700;margin-bottom:10px;letter-spacing:-0.2px;color:#191F28}
-      .hv5-ops-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-      .hv5-ops-card{padding:14px 14px;background:#F7F8FA;border-radius:10px;cursor:pointer;border:none;text-align:left;font-family:inherit;transition:background .12s}
-      .hv5-ops-card:hover{background:#ECEEF0}
-      .hv5-ops-cat{font-size:11px;color:#6B7684;font-weight:500}
-      .hv5-ops-val{font-size:14px;font-weight:700;margin-top:4px;letter-spacing:-0.4px;color:#191F28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .hv5-ops-val.danger{color:#DC2626}
-
-      /* 모바일 */
+      /* 반응형 — 1100px 이하 자동 stack */
+      @media (max-width: 1100px){
+        .hv5-col-7,.hv5-col-5{grid-column:span 12}
+        .hv5-hero{flex-direction:column;align-items:flex-start;gap:16px}
+        .hv5-hero-l{min-width:0;width:100%}
+        .hv5-hero-r{align-items:stretch;width:100%}
+        .hv5-hero-stats{justify-content:flex-start}
+        .hv5-hero-stat{flex:1}
+      }
       @media (max-width: 540px){
-        #homeV41Root{padding:0;background:#F7F8FA}
-        .hv5{border-radius:0;box-shadow:none}
-        .hv5-hdr{padding:14px 16px 0;gap:10px}
-        .hv5-hdr .av{width:36px;height:36px;font-size:13px}
-        .hv5-hdr .shop{font-size:15px}
-        .hv5-hero{padding:12px 16px 16px}
-        .hv5-hero-amt{font-size:30px}
-        .hv5-divider{margin:14px 16px 0}
-        .hv5-alerts{padding:12px 16px 0}
-        .hv5-noti{padding:11px 14px}
-        .hv5-bk{padding:14px 16px}
-        .hv5-ai{padding:4px 16px 14px}
-        .hv5-ai-scroll{margin:0 -16px;padding-left:16px;padding-right:16px}
-        .hv5-ai-card{flex:0 0 220px;padding:14px 16px}
-        .hv5-ai-hl{font-size:13.5px}
-        .hv5-ops{padding:0 16px 20px}
+        #homeV41Root{padding:12px 12px}
+        .hv5-hdr{padding:0 4px 14px;gap:10px}
+        .hv5-hdr .av{width:40px;height:40px;font-size:14px}
+        .hv5-hdr .shop{font-size:16px}
+        .hv5-hero{padding:18px 20px}
+        .hv5-hero-amt{font-size:34px;letter-spacing:-1.2px}
+        .hv5-hero-stat{flex:1 1 0;min-width:0}
+        .hv5-card{padding:16px 18px}
+        .hv5-ai-card{flex:0 0 220px;padding:16px}
+        .hv5-ai-hl{font-size:14px}
       }
     `;
     document.head.appendChild(s);
@@ -824,12 +898,10 @@
   function _renderHeaderV5() {
     const shop = _shopName();
     return `<div class="hv5"><div class="hv5-hdr">
-      <div class="hv5-hdr-l" style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
-        <div class="av" data-hv-avatar aria-hidden="true">${_esc(_shopInitial(shop))}</div>
-        <div class="meta">
-          <div class="date">${_esc(_todayKor())}</div>
-          <div class="shop">${_esc(shop)}</div>
-        </div>
+      <div class="av" data-hv-avatar aria-hidden="true">${_esc(_shopInitial(shop))}</div>
+      <div class="meta">
+        <div class="date">${_esc(_todayKor())}</div>
+        <div class="shop">${_esc(shop)}</div>
       </div>
       <button type="button" class="hv5-bell" data-hv-act="bell" aria-label="알림">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
@@ -843,25 +915,43 @@
     catch (_e) { return '0원'; }
   }
 
+  // [v6] 이번달 매출 히어로 + 오른쪽 stat 2개 (오늘 예상 / 이번달 AI 예상)
   function _renderHeroV5(brief) {
     brief = brief || {};
-    const todayTotal = Number(brief.today_total) || 0;
     const monthTotal = Number(brief.this_month_total) || 0;
+    const projected = Number(brief._projected_total) || 0;  // /revenue/summary 에서 머지됨
     const bk = Array.isArray(brief.today_bookings) ? brief.today_bookings : [];
-    const doneCnt = bk.filter(b => b && b.status === 'completed').length;
-    const leftCnt = bk.filter(b => b && b.status === 'confirmed').length;
+    const completedCount = bk.filter(b => b && b.status === 'completed').length;
+    // 이번달 완료 건수 — brief 에 별도 키 없으면 today completed 만. (Best effort)
+    const monthCount = Number(brief.this_month_count) || completedCount;
+    // 오늘 예상 매출 — confirmed 예약의 amount 합 (FE 계산)
+    const todayExpected = bk
+      .filter(b => b && b.status === 'confirmed')
+      .reduce((s, b) => s + (Number(b.amount) || 0), 0);
+    const now = new Date();
+    const monthLabel = (now.getMonth() + 1) + '월';
     return `<div class="hv5-hero">
-      <div class="hv5-hero-label">오늘 매출</div>
-      <div class="hv5-hero-main">
-        <div class="hv5-hero-amt">${_krwOnly(todayTotal)}</div>
-        <div class="hv5-hero-cnt">완료 ${doneCnt}건</div>
+      <div class="hv5-hero-l">
+        <div class="hv5-hero-label">이번달 매출 <span class="hv5-hero-label-month">${monthLabel}</span></div>
+        <div class="hv5-hero-amt" data-hv-count="${monthTotal}">${_krwOnly(monthTotal)}</div>
+        <div class="hv5-hero-meta">
+          <div class="hv5-hero-chip">완료 <b>${monthCount}건</b></div>
+        </div>
       </div>
-      <div class="hv5-hero-meta">
-        <div class="hv5-hero-chip">남은 예약 <b>${leftCnt}건</b></div>
-        <div class="hv5-hero-chip">이번달 <b>${_krwOnly(monthTotal)}</b></div>
+      <div class="hv5-hero-r">
+        <button type="button" class="hv5-hero-r-link" data-hv-act="openRevenue">매출 상세 ›</button>
+        <div class="hv5-hero-stats">
+          <div class="hv5-hero-stat">
+            <div class="hv5-hero-stat-l">오늘 예상 매출</div>
+            <div class="hv5-hero-stat-v pred" data-hv-count="${todayExpected}">${todayExpected > 0 ? '+' + _krwOnly(todayExpected) : '0원'}</div>
+          </div>
+          <div class="hv5-hero-stat">
+            <div class="hv5-hero-stat-l">이번달 AI 예상 매출</div>
+            <div class="hv5-hero-stat-v" data-hv-count="${projected}">${projected > 0 ? '≈ ' + _krwOnly(projected) : '집계 중…'}</div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="hv5-divider"></div>`;
+    </div>`;
   }
 
   // 이모지(💳💬) 대체 — SVG 라인 아이콘. 단순하고 톤 일관.
@@ -872,46 +962,62 @@
     star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
   };
 
+  // [v6] 알림 — dot + title + desc + count + arrow. 카드 wrapper 안에서 호출됨.
   function _renderAlertsV5(brief, dmQueueCount, onlinePendingCount) {
     const items = [];
     const depositPending = (brief && brief.pending_booking_count) || 0;
     if (depositPending > 0) {
-      items.push({ tone: 'amber', icon: 'card', title: '입금 대기 예약', desc: '입금 확인 후 승인하면 캘린더에 등록돼요', count: depositPending, act: 'openBookingApproval' });
+      items.push({ tone: 'amber', title: '결제 미확인 예약', desc: '입금 확인 후 승인하면 캘린더에 등록돼요', count: depositPending, act: 'openBookingApproval' });
     }
     if (dmQueueCount > 0) {
-      items.push({ tone: 'purple', icon: 'chat', title: 'DM 자동응답 승인', desc: '챗봇이 작성한 답장을 확인해 주세요', count: dmQueueCount, act: 'openDMConfirmQueue' });
+      items.push({ tone: 'purple', title: 'DM 자동응답 승인', desc: '챗봇이 작성한 답장을 확인해 주세요', count: dmQueueCount, act: 'openDMConfirmQueue' });
     }
     if (onlinePendingCount > 0 && onlinePendingCount !== depositPending) {
-      items.push({ tone: 'cyan', icon: 'calendar', title: '온라인 예약 승인 대기', desc: '손님이 사장님 승인을 기다리고 있어요', count: onlinePendingCount, act: 'openBookingApproval' });
+      items.push({ tone: 'cyan', title: '온라인 예약 승인 대기', desc: '손님이 사장님 승인을 기다리고 있어요', count: onlinePendingCount, act: 'openBookingApproval' });
+    }
+    // 단골 안부 — at_risk
+    const atRisk = (brief && brief.at_risk) || [];
+    if (Array.isArray(atRisk) && atRisk.length > 0) {
+      const first = atRisk[0]?.name || '단골';
+      items.push({ tone: 'pink', title: '단골 안부', desc: `${first}님 다녀가신 지 오래`, count: atRisk.length, act: 'openInsights' });
     }
     if (!items.length) return '';
-    return `<div class="hv5-alerts">${items.map(it => `
-      <button type="button" class="hv5-noti" data-hv-act="${_esc(it.act)}">
-        <div class="hv5-noti-icon ${it.tone}">${_ICON_SVG[it.icon] || ''}</div>
-        <div class="hv5-noti-body">
-          <div class="hv5-noti-title">${_esc(it.title)}</div>
-          <div class="hv5-noti-desc">${_esc(it.desc)}</div>
-        </div>
-        <div class="hv5-noti-count">${it.count}건</div>
-        <div class="hv5-noti-arrow" aria-hidden="true">›</div>
-      </button>
-    `).join('')}</div>`;
+    const total = items.reduce((s, it) => s + it.count, 0);
+    return `<div class="hv5-card">
+      <div class="hv5-card-h">
+        <div class="hv5-card-title">확인 필요</div>
+        <span style="font-size:11px;color:#E5586E;font-weight:700">${total}건</span>
+      </div>
+      <div class="hv5-noti-list">${items.map(it => `
+        <button type="button" class="hv5-noti" data-hv-act="${_esc(it.act)}">
+          <div class="hv5-noti-dot ${it.tone}"></div>
+          <div class="hv5-noti-body">
+            <div class="hv5-noti-title">${_esc(it.title)}</div>
+            <div class="hv5-noti-desc">${_esc(it.desc)}</div>
+          </div>
+          <div class="hv5-noti-count">${it.count}건</div>
+          <div class="hv5-noti-arrow" aria-hidden="true">›</div>
+        </button>
+      `).join('')}</div>
+    </div>`;
   }
 
+  // [v6] 인덱스 % 5 컬러 + 가격 표시 + 카드 wrapper
+  const _HV5_COLORS = ['pink', 'blue', 'teal', 'purple', 'orange'];
   function _renderBookingV5(brief) {
     const all = _todayBookings(brief);
     const empty = CFG().BOOKING_EMPTY_DISPLAY || 'hide';
     if (!all.length) {
       if (empty === 'hide') return '';
-      return `<div class="hv5-bk">
-        <div class="hv5-bk-top">
-          <div class="hv5-bk-title">오늘의 예약</div>
-          <button type="button" class="hv5-bk-link" data-hv-act="openCalendar">캘린더 →</button>
+      return `<div class="hv5-card">
+        <div class="hv5-card-h">
+          <div class="hv5-card-title">오늘의 예약</div>
+          <button type="button" class="hv5-card-link" data-hv-act="openCalendar">캘린더 →</button>
         </div>
         <button type="button" class="hv5-bk-empty" data-hv-act="openCalendar">오늘 예약 없음</button>
       </div>`;
     }
-    const max = CFG().BOOKING_SLOTS_MAX || 4;
+    const max = CFG().BOOKING_SLOTS_MAX || 5;
     const now = Date.now();
     const idxNext = all.findIndex(b => {
       const t = Date.parse(b.starts_at || '');
@@ -921,6 +1027,7 @@
     const more = all.length - visible.length;
     const slotsHtml = visible.map((b, i) => {
       const isNow = i === idxNext;
+      const colorCls = ' hv5-slot-' + _HV5_COLORS[i % 5];
       const stLabel = _slotStatusLabel(b.status);
       let stBadgeCls = 'conf';
       if (b.status === 'completed') stBadgeCls = 'done';
@@ -928,12 +1035,15 @@
       const stBadge = stLabel ? `<span class="hv5-s-badge ${stBadgeCls}">${stLabel}</span>` : '';
       const name = _esc(b.customer_name || b.name || '');
       const svc  = _esc(b.service_name || '');
-      return `<button type="button" class="hv5-slot${isNow ? ' now' : ''}" data-hv-slot="${i}" data-hv-time="${_esc(b.starts_at || '')}">
+      const amt  = Number(b.amount) || 0;
+      const amtStr = amt > 0 ? amt.toLocaleString('ko-KR') + '원' : '';
+      return `<button type="button" class="hv5-slot${isNow ? ' now' : ''}${colorCls}" data-hv-slot="${i}" data-hv-time="${_esc(b.starts_at || '')}">
         <span class="hv5-s-time">${_esc(_hhmm(b.starts_at))}</span>
         <span class="hv5-s-bar" aria-hidden="true"></span>
         <span class="hv5-s-info">
           <span class="hv5-s-name">${name}</span>
           ${svc ? `<span class="hv5-s-svc">${svc}</span>` : ''}
+          ${amtStr ? `<span class="hv5-s-amt">${amtStr}</span>` : ''}
         </span>
         ${stBadge}
       </button>`;
@@ -941,20 +1051,21 @@
     const moreRow = more > 0
       ? `<button type="button" class="hv5-s-more" data-hv-act="openCalendar">+${more}건 더 보기</button>`
       : '';
-    return `<div class="hv5-bk">
-      <div class="hv5-bk-top">
-        <div class="hv5-bk-title">오늘의 예약 ${all.length}건</div>
-        <button type="button" class="hv5-bk-link" data-hv-act="openCalendar">캘린더 →</button>
+    return `<div class="hv5-card">
+      <div class="hv5-card-h">
+        <div class="hv5-card-title">오늘의 예약 ${all.length}건</div>
+        <button type="button" class="hv5-card-link" data-hv-act="openCalendar">캘린더 →</button>
       </div>
       <div class="hv5-slots">${slotsHtml}${moreRow}</div>
     </div>`;
   }
 
+  // [v6] AI 비서 — featured 톤 제거 (균일), 카드 0개면 섹션 자체 숨김
   function _renderAIRecsV5(cards) {
-    if (!cards || !cards.length) return '';
+    if (!cards || !cards.length) return '</div>';  // .hv5 wrapper 만 닫음
     const total = cards.length;
     const cardHtml = cards.map(c => `
-      <button type="button" class="hv5-ai-card${c.featured ? ' feat' : ''}" data-hv-act="${_esc(c.act || '')}">
+      <button type="button" class="hv5-ai-card" data-hv-act="${_esc(c.act || '')}">
         <div class="hv5-ai-tag">
           <div class="hv5-ai-dot ${_esc(c.dot || 'pink')}"></div>
           <div class="hv5-ai-tag-t">${_esc(c.cat || '')}</div>
@@ -966,10 +1077,11 @@
     return `<div class="hv5-ai">
       <div class="hv5-ai-label">
         <span class="hv5-ai-sparkle" aria-hidden="true">✦</span>
-        <span class="hv5-ai-label-t"><b>AI 비서</b>가 ${total}가지 추천했어요</span>
+        <span class="hv5-ai-label-t"><b>AI 비서</b>가 추천했어요</span>
+        <span class="hv5-ai-label-count">${total}가지</span>
       </div>
       <div class="hv5-ai-scroll">${cardHtml}</div>
-    </div>`;
+    </div></div>`;  // 마지막 </div> = .hv5 wrapper 닫기
   }
 
   function _renderOpsV5(brief) {
@@ -1012,6 +1124,7 @@
         _syncAvatar(container);
         _scheduleAvatarRetry(container);
         _watchHeaderAvatar();
+        _runCountUps(container);  // [v6]
         if (swr.fresh) return;
       } catch (_e) { /* fall through */ }
     }
@@ -1019,23 +1132,24 @@
     if (_inFlight) return;
     _inFlight = true;
     try {
-      const [brief, slots, onlinePendingCount, dmQueueCount] = await Promise.all([
+      const [brief, slots, onlinePendingCount, dmQueueCount, projected] = await Promise.all([
         _fetchBrief().catch(() => null),
         _fetchSlots().catch(() => []),
         _fetchPendingCount().catch(() => 0),
         _fetchDMQueueCount().catch(() => 0),
+        _fetchProjectedTotal().catch(() => 0),  // [v6] 이번달 AI 예상
       ]);
       const merged = brief || (swr && swr.d) || {};
-      // brief.pending_booking_count 은 입금 대기 — 그대로 유지
       merged._dmQueueCount = dmQueueCount;
       merged._onlinePendingCount = onlinePendingCount;
+      merged._projected_total = projected;  // [v6]
       try { _writeSWR(merged); } catch (_e) { void _e; }
       container.innerHTML = _composeHTML(merged, slots || [], dmQueueCount, onlinePendingCount);
       _setupCarousel(container);
       _bindEvents(container, merged);
       _syncAvatar(container);
       _scheduleAvatarRetry(container);
-      // [Hotfix] 홈 첫 로딩 시 두 번째 innerHTML 교체로 스크롤이 밀리는 문제 — 한 프레임 뒤 리셋
+      _runCountUps(container);  // [v6]
       requestAnimationFrame(() => { window.scrollTo(0, 0); });
     } finally {
       _inFlight = false;

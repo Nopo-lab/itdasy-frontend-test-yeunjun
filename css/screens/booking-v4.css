@@ -16,7 +16,7 @@
    §0 로컬 변수 — time grid 높이 + spring easing
    ============================================================ */
 .bk-root {
-  --bk-h-mobile-day: 60px;   /* 모바일 일간 시간 셀 */
+  --bk-h-mobile-day: 50px;   /* [2026-05-17 v6] 60→50 — 직선 바 톤 컴팩트. JS HOUR_PX_MOBILE_DAY 와 동기화 필수 */
   --bk-h-mobile-week: 50px;  /* 모바일 주간 시간 셀 */
   --bk-h-pc-week: 60px;      /* PC 주간 시간 셀 */
   /* [Step 5 · 2026-05-16] PC 일간 60px — JS HOUR_PX_PC_DAY 와 동기화 필수 */
@@ -1316,4 +1316,154 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ============================================================
+   [2026-05-17 v6] mockup-calendar-blocks 톤 — 직선 바 + 흰 배경
+   bk-c-* 색 클래스는 인덱스 순서대로 부여됨 (하루 안 5색 순환)
+   기존 .bk-block / .bk-pc-day__block / .bk-week__block / .bk-week-m__block 의
+   톤을 in-place 덮어쓰기. status 톤 (.bk-st-*) 은 cancelled/no_show 만 회색으로.
+   ============================================================ */
+.bk-block--v6,
+.bk-pc-day__block--v6,
+.bk-week__block--v6 {
+  background: #fff !important;
+  border: 1px solid var(--surface-2, #E5E8EB) !important;
+  border-radius: 8px !important;
+  padding: 6px 10px 6px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  overflow: hidden;
+  color: var(--text, #191F28);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  transition: transform .08s ease, box-shadow .12s ease;
+}
+.bk-block--v6:hover,
+.bk-pc-day__block--v6:hover,
+.bk-week__block--v6:hover {
+  background: var(--surface-2, #F7F8FA) !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.bk-block--v6 .bk-block__body,
+.bk-pc-day__block--v6 .bk-pc-day__block-body,
+.bk-week__block--v6 .bk-week__block-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  overflow: hidden;
+}
+
+/* 좌측 컬러 바 — 5색 */
+.bk-bar {
+  display: inline-block;
+  width: 3px;
+  align-self: stretch;
+  margin: 6px 0;
+  border-radius: 2px;
+  background: #C5CBD2;
+  flex-shrink: 0;
+}
+.bk-c-pink .bk-bar   { background: #E5586E; }
+.bk-c-blue .bk-bar   { background: #3B82F6; }
+.bk-c-teal .bk-bar   { background: #0D9488; }
+.bk-c-purple .bk-bar { background: #7C3AED; }
+.bk-c-orange .bk-bar { background: #EA580C; }
+
+/* 본문 텍스트 */
+.bk-block--v6 .bk-block__title,
+.bk-pc-day__block--v6 .bk-pc-day__block-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text, #191F28);
+  letter-spacing: -0.3px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bk-block--v6 .bk-block__svc,
+.bk-pc-day__block--v6 .bk-pc-day__block-svc {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted, #4E5968);
+  margin-left: 6px;
+  letter-spacing: -0.2px;
+  font-variant-numeric: tabular-nums;
+}
+.bk-block--v6 .bk-block__sub,
+.bk-pc-day__block--v6 .bk-pc-day__block-time {
+  font-size: 11px;
+  color: var(--text-subtle, #8B95A1);
+  letter-spacing: -0.2px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 주간 PC — 더 작은 톤 */
+.bk-week__block--v6 .bk-week__block-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text, #191F28);
+  letter-spacing: -0.2px;
+}
+.bk-week__block--v6 .bk-week__block-sub {
+  font-size: 10px;
+  color: var(--text-subtle, #8B95A1);
+}
+
+/* 주간 모바일 — 텍스트 한 줄 + 좌측 바 */
+.bk-week-m__block--v6 {
+  background: #fff !important;
+  border-radius: 4px !important;
+  padding: 2px 4px 2px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  color: var(--text, #191F28);
+  overflow: hidden;
+}
+.bk-week-m__block--v6 .bk-bar {
+  width: 2px;
+  margin: 2px 0;
+  border-radius: 1px;
+}
+.bk-week-m__block--v6 .bk-week-m__name {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* status 우선 — cancelled / no_show 회색 + dim */
+.bk-block--v6.bk-st-cancelled,
+.bk-block--v6.bk-st-noshow,
+.bk-pc-day__block--v6.bk-st-cancelled,
+.bk-pc-day__block--v6.bk-st-noshow,
+.bk-week__block--v6.bk-st-cancelled,
+.bk-week__block--v6.bk-st-noshow,
+.bk-week-m__block--v6.bk-st-cancelled,
+.bk-week-m__block--v6.bk-st-noshow {
+  opacity: 0.55;
+}
+.bk-st-cancelled .bk-bar,
+.bk-st-noshow .bk-bar {
+  background: #C5CBD2 !important;
+}
+
+/* 완료 — 살짝 dim + 좌측 바는 고객 색 유지 */
+.bk-block--v6.bk-st-completed,
+.bk-pc-day__block--v6.bk-st-completed,
+.bk-week__block--v6.bk-st-completed,
+.bk-week-m__block--v6.bk-st-completed {
+  opacity: 0.85;
 }

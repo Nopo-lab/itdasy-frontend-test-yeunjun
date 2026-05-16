@@ -79,10 +79,14 @@
   // === 시간 그리드 단위 ===
   // CSS 변수와 동일해야 블록(absolute) 위치 / 셀(grid row) 정렬이 맞음
   // CSS: css/screens/booking-v4.css 의 --bk-h-mobile-day / --bk-h-pc-week / --bk-h-pc-day 와 동기화
-  const HOUR_PX_MOBILE_DAY  = 60;
+  const HOUR_PX_MOBILE_DAY  = 50;   // [2026-05-17 v6] 60→50 — mockup-calendar-blocks 직선 바 톤 컴팩트
   const HOUR_PX_MOBILE_WEEK = 50;
   const HOUR_PX_PC_WEEK     = 60;
   const HOUR_PX_PC_DAY      = 60;   // [Step 5 · 2026-05-16] 60px — 1시간 블록에 3줄(고객/시각/시술) 여유 + CSS 와 동일
+
+  // [2026-05-17 v6] 캘린더 블록 색 — 인덱스 순서대로 5색 순환. 하루 안에서 차례 (mockup-calendar-blocks)
+  const BK_COLORS = ['pink', 'blue', 'teal', 'purple', 'orange'];
+  const BK_COLOR_HEX = { pink: '#E5586E', blue: '#3B82F6', teal: '#0D9488', purple: '#7C3AED', orange: '#EA580C' };
   const PC_BREAKPOINT       = 1100;
 
   // === 상태 ===
@@ -292,13 +296,16 @@
     h += `<div class="${p}__num">${d}</div>`;
     const its = byDay[d] || [];
     if (its.length) {
-      // [2026-05-16] PC/모바일 모두 시간 + 이름만 (시술명 제거), 최대 5줄.
+      // [2026-05-16] PC/모바일 모두 시간 + 이름만, 최대 5줄.
+      // [2026-05-17 v6] 각 줄에 작은 6px 컬러 dot — 그날 안에서 5색 순환
       const MAX = isPC ? 5 : 3;
       h += `<div class="${p}__events">`;
-      its.slice(0, MAX).forEach(it => {
+      its.slice(0, MAX).forEach((it, i) => {
         const s2 = it.staff_idx >= 1 ? ' is-staff2' : '';
         const tm = _fmt(new Date(it._raw.starts_at));
-        h += `<div class="${p}__evt${s2}${_stCls(it.status)}">${tm} ${_esc(it.cust)}</div>`;
+        const dotColor = BK_COLOR_HEX[BK_COLORS[i % 5]];
+        const dot = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${dotColor};margin-right:4px;vertical-align:middle"></span>`;
+        h += `<div class="${p}__evt${s2}${_stCls(it.status)}">${dot}${tm} ${_esc(it.cust)}</div>`;
       });
       if (its.length > MAX) h += `<div class="${p}__more">+${its.length - MAX}</div>`;
       h += '</div>';
@@ -379,7 +386,7 @@
 
   function _placeDayBlocks(grid, items, startH) {
     if (!grid) return;
-    items.forEach(it => {
+    items.forEach((it, i) => {
       const s = new Date(it._raw.starts_at);
       const e = new Date(it._raw.ends_at);
       const top = (s.getHours() - startH) * HOUR_PX_MOBILE_DAY + (s.getMinutes() / 60) * HOUR_PX_MOBILE_DAY;
@@ -387,19 +394,22 @@
       const isDim = it.status === 'cancelled' || it.status === 'no_show';
       const s2 = it.staff_idx >= 1 ? ' is-staff2' : '';
       const dim = isDim ? ' is-dim' : '';
-      // hour label 폭(50px) 만큼 left offset 필요 → grid 안에서 absolute. 구조: bk-day 안에 row들이 있는데, block 은 row 밖에 절대 배치되어야 함.
+      const cc = ' bk-c-' + BK_COLORS[i % 5];  // [v6] 인덱스 순서대로 5색 순환
       const block = document.createElement('button');
-      block.className = 'bk-block' + s2 + dim + _stCls(it.status);
+      block.className = 'bk-block bk-block--v6' + s2 + dim + cc + _stCls(it.status);
       block.dataset.bookingId = it.id;
       block.style.position = 'absolute';
       block.style.top = top + 'px';
       block.style.height = height + 'px';
       block.style.left = '54px';
       block.style.right = '12px';
-      block.innerHTML = '<div class="bk-block__title">' + _esc(it.cust) + '</div>'
-        + '<div class="bk-block__sub">' + _fmt(s) + ' · ' + _esc(it.svc || '') + '</div>'
-        + (it.staff_idx >= 1 ? '<span class="bk-block__staff-dot bk-staff-dot bk-staff-dot--gray"></span>'
-                              : '<span class="bk-block__staff-dot bk-staff-dot bk-staff-dot--pink"></span>');
+      const priceStr = it.amount ? ' · ' + _krwShort(it.amount) : '';
+      const svcStr = it.svc ? '<span class="bk-block__svc">' + _esc(it.svc) + priceStr + '</span>' : '';
+      block.innerHTML = '<span class="bk-bar"></span>'
+        + '<div class="bk-block__body">'
+        + '<div class="bk-block__title">' + _esc(it.cust) + svcStr + '</div>'
+        + '<div class="bk-block__sub">' + _fmt(s) + ' ~ ' + _fmt(e) + '</div>'
+        + '</div>';
       grid.appendChild(block);
     });
   }
@@ -458,6 +468,8 @@
       cellMap.set(key, cell);
     });
     const fragments = new Map();
+    // [v6] 모바일 주간 — 날짜별 인덱스 카운트
+    const dayIdxMap = new Map();
     items.forEach(it => {
       const s = new Date(it._raw.starts_at);
       const e = new Date(it._raw.ends_at);
@@ -470,16 +482,20 @@
         target = allCells[(s.getHours() - startH) * 7 + dayI];
       }
       if (!target) return;
+      const dKey = _ds(s);
+      const di = dayIdxMap.get(dKey) || 0;
+      dayIdxMap.set(dKey, di + 1);
+      const cc = ' bk-c-' + BK_COLORS[di % 5];
       const top = (s.getMinutes() / 60) * HOUR_PX_MOBILE_WEEK;
       const height = Math.max(15, ((e - s) / 60000 / 60) * HOUR_PX_MOBILE_WEEK);
       const s2 = it.staff_idx >= 1 ? ' is-staff2' : '';
       const block = document.createElement('button');
       const dim2 = (it.status === 'cancelled' || it.status === 'no_show') ? ' is-dim' : '';
-      block.className = 'bk-week-m__block' + s2 + dim2 + _stCls(it.status);
+      block.className = 'bk-week-m__block bk-week-m__block--v6' + s2 + dim2 + cc + _stCls(it.status);
       block.dataset.bookingId = it.id;
       block.style.top = top + 'px';
       block.style.height = height + 'px';
-      block.textContent = it.cust;
+      block.innerHTML = '<span class="bk-bar"></span><span class="bk-week-m__name">' + _esc(it.cust) + '</span>';
       if (!fragments.has(target)) fragments.set(target, document.createDocumentFragment());
       fragments.get(target).appendChild(block);
     });
@@ -554,22 +570,31 @@
       if (col.dataset.date) dayColMap.set(col.dataset.date, col);
     });
     const fragments = new Map();
+    // [v6] 주간: 날짜별로 인덱스 카운트 → 같은 날 안에서 5색 순환
+    const dayIdxMap = new Map();
     items.forEach(it => {
       const s = new Date(it._raw.starts_at);
       const e = new Date(it._raw.ends_at);
       const dayCol = dayColMap.get(_ds(s));
       if (!dayCol) return;
+      const dKey = _ds(s);
+      const di = dayIdxMap.get(dKey) || 0;
+      dayIdxMap.set(dKey, di + 1);
+      const cc = ' bk-c-' + BK_COLORS[di % 5];
       const top = (s.getHours() - startH) * HOUR_PX_PC_WEEK + (s.getMinutes() / 60) * HOUR_PX_PC_WEEK;
       const height = Math.max(30, ((e - s) / 60000 / 60) * HOUR_PX_PC_WEEK);
       const s2 = it.staff_idx >= 1 ? ' is-staff2' : '';
       const block = document.createElement('button');
       const dim3 = (it.status === 'cancelled' || it.status === 'no_show') ? ' is-dim' : '';
-      block.className = 'bk-week__block' + s2 + dim3 + _stCls(it.status);
+      block.className = 'bk-week__block bk-week__block--v6' + s2 + dim3 + cc + _stCls(it.status);
       block.dataset.bookingId = it.id;
       block.style.top = top + 'px';
       block.style.height = height + 'px';
-      block.innerHTML = '<div class="bk-week__block-title">' + _esc(it.cust) + '</div>'
-        + '<div class="bk-week__block-sub">' + _fmt(s) + ' · ' + _esc(it.svc || '') + '</div>';
+      block.innerHTML = '<span class="bk-bar"></span>'
+        + '<div class="bk-week__block-body">'
+        + '<div class="bk-week__block-title">' + _esc(it.cust) + '</div>'
+        + (it.svc ? '<div class="bk-week__block-sub">' + _esc(it.svc) + '</div>' : '')
+        + '</div>';
       if (!fragments.has(dayCol)) fragments.set(dayCol, document.createDocumentFragment());
       fragments.get(dayCol).appendChild(block);
     });
@@ -623,7 +648,7 @@
 
   function _placeDayPCBlocks(grid, items, startH) {
     if (!grid) return;
-    items.forEach(it => {
+    items.forEach((it, i) => {
       const s = new Date(it._raw.starts_at);
       const e = new Date(it._raw.ends_at);
       const col = grid.querySelector(`.bk-pc-day__staff-col[data-staff-idx="${it.staff_idx || 0}"]`);
@@ -631,16 +656,20 @@
       const top = (s.getHours() - startH) * HOUR_PX_PC_DAY + (s.getMinutes() / 60) * HOUR_PX_PC_DAY;
       const height = Math.max(40, ((e - s) / 60000 / 60) * HOUR_PX_PC_DAY);
       const s2 = it.staff_idx >= 1 ? ' is-staff2' : '';
+      const cc = ' bk-c-' + BK_COLORS[i % 5];  // [v6] 인덱스 % 5
       const block = document.createElement('button');
       const dim4 = (it.status === 'cancelled' || it.status === 'no_show') ? ' is-dim' : '';
-      block.className = 'bk-pc-day__block' + s2 + dim4 + _stCls(it.status);
+      block.className = 'bk-pc-day__block bk-pc-day__block--v6' + s2 + dim4 + cc + _stCls(it.status);
       block.dataset.bookingId = it.id;
       block.style.top = top + 'px';
       block.style.height = height + 'px';
       const priceStr = it.amount ? ' · ' + _krwShort(it.amount) : '';
-      block.innerHTML = '<div class="bk-pc-day__block-title">' + _esc(it.cust) + '</div>'
+      const svcStr = it.svc ? '<span class="bk-pc-day__block-svc">' + _esc(it.svc) + priceStr + '</span>' : '';
+      block.innerHTML = '<span class="bk-bar"></span>'
+        + '<div class="bk-pc-day__block-body">'
+        + '<div class="bk-pc-day__block-title">' + _esc(it.cust) + svcStr + '</div>'
         + '<div class="bk-pc-day__block-time">' + _fmt(s) + ' ~ ' + _fmt(e) + '</div>'
-        + (it.svc ? '<div class="bk-pc-day__block-service">' + _esc(it.svc) + priceStr + '</div>' : '');
+        + '</div>';
       col.appendChild(block);
     });
   }
