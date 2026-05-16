@@ -83,7 +83,7 @@ async function checkInstaStatus(fromLogin = false) {
       // [2026-05-08 hotfix] OAuth 직후 (?connected=success) 자동 분석이 곧 따라옴 → 옛 persona 안 깜빡이게 강제 숨김
       const justOAuthed = (function(){ try { return new URLSearchParams(location.search).get('connected') === 'success'; } catch (_) { return false; } })();
       if (personaDone && !justOAuthed) renderPersonaDash(persona);
-      else document.getElementById('personaDash').style.display = 'none';
+      else { const _pd = document.getElementById('personaDash'); if (_pd) _pd.style.display = 'none'; }
       // 첫 글 완성 여부는 generationLog 기반. 백엔드 지원 전까진 localStorage hint로
       updateStep('stepCaption', !!localStorage.getItem('_first_caption_done'));
     } else {
@@ -157,7 +157,11 @@ window.IGState = {
 };
 
 function renderPersonaDash(p, showTestBtn) {
-  document.getElementById('personaDash').style.display = 'block';
+  // [2026-05-16] 홈 #personaDash 는 내샵관리로 이동했으므로 홈에서 자동 노출 안 함.
+  // myshop-v3.js 가 자체적으로 동일 데이터를 렌더. 단, #personaContent DOM 은 그대로 두어
+  // 다른 화면(showDetailedAnalysis 등)에서 호환 유지.
+  const _pdEl = document.getElementById('personaDash');
+  if (_pdEl) _pdEl.style.display = 'none';
   const content = document.getElementById('personaContent');
   if (!content) return;
   // [2026-05-08 28차 [K]] tone 카테고리 (친근/정중/귀여움) 제거 — 사장님 본인 말투를 분류 X.

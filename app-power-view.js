@@ -248,7 +248,7 @@
         { key: 'category',             type: 'text' },
       ],
       search: (r, kw) => ((r.name || '') + ' ' + (r.category || '')).toLowerCase().includes(kw),
-      empty: { icon: '💅', title: '시술 프리셋이 없어요', desc: '자주 하는 시술 등록해두면 원탭 기록 가능.' },
+      empty: { icon: '', title: '시술 프리셋이 없어요', desc: '자주 하는 시술 등록해두면 원탭 기록 가능.' },
       qadd: {
         fields: [
           { name: 'name',                 placeholder: '시술명',    flex: 1.3, required: true, auto: 'service_name' },

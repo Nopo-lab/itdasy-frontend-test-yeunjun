@@ -98,12 +98,8 @@
     try { return '₩' + (Number(n) || 0).toLocaleString('ko-KR'); }
     catch (_e) { return '₩0'; }
   }
-  function _wonShort(n) {
-    const v = Number(n) || 0;
-    if (v >= 1000000) return '₩' + (v / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
-    if (v >= 1000) return '₩' + Math.round(v / 1000) + 'k';
-    return _won(v);
-  }
+  // [2026-05-16] M/k 단위 표기 폐기 — 풀 자릿수 그대로 (사용자 요청)
+  function _wonShort(n) { return _won(n); }
   function _todayYMD() {
     return new Date().toISOString().split('T')[0];
   }
@@ -571,6 +567,52 @@
   }
 
   // ─────────── PC 메인 컴포지션 ───────────
+  // [2026-05-16] 인스타 말투 분석 리포트 카드 — 홈에서 내샵관리로 이전 (사용자 요청).
+  // 데이터 소스: localStorage('itdasy_latest_analysis') — 인스타 분석 완료 시 저장됨.
+  // 접어두기: localStorage('ms_persona_collapsed') = '1' / '0'.
+  function _ensureMsPersonaStyles() {
+    if (document.getElementById('msPersonaStyles')) return;
+    const s = document.createElement('style');
+    s.id = 'msPersonaStyles';
+    s.textContent = `
+      .ms-persona { background:#fff; border:1px solid #E5E8EB; border-radius:16px; padding:16px 18px; margin:12px 0; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
+      .ms-persona__head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+      .ms-persona__title { font-size:14px; font-weight:700; color:#191F28; letter-spacing:-0.2px; }
+      .ms-persona__toggle { padding:6px 12px; border:1px solid #E5E8EB; background:#fff; border-radius:999px; font-size:12px; font-weight:600; color:#4E5968; cursor:pointer; }
+      .ms-persona__toggle:hover { background:#F7F8FA; }
+      .ms-persona__body { margin-top:12px; padding:14px 16px; background:rgba(241,128,145,0.06); border-radius:12px; border:1px solid rgba(241,128,145,0.15); }
+      .ms-persona__label { font-size:11px; font-weight:700; color:#E5586E; letter-spacing:-0.2px; margin-bottom:6px; }
+      .ms-persona__summary { font-size:13px; color:#191F28; line-height:1.6; font-weight:500; }
+      .ms-persona__detail { margin-top:12px; padding:10px 14px; border:1px solid #E5586E; background:#fff; color:#E5586E; border-radius:10px; font-size:12px; font-weight:600; cursor:pointer; }
+      .ms-persona__detail:hover { background:#FFF1F3; }
+    `;
+    document.head.appendChild(s);
+  }
+  function _renderPersonaCard() {
+    _ensureMsPersonaStyles();
+    let raw = null;
+    try { raw = JSON.parse(localStorage.getItem('itdasy_latest_analysis') || '{}'); } catch (_e) { raw = null; }
+    const summary = raw && typeof raw.style_summary === 'string' && raw.style_summary.trim();
+    if (!summary) return '';
+    const collapsed = localStorage.getItem('ms_persona_collapsed') === '1';
+    const body = collapsed
+      ? ''
+      : `<div class="ms-persona__body">
+           <div class="ms-persona__label">사장님 말투</div>
+           <div class="ms-persona__summary">${_esc(summary)}</div>
+           <button type="button" class="ms-persona__detail" onclick="window.showDetailedAnalysis && window.showDetailedAnalysis()">전체 분석 리포트 보기</button>
+         </div>`;
+    const toggleLbl = collapsed ? '펼치기' : '접기';
+    return `
+      <section class="ms-persona" aria-label="말투 분석 리포트">
+        <header class="ms-persona__head">
+          <div class="ms-persona__title">말투 분석 리포트</div>
+          <button type="button" class="ms-persona__toggle" data-mv-act="persona-toggle" aria-expanded="${collapsed ? 'false' : 'true'}">${toggleLbl}</button>
+        </header>
+        ${body}
+      </section>`;
+  }
+
   function _renderPCDash(brief, dms) {
     return `
       <main class="ms-pc" aria-label="내샵관리 PC 대시보드">
@@ -584,6 +626,7 @@
           </button>
         </header>
         ${_renderShopCard(brief)}
+        ${_renderPersonaCard()}
         <div class="ms-dash">
           ${_renderPCDonut(brief)}
           ${_renderPCWidgets(brief)}
@@ -610,6 +653,11 @@
       support:        () => (window.openSupport || window.openSupportChat || (() => {}))(),
       bell:           () => window.openNotifications && window.openNotifications(),
       editShop:       () => window.openShopSettings && window.openShopSettings(),
+      'persona-toggle': () => {
+        const cur = localStorage.getItem('ms_persona_collapsed') === '1';
+        try { localStorage.setItem('ms_persona_collapsed', cur ? '0' : '1'); } catch (_e) { /* silent */ }
+        if (window.MyShopV3 && typeof window.MyShopV3.refresh === 'function') window.MyShopV3.refresh();
+      },
       createShortcut: () => window.openAiHub && window.openAiHub(),
       goHome: () => {
         if (typeof window.showTab === 'function') {
@@ -645,6 +693,7 @@
           ${_renderHeader()}
           <div class="ms-body">
             ${_renderShopCard(brief)}
+            ${_renderPersonaCard()}
             ${_renderDMQueue(list)}
             ${_renderOpsMenu(brief)}
             ${_renderHubMenu()}

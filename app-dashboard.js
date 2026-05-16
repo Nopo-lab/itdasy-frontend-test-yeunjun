@@ -273,9 +273,9 @@
     const naverSub = naverData && naverData.avg_score
       ? `신규 ${naverData.new_count || 0}건 · 평균 ${naverData.avg_score}점`
       : '네이버 리뷰 관리';
+    // [2026-05-16] '영상 리포트' (실제는 영상 합성 도구) 제거 — 사용자 요청
     return [
       { ic: IC.star,     pink: true,  boxColor: 'amber',  label: '네이버 리뷰',   sub: naverSub,                          badge: naverBadge,                              fn: 'openNaverReviews' },
-      { ic: IC.video,    pink: false, boxColor: 'purple', label: '영상 리포트',   sub: '릴스/쇼츠 분석',                  badge: '',                                     fn: 'openVideo' },
       { ic: IC.upload,   pink: false, boxColor: 'teal',   label: '데이터 불러오기', sub: '엑셀/CSV · 전자영수증 연동',    badge: '',                                     fn: 'openImport' },
       { ic: IC.sparkles, pink: true,  boxColor: 'pink',   label: 'AI 인사이트',   sub: '"이번주 집중할 3가지" 자동 추천', badge: '<span class="db-badge">NEW</span>',    fn: 'openInsights' },
     ];

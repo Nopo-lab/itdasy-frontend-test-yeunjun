@@ -120,7 +120,7 @@
 
   function _renderCards() {
     if (!_cache.length) {
-      if (window.emptyState) return window.emptyState({ icon: '💅', title: '아직 시술이 없어요', desc: '자주 하는 시술을 미리 등록하면 예약·매출 입력이 한 번에 끝나요.', ctaText: '첫 시술 추가' });
+      if (window.emptyState) return window.emptyState({ icon: '', title: '아직 시술이 없어요', desc: '자주 하는 시술을 미리 등록하면 예약·매출 입력이 한 번에 끝나요.', ctaText: '첫 시술 추가' });
       return '<div style="padding:40px;text-align:center;color:#8B95A1;">등록된 시술 없음</div>';
     }
     return _cache.map(_renderCard).join('');

@@ -93,9 +93,8 @@
     sheet.innerHTML = `
       <div style="width:100%;background:#fff;border-radius:20px 20px 0 0;max-height:92vh;display:flex;flex-direction:column;padding:18px;padding-bottom:max(18px,env(safe-area-inset-bottom));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-          <span style="font-size:22px;">🎀</span>
-          <strong style="font-size:17px;">시술 완료 · 빠른 기록</strong>
-          <button id="cfClose" style="margin-left:auto;background:rgba(0,0,0,0.05);border:none;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;" aria-label="닫기">✕</button>
+          <strong style="font-size:17px;color:#191F28;">시술 완료</strong>
+          <button id="cfClose" style="margin-left:auto;background:rgba(0,0,0,0.05);border:none;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;color:#4E5968;" aria-label="닫기">✕</button>
         </div>
         <div id="cfBody" style="flex:1;overflow-y:auto;"></div>
       </div>
@@ -112,16 +111,21 @@
     const s = document.createElement('style');
     s.id = 'cfStyles';
     s.textContent = `
-      .cf-section-label { font-size:13px; font-weight:600; color:#8B95A1; margin-bottom:8px; }
+      .cf-section-label { font-size:12px; font-weight:600; color:#8B95A1; margin-bottom:8px; letter-spacing:-0.2px; }
+      .cf-info-box { padding:14px 16px; background:#F7F8FA; border-radius:14px; margin-bottom:16px; }
+      .cf-info-name { font-size:18px; font-weight:800; color:#191F28; letter-spacing:-0.4px; }
+      .cf-info-svc  { font-size:13px; color:#4E5968; font-weight:500; margin-top:4px; }
       .cf-amount-row { display:flex; align-items:baseline; gap:8px; margin-bottom:14px; padding:14px 16px; background:#F7F8FA; border-radius:14px; }
-      .cf-amount-row .cf-amount { font-size:24px; font-weight:800; color:#191F28; }
-      .cf-amount-row .cf-amount-cap { font-size:12px; color:#8B95A1; }
+      .cf-amount-row input { font-size:22px; font-weight:800; color:#191F28; letter-spacing:-0.4px; }
       .cf-method-pills { display:flex; gap:8px; margin-bottom:14px; }
       .cf-pill { flex:1; padding:12px 0; border:none; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; background:#F7F8FA; color:#4E5968; transition:background .15s ease, color .15s ease, box-shadow .15s ease; }
       .cf-pill.active { background:#FFF1F3; color:#E5586E; box-shadow:inset 0 0 0 1.5px #E5586E; }
-      .cf-auto-preview { margin-bottom:14px; padding:14px 16px; background:#F7F8FA; border-radius:14px; }
+      .cf-auto-preview { margin-bottom:16px; padding:14px 16px; background:#F7F8FA; border-radius:14px; }
       .cf-preview-row { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; color:#4E5968; }
       .cf-check { color:#0F6E56; font-weight:700; }
+      .cf-sub-actions { display:flex; gap:8px; margin-top:12px; }
+      .cf-sub-btn { flex:1; padding:13px; border:1px solid #E5E8EB; border-radius:12px; background:#fff; cursor:pointer; color:#4E5968; font-weight:600; font-size:13px; }
+      .cf-sub-btn:hover { background:#F7F8FA; }
     `;
     document.head.appendChild(s);
   }
@@ -135,9 +139,9 @@
         <input type="text" id="cfAmountInput" inputmode="numeric"
           value="${_esc(valStr)}"
           placeholder="금액 입력"
-          style="flex:1;min-width:0;font-size:22px;font-weight:800;color:#191F28;border:none;background:transparent;outline:none;padding:0;"
+          style="flex:1;min-width:0;border:none;background:transparent;outline:none;padding:0;"
         />
-        <span style="font-size:15px;color:#8B95A1;font-weight:600;">원</span>
+        <span style="font-size:16px;color:#8B95A1;font-weight:600;">원</span>
       </div>`;
   }
   function _renderMethodPills() {
@@ -162,12 +166,10 @@
   function _render() {
     const c = _ctx;
     document.getElementById('cfBody').innerHTML = `
-      <div style="padding:14px 16px;background:#F7F8FA;border-radius:14px;margin-bottom:16px;">
-        <div style="font-size:11px;color:#8B95A1;margin-bottom:2px;">방금 완료된 시술</div>
-        <div style="font-size:15px;font-weight:800;color:#191F28;">
-          ${c.customer_name ? '👤 ' + _esc(c.customer_name) : '<span style="color:#8B95A1;">고객 미지정</span>'}
-          ${c.service_name ? ` <span style="font-size:12px;color:#4E5968;font-weight:400;">· ${_esc(c.service_name)}</span>` : ''}
-        </div>
+      <div class="cf-info-box">
+        <div class="cf-section-label">고객님 성함</div>
+        <div class="cf-info-name">${c.customer_name ? _esc(c.customer_name) : '<span style="color:#8B95A1;font-weight:600;">고객 미지정</span>'}</div>
+        ${c.service_name ? `<div class="cf-info-svc">${_esc(c.service_name)}</div>` : ''}
       </div>
 
       ${_renderAmount()}
@@ -178,9 +180,9 @@
         <button id="cfSkip" type="button" style="flex:1;padding:14px;border:1px solid #E5E8EB;border-radius:14px;background:#fff;cursor:pointer;color:#4E5968;font-weight:700;font-size:13px;">건너뛰기</button>
         <button id="cfSave" type="button" style="flex:2;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#F18091,#E5586E);color:#fff;cursor:pointer;font-weight:800;font-size:15px;">시술 완료</button>
       </div>
-      <div style="text-align:center;margin-top:12px;display:flex;justify-content:center;gap:14px;">
-        <button id="cfEditBooking" type="button" style="border:none;background:none;color:#8B95A1;font-size:13px;cursor:pointer;text-decoration:underline;padding:4px 8px;">예약 시간·고객 수정</button>
-        <button id="cfInventory" type="button" style="border:none;background:none;color:#8B95A1;font-size:13px;cursor:pointer;text-decoration:underline;padding:4px 8px;">재고 확인</button>
+      <div class="cf-sub-actions">
+        <button id="cfEditBooking" type="button" class="cf-sub-btn">예약 시간·고객 수정</button>
+        <button id="cfInventory" type="button" class="cf-sub-btn">재고 확인</button>
       </div>
     `;
 
