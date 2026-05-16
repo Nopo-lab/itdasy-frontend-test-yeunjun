@@ -530,5 +530,6 @@
     if (typeof fn === 'function') { try { fn(); } catch (_e) { /* silent */ } }
   }
 
-  window.RevenueMonth = { fetchSummary, fallbackSummary, renderPC, renderMobile, readGoal, writeGoal, clearGoal };
+  // [Step 5] _ensureStyles export — today.js 가 같은 rvm- 스타일을 보장 (로드 순서 무관)
+  window.RevenueMonth = { fetchSummary, fallbackSummary, renderPC, renderMobile, readGoal, writeGoal, clearGoal, _ensureStyles };
 })();
