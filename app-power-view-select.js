@@ -177,32 +177,8 @@
         clear(); _refreshAfterBulk();
       }},
     ];
-    if (tab === 'booking') return [
-      { label: '✓ 정상참석', icon: 'ic-check-circle', run: async () => {
-        const ids = Array.from(_selected.ids);
-        const results = await Promise.allSettled(ids.map((id) =>
-          (window.NoShow && typeof window.NoShow.markAttended === 'function')
-            ? window.NoShow.markAttended(id)
-            : Promise.reject(new Error('NoShow 미로드'))
-        ));
-        const ok = results.filter((r) => r.status === 'fulfilled').length;
-        _emit('update_booking');
-        _toast(`정상참석 ${ok}건${ids.length - ok ? ` (${ids.length - ok}건 실패)` : ''}`);
-        clear(); _refreshAfterBulk();
-      }},
-      { label: '🚫 노쇼', icon: 'ic-alert-triangle', run: async () => {
-        const ids = Array.from(_selected.ids);
-        const results = await Promise.allSettled(ids.map((id) =>
-          (window.NoShow && typeof window.NoShow.markNoShow === 'function')
-            ? window.NoShow.markNoShow(id)
-            : Promise.reject(new Error('NoShow 미로드'))
-        ));
-        const ok = results.filter((r) => r.status === 'fulfilled').length;
-        _emit('update_booking');
-        _toast(`노쇼 표시 ${ok}건${ids.length - ok ? ` (${ids.length - ok}건 실패)` : ''}`);
-        clear(); _refreshAfterBulk();
-      }},
-    ];
+    // [2026-05-16] booking 전용 bulk action(정상참석/노쇼) 제거 — NoShow 모듈 삭제.
+    // booking 탭은 아래 default 의 'bulk 삭제' 만 노출. 상태 변경은 단건 캘린더 시트에서.
     return [
       { label: '삭제', icon: 'ic-trash-2', run: async () => {
         if (!window.confirm(`${_selected.ids.size}건 삭제할까요?`)) return;

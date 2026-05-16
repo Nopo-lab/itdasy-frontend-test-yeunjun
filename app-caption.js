@@ -816,7 +816,6 @@ function closeUploadDone() {
 async function doActualPublish() {
   const btn = document.getElementById('doPublishBtn');
   const finalCaption = document.getElementById('previewFinalCaption').textContent;
-  const withStory = document.getElementById('autoStoryToggle').checked;
   btn.disabled = true;
 
   const upPopup = document.getElementById('uploadProgressPopup');
@@ -845,41 +844,15 @@ async function doActualPublish() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || '업로드 실패');
 
-    // 스토리 자동 발행
-    if (withStory) {
-      setUploadProgress(75, '스토리 이미지 만드는 중...');
-      try {
-        const storyBlob = await makeStoryCanvas(canvas);
-        const storyForm = new FormData();
-        storyForm.append('image', storyBlob, 'story.png');
-
-        setUploadProgress(85, '스토리 업로드 중...');
-        const sRes = await fetch(API + '/instagram/publish-story-file', {
-          method: 'POST',
-          headers: { ...authHeader(), 'ngrok-skip-browser-warning': 'true' },
-          body: storyForm
-        });
-        if (!sRes.ok) {
-          const sErr = await sRes.json().catch(() => ({}));
-          console.warn('스토리 발행 실패 (피드는 성공):', sErr.detail || '');
-          showToast('피드는 올라갔어요! 스토리는 실패: ' + (sErr.detail || ''));
-        }
-      } catch(sE) {
-        console.warn('스토리 오류:', sE.message);
-        showToast('피드는 성공! 스토리 실패: ' + sE.message);
-      }
-    }
-
     setUploadProgress(95, '마무리 중...');
     await new Promise(r => setTimeout(r, 400));
-    setUploadProgress(100, withStory ? '피드+스토리 완료!' : '완료!');
+    setUploadProgress(100, '완료!');
 
     setTimeout(() => {
       upPopup.style.display = 'none';
       closePublishPreview();
       document.getElementById('uploadDonePopup').style.display = 'flex';
-      document.getElementById('uploadDoneMsg').textContent =
-        withStory ? '피드 + 스토리에 올라갔어요!' : '인스타 피드에 올라갔어요!';
+      document.getElementById('uploadDoneMsg').textContent = '인스타 피드에 올라갔어요!';
       for(let i = 0; i < 20; i++) setTimeout(createConfetti, i * 100);
     }, 1200);
 
@@ -889,34 +862,6 @@ async function doActualPublish() {
     btn.textContent = '다시 시도하기 🚀';
     btn.disabled = false;
   }
-}
-
-// 1:1 피드 캔버스 → 9:16 스토리 캔버스 변환
-async function makeStoryCanvas(feedCanvas) {
-  const SW = 1080, SH = 1920;
-  const sc = document.createElement('canvas');
-  sc.width = SW; sc.height = SH;
-  const ctx = sc.getContext('2d');
-
-  // 배경: 다크 그라데이션
-  const grad = ctx.createLinearGradient(0, 0, 0, SH);
-  grad.addColorStop(0, '#0f0608');
-  grad.addColorStop(1, '#1a0810');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, SW, SH);
-
-  // 피드 이미지 중앙 배치 (1080x1080 → 세로 중앙)
-  const imgSize = SW; // 1080
-  const imgY = (SH - imgSize) / 2; // 420
-  ctx.drawImage(feedCanvas, 0, imgY, imgSize, imgSize);
-
-  // 상단 브랜딩 텍스트
-  ctx.fillStyle = 'rgba(241,128,145,0.9)';
-  ctx.font = 'bold 36px -apple-system, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('잇데이 STUDIO', SW / 2, imgY - 40);
-
-  return new Promise(resolve => sc.toBlob(resolve, 'image/png'));
 }
 
 function copyCaption() {

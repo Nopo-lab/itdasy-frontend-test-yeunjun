@@ -1424,14 +1424,6 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
             <div style="padding:12px; background:rgba(232,160,176,0.08); border-radius:14px; font-size:11px; color:var(--accent2); margin-bottom:12px; text-align:center; font-weight:600;">
                 ⚠️ 이대로 사장님 본계정에 바로 올라갑니다!
             </div>
-            <!-- 스토리 자동 발행 토글 -->
-            <label id="storyToggleWrap" style="display:flex; align-items:center; gap:10px; padding:12px 14px; background:var(--bg2); border-radius:14px; margin-bottom:16px; cursor:pointer;">
-                <input type="checkbox" id="autoStoryToggle" style="width:18px; height:18px; accent-color:var(--accent); cursor:pointer; flex-shrink:0;">
-                <div>
-                    <div style="font-size:13px; font-weight:700; color:var(--text);">스토리도 같이 올리기 🎬</div>
-                    <div style="font-size:11px; color:var(--text3); margin-top:2px;">피드 업로드 후 스토리에도 자동으로 올려드려요</div>
-                </div>
-            </label>
             <div style="display:flex; gap:12px;">
                 <button onclick="closePublishPreview()" style="flex:1; padding:16px; border-radius:16px; border:none; background:var(--bg3); color:var(--text2); font-weight:700; cursor:pointer;">취소</button>
                 <button id="doPublishBtn" onclick="doActualPublish()" style="flex:2; padding:16px; border-radius:16px; border:none; background:linear-gradient(135deg, var(--accent), var(--accent2)); color:white; font-weight:800; box-shadow:0 8px 24px rgba(232,160,176,0.3); cursor:pointer;">인스타 바로 올리기 🚀</button>
@@ -1930,8 +1922,6 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-revenue.js?v=20260506-v100" defer></script>
 <script src="app-booking-api.js" defer></script>
 <script src="app-booking-approval.js" defer></script>
-<!-- E4 (2026-04-26) — 노쇼 자동 감지 + 예약 확인 메시지 -->
-<script src="app-no-show.js" defer></script>
 <script src="app-inventory.js" defer></script>
 <script src="app-nps.js" defer></script>
 <script src="app-naver-reviews.js" defer></script>

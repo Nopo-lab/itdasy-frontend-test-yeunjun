@@ -99,25 +99,6 @@
       }},
     ],
     booking: (row) => [
-      { icon: 'ic-check-circle', label: '✓ 정상 참석 (+5)', run: async () => {
-        if (window.NoShow && typeof window.NoShow.markAttended === 'function') {
-          await window.NoShow.markAttended(row.id);
-          _emit('update_booking', { booking_id: row.id });
-          _refreshTab();
-        } else { _toast('노쇼 모듈을 불러오지 못했어요'); }
-      }},
-      { icon: 'ic-alert-triangle', label: '🚫 노쇼 표시 (-10)', run: async () => {
-        if (window.NoShow && typeof window.NoShow.markNoShow === 'function') {
-          await window.NoShow.markNoShow(row.id);
-          _emit('update_booking', { booking_id: row.id });
-          _refreshTab();
-        } else { _toast('노쇼 모듈을 불러오지 못했어요'); }
-      }},
-      { icon: 'ic-send', label: '확인 메시지 보내기', run: async () => {
-        if (window.NoShow && typeof window.NoShow.sendConfirmation === 'function') {
-          await window.NoShow.sendConfirmation(row.id);
-        } else { _toast('확인 메시지 모듈을 불러오지 못했어요'); }
-      }},
       { icon: 'ic-user', label: '고객 카드 열기', run: async () => {
         const cid = row.customer_id;
         if (cid && typeof window.openCustomerDashboard === 'function') window.openCustomerDashboard(cid);
@@ -379,39 +360,10 @@
               _toast(row.is_regular ? '단골 해제했어요' : '단골 등록했어요');
               _refreshTab();
             }}];
-        case 'booking': {
-          // 미래 미확정 → 확인 메시지, 과거 미처리 → 정상참석, 노쇼 의심 → 노쇼 표시
-          const t = Date.parse(row.starts_at || '');
-          const now = Date.now();
-          const past = Number.isFinite(t) && t < now - 30 * 60 * 1000;
-          const arr = [];
-          if (past && row.status !== 'completed' && row.status !== 'no_show' && row.status !== 'cancelled') {
-            arr.push({ key: 'mark-attended', icon: 'ic-check-circle', label: '✓ 정상 참석',
-              run: async () => {
-                if (window.NoShow && typeof window.NoShow.markAttended === 'function') {
-                  await window.NoShow.markAttended(row.id);
-                  _emit('update_booking', { booking_id: row.id });
-                  _refreshTab();
-                } else { _toast('노쇼 모듈을 불러오지 못했어요'); }
-              }});
-            arr.push({ key: 'mark-noshow', icon: 'ic-alert-triangle', label: '🚫 노쇼',
-              run: async () => {
-                if (window.NoShow && typeof window.NoShow.markNoShow === 'function') {
-                  await window.NoShow.markNoShow(row.id);
-                  _emit('update_booking', { booking_id: row.id });
-                  _refreshTab();
-                } else { _toast('노쇼 모듈을 불러오지 못했어요'); }
-              }});
-          } else {
-            arr.push({ key: 'send-confirmation', icon: 'ic-send', label: '확인 메시지',
-              run: async () => {
-                if (window.NoShow && typeof window.NoShow.sendConfirmation === 'function') {
-                  await window.NoShow.sendConfirmation(row.id);
-                } else { _toast('확인 메시지 모듈을 불러오지 못했어요'); }
-              }});
-          }
-          return arr;
-        }
+        case 'booking':
+          // [2026-05-16] NoShow 모듈 삭제 — 정상참석/노쇼/확인메시지 액션 제거.
+          // 상태 변경은 캘린더 예약 편집 시트의 bf-status-btn 으로 일원화.
+          return [];
         case 'inventory':
           // ±1 둘 다 흔하므로 둘 다 노출 (원터치)
           return [

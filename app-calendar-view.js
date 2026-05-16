@@ -85,7 +85,18 @@
 
   // === 상태 ===
   let _curYear, _curMonth;
-  let _curView = 'month';        // 'month' | 'week' | 'day'
+  let _curView = 'day';          // 'month' | 'week' | 'day'
+
+  // 상태별 CSS 클래스 매핑
+  function _stCls(status) {
+    switch(status) {
+      case 'confirmed': return ' bk-st-confirmed';
+      case 'completed': return ' bk-st-completed';
+      case 'cancelled': return ' bk-st-cancelled';
+      case 'no_show':   return ' bk-st-noshow';
+      default: return '';
+    }
+  }
   let _curDate = new Date();
   let _mappedCache = [];         // 현재 월 매핑된 예약
   let _staffList = [];           // [{id, name, color_idx}, ...]
@@ -284,7 +295,7 @@
         const s2 = it.staff_idx >= 1 ? ' is-staff2' : '';
         const tm = isPC ? (_fmt(new Date(it._raw.starts_at)) + ' ') : '';
         const svc = (isPC && it.svc) ? ' · ' + _esc(it.svc) : '';
-        h += `<div class="${p}__evt${s2}">${tm}${_esc(it.cust)}${svc}</div>`;
+        h += `<div class="${p}__evt${s2}${_stCls(it.status)}">${tm}${_esc(it.cust)}${svc}</div>`;
       });
       if (its.length > 3) h += `<div class="${p}__more">+${its.length - 3}</div>`;
       h += '</div>';
@@ -375,7 +386,7 @@
       const dim = isDim ? ' is-dim' : '';
       // hour label 폭(50px) 만큼 left offset 필요 → grid 안에서 absolute. 구조: bk-day 안에 row들이 있는데, block 은 row 밖에 절대 배치되어야 함.
       const block = document.createElement('button');
-      block.className = 'bk-block' + s2 + dim;
+      block.className = 'bk-block' + s2 + dim + _stCls(it.status);
       block.dataset.bookingId = it.id;
       block.style.position = 'absolute';
       block.style.top = top + 'px';
@@ -460,7 +471,8 @@
       const height = Math.max(15, ((e - s) / 60000 / 60) * HOUR_PX_MOBILE_WEEK);
       const s2 = it.staff_idx >= 1 ? ' is-staff2' : '';
       const block = document.createElement('button');
-      block.className = 'bk-week-m__block' + s2;
+      const dim2 = (it.status === 'cancelled' || it.status === 'no_show') ? ' is-dim' : '';
+      block.className = 'bk-week-m__block' + s2 + dim2 + _stCls(it.status);
       block.dataset.bookingId = it.id;
       block.style.top = top + 'px';
       block.style.height = height + 'px';
@@ -548,7 +560,8 @@
       const height = Math.max(30, ((e - s) / 60000 / 60) * HOUR_PX_PC_WEEK);
       const s2 = it.staff_idx >= 1 ? ' is-staff2' : '';
       const block = document.createElement('button');
-      block.className = 'bk-week__block' + s2;
+      const dim3 = (it.status === 'cancelled' || it.status === 'no_show') ? ' is-dim' : '';
+      block.className = 'bk-week__block' + s2 + dim3 + _stCls(it.status);
       block.dataset.bookingId = it.id;
       block.style.top = top + 'px';
       block.style.height = height + 'px';
@@ -616,7 +629,8 @@
       const height = Math.max(40, ((e - s) / 60000 / 60) * HOUR_PX_PC_DAY);
       const s2 = it.staff_idx >= 1 ? ' is-staff2' : '';
       const block = document.createElement('button');
-      block.className = 'bk-pc-day__block' + s2;
+      const dim4 = (it.status === 'cancelled' || it.status === 'no_show') ? ' is-dim' : '';
+      block.className = 'bk-pc-day__block' + s2 + dim4 + _stCls(it.status);
       block.dataset.bookingId = it.id;
       block.style.top = top + 'px';
       block.style.height = height + 'px';
@@ -1829,14 +1843,14 @@
     const now = new Date();
     if (saved && saved.dateISO) {
       _curDate = new Date(saved.dateISO + 'T00:00:00');
-      _curView = saved.view || 'month';
+      _curView = saved.view || 'day';
       _curYear = saved.y || now.getFullYear();
       _curMonth = saved.m || (now.getMonth() + 1);
     } else {
       _curYear = now.getFullYear();
       _curMonth = now.getMonth() + 1;
       _curDate = now;
-      _curView = 'month';
+      _curView = 'day';
     }
     _miniMonth = { y: _curYear, m: _curMonth };
     _cachedIsPC = _isPC();

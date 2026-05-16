@@ -1216,3 +1216,103 @@
     transform: none;
   }
 }
+
+/* ═══ 상태 컬러코딩 (2026-05-16) ═══ */
+
+/* is-dim: 취소/노쇼 공통 */
+.bk-block.is-dim,
+.bk-week-m__block.is-dim,
+.bk-week__block.is-dim,
+.bk-pc-day__block.is-dim {
+  opacity: 0.5;
+}
+
+/* confirmed — 기존 brand 핑크 (기본값이라 override 불필요, 명시용) */
+.bk-st-confirmed { /* background: var(--brand-bg); border-left-color: var(--brand-strong); */ }
+
+/* completed — 초록 */
+.bk-block.bk-st-completed,
+.bk-week-m__block.bk-st-completed,
+.bk-week__block.bk-st-completed,
+.bk-pc-day__block.bk-st-completed {
+  background: #E1F5EE;
+  border-left-color: #0F6E56;
+}
+.bk-st-completed .bk-block__title,
+.bk-st-completed .bk-week__block-title,
+.bk-st-completed .bk-pc-day__block-title { color: #085041; }
+.bk-st-completed .bk-block__sub,
+.bk-st-completed .bk-week__block-sub,
+.bk-st-completed .bk-pc-day__block-time,
+.bk-st-completed .bk-pc-day__block-service { color: #0F6E56; opacity: 0.8; }
+
+/* 월별 이벤트 — completed */
+.bk-month-m__evt.bk-st-completed,
+.bk-month-pc__evt.bk-st-completed {
+  background: #E1F5EE;
+  color: #0F6E56;
+}
+
+/* cancelled — 회색 + 취소선 */
+.bk-block.bk-st-cancelled,
+.bk-week-m__block.bk-st-cancelled,
+.bk-week__block.bk-st-cancelled,
+.bk-pc-day__block.bk-st-cancelled {
+  background: var(--surface-2);
+  border-left-color: var(--text-subtle);
+}
+.bk-st-cancelled .bk-block__title,
+.bk-st-cancelled .bk-week__block-title,
+.bk-st-cancelled .bk-pc-day__block-title {
+  color: var(--text-subtle);
+  text-decoration: line-through;
+}
+.bk-st-cancelled .bk-block__sub,
+.bk-st-cancelled .bk-week__block-sub,
+.bk-st-cancelled .bk-pc-day__block-time,
+.bk-st-cancelled .bk-pc-day__block-service { color: var(--text-subtle); }
+
+/* 월별 이벤트 — cancelled */
+.bk-month-m__evt.bk-st-cancelled,
+.bk-month-pc__evt.bk-st-cancelled {
+  background: var(--surface-2);
+  color: var(--text-subtle);
+  text-decoration: line-through;
+}
+
+/* no_show — 노란 + 흐림 */
+.bk-block.bk-st-noshow,
+.bk-week-m__block.bk-st-noshow,
+.bk-week__block.bk-st-noshow,
+.bk-pc-day__block.bk-st-noshow {
+  background: #FEF3C7;
+  border-left-color: #D97706;
+}
+.bk-st-noshow .bk-block__title,
+.bk-st-noshow .bk-week__block-title,
+.bk-st-noshow .bk-pc-day__block-title { color: #92400E; }
+.bk-st-noshow .bk-block__sub,
+.bk-st-noshow .bk-week__block-sub,
+.bk-st-noshow .bk-pc-day__block-time,
+.bk-st-noshow .bk-pc-day__block-service { color: #B45309; }
+
+/* 월별 이벤트 — no_show */
+.bk-month-m__evt.bk-st-noshow,
+.bk-month-pc__evt.bk-st-noshow {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+/* 텍스트 줄바꿈 방지 (모든 블록) */
+.bk-block__title,
+.bk-block__sub,
+.bk-week-m__block,
+.bk-week__block-title,
+.bk-week__block-sub,
+.bk-pc-day__block-title,
+.bk-pc-day__block-time,
+.bk-pc-day__block-service {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
