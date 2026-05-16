@@ -422,24 +422,43 @@
   }
 
   // ─────────── PC 도넛 데이터 ───────────
+  // [Step 5 · 2026-05-16] brief.payment_breakdown 실데이터 연결 — 0건 항목 미표시
   function _buildDonutData(brief) {
-    // 결제방식별 매출 — 백엔드 미존재 → fallback: 단일 "전체" 100%
-    // TODO[v1.5]: brief.payment_breakdown 추가 후 실데이터 연결
     const total = (brief && brief.this_month_total) || 0;
-    if (!total) {
+    const pm = brief && brief.payment_breakdown;
+    if (!total || !pm) {
       return {
         total,
         rows: [{ name: '데이터 없음', value: 0, pct: 100, color: 'var(--border-strong)' }],
         gradient: 'var(--border-strong)',
       };
     }
-    const rows = [
-      { name: '카드',   value: Math.round(total * 0.45), pct: 45, color: 'var(--brand-strong)' },
-      { name: '현금',   value: Math.round(total * 0.20), pct: 20, color: 'color-mix(in srgb, var(--brand-strong) 55%, var(--surface))' },
-      { name: '계좌',   value: Math.round(total * 0.13), pct: 13, color: 'color-mix(in srgb, var(--brand-strong) 22%, var(--surface))' },
-      { name: '회원권', value: Math.round(total * 0.11), pct: 11, color: 'var(--text-subtle)' },
-      { name: '기타',   value: Math.round(total * 0.11), pct: 11, color: 'var(--border-strong)' },
+    const LBL = { card: '카드', cash: '현금', transfer: '계좌', membership: '회원권', etc: '기타' };
+    const COLORS = [
+      'var(--brand-strong)',
+      'color-mix(in srgb, var(--brand-strong) 55%, var(--surface))',
+      'color-mix(in srgb, var(--brand-strong) 22%, var(--surface))',
+      'var(--text-subtle)',
+      'var(--border-strong)',
     ];
+    const sumPM = Object.values(pm).reduce((s, v) => s + (+v || 0), 0);
+    const base = sumPM || total;  // 합이 0 이면 분포 표시 의미 없음
+    const rows = Object.entries(pm)
+      .filter(([, v]) => (+v || 0) > 0)
+      .sort((a, b) => (b[1] || 0) - (a[1] || 0))
+      .map(([k, v], i) => ({
+        name: LBL[k] || k,
+        value: +v || 0,
+        pct: Math.round((+v || 0) * 100 / base),
+        color: COLORS[i] || 'var(--border-strong)',
+      }));
+    if (!rows.length) {
+      return {
+        total,
+        rows: [{ name: '데이터 없음', value: 0, pct: 100, color: 'var(--border-strong)' }],
+        gradient: 'var(--border-strong)',
+      };
+    }
     let acc = 0;
     const stops = rows.map(r => {
       const start = acc; const end = acc + (r.pct / 100) * 360;
