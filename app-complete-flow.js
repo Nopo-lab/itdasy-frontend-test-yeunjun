@@ -1,12 +1,12 @@
 /* ─────────────────────────────────────────────────────────────
-   시술 완료 액션 (#3 · 2026-05-16 리뉴얼)
+   시술 완료 액션 (#4 · 2026-05-16 UX 개선)
 
    변경:
-   - 매출은 BE 가 PATCH /bookings/{id} 처리할 때 자동 생성한다 (Step 1).
-   - FE 는 결제수단(payment_method) 만 같이 보내고, 응답의 completion_effects
-     로 토스트만 보여준다. 별도 POST /revenue 호출 없음.
-   - 금액 직접 입력 제거. 프리셋 금액(booking.amount) 그대로 사용,
-     수정 필요 시 매출관리에서 보정.
+   - 블록 클릭 시 바로 이 팝업이 열림 (편집폼 거치지 않음).
+   - 금액 인라인 편집 가능 (프리셋 기본값 + 직접 수정).
+   - "예약 시간·고객 수정" 링크로 편집폼 진입 가능
+     (itdasy:open-booking-edit 이벤트, 캘린더가 수신).
+   - BE 는 PATCH /bookings/{id} 시 자동 매출생성 + 재고차감 + 리터치.
 
    공개 API:
    - CompleteFlow.startFromBooking(booking)
@@ -128,17 +128,16 @@
 
   function _renderAmount() {
     const amt = _ctx.amount;
-    if (!amt) {
-      return `
-        <div class="cf-amount-row">
-          <span class="cf-amount" style="font-size:15px;color:#8B95A1;font-weight:600;">금액 미지정</span>
-          <span class="cf-amount-cap">시술 프리셋이 없어 매출 자동 기록은 건너뜁니다</span>
-        </div>`;
-    }
+    const valStr = amt ? Number(amt).toLocaleString('ko-KR') : '';
     return `
+      <div class="cf-section-label">시술 금액</div>
       <div class="cf-amount-row">
-        <span class="cf-amount">${_esc(_fmt(amt))}</span>
-        <span class="cf-amount-cap">프리셋 기준 · 수정은 매출관리에서</span>
+        <input type="text" id="cfAmountInput" inputmode="numeric"
+          value="${_esc(valStr)}"
+          placeholder="금액 입력"
+          style="flex:1;min-width:0;font-size:22px;font-weight:800;color:#191F28;border:none;background:transparent;outline:none;padding:0;"
+        />
+        <span style="font-size:15px;color:#8B95A1;font-weight:600;">원</span>
       </div>`;
   }
   function _renderMethodPills() {
@@ -163,11 +162,11 @@
   function _render() {
     const c = _ctx;
     document.getElementById('cfBody').innerHTML = `
-      <div style="padding:12px;background:linear-gradient(135deg,rgba(241,128,145,0.1),rgba(241,128,145,0.02));border-radius:12px;margin-bottom:14px;">
-        <div style="font-size:11px;color:#888;margin-bottom:2px;">방금 완료된 시술</div>
-        <div style="font-size:15px;font-weight:800;">
-          ${c.customer_name ? '👤 ' + _esc(c.customer_name) : '<span style="color:var(--text-subtle);">고객 미지정</span>'}
-          ${c.service_name ? ` <span style="font-size:12px;color:var(--text-muted);font-weight:400;">· ${_esc(c.service_name)}</span>` : ''}
+      <div style="padding:14px 16px;background:#F7F8FA;border-radius:14px;margin-bottom:16px;">
+        <div style="font-size:11px;color:#8B95A1;margin-bottom:2px;">방금 완료된 시술</div>
+        <div style="font-size:15px;font-weight:800;color:#191F28;">
+          ${c.customer_name ? '👤 ' + _esc(c.customer_name) : '<span style="color:#8B95A1;">고객 미지정</span>'}
+          ${c.service_name ? ` <span style="font-size:12px;color:#4E5968;font-weight:400;">· ${_esc(c.service_name)}</span>` : ''}
         </div>
       </div>
 
@@ -176,10 +175,13 @@
       ${_renderAutoPreview()}
 
       <div style="display:flex;gap:8px;">
-        <button id="cfSkip" type="button" style="flex:1;padding:13px;border:1px solid #ddd;border-radius:12px;background:#fff;cursor:pointer;color:#555;font-weight:700;font-size:13px;">매출 미기록 완료</button>
-        <button id="cfSave" type="button" style="flex:2;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;cursor:pointer;font-weight:800;font-size:15px;">완료 ✓</button>
+        <button id="cfSkip" type="button" style="flex:1;padding:14px;border:1px solid #E5E8EB;border-radius:14px;background:#fff;cursor:pointer;color:#4E5968;font-weight:700;font-size:13px;">건너뛰기</button>
+        <button id="cfSave" type="button" style="flex:2;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#F18091,#E5586E);color:#fff;cursor:pointer;font-weight:800;font-size:15px;">시술 완료</button>
       </div>
-      <button id="cfInventory" type="button" style="width:100%;margin-top:8px;padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa;cursor:pointer;color:#555;font-weight:700;font-size:13px;">재고 확인</button>
+      <div style="text-align:center;margin-top:12px;display:flex;justify-content:center;gap:14px;">
+        <button id="cfEditBooking" type="button" style="border:none;background:none;color:#8B95A1;font-size:13px;cursor:pointer;text-decoration:underline;padding:4px 8px;">예약 시간·고객 수정</button>
+        <button id="cfInventory" type="button" style="border:none;background:none;color:#8B95A1;font-size:13px;cursor:pointer;text-decoration:underline;padding:4px 8px;">재고 확인</button>
+      </div>
     `;
 
     document.getElementById('cfSkip').addEventListener('click', _skipAndComplete);
@@ -190,6 +192,24 @@
         _ctx.method = btn.dataset.method;
         document.querySelectorAll('.cf-pill').forEach(b => b.classList.toggle('active', b === btn));
       });
+    });
+    // 금액 인라인 편집 (천 단위 콤마 + 숫자만)
+    const amtInput = document.getElementById('cfAmountInput');
+    if (amtInput) {
+      amtInput.addEventListener('input', (e) => {
+        const raw = e.target.value.replace(/[^0-9]/g, '');
+        const num = parseInt(raw, 10);
+        _ctx.amount = Number.isFinite(num) && num > 0 ? num : null;
+        e.target.value = _ctx.amount ? _ctx.amount.toLocaleString('ko-KR') : '';
+      });
+    }
+    // 예약 시간·고객 수정 — 팝업 닫고 캘린더 편집폼 진입 이벤트 발행
+    document.getElementById('cfEditBooking')?.addEventListener('click', () => {
+      const bookingId = _ctx.booking_id;
+      _close();
+      if (bookingId) {
+        window.dispatchEvent(new CustomEvent('itdasy:open-booking-edit', { detail: { booking_id: bookingId } }));
+      }
     });
   }
 
@@ -220,7 +240,9 @@
   async function _saveAll() {
     const btn = document.getElementById('cfSave');
     btn.disabled = true; btn.textContent = '저장 중…';
+    // 사용자 인라인 편집 금액도 BE 에 전달 — BE 가 booking.amount 업데이트 후 매출 자동기록에 사용
     const payload = { status: 'completed', payment_method: _ctx.method || 'card' };
+    if (_ctx.amount && _ctx.amount > 0) payload.amount = _ctx.amount;
     try {
       const res = await _patchBooking(_ctx.booking_id, payload);
       const eff = res?.completion_effects || {};
@@ -235,7 +257,7 @@
       _close();
       _refreshConnectedViews();
     } catch (e) {
-      btn.disabled = false; btn.textContent = '완료 ✓';
+      btn.disabled = false; btn.textContent = '시술 완료';
       if (window.showToast) window.showToast('실패: ' + (e.message || ''));
     }
   }

@@ -1253,7 +1253,14 @@
                   || _mappedCache.find(m => m.id == btn.dataset.bookingId);
         }
         if (ctx.item) {
-          _openForm(new Date(ctx.item._raw.starts_at), ctx.item._raw);
+          // [2026-05-16 UX] 진행중 예약 = 바로 CompleteFlow. 이미 완료/취소면 편집폼.
+          const raw = ctx.item._raw;
+          const done = raw.status === 'completed' || raw.status === 'cancelled';
+          if (!done && window.CompleteFlow?.startFromBooking) {
+            window.CompleteFlow.startFromBooking(raw);
+          } else {
+            _openForm(new Date(raw.starts_at), raw);
+          }
         } else {
           console.warn('[BK] 블록 클릭 매칭 실패:', btn.dataset.bookingId, _mappedCache.map(m => m.id));
         }
@@ -1313,14 +1320,7 @@
         빈 슬롯 ${defStart} 자동 선택 · 고객만 고르면 끝
       </div>`;
     }
-    // 수정 모드 — 시술 완료 액션 카드
-    if (isEdit && existing.status !== 'completed') {
-      html += `<button type="button" class="bf-complete-action" id="bfComplete">
-        <div class="bf-ca-icon"><i class="ph-duotone ph-check" style="font-size:14px" aria-hidden="true"></i></div>
-        <div style="flex:1"><div class="bf-ca-title">시술 완료 · 매출·후기 한 번에</div><div class="bf-ca-sub">금액 입력 + 캡션 만들기까지</div></div>
-        <i class="ph-duotone ph-caret-right bf-ca-chev" style="font-size:14px" aria-hidden="true"></i>
-      </button>`;
-    }
+    // [2026-05-16] 시술 완료 액션 카드 제거 — 블록 클릭이 곧 CompleteFlow.
     // 수정 모드 — 상태 4토글
     if (isEdit) {
       html += `<div class="bf-section"><div class="bf-label">상태</div><div class="bf-status-row">
@@ -1733,19 +1733,23 @@
         _renderViewBody();
       } catch (_) { if (window.showToast) window.showToast('삭제 실패'); }
     });
-    body.querySelector('#bfComplete')?.addEventListener('click', () => {
-      if (!window.CompleteFlow?.startFromBooking) {
-        if (window.showToast) window.showToast('완료 모듈 로드 중…');
-        return;
-      }
-      if (window.hapticMedium) window.hapticMedium();
-      window.CompleteFlow.startFromBooking(existing);
-    });
+    // [2026-05-16] #bfComplete 카드는 _buildFormHTML 에서 제거 — 핸들러도 삭제.
     const STATUS_LABEL = { confirmed: '확정', completed: '완료', cancelled: '취소', no_show: '안 옴' };
     body.querySelectorAll('[data-bf-status]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const newStatus = btn.getAttribute('data-bf-status');
         if (newStatus === existing.status) return;
+        // [2026-05-16] 완료 버튼은 직접 status 변경하지 않고 CompleteFlow 거치도록.
+        if (newStatus === 'completed') {
+          if (window.CompleteFlow?.startFromBooking) {
+            if (window.hapticMedium) window.hapticMedium();
+            window.CompleteFlow.startFromBooking(existing);
+            _renderViewBody();  // 편집폼 닫고 캘린더로
+          } else if (window.showToast) {
+            window.showToast('완료 모듈 로드 중…');
+          }
+          return;
+        }
         try {
           await window.Booking.update(existing.id, { status: newStatus });
           window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'update_booking', booking_id: existing.id, customer_id: existing.customer_id || null } }));
@@ -1850,6 +1854,24 @@
   // ============================================================
   // §24 진입점
   // ============================================================
+
+  // [2026-05-16] CompleteFlow → "예약 시간·고객 수정" 클릭 시 편집폼 진입
+  if (typeof window !== 'undefined' && !window._cvOpenEditListenerInit) {
+    window._cvOpenEditListenerInit = true;
+    window.addEventListener('itdasy:open-booking-edit', (e) => {
+      const id = e.detail?.booking_id;
+      if (!id) return;
+      const item = _mappedCache.find(m => String(m.id) === String(id));
+      if (!item) return;
+      if (!_overlay()) {
+        // 캘린더가 닫혔으면 다시 열고 다음 tick 에 폼 진입
+        window.openCalendarView().then(() => _openForm(new Date(item._raw.starts_at), item._raw));
+      } else {
+        _openForm(new Date(item._raw.starts_at), item._raw);
+      }
+    });
+  }
+
   window.openCalendarView = async function () {
     if (typeof window._perfMark === 'function') window._perfMark('calendar:open:start');
     const existing = _overlay(); if (existing) existing.remove();
