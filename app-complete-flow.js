@@ -388,10 +388,23 @@
 
   async function _saveAll() {
     const btn = document.getElementById('cfSave');
+    // [2026-05-16] amount 비어있으면 차단 — 자동 매출 기록은 amount>0 필수.
+    //   매출 기록 없이 완료만 하고 싶으면 "건너뛰기" 버튼을 명확히 누르도록 유도.
+    if (!_ctx.amount || _ctx.amount <= 0) {
+      if (window.showToast) window.showToast('금액을 입력해 주세요. 매출 미기록 완료는 "건너뛰기"');
+      const amtInput = document.getElementById('cfAmountInput');
+      if (amtInput) {
+        amtInput.focus();
+        amtInput.parentElement?.animate?.(
+          [{ transform: 'translateX(0)' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'translateX(0)' }],
+          { duration: 240, easing: 'ease-in-out' }
+        );
+      }
+      return;
+    }
     btn.disabled = true; btn.textContent = '저장 중…';
     // 사용자 인라인 편집 금액도 BE 에 전달 — BE 가 booking.amount 업데이트 후 매출 자동기록에 사용
-    const payload = { status: 'completed', payment_method: _ctx.method || 'card' };
-    if (_ctx.amount && _ctx.amount > 0) payload.amount = _ctx.amount;
+    const payload = { status: 'completed', payment_method: _ctx.method || 'card', amount: _ctx.amount };
     try {
       const res = await _patchBooking(_ctx.booking_id, payload);
       const eff = res?.completion_effects || {};
