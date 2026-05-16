@@ -19,8 +19,8 @@
   --bk-h-mobile-day: 60px;   /* 모바일 일간 시간 셀 */
   --bk-h-mobile-week: 50px;  /* 모바일 주간 시간 셀 */
   --bk-h-pc-week: 60px;      /* PC 주간 시간 셀 */
-  /* [Step 5 · 2026-05-16] PC 일간 — viewport 작으면 자동 축소해서 한 화면 fit */
-  --bk-h-pc-day: clamp(42px, 5.2vh, 80px);
+  /* [Step 5 · 2026-05-16] PC 일간 50px — JS HOUR_PX_PC_DAY 와 동기화 필수 */
+  --bk-h-pc-day: 50px;
   --bk-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 

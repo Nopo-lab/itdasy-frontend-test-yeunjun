@@ -77,10 +77,12 @@
   })();
 
   // === 시간 그리드 단위 ===
+  // CSS 변수와 동일해야 블록(absolute) 위치 / 셀(grid row) 정렬이 맞음
+  // CSS: css/screens/booking-v4.css 의 --bk-h-mobile-day / --bk-h-pc-week / --bk-h-pc-day 와 동기화
   const HOUR_PX_MOBILE_DAY  = 60;
   const HOUR_PX_MOBILE_WEEK = 50;
   const HOUR_PX_PC_WEEK     = 60;
-  const HOUR_PX_PC_DAY      = 80;
+  const HOUR_PX_PC_DAY      = 50;   // [Step 5 · 2026-05-16] 80→50 컴팩트 (CSS 와 동일)
   const PC_BREAKPOINT       = 1100;
 
   // === 상태 ===
