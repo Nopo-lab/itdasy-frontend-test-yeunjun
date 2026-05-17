@@ -68,6 +68,18 @@
   function _catMeta(kind) {
     return CATEGORY[kind] || { icon: 'ic-check', label: kind || '작업', color: '#666' };
   }
+
+  // 외부 모듈(마케팅·콘텐츠 kind 등)이 CATEGORY 메타와 invalidate 매핑을 확장할 수 있는 포인트.
+  // 새 kind를 app-assistant.js 본체에 박지 않고 분리해 관리하기 위함 (본체는 이미 거대).
+  const _externalInvalidateKinds = {};
+  window.ItdasyAssistant = window.ItdasyAssistant || {};
+  window.ItdasyAssistant.CATEGORY = CATEGORY;
+  window.ItdasyAssistant.registerKindMeta = function (metaMap) {
+    if (metaMap && typeof metaMap === 'object') Object.assign(CATEGORY, metaMap);
+  };
+  window.ItdasyAssistant.registerInvalidateKinds = function (kindMap) {
+    if (kindMap && typeof kindMap === 'object') Object.assign(_externalInvalidateKinds, kindMap);
+  };
   // [QA-r10 2026-05-15] OCR fallback repair 중복 폭주 차단 (실기기 보고: 동일 14,500원 24회 복제).
   // 백엔드 prose-repair 가 같은 vendor·amount 로 N회 반복 append 한 경우를 프론트에서 방어.
   //   - kind 별 핵심 식별자 (vendor/amount/customer_name/service_name/starts_at/items[0]) 조합으로 키 생성
@@ -2143,7 +2155,7 @@
     // 각 kind 가 건드리는 SWR 키 목록 (app-core.js 의 실제 키와 일치해야 함)
     // pv_cache::customers · pv_cache::bookings_all · pv_cache::revenue · pv_cache::inventory · pv_cache::today
     // Wave D3 (2026-04-24): 모든 kind 에 대해 누락 없이 캐시 무효화 + today 반영
-    const _invalidateKinds = {
+    const _invalidateKinds = _externalInvalidateKinds[kind] || ({
       create_customer: ['customer', 'customers', 'today'],
       create_booking: ['booking', 'bookings', 'bookings_all', 'customer', 'customers', 'today'],
       create_revenue: ['revenue', 'revenues', 'customer', 'customers', 'today', 'dashboard'],
@@ -2163,7 +2175,7 @@
       mark_booking_completed: ['booking', 'bookings', 'bookings_all', 'customer', 'customers', 'today'],
       refund_revenue: ['revenue', 'revenues', 'customer', 'customers', 'today', 'dashboard'],
       update_service_price: ['service', 'services', 'today'],
-    }[kind] || [];
+    })[kind] || [];
     _invalidateKinds.forEach(k => {
       try { sessionStorage.removeItem('pv_cache::' + k); } catch (_e) { void _e; }
       try { localStorage.removeItem('pv_cache::' + k); } catch (_e) { void _e; }

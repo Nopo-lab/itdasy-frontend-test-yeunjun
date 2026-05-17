@@ -785,6 +785,14 @@ function getMyUserId() {
     document.body.classList.remove('splashing');
     setTimeout(() => { splash.style.display = 'none'; }, 300);
   }, HOLD_MS);
+
+  // BFCache 복귀 보강 — Safari가 페이지를 메모리에서 되살릴 때 .splashing 잔존으로
+  //   추천 chip의 pointer-events가 막히는 케이스. 복귀 즉시 정리.
+  window.addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    document.body.classList.remove('splashing');
+    if (splash) splash.style.display = 'none';
+  });
 })();
 
 // ───── 설정 바텀시트 ─────

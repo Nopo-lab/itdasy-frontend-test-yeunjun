@@ -1,5 +1,7 @@
-/* v1.2 AI 제안 위젯 — 홈 상단 '오늘 할 일 3개'
-   /assistant/suggestions 호출 → 카드 3개 렌더 → 클릭 시 해당 기능 오픈 */
+/* v1.3 AI 제안 위젯 — 홈 상단 '오늘 할 일 3개'
+   /assistant/suggestions 호출 → 카드 3개 렌더 → 클릭 시 해당 기능 오픈
+   v1.3 (2026-05-17): iOS Safari/PWA chip 미터치 fix — render마다 listener 재등록 대신
+   document-level 1회 위임. innerHTML 재렌더에도 chip이 살아 있도록. */
 (function () {
   'use strict';
 
@@ -60,13 +62,24 @@
         `).join('')}
       </div>
     `;
-    container.querySelectorAll('[data-ai-sug]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (window.hapticLight) window.hapticLight();
-        _handleAction(btn.getAttribute('data-ai-sug'));
-      });
+    // listener는 모듈 init 시 한 번만 (아래 _ensureDelegation) — 여기서는 등록 안 함.
+  }
+
+  // document-level 위임 1회 등록.
+  // 계기: 외부 위젯이 같은 container를 innerHTML 재렌더하면 row별 listener가 사라져
+  //   특히 iOS PWA에서 chip 무반응으로 보임. 위임은 DOM 교체와 무관.
+  let _delegationBound = false;
+  function _ensureDelegation() {
+    if (_delegationBound) return;
+    _delegationBound = true;
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-ai-sug]');
+      if (!btn) return;
+      if (window.hapticLight) window.hapticLight();
+      _handleAction(btn.getAttribute('data-ai-sug'));
     });
   }
+  _ensureDelegation();
 
   window.AISuggestions = { render };
 })();

@@ -1,0 +1,26 @@
+/* AI 추천 chip · 고객별 chip 공통 터치 정상화 (iOS Safari/PWA)
+   계기: PWA 모드에서 첫 탭 무시 + 시각 무반응으로 사용자가 두 번 누르면 더블탭으로 해석.
+   selector는 [data-ai-sug],[data-cust-chip] 두 종에만 한정 — 기존 예약/매출 버튼 외형 영향 없음. */
+[data-ai-sug],
+[data-cust-chip] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(241, 128, 145, 0.18);
+  -webkit-appearance: none;
+  appearance: none;
+  user-select: none;
+  position: relative;
+  z-index: 1;
+  min-height: 44px;
+}
+
+[data-ai-sug]:active,
+[data-cust-chip]:active {
+  transform: scale(0.985);
+  transition: transform 0.08s ease-out;
+}
+
+/* splashing 종료 후 BFCache 복귀 시 잔존 가능한 pointer-events:none 무력화. */
+body:not(.splashing) [data-ai-sug],
+body:not(.splashing) [data-cust-chip] {
+  pointer-events: auto;
+}

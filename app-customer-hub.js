@@ -323,12 +323,17 @@
     const recentTxt = c.last_visit_at ? `최근 ${_dateFmt(c.last_visit_at)}` : null;
     const subParts = [phoneTail, cycle, recentTxt].filter(Boolean);
 
+    // P0-3: 고객별 추천 chip 1건 (가장 시급한 항목만). 모듈 미로드 시 빈 문자열.
+    const chipHTML = (window.CustomerChips && typeof window.CustomerChips.renderHTML === 'function')
+      ? window.CustomerChips.renderHTML(c) : '';
+
     return `<div class="cust-row" data-act="open-customer" data-id="${c.id}">
       <div class="cust-avatar${avatarCls}">${initial}</div>
       <div class="cust-info">
         <div class="cust-name-row">
           <span class="cust-name">${_esc(c.name)}</span>
           ${cl.visits > 0 ? `<span class="cust-visits">방문 ${cl.visits}회</span>` : ''}
+          ${chipHTML}
         </div>
         <div class="cust-meta">
           ${badges.join('')}
