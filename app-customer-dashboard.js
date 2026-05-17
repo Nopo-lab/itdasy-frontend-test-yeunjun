@@ -450,6 +450,7 @@
       const d = await _apiGet('/customers/' + id + '/dashboard');
       body.innerHTML = `
         ${_renderHero(d)}
+        <div id="cdAiBriefMount" style="padding:0 16px;"></div>
         ${_renderStats(d)}
         ${_renderRegularMembership(d)}
         ${_renderRevenues(d.recent_revenues)}
@@ -457,6 +458,10 @@
       `;
       _bindActions(d.customer.id, d.customer.name);
       _bindMembership(d);
+      // P1-5: AI 브리핑 (마지막 방문/평균주기/리터치 권장 + 상위 chip). 백엔드 ai-brief 없으면 클라이언트 컴퓨트.
+      if (window.CustomerAIBrief && typeof window.CustomerAIBrief.render === 'function') {
+        window.CustomerAIBrief.render('cdAiBriefMount', d.customer.id, { dashboardData: d });
+      }
     } catch (e) {
       console.warn('[customer-dashboard] 실패:', e);
       // 폴백 조건: 네트워크 오류 / 4xx (요청 형식·인증 권한·없음) / 5xx 일부 (구현 안 됨·게이트웨이)
@@ -470,10 +475,14 @@
           const cust = await _apiGet('/customers/' + id);
           body.innerHTML = `
             ${_renderHero({ customer: cust })}
+            <div id="cdAiBriefMount" style="padding:0 16px;"></div>
             ${_renderStats({ customer: cust })}
             ${_renderEditBar(cust.id, cust)}
           `;
           _bindActions(cust.id, cust.name);
+          if (window.CustomerAIBrief && typeof window.CustomerAIBrief.render === 'function') {
+            window.CustomerAIBrief.render('cdAiBriefMount', cust.id, { customer: cust });
+          }
           if (typeof window.showToast === 'function') {
             window.showToast('기본 정보로 표시 중이에요');
           }

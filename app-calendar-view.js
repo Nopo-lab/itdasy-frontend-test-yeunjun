@@ -1404,6 +1404,7 @@
              <span class="bf-cust-chev" aria-hidden="true">›</span>`}
       </button>
       <input type="hidden" id="bfCustName" value="${_esc(existing?.customer_name || '')}" />
+      <div id="bfAiBriefMount" style="margin-top:10px;"></div>
     </div>`;
     // 시술 칩
     html += `<div class="bf-section"><div class="bf-label">시술 <span style="color:var(--text-subtle);font-weight:500;text-transform:none;letter-spacing:0">· 자주 받은 순</span></div>
@@ -1562,9 +1563,18 @@
     });
 
     // --- 고객 카드 ---
+    // P1-5: 고객 선택 시 AI 브리핑 카드 동시 노출. picker가 picked 객체 그대로 넘기므로 dashboardData 없이 customer만.
+    function _renderAiBrief(picked) {
+      const mount = body.querySelector('#bfAiBriefMount');
+      if (!mount) return;
+      if (!picked || !picked.id || !window.CustomerAIBrief) { mount.innerHTML = ''; return; }
+      try { window.CustomerAIBrief.render('bfAiBriefMount', picked.id, { customer: picked }); }
+      catch (_e) { mount.innerHTML = ''; }
+    }
     function _renderCustCard(picked) {
       const card = body.querySelector('#bfCustCard');
       if (!card) return;
+      _renderAiBrief(picked && picked.id ? picked : null);
       if (picked) {
         card.className = 'bf-cust-card';
         const visits = +picked.visit_count || 0;
@@ -1597,6 +1607,13 @@
       custId = picked.id || null;
       _renderCustCard(picked.name ? picked : null);
     };
+    // P1-5: prefill 케이스 (수정 모드 또는 dashboard 진입) — 폼 오픈 직후 브리핑 1회 띄움.
+    if (custId) {
+      const seed = _pendingCust && _pendingCust.id === custId
+        ? _pendingCust
+        : { id: custId, name: existing?.customer_name || (body.querySelector('#bfCustName')?.value || '') };
+      _renderAiBrief(seed);
+    }
     // 2026-05-01 ── event delegation: 카드 click 시 X 버튼 안이면 clear, 아니면 picker 열기.
     // 이전엔 X 의 click listener 가 inline 으로 매번 다시 붙어서 재렌더 시 누락 케이스 발생.
     body.querySelector('#bfCustCard')?.addEventListener('click', e => {

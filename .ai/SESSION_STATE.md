@@ -2,7 +2,27 @@
 
 > 새 세션이 시작되면 **이 파일을 먼저 읽고** 현재 단계·대기 결정·마지막 체크포인트를 파악한다.
 
-**LAST UPDATED:** 2026-05-07 · cold start 버그 수정 + 챗봇 복구
+**LAST UPDATED:** 2026-05-17 · 뷰티업GPT P1-5 (AI 브리핑 카드) 적용
+
+---
+
+## 🟣 2026-05-17 18:00 — 뷰티업GPT 초고도화 P1-5 (AI 브리핑 카드)
+
+설계 문서: `~/.claude/plans/zesty-snacking-clarke.md` §7
+
+신규/수정:
+- `app-customer-ai-brief.js` 신규 (≤350줄) — `/customers/{id}/ai-brief` 우선, 없으면 dashboard 페이로드로 클라이언트 컴퓨트
+- `app-customer-chips.js` — `pickAll`/`renderTopN` 노출 (브리핑 카드에서 상위 3개 chip 호스팅)
+- `app-customer-dashboard.js` — Hero 뒤 `#cdAiBriefMount` 삽입 + 두 경로(dashboard / 폴백)에서 모두 렌더
+- `app-calendar-view.js` — 예약 폼 고객 섹션 안에 `#bfAiBriefMount` 삽입 + 고객 picker로 선택 시 브리핑 갱신, prefill(수정/대시보드 진입) 케이스도 1회 렌더
+- `index.html` — `app-customer-ai-brief.js` 로드 (customer-hub 이전), customer-dashboard/calendar-view 버스터 v167
+
+회귀 영향: 백엔드 ai-brief 부재 시 클라이언트 폴백만으로 동작. 카드 비어 있으면 자체 숨김 — 기존 화면 외형 영향 없음.
+
+다음 (P1 잔여):
+- 백엔드 `/customers/{id}/ai-brief` 스켈레톤 (LLM 요약 + churn_risk)
+- treatment 1급 엔티티 (백엔드 협업)
+- send_message 실제 발송 결선 (백엔드 SMS/알림톡 게이트)
 
 ---
 
@@ -20,6 +40,12 @@
 ---
 
 ## 🔵 Phase 9 진행 현황
+
+### LAST CHECKPOINT — 2026-05-16 18:45
+- 프론트 연준 테스트: 로컬 `main` 과 GitHub `origin/main` 동일 (`3742715`).
+- 프론트 운영: GitHub `frontend/main` 은 로컬보다 7개 새 커밋이 있고, 로컬은 운영보다 164개 앞서 있어 서로 섞임. 바로 덮어쓰기 금지.
+- 백엔드 스테이징: 로컬 `main` 과 GitHub `test/main` 동일 (`f1fbaac`).
+- 백엔드 운영: GitHub `origin/main` 은 스테이징보다 61개 뒤처짐.
 
 ### Phase 1: 서버 연결 불안정 수정 ✅ 완료 (2026-05-06)
 - `app-core.js`: RETRY_STATUSES에 500 추가, MAX_RETRIES 3회, BACKOFF_MS [500,1500,4000]

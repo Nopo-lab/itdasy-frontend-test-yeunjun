@@ -110,6 +110,13 @@
     return null;
   }
 
+  // 추천 chip 전부 (suppress 통과한 것만, urgency 내림차순). AI 브리핑 같은 곳에서 N개 표시용.
+  function _pickAll(c) {
+    const cid = c && c.id;
+    if (!cid) return [];
+    return _candidates(c).filter(ch => !_isSuppressed(ch.kind, cid));
+  }
+
   function _renderHTML(chip, cid) {
     if (!chip) return '';
     const k = _esc(chip.kind);
@@ -186,10 +193,15 @@
 
   window.CustomerChips = {
     pick: _pick,
+    pickAll: _pickAll,
     renderHTML: function (c) {
       const chip = _pick(c);
       if (!chip) return '';
       return _renderHTML(chip, c.id);
+    },
+    renderTopN: function (c, n) {
+      const list = _pickAll(c).slice(0, Math.max(1, +n || 3));
+      return list.map(ch => _renderHTML(ch, c.id)).join('');
     },
     dismiss: _dismiss,
     markShown: _markShown,
