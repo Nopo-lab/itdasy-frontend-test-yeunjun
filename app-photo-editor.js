@@ -13,9 +13,10 @@
 
   const TABS = [
     { id: 'auto', label: '자동' }, { id: 'tune', label: '보정' },
-    { id: 'beauty', label: '뷰티' }, { id: 'bg', label: '누끼·배경' },
-    { id: 'template', label: '템플릿' }, { id: 'text', label: '텍스트' },
-    { id: 'brand', label: '브랜드' }, { id: 'export', label: '내보내기' },
+    { id: 'beauty', label: '뷰티' }, { id: 'brush', label: '부분 보정' },
+    { id: 'bg', label: '누끼·배경' }, { id: 'template', label: '템플릿' },
+    { id: 'text', label: '텍스트' }, { id: 'brand', label: '브랜드' },
+    { id: 'export', label: '내보내기' },
   ];
 
   let _state = null;                  // 합성 상태 (단일 세션)
@@ -120,9 +121,12 @@
       if (tab) { _state.activeTab = tab; _renderTabs(); _renderPanel(); }
     });
     const cv = sheet.querySelector('#peCanvas');
-    // 롱프레스 = 원본 비교
+    // 롱프레스 = 원본 비교 — [v185] brush 탭일 땐 비활성화 (brush 의 drag 와 충돌)
     let t = null;
-    const start = () => { t = setTimeout(() => { _state.showOriginal = true; _redraw(); }, 250); };
+    const start = () => {
+      if (_state && _state.activeTab === 'brush') return;
+      t = setTimeout(() => { _state.showOriginal = true; _redraw(); }, 250);
+    };
     const end   = () => { if (t) clearTimeout(t); if (_state && _state.showOriginal) { _state.showOriginal = false; _redraw(); } };
     cv.addEventListener('mousedown', start);  cv.addEventListener('touchstart', start, { passive: true });
     cv.addEventListener('mouseup', end);      cv.addEventListener('mouseleave', end);    cv.addEventListener('touchend', end);
@@ -673,6 +677,9 @@
     const sheet = document.getElementById('photoEditorSheet');
     if (sheet) sheet.style.display = 'none';
     document.body.style.overflow = '';
+    // [v185] brush 마스크 canvas 정리
+    try { if (window.PhotoEditor && typeof window.PhotoEditor._brushCleanup === 'function') window.PhotoEditor._brushCleanup(); }
+    catch (_e) { void _e; }
     _state = null;
     if (!fromHistory && _historyPushed) { _historyPushed = false; try { history.back(); } catch (_e) { void _e; } }
   }
