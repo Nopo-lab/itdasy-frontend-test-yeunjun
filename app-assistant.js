@@ -1884,12 +1884,15 @@
         const ratio = msg.photo_result.ratio || '4:5';
         if (actId === 'instagram') {
           if (typeof window.openInstagramPreview === 'function') {
-            // [v179] 캡션 prefill 재사용 (직전 _runChatAutoEdit 에서 저장됨)
+            // [v181] CaptionPrefill 모듈에서 가져옴 (직전 _generateChatCaption 결과)
+            let cap = '';
             try {
-              let cap = '';
-              try { cap = localStorage.getItem('caption_prefill') || ''; } catch (_eC) { void _eC; }
-              window.openInstagramPreview({ src: dataUrl, ratio, caption: cap, enableUpload: true });
-            } catch (_e) { void _e; }
+              if (window.CaptionPrefill && typeof window.CaptionPrefill.get === 'function') {
+                cap = window.CaptionPrefill.get() || '';
+              }
+            } catch (_eC) { void _eC; }
+            try { window.openInstagramPreview({ src: dataUrl, ratio, caption: cap, enableUpload: true }); }
+            catch (_e) { void _e; }
           }
         } else if (actId === 'editor') {
           if (window.PhotoEditor && typeof window.PhotoEditor.open === 'function') {
@@ -2949,19 +2952,28 @@
     };
     _renderHistory();
 
-    // [v179 2026-05-18] 메시지에서 시술 정보 추출 → 캡션 풍부하게 생성.
-    //   예: "18인치 옴브레 김서연 고객이야" → 길이 18인치, 스타일 옴브레, 고객 김서연.
+    // [v181 2026-05-18] 인스타 분기 — 기존 백엔드 캡션 시스템 활용.
+    //   v179 의 정규식 _buildAutoCaption 제거. POST /persona/generate 호출 →
+    //   페르소나 학습된 톤 + data.hashtags 사용. CaptionPrefill 모듈로 prefill 저장.
     if (intent.instagram) {
-      const caption = _buildAutoCaption(opts.question || '', preset, opts.customerCtx);
-      try { localStorage.setItem('caption_prefill', caption); } catch (_e) { void _e; }
+      const fullCaption = await _generateChatCaption({
+        preset,
+        question: opts.question,
+        customerCtx: opts.customerCtx,
+      });
+      try {
+        if (fullCaption && window.CaptionPrefill && typeof window.CaptionPrefill.set === 'function') {
+          window.CaptionPrefill.set(fullCaption);
+        }
+      } catch (_e) { void _e; }
       setTimeout(() => {
         if (typeof window.openInstagramPreview === 'function') {
           try {
             window.openInstagramPreview({
               src: result.dataUrl,
               ratio: result.ratio,
-              caption,                 // [v179] 캡션 prefill 직접 전달
-              enableUpload: true,      // [v179] 올리기 버튼 노출
+              caption: fullCaption,
+              enableUpload: true,
             });
           } catch (_e2) { void _e2; }
         }
@@ -2970,50 +2982,59 @@
     return true;
   }
 
-  // [v179 2026-05-18] 메시지 파싱 → 인스타 캡션 자동 생성.
-  // 길이(N인치/cm), 스타일 키워드, 고객명, 업종 해시태그를 조합.
-  // 정규식 기반 — LLM 호출 비용 0. 추후 백엔드 caption API 로 교체 시 fallback.
-  function _buildAutoCaption(question, preset, customerCtx) {
-    const q = String(question || '');
-    // 시술 길이 (cm·인치·mm)
-    const lenMatch = q.match(/(\d{1,3})\s*(인치|cm|mm|센티|밀리)/);
-    const length = lenMatch ? lenMatch[1] + lenMatch[2].replace('센티', 'cm').replace('밀리', 'mm') : '';
-    // 시술 스타일 — 업종별 키워드 모음
-    const STYLE_KEYWORDS = {
-      hair: ['옴브레','발레아쥬','하이라이트','로우라이트','뿌리염색','펌','매직','매직스트레이트','클리닉','케라틴','다운펌','셋팅펌','C컬','S컬','히피펌','레이어드','단발','커트','보브','롱웨이브'],
-      lash: ['글루이','이지팬','속눈썹펌','속눈썹연장','네추럴','볼륨','3D','5D','J컬','C컬','D컬','L컬','M컬','메가볼륨'],
-      nail: ['젤네일','연장','그라데이션','매트','글리터','프렌치','옴브레네일','시럽','마블','체크','아트','젤제거','케어'],
-      wax: ['브라질리언','하이바이','로우바이','얼굴','풀바디','다리','팔','겨드랑이','등','반영구','눈썹문신','입술'],
-      shop: [],
-    };
-    const keywords = (STYLE_KEYWORDS[preset] || []).concat(STYLE_KEYWORDS.shop);
-    const foundStyles = keywords.filter(k => q.includes(k));
-    // 고객명 (CustomerCache 매칭 OR 메시지에서 "고객" 앞 단어)
-    let custName = customerCtx && customerCtx.name ? customerCtx.name : '';
-    if (!custName) {
-      const cm = q.match(/([가-힣]{2,4})\s*(고객님|고객|님)/);
-      if (cm) custName = cm[1];
+  // [v181 2026-05-18] 챗봇에서 백엔드 /persona/generate 호출.
+  //   페르소나 학습된 말투 + SHOP 별 해시태그 백엔드 응답 사용.
+  //   실패 시 빈 문자열 — openInstagramPreview 가 placeholder 보여줌.
+  async function _generateChatCaption(opts) {
+    const SHOP_CAT_MAP = { hair: 'hair', lash: 'lash', nail: 'nail', wax: 'wax', shop: 'extension' };
+    const category = SHOP_CAT_MAP[opts.preset] || 'extension';
+    let shopType = '';
+    try { shopType = localStorage.getItem('shop_type') || ''; } catch (_e) { void _e; }
+
+    // photo_context — 사장님 메시지 + 고객 정보 + 업종 prefix
+    const parts = [];
+    if (shopType) parts.push(shopType + ' 시술.');
+    const q = (opts.question || '').trim();
+    if (q) parts.push(q + '.');
+    if (opts.customerCtx && opts.customerCtx.name) {
+      parts.push(opts.customerCtx.name + ' 손님께서 좋아하셨음.');
+    } else {
+      parts.push('손님께서 좋아하셨음.');
     }
+    const photo_context = parts.join(' ');
 
-    const presetTagMap = { hair: '헤어', lash: '속눈썹연장', nail: '네일', wax: '왁싱', shop: '뷰티샵' };
-    const presetTag = presetTagMap[preset] || '뷰티';
-
-    // 첫 줄: 제목 (길이 + 스타일)
-    const titleParts = [length, foundStyles[0], presetTag].filter(Boolean);
-    const title = titleParts.length ? titleParts.join(' ') + ' 시술 결과 ✨' : presetTag + ' 시술 결과 ✨';
-    // 둘째 줄: 고객
-    const greeting = custName ? custName + '님 너무 잘 어울리셨어요 💕' : '오늘도 예쁘게 완성!';
-    // 해시태그
-    const tags = new Set(['#' + presetTag, '#잇데이스튜디오', '#뷰티샵', '#시술후기']);
-    foundStyles.forEach(s => tags.add('#' + s));
-    if (length) tags.add('#' + length);
-    // 샵 이름 해시태그 (있으면)
     try {
-      const sn = (localStorage.getItem('shop_name') || '').trim();
-      if (sn) tags.add('#' + sn.replace(/\s+/g, ''));
-    } catch (_e) { void _e; }
-
-    return [title, greeting, Array.from(tags).join(' ')].join('\n\n');
+      const headers = window.authHeader ? Object.assign({}, window.authHeader()) : {};
+      headers['Content-Type'] = 'application/json';
+      headers['ngrok-skip-browser-warning'] = 'true';
+      const apiBase = window.API || '';
+      const res = await fetch(apiBase + '/persona/generate', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          category,
+          photo_context,
+          length_tier: 'medium',
+          tone_override: 'normal',
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        console.warn('[chat-caption] /persona/generate 실패:', res.status, data);
+        return '';
+      }
+      const caption = (data.caption || '').trim();
+      const tagsArr = Array.isArray(data.hashtags) ? data.hashtags : [];
+      const tags = tagsArr
+        .map(t => String(t || '').trim().replace(/^#+/, ''))
+        .filter(Boolean)
+        .map(t => '#' + t)
+        .join(' ');
+      return caption + (tags ? '\n\n' + tags : '');
+    } catch (e) {
+      console.warn('[chat-caption] 네트워크 실패:', e);
+      return '';
+    }
   }
 
   // [v178 2026-05-18] 펜딩 사진 헬퍼 ─ 드래프트 첨부 UI

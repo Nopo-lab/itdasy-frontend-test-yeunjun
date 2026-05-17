@@ -675,10 +675,14 @@ function openInstagramPreview(opts) {
   opts = opts || {};
   const meta = _resolveIgPreviewRatio(opts.ratio);
   const src  = opts.src || '';
-  // [v179 2026-05-18] caption prefill — opts.caption 우선, 없으면 localStorage 폴백
+  // [v181 2026-05-18] caption prefill — opts.caption 우선, 없으면 CaptionPrefill 모듈에서 가져옴
   let captionPrefill = opts.caption || '';
   if (!captionPrefill) {
-    try { captionPrefill = localStorage.getItem('caption_prefill') || ''; } catch (_e) { void _e; }
+    try {
+      if (window.CaptionPrefill && typeof window.CaptionPrefill.get === 'function') {
+        captionPrefill = window.CaptionPrefill.get() || '';
+      }
+    } catch (_e) { void _e; }
   }
   const enableUpload = !!opts.enableUpload;
 
@@ -759,34 +763,60 @@ function openInstagramPreview(opts) {
   if (upBtn) {
     upBtn.onclick = async () => {
       const captionEl = pop.querySelector('#_igPreviewCaption');
-      const finalCaption = captionEl ? captionEl.value : '';
+      const finalCaption = captionEl ? captionEl.value.trim() : '';
       const dataUrl = upBtn.dataset.igpvSrc || src;
+
+      // [v181] Meta 심사 대응 — 발행 전 명시적 사용자 확인 (app-gallery-write.js 와 동일)
+      const confirmMsg = '정말 인스타 피드에 올릴까요?\n발행 후엔 바로 공개돼요.';
+      let confirmed = false;
       try {
-        // dataURL → Blob → File (navigator.share files 용)
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
-        const file = new File([blob], 'itdasy-' + Date.now() + '.jpg', { type: blob.type || 'image/jpeg' });
-        // 캡션 미리 클립보드에 — Web Share 가 text 미지원이거나 인스타가 캡션 무시할 때 사장님이 붙여넣기 가능.
-        try { await navigator.clipboard.writeText(finalCaption); } catch (_e) { void _e; }
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], text: finalCaption, title: '잇데이 시술 사진' });
-          if (window.showToast) window.showToast('인스타 앱에서 새 글 → 사진 골라서 캡션 붙여넣기');
-          pop.style.display = 'none';
-          return;
+        if (typeof window.nativeConfirm === 'function') {
+          confirmed = await window.nativeConfirm('인스타 발행', confirmMsg);
+        } else {
+          confirmed = window.confirm(confirmMsg);
         }
-        // 폴백: 사진 다운로드 + 캡션은 이미 클립보드 + 인스타 universal link
-        const a = document.createElement('a');
-        a.href = dataUrl;
-        a.download = file.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        if (window.showToast) window.showToast('사진 저장 + 캡션 복사 완료. 인스타 앱에서 새 글 → 붙여넣기');
-        // 모바일이면 인스타 새 글 화면 열기 시도 (universal link)
-        try { window.location.href = 'instagram://library'; } catch (_e) { void _e; }
+      } catch (_) { confirmed = window.confirm(confirmMsg); }
+      if (!confirmed) return;
+
+      const originalLabel = upBtn.textContent;
+      upBtn.disabled = true;
+      upBtn.textContent = '올리는 중…';
+
+      try {
+        // [v181] 진짜 인스타 발행 — POST /instagram/publish-file (app-gallery-write.js doPublishFromCaption 동일 패턴)
+        const blobRes = await fetch(dataUrl);
+        const blob = await blobRes.blob();
+        const fd = new FormData();
+        fd.append('image', blob, 'photo.jpg');
+        fd.append('caption', finalCaption);
+        const headers = window.authHeader ? Object.assign({}, window.authHeader()) : {};
+        headers['ngrok-skip-browser-warning'] = 'true';
+        const apiBase = window.API || '';
+        const res = await fetch(apiBase + '/instagram/publish-file', {
+          method: 'POST',
+          headers,
+          body: fd,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+
+        if (window.showToast) window.showToast('인스타 피드에 올라갔어요 🎉');
+        if (typeof window.createConfetti === 'function') {
+          for (let i = 0; i < 20; i++) setTimeout(window.createConfetti, i * 100);
+        }
+        // CaptionPrefill 비움 — 같은 캡션 재사용 방지
+        try {
+          if (window.CaptionPrefill && typeof window.CaptionPrefill.clear === 'function') {
+            window.CaptionPrefill.clear();
+          }
+        } catch (_e) { void _e; }
+        pop.style.display = 'none';
       } catch (e) {
-        console.warn('[ig-preview] 업로드 실패:', e);
-        if (window.showToast) window.showToast('업로드 실패: ' + ((e && e.message) || ''));
+        console.warn('[ig-preview] 인스타 발행 실패:', e);
+        const msg = (e && e.message) || '알 수 없음';
+        if (window.showToast) window.showToast('발행 실패: ' + msg.slice(0, 80));
+        upBtn.disabled = false;
+        upBtn.textContent = originalLabel;
       }
     };
   }
