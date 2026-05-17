@@ -680,7 +680,8 @@ function openInstagramPreview(opts) {
   if (!pop) {
     pop = document.createElement('div');
     pop.id = '_igPreviewPop';
-    pop.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center;';
+    // [v178 2026-05-18] z-index 9000 → 10020. 챗봇(9999)·편집기(10000)·편집기 sub-modal(10010) 위로 모두 덮음.
+    pop.style.cssText = 'position:fixed;inset:0;z-index:10020;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center;';
     pop.onclick = e => { if (e.target === pop) pop.style.display = 'none'; };
     document.body.appendChild(pop);
   }
