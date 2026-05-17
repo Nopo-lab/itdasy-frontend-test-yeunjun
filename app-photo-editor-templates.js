@@ -44,6 +44,22 @@
         const id = btn.dataset.peTpl;
         state.template.id = (id === 'null' || id === '' || id === null) ? null : id;
         if (!state.template.id) state.secondImg = null;
+        // [v184 2026-05-18] B&A 라벨 자동 prefill — 챗봇·고객 컨텍스트에서 시술명 받았으면 활용
+        if (state.template.id === 'ba-h' || state.template.id === 'ba-v') {
+          if (state.template.leftLabel === '전') state.template.leftLabel = 'BEFORE';
+          if (state.template.rightLabel === '후') state.template.rightLabel = 'AFTER';
+        }
+        // 가격표 prefill — 고객 시술 가격이 있으면 자동 채움
+        if (state.template.id === 'price' && !state.template.priceLines) {
+          const svc = state.serviceName || '시술';
+          const priceTxt = state.price ? (state.price / 10000).toFixed(0) + '만원' : '문의';
+          state.template.priceLines = svc + ' | ' + priceTxt;
+        }
+        // 후기 카드 — 고객명 prefill
+        if (state.template.id === 'review' && !state.template.reviewText) {
+          const cust = state.customerName ? state.customerName + '님' : '손님';
+          state.template.reviewText = '"' + cust + '께서 정성껏 해주셔서 만족스러웠어요. 다음에 또 방문할게요."';
+        }
         renderPanel(); redraw(); pushHistory();
       });
     });

@@ -61,7 +61,8 @@
       adjust: { brightness: 100, saturate: 100, sharpness: 0, temperature: 0 },
       beauty: { skin: 0, redness: 0, hairShine: 0, nailGloss: 0, lashSharp: 0, blemish: 0, handSkin: 0, hairColor: 0, hairDetail: 0, eyeShadow: 0 },
       template: { id: null, leftLabel: '전', rightLabel: '후', reviewText: '', priceLines: '' },
-      text: { value: '', x: 0.5, y: 0.92, color: '#ffffff' },
+      // [v184 2026-05-18] 텍스트 강화 — 폰트 4종 + 색상 4종 + 배경 박스 + 사이즈
+      text: { value: '', x: 0.5, y: 0.92, color: '#ffffff', font: 'sans', size: 6, bg: false },
       watermark: { value: '', position: 'br', opacity: 0.85 },
       showOriginal: false, history: [], historyCursor: -1,
     };
@@ -164,6 +165,11 @@
     const shopLabel = _shopPresetLabel();
     const cur = _state.autoIntensity || 'standard';
     const intChip = (k, label) => `<button type="button" class="pe-chip-btn${cur===k?' on':''}" data-pe-auto-intensity="${k}">${label}</button>`;
+    // [v184] 즐겨찾기 프리셋 5슬롯
+    const favs = _loadFavorites();
+    const favHtml = favs.length
+      ? favs.map((f, i) => `<button type="button" class="pe-chip-btn" data-pe-fav-apply="${i}" title="${_esc(f.name)}">★ ${_esc(f.name)}</button>`).join('')
+      : '<div class="pe-hint" style="margin:0;">아직 저장된 프리셋이 없어요. 슬라이더 조정 후 ↓ 버튼으로 저장.</div>';
     return `<div class="pe-panel-row"><button type="button" class="pe-action-btn" data-pe-auto="all">⚡ 한 번에 자동 보정</button></div>
       <div class="pe-panel-row"><button type="button" class="pe-action-btn" data-pe-auto="shop">⚡ 우리 샵 업종 자동 (현재: ${_esc(shopLabel)})</button></div>
       <div class="pe-field-label" style="margin-top:10px;">강도</div>
@@ -172,7 +178,48 @@
       <div class="pe-panel-row pe-panel-grid-2">${_CHIP('auto','hair','헤어·붙임머리')}${_CHIP('auto','lash','속눈썹')}${_CHIP('auto','nail','네일')}${_CHIP('auto','wax','왁싱·피부')}</div>
       <div class="pe-field-label" style="margin-top:10px;">분위기</div>
       <div class="pe-panel-row pe-panel-grid-4">${_CHIP('auto','bright','밝게')}${_CHIP('auto','vivid','선명')}${_CHIP('auto','warm','따뜻')}${_CHIP('auto','cool','차갑게')}</div>
-      <div class="pe-hint">표준이 기본. 자연은 0.7배, 강조는 1.4배. 슬라이더 max 보호 적용.</div>`;
+      <div class="pe-field-label" style="margin-top:14px;">★ 내 즐겨찾기 프리셋 (${favs.length}/5)</div>
+      <div class="pe-panel-row pe-panel-grid-2" style="flex-wrap:wrap;">${favHtml}</div>
+      <div class="pe-panel-row" style="margin-top:6px;"><button type="button" class="pe-chip-btn" data-pe-fav-save>현재 슬라이더 → 프리셋 저장</button></div>
+      <div class="pe-hint">표준이 기본. 자연은 0.7배, 강조는 1.4배.</div>`;
+  }
+
+  // [v184 2026-05-18] 즐겨찾기 프리셋 — localStorage 5슬롯.
+  //   각 슬롯: { name, adjust, beauty }
+  const _FAV_KEY = 'itdasy_pe_favorites';
+  function _loadFavorites() {
+    try { return JSON.parse(localStorage.getItem(_FAV_KEY) || '[]') || []; }
+    catch (_e) { return []; }
+  }
+  function _saveFavoritesList(list) {
+    try { localStorage.setItem(_FAV_KEY, JSON.stringify(list.slice(0, 5))); }
+    catch (_e) { void _e; }
+  }
+  function _saveCurrentAsFavorite() {
+    const list = _loadFavorites();
+    if (list.length >= 5) {
+      _toast('5개 한도. 기존 프리셋 길게 눌러 삭제 후 다시 저장');
+      return;
+    }
+    const name = (typeof window.prompt === 'function' ? window.prompt('프리셋 이름 (예: 헤어 진하게)', '내 프리셋 ' + (list.length + 1)) : '내 프리셋 ' + (list.length + 1));
+    if (!name) return;
+    list.push({
+      name: String(name).slice(0, 20),
+      adjust: JSON.parse(JSON.stringify(_state.adjust)),
+      beauty: JSON.parse(JSON.stringify(_state.beauty)),
+    });
+    _saveFavoritesList(list);
+    _renderPanel();
+    _toast('프리셋 저장: ' + name);
+  }
+  function _applyFavorite(idx) {
+    const list = _loadFavorites();
+    const f = list[idx];
+    if (!f) return _toast('프리셋을 찾지 못했어요');
+    Object.assign(_state.adjust, f.adjust);
+    Object.assign(_state.beauty, f.beauty);
+    _redraw(); _pushHistory();
+    _toast('적용: ' + f.name);
   }
   function _panelTune() {
     const a = _state.adjust;
@@ -185,10 +232,23 @@
   }
   function _panelText() {
     const t = _state.text;
+    const FONTS = [
+      { id: 'sans', label: 'Sans' },
+      { id: 'serif', label: 'Serif' },
+      { id: 'round', label: 'Round' },
+      { id: 'hand', label: 'Hand' },
+    ];
+    const COLORS = ['#ffffff', '#1a1a20', '#F18091', '#FFC83D'];
+    const COLOR_LABEL = { '#ffffff': '흰', '#1a1a20': '검', '#F18091': '핑크', '#FFC83D': '노랑' };
     return `<label class="pe-field"><span>텍스트</span><input type="text" class="pe-input" data-pe-text-val placeholder="시술명·이벤트 문구 등" value="${_esc(t.value)}" maxlength="40" /></label>
       <div class="pe-panel-row pe-panel-grid-2" style="margin-top:8px;">${_CHIP('text-prefill','service','시술명 자동')}${_CHIP('text-prefill','price','가격 자동')}</div>
+      <div class="pe-field-label" style="margin-top:10px;">폰트</div>
+      <div class="pe-panel-row pe-panel-grid-4">${FONTS.map(f => `<button type="button" class="pe-chip-btn${t.font===f.id?' on':''}" data-pe-text-font="${f.id}">${f.label}</button>`).join('')}</div>
+      <div class="pe-field-label" style="margin-top:10px;">색상</div>
+      <div class="pe-panel-row pe-panel-grid-4">${COLORS.map(c => `<button type="button" class="pe-chip-btn${t.color===c?' on':''}" data-pe-text-color="${c}" style="background:${c};color:${c==='#ffffff'||c==='#FFC83D'?'#222':'#fff'};">${COLOR_LABEL[c]}</button>`).join('')}</div>
+      <label class="pe-slider"><div class="pe-slider-head"><span>크기</span><span class="pe-slider-val">${t.size}</span></div><input type="range" min="3" max="12" value="${t.size}" data-pe-text-size /></label>
       <label class="pe-slider"><div class="pe-slider-head"><span>위치 (위↔아래)</span><span class="pe-slider-val">${Math.round(t.y*100)}</span></div><input type="range" min="5" max="95" value="${Math.round(t.y*100)}" data-pe-text-y /></label>
-      <div class="pe-hint">P1: 폰트 8종 / 색상 / 배경 박스 / 그림자 추가 예정.</div>`;
+      <div class="pe-panel-row" style="margin-top:8px;"><button type="button" class="pe-chip-btn${t.bg?' on':''}" data-pe-text-bg>배경 박스 ${t.bg?'끄기':'켜기'}</button></div>`;
   }
   function _panelBrand() {
     const w = _state.watermark, sym = { tl:'↖', tr:'↗', bl:'↙', br:'↘' };
@@ -241,12 +301,22 @@
   const _BINDERS = {
     auto(panel) {
       _each(panel, '[data-pe-auto]', 'click', e => _applyAuto(e.currentTarget.dataset.peAuto));
-      // [v183] 강도 칩 — 클릭만 하면 다음 업종 자동 적용 시 강도 반영. 즉시 재적용 X.
       _each(panel, '[data-pe-auto-intensity]', 'click', e => {
         _state.autoIntensity = e.currentTarget.dataset.peAutoIntensity;
         _renderPanel();
         _toast('강도: ' + (_state.autoIntensity === 'natural' ? '자연' : _state.autoIntensity === 'strong' ? '강조' : '표준'));
       });
+      // [v184] 즐겨찾기 — 클릭 적용 / 길게 눌러 삭제
+      _each(panel, '[data-pe-fav-apply]', 'click', e => _applyFavorite(+e.currentTarget.dataset.peFavApply));
+      _each(panel, '[data-pe-fav-apply]', 'contextmenu', e => {
+        e.preventDefault();
+        const i = +e.currentTarget.dataset.peFavApply;
+        const list = _loadFavorites();
+        if (typeof window.confirm === 'function' && window.confirm('프리셋 "' + (list[i] && list[i].name) + '" 삭제할까요?')) {
+          list.splice(i, 1); _saveFavoritesList(list); _renderPanel(); _toast('프리셋 삭제');
+        }
+      });
+      _on(panel, '[data-pe-fav-save]', 'click', _saveCurrentAsFavorite);
     },
     tune(panel) {
       _each(panel, '[data-pe-slider]', 'input', (e) => {
@@ -271,6 +341,24 @@
     text(panel) {
       _on(panel, '[data-pe-text-val]', 'input', (e) => { _state.text.value = e.target.value; _redraw(); });
       _on(panel, '[data-pe-text-y]',   'input', (e) => { _state.text.y = +e.target.value / 100; _redraw(); });
+      _on(panel, '[data-pe-text-size]','input', (e) => {
+        _state.text.size = +e.target.value;
+        const out = panel.querySelector('.pe-slider-head .pe-slider-val');  // first one is size
+        if (out) out.textContent = e.target.value;
+        _redraw();
+      });
+      _each(panel, '[data-pe-text-font]', 'click', (e) => {
+        _state.text.font = e.currentTarget.dataset.peTextFont;
+        _renderPanel(); _redraw(); _pushHistory();
+      });
+      _each(panel, '[data-pe-text-color]', 'click', (e) => {
+        _state.text.color = e.currentTarget.dataset.peTextColor;
+        _renderPanel(); _redraw(); _pushHistory();
+      });
+      _on(panel, '[data-pe-text-bg]', 'click', () => {
+        _state.text.bg = !_state.text.bg;
+        _renderPanel(); _redraw(); _pushHistory();
+      });
       _each(panel, '[data-pe-text-prefill]', 'click', (e) => {
         const w = e.currentTarget.dataset.peTextPrefill;
         if (w === 'service') _state.text.value = _state.serviceName || '시술 결과';
@@ -410,14 +498,38 @@
     } catch (_e) { /* CORS·메모리 부족 시 skip */ }
   }
 
+  // [v184 2026-05-18] 텍스트 렌더 — 폰트 4종 + 색상 + 배경 박스 + 사이즈
+  const _FONT_FAM = {
+    sans:  'Pretendard, "Noto Sans KR", sans-serif',
+    serif: 'Georgia, "Noto Serif KR", serif',
+    round: '"Comic Sans MS", "Apple SD Gothic Neo", sans-serif',
+    hand:  '"Brush Script MT", "Nanum Pen Script", cursive',
+  };
   function _drawText(ctx, w, h, t) {
+    if (!t.value) return;
     ctx.save();
-    const fs = Math.round(w * 0.06);
-    ctx.font = `800 ${fs}px Pretendard, "Noto Sans KR", sans-serif`;
+    const sizeK = (t.size || 6) / 100;  // 3~12 → 0.03~0.12
+    const fs = Math.round(w * sizeK);
+    const fam = _FONT_FAM[t.font] || _FONT_FAM.sans;
+    const weight = t.font === 'hand' || t.font === 'serif' ? '700' : '800';
+    ctx.font = `${weight} ${fs}px ${fam}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = Math.round(fs * 0.18);
+    const tx = w * t.x, ty = h * t.y;
+    // 배경 박스
+    if (t.bg) {
+      const m = ctx.measureText(t.value);
+      const padX = Math.round(fs * 0.4), padY = Math.round(fs * 0.25);
+      const bw = Math.min(w * 0.95, m.width + padX * 2);
+      const bh = fs + padY * 2;
+      const isLight = (t.color === '#ffffff' || t.color === '#FFC83D');
+      ctx.fillStyle = isLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.85)';
+      ctx.fillRect(tx - bw / 2, ty - bh / 2, bw, bh);
+    } else {
+      ctx.shadowColor = 'rgba(0,0,0,0.45)';
+      ctx.shadowBlur = Math.round(fs * 0.18);
+    }
     ctx.fillStyle = t.color || '#ffffff';
-    ctx.fillText(t.value, w * t.x, h * t.y, w * 0.9);
+    ctx.fillText(t.value, tx, ty, w * 0.9);
     ctx.restore();
   }
 
