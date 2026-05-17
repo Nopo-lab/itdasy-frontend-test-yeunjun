@@ -41,6 +41,35 @@
 
   // 합성 상태 (단일 세션). 시트 닫으면 비움.
   let _state = null;
+  // 드래그 슬라이더 동안 픽셀 합성 폭주 방지 — 80ms throttle (~12.5fps 갱신, 휴먼 지각 한계 OK).
+  let _redrawScheduled = null;
+  function _scheduleRedraw() {
+    if (_redrawScheduled) return;
+    _redrawScheduled = setTimeout(() => {
+      _redrawScheduled = null;
+      try { _redraw(); } catch (_e) { void _e; }
+    }, 80);
+  }
+  // Android 하드웨어 백 + iOS edge swipe — history.pushState 사용.
+  let _historyPushed = false;
+  function _pushHistoryState() {
+    if (_historyPushed) return;
+    try { history.pushState({ pe: true }, '', location.href); _historyPushed = true; } catch (_e) { void _e; }
+  }
+  function _onPopState() {
+    const sheet = document.getElementById('photoEditorSheet');
+    if (sheet && sheet.style.display !== 'none' && _state) {
+      _historyPushed = false; // pop이 history 소비함
+      _close(true /* fromHistory */);
+    }
+  }
+  window.addEventListener('popstate', _onPopState);
+  // Esc 키
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const sheet = document.getElementById('photoEditorSheet');
+    if (sheet && sheet.style.display !== 'none' && _state) { e.preventDefault(); _close(); }
+  });
 
   function _initState(opts) {
     return {
@@ -89,9 +118,12 @@
     sheet.innerHTML = `
       <div class="pe-root" role="dialog" aria-modal="true" aria-label="사진 편집기">
         <header class="pe-topbar">
-          <button type="button" class="pe-iconbtn" data-pe-act="close" aria-label="닫기">×</button>
+          <button type="button" class="pe-back-btn" data-pe-act="close" aria-label="편집기 닫고 뒤로가기">
+            <span class="pe-back-arrow" aria-hidden="true">‹</span>
+            <span class="pe-back-label">뒤로</span>
+          </button>
           <div class="pe-title">사진 편집기</div>
-          <button type="button" class="pe-iconbtn" data-pe-act="compare" aria-label="원본 비교 (롱탭)">원본</button>
+          <button type="button" class="pe-iconbtn" data-pe-act="compare" aria-label="원본 비교">원본</button>
           <button type="button" class="pe-iconbtn" data-pe-act="undo" aria-label="되돌리기">⤺</button>
           <button type="button" class="pe-btn-primary" data-pe-act="save">저장</button>
         </header>
@@ -338,7 +370,7 @@
           _state.adjust[key] = +inp.value;
           const out = panel.querySelector(`[data-pe-slider-val="${key}"]`);
           if (out) out.textContent = inp.value;
-          _redraw();
+          _scheduleRedraw();
         });
         inp.addEventListener('change', () => _pushHistory());
       });
@@ -352,9 +384,9 @@
           _state.beauty[inp.dataset.peSlider] = +inp.value;
           const out = panel.querySelector(`[data-pe-slider-val="${inp.dataset.peSlider}"]`);
           if (out) out.textContent = inp.value;
+          _scheduleRedraw(); // 드래그 중 80ms throttle로 픽셀 합성
         });
-        // 뷰티는 픽셀 walk라 무거움 — change(손 뗌)에만 합성.
-        inp.addEventListener('change', () => { _redraw(); _pushHistory(); });
+        inp.addEventListener('change', () => _pushHistory());
       });
     } else if (tab === 'template') {
       panel.querySelectorAll('[data-pe-tpl]').forEach(btn => {
@@ -987,13 +1019,19 @@
     _renderPanel();
     _redraw();
     if (opts.src) _loadImage(opts.src);
+    _pushHistoryState(); // Android 하드웨어 백 + iOS edge swipe로 닫히게
   }
 
-  function _close() {
+  function _close(fromHistory) {
     const sheet = document.getElementById('photoEditorSheet');
     if (sheet) sheet.style.display = 'none';
     document.body.style.overflow = '';
     _state = null;
+    // 사용자가 버튼/Esc로 닫은 경우: 우리가 push한 history state를 소비.
+    if (!fromHistory && _historyPushed) {
+      _historyPushed = false;
+      try { history.back(); } catch (_e) { void _e; }
+    }
   }
 
   // AI 비서 액션 진입로: open_photo_editor

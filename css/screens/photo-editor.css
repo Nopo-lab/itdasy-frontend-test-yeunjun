@@ -25,6 +25,24 @@
   flex-shrink: 0;
 }
 .pe-title { flex: 1; font-size: 14px; font-weight: 700; }
+.pe-back-btn {
+  display: flex; align-items: center; gap: 4px;
+  background: rgba(255,255,255,0.10);
+  color: #f7f7f9;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 12px 8px 8px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255,255,255,0.22);
+}
+.pe-back-btn:active { transform: scale(.96); background: rgba(255,255,255,0.16); }
+.pe-back-arrow {
+  font-size: 22px; font-weight: 800;
+  line-height: 1; transform: translateY(-1px);
+}
+.pe-back-label { letter-spacing: 0.2px; }
 .pe-iconbtn {
   background: rgba(255,255,255,0.07);
   color: #f7f7f9;
