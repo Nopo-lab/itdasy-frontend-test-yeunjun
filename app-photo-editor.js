@@ -52,6 +52,10 @@
       originalSrc: opts.src, originalImg: null, secondImg: null,
       shopName: opts.shopName || _readShopName(),
       serviceName: opts.serviceName || '', price: +opts.price || 0,
+      // [v175 2026-05-18] 챗봇 사진+텍스트 shortcut 진입 시 컨텍스트 보존 (다음 라운드에 활용).
+      customerId: opts.customer_id || null,
+      customerName: opts.customer_name || '',
+      autoShop: !!opts.autoShop,
       activeTab: opts.initial_tab || 'auto', ratio: 'original',
       adjust: { brightness: 100, saturate: 100, sharpness: 0, temperature: 0 },
       beauty: { skin: 0, redness: 0, hairShine: 0, nailGloss: 0, lashSharp: 0, blemish: 0, handSkin: 0, hairColor: 0, hairDetail: 0, eyeShadow: 0 },
@@ -148,8 +152,16 @@
   function _slider(label, key, val, min, max, step) {
     return `<label class="pe-slider"><div class="pe-slider-head"><span>${_esc(label)}</span><span class="pe-slider-val" data-pe-slider-val="${key}">${val}</span></div><input type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-pe-slider="${key}" /></label>`;
   }
+  function _shopPresetLabel() {
+    try {
+      const p = window.PhotoEnhance && window.PhotoEnhance.getShopPreset && window.PhotoEnhance.getShopPreset();
+      return (p && p.label) || '일반';
+    } catch (_e) { return '일반'; }
+  }
   function _panelAuto() {
+    const shopLabel = _shopPresetLabel();
     return `<div class="pe-panel-row"><button type="button" class="pe-action-btn" data-pe-auto="all">⚡ 한 번에 자동 보정</button></div>
+      <div class="pe-panel-row"><button type="button" class="pe-action-btn" data-pe-auto="shop">⚡ 우리 샵 업종 자동 (현재: ${_esc(shopLabel)})</button></div>
       <div class="pe-panel-row pe-panel-grid-2">${_CHIP('auto','bright','밝게')}${_CHIP('auto','vivid','선명')}${_CHIP('auto','warm','따뜻하게')}${_CHIP('auto','cool','차갑게')}</div>
       <div class="pe-hint">자연 보정 위주. 시술 결과가 왜곡되지 않게 보수적 강도로 들어갑니다.</div>`;
   }
@@ -278,7 +290,17 @@
   }
 
   // ── 자동 보정 프리셋 ─────────────────────────────────
+  function _applyAutoShop() {
+    const preset = (window.PhotoEnhance && window.PhotoEnhance.getShopPreset)
+      ? window.PhotoEnhance.getShopPreset() : null;
+    if (!preset) return _toast('업종 설정이 없어요');
+    Object.assign(_state.adjust, preset.adjust);
+    Object.assign(_state.beauty, preset.beauty);
+    _redraw(); _pushHistory();
+    _toast(preset.label + ' 자동 보정 적용');
+  }
   function _applyAuto(kind) {
+    if (kind === 'shop')  return _applyAutoShop();
     if (kind === 'all')   _state.adjust = { brightness: 105, saturate: 110, sharpness: 30, temperature: 5 };
     if (kind === 'bright')_state.adjust = { ..._state.adjust, brightness: 115 };
     if (kind === 'vivid') _state.adjust = { ..._state.adjust, saturate: 120, sharpness: 40 };

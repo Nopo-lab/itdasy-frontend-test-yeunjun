@@ -2756,6 +2756,62 @@
       photoUrls = photoUrls.filter(Boolean);
     } catch (_e) { photoUrls = []; }
 
+    // [v175 2026-05-18] 사진+텍스트 phrase shortcut — 백엔드 OCR 우회.
+    // 빈 텍스트 + 사진만 → 기존 OCR 흐름 유지 (회귀 0). question 있고 매칭될 때만 분기.
+    try {
+      const ql = (question || '').toLowerCase();
+      const photoUrl = photoUrls[0] || '';
+      if (photoUrl && ql) {
+        let initialTab = null;
+        if (/(편집|보정|예쁘게|꾸미)/.test(ql)) initialTab = 'auto';
+        else if (/(누끼|배경)/.test(ql)) initialTab = 'bg';
+        else if (/(전후|before|애프터|b&a|비포)/i.test(ql)) initialTab = 'template';
+        else if (/(인스타|올려|게시)/.test(ql)) initialTab = 'export';
+        else if (/(캡션|글|caption)/.test(ql)) initialTab = 'export';
+        let forcedShop = null;
+        if (/(헤어|볼륨|모발|hair)/.test(ql)) forcedShop = '헤어';
+        else if (/(네일|nail)/.test(ql)) forcedShop = '네일';
+        else if (/(속눈썹|lash)/.test(ql)) forcedShop = '속눈썹';
+        else if (/(왁싱|피부|반영구|skin|tattoo)/i.test(ql)) forcedShop = '왁싱';
+        const isReels = /(릴스|reels|cover|커버)/i.test(ql);
+        let custCtx = null;
+        try {
+          if (window.CustomerCache && typeof window.CustomerCache.get === 'function') {
+            const list = window.CustomerCache.get() || [];
+            const hit = list.find(c => c && c.name && ql.includes(String(c.name).toLowerCase()));
+            if (hit) custCtx = { id: hit.id, name: hit.name };
+          }
+        } catch (_eC) { void _eC; }
+        if (initialTab || forcedShop || isReels) {
+          if (forcedShop) {
+            try { localStorage.setItem('shop_type_override', forcedShop); } catch (_eS) { void _eS; }
+          }
+          if (isReels && window.ReelsCover && typeof window.ReelsCover.open === 'function') {
+            window.ReelsCover.open({
+              photo_url: photoUrl,
+              customer_id: custCtx ? custCtx.id : undefined,
+              customer_name: custCtx ? custCtx.name : undefined,
+            });
+          } else if (window.PhotoEditor && typeof window.PhotoEditor.open === 'function') {
+            window.PhotoEditor.open({
+              src: photoUrl,
+              initial_tab: initialTab || 'auto',
+              customer_id: custCtx ? custCtx.id : undefined,
+              serviceName: '',
+              autoShop: !!forcedShop,
+            });
+          }
+          _history.push({ role: 'user', text: question, thumb: photoUrl, photos: photoUrls });
+          const tabLabel = ({ auto: '자동', tune: '보정', bg: '누끼·배경', template: '템플릿', export: '내보내기' })[initialTab] || (isReels ? '릴스 커버' : '자동');
+          _history.push({ role: 'assistant', text: '편집기를 ' + tabLabel + ' 탭으로 열었어요. 마지막에 인스타 미리보기까지 한 번에 가능합니다.' });
+          _renderHistory();
+          _sendInFlight = false;
+          if (window.hapticLight) window.hapticLight();
+          return; // 백엔드 호출 우회
+        }
+      }
+    } catch (_ePS) { void _ePS; }
+
     // 플레이스홀더 메시지
     const baseText = question || (N > 1 ? ('사진 ' + N + '장 업로드 중…') : '사진 업로드 중…');
     const placeholderText = (N > 1 && question) ? (question + ' (외 ' + (N - 1) + '장 함께)') : baseText;

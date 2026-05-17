@@ -46,6 +46,10 @@
     add_text_overlay:        { icon: 'ic-pen-line',      label: '텍스트 추가',  color: '#0EA5E9' },
     add_watermark:           { icon: 'ic-badge',         label: '워터마크',     color: '#0EA5E9' },
     export_marketing_image:  { icon: 'ic-upload',        label: '편집본 저장',  color: '#15803D' },
+    // P0-CHATBOT-SHORTCUT (v175, 2026-05-18) — 챗봇 사진+텍스트 즉시 진입 트리오
+    attach_photo_to_customer:        { icon: 'ic-image-plus', label: '고객 사진 첨부',     color: '#15803D' },
+    analyze_photo_and_recommend_edit:{ icon: 'ic-sparkles',   label: '사진 분석',          color: '#A78BFA' },
+    prepare_instagram_post_bundle:   { icon: 'ic-upload',     label: '인스타 게시 묶음',   color: '#DC3545' },
   };
 
   // ──────────── invalidate 매핑 (실행 후 화면 즉시 반영) ────────────
@@ -68,6 +72,10 @@
     add_text_overlay:        [],
     add_watermark:           [],
     export_marketing_image:  ['portfolio'],
+    // P0-CHATBOT-SHORTCUT (v175)
+    attach_photo_to_customer:         ['treatments', 'portfolio', 'customer', 'customers'],
+    analyze_photo_and_recommend_edit: [],
+    prepare_instagram_post_bundle:    ['portfolio', 'instagram_feed', 'content_calendar'],
   };
 
   // app-assistant.js는 'itdasy:data-changed'만 발사함. 화면별로 더 세분화된 구독자
@@ -84,6 +92,10 @@
     open_photo_editor:       'itdasy:editor:opened',
     apply_photo_preset:      'itdasy:gallery:photo-replaced',
     export_marketing_image:  'itdasy:gallery:photo-replaced',
+    // P0-CHATBOT-SHORTCUT (v175)
+    attach_photo_to_customer:         'itdasy:treatments:changed',
+    analyze_photo_and_recommend_edit: 'itdasy:editor:opened',
+    prepare_instagram_post_bundle:    'itdasy:instagram:published',
   };
 
   function _register() {

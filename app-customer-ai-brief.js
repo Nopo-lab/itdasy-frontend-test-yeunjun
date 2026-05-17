@@ -1,11 +1,18 @@
 /* 고객 AI 브리핑 카드 — P1-5
-   2026-05-17 v167 · 뷰티업GPT 초고도화
+   2026-05-18 v168 · 캐시 + dedupe + 수동 재분석 (AI 과호출 차단)
    설계 문서: ~/.claude/plans/zesty-snacking-clarke.md §7
 
    원장님이 고객 상세를 열거나 예약 직전에 "이 분 어떤 분이었지" 1초 회상을 돕는 카드.
 
+   호출 전략 (비용 방어):
+     1) sessionStorage 캐시 즉시 표시 (TTL 30분)
+     2) sourceFingerprint 일치하면 네트워크 호출 0
+     3) fingerprint 다르면 stale 표시 + 백그라운드 fetch (자동 X)
+     4) "다시 분석" 버튼 → force=1 강제 재호출 (LLM 재생성)
+     5) 같은 customer_id 동시 호출 → in-flight Promise 공유
+
    API 우선순위:
-     1) GET /customers/{id}/ai-brief (백엔드 신규, P1 예정) — LLM 요약 + 예측 포함
+     1) GET /customers/{id}/ai-brief — LLM 요약 + 예측 포함
      2) 없으면 호출자가 가진 dashboard 페이로드(d)로 클라이언트 컴퓨트
      3) 그것도 없으면 GET /customers/{id}/dashboard 별도 호출 후 컴퓨트
 
@@ -16,10 +23,52 @@
      • 한 줄 요약 (마지막 방문일 + 평균 주기 + 최근 시술 + 가격)
      • 예측 (다음 방문 예상 · 리터치 권장일)
      • 메모 (있을 때만)
-     • CustomerChips 상위 3개 */
+     • CustomerChips 상위 3개
+     • 우측 상단 ⟳ 수동 재분석 버튼 (stale 시 "정보 업데이트됨" 라벨 동반) */
 (function () {
   'use strict';
 
+  // ───────── 캐시 / dedupe 인프라 ─────────
+  const TTL = 30 * 60 * 1000; // 30분
+  const SS_KEY = (id) => 'aibrief_v1::' + id;
+  const _inFlight = new Map();
+
+  function _cacheGet(id) {
+    try {
+      if (typeof sessionStorage === 'undefined') return null;
+      const raw = sessionStorage.getItem(SS_KEY(id));
+      if (!raw) return null;
+      const o = JSON.parse(raw);
+      if (!o || (Date.now() - (+o.cachedAt || 0)) > TTL) return null;
+      return o;
+    } catch (_e) { return null; }
+  }
+
+  function _cacheSet(id, payload, fp) {
+    try {
+      if (typeof sessionStorage === 'undefined') return;
+      sessionStorage.setItem(SS_KEY(id), JSON.stringify({
+        payload: payload,
+        sourceFingerprint: fp,
+        cachedAt: Date.now(),
+      }));
+    } catch (_e) { void _e; }
+  }
+
+  // dashboard 페이로드로 sourceFingerprint 계산 — 백엔드 변경 없이 정합성 추적.
+  function _fp(d) {
+    const c = (d && d.customer) || {};
+    const lastRev = ((d && d.recent_revenues) || [])[0] || {};
+    const lastBook = ((d && d.recent_bookings) || [])[0] || {};
+    return [
+      c.updated_at || '',
+      lastRev.recorded_at || '',
+      lastBook.starts_at || '',
+      ((c.memo || '') + '').length,
+    ].join('|');
+  }
+
+  // ───────── 유틸 ─────────
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, ch =>
       ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
@@ -118,7 +167,9 @@
     return out.join(' ');
   }
 
-  function _renderCard(b, customer) {
+  // 카드 렌더 — stale 표시·재분석 버튼은 head 우측에 통합.
+  function _renderCard(b, customer, opts) {
+    opts = opts || {};
     const summary = _renderSummaryLine(b);
     const prediction = _renderPredictionLine(b);
     const memo = b.memo ? '<div class="cd-ai-brief__memo">' + _esc(b.memo.slice(0, 100)) + '</div>' : '';
@@ -126,11 +177,28 @@
       ? window.CustomerChips.renderTopN(customer, 3) : '';
     const chipsBlock = chips ? '<div class="cd-ai-brief__chips">' + chips + '</div>' : '';
 
+    const staleClass = opts.stale ? ' cd-ai-brief--stale' : '';
+    const staleBadge = opts.stale
+      ? '<span class="cd-ai-brief__stale" title="고객 정보가 바뀌었어요">정보 업데이트됨</span>'
+      : '';
+    const spinning = opts.refreshing ? ' cd-ai-brief__refresh--spin' : '';
+    const refreshBtn = ''
+      + '<button type="button" class="cd-ai-brief__refresh' + spinning + '" '
+      + 'data-ai-brief-refresh="1" aria-label="다시 분석" title="다시 분석">'
+      + '<svg width="13" height="13" aria-hidden="true"><use href="#ic-refresh-cw"/></svg>'
+      + '</button>';
+
     return ''
-      + '<section class="cd-ai-brief">'
+      + '<section class="cd-ai-brief' + staleClass + '">'
       + '  <div class="cd-ai-brief__head">'
-      + '    <svg width="14" height="14" aria-hidden="true" style="vertical-align:-2px;"><use href="#ic-sparkles"/></svg>'
-      + '    <strong>AI 브리핑</strong>'
+      + '    <span class="cd-ai-brief__head-left">'
+      + '      <svg width="14" height="14" aria-hidden="true" style="vertical-align:-2px;"><use href="#ic-sparkles"/></svg>'
+      + '      <strong>AI 브리핑</strong>'
+      + '    </span>'
+      + '    <span class="cd-ai-brief__head-right">'
+      + staleBadge
+      + refreshBtn
+      + '    </span>'
       + '  </div>'
       + '  <div class="cd-ai-brief__summary">' + summary + '</div>'
       + (prediction ? '  <div class="cd-ai-brief__prediction">' + prediction + '</div>' : '')
@@ -146,15 +214,30 @@
       + '</section>';
   }
 
-  async function _tryServerBrief(customerId) {
+  // ───────── 네트워크 (dedupe + force) ─────────
+  async function _tryServerBrief(customerId, force) {
     if (!window.API || !window.authHeader) return null;
-    try {
-      const res = await fetch(window.API + '/customers/' + encodeURIComponent(customerId) + '/ai-brief', {
-        headers: window.authHeader(),
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (_e) { return null; }
+    const url = window.API + '/customers/' + encodeURIComponent(customerId) + '/ai-brief'
+      + (force ? '?force=1' : '');
+
+    // force가 아니면 in-flight Promise 공유.
+    if (!force && _inFlight.has(customerId)) return _inFlight.get(customerId);
+
+    const p = (async () => {
+      try {
+        const res = await fetch(url, { headers: window.authHeader() });
+        if (!res.ok) return null;
+        return await res.json();
+      } catch (_e) {
+        return null;
+      } finally {
+        // micro-delay 후 inFlight에서 제거 (동기 동시 호출 방어)
+        setTimeout(() => _inFlight.delete(customerId), 50);
+      }
+    })();
+
+    if (!force) _inFlight.set(customerId, p);
+    return p;
   }
 
   // 백엔드 브리핑 응답을 카드 모델로 변환. 미정 필드는 클라이언트 폴백 값으로 채움.
@@ -175,25 +258,93 @@
     };
   }
 
+  // 재분석 버튼 클릭 핸들러 바인딩 (카드마다 1회).
+  function _bindRefresh(container, customerId, customer, fpNow) {
+    if (!container) return;
+    const btn = container.querySelector('[data-ai-brief-refresh="1"]');
+    if (!btn || btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (btn.classList.contains('cd-ai-brief__refresh--spin')) return; // 중복 클릭 방지
+      btn.classList.add('cd-ai-brief__refresh--spin');
+      try {
+        const server = await _tryServerBrief(customerId, true);
+        const fallbackBrief = _computeBrief({ customer: customer });
+        const brief = _normalizeServerBrief(server, fallbackBrief, customer) || fallbackBrief;
+        if (server) _cacheSet(customerId, server, fpNow);
+        container.innerHTML = _renderCard(brief, customer, { stale: false, refreshing: false });
+        _bindRefresh(container, customerId, customer, fpNow);
+      } catch (_e) {
+        btn.classList.remove('cd-ai-brief__refresh--spin');
+      }
+    });
+  }
+
+  // ───────── 메인 렌더 ─────────
   async function _render(containerId, customerId, opts) {
     const container = document.getElementById(containerId);
     if (!container) return;
-    container.innerHTML = _renderSkeleton();
 
     const dashboardData = (opts && opts.dashboardData) || null;
     const fallbackBrief = _computeBrief(dashboardData);
-    const customer = (dashboardData && dashboardData.customer) || (opts && opts.customer) || { id: customerId };
+    const customer = (dashboardData && dashboardData.customer)
+      || (opts && opts.customer)
+      || { id: customerId };
+    const fpNow = _fp(dashboardData);
 
-    // 백엔드 시도 — 없으면 폴백.
-    const server = await _tryServerBrief(customerId);
+    // 1) 캐시 즉시 확인 — 네트워크 호출 전.
+    const cached = _cacheGet(customerId);
+    let cachedBrief = null;
+    let isStale = false;
+    if (cached) {
+      cachedBrief = _normalizeServerBrief(cached.payload, fallbackBrief, customer);
+      isStale = cached.sourceFingerprint !== fpNow;
+    }
+
+    if (cachedBrief) {
+      // 캐시 hit — 즉시 렌더.
+      container.innerHTML = _renderCard(cachedBrief, customer, { stale: isStale });
+      _bindRefresh(container, customerId, customer, fpNow);
+
+      // fingerprint 일치 → 네트워크 호출 0. 끝.
+      if (!isStale) return;
+
+      // fingerprint 불일치 → 백그라운드 fetch (force 없음).
+      // 자동 LLM 재호출이 아니라 캐시된 백엔드 응답 재확인.
+      (async () => {
+        const server = await _tryServerBrief(customerId, false);
+        if (!server) return;
+        const brief = _normalizeServerBrief(server, fallbackBrief, customer) || fallbackBrief;
+        _cacheSet(customerId, server, fpNow);
+        // 카드 다시 그리되 stale 해제.
+        container.innerHTML = _renderCard(brief, customer, { stale: false });
+        _bindRefresh(container, customerId, customer, fpNow);
+      })();
+      return;
+    }
+
+    // 2) 캐시 없음 → 폴백(또는 스켈레톤) 즉시 렌더 + 백그라운드 fetch.
+    const haveSomething = fallbackBrief.name || fallbackBrief.lastVisit || fallbackBrief.memo;
+    if (haveSomething) {
+      container.innerHTML = _renderCard(fallbackBrief, customer, { stale: false });
+      _bindRefresh(container, customerId, customer, fpNow);
+    } else {
+      container.innerHTML = _renderSkeleton();
+    }
+
+    const server = await _tryServerBrief(customerId, false);
     const brief = _normalizeServerBrief(server, fallbackBrief, customer) || fallbackBrief;
+    if (server) _cacheSet(customerId, server, fpNow);
 
     if (!brief.name && !brief.lastVisit && !brief.memo) {
       // 정말 보여줄 게 없으면 카드 자체를 숨김.
       container.innerHTML = '';
       return;
     }
-    container.innerHTML = _renderCard(brief, customer);
+    container.innerHTML = _renderCard(brief, customer, { stale: false });
+    _bindRefresh(container, customerId, customer, fpNow);
   }
 
   // 스타일 1회 주입 (전용 CSS 파일 만들지 않고 모듈 내부 보관).
@@ -204,7 +355,18 @@
       + '.cd-ai-brief{margin:0 0 14px;padding:12px 14px;'
       + 'background:linear-gradient(135deg,rgba(241,128,145,.08),rgba(167,139,250,.06));'
       + 'border:1px solid rgba(241,128,145,.20);border-radius:14px;}'
-      + '.cd-ai-brief__head{display:flex;align-items:center;gap:6px;margin-bottom:8px;color:var(--brand-strong,#a04050);font-size:12px;letter-spacing:.3px;}'
+      + '.cd-ai-brief--stale{background:linear-gradient(135deg,rgba(241,128,145,.05),rgba(167,139,250,.04));}'
+      + '.cd-ai-brief--stale .cd-ai-brief__summary,.cd-ai-brief--stale .cd-ai-brief__memo{color:#888;}'
+      + '.cd-ai-brief__head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;color:var(--brand-strong,#a04050);font-size:12px;letter-spacing:.3px;}'
+      + '.cd-ai-brief__head-left{display:inline-flex;align-items:center;gap:6px;}'
+      + '.cd-ai-brief__head-right{display:inline-flex;align-items:center;gap:6px;}'
+      + '.cd-ai-brief__stale{display:inline-block;padding:2px 7px;background:rgba(241,128,145,.12);color:#a04050;border-radius:999px;font-size:10px;font-weight:500;letter-spacing:0;}'
+      + '.cd-ai-brief__refresh{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;background:rgba(255,255,255,.6);border:1px solid rgba(0,0,0,.06);border-radius:999px;color:#a04050;cursor:pointer;transition:background .15s ease,transform .15s ease;}'
+      + '.cd-ai-brief__refresh:hover{background:rgba(255,255,255,.95);}'
+      + '.cd-ai-brief__refresh:active{transform:scale(.92);}'
+      + '.cd-ai-brief__refresh--spin svg{animation:cdAiBriefSpin .8s linear infinite;}'
+      + '.cd-ai-brief__refresh--spin{pointer-events:none;opacity:.7;}'
+      + '@keyframes cdAiBriefSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}'
       + '.cd-ai-brief__summary{font-size:13px;color:#333;line-height:1.5;}'
       + '.cd-ai-brief__prediction{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}'
       + '.cd-ai-brief__pred-chip{display:inline-block;padding:3px 8px;'
@@ -217,5 +379,21 @@
     document.head.appendChild(st);
   }
 
-  window.CustomerAIBrief = { render: _render };
+  // 테스트·디버깅용 노출.
+  window.CustomerAIBrief = {
+    render: _render,
+    _cacheGet: _cacheGet,
+    _cacheSet: _cacheSet,
+    _fp: _fp,
+    _clearCache: function (id) {
+      try {
+        if (id) sessionStorage.removeItem(SS_KEY(id));
+        else {
+          Object.keys(sessionStorage).forEach(k => {
+            if (k.indexOf('aibrief_v1::') === 0) sessionStorage.removeItem(k);
+          });
+        }
+      } catch (_e) { void _e; }
+    },
+  };
 })();

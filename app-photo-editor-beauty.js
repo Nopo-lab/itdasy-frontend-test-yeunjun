@@ -145,16 +145,21 @@
       const r = d[i], g = d[i+1], bl = d[i+2];
       // 피부톤 hue 대략 (10°~50°): R > G > B
       const isSkin = r > 80 && r > g && g > bl && (r - bl) > 15 && (r - bl) < 110;
+      // 붉은기용 별도 마스크 — 시작 임계 ↓(10), 상한 ↑(140) 으로 강한 붉은기까지 포함.
+      // skin 보다 살짝 넓어 다른 슬라이더(skin/handSkin/blemish/eyeShadow)엔 영향 없음.
+      const isReddish = r > 80 && r > g && (r - bl) > 10 && (r - bl) < 140;
+      if (redK > 0 && isReddish) {
+        // 붉은기 완화 — R ↓ 강화 + G·B 살짝 ↑ 로 채도 ↓ 흉내 (HSV 변환 회피)
+        d[i]   = _clamp(d[i]   - 18 * redK);
+        d[i+1] = _clamp(d[i+1] +  2 * redK);
+        d[i+2] = _clamp(d[i+2] +  3 * redK);
+      }
       if (isSkin) {
         if (skinK > 0) {
           // 약한 매끄러움 — 채도 살짝 ↑, 명도 살짝 ↑
           d[i]   = _clamp(d[i]   + 4 * skinK);
           d[i+1] = _clamp(d[i+1] + 2 * skinK);
           d[i+2] = _clamp(d[i+2] + 1 * skinK);
-        }
-        if (redK > 0) {
-          // 붉은기 완화 — R 채널만 살짝 ↓
-          d[i] = _clamp(d[i] - 10 * redK);
         }
         // 손 피부톤 — 피부 픽셀 전체에 약한 균일화(살짝 따뜻하게).
         // 얼굴 마스킹 분리는 P2+. 슬라이더 강도 자체를 낮게 잡아 얼굴에 적용돼도 자연스럽도록.

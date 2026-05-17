@@ -207,6 +207,47 @@ async function _enhanceOnePhoto(photo, opt) {
   photo.mode = 'enhanced';
 }
 
+// ── 업종별 자동 보정 프리셋 (PhotoEditor 자동 탭 ⚡ 버튼에서 사용) ──
+// localStorage.shop_type 기반으로 4 업종 + 일반 폴백.
+// 반환: { label, adjust, beauty } — PhotoEditor _state.adjust / _state.beauty 에 직접 Object.assign.
+window.PhotoEnhance = window.PhotoEnhance || {};
+window.PhotoEnhance.getShopPreset = function(shopType) {
+  const t = (shopType || _enhanceShopType()).toLowerCase();
+  if (/(헤어|붙임머리|미용|hair|extension)/.test(t)) {
+    return {
+      label: '헤어',
+      adjust: { brightness: 105, saturate: 108, sharpness: 25, temperature: 5 },
+      beauty: { hairShine: 35, hairDetail: 30, hairColor: 5, skin: 10, redness: 15 },
+    };
+  }
+  if (/(속눈썹|lash)/.test(t)) {
+    return {
+      label: '속눈썹',
+      adjust: { brightness: 105, saturate: 110, sharpness: 35, temperature: 0 },
+      beauty: { lashSharp: 50, eyeShadow: 30, redness: 25, skin: 15 },
+    };
+  }
+  if (/(네일|nail)/.test(t)) {
+    return {
+      label: '네일',
+      adjust: { brightness: 108, saturate: 115, sharpness: 30, temperature: -3 },
+      beauty: { handSkin: 30, nailGloss: 50, redness: 20, skin: 10 },
+    };
+  }
+  if (/(왁싱|피부|반영구|문신|tattoo|skin)/.test(t)) {
+    return {
+      label: '왁싱·피부',
+      adjust: { brightness: 105, saturate: 102, sharpness: 15, temperature: 2 },
+      beauty: { skin: 35, redness: 35, blemish: 30, eyeShadow: 0 },
+    };
+  }
+  return {
+    label: '일반',
+    adjust: { brightness: 105, saturate: 110, sharpness: 30, temperature: 5 },
+    beauty: {},
+  };
+};
+
 async function applyEnhanceToSelected() {
   const slot = _slots.find(s => s.id === _popupSlotId);
   if (!slot) return;
