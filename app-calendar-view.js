@@ -1349,12 +1349,6 @@
     const endTimeLabel = _pad(endH) + ':' + _pad(endM);
 
     let html = `<button class="cv-form-back" id="cv-form-back">← 뒤로</button>`;
-    if (!isEdit && autoSlot) {
-      html += `<div class="bf-auto-banner">
-        <span class="bf-auto-badge">AUTO</span>
-        빈 슬롯 ${defStart} 자동 선택 · 고객만 고르면 끝
-      </div>`;
-    }
     // [2026-05-16] 시술 완료 액션 카드 제거 — 블록 클릭이 곧 CompleteFlow.
     // 수정 모드 — 상태 4토글
     if (isEdit) {
@@ -1377,17 +1371,27 @@
       <input type="date" id="bfDate" class="bf-date-native" value="${dateStr}" />
     </div>`;
     // 시간 휠 픽커
-    html += `<div class="bf-section"><div class="bf-label">시작 시간 <span style="color:var(--text-subtle);font-weight:500;text-transform:none;letter-spacing:0">· 위아래 스크롤</span></div>
+    html += `<div class="bf-section"><div class="bf-label">시작 시간</div>
       <div class="bf-time-picker"><div class="bf-tp-selection"></div>
         <div class="bf-tp-wheel" id="bfWheelH"><div class="bf-tp-inner">${hRows(defH)}</div></div>
         <div class="bf-tp-sep">:</div>
         <div class="bf-tp-wheel" id="bfWheelM"><div class="bf-tp-inner">${mRows(defM)}</div></div>
       </div>
-      <div class="bf-duration-row">
-        <div class="bf-dur-label">소요 시간</div>
-        <div class="bf-dur-val" id="bfDurVal">${durMin}분 · ~ ${endTimeLabel}</div>
-        <div class="bf-dur-stepper"><button type="button" id="bfDurMinus">−</button><button type="button" id="bfDurPlus">+</button></div>
+    </div>`;
+    // 소요시간 — 칩 (60/90/120/180 + 직접)
+    const DUR_PRESETS = [60, 90, 120, 180];
+    const isPreset = DUR_PRESETS.includes(durMin);
+    const durChips = DUR_PRESETS.map(d =>
+      `<button type="button" class="bf-dur-chip${d === durMin ? ' on' : ''}" data-dur="${d}">${d}분</button>`
+    ).join('') +
+    `<button type="button" class="bf-dur-chip${!isPreset ? ' on' : ''}" data-dur="custom" id="bfDurCustom">${!isPreset ? durMin + '분' : '+ 직접'}</button>`;
+    html += `<div class="bf-section">
+      <div class="bf-dur-head">
+        <div class="bf-label" style="margin-bottom:0">소요 시간</div>
+        <div class="bf-dur-end" id="bfDurEnd">→ ${endTimeLabel} 종료</div>
       </div>
+      <div class="bf-dur-chips" id="bfDurChips">${durChips}</div>
+      <input type="hidden" id="bfDurVal" value="${durMin}" />
     </div>`;
     // 고객 카드 — phosphor 아이콘 → unicode 치환
     html += `<div class="bf-section"><div class="bf-label">고객</div>
@@ -1407,11 +1411,11 @@
       <input type="hidden" id="bfSvc" value="${_esc(existing?.service_name || '')}" />
       <input id="bfSvcCustom" class="bf-svc-input" placeholder="시술명 직접 입력" style="display:none" maxlength="50" autocomplete="off" />
     </div>`;
-    // 더보기 (직원 · 메모)
+    // 메모 · 직원 (토글)
     html += `<div class="bf-section" id="bfMoreSection">
       <button type="button" class="bf-more-toggle" id="bfMoreToggle">
         <span class="bf-more-icon" aria-hidden="true">▾</span>
-        더보기 (직원 · 메모)
+        메모 · 직원
       </button>
       <div class="bf-more-fields" id="bfMoreFields" style="display:none">
         <div class="bf-section" style="margin-bottom:14px"><div class="bf-label">담당 직원</div><div class="bf-staff-row" id="bfStaffRow"></div></div>
@@ -1452,10 +1456,10 @@
       _startM = mEl ? parseInt(mEl.dataset.val, 10) : 0;
     }
     _readStart();
-    // 초기 소요시간 계산
+    // 초기 소요시간 계산 (hidden input value)
     try {
       const dv = body.querySelector('#bfDurVal');
-      if (dv) { const m = dv.textContent.match(/(\d+)분/); if (m) _durMin = parseInt(m[1], 10); }
+      if (dv && dv.value) { const n = parseInt(dv.value, 10); if (isFinite(n)) _durMin = n; }
     } catch (_) { /* ignore */ }
 
     // --- 날짜 카드 → native date picker ---
@@ -1475,17 +1479,47 @@
       });
     }
 
-    // --- 소요시간 스텝퍼 ---
+    // --- 소요시간 칩 (60/90/120/180 + 직접) ---
+    const _DUR_PRESETS = [60, 90, 120, 180];
     function _updateDur() {
       _readStart();
       const endMin = _startH * 60 + _startM + _durMin;
       const eh = Math.floor(endMin / 60) % 24, em = endMin % 60;
-      const dv = body.querySelector('#bfDurVal');
-      if (dv) dv.textContent = _durMin + '분 · ~ ' + _pad(eh) + ':' + _pad(em);
+      const endEl = body.querySelector('#bfDurEnd');
+      if (endEl) endEl.textContent = '→ ' + _pad(eh) + ':' + _pad(em) + ' 종료';
+      const hv = body.querySelector('#bfDurVal');
+      if (hv) hv.value = String(_durMin);
+      // 칩 active 동기화
+      const isPreset = _DUR_PRESETS.includes(_durMin);
+      body.querySelectorAll('.bf-dur-chip').forEach(ch => {
+        const v = ch.dataset.dur;
+        if (v === 'custom') {
+          ch.classList.toggle('on', !isPreset);
+          ch.textContent = !isPreset ? (_durMin + '분') : '+ 직접';
+        } else {
+          ch.classList.toggle('on', String(_durMin) === v);
+        }
+      });
       _checkConflict();
     }
-    body.querySelector('#bfDurMinus')?.addEventListener('click', () => { if (_durMin > 15) { _durMin -= 15; _updateDur(); } });
-    body.querySelector('#bfDurPlus')?.addEventListener('click', () => { if (_durMin < 480) { _durMin += 15; _updateDur(); } });
+    body.querySelectorAll('.bf-dur-chip').forEach(ch => {
+      ch.addEventListener('click', () => {
+        const v = ch.dataset.dur;
+        if (v === 'custom') {
+          const raw = prompt('소요 시간 (분)', String(_durMin));
+          if (raw == null) return;
+          const n = parseInt(raw, 10);
+          if (!isFinite(n) || n < 5 || n > 600) {
+            if (window.showToast) window.showToast('5~600 분 사이로 입력해 주세요');
+            return;
+          }
+          _durMin = n;
+        } else {
+          _durMin = parseInt(v, 10);
+        }
+        _updateDur();
+      });
+    });
 
     // --- 휠 스크롤 (click + wheel 마우스 + touch swipe 모두 지원) ---
     // 2026-05-01 ── 사용자 보고: '시간 입력 스크롤안됨'. wheel/swipe/click 모두 지원.

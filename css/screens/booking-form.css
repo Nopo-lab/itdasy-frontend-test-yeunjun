@@ -180,56 +180,55 @@
   z-index: 0;
 }
 
-/* 소요 시간 스텝퍼 */
-.bf-duration-row {
+/* 소요 시간 — 칩 (60/90/120/180 + 직접) */
+.bf-dur-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  padding: 11px 14px;
-  background: var(--surface, #fff);
-  border: 0.5px solid var(--border, rgba(15,20,25,0.06));
-  border-radius: 8px;
+  margin-bottom: 6px;
 }
-
-.bf-dur-label {
-  font-size: 12.5px;
+.bf-dur-end {
+  font-size: 11px;
+  color: var(--text-muted, #5A6573);
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+  font-weight: 600;
+}
+.bf-dur-chips {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.bf-dur-chip {
+  padding: 7px 15px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--border, rgba(15,20,25,0.1));
+  background: var(--surface, #fff);
+  cursor: pointer;
+  color: var(--text, #0F1419);
+  letter-spacing: -0.2px;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.bf-dur-chip:hover {
+  border-color: var(--text-muted, #5A6573);
+}
+.bf-dur-chip.on {
+  background: var(--text, #0F1419);
+  color: #fff;
+  border-color: var(--text, #0F1419);
+}
+.bf-dur-chip[data-dur="custom"] {
+  border-style: dashed;
   color: var(--text-muted, #5A6573);
   font-weight: 600;
-  flex: 1;
 }
-
-.bf-dur-val {
-  font-size: 13px;
+.bf-dur-chip[data-dur="custom"].on {
+  border-style: solid;
+  color: #fff;
   font-weight: 700;
-  color: var(--text, #0F1419);
-  font-variant-numeric: tabular-nums;
-}
-
-.bf-dur-stepper {
-  display: flex;
-  gap: 4px;
-}
-
-.bf-dur-stepper button {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--surface-2, #F8F8F9);
-  border: 0.5px solid var(--border, rgba(15,20,25,0.06));
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-muted, #5A6573);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: inherit;
-  transition: background 0.12s;
-}
-
-.bf-dur-stepper button:active {
-  background: var(--surface-3, #E8E8EA);
 }
 
 /* ── 고객 카드 ───────────────────────────────────────────── */
@@ -647,18 +646,6 @@
 
 .bf-btn-danger:active {
   background: rgba(220, 72, 72, 0.06);
-}
-
-/* ── 빈 슬롯 자동 진입 배너 ──────────────────────────────── */
-.bf-auto-banner {
-  padding: 8px 14px;
-  background: var(--brand-bg, rgba(241,128,145,0.12));
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--brand-strong, #D35E70);
-  font-weight: 600;
 }
 
 /* ── 서비스 직접 입력 인풋 ────────────────────────────────── */
