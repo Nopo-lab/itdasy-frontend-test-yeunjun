@@ -55,6 +55,10 @@
       { act: 'capture', icon: 'ph-scan', boxColor: 'violet',
         name: '스마트 캡처', meta: '카톡 · 명함 · 가격표 OCR',
         type: 'badge' },
+      // P0-PE (2026-05-17 v167) 사진 편집기 진입로
+      { act: 'photoEditor', icon: 'ph-magic-wand', boxColor: 'pink',
+        name: '사진 편집기', meta: '자동 보정 · 슬라이더 · 4:5 · 워터마크',
+        type: 'badge' },
     ];
   }
 
@@ -228,16 +232,23 @@
     posts:   null,
     memo:    'openAssistantFactsSheet',
     capture: 'openSmartCapture',
+    photoEditor: '__photoEditorOpen',   // 함수 매핑 — 아래 _route에서 PhotoEditor.open()로 분기
   };
 
   function _canRoute(act) {
     if (act === 'posts') return typeof window.showTab === 'function';
+    if (act === 'photoEditor') return !!(window.PhotoEditor && typeof window.PhotoEditor.open === 'function');
     const fn = _ROUTE_MAP[act];
     return !!(fn && typeof window[fn] === 'function');
   }
 
   function _route(act) {
     const map = _ROUTE_MAP;
+    if (act === 'photoEditor') {
+      try { window.PhotoEditor.open({}); }
+      catch (_e) { if (window.showToast) window.showToast('편집기를 여는 중 문제가 생겼어요'); }
+      return;
+    }
     if (act === 'posts') {
       try {
         if (typeof window.showTab === 'function') {

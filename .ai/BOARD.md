@@ -1,8 +1,18 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-17 18:00 by 오케스트레이터 (뷰티업GPT P1-5 AI 브리핑 카드)
+**LAST UPDATED:** 2026-05-17 22:00 by 오케스트레이터 (사진 편집기 P0 MVP)
 
 ---
+
+## 2026-05-17 22:00 — 사진 편집기 P0 MVP
+
+- 설계: `~/.claude/plans/zesty-snacking-clarke.md` §25
+- 신규: `app-photo-editor.js`, `css/screens/photo-editor.css`
+- 변경: `app-assistant-actions-marketing.js`(kind 6종 추가), `app-assistant.js`(registerLocalHandler API), `app-ai-hub.js`(편집기 행 추가), `index.html`(로드/버스터)
+- 진입: AI·자동화 시트 → "사진 편집기" NEW 배지
+- 기능: 자동/수동 슬라이더 4 + 누끼 진입 + 텍스트/워터마크 + 비율 3종(1:1/4:5/9:16) + PNG/JPG 저장 + undo 20
+- 회귀: 기존 누끼·자동보정·B&A 0줄 수정. 원본 blob 절대 보존
+- 빌드 버전: `20260517-v167-photo-editor`
 
 ## 2026-05-17 18:00 — 뷰티업GPT P1-5 적용
 

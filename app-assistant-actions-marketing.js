@@ -39,6 +39,13 @@
     make_before_after:       { icon: 'ic-layers',        label: '전·후 카드',  color: '#2B8C7E' },
     draft_caption:           { icon: 'ic-sparkles',      label: '캡션 초안',   color: '#F18091' },
     publish_instagram:       { icon: 'ic-upload',        label: '인스타 게시', color: '#DC3545' },
+    // P0-PE (사진 편집기, 2026-05-17 v167)
+    open_photo_editor:       { icon: 'ic-sliders-horizontal', label: '편집기 열기', color: '#F18091' },
+    apply_photo_preset:      { icon: 'ic-wand-sparkles', label: '자동 보정',    color: '#A78BFA' },
+    adjust_photo:            { icon: 'ic-sliders-horizontal', label: '수동 보정', color: '#A78BFA' },
+    add_text_overlay:        { icon: 'ic-pen-line',      label: '텍스트 추가',  color: '#0EA5E9' },
+    add_watermark:           { icon: 'ic-badge',         label: '워터마크',     color: '#0EA5E9' },
+    export_marketing_image:  { icon: 'ic-upload',        label: '편집본 저장',  color: '#15803D' },
   };
 
   // ──────────── invalidate 매핑 (실행 후 화면 즉시 반영) ────────────
@@ -54,6 +61,13 @@
     make_before_after:       ['portfolio'],
     draft_caption:           [],
     publish_instagram:       ['instagram_feed', 'content_calendar'],
+    // P0-PE (사진 편집기)
+    open_photo_editor:       [],
+    apply_photo_preset:      ['portfolio'],
+    adjust_photo:            [],
+    add_text_overlay:        [],
+    add_watermark:           [],
+    export_marketing_image:  ['portfolio'],
   };
 
   // app-assistant.js는 'itdasy:data-changed'만 발사함. 화면별로 더 세분화된 구독자
@@ -67,6 +81,9 @@
     draft_caption:           'itdasy:caption:drafted',
     publish_instagram:       'itdasy:instagram:published',
     draft_message:           'itdasy:assistant:message-drafted',
+    open_photo_editor:       'itdasy:editor:opened',
+    apply_photo_preset:      'itdasy:gallery:photo-replaced',
+    export_marketing_image:  'itdasy:gallery:photo-replaced',
   };
 
   function _register() {

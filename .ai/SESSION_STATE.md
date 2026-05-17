@@ -2,7 +2,46 @@
 
 > 새 세션이 시작되면 **이 파일을 먼저 읽고** 현재 단계·대기 결정·마지막 체크포인트를 파악한다.
 
-**LAST UPDATED:** 2026-05-17 · 뷰티업GPT P1-5 (AI 브리핑 카드) 적용
+**LAST UPDATED:** 2026-05-17 · 뷰티업GPT P1-5 + 사진 편집기 P0 MVP
+
+---
+
+## 🟣 2026-05-17 22:00 — 사진 편집기 P0 MVP (티켓 P0-PE-1/2/3 통합)
+
+설계 문서: `~/.claude/plans/zesty-snacking-clarke.md` §25
+
+신규 모듈:
+- `app-photo-editor.js` (≈540줄) — 8탭 시트 (자동/보정/뷰티/누끼·배경/템플릿/텍스트/브랜드/내보내기)
+  · 캔버스 합성: CSS filter (밝기/채도/색온도/대비) + unsharp mask (선명도)
+  · 비율 4종: 원본/1:1/4:5/9:16 자동 자르기 + export
+  · 워터마크: 위치 4종(tl/tr/bl/br) + 투명도 + localStorage 기본값 저장
+  · 텍스트 1개: 시술명·가격 자동 prefill, 위치 슬라이더
+  · history stack 20 + undo
+  · 원본/편집 비교: 캔버스 롱탭 또는 "원본" 버튼
+- `css/screens/photo-editor.css` (≈200줄) — 다크 테마, 8탭 가로 스크롤
+
+연결:
+- `app-assistant-actions-marketing.js` — kind 6종 추가 (open_photo_editor, apply_photo_preset, adjust_photo, add_text_overlay, add_watermark, export_marketing_image)
+- `app-assistant.js` — `registerLocalHandler(kind, handler)` API 추가 → open_photo_editor는 백엔드 호출 없이 프론트 단독 실행
+- `app-ai-hub.js` — AI·자동화 시트에 "사진 편집기" 행 추가 (NEW 배지)
+- `index.html` — CSS/JS 1줄씩 로드, app-assistant/ai-hub 버스터 v167
+
+진입로 3가지 (사용자 테스트용):
+1. **AI 자동화 시트 → "사진 편집기"** 행 탭 → 시트 오픈 → 파일 고르기 → 8탭 편집 → 저장
+2. **챗봇:** `window.PhotoEditor.open({src: 'blob:...'})` 콘솔 (또는 backend가 open_photo_editor 액션 응답 시 카드 → 실행)
+3. **AI 비서 액션 카드:** open_photo_editor kind를 받으면 즉시 편집기 오픈 (로컬 핸들러)
+
+회귀 영향:
+- 원본 blob/URL 절대 덮어쓰지 않음
+- 기존 누끼·자동보정·B&A는 0줄 수정. 편집기는 별도 시트로 분리
+- assistant `_executeAction`은 로컬 핸들러 우선 분기 1개만 추가 (기존 18 kind 0줄 영향)
+
+다음 (P1 잔여 — 사진 편집기):
+- 뷰티 탭 5 슬라이더 (피부톤/붉은기/모발 윤기/네일 광택/속눈썹)
+- 템플릿 탭 5종 (B&A 좌우/상하/후기/가격/시술 안내)
+- 편집 완료 → 캡션 카드 자동 연결
+- 인스타 미리보기 4:5/1:1/9:16 자동 매핑
+- brand_kit UI (샵 설정 화면)
 
 ---
 

@@ -72,6 +72,9 @@
   // 외부 모듈(마케팅·콘텐츠 kind 등)이 CATEGORY 메타와 invalidate 매핑을 확장할 수 있는 포인트.
   // 새 kind를 app-assistant.js 본체에 박지 않고 분리해 관리하기 위함 (본체는 이미 거대).
   const _externalInvalidateKinds = {};
+  // [v167 2026-05-17] 로컬 핸들러 — 백엔드 호출 없이 프론트에서 직접 처리하는 kind (예: open_photo_editor).
+  // 핸들러는 async (action) => { message?, undo_log_id? } 형태. 등록 시 fetch /assistant/execute 우회.
+  const _localKindHandlers = {};
   window.ItdasyAssistant = window.ItdasyAssistant || {};
   window.ItdasyAssistant.CATEGORY = CATEGORY;
   window.ItdasyAssistant.registerKindMeta = function (metaMap) {
@@ -79,6 +82,9 @@
   };
   window.ItdasyAssistant.registerInvalidateKinds = function (kindMap) {
     if (kindMap && typeof kindMap === 'object') Object.assign(_externalInvalidateKinds, kindMap);
+  };
+  window.ItdasyAssistant.registerLocalHandler = function (kind, handler) {
+    if (typeof kind === 'string' && typeof handler === 'function') _localKindHandlers[kind] = handler;
   };
   // [QA-r10 2026-05-15] OCR fallback repair 중복 폭주 차단 (실기기 보고: 동일 14,500원 24회 복제).
   // 백엔드 prose-repair 가 같은 vendor·amount 로 N회 반복 append 한 경우를 프론트에서 방어.
@@ -2274,6 +2280,13 @@
   // [QA-NEXT #4] action._ai_original (AI 추출 시점 payload 스냅샷) 있으면 original_payload 동봉 →
   // 백엔드에서 final vs original diff 를 UserCorrection 으로 학습.
   async function _executeAction(action) {
+    // [v167 2026-05-17] 로컬 핸들러 우선 — open_photo_editor 같은 클라이언트 단독 액션은 백엔드 호출 우회.
+    const localFn = _localKindHandlers[action.kind];
+    if (typeof localFn === 'function') {
+      const d = await localFn(action) || {};
+      _invalidateCachesFor(action.kind);
+      return { kind: action.kind, message: d.message || '✓ 완료', ...d };
+    }
     const body = { kind: action.kind, payload: action.payload || {} };
     if (action._ai_original && typeof action._ai_original === 'object') {
       body.original_payload = action._ai_original;
