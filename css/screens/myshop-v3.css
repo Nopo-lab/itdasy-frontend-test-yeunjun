@@ -6,7 +6,7 @@
 /* ─────────────────────────────────────────────────────────────
    레이아웃 · 모바일 우선, PC 1100px+ 에서 사이드바 노출
    ───────────────────────────────────────────────────────────── */
-.ms-root { display: flex; flex-direction: column; min-height: 100vh; background: var(--bg); color: var(--text); }
+.ms-root { display: flex; flex-direction: column; min-height: 100vh; background: var(--surface); color: var(--text); }
 .ms-side { display: none; }
 .ms-pc { display: none; }
 
@@ -35,7 +35,7 @@ body:has(#tab-dashboard.active) #tab-dashboard.tab { max-width: none !important;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--bg);
+  background: var(--surface);
 }
 .ms-header__title { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; color: var(--text); }
 .ms-header__sub { font-size: 11px; color: var(--text-subtle); margin-top: 1px; font-weight: 500; }
