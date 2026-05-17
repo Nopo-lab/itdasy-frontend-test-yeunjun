@@ -94,12 +94,11 @@
     if (!el || !Number.isFinite(target) || target <= 0) return;
     if (el.dataset.hvCountDone === '1') return;
     el.dataset.hvCountDone = '1';
-    const prefix = (el.textContent.indexOf('+') === 0) ? '+' : (el.textContent.indexOf('≈') === 0 ? '≈ ' : '');
     const start = performance.now();
     function tick(now) {
       const p = Math.min((now - start) / ms, 1);
       const ease = 1 - Math.pow(1 - p, 3);
-      el.textContent = prefix + Math.round(target * ease).toLocaleString('ko-KR') + '원';
+      el.textContent = Math.round(target * ease).toLocaleString('ko-KR') + '원';
       if (p < 1) requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
@@ -782,8 +781,8 @@
       .hv5-card-link{font-size:12px;color:#6B7684;text-decoration:none;font-weight:600;cursor:pointer;transition:color .12s;background:none;border:none;font-family:inherit;padding:0}
       .hv5-card-link:hover{color:#191F28}
 
-      /* 매출 히어로 (와이드) */
-      .hv5-hero{background:linear-gradient(135deg,#FFF8FA 0%,#fff 60%);border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);padding:26px 28px;display:flex;align-items:center;gap:32px;border:1px solid #FFF1F3;margin-bottom:14px}
+      /* 매출 히어로 (와이드) — border 제거, 그림자만 */
+      .hv5-hero{background:linear-gradient(135deg,#FFF8FA 0%,#fff 60%);border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);padding:26px 28px;display:flex;align-items:center;gap:32px;margin-bottom:14px}
       .hv5-hero-l{flex:0 0 auto;min-width:280px}
       .hv5-hero-label{font-size:12px;font-weight:600;color:#333D4B;margin-bottom:8px;letter-spacing:-0.2px;display:flex;align-items:center;gap:8px}
       .hv5-hero-label-month{padding:2px 8px;border-radius:999px;background:#FFF1F3;color:#E5586E;font-size:10px;font-weight:700}
@@ -795,7 +794,7 @@
       .hv5-hero-r-link{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#6B7684;font-weight:600;cursor:pointer;text-decoration:none;padding:5px 10px;border-radius:999px;background:#F7F8FA;border:1px solid #E5E8EB;font-family:inherit;transition:color .12s,border-color .12s}
       .hv5-hero-r-link:hover{color:#E5586E;border-color:#F18091}
       .hv5-hero-stats{display:flex;gap:10px}
-      .hv5-hero-stat{flex:0 0 155px;background:rgba(255,255,255,0.7);border:1px solid #E5E8EB;border-radius:12px;padding:14px 16px}
+      .hv5-hero-stat{flex:0 0 155px;background:#F7F8FA;border:none;border-radius:12px;padding:14px 16px}
       .hv5-hero-stat-l{font-size:11px;font-weight:600;color:#6B7684;letter-spacing:-0.2px}
       .hv5-hero-stat-v{font-size:17px;font-weight:700;margin-top:4px;letter-spacing:-0.3px;color:#191F28;font-variant-numeric:tabular-nums}
       .hv5-hero-stat-v.pred{color:#E5586E}
@@ -943,11 +942,11 @@
         <div class="hv5-hero-stats">
           <div class="hv5-hero-stat">
             <div class="hv5-hero-stat-l">오늘 예상 매출</div>
-            <div class="hv5-hero-stat-v pred" data-hv-count="${todayExpected}">${todayExpected > 0 ? '+' + _krwOnly(todayExpected) : '0원'}</div>
+            <div class="hv5-hero-stat-v pred" data-hv-count="${todayExpected}">${todayExpected > 0 ? _krwOnly(todayExpected) : '0원'}</div>
           </div>
           <div class="hv5-hero-stat">
             <div class="hv5-hero-stat-l">이번달 AI 예상 매출</div>
-            <div class="hv5-hero-stat-v" data-hv-count="${projected}">${projected > 0 ? '≈ ' + _krwOnly(projected) : '집계 중…'}</div>
+            <div class="hv5-hero-stat-v" data-hv-count="${projected}">${projected > 0 ? _krwOnly(projected) : '집계 중…'}</div>
           </div>
         </div>
       </div>
