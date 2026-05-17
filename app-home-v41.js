@@ -756,7 +756,7 @@
     s.id = 'hv5Styles';
     s.textContent = `
       /* [2026-05-17 v6] PC wide 1280px + 12-col 그리드. 모바일은 자동 stack. */
-      #homeV41Root{background:#ECEEF0;min-height:100vh;padding:24px 16px}
+      #homeV41Root{background:var(--bg, #F7F8FA);min-height:100vh;padding:24px 16px}
       .hv5{max-width:1280px;margin:0 auto}
 
       /* 헤더 — wide PC 전용 */
