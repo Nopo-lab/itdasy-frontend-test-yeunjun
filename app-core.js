@@ -788,46 +788,12 @@ function getMyUserId() {
 })();
 
 // ───── 설정 바텀시트 ─────
+// [v162] 1번 설정 시트 → 3번 설정·연동 허브로 리다이렉트.
+// settingsSheet DOM 은 그대로 두되 (다른 곳에서 참조 가능성), 진입은 허브로만.
 function openSettings() {
-  const sheet = document.getElementById('settingsSheet');
-  const card  = document.getElementById('settingsCard');
-  // [2026-04-26 A5] popstate 등록 + 스와이프 다운 닫기 부착
-  try {
-    if (typeof window._registerSheet === 'function') window._registerSheet('settings', closeSettings);
-    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('settings');
-    if (card && typeof window._attachSwipeDownClose === 'function') {
-      window._attachSwipeDownClose(card, closeSettings);
-    }
-  } catch (_e) { void _e; }
-
-  // 프로필 카드 업데이트
-  const shopName = localStorage.getItem('shop_name') || document.getElementById('headerShopName')?.textContent || '사장님';
-  const profileNameEl  = document.getElementById('settingsProfileName');
-  const profileHandleEl = document.getElementById('settingsProfileHandle');
-  const settingsAvatarEl = document.getElementById('settingsAvatar');
-
-  if (profileNameEl)   profileNameEl.textContent  = shopName;
-  if (profileHandleEl) profileHandleEl.textContent = _instaHandle ? `@${_instaHandle}` : '인스타 미연동';
-
-  // 헤더 아바타 복사 (이니셜 span 만 가져오기 — 배지 span 제외)
-  const headerAvatarEl = document.getElementById('headerAvatar');
-  if (settingsAvatarEl && headerAvatarEl) {
-    const img = headerAvatarEl.querySelector('img');
-    if (img) {
-      settingsAvatarEl.innerHTML = `<img src="${window._esc(img.src)}" alt="">`;
-    } else {
-      const initialEl = headerAvatarEl.querySelector('.profile-avatar__initial');
-      settingsAvatarEl.textContent = (initialEl ? initialEl.textContent : '') || shopName[0] || '잇';
-    }
+  if (typeof window.openSettingsHub === 'function') {
+    window.openSettingsHub();
   }
-
-  // [Hotfix] 시트 열릴 때 항상 맨 위에서 시작 — 이전 스크롤 위치 잔존 방지
-  card.scrollTop = 0;
-
-  // 먼저 display, 한 프레임 뒤 open (두 번 rAF로 확실히 렌더 후 transition 발동)
-  card.classList.remove('open');
-  sheet.style.display = 'flex';
-  requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('open')));
 }
 
 function closeSettings() {

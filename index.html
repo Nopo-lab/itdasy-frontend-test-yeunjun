@@ -474,6 +474,16 @@
     <path d="M12 7v14"/>
     <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>
   </symbol>
+  <!-- [v162] 설정 허브 흡수 — 회원권 · 고객센터 -->
+  <symbol id="ic-ticket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/>
+    <path d="M13 5v2"/>
+    <path d="M13 17v2"/>
+    <path d="M13 11v2"/>
+  </symbol>
+  <symbol id="ic-headset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a9 9 0 0 1 18 0v6a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>
+  </symbol>
 </svg>
 
 <!-- ───── 스플래시 스크린 ───── -->
@@ -790,13 +800,6 @@
       </div>
     </div>
     <button id="planBadge" data-haptic="light" onclick="if(typeof openPlanPopup==='function')openPlanPopup();" style="padding:6px 12px;border-radius:8px;font-size:11px;font-weight:800;background:#e0e0e0;color:#888;cursor:pointer;min-height:32px;display:inline-flex;align-items:center;border:none;">Free</button>
-    <button id="themeToggleBtn" data-haptic="light" onclick="if(typeof toggleTheme==='function')toggleTheme();" aria-label="다크모드 전환" title="화면 모드 전환" style="background:none;border:none;padding:4px;cursor:pointer;min-width:36px;min-height:36px;display:inline-flex;align-items:center;justify-content:center;"><i id="themeToggleIcon" class="ph-duotone ph-moon ic ic--md" aria-hidden="true"></i></button>
-    <button class="btn-settings" onclick="openSettings()" aria-label="설정">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/>
-        <path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
-      </svg>
-    </button>
   </div>
 </div>
 
@@ -1864,7 +1867,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
   }
   window.toggleEmailFold = toggleEmailFold;
 </script>
-<script src="app-core.js?v=20260506-v101"></script>
+<script src="app-core.js?v=20260517-v162"></script>
 <script src="app-drawer.js" defer></script>
 <script src="app-secure-storage.js?v=20260506-v101" defer></script>
 <script src="app-shop-settings.js?v=20260506-v101" defer></script>
@@ -1940,7 +1943,7 @@ window._lazyImgly = function _lazyImgly() {
 <!-- [2026-04-30] AI 자동화 허브 — DM/카카오/페르소나/캡션/게시물/메모/캡처 통합 -->
 <script src="app-ai-hub.js?v=20260517-v150" defer></script>
 <!-- [2026-04-30] 설정 · 연동 허브 — 샵정보/네이버/백업/실패/앱설정 통합 -->
-<script src="app-settings-hub.js?v=20260517-v151" defer></script>
+<script src="app-settings-hub.js?v=20260517-v162" defer></script>
 <!-- [2026-04-30] 챗봇 액션 되돌리기 + Chain 모드 토글 -->
 <script src="app-assistant-undo.js?v=20260502-3" defer></script>
 <!-- [2026-04-29 W5] 직원 관리 — 미용실/대형샵 다중 직원 -->

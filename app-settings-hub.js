@@ -77,12 +77,29 @@
   }
   function _listHTML() {
     return `
+      <div class="ms-section__title">샵 · 연동</div>
       <div class="ms-sh" id="shList">
         ${_rowHTML('shopinfo', 'ic-store',      '샵 정보 · 직원',     '영업시간 · 시술 메뉴 · 직원', { boxColor: 'blue' })}
+        ${_rowHTML('instagram','ic-link',       '인스타그램 연결',    '콘텐츠 발행 · 말투 분석용', { boxColor: 'pink' })}
         ${_rowHTML('naver',    'ic-link',       '네이버 예약 연동',   '연결 상태 확인', { metaClass: 'is-ok', boxColor: 'teal' })}
+      </div>
+      <div class="ms-section__title" style="margin-top:14px;">AI · 데이터</div>
+      <div class="ms-sh">
+        ${_rowHTML('persona',  'ic-message-circle','말투 분석',       '내 말투 새로 학습시키기', { boxColor: 'purple' })}
+        ${_rowHTML('powerview','ic-database',   '빠른 데이터 입력',   '고객·예약·매출·재고 한 번에', { boxColor: 'purple' })}
+        ${_rowHTML('sync',     'ic-refresh-cw', '데이터 새로고침',    '서버에서 최신 데이터 다시 받기', { boxColor: 'blue' })}
         ${_rowHTML('backup',   'ic-download',   '백업 · 내보내기',    '자동 백업 · 데이터 내보내기', { boxColor: 'purple' })}
         ${_rowHTML('undo',     'ic-rotate-ccw', '챗봇 액션 되돌리기', '최근 30일 이력', { boxColor: 'amber' })}
         ${_rowHTML('failures', 'ic-bell',       '자동화 실패 알림함', '실패 로그 · 재시도', { boxColor: 'coral' })}
+      </div>
+      <div class="ms-section__title" style="margin-top:14px;">계정</div>
+      <div class="ms-sh">
+        ${_rowHTML('membership','ic-ticket',    '회원권',             '만료 임박 고객 · 충전 안내', { boxColor: 'coral' })}
+      </div>
+      <div class="ms-section__title" style="margin-top:14px;">도움</div>
+      <div class="ms-sh">
+        ${_rowHTML('guide',    'ic-book-open',  '사용 가이드',        '워크플로우 안내', { boxColor: 'teal' })}
+        ${_rowHTML('support',  'ic-headset',    '고객센터 · 문의',    '1:1 채팅 문의', { boxColor: 'blue' })}
       </div>
     `;
   }
@@ -227,11 +244,18 @@
 
   // ─── 9개 라우팅 (변동 X) ────────────────────────────────
   function _route(act) {
-    if (act === 'shopinfo') { close(); setTimeout(() => window.openShopSettings && window.openShopSettings(), 200); return; }
-    if (act === 'naver')    { close(); setTimeout(() => window.openNaverLink && window.openNaverLink(), 200); return; }
-    if (act === 'backup')   { close(); setTimeout(() => window.openBackupScreen && window.openBackupScreen(), 200); return; }
-    if (act === 'undo')     { close(); setTimeout(() => window.openUndoHistory && window.openUndoHistory(), 200); return; }
-    if (act === 'failures') { close(); setTimeout(() => window.openFailuresHub && window.openFailuresHub(), 200); return; }
+    if (act === 'shopinfo')  { close(); setTimeout(() => window.openShopSettings && window.openShopSettings(), 200); return; }
+    if (act === 'instagram') { close(); setTimeout(() => window.connectInstagram && window.connectInstagram(), 200); return; }
+    if (act === 'naver')     { close(); setTimeout(() => window.openNaverLink && window.openNaverLink(), 200); return; }
+    if (act === 'persona')   { close(); setTimeout(() => window.runPersonaAnalyze && window.runPersonaAnalyze(true), 200); return; }
+    if (act === 'powerview') { close(); setTimeout(() => window.openPowerView && window.openPowerView('customer'), 200); return; }
+    if (act === 'sync')      { close(); setTimeout(() => window.forceSync && window.forceSync(), 200); return; }
+    if (act === 'backup')    { close(); setTimeout(() => window.openBackupScreen && window.openBackupScreen(), 200); return; }
+    if (act === 'undo')      { close(); setTimeout(() => window.openUndoHistory && window.openUndoHistory(), 200); return; }
+    if (act === 'failures')  { close(); setTimeout(() => window.openFailuresHub && window.openFailuresHub(), 200); return; }
+    if (act === 'membership'){ close(); setTimeout(() => window.MembershipUI && window.MembershipUI.openExpiringList && window.MembershipUI.openExpiringList(30), 200); return; }
+    if (act === 'guide')     { close(); setTimeout(() => window.openHelpGuide && window.openHelpGuide(), 200); return; }
+    if (act === 'support')   { close(); setTimeout(() => (window.openSupport || window.openSupportChat) && (window.openSupport || window.openSupportChat)(), 200); return; }
     if (act === 'haptic') {
       try { window.toggleHapticSetting && window.toggleHapticSetting(); window.updateHapticToggleLabel && window.updateHapticToggleLabel(); } catch (_e) { void _e; }
       _refreshLabels();
