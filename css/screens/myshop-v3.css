@@ -37,7 +37,7 @@ body:has(#tab-dashboard.active) #tab-dashboard.tab { max-width: none !important;
   align-items: center;
   background: var(--surface);
 }
-.ms-header__title { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; color: var(--text); }
+.ms-header__title { font-size: 22px; font-weight: 700; letter-spacing: -0.2px; color: var(--text); }
 .ms-header__sub { font-size: 11px; color: var(--text-subtle); margin-top: 1px; font-weight: 500; }
 .ms-header__btn {
   appearance: none; -webkit-appearance: none;
@@ -191,7 +191,7 @@ body:has(#tab-dashboard.active) #tab-dashboard.tab { max-width: none !important;
   z-index: 10;
   box-shadow: var(--shadow-xl);
   display: flex; flex-direction: column;
-  max-height: 88%;
+  max-height: 92vh;
 }
 .ms-sheet__handle {
   width: 40px; height: 4px;
@@ -458,6 +458,7 @@ body:has(#tab-dashboard.active) #tab-dashboard.tab { max-width: none !important;
   flex: 1;
   padding: 24px 28px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   background: var(--surface);
   flex-direction: column;
 }

@@ -213,9 +213,6 @@
           <div class="ms-header__title">내샵관리</div>
           <div class="ms-header__sub">${_esc(shop)}</div>
         </div>
-        <button type="button" class="ms-header__btn" data-mv-act="settings" aria-label="설정">
-          <i class="ph-duotone ph-gear-six" style="font-size:16px" aria-hidden="true"></i>
-        </button>
       </header>
     `;
   }
