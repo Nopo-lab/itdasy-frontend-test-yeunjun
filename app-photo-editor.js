@@ -231,8 +231,29 @@
       <div class="pe-panel-row" style="margin-top:8px;"><button type="button" class="pe-chip-btn" data-pe-tune-reset>모두 초기화</button></div>`;
   }
   function _panelBg() {
-    return `<div class="pe-panel-row"><button type="button" class="pe-action-btn" data-pe-bg="open-existing">기존 누끼·배경 화면 열기</button></div>
-      <div class="pe-hint">알파 보정·프리셋 4종·서버 누끼 모두 기존 안정 흐름을 그대로 사용해요.<br>편집기 내부 통합은 P1에서 마무리됩니다.</div>`;
+    // [v186 2026-05-18] 편집기 내부 통합 — app-gallery-bg.js 의 GALLERY_BG_LIST + composeBgForEditor 사용.
+    const list = (typeof window.GALLERY_BG_LIST === 'function') ? window.GALLERY_BG_LIST() : [];
+    if (!list.length) {
+      return `<div class="pe-panel-row"><button type="button" class="pe-action-btn" data-pe-bg="open-existing">기존 누끼·배경 화면 열기</button></div>
+        <div class="pe-hint">배경 모듈 로드 중이에요. 잠시 후 다시 열어주세요.</div>`;
+    }
+    const cards = list.map(bg => {
+      const preview = bg.imageData
+        ? `<img src="${_esc(bg.imageData)}" alt="${_esc(bg.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" />`
+        : `<div style="width:100%;height:100%;background:${_esc(bg.gradient || bg.color || '#fff')};"></div>`;
+      return `<button type="button" data-pe-bg-id="${_esc(bg.id)}"
+        style="position:relative;width:100%;aspect-ratio:1;border-radius:10px;overflow:hidden;border:1.5px solid rgba(255,255,255,0.10);background:transparent;cursor:pointer;padding:0;">
+        ${preview}
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:3px 6px;background:rgba(0,0,0,0.55);color:#fff;font-size:10px;font-weight:700;text-align:center;">${_esc(bg.name)}</div>
+      </button>`;
+    }).join('');
+    return `<div class="pe-field-label">배경 선택 (누끼 후 자동 합성)</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">${cards}</div>
+      <div class="pe-panel-row pe-panel-grid-2">
+        <button type="button" class="pe-chip-btn" data-pe-bg="restore">↺ 원본 사진으로</button>
+        <button type="button" class="pe-chip-btn" data-pe-bg="open-existing">기존 배경 화면</button>
+      </div>
+      <div class="pe-hint">카드 누르면 자동 누끼 + 합성. 같은 사진은 누끼 캐시되어 다른 배경 즉시 적용. Free 한도 누끼 2/일.</div>`;
   }
   function _panelText() {
     const t = _state.text;
@@ -339,7 +360,49 @@
     bg(panel) {
       _on(panel, '[data-pe-bg="open-existing"]', 'click', () => {
         _toast('기존 누끼·배경 화면을 여는 중…');
-        (window.openGalleryBg || window.openBgGallery || (() => {}))();
+        (window.openGalleryBg || window.openBgGallery || window.openBgPanel || (() => {}))();
+      });
+      // [v186] 원본 복원 — _state.originalSrc 다시 로드 + 누끼 캐시 무효
+      _on(panel, '[data-pe-bg="restore"]', 'click', () => {
+        if (!_state.preBgOriginalSrc) return _toast('원본이 이미 보이고 있어요');
+        _loadImage(_state.preBgOriginalSrc);
+        _state.removedBgDataUrl = null;
+        _state.preBgOriginalSrc = null;
+        _toast('원본 사진으로 복원');
+      });
+      // [v186] 배경 카드 클릭 → composeBgForEditor 호출
+      _each(panel, '[data-pe-bg-id]', 'click', async (e) => {
+        const bgId = e.currentTarget.dataset.peBgId;
+        if (!_state.originalImg) return _toast('먼저 사진을 골라주세요');
+        if (typeof window.composeBgForEditor !== 'function') return _toast('배경 모듈 로드 중이에요. 잠시 후 다시.');
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        _toast('누끼 + 배경 합성 중…');
+        try {
+          // 첫 적용 시 현재 originalSrc 백업 — 복원용
+          if (!_state.preBgOriginalSrc) _state.preBgOriginalSrc = _state.originalSrc;
+          const srcUrl = _state.preBgOriginalSrc;  // 원본 (다른 배경 재선택 시 일관)
+          const ratio = (_state.ratio && _state.ratio !== 'original') ? _state.ratio : '1:1';
+          const result = await window.composeBgForEditor(srcUrl, bgId, ratio, _state.removedBgDataUrl);
+          _state.removedBgDataUrl = result.removedBgDataUrl;  // 누끼 캐시 — 다음 배경에 재활용
+          // 결과 dataURL → originalImg 교체
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            _state.originalImg = img;
+            _state.originalSrc = result.composedDataUrl;
+            _pushHistory();
+            _redraw();
+            _toast('배경 적용 완료');
+            btn.disabled = false;
+          };
+          img.onerror = () => { _toast('합성 이미지 로드 실패'); btn.disabled = false; };
+          img.src = result.composedDataUrl;
+        } catch (err) {
+          console.warn('[bg] 합성 실패:', err);
+          _toast('합성 실패: ' + ((err && err.message) || '').slice(0, 60));
+          btn.disabled = false;
+        }
       });
     },
     text(panel) {

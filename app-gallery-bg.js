@@ -505,3 +505,62 @@ async function deleteTemplate(id, e) {
   _renderTemplatePanel();
 }
 
+// ═══════════════════════════════════════════════════════
+// [v186 2026-05-18] 사진 편집기 통합용 외부 API
+//   편집기 bg 탭에서 직접 배경 카드 클릭 → 누끼 + 합성 결과 dataURL 반환.
+//   _applyBgToPhoto 의 합성 로직 재활용 (fake photo / slot 주입).
+// ═══════════════════════════════════════════════════════
+async function _peDataUrlFromAny(srcUrl) {
+  if (!srcUrl) throw new Error('이미지 src 없음');
+  if (srcUrl.startsWith('data:')) return srcUrl;
+  const r = await fetch(srcUrl);
+  const b = await r.blob();
+  return await new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = () => res(reader.result);
+    reader.onerror = rej;
+    reader.readAsDataURL(b);
+  });
+}
+
+window.GALLERY_BG_LIST = function () {
+  // DEFAULT (procedural 포함) + 사용자 추가 배경
+  return [...DEFAULT_BACKGROUNDS, ..._loadUserBgs()];
+};
+
+// composeBgForEditor(srcUrl, bgId, targetRatio, preRemovedBgUrl?)
+//   → { composedDataUrl, removedBgDataUrl } — removedBgDataUrl 캐시해서 다음 호출 시 재활용
+window.composeBgForEditor = async function (srcUrl, bgId, target_ratio, preRemovedBgUrl) {
+  const allBgs = window.GALLERY_BG_LIST();
+  const bg = allBgs.find(b => b.id === bgId);
+  if (!bg) throw new Error('배경을 찾지 못했어요: ' + bgId);
+
+  // blob: / http: → dataURL 정규화 (_dataUrlToBlob 가 dataURL 만 받음)
+  const srcDataUrl = await _peDataUrlFromAny(srcUrl);
+
+  const fakePhoto = {
+    id: 'editor-tmp-' + Date.now(),
+    dataUrl: srcDataUrl,
+    removedBgUrl: preRemovedBgUrl || null,
+    hidden: false,
+  };
+  const fakeSlot = { id: '__editor__', photos: [fakePhoto] };
+
+  // saveSlotToDB 호출 swallow — fakeSlot 은 IndexedDB 에 없음
+  const origSave = (typeof saveSlotToDB === 'function') ? saveSlotToDB : null;
+  if (origSave) window.saveSlotToDB = async function () { /* swallow */ };
+  try {
+    await _applyBgToPhoto(fakePhoto, bg, fakeSlot, target_ratio || '1:1');
+  } catch (e) {
+    console.warn('[bg-editor] _applyBgToPhoto 진행 중 오류 (editedDataUrl 확인):', e);
+  } finally {
+    if (origSave) window.saveSlotToDB = origSave;
+  }
+  if (!fakePhoto.editedDataUrl) throw new Error('합성 결과를 받지 못했어요');
+  return {
+    composedDataUrl: fakePhoto.editedDataUrl,
+    removedBgDataUrl: fakePhoto.removedBgUrl || null,
+  };
+};
+
+
