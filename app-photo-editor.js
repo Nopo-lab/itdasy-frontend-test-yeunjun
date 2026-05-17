@@ -54,7 +54,7 @@
       serviceName: opts.serviceName || '', price: +opts.price || 0,
       activeTab: opts.initial_tab || 'auto', ratio: 'original',
       adjust: { brightness: 100, saturate: 100, sharpness: 0, temperature: 0 },
-      beauty: { skin: 0, redness: 0, hairShine: 0, nailGloss: 0, lashSharp: 0 },
+      beauty: { skin: 0, redness: 0, hairShine: 0, nailGloss: 0, lashSharp: 0, blemish: 0, handSkin: 0, hairColor: 0, hairDetail: 0, eyeShadow: 0 },
       template: { id: null, leftLabel: '전', rightLabel: '후', reviewText: '', priceLines: '' },
       text: { value: '', x: 0.5, y: 0.92, color: '#ffffff' },
       watermark: { value: '', position: 'br', opacity: 0.85 },
