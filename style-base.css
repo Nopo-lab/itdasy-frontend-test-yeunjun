@@ -45,7 +45,7 @@ img {
 }
 
 body {
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text);
   font-family: Pretendard, -apple-system, sans-serif;
   font-weight: 400;
