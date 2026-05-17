@@ -671,6 +671,13 @@
       <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;">
         ${m.related.map(q => `<button data-suggest="${_esc(q)}" style="padding:5px 10px;border:1px solid #E2D6F7;border-radius:100px;background:#F7F2FD;cursor:pointer;font-size:11px;color:#6B21A8;white-space:nowrap;font-weight:700;transition:all 0.12s;">${_esc(q)}</button>`).join('')}
       </div>` : '';
+    // [v177 2026-05-18] 사진 업로드 직후 — 의도 칩 렌더 (보정·인스타·전후·편집기)
+    let intentChipsHtml = '';
+    if (Array.isArray(m.intent_chips) && m.intent_chips.length) {
+      intentChipsHtml = `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
+        ${m.intent_chips.map(c => `<button data-asst-intent-chip="${idx}:${_esc(c.id)}" style="padding:8px 14px;border:1.5px solid #E2D6F7;border-radius:100px;background:#F7F2FD;color:#6B21A8;cursor:pointer;font-size:13px;font-weight:700;transition:all 0.12s;">${_esc(c.label)}</button>`).join('')}
+      </div>`;
+    }
     // [v176 2026-05-18] 자동 보정 결과 — 채팅 안에 사진 + 액션 버튼 렌더
     let photoResultHtml = '';
     if (m.photo_result && m.photo_result.dataUrl) {
@@ -697,6 +704,7 @@
         ${groupsHtml}
         ${fallbackHtml}
         ${relatedHtml}
+        ${intentChipsHtml}
       </div>
     </div>`;
   }
@@ -751,6 +759,7 @@
             + '|' + ((m.action_groups || []).map(g => (g.expanded ? 'E' : 'C') + ':'
                 + (g.items || []).map(it => (it.status || '_') + (it.editing ? 'e' : '') + (it.skipped ? 's' : '')).join(',')).join(';'))
             + '|' + (m.photo_result ? 'P' + (m.photo_result.dataUrl ? m.photo_result.dataUrl.length : 0) : '_')
+            + '|' + (Array.isArray(m.intent_chips) ? 'C' + m.intent_chips.length : '_')
             + '|' + idx;
           if (m._cachedHtml && m._cachedDirtyKey === dirtyKey) return m._cachedHtml;
           const html = _renderAssistantMessage(m, idx);
@@ -1820,6 +1829,26 @@
         if (msg && msg.photo_result && msg.photo_result.dataUrl) {
           _openLightbox([msg.photo_result.dataUrl], 0);
         }
+        return;
+      }
+      // [v177 2026-05-18] 사진 업로드 직후 의도 칩 (보정·인스타·전후·편집기)
+      const intentChip = e.target.closest('[data-asst-intent-chip]');
+      if (intentChip && document.getElementById('asstBody')?.contains(intentChip)) {
+        if (_sendInFlight) return;
+        const [hiStr, chipId] = intentChip.dataset.asstIntentChip.split(':');
+        const hi = parseInt(hiStr, 10);
+        const chipMsg = _history[hi];
+        const userMsg = _history[hi - 1];
+        if (!chipMsg || !Array.isArray(chipMsg.intent_chips) || !userMsg) return;
+        const chip = chipMsg.intent_chips.find(c => c.id === chipId);
+        if (!chip) return;
+        const photoUrl = userMsg.thumb || (Array.isArray(userMsg.photos) ? userMsg.photos[0] : '');
+        const photos = Array.isArray(userMsg.photos) ? userMsg.photos : (photoUrl ? [photoUrl] : []);
+        if (!photoUrl) return;
+        // user 사진 + 칩 메시지 제거 → _runChatAutoEdit 가 새 user/assistant 메시지 push
+        _history.splice(hi - 1, 2);
+        _renderHistory();
+        _runChatAutoEdit({ photoUrl, photos, question: chip.question, customerCtx: null });
         return;
       }
       // [v176 2026-05-18] 자동 보정 결과 액션 버튼 (인스타·편집기·저장·다시)
@@ -2985,6 +3014,27 @@
         }
       }
     } catch (_ePS) { void _ePS; }
+
+    // [v177 2026-05-18] 빈 텍스트 + 사진만 → 의도 칩 띄우고 종료.
+    // 갤러리/카메라에서 사진만 던지면 자동 전송되어 OCR 로 가버리던 흐름 차단.
+    // 사용자가 칩 누를 때까지 _runChatAutoEdit 보류.
+    if (!question && photoUrls.length) {
+      _history.push({ role: 'user', text: '', thumb: photoUrls[0] || '', photos: photoUrls });
+      _history.push({
+        role: 'assistant',
+        text: '사진 받았어요! 어떻게 해드릴까요?',
+        intent_chips: [
+          { id: 'edit',      label: '보정',        question: '예쁘게 보정해줘' },
+          { id: 'instagram', label: '인스타 올려', question: '인스타에 올릴 사진으로 만들어줘' },
+          { id: 'ba',        label: '전후',        question: '전후 카드 만들어줘' },
+          { id: 'editor',    label: '편집기',      question: '편집기 열어줘' },
+        ],
+      });
+      _renderHistory();
+      _sendInFlight = false;
+      if (window.hapticLight) window.hapticLight();
+      return;
+    }
 
     // 플레이스홀더 메시지
     const baseText = question || (N > 1 ? ('사진 ' + N + '장 업로드 중…') : '사진 업로드 중…');
