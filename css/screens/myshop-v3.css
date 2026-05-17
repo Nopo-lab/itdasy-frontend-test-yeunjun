@@ -458,7 +458,7 @@ body:has(#tab-dashboard.active) #tab-dashboard.tab { max-width: none !important;
   flex: 1;
   padding: 24px 28px;
   overflow-y: auto;
-  background: var(--bg);
+  background: var(--surface);
   flex-direction: column;
 }
 .ms-pc::-webkit-scrollbar { width: 0; }

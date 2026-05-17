@@ -19,7 +19,7 @@
 
 /* ── 오버레이 레이아웃 ─────────────────────────────────────── */
 .dt-overlay {
-  background: var(--bg);
+  background: var(--surface);
   display: flex;
   flex-direction: column;
 }

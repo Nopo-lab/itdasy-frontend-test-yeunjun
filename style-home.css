@@ -127,7 +127,7 @@
 /* 홈 탭 */
 
 /* ───── 홈 카드 시스템 ───── */
-.hc-section { display: flex; flex-direction: column; gap: 16px; padding: 20px 20px 100px; }
+.hc-section { display: flex; flex-direction: column; gap: 16px; padding: 0 20px 100px; }
 
 /* STEP 1 연동 카드 */
 .hc-step1 {

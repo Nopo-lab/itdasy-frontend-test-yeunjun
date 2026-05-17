@@ -607,7 +607,7 @@
   border-right: 0.5px solid var(--border);
   padding: 18px 16px;
   overflow-y: auto;
-  background: var(--bg);
+  background: var(--surface);
   flex-shrink: 0;
 }
 .bk-pc__left::-webkit-scrollbar { width: 0; }
