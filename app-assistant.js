@@ -425,6 +425,8 @@
         <div id="asstQuickLabel" style="font-size:11px;color:#8B95A1;padding:8px 4px 4px;font-weight:600;">이런 것도 돼요</div>
         <div id="asstSuggest" style="display:flex;gap:6px;overflow-x:auto;margin-top:0;padding:4px 0;"></div>
         <div id="asstTypeahead" style="display:none;gap:6px;overflow-x:auto;margin-top:6px;padding:2px 0;"></div>
+        <!-- [v178 2026-05-18] 사진 펜딩 영역 — 갤러리/카메라 선택 후 여기 미리보기. 송신 전까지 보임 -->
+        <div id="asstPending" style="display:none;flex-wrap:wrap;gap:6px;padding:6px 4px 0;"></div>
         <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
           <button id="asstPhoto" aria-label="사진 업로드" title="사진 업로드" style="flex-shrink:0;width:44px;height:44px;border:1px solid hsl(340,78%,85%);border-radius:14px;background:hsl(340,100%,98%);color:hsl(350,60%,40%);cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;transition:background 0.15s;">${_svg('ic-camera', 20)}</button>
           <input id="asstInput" placeholder="샵 관련해서 물어보세요…" maxlength="300" data-no-voice style="flex:1;padding:12px;border:1px solid #ddd;border-radius:14px;font-size:14px;min-width:0;" />
@@ -447,16 +449,16 @@
     sheet.querySelector('#asstSend').addEventListener('click', _send);
     // 사진 업로드 버튼 → 하단 action sheet
     sheet.querySelector('#asstPhoto').addEventListener('click', _openPhotoSheet);
-    // 숨겨진 file input 선택 시 업로드 실행
+    // [v178 2026-05-18] file input 선택 → 펜딩에 추가 (자동 전송 X). 사용자 ▷ 누르면 전송.
     sheet.querySelector('#asstCamera').addEventListener('change', (e) => {
       const fs = e.target.files ? Array.from(e.target.files) : [];
       e.target.value = '';  // 같은 파일 재선택 허용
-      if (fs.length) _uploadPhotos(fs);
+      if (fs.length) _addPendingPhotos(fs);
     });
     sheet.querySelector('#asstGallery').addEventListener('change', (e) => {
       const fs = e.target.files ? Array.from(e.target.files) : [];
       e.target.value = '';
-      if (fs.length) _uploadPhotos(fs);
+      if (fs.length) _addPendingPhotos(fs);
     });
     sheet.querySelector('#asstInput').addEventListener('keydown', (e) => {
       // 한글 IME 조합 중 Enter 무시 (마지막 글자 중복/누락 방지)
@@ -671,11 +673,16 @@
       <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;">
         ${m.related.map(q => `<button data-suggest="${_esc(q)}" style="padding:5px 10px;border:1px solid #E2D6F7;border-radius:100px;background:#F7F2FD;cursor:pointer;font-size:11px;color:#6B21A8;white-space:nowrap;font-weight:700;transition:all 0.12s;">${_esc(q)}</button>`).join('')}
       </div>` : '';
-    // [v177 2026-05-18] 사진 업로드 직후 — 의도 칩 렌더 (보정·인스타·전후·편집기)
+    // [v177 2026-05-18] 사진 업로드 직후 — 의도 칩 렌더. primary 는 그라데이션 강조.
     let intentChipsHtml = '';
     if (Array.isArray(m.intent_chips) && m.intent_chips.length) {
       intentChipsHtml = `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
-        ${m.intent_chips.map(c => `<button data-asst-intent-chip="${idx}:${_esc(c.id)}" style="padding:8px 14px;border:1.5px solid #E2D6F7;border-radius:100px;background:#F7F2FD;color:#6B21A8;cursor:pointer;font-size:13px;font-weight:700;transition:all 0.12s;">${_esc(c.label)}</button>`).join('')}
+        ${m.intent_chips.map(c => {
+          const s = c.primary
+            ? 'padding:9px 16px;border:none;border-radius:100px;background:linear-gradient(135deg,var(--brand,#8B5CF6),var(--brand-strong,#7C3AED));color:#fff;cursor:pointer;font-size:13px;font-weight:800;box-shadow:0 2px 6px rgba(124,58,237,0.25);'
+            : 'padding:8px 14px;border:1.5px solid #E2D6F7;border-radius:100px;background:#F7F2FD;color:#6B21A8;cursor:pointer;font-size:13px;font-weight:700;';
+          return `<button data-asst-intent-chip="${idx}:${_esc(c.id)}" style="${s}">${_esc(c.label)}</button>`;
+        }).join('')}
       </div>`;
     }
     // [v176 2026-05-18] 자동 보정 결과 — 채팅 안에 사진 + 액션 버튼 렌더
@@ -1772,6 +1779,10 @@
   // 단일 document-level 위임 (한 번만 등록)
   let _delegationBound = false;
   let _sendInFlight = false;
+  // [v178 2026-05-18] 사진 펜딩 (드래프트 첨부) — 갤러리/카메라 선택 시 자동 전송 X.
+  //   입력창 위 칩으로 펜딩 → 사용자 텍스트 입력 후 ▷ 누르면 사진+텍스트 함께 전송.
+  let _pendingFiles = [];   // File 객체 배열 (실제 업로드용)
+  let _pendingThumbs = [];  // 미리보기 objectURL 배열 (인덱스 동기화)
   function _bindActionButtons() {
     if (_delegationBound) return;
     _delegationBound = true;
@@ -1810,6 +1821,17 @@
       try { _applyEditField(target, field, fld.value); } catch (_e) { /* ignore */ }
     });
     document.addEventListener('click', (e) => {
+      // [v178 2026-05-18] 펜딩 사진 X 버튼 → 해당 인덱스 제거
+      const pendRm = e.target.closest('[data-pending-remove]');
+      if (pendRm && document.getElementById('assistantSheet')?.contains(pendRm)) {
+        const i = parseInt(pendRm.dataset.pendingRemove, 10);
+        try { URL.revokeObjectURL(_pendingThumbs[i]); } catch (_e) { void _e; }
+        _pendingFiles.splice(i, 1);
+        _pendingThumbs.splice(i, 1);
+        _renderPending();
+        if (!_pendingFiles.length) document.getElementById('asstInput')?.focus();
+        return;
+      }
       // 2026-04-26 픽스 — 업로드 사진 썸네일 클릭 → 라이트박스
       const photoEl = e.target.closest('[data-asst-photo]');
       if (photoEl && document.getElementById('asstBody')?.contains(photoEl)) {
@@ -2943,6 +2965,42 @@
     return true;
   }
 
+  // [v178 2026-05-18] 펜딩 사진 헬퍼 ─ 드래프트 첨부 UI
+  function _renderPending() {
+    const wrap = document.getElementById('asstPending');
+    if (!wrap) return;
+    if (!_pendingFiles.length) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+    wrap.style.display = 'flex';
+    wrap.innerHTML = _pendingThumbs.map((url, i) => `
+      <div style="position:relative;width:54px;height:54px;flex-shrink:0;border-radius:10px;overflow:hidden;background:#f0f0f0;border:1px solid rgba(0,0,0,0.06);">
+        <img src="${_esc(url)}" alt="첨부 사진 ${i + 1}" style="width:100%;height:100%;object-fit:cover;display:block;" />
+        <button data-pending-remove="${i}" aria-label="제거" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.65);color:#fff;border:none;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;font-weight:700;">×</button>
+      </div>
+    `).join('');
+  }
+  function _addPendingPhotos(files) {
+    const arr = Array.from(files || []).filter(Boolean);
+    const room = 10 - _pendingFiles.length;
+    if (room <= 0) {
+      if (window.showToast) window.showToast('한 번에 최대 10장까지만');
+      return;
+    }
+    arr.slice(0, room).forEach(f => {
+      _pendingFiles.push(f);
+      try { _pendingThumbs.push(URL.createObjectURL(f)); }
+      catch (_e) { _pendingThumbs.push(''); }
+    });
+    _renderPending();
+    setTimeout(() => document.getElementById('asstInput')?.focus(), 30);
+    if (window.hapticLight) window.hapticLight();
+  }
+  function _clearPending() {
+    _pendingThumbs.forEach(u => { try { URL.revokeObjectURL(u); } catch (_e) { void _e; } });
+    _pendingFiles = [];
+    _pendingThumbs = [];
+    _renderPending();
+  }
+
   async function _uploadPhotos(files) {
     if (_sendInFlight) return;
     // 단일 파일·FileList·배열 모두 허용
@@ -3015,19 +3073,21 @@
       }
     } catch (_ePS) { void _ePS; }
 
-    // [v177 2026-05-18] 빈 텍스트 + 사진만 → 의도 칩 띄우고 종료.
-    // 갤러리/카메라에서 사진만 던지면 자동 전송되어 OCR 로 가버리던 흐름 차단.
-    // 사용자가 칩 누를 때까지 _runChatAutoEdit 보류.
-    if (!question && photoUrls.length) {
-      _history.push({ role: 'user', text: '', thumb: photoUrls[0] || '', photos: photoUrls });
+    // [v178 2026-05-18] 사진 + (빈/비-OCR 텍스트) → 제안 메시지로 차단.
+    //   v176 phrase 매칭 실패 시 OCR 백엔드로 가서 "1장 분석했지만 자동저장 가능한
+    //   형태가 아니에요" 같은 폴백이 떴음 — 사장님 입장에서 의미 없음.
+    //   대신 "이 사진, 보정해서 인스타에 올릴까요?" 액션 제안.
+    //   영수증/매출/금액/메뉴 같은 OCR 의도 키워드는 기존 백엔드 OCR 로 통과.
+    const isOcrIntent = question && /(영수증|매출|금액|결제|판매|메뉴|상품)/.test(question);
+    if (photoUrls.length && !isOcrIntent) {
+      _history.push({ role: 'user', text: question || '', thumb: photoUrls[0] || '', photos: photoUrls });
       _history.push({
         role: 'assistant',
-        text: '사진 받았어요! 어떻게 해드릴까요?',
+        text: '이 사진, 보정해서 인스타에 올릴까요?',
         intent_chips: [
-          { id: 'edit',      label: '보정',        question: '예쁘게 보정해줘' },
-          { id: 'instagram', label: '인스타 올려', question: '인스타에 올릴 사진으로 만들어줘' },
-          { id: 'ba',        label: '전후',        question: '전후 카드 만들어줘' },
-          { id: 'editor',    label: '편집기',      question: '편집기 열어줘' },
+          { id: 'instagram', label: '네, 보정+인스타', question: '예쁘게 보정해서 인스타 올려줘', primary: true },
+          { id: 'ba',        label: '전후 카드',      question: '전후 카드 만들어줘' },
+          { id: 'editor',    label: '편집기 직접',    question: '편집기 열어줘' },
         ],
       });
       _renderHistory();
@@ -3202,6 +3262,17 @@
     if (_sendInFlight) return;  // 중복 송신 방지
     const input = document.getElementById('asstInput');
     const q = input.value.trim();
+
+    // [v178 2026-05-18] 펜딩 사진 있으면 사진 + 텍스트 함께 전송.
+    //   _uploadPhotos 안에서 input.value 를 question 으로 다시 읽으므로 텍스트 전달 OK.
+    //   텍스트 비어있어도 OK — _uploadPhotos 가 빈 question 으로 제안 메시지 띄움.
+    if (_pendingFiles.length) {
+      const files = _pendingFiles.slice();
+      _clearPending();
+      _uploadPhotos(files);
+      return;
+    }
+
     if (!q) return;
 
     // [2026-04-29 W5] 챗봇 keyword shortcut — 자주 쓰는 진입점은 LLM 호출 없이 즉시 시트 open
