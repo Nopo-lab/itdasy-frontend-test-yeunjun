@@ -207,6 +207,9 @@ const SHOP_CONFIG = {
   },
 };
 
+// [v182 2026-05-18] 챗봇 _generateChatCaption 이 정확히 동일한 photo_context 만들도록 노출.
+try { window.SHOP_CONFIG = SHOP_CONFIG; } catch (_e) { void _e; }
+
 function applyShopType(type) {
   const cfg = SHOP_CONFIG[type];
   if (!cfg) return;

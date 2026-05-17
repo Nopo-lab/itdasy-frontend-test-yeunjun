@@ -765,8 +765,34 @@ function openInstagramPreview(opts) {
       const captionEl = pop.querySelector('#_igPreviewCaption');
       const finalCaption = captionEl ? captionEl.value.trim() : '';
       const dataUrl = upBtn.dataset.igpvSrc || src;
+      const apiBase = window.API || '';
+      const baseHeaders = window.authHeader ? Object.assign({}, window.authHeader()) : {};
+      baseHeaders['ngrok-skip-browser-warning'] = 'true';
 
-      // [v181] Meta 심사 대응 — 발행 전 명시적 사용자 확인 (app-gallery-write.js 와 동일)
+      const originalLabel = upBtn.textContent;
+      upBtn.disabled = true;
+      upBtn.textContent = '확인 중…';
+
+      // [v182] 사전 가드 — /instagram/status connected 확인. 미연동이면 토스트 + 차단.
+      try {
+        const statusRes = await fetch(apiBase + '/instagram/status', { method: 'GET', headers: baseHeaders });
+        const statusData = await statusRes.json().catch(() => ({}));
+        if (!statusRes.ok) throw new Error(statusData.detail || 'status check 실패');
+        if (!statusData.connected) {
+          if (window.showToast) window.showToast('인스타 먼저 연동해주세요. 설정 → Instagram 연동');
+          upBtn.disabled = false;
+          upBtn.textContent = originalLabel;
+          return;
+        }
+      } catch (e) {
+        console.warn('[ig-preview] status 확인 실패:', e);
+        if (window.showToast) window.showToast('연동 상태 확인 실패: ' + ((e && e.message) || '').slice(0, 60));
+        upBtn.disabled = false;
+        upBtn.textContent = originalLabel;
+        return;
+      }
+
+      // Meta 심사 대응 — 발행 전 명시적 사용자 확인
       const confirmMsg = '정말 인스타 피드에 올릴까요?\n발행 후엔 바로 공개돼요.';
       let confirmed = false;
       try {
@@ -776,35 +802,33 @@ function openInstagramPreview(opts) {
           confirmed = window.confirm(confirmMsg);
         }
       } catch (_) { confirmed = window.confirm(confirmMsg); }
-      if (!confirmed) return;
+      if (!confirmed) {
+        upBtn.disabled = false;
+        upBtn.textContent = originalLabel;
+        return;
+      }
 
-      const originalLabel = upBtn.textContent;
-      upBtn.disabled = true;
       upBtn.textContent = '올리는 중…';
 
       try {
-        // [v181] 진짜 인스타 발행 — POST /instagram/publish-file (app-gallery-write.js doPublishFromCaption 동일 패턴)
         const blobRes = await fetch(dataUrl);
         const blob = await blobRes.blob();
         const fd = new FormData();
         fd.append('image', blob, 'photo.jpg');
         fd.append('caption', finalCaption);
-        const headers = window.authHeader ? Object.assign({}, window.authHeader()) : {};
-        headers['ngrok-skip-browser-warning'] = 'true';
-        const apiBase = window.API || '';
         const res = await fetch(apiBase + '/instagram/publish-file', {
           method: 'POST',
-          headers,
+          headers: baseHeaders,  // multipart 일 땐 Content-Type 자동 설정
           body: fd,
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+        console.log('[ig-preview] 발행 성공:', data.media_id);
 
         if (window.showToast) window.showToast('인스타 피드에 올라갔어요 🎉');
         if (typeof window.createConfetti === 'function') {
           for (let i = 0; i < 20; i++) setTimeout(window.createConfetti, i * 100);
         }
-        // CaptionPrefill 비움 — 같은 캡션 재사용 방지
         try {
           if (window.CaptionPrefill && typeof window.CaptionPrefill.clear === 'function') {
             window.CaptionPrefill.clear();

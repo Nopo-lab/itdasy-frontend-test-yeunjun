@@ -2952,15 +2952,19 @@
     };
     _renderHistory();
 
-    // [v181 2026-05-18] 인스타 분기 — 기존 백엔드 캡션 시스템 활용.
-    //   v179 의 정규식 _buildAutoCaption 제거. POST /persona/generate 호출 →
-    //   페르소나 학습된 톤 + data.hashtags 사용. CaptionPrefill 모듈로 prefill 저장.
+    // [v182 2026-05-18] 인스타 분기 — 백엔드 /persona/generate + 에러 노출.
     if (intent.instagram) {
-      const fullCaption = await _generateChatCaption({
+      const capRes = await _generateChatCaption({
         preset,
         question: opts.question,
         customerCtx: opts.customerCtx,
       });
+      const fullCaption = capRes.caption || '';
+      // 캡션 생성 실패 시 챗봇에 에러 메시지 push (사용자가 원인 알 수 있게)
+      if (capRes.error) {
+        _history.push({ role: 'assistant', text: '⚠️ ' + capRes.error + '\n캡션 없이 미리보기만 띄울게요.' });
+        _renderHistory();
+      }
       try {
         if (fullCaption && window.CaptionPrefill && typeof window.CaptionPrefill.set === 'function') {
           window.CaptionPrefill.set(fullCaption);
@@ -2982,26 +2986,42 @@
     return true;
   }
 
-  // [v181 2026-05-18] 챗봇에서 백엔드 /persona/generate 호출.
-  //   페르소나 학습된 말투 + SHOP 별 해시태그 백엔드 응답 사용.
-  //   실패 시 빈 문자열 — openInstagramPreview 가 placeholder 보여줌.
+  // [v182 2026-05-18] 챗봇에서 백엔드 /persona/generate 호출 — app-caption.js
+  //   _doGenerateCaption 와 동일 payload 구조로 동일 품질 캡션 보장.
+  //   photo_context = `${shopType} 시술. ${cfg.tagLabel}: ${typeStr}. ${axesText}`
+  //   category = _CAP_CAT_MAP[shopType] || 'extension' (백엔드는 ['extension','nail'] 만 받음)
+  //   반환: { caption, error } — 실패 사유 호출자에 명시.
   async function _generateChatCaption(opts) {
-    const SHOP_CAT_MAP = { hair: 'hair', lash: 'lash', nail: 'nail', wax: 'wax', shop: 'extension' };
-    const category = SHOP_CAT_MAP[opts.preset] || 'extension';
-    let shopType = '';
-    try { shopType = localStorage.getItem('shop_type') || ''; } catch (_e) { void _e; }
+    // app-core.js SHOP_CONFIG 와 동일 키 (window 노출됨, 없으면 폴백)
+    const SC = window.SHOP_CONFIG || {
+      '붙임머리': { tagLabel: '인치 선택', defaultTag: '24인치' },
+      '네일아트': { tagLabel: '시술 종류', defaultTag: '젤네일' },
+    };
+    const CAT_MAP = { '붙임머리': 'extension', '네일아트': 'nail', '네일': 'nail' };
 
-    // photo_context — 사장님 메시지 + 고객 정보 + 업종 prefix
-    const parts = [];
-    if (shopType) parts.push(shopType + ' 시술.');
+    let shopType = '';
+    try { shopType = localStorage.getItem('shop_type') || '붙임머리'; } catch (_e) { shopType = '붙임머리'; }
+    const cfg = SC[shopType] || SC['붙임머리'];
+    const category = CAT_MAP[shopType] || 'extension';
+
+    // typeStr — 챗봇 메시지에서 인치/스타일 추출, 없으면 cfg.defaultTag (UI 태그 selector 대체)
     const q = (opts.question || '').trim();
-    if (q) parts.push(q + '.');
+    let typeStr = cfg.defaultTag;
+    const lenMatch = q.match(/(\d{1,3}\s*인치)/);
+    if (lenMatch) typeStr = lenMatch[1].replace(/\s+/g, '');
+
+    // axesText — 챗봇 메시지 + 고객. _doGenerateCaption 의 axes.customer/situation/photo 자리.
+    let axesText = '';
     if (opts.customerCtx && opts.customerCtx.name) {
-      parts.push(opts.customerCtx.name + ' 손님께서 좋아하셨음.');
+      axesText = opts.customerCtx.name + ' 손님. ' + (q || '오늘 시술 후 자연스럽게 마무리') + '.';
+    } else if (q) {
+      axesText = q + '.';
     } else {
-      parts.push('손님께서 좋아하셨음.');
+      axesText = '오늘 시술 후 자연스럽게 마무리. 손님께서 좋아하셨음.';
     }
-    const photo_context = parts.join(' ');
+
+    const photo_context = (`${shopType} 시술. ${cfg.tagLabel}: ${typeStr}. ${axesText}`).trim().slice(0, 500);
+    console.log('[chat-caption] payload:', { category, photo_context });
 
     try {
       const headers = window.authHeader ? Object.assign({}, window.authHeader()) : {};
@@ -3021,7 +3041,13 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         console.warn('[chat-caption] /persona/generate 실패:', res.status, data);
-        return '';
+        const detail = String(data.detail || '');
+        let err = '캡션 생성 실패';
+        if (res.status === 401) err = '로그인이 만료됐어요. 다시 로그인해주세요';
+        else if (detail === 'consent_missing') err = 'AI 사용 동의가 필요해요 (프로필 → AI 보정 동의)';
+        else if (/quota_exceeded:caption/.test(detail)) err = '오늘 캡션 한도(3회)를 다 쓰셨어요. 내일 다시!';
+        else if (detail) err = detail.slice(0, 100);
+        return { caption: '', error: err };
       }
       const caption = (data.caption || '').trim();
       const tagsArr = Array.isArray(data.hashtags) ? data.hashtags : [];
@@ -3030,10 +3056,11 @@
         .filter(Boolean)
         .map(t => '#' + t)
         .join(' ');
-      return caption + (tags ? '\n\n' + tags : '');
+      const full = caption + (tags ? '\n\n' + tags : '');
+      return { caption: full, error: null };
     } catch (e) {
       console.warn('[chat-caption] 네트워크 실패:', e);
-      return '';
+      return { caption: '', error: '네트워크 오류 — 잠시 후 다시 시도해주세요' };
     }
   }
 
