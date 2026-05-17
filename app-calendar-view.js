@@ -997,7 +997,7 @@
 
   function _bindPCLeft(o) {
     const left = o.querySelector('#bk-pc-left'); if (!left) return;
-    // 미니 캘린더 nav
+    // 미니 캘린더 nav — 헤더 월/뷰 본문도 같이 이동 (단일 source of truth)
     left.querySelectorAll('[data-mini-nav]').forEach(btn => {
       btn.addEventListener('click', () => {
         if (!_miniMonth) _miniMonth = { y: _curYear, m: _curMonth };
@@ -1006,7 +1006,9 @@
         } else {
           _miniMonth.m++; if (_miniMonth.m > 12) { _miniMonth.m = 1; _miniMonth.y++; }
         }
-        _refreshPCLeft();
+        _curYear = _miniMonth.y;
+        _curMonth = _miniMonth.m;
+        _reloadAndRender();
       });
     });
     // 미니 캘린더 day 클릭
@@ -1131,7 +1133,12 @@
     if (_curView === 'week') {
       const ws = new Date(_curDate); ws.setHours(0,0,0,0);
       ws.setDate(ws.getDate() - ws.getDay());
-      lbl.textContent = (ws.getMonth() + 1) + '월 ' + ws.getDate() + '일 주';
+      const y = ws.getFullYear(), m = ws.getMonth() + 1;
+      // n번째 주 — ws 가 속한 월의 1일이 속한 일요일 기준으로 카운트
+      const monthFirst = new Date(y, m - 1, 1);
+      const firstSun = new Date(monthFirst); firstSun.setDate(1 - monthFirst.getDay());
+      const weekIdx = Math.floor((ws - firstSun) / (7 * 24 * 60 * 60 * 1000)) + 1;
+      lbl.textContent = y + '년 ' + m + '월 ' + weekIdx + '째 주';
     } else if (_curView === 'day') {
       lbl.textContent = _curDate.getFullYear() + '년 ' + (_curDate.getMonth() + 1) + '월 ' + _curDate.getDate() + '일';
     } else {
@@ -1840,14 +1847,35 @@
   // §22 월 네비
   // ============================================================
   async function _prevMonth() {
-    _curMonth--;
-    if (_curMonth < 1) { _curMonth = 12; _curYear--; }
+    // 뷰에 따라 단위 다르게 — 주뷰: 1주, 일뷰: 1일, 월뷰: 1달
+    if (_curView === 'week') {
+      _curDate = new Date(_curDate); _curDate.setDate(_curDate.getDate() - 7);
+    } else if (_curView === 'day') {
+      _curDate = new Date(_curDate); _curDate.setDate(_curDate.getDate() - 1);
+    } else {
+      _curMonth--;
+      if (_curMonth < 1) { _curMonth = 12; _curYear--; }
+      _curDate = new Date(_curYear, _curMonth - 1, 1);
+    }
+    _curYear = _curDate.getFullYear();
+    _curMonth = _curDate.getMonth() + 1;
+    _miniMonth = { y: _curYear, m: _curMonth };
     await _reloadAndRender();
     _prefetchNeighbors();
   }
   async function _nextMonth() {
-    _curMonth++;
-    if (_curMonth > 12) { _curMonth = 1; _curYear++; }
+    if (_curView === 'week') {
+      _curDate = new Date(_curDate); _curDate.setDate(_curDate.getDate() + 7);
+    } else if (_curView === 'day') {
+      _curDate = new Date(_curDate); _curDate.setDate(_curDate.getDate() + 1);
+    } else {
+      _curMonth++;
+      if (_curMonth > 12) { _curMonth = 1; _curYear++; }
+      _curDate = new Date(_curYear, _curMonth - 1, 1);
+    }
+    _curYear = _curDate.getFullYear();
+    _curMonth = _curDate.getMonth() + 1;
+    _miniMonth = { y: _curYear, m: _curMonth };
     await _reloadAndRender();
     _prefetchNeighbors();
   }
