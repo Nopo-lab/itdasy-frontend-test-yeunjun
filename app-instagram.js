@@ -675,6 +675,12 @@ function openInstagramPreview(opts) {
   opts = opts || {};
   const meta = _resolveIgPreviewRatio(opts.ratio);
   const src  = opts.src || '';
+  // [v179 2026-05-18] caption prefill — opts.caption 우선, 없으면 localStorage 폴백
+  let captionPrefill = opts.caption || '';
+  if (!captionPrefill) {
+    try { captionPrefill = localStorage.getItem('caption_prefill') || ''; } catch (_e) { void _e; }
+  }
+  const enableUpload = !!opts.enableUpload;
 
   let pop = document.getElementById('_igPreviewPop');
   if (!pop) {
@@ -722,16 +728,68 @@ function openInstagramPreview(opts) {
         <svg style="width:22px;height:22px;" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         <svg style="width:22px;height:22px;margin-left:auto;" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="2"><polygon points="19 21 12 16 5 21 5 3 19 3 19 21"/></svg>
       </div>
-      <div style="padding:2px 12px 14px;">
-        <div style="font-size:13px;color:#262626;line-height:1.6;"><span style="font-weight:700;">${shopHandle} </span><span style="color:var(--text-subtle,#888);">캡션은 다음 단계에서 만들 수 있어요</span></div>
+      <!-- [v179 2026-05-18] 캡션 영역 — editable. opts.caption 또는 caption_prefill 자동 채움. -->
+      <div style="padding:2px 12px 12px;">
+        <div style="font-size:11px;color:var(--text-subtle,#888);font-weight:700;margin-bottom:4px;">캡션 (수정 가능)</div>
+        <textarea id="_igPreviewCaption" rows="5" placeholder="캡션을 입력하세요…"
+          style="width:100%;padding:10px;border:1px solid #E2D6F7;border-radius:10px;font-size:13px;color:#262626;line-height:1.5;background:#fff;resize:vertical;font-family:inherit;box-sizing:border-box;">${captionPrefill.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
+        <div style="font-size:10px;color:var(--text-subtle,#888);margin-top:4px;">${captionPrefill ? '자동 생성된 캡션이에요. 사장님 톤으로 다듬어 보세요.' : '메시지에 시술 정보를 같이 적으면 캡션이 자동 생성돼요.'}</div>
       </div>
       <div style="padding:0 12px 28px;display:flex;gap:8px;">
-        <button style="flex:1;height:46px;border-radius:14px;border:1.5px solid #dbdbdb;background:#fff;color:#262626;font-size:13px;font-weight:700;cursor:pointer;" onclick="document.getElementById('_igPreviewPop').style.display='none'">닫기</button>
-        <button style="flex:1.4;height:46px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent,#F18091),var(--accent2,#e26a85));color:#fff;font-size:13px;font-weight:800;cursor:pointer;" onclick="document.getElementById('_igPreviewPop').style.display='none';(typeof window.openCaptionScenarioPopup==='function'&&window.openCaptionScenarioPopup())">캡션 만들기</button>
+        <button id="_igPreviewClose" style="flex:1;height:46px;border-radius:14px;border:1.5px solid #dbdbdb;background:#fff;color:#262626;font-size:13px;font-weight:700;cursor:pointer;">닫기</button>
+        ${enableUpload
+          ? `<button id="_igPreviewUpload" data-igpv-src="${src}" style="flex:1.6;height:46px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent,#F18091),var(--accent2,#e26a85));color:#fff;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">📤 인스타에 올리기</button>`
+          : `<button id="_igPreviewCaptionBtn" style="flex:1.4;height:46px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent,#F18091),var(--accent2,#e26a85));color:#fff;font-size:13px;font-weight:800;cursor:pointer;">캡션 만들기</button>`}
       </div>
     </div>
   `;
   pop.style.display = 'flex';
+
+  // [v179 2026-05-18] 버튼 핸들러 바인딩 (innerHTML 재적용 후 항상 새로 wire)
+  const closeBtn = pop.querySelector('#_igPreviewClose');
+  if (closeBtn) closeBtn.onclick = () => { pop.style.display = 'none'; };
+  const captionBtn = pop.querySelector('#_igPreviewCaptionBtn');
+  if (captionBtn) {
+    captionBtn.onclick = () => {
+      pop.style.display = 'none';
+      if (typeof window.openCaptionScenarioPopup === 'function') window.openCaptionScenarioPopup();
+    };
+  }
+  const upBtn = pop.querySelector('#_igPreviewUpload');
+  if (upBtn) {
+    upBtn.onclick = async () => {
+      const captionEl = pop.querySelector('#_igPreviewCaption');
+      const finalCaption = captionEl ? captionEl.value : '';
+      const dataUrl = upBtn.dataset.igpvSrc || src;
+      try {
+        // dataURL → Blob → File (navigator.share files 용)
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], 'itdasy-' + Date.now() + '.jpg', { type: blob.type || 'image/jpeg' });
+        // 캡션 미리 클립보드에 — Web Share 가 text 미지원이거나 인스타가 캡션 무시할 때 사장님이 붙여넣기 가능.
+        try { await navigator.clipboard.writeText(finalCaption); } catch (_e) { void _e; }
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], text: finalCaption, title: '잇데이 시술 사진' });
+          if (window.showToast) window.showToast('인스타 앱에서 새 글 → 사진 골라서 캡션 붙여넣기');
+          pop.style.display = 'none';
+          return;
+        }
+        // 폴백: 사진 다운로드 + 캡션은 이미 클립보드 + 인스타 universal link
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        if (window.showToast) window.showToast('사진 저장 + 캡션 복사 완료. 인스타 앱에서 새 글 → 붙여넣기');
+        // 모바일이면 인스타 새 글 화면 열기 시도 (universal link)
+        try { window.location.href = 'instagram://library'; } catch (_e) { void _e; }
+      } catch (e) {
+        console.warn('[ig-preview] 업로드 실패:', e);
+        if (window.showToast) window.showToast('업로드 실패: ' + ((e && e.message) || ''));
+      }
+    };
+  }
 
   // 외부에서 ratio 확인할 수 있게 마지막 상태 노출 (테스트·디버그용)
   window._lastIgPreviewMeta = meta;
