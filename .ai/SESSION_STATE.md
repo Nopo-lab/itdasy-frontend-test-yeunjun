@@ -2,7 +2,61 @@
 
 > 새 세션이 시작되면 **이 파일을 먼저 읽고** 현재 단계·대기 결정·마지막 체크포인트를 파악한다.
 
-**LAST UPDATED:** 2026-05-17 · 뷰티업GPT P1-5 + 사진 편집기 P0 MVP
+**LAST UPDATED:** 2026-05-18 · v168 — 사진 편집기 P1 + Brand Kit + Today Morning + DM intent + 4:5 비율
+
+---
+
+## 🟣 2026-05-18 — v168 병렬 라운드 (전체 계획 일괄 진행)
+
+설계 문서: `~/.claude/plans/zesty-snacking-clarke.md` §11~§17, §25
+
+병렬 작업 5개 (subagent 4 + foreground 1):
+
+1. **사진 편집기 P1 — 뷰티 5 슬라이더 + 템플릿 5종 + 다음 단계 모달**
+   - `app-photo-editor.js` 확장 (~890줄, 🟠 분할 후보 → 차후 별도 티켓)
+   - 뷰티: HSV 마스킹 픽셀 walk (피부톤/붉은기/모발윤기/네일광택/속눈썹). 슬라이더 change에만 합성 (성능 보호)
+   - 템플릿: B&A 좌우 / B&A 상하 / 시술 안내 / 가격표 / 후기 카드 — 모두 1080×1350 캔버스
+   - 저장 후 모달: 캡션 만들기 / 고객 기록 첨부(P1 결선 대기) / 인스타 미리보기 3 버튼
+
+2. **Brand Kit 모듈** (subagent A)
+   - `app-brand-kit.js` (248줄, ≤250)
+   - `css/screens/brand-kit.css` (187줄)
+   - 공개 API: `BrandKit.get/save/open/close`
+   - 사진 편집기 브랜드 탭 → "Brand Kit 전체 설정" 버튼으로 진입
+
+3. **4:5 비율 분기** (subagent B)
+   - `app-gallery-bg.js` (436→459줄)
+   - `_ratioToSize('1:1'|'4:5'|'9:16')` 매핑 함수 + `applySelectedBg({target_ratio})` / `applyTemplate(id,{target_ratio})` opts 추가
+   - 알파 bbox·서버 누끼·imgly 폴백 불가침
+
+4. **Today Morning 카드** (subagent C)
+   - `app-today-morning.js` (283줄)
+   - `GET /today/morning` 우선, 폴백: `Booking.list` / `CustomerCache+Chips.pickAll` / `localStorage.itdasy_recent_gallery`
+   - 4섹션: 운영 / 고객 케어 / 콘텐츠 / 마케팅
+   - SWR 60초 + iPhone Safari 터치 fix
+   - 홈 `#homeMorningMount`에 mount (app-home-v41.js _autoMount → TodayMorning.render)
+
+5. **DM intent 정책 매트릭스** (subagent D)
+   - `app-dm-autoreply.js` +29줄 (1115→1144)
+   - `INTENT_AUTONOMY_DEFAULTS`: 가격=auto / 위치=auto / 시간=confirm_high / 예약=draft / 기타=draft
+   - 가격표 존재 여부 체크 후 `auto`→`confirm_high` 다운그레이드
+   - explicit `autonomy_mode` 보존 — 기존 분기 0줄 수정
+   - 마커: `// [v167-INTENT-MATRIX]`
+
+회귀 영향:
+- 사진 편집기: 원본 blob 절대 보존 + 기존 누끼·자동보정 0줄 수정 + 슬라이더 change에만 합성 (60fps 보호)
+- Brand Kit: 신규 모듈, 기존 shop_settings 캐시와 키 분리 (`itdasy_brand_kit`)
+- 4:5: 기존 1:1/9:16 호출 동작 0줄 영향 (default '1:1')
+- Today Morning: 홈에 카드 추가만, 기존 위젯 0줄 영향
+- DM intent: explicit autonomy 보존, 기존 booking_action/draft 분기 0줄 영향
+
+진입로 (테스트):
+- 사진 편집기: AI·자동화 시트 → 사진 편집기 → 8탭 / Brand Kit 진입
+- 모닝 브리핑: 홈 상단 (homeV41Root 위)
+- DM intent: DM 자동응답 시트 열면 conversation들이 새 autonomy_mode 자동 할당
+- Brand Kit: `window.BrandKit.open()` 또는 사진 편집기 브랜드 탭
+
+빌드 버전: `20260518-v168-parallel-round`
 
 ---
 

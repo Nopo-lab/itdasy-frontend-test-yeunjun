@@ -46,12 +46,15 @@
     return {
       originalSrc: opts.src,
       originalImg: null,         // HTMLImageElement
+      secondImg: null,           // 템플릿용 2번째 사진
       shopName: opts.shopName || _readShopName(),
       serviceName: opts.serviceName || '',
       price: +opts.price || 0,
       activeTab: opts.initial_tab || 'auto',
       ratio: 'original',         // 'original' | '1:1' | '4:5' | '9:16'
       adjust: { brightness: 100, saturate: 100, sharpness: 0, temperature: 0 },
+      beauty: { skin: 0, redness: 0, hairShine: 0, nailGloss: 0, lashSharp: 0 },
+      template: { id: null, leftLabel: '전', rightLabel: '후', reviewText: '', priceLines: '' },
       text: { value: '', x: 0.5, y: 0.92, color: '#ffffff' },
       watermark: { value: '', position: 'br', opacity: 0.85 },
       showOriginal: false,
@@ -207,11 +210,14 @@
   }
 
   function _panelBeauty() {
+    const b = _state.beauty;
     return `
-      <div class="pe-coming">
-        💆 뷰티 특화 보정 — P1 예정<br>
-        피부톤·붉은기·잡티·모발 윤기·네일 광택·속눈썹 선명도 슬라이더 10종이 곧 추가됩니다.
-      </div>
+      ${_slider('피부톤 정리', 'skin',       b.skin,       0, 100, 1)}
+      ${_slider('붉은기 완화', 'redness',    b.redness,    0, 100, 1)}
+      ${_slider('모발 윤기',   'hairShine',  b.hairShine,  0, 100, 1)}
+      ${_slider('네일 광택',   'nailGloss',  b.nailGloss,  0, 100, 1)}
+      ${_slider('속눈썹 선명도', 'lashSharp', b.lashSharp, 0, 100, 1)}
+      <div class="pe-hint">시술 결과가 왜곡되지 않게 자연 보정 위주로 동작해요. 슬라이더는 손 떼는 순간 반영됩니다.</div>
     `;
   }
 
@@ -225,11 +231,45 @@
   }
 
   function _panelTemplate() {
+    const t = _state.template;
+    const tplBtn = (id, label) => `<button type="button" class="pe-chip-btn ${t.id===id?'on':''}" data-pe-tpl="${id}">${_esc(label)}</button>`;
     return `
-      <div class="pe-coming">
-        🖼 템플릿 — P1 예정<br>
-        Before/After 좌우·상하, 가격 안내, 후기, 시술 안내 5종이 곧 추가됩니다.
+      <div class="pe-field-label">템플릿</div>
+      <div class="pe-panel-row pe-panel-grid-2">
+        ${tplBtn('ba-h', 'B&A 좌우')}
+        ${tplBtn('ba-v', 'B&A 상하')}
+        ${tplBtn('service', '시술 안내')}
+        ${tplBtn('price', '가격표')}
       </div>
+      <div class="pe-panel-row pe-panel-grid-2">
+        ${tplBtn('review', '후기 카드')}
+        ${tplBtn(null, '템플릿 해제')}
+      </div>
+      ${(t.id === 'ba-h' || t.id === 'ba-v') ? `
+        <div class="pe-panel-row" style="margin-top:8px;">
+          <button type="button" class="pe-action-btn" data-pe-pick-2nd>두 번째 사진 고르기</button>
+        </div>
+        <input type="file" id="pePicker2" accept="image/*" style="display:none" />
+        <label class="pe-field" style="margin-top:8px;"><span>왼쪽/위 라벨</span>
+          <input type="text" class="pe-input" data-pe-tpl-left value="${_esc(t.leftLabel)}" maxlength="8" />
+        </label>
+        <label class="pe-field"><span>오른쪽/아래 라벨</span>
+          <input type="text" class="pe-input" data-pe-tpl-right value="${_esc(t.rightLabel)}" maxlength="8" />
+        </label>
+      ` : ''}
+      ${t.id === 'review' ? `
+        <label class="pe-field" style="margin-top:8px;"><span>후기 문구</span>
+          <textarea class="pe-input" data-pe-tpl-review rows="3" maxlength="120" placeholder="짧은 후기 1~2줄">${_esc(t.reviewText)}</textarea>
+        </label>
+      ` : ''}
+      ${t.id === 'price' ? `
+        <label class="pe-field" style="margin-top:8px;"><span>가격 라인 (줄바꿈으로 구분)</span>
+          <textarea class="pe-input" data-pe-tpl-price rows="4" maxlength="200" placeholder="시술명 | 가격&#10;예) 붙임머리 20인치 | 120,000원">${_esc(t.priceLines)}</textarea>
+        </label>
+      ` : ''}
+      ${t.id === 'service' ? `
+        <div class="pe-hint">상단에 시술명 + 소요시간 + 가격이 자동으로 들어가요. (브랜드 탭의 샵명도 함께)</div>
+      ` : ''}
     `;
   }
 
@@ -263,8 +303,9 @@
       <label class="pe-slider"><div class="pe-slider-head"><span>투명도</span><span class="pe-slider-val">${Math.round(w.opacity*100)}%</span></div>
         <input type="range" min="20" max="100" value="${Math.round(w.opacity*100)}" data-pe-wm-opacity />
       </label>
-      <div class="pe-panel-row" style="margin-top:8px;">
-        <button type="button" class="pe-chip-btn" data-pe-wm-save>이 워터마크를 기본값으로 저장</button>
+      <div class="pe-panel-row pe-panel-grid-2" style="margin-top:8px;">
+        <button type="button" class="pe-chip-btn" data-pe-wm-save>기본값으로 저장</button>
+        <button type="button" class="pe-chip-btn" data-pe-wm-kit>Brand Kit 전체 설정</button>
       </div>
     `;
   }
@@ -305,6 +346,48 @@
         _state.adjust = { brightness: 100, saturate: 100, sharpness: 0, temperature: 0 };
         _renderPanel(); _redraw(); _pushHistory();
       });
+    } else if (tab === 'beauty') {
+      panel.querySelectorAll('[data-pe-slider]').forEach(inp => {
+        inp.addEventListener('input', () => {
+          _state.beauty[inp.dataset.peSlider] = +inp.value;
+          const out = panel.querySelector(`[data-pe-slider-val="${inp.dataset.peSlider}"]`);
+          if (out) out.textContent = inp.value;
+        });
+        // 뷰티는 픽셀 walk라 무거움 — change(손 뗌)에만 합성.
+        inp.addEventListener('change', () => { _redraw(); _pushHistory(); });
+      });
+    } else if (tab === 'template') {
+      panel.querySelectorAll('[data-pe-tpl]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.peTpl;
+          _state.template.id = (id === 'null' || id === '' || id === null) ? null : id;
+          if (!_state.template.id) _state.secondImg = null;
+          _renderPanel(); _redraw(); _pushHistory();
+        });
+      });
+      panel.querySelector('[data-pe-pick-2nd]')?.addEventListener('click', () => {
+        document.getElementById('pePicker2')?.click();
+      });
+      panel.querySelector('#pePicker2')?.addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        const url = URL.createObjectURL(f);
+        const img = new Image();
+        img.onload = () => { _state.secondImg = img; _redraw(); _pushHistory(); };
+        img.src = url;
+      });
+      panel.querySelector('[data-pe-tpl-left]')?.addEventListener('input', (e) => {
+        _state.template.leftLabel = e.target.value; _redraw();
+      });
+      panel.querySelector('[data-pe-tpl-right]')?.addEventListener('input', (e) => {
+        _state.template.rightLabel = e.target.value; _redraw();
+      });
+      panel.querySelector('[data-pe-tpl-review]')?.addEventListener('input', (e) => {
+        _state.template.reviewText = e.target.value; _redraw();
+      });
+      panel.querySelector('[data-pe-tpl-price]')?.addEventListener('input', (e) => {
+        _state.template.priceLines = e.target.value; _redraw();
+      });
     } else if (tab === 'bg') {
       panel.querySelector('[data-pe-bg="open-existing"]')?.addEventListener('click', () => {
         _toast('기존 누끼·배경 화면을 여는 중…');
@@ -338,14 +421,39 @@
       });
       panel.querySelector('[data-pe-wm-save]')?.addEventListener('click', () => {
         try {
-          const bk = JSON.parse(localStorage.getItem('itdasy_brand_kit') || '{}');
-          bk.watermark_text = _state.watermark.value;
-          bk.watermark_position = _state.watermark.position;
-          bk.watermark_opacity = _state.watermark.opacity;
-          localStorage.setItem('itdasy_brand_kit', JSON.stringify(bk));
+          if (window.BrandKit && typeof window.BrandKit.save === 'function') {
+            window.BrandKit.save({
+              watermark_text: _state.watermark.value,
+              watermark_position: _state.watermark.position,
+              watermark_opacity: _state.watermark.opacity,
+            });
+          } else {
+            const bk = JSON.parse(localStorage.getItem('itdasy_brand_kit') || '{}');
+            bk.watermark_text = _state.watermark.value;
+            bk.watermark_position = _state.watermark.position;
+            bk.watermark_opacity = _state.watermark.opacity;
+            localStorage.setItem('itdasy_brand_kit', JSON.stringify(bk));
+          }
           _toast('워터마크 기본값을 저장했어요');
         } catch (_e) { _toast('저장에 실패했어요'); }
       });
+      panel.querySelector('[data-pe-wm-kit]')?.addEventListener('click', () => {
+        if (window.BrandKit && typeof window.BrandKit.open === 'function') window.BrandKit.open();
+        else _toast('Brand Kit 모듈을 불러오는 중이에요');
+      });
+      // Brand Kit 갱신 시 워터마크 입력 자동 동기화
+      window.addEventListener('itdasy:brand-kit:updated', () => {
+        try {
+          const bk = window.BrandKit && window.BrandKit.get && window.BrandKit.get();
+          if (bk) {
+            if (bk.watermark_text) _state.watermark.value = bk.watermark_text;
+            else if (bk.shop_name) _state.watermark.value = bk.shop_name + (bk.instagram_handle ? ' · @' + bk.instagram_handle : '');
+            if (bk.watermark_position) _state.watermark.position = bk.watermark_position;
+            if (typeof bk.watermark_opacity === 'number') _state.watermark.opacity = bk.watermark_opacity;
+            _renderPanel(); _redraw();
+          }
+        } catch (_e) { void _e; }
+      }, { once: true });
       if (!_state.watermark.value && _state.shopName) {
         _state.watermark.value = _state.shopName;
         const inp = panel.querySelector('[data-pe-wm-val]');
@@ -386,6 +494,8 @@
     cv.style.display = 'block';
 
     const img = _state.originalImg;
+    // 템플릿이 활성화되어 있으면 템플릿 합성으로 분기.
+    if (_state.template.id) return _renderTemplate(cv, img);
     const { sx, sy, sw, sh, dw, dh } = _computeCrop(img, _state.ratio);
     // 캔버스 해상도는 출력 크기 그대로 (저장 시 같은 비율 사용)
     cv.width = dw;
@@ -411,10 +521,249 @@
     // 선명도 — unsharp mask (소형). 비용 보호를 위해 sharpness>10 일 때만.
     if (a.sharpness > 10) _unsharpMask(ctx, dw, dh, a.sharpness / 100);
 
+    // 뷰티 보정 — HSV 마스킹 픽셀 walk. 슬라이더 손 뗀 후 1회 호출됨.
+    _applyBeauty(ctx, dw, dh, _state.beauty);
+
     // 텍스트 오버레이
     if (_state.text.value) _drawText(ctx, dw, dh, _state.text);
     // 워터마크
     if (_state.watermark.value) _drawWatermark(ctx, dw, dh, _state.watermark);
+  }
+
+  // ── 뷰티 보정 (픽셀 walk + HSV 마스킹) ────────────────
+  // 모두 0이면 즉시 return — 비용 0.
+  function _applyBeauty(ctx, w, h, b) {
+    if (!b || (!b.skin && !b.redness && !b.hairShine && !b.nailGloss && !b.lashSharp)) return;
+    let data;
+    try { data = ctx.getImageData(0, 0, w, h); }
+    catch (_e) { return; /* CORS 제한 시 skip */ }
+    const d = data.data;
+    const skinK = (b.skin || 0) / 100;
+    const redK  = (b.redness || 0) / 100;
+    const hairK = (b.hairShine || 0) / 100;
+    const nailK = (b.nailGloss || 0) / 100;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i+1], bl = d[i+2];
+      // 피부톤 hue 대략 (10°~50°): R > G > B
+      const isSkin = r > 80 && r > g && g > bl && (r - bl) > 15 && (r - bl) < 110;
+      if (isSkin) {
+        if (skinK > 0) {
+          // 약한 매끄러움 — 채도 살짝 ↑, 명도 살짝 ↑
+          d[i]   = _clamp(r  + 4 * skinK);
+          d[i+1] = _clamp(g  + 2 * skinK);
+          d[i+2] = _clamp(bl + 1 * skinK);
+        }
+        if (redK > 0) {
+          // 붉은기 완화 — R 채널만 살짝 ↓
+          d[i] = _clamp(r - 10 * redK);
+        }
+      }
+      // 모발 윤기 — 어두운 영역(머리카락 짙은 톤)에 하이라이트 픽셀 살짝 ↑
+      if (hairK > 0) {
+        const lum = (r * 0.299 + g * 0.587 + bl * 0.114);
+        if (lum > 80 && lum < 180 && Math.abs(r - g) < 40 && Math.abs(g - bl) < 40) {
+          d[i]   = _clamp(r  + 6 * hairK);
+          d[i+1] = _clamp(g  + 6 * hairK);
+          d[i+2] = _clamp(bl + 4 * hairK);
+        }
+      }
+      // 네일 광택 — 명도 상위 픽셀 부스트
+      if (nailK > 0) {
+        const lum = (r * 0.299 + g * 0.587 + bl * 0.114);
+        if (lum > 180) {
+          d[i]   = _clamp(r  + 8 * nailK);
+          d[i+1] = _clamp(g  + 8 * nailK);
+          d[i+2] = _clamp(bl + 8 * nailK);
+        }
+      }
+    }
+    ctx.putImageData(data, 0, 0);
+    // 속눈썹 선명도 — edge enhance (unsharp mask 약하게 한 번 더)
+    if (b.lashSharp > 10) _unsharpMask(ctx, w, h, b.lashSharp / 200);
+  }
+
+  // ── 템플릿 합성 ───────────────────────────────────────
+  function _renderTemplate(cv, img) {
+    const id = _state.template.id;
+    // 모든 템플릿은 1080×1350 (4:5) — 인스타 피드 최대 영역.
+    const W = 1080, H = 1350;
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#1a1a20'; ctx.fillRect(0, 0, W, H);
+
+    if (id === 'ba-h' || id === 'ba-v') return _renderTemplateBA(ctx, W, H, img, id === 'ba-h');
+    if (id === 'review')  return _renderTemplateReview(ctx, W, H, img);
+    if (id === 'price')   return _renderTemplatePrice(ctx, W, H, img);
+    if (id === 'service') return _renderTemplateService(ctx, W, H, img);
+  }
+
+  function _drawFittedImage(ctx, src, dx, dy, dw, dh) {
+    if (!src) {
+      ctx.fillStyle = '#2a2a32';
+      ctx.fillRect(dx, dy, dw, dh);
+      ctx.fillStyle = '#888';
+      ctx.font = '600 28px Pretendard, "Noto Sans KR", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('두 번째 사진 고르기', dx + dw/2, dy + dh/2);
+      return;
+    }
+    const sAR = src.naturalWidth / src.naturalHeight;
+    const dAR = dw / dh;
+    let sx, sy, sw, sh;
+    if (sAR > dAR) {
+      sh = src.naturalHeight; sw = sh * dAR;
+      sx = (src.naturalWidth - sw) / 2; sy = 0;
+    } else {
+      sw = src.naturalWidth; sh = sw / dAR;
+      sx = 0; sy = (src.naturalHeight - sh) / 2;
+    }
+    ctx.drawImage(src, sx, sy, sw, sh, dx, dy, dw, dh);
+  }
+
+  function _renderTemplateBA(ctx, W, H, img, horizontal) {
+    const PAD = 24;
+    if (horizontal) {
+      const halfW = (W - PAD * 3) / 2;
+      const innerH = H - PAD * 2 - 120;
+      _drawFittedImage(ctx, img, PAD, PAD, halfW, innerH);
+      _drawFittedImage(ctx, _state.secondImg, PAD * 2 + halfW, PAD, halfW, innerH);
+      _drawBALabel(ctx, PAD + halfW/2, PAD + 36, _state.template.leftLabel);
+      _drawBALabel(ctx, PAD * 2 + halfW + halfW/2, PAD + 36, _state.template.rightLabel);
+      _drawTitleStrip(ctx, W, H, _state.serviceName || 'BEFORE / AFTER');
+    } else {
+      const halfH = (H - PAD * 3 - 120) / 2;
+      _drawFittedImage(ctx, img, PAD, PAD, W - PAD * 2, halfH);
+      _drawFittedImage(ctx, _state.secondImg, PAD, PAD * 2 + halfH, W - PAD * 2, halfH);
+      _drawBALabel(ctx, PAD + 70, PAD + 36, _state.template.leftLabel);
+      _drawBALabel(ctx, PAD + 70, PAD * 2 + halfH + 36, _state.template.rightLabel);
+      _drawTitleStrip(ctx, W, H, _state.serviceName || 'BEFORE / AFTER');
+    }
+    _drawWatermarkIfAny(ctx, W, H);
+  }
+
+  function _drawBALabel(ctx, x, y, text) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    const tw = Math.max(70, text.length * 26 + 28);
+    ctx.fillRect(x - tw/2, y - 22, tw, 44);
+    ctx.fillStyle = '#fff';
+    ctx.font = '800 26px Pretendard, "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
+  function _drawTitleStrip(ctx, W, H, title) {
+    ctx.save();
+    ctx.fillStyle = '#0c0c10';
+    ctx.fillRect(0, H - 96, W, 96);
+    ctx.fillStyle = '#fff';
+    ctx.font = '800 36px Pretendard, "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(title, W / 2, H - 48, W * 0.9);
+    if (_state.shopName) {
+      ctx.font = '500 18px Pretendard, "Noto Sans KR", sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
+      ctx.fillText(_state.shopName, W / 2, H - 22);
+    }
+    ctx.restore();
+  }
+
+  function _renderTemplateReview(ctx, W, H, img) {
+    _drawFittedImage(ctx, img, 0, 0, W, Math.round(H * 0.55));
+    // 그라데이션 페이드
+    const grad = ctx.createLinearGradient(0, Math.round(H * 0.45), 0, Math.round(H * 0.55));
+    grad.addColorStop(0, 'rgba(12,12,16,0)'); grad.addColorStop(1, '#0c0c10');
+    ctx.fillStyle = grad; ctx.fillRect(0, Math.round(H * 0.45), W, Math.round(H * 0.10));
+    ctx.fillStyle = '#0c0c10'; ctx.fillRect(0, Math.round(H * 0.55), W, H);
+
+    // 별 5개
+    ctx.fillStyle = '#FFC83D';
+    ctx.font = '700 56px serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('★★★★★', W / 2, Math.round(H * 0.60));
+
+    // 후기 본문
+    const txt = _state.template.reviewText || '“정성껏 해주셔서 만족스러웠어요. 다음에 또 방문할게요.”';
+    ctx.fillStyle = '#fff';
+    ctx.font = '600 36px Pretendard, "Noto Sans KR", sans-serif';
+    _wrapText(ctx, txt, W / 2, Math.round(H * 0.74), W * 0.85, 46, 'center');
+
+    // 샵명
+    if (_state.shopName) {
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.font = '500 24px Pretendard, "Noto Sans KR", sans-serif';
+      ctx.fillText(_state.shopName, W / 2, Math.round(H * 0.93));
+    }
+    _drawWatermarkIfAny(ctx, W, H);
+  }
+
+  function _renderTemplatePrice(ctx, W, H, img) {
+    _drawFittedImage(ctx, img, 0, 0, W, Math.round(H * 0.5));
+    ctx.fillStyle = '#0c0c10'; ctx.fillRect(0, Math.round(H * 0.5), W, H);
+
+    ctx.fillStyle = '#fff';
+    ctx.font = '800 56px Pretendard, "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('PRICE', W / 2, Math.round(H * 0.55));
+
+    const lines = (_state.template.priceLines || '붙임머리 20인치 | 120,000원\n속눈썹 연장 | 70,000원').split('\n');
+    ctx.font = '600 32px Pretendard, "Noto Sans KR", sans-serif';
+    lines.slice(0, 6).forEach((ln, idx) => {
+      const parts = ln.split('|').map(s => s.trim());
+      const y = Math.round(H * 0.68) + idx * 56;
+      ctx.textAlign = 'left'; ctx.fillStyle = '#e8e8ee';
+      ctx.fillText(parts[0] || '', 80, y);
+      if (parts[1]) {
+        ctx.textAlign = 'right'; ctx.fillStyle = '#FFC83D';
+        ctx.fillText(parts[1], W - 80, y);
+      }
+    });
+    _drawWatermarkIfAny(ctx, W, H);
+  }
+
+  function _renderTemplateService(ctx, W, H, img) {
+    _drawFittedImage(ctx, img, 0, 0, W, H);
+    // 좌상단 박스
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(40, 40, 520, 200);
+    ctx.fillStyle = '#fff';
+    ctx.font = '800 38px Pretendard, "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(_state.serviceName || '시술명', 64, 60, 480);
+    if (_state.price) {
+      ctx.font = '700 30px Pretendard, "Noto Sans KR", sans-serif';
+      ctx.fillStyle = '#FFC83D';
+      ctx.fillText((_state.price / 10000).toFixed(0) + '만원', 64, 110, 480);
+    }
+    if (_state.shopName) {
+      ctx.font = '500 22px Pretendard, "Noto Sans KR", sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.78)';
+      ctx.fillText(_state.shopName, 64, 170, 480);
+    }
+    ctx.restore();
+    _drawWatermarkIfAny(ctx, W, H);
+  }
+
+  function _drawWatermarkIfAny(ctx, W, H) {
+    if (_state.watermark.value) _drawWatermark(ctx, W, H, _state.watermark);
+  }
+
+  function _wrapText(ctx, text, x, y, maxWidth, lineHeight, align) {
+    ctx.textAlign = align || 'left';
+    const words = text.split(' ');
+    let line = '';
+    let cy = y;
+    for (let i = 0; i < words.length; i++) {
+      const test = line + words[i] + ' ';
+      if (ctx.measureText(test).width > maxWidth && i > 0) {
+        ctx.fillText(line, x, cy);
+        line = words[i] + ' ';
+        cy += lineHeight;
+      } else line = test;
+    }
+    ctx.fillText(line, x, cy);
   }
 
   function _computeCrop(img, ratio) {
@@ -516,6 +865,7 @@
   function _snapshot() {
     return JSON.parse(JSON.stringify({
       adjust: _state.adjust, ratio: _state.ratio, text: _state.text, watermark: _state.watermark,
+      beauty: _state.beauty, template: _state.template,
     }));
   }
   function _pushHistory() {
@@ -530,6 +880,8 @@
     _state.historyCursor -= 1;
     const s = _state.history[_state.historyCursor];
     _state.adjust = s.adjust; _state.ratio = s.ratio; _state.text = s.text; _state.watermark = s.watermark;
+    if (s.beauty) _state.beauty = s.beauty;
+    if (s.template) _state.template = s.template;
     _renderPanel(); _redraw();
   }
 
@@ -559,7 +911,60 @@
           detail: { kind: 'export_marketing_image', source: 'photo-editor' }
         }));
       } catch (_e) { void _e; }
+      // 다음 단계 카드 — 저장 직후 한 번만 표시.
+      _showNextSteps(cv);
     }, mime, 0.95);
+  }
+
+  // ── 다음 단계 모달 ────────────────────────────────────
+  function _showNextSteps(cv) {
+    const existing = document.getElementById('peNextStepsModal');
+    if (existing) existing.remove();
+    const dataUrl = (() => { try { return cv.toDataURL('image/png'); } catch (_e) { return ''; } })();
+    const m = document.createElement('div');
+    m.id = 'peNextStepsModal';
+    m.className = 'pe-modal';
+    m.innerHTML = `
+      <div class="pe-modal-backdrop" data-pe-ns="close"></div>
+      <div class="pe-modal-card">
+        <div class="pe-modal-head">
+          <strong>저장 완료! 다음에 뭘 할까요?</strong>
+          <button type="button" class="pe-iconbtn" data-pe-ns="close" aria-label="닫기">×</button>
+        </div>
+        ${dataUrl ? `<div class="pe-modal-thumb"><img src="${dataUrl}" alt="편집본 미리보기" /></div>` : ''}
+        <div class="pe-modal-actions">
+          <button type="button" class="pe-action-btn" data-pe-ns="caption">✨ 캡션 만들기</button>
+          <button type="button" class="pe-action-btn" data-pe-ns="attach">📎 고객 기록에 첨부</button>
+          <button type="button" class="pe-action-btn" data-pe-ns="instagram">📷 인스타 미리보기</button>
+        </div>
+        <div class="pe-hint" style="text-align:center;margin-top:10px;">다시 편집하려면 닫고 슬라이더를 조정하세요.</div>
+      </div>
+    `;
+    document.body.appendChild(m);
+    m.addEventListener('click', (e) => {
+      const act = e.target.closest('[data-pe-ns]')?.dataset.peNs;
+      if (!act) return;
+      if (act === 'close') { m.remove(); return; }
+      if (act === 'caption') {
+        m.remove();
+        if (typeof window.openCaptionScenarioPopup === 'function') {
+          try { window.openCaptionScenarioPopup(); _toast('캡션 시나리오를 열었어요'); }
+          catch (_e) { _toast('캡션 화면을 여는 중 문제가 생겼어요'); }
+        } else _toast('캡션 모듈을 찾을 수 없어요');
+      } else if (act === 'attach') {
+        m.remove();
+        _toast('편집본을 고객 상세의 사진에 첨부하려면 시술 기록 화면을 열어주세요 (P1 결선 예정)');
+      } else if (act === 'instagram') {
+        m.remove();
+        if (typeof window.openInstagramPreview === 'function') {
+          try { window.openInstagramPreview(); }
+          catch (_e) { _toast('인스타 미리보기 화면을 여는 중 문제가 생겼어요'); }
+        } else if (typeof window.showTab === 'function') {
+          window.showTab('finish');
+          _toast('마무리 탭으로 이동했어요');
+        } else _toast('인스타 미리보기 화면을 찾을 수 없어요');
+      }
+    });
   }
 
   // ── 사진 로드 ─────────────────────────────────────────

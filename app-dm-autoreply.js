@@ -55,6 +55,33 @@
     return '기타 문의';
   }
 
+  // [v167-INTENT-MATRIX] 설계 §15.2 — intent별 기본 autonomy 매트릭스. explicit 값은 보존.
+  const INTENT_AUTONOMY_DEFAULTS = {
+    '가격 문의': 'auto',          // 가격표 없으면 confirm_high 로 다운그레이드 (아래 분기)
+    '위치 문의': 'auto',
+    '시간 문의': 'confirm_high',
+    '예약 문의': 'draft',         // booking_action 도 동일
+    '기타 문의': 'draft',
+  };
+  function _hasPriceTable() {
+    try {
+      const live = Array.isArray(window._serviceTemplatesCache) ? window._serviceTemplatesCache : null;
+      if (live && live.some(t => Number(t && t.default_price) > 0)) return true;
+      const raw = localStorage.getItem('itdasy_service_templates_cache');
+      if (!raw) return false;
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) && arr.some(t => Number(t && t.default_price) > 0);
+    } catch (_) { return false; }
+  }
+  function _applyIntentDefaults(item) {
+    if (!item || item.autonomy_mode) return; // explicit (서버 or 사용자 지정) 보존
+    const intent = item.intent || _categoryOf(item.received_text);
+    let mode = INTENT_AUTONOMY_DEFAULTS[intent] || 'draft';
+    if (intent === '가격 문의' && !_hasPriceTable()) mode = 'confirm_high';
+    if (item.action_required === 'booking_action') mode = 'draft'; // 위험 액션은 항상 draft
+    item.autonomy_mode = mode;
+  }
+
   /* ── 백엔드 fetch ────────────────────────────────── */
   // 2026-05-01 ── _origFetch: 글로벌 fetch wrap (자동 재시도 + 서버 불안정 토스트) 우회.
   // DM 패널은 옵셔널 데이터라 토스트 spam 안 띄우고 조용히 빈 상태로 폴백.
@@ -1014,6 +1041,7 @@
   }
   async function _doOpenDMAutoreply() {
     const { status, settings, conversations } = await _fetchAll();
+    if (Array.isArray(conversations)) conversations.forEach(_applyIntentDefaults); // [v167-INTENT-MATRIX]
     const browserTz = (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul');
     _settings = settings || {
       enabled: true, tone: 'friendly',  // 2026-05-01 default ON
@@ -1103,6 +1131,7 @@
       if (!r || !r.ok) return;
       const data = await r.json().catch(() => ({}));
       const conversations = data.conversations || [];
+      if (Array.isArray(conversations)) conversations.forEach(_applyIntentDefaults); // [v167-INTENT-MATRIX]
       const tone = (_settings && _settings.tone) || 'friendly';
       mount.innerHTML = _renderInbox(conversations, tone);
       // 새로 그려진 inbox 안의 버튼들만 재바인딩 — header/tone/save 는 skip (리스너 누적 방지)

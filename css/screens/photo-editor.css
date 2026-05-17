@@ -214,3 +214,44 @@
   line-height: 1.5;
   margin-top: 8px;
 }
+
+/* 저장 후 다음 단계 모달 */
+.pe-modal {
+  position: fixed; inset: 0; z-index: 10010;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.pe-modal-backdrop {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.55);
+}
+.pe-modal-card {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 480px;
+  background: #fff; color: #222;
+  border-radius: 20px 20px 0 0;
+  padding: 18px 18px calc(22px + env(safe-area-inset-bottom, 0));
+  box-shadow: 0 -12px 40px rgba(0,0,0,0.3);
+  animation: pe-modal-up 220ms ease-out;
+}
+@keyframes pe-modal-up {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.pe-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.pe-modal-head strong { font-size: 14px; font-weight: 800; color: #222; }
+.pe-modal-head .pe-iconbtn { background: #f3f3f6; color: #444; }
+.pe-modal-thumb {
+  display: flex; justify-content: center;
+  margin-bottom: 14px;
+}
+.pe-modal-thumb img {
+  max-width: 180px; max-height: 180px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.pe-modal-actions {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.pe-modal-actions .pe-action-btn { width: 100%; padding: 13px; font-size: 14px; }

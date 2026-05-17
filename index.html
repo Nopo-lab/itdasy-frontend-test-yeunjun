@@ -105,7 +105,8 @@
 <link rel="stylesheet" href="css/screens/phase9-ux.css?v=20260506-v101">
 <!-- [2026-05-17 v166] AI 추천/고객 chip 터치 정상화 (iOS Safari/PWA) -->
 <link rel="stylesheet" href="css/screens/ai-chip.css?v=20260517-v166">
-<link rel="stylesheet" href="css/screens/photo-editor.css?v=20260517-v167">
+<link rel="stylesheet" href="css/screens/photo-editor.css?v=20260518-v168">
+<link rel="stylesheet" href="css/screens/brand-kit.css?v=20260518-v168">
 <link rel="stylesheet" href="style.css?v=20260505-v97">
 <!-- [2026-04-29] Micro-interaction & Fun — 사용 재미 강화 -->
 <link rel="stylesheet" href="style-fun.css">
@@ -1265,6 +1266,9 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
     </div>
     <div id="personaDash" style="display:none;" aria-hidden="true"><div id="personaContent"></div></div>
 
+    <!-- [v168 2026-05-18] 모닝 브리핑 마운트 — TodayMorning.render('homeMorningMount') -->
+    <div id="homeMorningMount"></div>
+
     <!-- ── v4.1 콘텐츠 (HomeV41.render() 가 채움) ── -->
     <div id="homeV41Root"><!-- HomeV41 자동 마운트 --></div>
 
@@ -1970,7 +1974,7 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-auto-ba.js" defer></script>
 <script src="app-today-brief.js" defer></script>
 <script src="app-home-v41-config.js" defer></script>
-<script src="app-home-v41.js?v=20260517-v158" defer></script>
+<script src="app-home-v41.js?v=20260518-v168" defer></script>
 <!-- [2026-04-30] 내샵관리 v3 — 모바일 메인 + PC 사이드바·도넛·위젯·피드 -->
 <script src="app-myshop-v3.js?v=20260517-v164" defer></script>
 <script src="app-birthday.js" defer></script>
@@ -1978,8 +1982,10 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-assistant.js?v=20260517-v167" defer></script>
 <!-- [2026-05-17 v166] AI 비서 마케팅·고객 케어 kind 8종 (CATEGORY 외부 등록) -->
 <script src="app-assistant-actions-marketing.js?v=20260517-v167" defer></script>
-<!-- [2026-05-17 v167] 사진 편집기 P0 MVP — 자동/보정/누끼/텍스트/브랜드/내보내기 6탭 -->
-<script src="app-photo-editor.js?v=20260517-v167" defer></script>
+<!-- [2026-05-18 v168] 사진 편집기 P1 + Brand Kit + Today Morning -->
+<script src="app-brand-kit.js?v=20260518-v168" defer></script>
+<script src="app-photo-editor.js?v=20260518-v168" defer></script>
+<script src="app-today-morning.js?v=20260518-v168" defer></script>
 <script src="app-receipt-scan.js" defer></script>
 <script src="app-service-recommend.js" defer></script>
 <script src="app-ai-suggestions.js" defer></script>

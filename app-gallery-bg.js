@@ -141,7 +141,11 @@ async function deleteUserBg(id, e) {
   showToast('삭제됐어요');
 }
 
-async function applySelectedBg() {
+// [2026-05-17] target_ratio 옵션 인자 추가 — 미지정 시 '1:1' (기존 동작).
+// 호출 예: applySelectedBg({ target_ratio: '4:5' })  // 인스타 피드 4:5
+//          applySelectedBg()                           // 기존 1:1 호환
+async function applySelectedBg(opts = {}) {
+  const target_ratio = opts.target_ratio || '1:1';
   const slot = _slots.find(s => s.id === _popupSlotId);
   if (!slot) return;
 
@@ -164,7 +168,7 @@ async function applySelectedBg() {
     const photo = selectedPhotos[i];
     if (progress) progress.textContent = `배경 합성 중... ${i + 1}/${selectedPhotos.length}`;
     try {
-      await _applyBgToPhoto(photo, bg, slot);
+      await _applyBgToPhoto(photo, bg, slot, target_ratio);
     } catch(e) {
       console.warn('배경 합성 실패:', e);
       failCount++;
@@ -180,6 +184,19 @@ async function applySelectedBg() {
     showToast(`${failCount}장 실패 — ${selectedPhotos.length - failCount}장만 적용됐어요`);
   } else {
     showToast(`${selectedPhotos.length}장에 배경 적용 완료!`);
+  }
+}
+
+// [2026-05-17] 인스타 비율 분기 — 설계 §12.2
+// target_ratio → 캔버스 픽셀 사이즈 매핑. 1080 폭 기준 (인스타 권장).
+// '1:1' 1080×1080 / '4:5' 1080×1350 / '9:16' 1080×1920
+// 알 수 없는 값이 들어오면 '1:1' 로 폴백 (기존 동작 유지).
+function _ratioToSize(target_ratio) {
+  switch (target_ratio) {
+    case '4:5':  return { w: 1080, h: 1350 };
+    case '9:16': return { w: 1080, h: 1920 };
+    case '1:1':
+    default:     return { w: 1080, h: 1080 };
   }
 }
 
@@ -217,7 +234,10 @@ function _alphaBBox(srcImg) {
   }
 }
 
-async function _applyBgToPhoto(photo, bg, slot) {
+async function _applyBgToPhoto(photo, bg, slot, target_ratio = '1:1') {
+  // [2026-05-17] 비율 분기 — 설계 §12.2. 기본 1:1 (기존 호출 호환).
+  const { w: CW, h: CH } = _ratioToSize(target_ratio);
+
   // 누끼 이미지가 있으면 사용, 없으면 API 호출
   let personImg;
   let serverOrigW = 0, serverOrigH = 0; // [2026-04-26] 백엔드가 알려주는 원본 사이즈
@@ -267,60 +287,61 @@ async function _applyBgToPhoto(photo, bg, slot) {
   if (bg.imageData) {
     const bgImg = await _loadImageSrc(bg.imageData);
     bgCanvas = document.createElement('canvas');
-    bgCanvas.width = 1080; bgCanvas.height = 1080;
+    bgCanvas.width = CW; bgCanvas.height = CH;
     const ctx = bgCanvas.getContext('2d');
-    _drawCoverCtx(ctx, bgImg, 0, 0, 1080, 1080);
+    _drawCoverCtx(ctx, bgImg, 0, 0, CW, CH);
   } else {
     bgCanvas = document.createElement('canvas');
-    bgCanvas.width = 1080; bgCanvas.height = 1080;
+    bgCanvas.width = CW; bgCanvas.height = CH;
     const ctx = bgCanvas.getContext('2d');
     if (bg.gradient) {
-      const grad = ctx.createLinearGradient(0, 0, 0, 1080);
+      const grad = ctx.createLinearGradient(0, 0, 0, CH);
       // 파싱 간소화: 단색 폴백
       ctx.fillStyle = bg.color || '#fff';
-      ctx.fillRect(0, 0, 1080, 1080);
+      ctx.fillRect(0, 0, CW, CH);
       // 그라데이션 효과 추가
-      const grad2 = ctx.createLinearGradient(0, 0, 0, 1080);
+      const grad2 = ctx.createLinearGradient(0, 0, 0, CH);
       grad2.addColorStop(0, 'rgba(0,0,0,0.03)');
       grad2.addColorStop(0.5, 'rgba(255,255,255,0.05)');
       grad2.addColorStop(1, 'rgba(0,0,0,0.05)');
       ctx.fillStyle = grad2;
-      ctx.fillRect(0, 0, 1080, 1080);
+      ctx.fillRect(0, 0, CW, CH);
     } else {
       ctx.fillStyle = bg.color || '#fff';
-      ctx.fillRect(0, 0, 1080, 1080);
+      ctx.fillRect(0, 0, CW, CH);
     }
   }
 
   // 합성
   const finalCanvas = document.createElement('canvas');
-  finalCanvas.width = 1080; finalCanvas.height = 1080;
+  finalCanvas.width = CW; finalCanvas.height = CH;
   const fCtx = finalCanvas.getContext('2d');
   fCtx.drawImage(bgCanvas, 0, 0);
 
-  // [2026-04-26] 인물 축소 버그 픽스
+  // [2026-04-26] 인물 축소 버그 픽스 (불가침 영역)
   // (1) 알파 bbox 계산 — 인물 실제 영역만 잘라서 캔버스에 그림
   // (2) 캔버스의 85% 차지하도록 스케일 — 기존 0.9 보다 살짝 작지만 실 인물 비율 기준이라 더 큼
   // (3) bbox 실패 시 (CORS 등) 기존 방식 폴백
+  // [2026-05-17] 캔버스가 정사각형이 아닐 수 있으니 CW/CH 둘 다 고려해서 스케일.
   const personW = personImg.naturalWidth || personImg.width;
   const personH = personImg.naturalHeight || personImg.height;
   const bbox = _alphaBBox(personImg);
   if (bbox && bbox.w > 0 && bbox.h > 0) {
     const TARGET = 0.85;
-    const scale = Math.min((1080 * TARGET) / bbox.w, (1080 * TARGET) / bbox.h);
+    const scale = Math.min((CW * TARGET) / bbox.w, (CH * TARGET) / bbox.h);
     const pw = bbox.w * scale;
     const ph = bbox.h * scale;
     // drawImage(src, sx, sy, sw, sh, dx, dy, dw, dh) — bbox 만 잘라서 그림
     fCtx.drawImage(personImg, bbox.x, bbox.y, bbox.w, bbox.h,
-                   (1080 - pw) / 2, (1080 - ph) / 2, pw, ph);
+                   (CW - pw) / 2, (CH - ph) / 2, pw, ph);
   } else {
     // 폴백: 기존 로직 + 서버가 알려준 원본 사이즈가 있으면 그걸 기준으로 스케일
     const refW = serverOrigW || personW;
     const refH = serverOrigH || personH;
-    const scale = Math.min(1080 / refW, 1080 / refH) * 0.9;
+    const scale = Math.min(CW / refW, CH / refH) * 0.9;
     const pw = personW * scale;
     const ph = personH * scale;
-    fCtx.drawImage(personImg, (1080 - pw) / 2, (1080 - ph) / 2, pw, ph);
+    fCtx.drawImage(personImg, (CW - pw) / 2, (CH - ph) / 2, pw, ph);
   }
 
   photo.editedDataUrl = finalCanvas.toDataURL('image/jpeg', 0.9);
@@ -395,7 +416,9 @@ function _renderTemplatePanel() {
   `;
 }
 
-async function applyTemplate(tplId) {
+// [2026-05-17] target_ratio 옵션 인자 추가 — 미지정 시 '1:1' (기존 동작).
+async function applyTemplate(tplId, opts = {}) {
+  const target_ratio = opts.target_ratio || '1:1';
   const slot = _slots.find(s => s.id === _popupSlotId);
   if (!slot) return;
   const selectedPhotos = slot.photos.filter(p => _popupSelIds.has(p.id) && !p.hidden);
@@ -409,7 +432,7 @@ async function applyTemplate(tplId) {
   const allBgs = [...DEFAULT_BACKGROUNDS, ..._loadUserBgs()];
   const bg = allBgs.find(b => b.id === tpl.bgId);
   for (const photo of selectedPhotos) {
-    if (bg) try { await _applyBgToPhoto(photo, bg, slot); } catch (_e) { /* ignore */ }
+    if (bg) try { await _applyBgToPhoto(photo, bg, slot, target_ratio); } catch (_e) { /* ignore */ }
   }
   if (progress) progress.style.display = 'none';
   _popupSelIds.clear();

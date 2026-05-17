@@ -1,8 +1,18 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-17 22:00 by 오케스트레이터 (사진 편집기 P0 MVP)
+**LAST UPDATED:** 2026-05-18 by 오케스트레이터 (v168 병렬 라운드 — 5개 일괄)
 
 ---
+
+## 2026-05-18 — v168 병렬 라운드 (5개 일괄)
+
+- 설계: `~/.claude/plans/zesty-snacking-clarke.md` §11~§17, §25
+- 신규: `app-brand-kit.js`(248), `app-today-morning.js`(283), `css/screens/brand-kit.css`(187)
+- 확장: `app-photo-editor.js`(+뷰티 5/템플릿 5/다음단계 모달 → ~890줄, 🟠 분할 TECH_DEBT)
+- 변경: `app-gallery-bg.js`(+4:5 ratio), `app-dm-autoreply.js`(+intent 매트릭스 29줄), `app-home-v41.js`(+TodayMorning mount), `index.html`(+로드/마운트/버스터), `css/screens/photo-editor.css`(+modal)
+- 진입: 사진편집기 8탭(자동/보정/뷰티/누끼/템플릿/텍스트/브랜드/내보내기) / 홈 모닝브리핑 / DM intent 자동 / Brand Kit
+- 회귀: 기존 18 kind/누끼·자동보정/booking_action/홈 위젯 0줄 영향
+- 빌드 버전: `20260518-v168-parallel-round`
 
 ## 2026-05-17 22:00 — 사진 편집기 P0 MVP
 
