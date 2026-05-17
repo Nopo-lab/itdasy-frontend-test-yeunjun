@@ -2,8 +2,6 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://*.supabase.co https://*.cloudflare.com https://*.r2.cloudflarestorage.com; connect-src 'self' https://*.run.app wss://*.run.app https://*.supabase.co https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://unpkg.com; worker-src 'self';"
->
 <!-- [2026-05-15 NUCLEAR v6] v128 부팅 깨짐 rescue — KILL_KEY bump (v5→v6)
      사용자 보고: "Uncaught SyntaxError: Unexpected end of input @ index.html:2053".
      index.html 은 origin 에서 2052줄까지만 — 즉 PWA 캐시에 잘린 옛 index.html (line 2053+ 까지) 박혀
