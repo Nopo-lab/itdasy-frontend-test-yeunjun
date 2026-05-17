@@ -62,8 +62,8 @@
       adjust: { brightness: 100, saturate: 100, sharpness: 0, temperature: 0 },
       beauty: { skin: 0, redness: 0, hairShine: 0, nailGloss: 0, lashSharp: 0, blemish: 0, handSkin: 0, hairColor: 0, hairDetail: 0, eyeShadow: 0 },
       template: { id: null, leftLabel: '전', rightLabel: '후', reviewText: '', priceLines: '' },
-      // [v184 2026-05-18] 텍스트 강화 — 폰트 4종 + 색상 4종 + 배경 박스 + 사이즈
-      text: { value: '', x: 0.5, y: 0.92, color: '#ffffff', font: 'sans', size: 6, bg: false },
+      // [v188 2026-05-18] 텍스트 v2 — stroke (외곽선), rotation, x slider 추가
+      text: { value: '', x: 0.5, y: 0.92, color: '#ffffff', font: 'sans', size: 6, bg: false, stroke: false, rot: 0 },
       watermark: { value: '', position: 'br', opacity: 0.85 },
       showOriginal: false, history: [], historyCursor: -1,
     };
@@ -273,7 +273,9 @@
       <div class="pe-panel-row pe-panel-grid-4">${COLORS.map(c => `<button type="button" class="pe-chip-btn${t.color===c?' on':''}" data-pe-text-color="${c}" style="background:${c};color:${c==='#ffffff'||c==='#FFC83D'?'#222':'#fff'};">${COLOR_LABEL[c]}</button>`).join('')}</div>
       <label class="pe-slider"><div class="pe-slider-head"><span>크기</span><span class="pe-slider-val">${t.size}</span></div><input type="range" min="3" max="12" value="${t.size}" data-pe-text-size /></label>
       <label class="pe-slider"><div class="pe-slider-head"><span>위치 (위↔아래)</span><span class="pe-slider-val">${Math.round(t.y*100)}</span></div><input type="range" min="5" max="95" value="${Math.round(t.y*100)}" data-pe-text-y /></label>
-      <div class="pe-panel-row" style="margin-top:8px;"><button type="button" class="pe-chip-btn${t.bg?' on':''}" data-pe-text-bg>배경 박스 ${t.bg?'끄기':'켜기'}</button></div>`;
+      <label class="pe-slider"><div class="pe-slider-head"><span>위치 (좌↔우)</span><span class="pe-slider-val">${Math.round(t.x*100)}</span></div><input type="range" min="5" max="95" value="${Math.round(t.x*100)}" data-pe-text-x /></label>
+      <label class="pe-slider"><div class="pe-slider-head"><span>회전 (°)</span><span class="pe-slider-val">${t.rot}</span></div><input type="range" min="-45" max="45" value="${t.rot}" data-pe-text-rot /></label>
+      <div class="pe-panel-row pe-panel-grid-2" style="margin-top:8px;"><button type="button" class="pe-chip-btn${t.bg?' on':''}" data-pe-text-bg>배경 박스 ${t.bg?'끄기':'켜기'}</button><button type="button" class="pe-chip-btn${t.stroke?' on':''}" data-pe-text-stroke>외곽선 ${t.stroke?'끄기':'켜기'}</button></div>`;
   }
   function _panelBrand() {
     const w = _state.watermark, sym = { tl:'↖', tr:'↗', bl:'↙', br:'↘' };
@@ -408,11 +410,15 @@
     text(panel) {
       _on(panel, '[data-pe-text-val]', 'input', (e) => { _state.text.value = e.target.value; _redraw(); });
       _on(panel, '[data-pe-text-y]',   'input', (e) => { _state.text.y = +e.target.value / 100; _redraw(); });
+      _on(panel, '[data-pe-text-x]',   'input', (e) => { _state.text.x = +e.target.value / 100; _redraw(); });
+      _on(panel, '[data-pe-text-rot]', 'input', (e) => { _state.text.rot = +e.target.value; _redraw(); });
       _on(panel, '[data-pe-text-size]','input', (e) => {
         _state.text.size = +e.target.value;
-        const out = panel.querySelector('.pe-slider-head .pe-slider-val');  // first one is size
-        if (out) out.textContent = e.target.value;
         _redraw();
+      });
+      _on(panel, '[data-pe-text-stroke]', 'click', () => {
+        _state.text.stroke = !_state.text.stroke;
+        _renderPanel(); _redraw(); _pushHistory();
       });
       _each(panel, '[data-pe-text-font]', 'click', (e) => {
         _state.text.font = e.currentTarget.dataset.peTextFont;
@@ -582,6 +588,13 @@
     ctx.font = `${weight} ${fs}px ${fam}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const tx = w * t.x, ty = h * t.y;
+    // [v188] 회전 — ctx.translate + rotate. 텍스트 그리는 좌표는 (0,0)
+    const rot = +t.rot || 0;
+    if (rot !== 0) {
+      ctx.translate(tx, ty);
+      ctx.rotate(rot * Math.PI / 180);
+      ctx.translate(-tx, -ty);
+    }
     // 배경 박스
     if (t.bg) {
       const m = ctx.measureText(t.value);
@@ -591,9 +604,18 @@
       const isLight = (t.color === '#ffffff' || t.color === '#FFC83D');
       ctx.fillStyle = isLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.85)';
       ctx.fillRect(tx - bw / 2, ty - bh / 2, bw, bh);
-    } else {
+    } else if (!t.stroke) {
+      // 외곽선 켜져 있으면 그림자 X (외곽선이 더 또렷)
       ctx.shadowColor = 'rgba(0,0,0,0.45)';
       ctx.shadowBlur = Math.round(fs * 0.18);
+    }
+    // [v188] 외곽선 — 색상 반대편 색으로 stroke
+    if (t.stroke) {
+      ctx.lineWidth = Math.max(2, Math.round(fs * 0.08));
+      ctx.lineJoin = 'round';
+      const isLight = (t.color === '#ffffff' || t.color === '#FFC83D');
+      ctx.strokeStyle = isLight ? '#000' : '#fff';
+      ctx.strokeText(t.value, tx, ty, w * 0.9);
     }
     ctx.fillStyle = t.color || '#ffffff';
     ctx.fillText(t.value, tx, ty, w * 0.9);
@@ -671,6 +693,7 @@
       document.body.appendChild(a); a.click();
       setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 500);
       _toast(format.toUpperCase() + ' 저장 완료');
+      if (_state) _state._savedAtCursor = _state.historyCursor;  // [v188] 미저장 경고용 마킹
       try { window.dispatchEvent(new CustomEvent('itdasy:gallery:photo-replaced', { detail: { kind: 'export_marketing_image', source: 'photo-editor' } })); }
       catch (_e) { void _e; }
       _showNextSteps(cv);
@@ -737,10 +760,20 @@
     _pushHistoryState();
   }
   function _close(fromHistory) {
+    // [v188] 미저장 변경 경고 — historyCursor > 0 = 슬라이더/마스크 적용 변경 있음.
+    //   _savedSinceOpen 가 마지막 _save 시점의 cursor 와 같으면 패스 (이미 저장)
+    if (_state && _state.history && _state.history.length > 1) {
+      const dirty = (_state.historyCursor > 0) && (_state._savedAtCursor !== _state.historyCursor);
+      if (dirty && !fromHistory) {
+        const ok = (typeof window.confirm === 'function')
+          ? window.confirm('편집한 내용이 저장되지 않았어요. 정말 닫을까요?')
+          : true;
+        if (!ok) return;
+      }
+    }
     const sheet = document.getElementById('photoEditorSheet');
     if (sheet) sheet.style.display = 'none';
     document.body.style.overflow = '';
-    // [v185] brush 마스크 canvas 정리
     try { if (window.PhotoEditor && typeof window.PhotoEditor._brushCleanup === 'function') window.PhotoEditor._brushCleanup(); }
     catch (_e) { void _e; }
     _state = null;
