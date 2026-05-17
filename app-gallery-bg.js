@@ -8,6 +8,12 @@ const DEFAULT_BACKGROUNDS = [
   { id: 'cloud_color', name: '구름(컬러)', type: 'preset', color: '#e8f4fc', gradient: 'linear-gradient(180deg,#d4e8f7 0%,#f0f7fc 50%,#c5dff0 100%)' },
   { id: 'pink', name: '핑크', type: 'preset', color: '#fff0f3', gradient: 'linear-gradient(180deg,#ffe4ec 0%,#fff5f7 50%,#ffd6e0 100%)' },
   { id: 'white', name: '화이트', type: 'preset', color: '#ffffff', gradient: 'linear-gradient(180deg,#f8f8f8 0%,#ffffff 50%,#f5f5f5 100%)' },
+  // [2026-05-18] 설계 §12.3 — 고급 배경 4종. type:'procedural' 분기는 _applyBgToPhoto 캔버스에서 처리.
+  // 썸네일 미리보기는 CSS gradient(아래 gradient 필드)로 그려지고, 실제 합성은 비율(1:1/4:5/9:16)에 맞춰 캔버스 procedural 로 재생성.
+  { id: 'bg_marble', name: '대리석', type: 'procedural', render: 'marble', color: '#f4f2ef', gradient: 'linear-gradient(135deg,#f6f4f1 0%,#eceae6 45%,#f8f6f3 70%,#dcd9d4 100%)' },
+  { id: 'bg_beige_minimal', name: '베이지 미니멀', type: 'procedural', render: 'beige', color: '#f5ebdd', gradient: 'linear-gradient(180deg,#f7eee1 0%,#f0e3d0 100%)' },
+  { id: 'bg_pink_gradient', name: '핑크 그라데이션', type: 'procedural', render: 'pink_radial', color: '#fdd8e0', gradient: 'radial-gradient(circle at 50% 40%,#fdd8e0 0%,#f5a9b8 60%,#f18091 100%)' },
+  { id: 'bg_black_lux', name: '블랙 럭셔리', type: 'procedural', render: 'black_lux', color: '#1a1a1f', gradient: 'linear-gradient(180deg,#22222a 0%,#1a1a1f 60%,#0f0f13 100%)' },
 ];
 
 let _selectedBgId = 'cloud_bw';
@@ -200,6 +206,43 @@ function _ratioToSize(target_ratio) {
   }
 }
 
+// [2026-05-18] 설계 §12.3 — procedural 배경(대리석/베이지/핑크 라디얼/블랙 럭셔리).
+// 외부 이미지 없이 캔버스만으로 그리므로 1:1·4:5·9:16 어느 비율이든 자연스럽게 채워짐.
+function _drawProceduralBg(ctx, render, w, h) {
+  const fillStops = (g, stops) => { stops.forEach(([p, c]) => g.addColorStop(p, c)); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); };
+  if (render === 'beige') {
+    fillStops(ctx.createLinearGradient(0, 0, 0, h), [[0, '#f7eee1'], [1, '#ebdcc4']]);
+    return;
+  }
+  if (render === 'pink_radial') {
+    const r = Math.max(w, h) * 0.75;
+    fillStops(ctx.createRadialGradient(w * 0.5, h * 0.42, r * 0.05, w * 0.5, h * 0.42, r),
+              [[0, '#fde2e8'], [0.55, '#fbb8c6'], [1, '#f18091']]);
+    return;
+  }
+  if (render === 'black_lux') {
+    fillStops(ctx.createLinearGradient(0, 0, 0, h), [[0, '#22222a'], [0.6, '#1a1a1f'], [1, '#0f0f13']]);
+    const N = Math.round((w * h) / 3500);
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    for (let i = 0; i < N; i++) ctx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+    return;
+  }
+  // marble: 화이트 베이스 + 회색 베인 7가닥(bezier)으로 자연 결 표현
+  fillStops(ctx.createLinearGradient(0, 0, w, h), [[0, '#f8f6f3'], [0.5, '#ececea'], [1, '#f4f2ef']]);
+  ctx.save(); ctx.lineCap = 'round';
+  for (let i = 0; i < 7; i++) {
+    ctx.strokeStyle = `rgba(110,110,118,${0.05 + Math.random() * 0.12})`;
+    ctx.lineWidth = (w / 540) * (0.8 + Math.random() * 1.4);
+    ctx.beginPath();
+    ctx.moveTo(Math.random() * w, Math.random() * h * 0.3);
+    ctx.bezierCurveTo(Math.random() * w, h * (0.2 + Math.random() * 0.3),
+                      Math.random() * w, h * (0.5 + Math.random() * 0.3),
+                      Math.random() * w, h * (0.6 + Math.random() * 0.4));
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 // [2026-04-26] 누끼 합성 시 인물 축소 버그 픽스 헬퍼
 // 누끼 PNG 의 알파(투명도) 데이터를 스캔해서 실제 인물(불투명) 영역의 사각 bbox 를 구한다.
 // rembg 가 원본 사이즈를 유지하더라도 인물 외 영역은 다 투명이라, 이걸 잘라내지 않으면
@@ -290,6 +333,11 @@ async function _applyBgToPhoto(photo, bg, slot, target_ratio = '1:1') {
     bgCanvas.width = CW; bgCanvas.height = CH;
     const ctx = bgCanvas.getContext('2d');
     _drawCoverCtx(ctx, bgImg, 0, 0, CW, CH);
+  } else if (bg.type === 'procedural' && bg.render) {
+    // [2026-05-18] 설계 §12.3 — procedural 배경(대리석/베이지/핑크/블랙). 비율(CW/CH) 따라 자동 생성.
+    bgCanvas = document.createElement('canvas');
+    bgCanvas.width = CW; bgCanvas.height = CH;
+    _drawProceduralBg(bgCanvas.getContext('2d'), bg.render, CW, CH);
   } else {
     bgCanvas = document.createElement('canvas');
     bgCanvas.width = CW; bgCanvas.height = CH;

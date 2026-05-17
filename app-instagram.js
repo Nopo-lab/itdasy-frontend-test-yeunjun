@@ -646,3 +646,94 @@ function _dismissIpcCard() {
   }
 }
 window._dismissIpcCard = _dismissIpcCard;
+
+// ═══════════════════════════════════════════════════════
+// [2026-05-18] 인스타 미리보기 — ratio 자동 매핑
+// ═══════════════════════════════════════════════════════
+// 설계 §10:
+//   1:1   → 1080×1080 (피드 정사각)
+//   4:5   → 1080×1350 (피드 세로, 디폴트 추천)
+//   9:16  → 1080×1920 (스토리/릴스 커버)
+// 사진 편집기에서 저장하면 _state.ratio 가 자동 전달돼서
+// 인스타 미리보기 컨테이너의 aspect-ratio 가 그 비율에 맞춰 잡힘.
+// 'original' 이나 누락 시 4:5 추천 (인스타 권장 비율).
+function _resolveIgPreviewRatio(ratio) {
+  // 'original' / undefined → 4:5 추천
+  const map = {
+    '1:1':  { ar: '1/1',   w: 1080, h: 1080, label: '피드 정사각' },
+    '4:5':  { ar: '4/5',   w: 1080, h: 1350, label: '피드 세로' },
+    '9:16': { ar: '9/16',  w: 1080, h: 1920, label: '스토리·릴스' },
+  };
+  if (ratio && map[ratio]) return { key: ratio, ...map[ratio] };
+  // back-compat: 인자 없으면 1:1 기본 (기존 호출자 보호)
+  if (ratio === undefined || ratio === null) return { key: '1:1', ...map['1:1'] };
+  // 'original' 이나 알 수 없는 값 → 4:5 추천
+  return { key: '4:5', ...map['4:5'] };
+}
+
+function openInstagramPreview(opts) {
+  opts = opts || {};
+  const meta = _resolveIgPreviewRatio(opts.ratio);
+  const src  = opts.src || '';
+
+  let pop = document.getElementById('_igPreviewPop');
+  if (!pop) {
+    pop = document.createElement('div');
+    pop.id = '_igPreviewPop';
+    pop.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center;';
+    pop.onclick = e => { if (e.target === pop) pop.style.display = 'none'; };
+    document.body.appendChild(pop);
+  }
+
+  const shopName     = (localStorage.getItem('shop_name') || '잇데이 스튜디오');
+  const shopHandle   = (localStorage.getItem('shop_name') || 'itdasy').toLowerCase().replace(/\s/g, '');
+  const avatarLetter = (shopName[0] || '잇');
+
+  // 미리보기 사진 영역 — ratio 별 aspect-ratio 자동 매핑
+  const photoHtml = src
+    ? `<div style="position:relative;width:100%;aspect-ratio:${meta.ar};background:#000;overflow:hidden;">
+         <img src="${src}" alt="편집본 미리보기" style="width:100%;height:100%;object-fit:cover;display:block;" />
+       </div>`
+    : `<div style="width:100%;aspect-ratio:${meta.ar};background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#999;font-size:13px;">사진을 먼저 편집해 주세요</div>`;
+
+  // 비율 배지 (어떤 포맷으로 보여지는지 사장님이 한눈에)
+  const ratioBadge = `<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(241,128,145,0.12);color:var(--accent2,#e26a85);font-size:10px;font-weight:700;margin-left:6px;">${meta.key} · ${meta.w}×${meta.h}</span>`;
+
+  pop.innerHTML = `
+    <div style="width:100%;max-width:480px;background:#fff;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:center;padding:10px 0 0;">
+        <div style="width:36px;height:4px;border-radius:2px;background:rgba(0,0,0,0.12);"></div>
+      </div>
+      <div style="display:flex;align-items:center;padding:10px 12px 10px;">
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);padding:2px;margin-right:10px;">
+          <div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,var(--accent,#F18091),var(--accent2,#e26a85));display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800;">${avatarLetter}</div>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;line-height:1.2;">${shopName}</div>
+          <div style="font-size:10px;color:var(--text-subtle,#888);">미리보기 ${ratioBadge}</div>
+        </div>
+        <button style="background:transparent;border:none;font-size:20px;color:var(--text-subtle,#888);cursor:pointer;margin-left:8px;" onclick="document.getElementById('_igPreviewPop').style.display='none'" aria-label="닫기">×</button>
+      </div>
+      ${photoHtml}
+      <div style="display:flex;align-items:center;gap:14px;padding:10px 12px 4px;">
+        <svg style="width:22px;height:22px;" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <svg style="width:22px;height:22px;" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        <svg style="width:22px;height:22px;" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        <svg style="width:22px;height:22px;margin-left:auto;" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="2"><polygon points="19 21 12 16 5 21 5 3 19 3 19 21"/></svg>
+      </div>
+      <div style="padding:2px 12px 14px;">
+        <div style="font-size:13px;color:#262626;line-height:1.6;"><span style="font-weight:700;">${shopHandle} </span><span style="color:var(--text-subtle,#888);">캡션은 다음 단계에서 만들 수 있어요</span></div>
+      </div>
+      <div style="padding:0 12px 28px;display:flex;gap:8px;">
+        <button style="flex:1;height:46px;border-radius:14px;border:1.5px solid #dbdbdb;background:#fff;color:#262626;font-size:13px;font-weight:700;cursor:pointer;" onclick="document.getElementById('_igPreviewPop').style.display='none'">닫기</button>
+        <button style="flex:1.4;height:46px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent,#F18091),var(--accent2,#e26a85));color:#fff;font-size:13px;font-weight:800;cursor:pointer;" onclick="document.getElementById('_igPreviewPop').style.display='none';(typeof window.openCaptionScenarioPopup==='function'&&window.openCaptionScenarioPopup())">캡션 만들기</button>
+      </div>
+    </div>
+  `;
+  pop.style.display = 'flex';
+
+  // 외부에서 ratio 확인할 수 있게 마지막 상태 노출 (테스트·디버그용)
+  window._lastIgPreviewMeta = meta;
+  return meta;
+}
+window.openInstagramPreview = openInstagramPreview;

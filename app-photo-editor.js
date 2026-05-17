@@ -989,7 +989,12 @@
       } else if (act === 'instagram') {
         m.remove();
         if (typeof window.openInstagramPreview === 'function') {
-          try { window.openInstagramPreview(); }
+          try {
+            // [2026-05-18] 편집기 → 인스타 미리보기 ratio 자동 전달.
+            // 'original' 은 인스타 권장 비율(4:5) 로 _resolveIgPreviewRatio 가 매핑.
+            const _curRatio = (_state && _state.ratio) ? _state.ratio : '1:1';
+            window.openInstagramPreview({ ratio: _curRatio, src: dataUrl });
+          }
           catch (_e) { _toast('인스타 미리보기 화면을 여는 중 문제가 생겼어요'); }
         } else if (typeof window.showTab === 'function') {
           window.showTab('finish');
