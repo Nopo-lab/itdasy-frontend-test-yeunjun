@@ -1119,7 +1119,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
   <nav class="tab-bar" id="nav" role="tablist" aria-label="메인 네비게이션" style="position: static; bottom: auto; left: auto; right: auto; margin: 0; pointer-events: auto;">
     <button type="button" class="tab-bar__btn active" data-tab="home" data-prefetch="home"
             onclick="showTab('home',this)" aria-label="홈 탭">
-      <span class="ic-box ic-box--sm ic-box--pink tab-bar__icon"><svg width="16" height="16" aria-hidden="true"><use href="#ic-home"/></svg></span>
+      <i class="ph-duotone ph-house tab-bar__icon"></i>
       <span class="tab-bar__label">홈</span>
     </button>
     <button type="button" class="tab-bar__fab" data-haptic="light"
@@ -1128,7 +1128,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
     </button>
     <button type="button" class="tab-bar__btn" data-tab="dashboard" data-prefetch="dashboard,customer,revenue,inventory,bookings"
             onclick="showTab('dashboard',this); if(typeof initDashboardTab==='function')initDashboardTab();" aria-label="내 샵 관리 탭">
-      <span class="ic-box ic-box--sm ic-box--blue tab-bar__icon"><svg width="16" height="16" aria-hidden="true"><use href="#ic-store"/></svg></span>
+      <i class="ph-duotone ph-storefront tab-bar__icon"></i>
       <span class="tab-bar__label">내 샵 관리</span>
     </button>
   </nav>
@@ -1968,7 +1968,7 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-home-v41-config.js" defer></script>
 <script src="app-home-v41.js?v=20260517-v148" defer></script>
 <!-- [2026-04-30] 내샵관리 v3 — 모바일 메인 + PC 사이드바·도넛·위젯·피드 -->
-<script src="app-myshop-v3.js?v=20260504-1" defer></script>
+<script src="app-myshop-v3.js?v=20260517-v152" defer></script>
 <script src="app-birthday.js" defer></script>
 <!-- 렉 박멸 — 챗봇/DM/영수증 무거운 스크립트는 defer 로 비차단 로드 (FCP ~120~250ms 단축 체감) -->
 <script src="app-assistant.js" defer></script>

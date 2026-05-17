@@ -324,10 +324,10 @@
   function _renderOpsMenu(brief) {
     const m = _opsMetaList(brief);
     const items = [
-      _menuItemHTML({ act: 'booking', iconClass: 'ms-menu__icon--teal', iconSVG: '<i class="ph-duotone ph-calendar-dots" style="font-size:18px" aria-hidden="true"></i>', name: '예약관리', meta: m.bookMeta }),
-      _menuItemHTML({ act: 'customer', iconClass: 'ms-menu__icon--blue', iconSVG: '<i class="ph-duotone ph-users" style="font-size:18px" aria-hidden="true"></i>', name: '고객관리', meta: m.custMeta, metaClass: m.atRiskN ? 'is-danger' : '' }),
-      _menuItemHTML({ act: 'revenue', iconClass: 'ms-menu__icon--amber', iconSVG: '<i class="ph-duotone ph-currency-dollar" style="font-size:18px" aria-hidden="true"></i>', name: '매출관리', meta: m.revMeta, metaClass: 'is-ok' }),
-      _menuItemHTML({ act: 'inventory', iconClass: 'ms-menu__icon--coral', iconSVG: '<i class="ph-duotone ph-package" style="font-size:18px" aria-hidden="true"></i>', name: '재고관리', meta: m.stockMeta, metaClass: m.lowStock > 0 ? 'is-danger' : '', badge: m.lowStock > 0 ? m.lowStock : null }),
+      _menuItemHTML({ act: 'booking', iconClass: 'ms-menu__icon--teal', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-calendar-check"/></svg>', name: '예약관리', meta: m.bookMeta }),
+      _menuItemHTML({ act: 'customer', iconClass: 'ms-menu__icon--blue', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-users"/></svg>', name: '고객관리', meta: m.custMeta, metaClass: m.atRiskN ? 'is-danger' : '' }),
+      _menuItemHTML({ act: 'revenue', iconClass: 'ms-menu__icon--amber', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-wallet"/></svg>', name: '매출관리', meta: m.revMeta, metaClass: 'is-ok' }),
+      _menuItemHTML({ act: 'inventory', iconClass: 'ms-menu__icon--coral', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-package"/></svg>', name: '재고관리', meta: m.stockMeta, metaClass: m.lowStock > 0 ? 'is-danger' : '', badge: m.lowStock > 0 ? m.lowStock : null }),
     ].join('');
     return `<div class="ms-section"><div class="ms-section__title">운영 관리</div><div class="ms-menu">${items}</div></div>`;
   }
@@ -337,8 +337,8 @@
     const automationOn = _automationOnCount();
     const automationTotal = 7;
     const items = [
-      _menuItemHTML({ act: 'aiHub', iconClass: 'ms-menu__icon--purple', iconSVG: '<i class="ph-duotone ph-sparkle" style="font-size:18px" aria-hidden="true"></i>', name: 'AI · 자동화', meta: `${automationOn}개 켜짐 · ${automationTotal - automationOn}개 꺼짐`, badge: automationTotal }),
-      _menuItemHTML({ act: 'settings', iconClass: 'ms-menu__icon--gray', iconSVG: '<i class="ph-duotone ph-gear-six" style="font-size:18px" aria-hidden="true"></i>', name: '설정 · 연동', meta: '샵정보 · 직원 · 네이버 · 백업' }),
+      _menuItemHTML({ act: 'aiHub', iconClass: 'ms-menu__icon--purple', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-sparkles"/></svg>', name: 'AI · 자동화', meta: `${automationOn}개 켜짐 · ${automationTotal - automationOn}개 꺼짐`, badge: automationTotal }),
+      _menuItemHTML({ act: 'settings', iconClass: 'ms-menu__icon--gray', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-settings"/></svg>', name: '설정 · 연동', meta: '샵정보 · 직원 · 네이버 · 백업' }),
     ].join('');
     return `<div class="ms-section"><div class="ms-section__title">통합 허브</div><div class="ms-menu">${items}</div></div>`;
   }
@@ -347,8 +347,8 @@
   function _renderAccountMenu() {
     const planLabel = _planLabel();
     const items = [
-      _menuItemHTML({ act: 'plan', iconClass: 'ms-menu__icon--pink', iconSVG: '<i class="ph-duotone ph-credit-card" style="font-size:18px" aria-hidden="true"></i>', name: '플랜 · 구독', meta: planLabel }),
-      _menuItemHTML({ act: 'support', iconClass: 'ms-menu__icon--gray', iconSVG: '<i class="ph-duotone ph-question" style="font-size:18px" aria-hidden="true"></i>', name: '도움말 · 문의', meta: '사용법 · 문의하기' }),
+      _menuItemHTML({ act: 'plan', iconClass: 'ms-menu__icon--pink', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-id-card"/></svg>', name: '플랜 · 구독', meta: planLabel }),
+      _menuItemHTML({ act: 'support', iconClass: 'ms-menu__icon--gray', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-message-circle"/></svg>', name: '도움말 · 문의', meta: '사용법 · 문의하기' }),
     ].join('');
     return `<div class="ms-section"><div class="ms-section__title">계정</div><div class="ms-menu">${items}</div></div>`;
   }
@@ -375,32 +375,32 @@
                      (brief && typeof brief.low_stock === 'number' ? brief.low_stock : 0);
     return [
       '<div class="ms-side__section">운영</div>',
-      _sideItemHTML({ act: 'booking',   iconSVG: '<i class="ph-duotone ph-calendar-dots" aria-hidden="true"></i>',    label: '예약관리', badge: todayN > 0 ? todayN : null, badgeClass: 'is-ok' }),
-      _sideItemHTML({ act: 'customer',  iconSVG: '<i class="ph-duotone ph-users" aria-hidden="true"></i>',       label: '고객관리' }),
-      _sideItemHTML({ act: 'revenue',   iconSVG: '<i class="ph-duotone ph-currency-dollar" aria-hidden="true"></i>', label: '매출관리' }),
-      _sideItemHTML({ act: 'inventory', iconSVG: '<i class="ph-duotone ph-package" aria-hidden="true"></i>',     label: '재고관리', badge: lowStock > 0 ? lowStock : null }),
+      _sideItemHTML({ act: 'booking',   iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-calendar-check"/></svg>',    label: '예약관리', badge: todayN > 0 ? todayN : null, badgeClass: 'is-ok' }),
+      _sideItemHTML({ act: 'customer',  iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-users"/></svg>',       label: '고객관리' }),
+      _sideItemHTML({ act: 'revenue',   iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-wallet"/></svg>', label: '매출관리' }),
+      _sideItemHTML({ act: 'inventory', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-package"/></svg>',     label: '재고관리', badge: lowStock > 0 ? lowStock : null }),
     ].join('');
   }
   function _sideHubHTML() {
     const automationOn = _automationOnCount();
     return [
       '<div class="ms-side__section">통합 허브</div>',
-      _sideItemHTML({ act: 'aiHub',    iconSVG: '<i class="ph-duotone ph-sparkle" aria-hidden="true"></i>', label: 'AI · 자동화', badge: `${automationOn}/7`, badgeClass: 'is-ok' }),
-      _sideItemHTML({ act: 'settings', iconSVG: '<i class="ph-duotone ph-gear-six" aria-hidden="true"></i>', label: '설정 · 연동' }),
+      _sideItemHTML({ act: 'aiHub',    iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-sparkles"/></svg>', label: 'AI · 자동화', badge: `${automationOn}/7`, badgeClass: 'is-ok' }),
+      _sideItemHTML({ act: 'settings', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-settings"/></svg>', label: '설정 · 연동' }),
     ].join('');
   }
   function _sideAccountHTML() {
     const planLabel = _planLabel();
     return [
       '<div class="ms-side__section">계정</div>',
-      _sideItemHTML({ act: 'plan',    iconSVG: '<i class="ph-duotone ph-credit-card" aria-hidden="true"></i>',           label: '플랜 · ' + planLabel }),
-      _sideItemHTML({ act: 'support', iconSVG: '<i class="ph-duotone ph-question" aria-hidden="true"></i>', label: '도움말' }),
+      _sideItemHTML({ act: 'plan',    iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-id-card"/></svg>',           label: '플랜 · ' + planLabel }),
+      _sideItemHTML({ act: 'support', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-message-circle"/></svg>', label: '도움말' }),
     ].join('');
   }
   function _renderPCSidebar(brief) {
     const top = [
-      _sideItemHTML({ act: 'goHome',     iconSVG: '<i class="ph-duotone ph-house" aria-hidden="true"></i>',  label: '홈' }),
-      _sideItemHTML({ active: true,      iconSVG: '<i class="ph-duotone ph-storefront" aria-hidden="true"></i>', label: '내샵관리' }),
+      _sideItemHTML({ act: 'goHome',     iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-home"/></svg>',  label: '홈' }),
+      _sideItemHTML({ active: true,      iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-store"/></svg>', label: '내샵관리' }),
     ].join('');
     return `
       <aside class="ms-side" aria-label="내샵관리 사이드바">
