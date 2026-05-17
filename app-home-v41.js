@@ -791,10 +791,10 @@
       .hv5-hero-chip{font-size:13px;color:#6B7684;font-weight:500;letter-spacing:-0.2px}
       .hv5-hero-chip b{font-weight:700;color:#333D4B}
       .hv5-hero-r{flex:1;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
-      .hv5-hero-r-link{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#6B7684;font-weight:600;cursor:pointer;text-decoration:none;padding:5px 10px;border-radius:999px;background:#F7F8FA;border:1px solid #E5E8EB;font-family:inherit;transition:color .12s,border-color .12s}
-      .hv5-hero-r-link:hover{color:#E5586E;border-color:#F18091}
+      .hv5-hero-r-link{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#6B7684;font-weight:600;cursor:pointer;text-decoration:none;padding:5px 10px;border-radius:999px;background:transparent;border:none;font-family:inherit;transition:color .12s}
+      .hv5-hero-r-link:hover{color:#E5586E}
       .hv5-hero-stats{display:flex;gap:10px}
-      .hv5-hero-stat{flex:0 0 155px;background:#F7F8FA;border:none;border-radius:12px;padding:14px 16px}
+      .hv5-hero-stat{flex:0 0 155px;background:transparent;border:none;border-radius:0;padding:14px 16px}
       .hv5-hero-stat-l{font-size:11px;font-weight:600;color:#6B7684;letter-spacing:-0.2px}
       .hv5-hero-stat-v{font-size:17px;font-weight:700;margin-top:4px;letter-spacing:-0.3px;color:#191F28;font-variant-numeric:tabular-nums}
       .hv5-hero-stat-v.pred{color:#E5586E}
@@ -853,7 +853,7 @@
       .hv5-ai-label-count{font-size:11px;color:#6B7684;margin-left:auto;font-weight:600}
       .hv5-ai-scroll{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding:2px 4px 4px}
       .hv5-ai-scroll::-webkit-scrollbar{display:none}
-      .hv5-ai-card{flex:0 0 260px;padding:20px;border-radius:16px;border:1px solid #E5E8EB;cursor:pointer;background:#fff;transition:transform .18s,box-shadow .18s;font-family:inherit;text-align:left;display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+      .hv5-ai-card{flex:0 0 260px;padding:20px;border-radius:16px;border:none;cursor:pointer;background:#fff;transition:transform .18s,box-shadow .18s;font-family:inherit;text-align:left;display:flex;flex-direction:column;box-shadow:0 4px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04)}
       .hv5-ai-card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(0,0,0,0.07),0 2px 6px rgba(0,0,0,0.05)}
       .hv5-ai-tag{display:inline-flex;align-items:center;gap:5px;margin-bottom:12px}
       .hv5-ai-dot{width:6px;height:6px;border-radius:50%}
