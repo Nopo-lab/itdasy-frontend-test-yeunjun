@@ -231,16 +231,23 @@
   #navSheetInner > div:first-child {
     display: none !important;
   }
-  /* AI/Settings/Plan/Support 내부 카드 — 풀패널 펼치기 (max-width 제거). */
+  /* AI/Settings/Plan/Support 내부 카드 — 풀패널 펼치기 (max-width 제거).
+     [v165] position absolute (.ms-sheet base) 를 relative 로 풀어야 flex:1 + 부모 scroll 정상 동작.
+     기존엔 absolute 라 flex 흐름 밖 → 카드가 콘텐츠만큼 늘어나고 overflow auto 가 트리거 안 됨. */
   #aiHubSheet > #aihCard,
   #settingsHubSheet > #shCard,
   #planPopup > *:not(script),
   #supportChatModal > *:not(script) {
+    position: relative !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
     width: 100% !important;
     max-width: none !important;
     height: auto !important;
     max-height: none !important;
-    min-height: calc(100vh - var(--app-header-h));
+    min-height: 0 !important;
     border-radius: 0 !important;
     margin: 0 !important;
     padding: 32px 40px !important;
@@ -249,6 +256,7 @@
     transform: none !important;
     flex: 1 !important;
     overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
   /* 바텀시트 핸들(가로 막대)은 모바일 전용 — PC 에서 hide */
   #aiHubSheet > #aihCard::before,
