@@ -2850,9 +2850,12 @@
         // [QA-r6] actions=0 + answer 에 가격 패턴이 있는 모순 케이스 차단.
         // 백엔드가 "0건 추출 + 영수증 prose 본문" 으로 응답하면 사용자는 가격은 보이는데
         // 저장 카드가 없어 혼란. 메시지를 명확한 안내로 치환해 prose 노출 자체를 막음.
+        // [QA-r11 hotfix 2026-05-17] pending 미선언 ReferenceError 회귀 fix.
+        // 이 함수 (_uploadPhotos) 자체가 image upload 경로 → _wasImageUpload 는 항상 true.
+        // 이전 코드 'pending && pending.kind === images' 는 다른 함수 패턴 복사 흔적.
         const _ans = (d.answer || '').trim();
         const _hasPrice = /([0-9]{2,3},[0-9]{3}|[0-9]{4,})\s*원/.test(_ans);
-        const _wasImageUpload = !!(pending && pending.kind === 'images');
+        const _wasImageUpload = true;
         // [QA-r10] dedupe 후 0건이 된 케이스도 동일 안내 (raw 가 많았지만 전부 중복/빈 fallback 였던 경우)
         if (_wasImageUpload && (_hasPrice && _ans.length > 30 || _rawActionsList.length > 0)) {
           msg.text = '분석은 됐지만 자동 저장 가능한 형태로 정리가 안 됐어요.\n사진을 다시 찍거나 직접 추가해주세요.';
@@ -2869,8 +2872,19 @@
       _notifyAnswerArrived();
     } catch (e) {
       _history = _history.filter(m => m.role !== 'loading');
-      const human = window._humanError ? window._humanError(e) : (e && e.message) || '알 수 없는 오류';
-      _history.push({ role: 'assistant', text: '사진을 못 읽었어요: ' + human });
+      // [QA-r11 hotfix 2026-05-17] JS ReferenceError / TypeError 같은 내부 에러를
+      // 그대로 노출하지 않음. 사용자 친화 메시지 + 콘솔에 원본 보존 (개발자 진단용).
+      try { console.error('[assistant/upload] error:', e); } catch (_logErr) { void _logErr; }
+      const _raw = (e && e.message) || '';
+      const _isInternalJsErr = /^(Can't find variable|undefined is not|null is not|ReferenceError|TypeError|SyntaxError)/i.test(_raw);
+      let _userMsg;
+      if (_isInternalJsErr) {
+        _userMsg = '사진 분석 중 오류가 발생했어요. 다시 시도해주세요.';
+      } else {
+        const human = window._humanError ? window._humanError(e) : _raw || '알 수 없는 오류';
+        _userMsg = '사진을 못 읽었어요: ' + human;
+      }
+      _history.push({ role: 'assistant', text: _userMsg });
       _renderHistory();
       _clearPending();
     } finally {
