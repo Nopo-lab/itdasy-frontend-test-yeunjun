@@ -14,20 +14,9 @@
     ));
   }
 
-  // ─── 아이콘 헬퍼 (sprite use) ────────────────────────────
+  // ─── 아이콘 헬퍼 (sprite use only) ───────────────────────
   function _ic(id, size) {
     const sz = size || 16;
-    // Phase1: Phosphor 매핑
-    const phMap = {
-      'ic-store': 'ph-storefront',
-      'ic-link': 'ph-link',
-      'ic-download': 'ph-cloud-arrow-down',
-      'ic-rotate-ccw': 'ph-arrow-counter-clockwise',
-      'ic-bell': 'ph-bell-ringing',
-      'ic-arrow-left': 'ph-sign-out',
-    };
-    const ph = phMap[id];
-    if (ph) return `<i class="ph-duotone ${_esc(ph)}" style="font-size:${sz}px;" aria-hidden="true"></i>`;
     return `<svg width="${sz}" height="${sz}" aria-hidden="true"><use href="#${_esc(id)}"/></svg>`;
   }
 

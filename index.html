@@ -446,6 +446,34 @@
     <line x1="12" y1="19" x2="12" y2="23"/>
     <line x1="8" y1="23" x2="16" y2="23"/>
   </symbol>
+  <!-- [2026-05-17 v151] Lucide 메뉴 5종 추가 — 사이드바·탭바 통일 -->
+  <symbol id="ic-calendar-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 14V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8"/>
+    <path d="M16 2v4"/>
+    <path d="M8 2v4"/>
+    <path d="M3 10h18"/>
+    <path d="m16 20 2 2 4-4"/>
+  </symbol>
+  <symbol id="ic-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
+    <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+    <path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4z"/>
+  </symbol>
+  <symbol id="ic-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/>
+    <circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>
+  </symbol>
+  <symbol id="ic-id-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M16 10h2"/>
+    <path d="M16 14h2"/>
+    <path d="M6.17 15a3 3 0 0 1 5.66 0"/>
+    <circle cx="9" cy="11" r="2"/>
+    <rect x="2" y="5" width="20" height="14" rx="2"/>
+  </symbol>
+  <symbol id="ic-book-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 7v14"/>
+    <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>
+  </symbol>
 </svg>
 
 <!-- ───── 스플래시 스크린 ───── -->
@@ -793,59 +821,59 @@
   <button type="button" class="ms-side__item" data-side-tab="home"
           onclick="showTab('home', document.querySelector('.tab-bar__btn[data-tab=&quot;home&quot;]'));"
           aria-label="홈">
-    <span class="ms-side__icon"><span class="ic-box ic-box--pink"><i class="ph-duotone ph-house"></i></span></span>
+    <span class="ms-side__icon"><span class="ic-box ic-box--pink"><svg width="20" height="20" aria-hidden="true"><use href="#ic-home"/></svg></span></span>
     <span class="ms-side__label">홈</span>
   </button>
   <button type="button" class="ms-side__item" data-side-tab="dashboard"
           onclick="showTab('dashboard', document.querySelector('.tab-bar__btn[data-tab=&quot;dashboard&quot;]')); if(typeof initDashboardTab==='function')initDashboardTab();"
           aria-label="내 샵 관리">
-    <span class="ms-side__icon"><span class="ic-box ic-box--blue"><i class="ph-duotone ph-storefront"></i></span></span>
+    <span class="ms-side__icon"><span class="ic-box ic-box--blue"><svg width="20" height="20" aria-hidden="true"><use href="#ic-store"/></svg></span></span>
     <span class="ms-side__label">내 샵 관리</span>
   </button>
 
   <div class="ms-side__section">운영</div>
   <button type="button" class="ms-side__item" onclick="window.openCalendarView && window.openCalendarView();" aria-label="예약관리">
-    <span class="ms-side__icon"><span class="ic-box ic-box--teal"><i class="ph-duotone ph-calendar-check"></i></span></span>
+    <span class="ms-side__icon"><span class="ic-box ic-box--teal"><svg width="20" height="20" aria-hidden="true"><use href="#ic-calendar-check"/></svg></span></span>
     <span class="ms-side__label">예약관리</span>
   </button>
   <button type="button" class="ms-side__item" onclick="window.openCustomerHub && window.openCustomerHub();" aria-label="고객관리">
-    <span class="ms-side__icon"><span class="ic-box ic-box--blue"><i class="ph-duotone ph-users-three"></i></span></span>
+    <span class="ms-side__icon"><span class="ic-box ic-box--blue"><svg width="20" height="20" aria-hidden="true"><use href="#ic-users"/></svg></span></span>
     <span class="ms-side__label">고객관리</span>
   </button>
   <button type="button" class="ms-side__item" onclick="(window.openRevenue || window.openRevenueHub)?.();" aria-label="매출관리">
-    <span class="ms-side__icon"><span class="ic-box ic-box--amber"><i class="ph-duotone ph-chart-line-up"></i></span></span>
+    <span class="ms-side__icon"><span class="ic-box ic-box--amber"><svg width="20" height="20" aria-hidden="true"><use href="#ic-wallet"/></svg></span></span>
     <span class="ms-side__label">매출관리</span>
   </button>
   <button type="button" class="ms-side__item" onclick="window.openInventoryHub && window.openInventoryHub();" aria-label="재고관리">
-    <span class="ms-side__icon"><span class="ic-box ic-box--coral"><i class="ph-duotone ph-package"></i></span></span>
+    <span class="ms-side__icon"><span class="ic-box ic-box--coral"><svg width="20" height="20" aria-hidden="true"><use href="#ic-package"/></svg></span></span>
     <span class="ms-side__label">재고관리</span>
   </button>
   <button type="button" class="ms-side__item" onclick="window.openServiceTemplates && window.openServiceTemplates();" aria-label="시술 메뉴">
-    <span class="ms-side__icon"><span class="ic-box ic-box--pink"><i class="ph-duotone ph-tag"></i></span></span>
+    <span class="ms-side__icon"><span class="ic-box ic-box--pink"><svg width="20" height="20" aria-hidden="true"><use href="#ic-tag"/></svg></span></span>
     <span class="ms-side__label">시술 메뉴</span>
   </button>
 
   <div class="ms-side__section">통합 허브</div>
   <button type="button" class="ms-side__item" onclick="window.openAiHub && window.openAiHub();" aria-label="AI · 자동화">
-    <span class="ms-side__icon"><span class="ic-box ic-box--purple"><i class="ph-duotone ph-sparkle"></i></span></span>
+    <span class="ms-side__icon"><span class="ic-box ic-box--purple"><svg width="20" height="20" aria-hidden="true"><use href="#ic-sparkles"/></svg></span></span>
     <span class="ms-side__label">AI · 자동화</span>
   </button>
   <button type="button" class="ms-side__item" onclick="window.openSettingsHub && window.openSettingsHub();" aria-label="설정 · 연동">
-    <span class="ms-side__icon"><span class="ic-box ic-box--gray"><i class="ph-duotone ph-gear-six"></i></span></span>
+    <span class="ms-side__icon"><span class="ic-box ic-box--gray"><svg width="20" height="20" aria-hidden="true"><use href="#ic-settings"/></svg></span></span>
     <span class="ms-side__label">설정 · 연동</span>
   </button>
 
   <div class="ms-side__section">계정</div>
   <button type="button" class="ms-side__item" onclick="(window.openPlan || window.openPlanPopup)?.();" aria-label="플랜 · Free">
-    <span class="ms-side__icon"><span class="ic-box ic-box--amber"><i class="ph-duotone ph-star"></i></span></span>
+    <span class="ms-side__icon"><span class="ic-box ic-box--amber"><svg width="20" height="20" aria-hidden="true"><use href="#ic-id-card"/></svg></span></span>
     <span class="ms-side__label">플랜 · Free</span>
   </button>
   <button type="button" class="ms-side__item" onclick="setTimeout(function(){(window.openHelpGuide)?.();},0);" aria-label="사용 가이드">
-    <span class="ms-side__icon"><span class="ic-box ic-box--teal"><i class="ph-duotone ph-book-open"></i></span></span>
+    <span class="ms-side__icon"><span class="ic-box ic-box--teal"><svg width="20" height="20" aria-hidden="true"><use href="#ic-book-open"/></svg></span></span>
     <span class="ms-side__label">사용 가이드</span>
   </button>
   <button type="button" class="ms-side__item" onclick="setTimeout(function(){(window.openSupport || window.openSupportChat)?.();},0);" aria-label="문의하기">
-    <span class="ms-side__icon"><span class="ic-box ic-box--teal"><i class="ph-duotone ph-chat-circle-dots"></i></span></span>
+    <span class="ms-side__icon"><span class="ic-box ic-box--teal"><svg width="20" height="20" aria-hidden="true"><use href="#ic-message-circle"/></svg></span></span>
     <span class="ms-side__label">문의하기</span>
   </button>
 
@@ -1091,7 +1119,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
   <nav class="tab-bar" id="nav" role="tablist" aria-label="메인 네비게이션" style="position: static; bottom: auto; left: auto; right: auto; margin: 0; pointer-events: auto;">
     <button type="button" class="tab-bar__btn active" data-tab="home" data-prefetch="home"
             onclick="showTab('home',this)" aria-label="홈 탭">
-      <i class="ph-duotone ph-house tab-bar__icon"></i>
+      <span class="ic-box ic-box--sm ic-box--pink tab-bar__icon"><svg width="16" height="16" aria-hidden="true"><use href="#ic-home"/></svg></span>
       <span class="tab-bar__label">홈</span>
     </button>
     <button type="button" class="tab-bar__fab" data-haptic="light"
@@ -1100,7 +1128,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
     </button>
     <button type="button" class="tab-bar__btn" data-tab="dashboard" data-prefetch="dashboard,customer,revenue,inventory,bookings"
             onclick="showTab('dashboard',this); if(typeof initDashboardTab==='function')initDashboardTab();" aria-label="내 샵 관리 탭">
-      <i class="ph-duotone ph-storefront tab-bar__icon"></i>
+      <span class="ic-box ic-box--sm ic-box--blue tab-bar__icon"><svg width="16" height="16" aria-hidden="true"><use href="#ic-store"/></svg></span>
       <span class="tab-bar__label">내 샵 관리</span>
     </button>
   </nav>
@@ -1912,7 +1940,7 @@ window._lazyImgly = function _lazyImgly() {
 <!-- [2026-04-30] AI 자동화 허브 — DM/카카오/페르소나/캡션/게시물/메모/캡처 통합 -->
 <script src="app-ai-hub.js?v=20260517-v150" defer></script>
 <!-- [2026-04-30] 설정 · 연동 허브 — 샵정보/네이버/백업/실패/앱설정 통합 -->
-<script src="app-settings-hub.js?v=20260517-v150" defer></script>
+<script src="app-settings-hub.js?v=20260517-v151" defer></script>
 <!-- [2026-04-30] 챗봇 액션 되돌리기 + Chain 모드 토글 -->
 <script src="app-assistant-undo.js?v=20260502-3" defer></script>
 <!-- [2026-04-29 W5] 직원 관리 — 미용실/대형샵 다중 직원 -->
