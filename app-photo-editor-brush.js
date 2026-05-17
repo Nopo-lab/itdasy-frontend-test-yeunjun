@@ -47,9 +47,11 @@
         type: 'smooth', size: 40, strength: 50,
         drawing: false, lastX: 0, lastY: 0,
         // [v187] 클론·힐링 — sourcePt: 사용자가 탭한 소스 좌표, firstStrokePt: 드래그 시작 좌표
-        //   offset = sourcePt - firstStrokePt (드래그 동안 고정)
         sourcePt: null, firstStrokePt: null,
         awaitingSource: false,  // 'set source' 모드
+        // [v189] 사각형 선택 도구 — 드래그로 직사각형 마스크 채움
+        selMode: 'free',   // 'free' (자유 드래그) | 'rect' (사각형)
+        rectStart: null,   // { x, y } — rect 드래그 시작점
       };
     }
     return state.brush;
@@ -93,10 +95,15 @@
           : `① <b>"소스 지정"</b> 누른 뒤 ② 사진에서 복사할 좋은 영역 1회 탭. ③ 그다음 칠하고 싶은 영역 드래그.<br><button type="button" class="pe-chip-btn${b.awaitingSource?' on':''}" data-pe-brush-set-source style="margin-top:6px;">${b.awaitingSource?'소스 지정 중… (취소)':'📍 소스 지정'}</button>`
         }
       </div>` : '';
+    // [v189] 그리기 모드 — 자유 드래그 / 사각형
+    const selMode = b.selMode || 'free';
+    const modeChip = (k, label) => `<button type="button" class="pe-chip-btn${selMode===k?' on':''}" data-pe-brush-selmode="${k}">${label}</button>`;
     return `<div class="pe-field-label">브러시 종류</div>
       <div class="pe-panel-row pe-panel-grid-3">${chip('smooth')}${chip('shine')}${chip('redness')}</div>
       <div class="pe-panel-row pe-panel-grid-3">${chip('gloss')}${chip('blur')}${chip('eraser')}</div>
       <div class="pe-panel-row pe-panel-grid-2">${chip('clone')}${chip('heal')}</div>
+      <div class="pe-field-label" style="margin-top:10px;">그리기 모드</div>
+      <div class="pe-panel-row pe-panel-grid-2">${modeChip('free','✎ 자유 드래그')}${modeChip('rect','▭ 사각형')}</div>
       ${cloneHint}
       <label class="pe-slider"><div class="pe-slider-head"><span>브러시 크기</span><span class="pe-slider-val" data-pe-brush-size-val>${b.size}</span></div>
         <input type="range" min="10" max="120" value="${b.size}" data-pe-brush-size /></label>
@@ -127,6 +134,13 @@
           b.sourcePt = null; b.firstStrokePt = null; b.awaitingSource = false;
         }
         // 패널 다시 렌더 — cloneHint UI 갱신
+        helpers && helpers.renderPanel && helpers.renderPanel();
+      });
+    });
+    // [v189] 그리기 모드 토글
+    panel.querySelectorAll('[data-pe-brush-selmode]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        b.selMode = btn.dataset.peBrushSelmode;
         helpers && helpers.renderPanel && helpers.renderPanel();
       });
     });
@@ -169,7 +183,6 @@
       if (state.activeTab !== 'brush') return;
       e.preventDefault();
       const p = _getXY(e);
-      // [v187] 소스 지정 대기 중 → 첫 탭은 소스 좌표로
       if (b.awaitingSource && _CLONE_TYPES.has(b.type)) {
         b.sourcePt = { x: p.x, y: p.y };
         b.awaitingSource = false;
@@ -178,20 +191,37 @@
         helpers && helpers.renderPanel && helpers.renderPanel();
         return;
       }
-      // 클론·힐링 모드인데 소스 미지정 → 차단
       if (_CLONE_TYPES.has(b.type) && !b.sourcePt) {
         if (helpers && helpers.toast) helpers.toast('먼저 [📍 소스 지정] 누르고 복사할 영역 탭하세요');
         return;
       }
-      // 클론·힐링 stroke 시작점 = firstStrokePt (offset 계산 기준)
       if (_CLONE_TYPES.has(b.type)) b.firstStrokePt = { x: p.x, y: p.y };
       b.drawing = true; b.lastX = p.x; b.lastY = p.y;
-      _drawAt(p.x, p.y);
+      // [v189] rect 모드 — 드래그 시작점 저장, 그리기는 _end 에서 한 번에
+      if (b.selMode === 'rect') {
+        b.rectStart = { x: p.x, y: p.y };
+      } else {
+        _drawAt(p.x, p.y);
+      }
     }
     function _move(e) {
       if (!b.drawing || state.activeTab !== 'brush') return;
       e.preventDefault();
       const p = _getXY(e);
+      if (b.selMode === 'rect') {
+        // rect 모드 — 라이브 프리뷰 (mask 그렸다 지웠다 매번)
+        if (!b.rectStart) return;
+        mctx.clearRect(0, 0, mask.width, mask.height);
+        // 기존 적용된 stroke 보존 안 함 — 단순화. P3+ 에서 추가.
+        const x1 = Math.min(b.rectStart.x, p.x), y1 = Math.min(b.rectStart.y, p.y);
+        const x2 = Math.max(b.rectStart.x, p.x), y2 = Math.max(b.rectStart.y, p.y);
+        mctx.globalCompositeOperation = b.type === 'eraser' ? 'destination-out' : 'source-over';
+        mctx.fillStyle = (BRUSHES[b.type] && BRUSHES[b.type].color) || 'rgba(255,255,255,0.5)';
+        mctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+        b.lastX = p.x; b.lastY = p.y;
+        return;
+      }
+      // free 모드 — 기존 점간 보간 stroke
       const dx = p.x - b.lastX, dy = p.y - b.lastY;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const step = Math.max(1, b.size / 4);
@@ -199,7 +229,10 @@
       for (let i = 1; i <= n; i++) _drawAt(b.lastX + dx * i / n, b.lastY + dy * i / n);
       b.lastX = p.x; b.lastY = p.y;
     }
-    function _end() { b.drawing = false; }
+    function _end() {
+      b.drawing = false;
+      b.rectStart = null;
+    }
 
     // 메인 canvas 에 brush 이벤트 — 중복 등록 방지 위해 한 번만
     if (!mainCv._brushBound) {
