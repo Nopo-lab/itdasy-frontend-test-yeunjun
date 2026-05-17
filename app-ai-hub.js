@@ -129,7 +129,7 @@
             <div id="aihTitle" class="ms-sheet__title">AI · 자동화</div>
             <div class="ms-sheet__sub" id="aihSub">${_esc(sub)}</div>
           </div>
-          <button type="button" class="ms-sheet__close" data-close="1">닫기</button>
+          <button type="button" class="ms-sheet__close" data-close="1" aria-label="닫기">✕</button>
         </div>
         <div class="ms-sheet__body">
           <div class="ms-aih">${rows}</div>

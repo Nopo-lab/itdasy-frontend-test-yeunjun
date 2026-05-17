@@ -56,7 +56,7 @@
           <div class="ms-sheet__title">설정 · 연동</div>
           <div class="ms-sheet__sub">샵 정보 · 외부 연동 · 백업</div>
         </div>
-        <button type="button" class="ms-sheet__close" id="shClose" aria-label="닫기">닫기</button>
+        <button type="button" class="ms-sheet__close" id="shClose" aria-label="닫기">✕</button>
       </div>
     `;
   }
@@ -145,7 +145,7 @@
     sheet.style.cssText = 'position:fixed;inset:0;z-index:9985;display:none;';
     sheet.innerHTML = `
       <div class="ms-sheet__overlay" id="shOverlay" style="position:fixed;inset:0;"></div>
-      <div class="ms-sheet" id="shCard" style="position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;">
+      <div class="ms-sheet" id="shCard" style="max-width:560px;margin:0 auto;">
         ${_headHTML()}
         <div class="ms-sheet__body">
           ${_accountHTML()}
