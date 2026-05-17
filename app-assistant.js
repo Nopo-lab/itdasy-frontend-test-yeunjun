@@ -2931,6 +2931,26 @@
     if (/직원\s*(추가|관리|등록|보여|목록|리스트)/.test(q) || /스타일리스트.*(추가|등록)/.test(q)) {
       if (window.StaffUI && typeof window.StaffUI.open === 'function') { _shortcut(() => window.StaffUI.open()); return; }
     }
+    // [v168 2026-05-18] 사진 편집기 phrase shortcut — 백엔드 LLM 없이도 즉시 진입.
+    if (/(사진|이미지|포토)\s*(편집|보정|수정|꾸미|예쁘게|만들|업로드)/.test(q)
+        || /(편집기|편집\s*화면|보정\s*화면|에디터)\s*(열|보여|시작|이동|가)?/.test(q)
+        || /^편집기?$/.test(q.trim())) {
+      if (window.PhotoEditor && typeof window.PhotoEditor.open === 'function') {
+        _shortcut(() => window.PhotoEditor.open({}));
+        return;
+      }
+    }
+    // Brand Kit shortcut
+    if (/(브랜드\s*키트|brand\s*kit|샵\s*브랜드|워터마크\s*(설정|관리))/.test(q)) {
+      if (window.BrandKit && typeof window.BrandKit.open === 'function') { _shortcut(() => window.BrandKit.open()); return; }
+    }
+    // B&A 카드 — 사진 편집기 템플릿 탭 시작.
+    if (/(전후|before\s*after|b&a|비포\s*애프터|시술\s*전후).*?(카드|만들|보여|업로드)/.test(q)) {
+      if (window.PhotoEditor && typeof window.PhotoEditor.open === 'function') {
+        _shortcut(() => window.PhotoEditor.open({ initial_tab: 'template' }));
+        return;
+      }
+    }
     if (/회원권.*(만료|임박)/.test(q) || /만료.*회원권/.test(q)) {
       if (window.MembershipUI && typeof window.MembershipUI.openExpiringList === 'function') { _shortcut(() => window.MembershipUI.openExpiringList(30)); return; }
     }
