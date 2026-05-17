@@ -147,26 +147,24 @@
     beauty: {},
   };
 
-  function _resolvePreset(preset) {
+  function _resolvePreset(preset, intensity) {
     if (preset === null) return null; // 보정 X
     var pe = window.PhotoEnhance;
+    var inten = intensity || 'standard';  // [v183] 챗봇은 기본 standard
     if (preset === 'auto' || !preset) {
-      // 일반 자동 — 업종 prefer 안 함
       return AUTO_PRESET;
     }
     if (preset === 'shop') {
-      // localStorage.shop_type 기반
       if (pe && typeof pe.getShopPreset === 'function') {
-        try { return pe.getShopPreset(localStorage.getItem('shop_type') || ''); }
+        try { return pe.getShopPreset(localStorage.getItem('shop_type') || '', inten); }
         catch (_e) { void _e; }
       }
       return AUTO_PRESET;
     }
-    // 'hair' | 'lash' | 'nail' | 'wax' — 강제 매핑
     var FORCE = { hair: '헤어', lash: '속눈썹', nail: '네일', wax: '왁싱' };
     var key = FORCE[preset];
     if (key && pe && typeof pe.getShopPreset === 'function') {
-      try { return pe.getShopPreset(key); } catch (_e2) { void _e2; }
+      try { return pe.getShopPreset(key, inten); } catch (_e2) { void _e2; }
     }
     return AUTO_PRESET;
   }
@@ -224,7 +222,7 @@
     var ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, crop.dw, crop.dh);
 
-    var resolved = _resolvePreset(preset);
+    var resolved = _resolvePreset(preset, opts.intensity);
 
     if (!resolved) {
       // preset=null → 원본 그대로 (crop+ratio 만 적용)

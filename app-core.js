@@ -986,8 +986,17 @@ async function logout(opts) {
     } catch (e) { /* cache clear best-effort */ }
   }
 
-  // 3. 페이지 새로고침 (클린 캐시 상태로 진입)
-  location.href = 'index.html'; // 아예 홈으로 보냄
+  // [v182.1 2026-05-18] SW 자체 unregister — 캐시 비웠지만 SW 가 active 상태로
+  //   다음 페이지 요청을 인터셉트해서 흰화면 발생. unregister 해야 깨끗하게 리로드됨.
+  if ('serviceWorker' in navigator) {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    } catch (e) { /* SW unregister best-effort */ }
+  }
+
+  // 3. 페이지 새로고침 — cache bust 쿼리로 SW/브라우저 캐시 우회
+  location.replace('index.html?_logout=' + Date.now());
 }
 
 

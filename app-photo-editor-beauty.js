@@ -256,9 +256,10 @@
       const isReddish = r > 80 && r > g && (r - bl) > 10 && (r - bl) < 140;
 
       if (redK > 0 && isReddish) {
-        d[i]   = _clamp(d[i]   - 18 * redK);
-        d[i+1] = _clamp(d[i+1] +  2 * redK);
-        d[i+2] = _clamp(d[i+2] +  3 * redK);
+        // [v183 2026-05-18] 강도 18 → 30 (사용자 체감 약함 컴플레인 fix)
+        d[i]   = _clamp(d[i]   - 30 * redK);
+        d[i+1] = _clamp(d[i+1] +  4 * redK);
+        d[i+2] = _clamp(d[i+2] +  5 * redK);
       }
       // 노란기 완화 — 노란 cast (R≈G AND G > B by 10+) → G↓ B↑
       if (yelK > 0) {
@@ -313,13 +314,13 @@
           }
         }
       }
-      // 모발 윤기
+      // 모발 윤기 — [v183] 강도 6 → 12, lum 범위 확장 (60~190)
       if (hairK > 0) {
         const lum = (d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114);
-        if (lum > 80 && lum < 180 && Math.abs(d[i] - d[i+1]) < 40 && Math.abs(d[i+1] - d[i+2]) < 40) {
-          d[i]   = _clamp(d[i]   + 6 * hairK);
-          d[i+1] = _clamp(d[i+1] + 6 * hairK);
-          d[i+2] = _clamp(d[i+2] + 4 * hairK);
+        if (lum > 60 && lum < 190 && Math.abs(d[i] - d[i+1]) < 45 && Math.abs(d[i+1] - d[i+2]) < 45) {
+          d[i]   = _clamp(d[i]   + 12 * hairK);
+          d[i+1] = _clamp(d[i+1] + 12 * hairK);
+          d[i+2] = _clamp(d[i+2] +  8 * hairK);
         }
       }
       // 모발 색감 (양방향)
@@ -353,10 +354,11 @@
     }
     ctx.putImageData(data, 0, 0);
 
-    // 머리결 / 속눈썹 선명도 / 눈가 close-up 디테일 — 모두 unsharp mask 기반.
+    // [v183 2026-05-18] unsharp 강도 ↑ — lashSharp 200→130, closeUpDetail 250→160
+    //   체감 약함 컴플레인 fix. hairDetail 은 자연스러움 유지 위해 300 유지.
     if (b.hairDetail > 10) _unsharpMask(ctx, w, h, b.hairDetail / 300);
-    if (b.lashSharp > 10) _unsharpMask(ctx, w, h, b.lashSharp / 200);
-    if (b.closeUpDetail > 10) _unsharpMask(ctx, w, h, b.closeUpDetail / 250);
+    if (b.lashSharp > 10) _unsharpMask(ctx, w, h, b.lashSharp / 130);
+    if (b.closeUpDetail > 10) _unsharpMask(ctx, w, h, b.closeUpDetail / 160);
   }
 
   // ── 메인 모듈 준비될 때까지 폴링 후 등록 ──

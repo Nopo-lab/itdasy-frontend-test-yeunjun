@@ -57,6 +57,7 @@
       customerName: opts.customer_name || '',
       autoShop: !!opts.autoShop,
       activeTab: opts.initial_tab || 'auto', ratio: 'original',
+      autoIntensity: 'standard',  // [v183] natural | standard | strong
       adjust: { brightness: 100, saturate: 100, sharpness: 0, temperature: 0 },
       beauty: { skin: 0, redness: 0, hairShine: 0, nailGloss: 0, lashSharp: 0, blemish: 0, handSkin: 0, hairColor: 0, hairDetail: 0, eyeShadow: 0 },
       template: { id: null, leftLabel: '전', rightLabel: '후', reviewText: '', priceLines: '' },
@@ -93,6 +94,7 @@
         <div class="pe-title">사진 편집기</div>
         <button type="button" class="pe-iconbtn" data-pe-act="compare" aria-label="원본 비교">원본</button>
         <button type="button" class="pe-iconbtn" data-pe-act="undo" aria-label="되돌리기">⤺</button>
+        <button type="button" class="pe-iconbtn" data-pe-act="redo" aria-label="다시 실행">⤻</button>
         <button type="button" class="pe-btn-primary" data-pe-act="save">저장</button></header>
       <main class="pe-stage"><div class="pe-canvas-wrap">
         <canvas id="peCanvas" class="pe-canvas"></canvas>
@@ -107,7 +109,7 @@
     return sheet;
   }
 
-  const _ACTS = { close: () => _close(), undo: () => _undo(), save: () => _save(), compare: () => _toggleCompare() };
+  const _ACTS = { close: () => _close(), undo: () => _undo(), redo: () => _redo(), save: () => _save(), compare: () => _toggleCompare() };
   function _bindSheet(sheet) {
     sheet.addEventListener('click', (e) => {
       const act = e.target.closest('[data-pe-act]')?.dataset.peAct;
@@ -160,10 +162,17 @@
   }
   function _panelAuto() {
     const shopLabel = _shopPresetLabel();
+    const cur = _state.autoIntensity || 'standard';
+    const intChip = (k, label) => `<button type="button" class="pe-chip-btn${cur===k?' on':''}" data-pe-auto-intensity="${k}">${label}</button>`;
     return `<div class="pe-panel-row"><button type="button" class="pe-action-btn" data-pe-auto="all">⚡ 한 번에 자동 보정</button></div>
       <div class="pe-panel-row"><button type="button" class="pe-action-btn" data-pe-auto="shop">⚡ 우리 샵 업종 자동 (현재: ${_esc(shopLabel)})</button></div>
-      <div class="pe-panel-row pe-panel-grid-2">${_CHIP('auto','bright','밝게')}${_CHIP('auto','vivid','선명')}${_CHIP('auto','warm','따뜻하게')}${_CHIP('auto','cool','차갑게')}</div>
-      <div class="pe-hint">자연 보정 위주. 시술 결과가 왜곡되지 않게 보수적 강도로 들어갑니다.</div>`;
+      <div class="pe-field-label" style="margin-top:10px;">강도</div>
+      <div class="pe-panel-row pe-panel-grid-4">${intChip('natural','자연')}${intChip('standard','표준')}${intChip('strong','강조')}</div>
+      <div class="pe-field-label" style="margin-top:10px;">업종별 자동 (강도 적용)</div>
+      <div class="pe-panel-row pe-panel-grid-2">${_CHIP('auto','hair','헤어·붙임머리')}${_CHIP('auto','lash','속눈썹')}${_CHIP('auto','nail','네일')}${_CHIP('auto','wax','왁싱·피부')}</div>
+      <div class="pe-field-label" style="margin-top:10px;">분위기</div>
+      <div class="pe-panel-row pe-panel-grid-4">${_CHIP('auto','bright','밝게')}${_CHIP('auto','vivid','선명')}${_CHIP('auto','warm','따뜻')}${_CHIP('auto','cool','차갑게')}</div>
+      <div class="pe-hint">표준이 기본. 자연은 0.7배, 강조는 1.4배. 슬라이더 max 보호 적용.</div>`;
   }
   function _panelTune() {
     const a = _state.adjust;
@@ -230,7 +239,15 @@
   }
 
   const _BINDERS = {
-    auto(panel) { _each(panel, '[data-pe-auto]', 'click', e => _applyAuto(e.currentTarget.dataset.peAuto)); },
+    auto(panel) {
+      _each(panel, '[data-pe-auto]', 'click', e => _applyAuto(e.currentTarget.dataset.peAuto));
+      // [v183] 강도 칩 — 클릭만 하면 다음 업종 자동 적용 시 강도 반영. 즉시 재적용 X.
+      _each(panel, '[data-pe-auto-intensity]', 'click', e => {
+        _state.autoIntensity = e.currentTarget.dataset.peAutoIntensity;
+        _renderPanel();
+        _toast('강도: ' + (_state.autoIntensity === 'natural' ? '자연' : _state.autoIntensity === 'strong' ? '강조' : '표준'));
+      });
+    },
     tune(panel) {
       _each(panel, '[data-pe-slider]', 'input', (e) => {
         const inp = e.currentTarget, key = inp.dataset.peSlider;
@@ -290,17 +307,25 @@
   }
 
   // ── 자동 보정 프리셋 ─────────────────────────────────
-  function _applyAutoShop() {
-    const preset = (window.PhotoEnhance && window.PhotoEnhance.getShopPreset)
-      ? window.PhotoEnhance.getShopPreset() : null;
+  // [v183 2026-05-18] 강도 토글 (natural/standard/strong) + 업종별 4 분기
+  //   기존 PhotoEnhance.getShopPreset(shopType, intensity) 시그니처 활용.
+  const _SHOP_HINT = { hair: '헤어', lash: '속눈썹', nail: '네일', wax: '왁싱' };
+  function _applyAutoShop(forceShop) {
+    const PE = window.PhotoEnhance;
+    if (!PE || !PE.getShopPreset) return _toast('PhotoEnhance 모듈을 불러오는 중이에요');
+    const intensity = _state.autoIntensity || 'standard';
+    const preset = forceShop
+      ? PE.getShopPreset(_SHOP_HINT[forceShop] || '', intensity)
+      : PE.getShopPreset(undefined, intensity);
     if (!preset) return _toast('업종 설정이 없어요');
     Object.assign(_state.adjust, preset.adjust);
     Object.assign(_state.beauty, preset.beauty);
     _redraw(); _pushHistory();
-    _toast(preset.label + ' 자동 보정 적용');
+    _toast(preset.label + ' 자동 (' + (intensity === 'natural' ? '자연' : intensity === 'strong' ? '강조' : '표준') + ') 적용');
   }
   function _applyAuto(kind) {
     if (kind === 'shop')  return _applyAutoShop();
+    if (kind === 'hair' || kind === 'lash' || kind === 'nail' || kind === 'wax') return _applyAutoShop(kind);
     if (kind === 'all')   _state.adjust = { brightness: 105, saturate: 110, sharpness: 30, temperature: 5 };
     if (kind === 'bright')_state.adjust = { ..._state.adjust, brightness: 115 };
     if (kind === 'vivid') _state.adjust = { ..._state.adjust, saturate: 120, sharpness: 40 };
@@ -418,7 +443,7 @@
   }
 
   // ── history ──────────────────────────────────────────
-  const _SNAP_KEYS = ['adjust', 'ratio', 'text', 'watermark', 'beauty', 'template'];
+  const _SNAP_KEYS = ['adjust', 'ratio', 'text', 'watermark', 'beauty', 'template', 'autoIntensity'];
   function _snapshot() {
     const o = {};
     for (const k of _SNAP_KEYS) o[k] = _state[k];
@@ -434,6 +459,14 @@
   function _undo() {
     if (!_state || _state.historyCursor <= 0) return _toast('되돌릴 작업이 없어요');
     _state.historyCursor -= 1;
+    const s = _state.history[_state.historyCursor];
+    for (const k of _SNAP_KEYS) if (s[k] !== undefined) _state[k] = s[k];
+    _renderPanel(); _redraw();
+  }
+  // [v183 2026-05-18] Redo — historyCursor 가 history.length-1 보다 작으면 앞으로.
+  function _redo() {
+    if (!_state || _state.historyCursor >= _state.history.length - 1) return _toast('다시 실행할 작업이 없어요');
+    _state.historyCursor += 1;
     const s = _state.history[_state.historyCursor];
     for (const k of _SNAP_KEYS) if (s[k] !== undefined) _state[k] = s[k];
     _renderPanel(); _redraw();

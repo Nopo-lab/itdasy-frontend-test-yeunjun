@@ -211,40 +211,60 @@ async function _enhanceOnePhoto(photo, opt) {
 // localStorage.shop_type 기반으로 4 업종 + 일반 폴백.
 // 반환: { label, adjust, beauty } — PhotoEditor _state.adjust / _state.beauty 에 직접 Object.assign.
 window.PhotoEnhance = window.PhotoEnhance || {};
-window.PhotoEnhance.getShopPreset = function(shopType) {
+// [v183 2026-05-18] 강도 ↑ — 기존 약함 컴플레인 해결.
+//   intensity: 'natural'(0.7×) | 'standard'(1.0×) | 'strong'(1.4×) — 사장님 토글 가능.
+//   강도 기준은 'standard'. 메이투 수준 체감 위해 redness/lashSharp/hairShine 상향.
+//   v180 신규 슬라이더 (yellowness/coolness/textureSmooth/hairColorPop/closeUpDetail) 도 프리셋에 반영.
+window.PhotoEnhance.getShopPreset = function(shopType, intensity) {
   const t = (shopType || _enhanceShopType()).toLowerCase();
+  const k = intensity === 'natural' ? 0.7 : intensity === 'strong' ? 1.4 : 1.0;
+  const _s = (v) => Math.min(100, Math.max(0, Math.round(v * k)));
+  const _sym = (v) => Math.max(-50, Math.min(50, Math.round(v * k)));  // hairColor 양방향
+
   if (/(헤어|붙임머리|미용|hair|extension)/.test(t)) {
     return {
       label: '헤어',
-      adjust: { brightness: 105, saturate: 108, sharpness: 25, temperature: 5 },
-      beauty: { hairShine: 35, hairDetail: 30, hairColor: 5, skin: 10, redness: 15 },
+      adjust: { brightness: 105, saturate: 110, sharpness: 35, temperature: 5 },
+      beauty: {
+        hairShine: _s(55), hairDetail: _s(45), hairColor: _sym(8), hairColorPop: _s(40),
+        skin: _s(15), redness: _s(30), yellowness: _s(20),
+      },
     };
   }
   if (/(속눈썹|lash)/.test(t)) {
     return {
       label: '속눈썹',
-      adjust: { brightness: 105, saturate: 110, sharpness: 35, temperature: 0 },
-      beauty: { lashSharp: 50, eyeShadow: 30, redness: 25, skin: 15 },
+      adjust: { brightness: 105, saturate: 110, sharpness: 50, temperature: 0 },
+      beauty: {
+        lashSharp: _s(75), closeUpDetail: _s(45), eyeShadow: _s(50),
+        redness: _s(40), skin: _s(20), yellowness: _s(15),
+      },
     };
   }
   if (/(네일|nail)/.test(t)) {
     return {
       label: '네일',
-      adjust: { brightness: 108, saturate: 115, sharpness: 30, temperature: -3 },
-      beauty: { handSkin: 30, nailGloss: 50, redness: 20, skin: 10 },
+      adjust: { brightness: 110, saturate: 120, sharpness: 35, temperature: -3 },
+      beauty: {
+        handSkin: _s(45), nailGloss: _s(70), coolness: _s(30),
+        redness: _s(30), yellowness: _s(25), skin: _s(15),
+      },
     };
   }
   if (/(왁싱|피부|반영구|문신|tattoo|skin)/.test(t)) {
     return {
       label: '왁싱·피부',
-      adjust: { brightness: 105, saturate: 102, sharpness: 15, temperature: 2 },
-      beauty: { skin: 35, redness: 35, blemish: 30, eyeShadow: 0 },
+      adjust: { brightness: 105, saturate: 102, sharpness: 18, temperature: 2 },
+      beauty: {
+        skin: _s(45), redness: _s(55), blemish: _s(40), textureSmooth: _s(35),
+        eyeShadow: _s(15),
+      },
     };
   }
   return {
     label: '일반',
-    adjust: { brightness: 105, saturate: 110, sharpness: 30, temperature: 5 },
-    beauty: {},
+    adjust: { brightness: 105, saturate: 112, sharpness: 32, temperature: 5 },
+    beauty: { skin: _s(15), redness: _s(20) },
   };
 };
 
