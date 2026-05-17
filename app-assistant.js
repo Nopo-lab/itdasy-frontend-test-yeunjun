@@ -671,9 +671,22 @@
       <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;">
         ${m.related.map(q => `<button data-suggest="${_esc(q)}" style="padding:5px 10px;border:1px solid #E2D6F7;border-radius:100px;background:#F7F2FD;cursor:pointer;font-size:11px;color:#6B21A8;white-space:nowrap;font-weight:700;transition:all 0.12s;">${_esc(q)}</button>`).join('')}
       </div>` : '';
+    // [v176 2026-05-18] 자동 보정 결과 — 채팅 안에 사진 + 액션 버튼 렌더
+    let photoResultHtml = '';
+    if (m.photo_result && m.photo_result.dataUrl) {
+      const acts = Array.isArray(m.photo_actions) ? m.photo_actions : [];
+      const actsHtml = acts.map(a => `<button data-asst-photo-act="${idx}:${_esc(a.id)}" style="padding:6px 10px;border:1px solid #E2D6F7;border-radius:100px;background:#F7F2FD;color:#6B21A8;cursor:pointer;font-size:11px;font-weight:700;">${_esc(a.label)}</button>`).join('');
+      const capHtml = m.photo_caption ? `<div style="font-size:11px;color:#888;margin-top:4px;">${_esc(m.photo_caption)}</div>` : '';
+      photoResultHtml = `<div style="margin-bottom:8px;">
+        <img src="${_esc(m.photo_result.dataUrl)}" alt="보정 결과" style="max-width:240px;max-height:300px;border-radius:14px;display:block;box-shadow:0 4px 14px rgba(0,0,0,0.08);cursor:zoom-in;" data-asst-photo-result="${idx}" />
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">${actsHtml}</div>
+        ${capHtml}
+      </div>`;
+    }
     return `<div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;">
       <div style="width:28px;height:28px;border-radius:50%;background:rgba(139,92,246,0.15);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#7C3AED;">${_svg('ic-bot', 16)}</div>
       <div style="max-width:85%;min-width:0;">
+        ${photoResultHtml}
         <div style="padding:10px 14px;background:#fff;border:1px solid rgba(0,0,0,0.06);border-radius:16px 16px 16px 4px;font-size:13px;line-height:1.6;color:#222;white-space:pre-wrap;">${_esc(m.text)}</div>
         <div style="margin-top:3px;padding-left:4px;">
           <button data-report-ai="chat_answer" data-snippet="${_esc(m.text).replace(/"/g,'&quot;')}" data-source="/assistant/chat" aria-label="AI 답변 신고"
@@ -737,6 +750,7 @@
             + '|' + (m.fallback_status || '_')
             + '|' + ((m.action_groups || []).map(g => (g.expanded ? 'E' : 'C') + ':'
                 + (g.items || []).map(it => (it.status || '_') + (it.editing ? 'e' : '') + (it.skipped ? 's' : '')).join(',')).join(';'))
+            + '|' + (m.photo_result ? 'P' + (m.photo_result.dataUrl ? m.photo_result.dataUrl.length : 0) : '_')
             + '|' + idx;
           if (m._cachedHtml && m._cachedDirtyKey === dirtyKey) return m._cachedHtml;
           const html = _renderAssistantMessage(m, idx);
@@ -1798,6 +1812,59 @@
         if (photos.length) _openLightbox(photos, pi || 0);
         return;
       }
+      // [v176 2026-05-18] 자동 보정 결과 이미지 클릭 → 라이트박스
+      const photoRes = e.target.closest('[data-asst-photo-result]');
+      if (photoRes && document.getElementById('asstBody')?.contains(photoRes)) {
+        const hi = parseInt(photoRes.dataset.asstPhotoResult, 10);
+        const msg = _history[hi];
+        if (msg && msg.photo_result && msg.photo_result.dataUrl) {
+          _openLightbox([msg.photo_result.dataUrl], 0);
+        }
+        return;
+      }
+      // [v176 2026-05-18] 자동 보정 결과 액션 버튼 (인스타·편집기·저장·다시)
+      const photoAct = e.target.closest('[data-asst-photo-act]');
+      if (photoAct && document.getElementById('asstBody')?.contains(photoAct)) {
+        const [hiStr, actId] = photoAct.dataset.asstPhotoAct.split(':');
+        const hi = parseInt(hiStr, 10);
+        const msg = _history[hi];
+        if (!msg || !msg.photo_result || !msg.photo_result.dataUrl) return;
+        const dataUrl = msg.photo_result.dataUrl;
+        const ratio = msg.photo_result.ratio || '4:5';
+        if (actId === 'instagram') {
+          if (typeof window.openInstagramPreview === 'function') {
+            try { window.openInstagramPreview({ src: dataUrl, ratio }); } catch (_e) { void _e; }
+          }
+        } else if (actId === 'editor') {
+          if (window.PhotoEditor && typeof window.PhotoEditor.open === 'function') {
+            window.PhotoEditor.open({ src: dataUrl, initial_tab: 'tune' });
+          }
+        } else if (actId === 'save') {
+          // dataURL → 다운로드
+          try {
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = 'itdasy-' + Date.now() + '.jpg';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            if (window.showToast) window.showToast('저장 완료');
+          } catch (_e) { if (window.showToast) window.showToast('저장 실패'); }
+        } else if (actId === 'retry') {
+          // 같은 사진으로 다시 보정 — 직전 user 메시지의 photoUrl/question 재사용
+          const userMsg = _history[hi - 1];
+          if (userMsg && userMsg.thumb) {
+            const photoUrl = userMsg.thumb;
+            const photos = Array.isArray(userMsg.photos) ? userMsg.photos : [photoUrl];
+            const question = userMsg.text || '예쁘게 보정해줘';
+            // 메시지 2개(user + 결과) 제거 후 재실행
+            _history.splice(hi - 1, 2);
+            _renderHistory();
+            _runChatAutoEdit({ photoUrl, photos, question, customerCtx: null });
+          }
+        }
+        return;
+      }
       const run = e.target.closest('[data-action-run]');
       if (run && document.getElementById('asstBody')?.contains(run)) {
         const idx = parseInt(run.dataset.actionRun, 10);
@@ -2710,6 +2777,143 @@
     return _uploadPhotos(file);
   }
 
+  // [v176 2026-05-18] 챗봇 사진+phrase → 채팅 안 자동 보정 결과 렌더.
+  // 반환: true(처리됨, 백엔드 우회) / false(매칭 없음, OCR 폴백)
+  // opts: { photoUrl, photos, question, customerCtx }
+  async function _runChatAutoEdit(opts) {
+    const ql = (opts.question || '').toLowerCase();
+    const intent = {
+      edit: /(편집|보정|예쁘게|꾸미)/.test(ql),
+      instagram: /(인스타|올려|게시|업로드|포스트)/.test(ql),
+      ba: /(전후|before|애프터|b&a|비포)/i.test(ql),
+      bg: /(누끼|배경)/.test(ql),
+      reels: /(릴스|reels|cover|커버)/i.test(ql),
+      explicit_editor: /(편집기|에디터|직접|손볼)/.test(ql),
+    };
+    const shop = {
+      hair: /(헤어|볼륨|모발|hair)/.test(ql),
+      lash: /(속눈썹|lash)/.test(ql),
+      nail: /(네일|nail)/.test(ql),
+      wax: /(왁싱|피부|반영구|skin|tattoo)/i.test(ql),
+    };
+
+    // 명시 편집기 호출 → PhotoEditor 직접 진입
+    if (intent.explicit_editor) {
+      if (window.PhotoEditor && typeof window.PhotoEditor.open === 'function') {
+        window.PhotoEditor.open({ src: opts.photoUrl, initial_tab: 'tune', customer_id: opts.customerCtx ? opts.customerCtx.id : undefined });
+      }
+      _history.push({ role: 'user', text: opts.question, thumb: opts.photoUrl, photos: opts.photos });
+      _history.push({ role: 'assistant', text: '편집기를 열었어요.' });
+      _renderHistory();
+      return true;
+    }
+    // 누끼 단독 → PhotoEditor bg 탭
+    if (intent.bg && !intent.edit && !intent.instagram) {
+      if (window.PhotoEditor && typeof window.PhotoEditor.open === 'function') {
+        window.PhotoEditor.open({ src: opts.photoUrl, initial_tab: 'bg' });
+      }
+      _history.push({ role: 'user', text: opts.question, thumb: opts.photoUrl, photos: opts.photos });
+      _history.push({ role: 'assistant', text: '배경 화면을 열었어요.' });
+      _renderHistory();
+      return true;
+    }
+    // 릴스 → ReelsCover.open
+    if (intent.reels) {
+      if (window.ReelsCover && typeof window.ReelsCover.open === 'function') {
+        window.ReelsCover.open({
+          photo_url: opts.photoUrl,
+          customer_id: opts.customerCtx ? opts.customerCtx.id : undefined,
+          customer_name: opts.customerCtx ? opts.customerCtx.name : undefined,
+        });
+      }
+      _history.push({ role: 'user', text: opts.question, thumb: opts.photoUrl, photos: opts.photos });
+      _history.push({ role: 'assistant', text: '릴스 커버 화면을 열었어요.' });
+      _renderHistory();
+      return true;
+    }
+    // 전후 → PhotoEditor template 탭
+    if (intent.ba) {
+      if (window.PhotoEditor && typeof window.PhotoEditor.open === 'function') {
+        window.PhotoEditor.open({ src: opts.photoUrl, initial_tab: 'template', customer_id: opts.customerCtx ? opts.customerCtx.id : undefined });
+      }
+      _history.push({ role: 'user', text: opts.question, thumb: opts.photoUrl, photos: opts.photos });
+      _history.push({ role: 'assistant', text: '전·후 카드 화면을 열었어요. 두 번째 사진을 골라주세요.' });
+      _renderHistory();
+      return true;
+    }
+
+    // 핵심: 보정 또는 인스타 명령 — 자동 보정 후 결과 채팅에 표시
+    if (!intent.edit && !intent.instagram) {
+      return false; // 어떤 의도도 매칭 안 됨 → OCR 폴백
+    }
+
+    // user 메시지 + placeholder assistant 메시지
+    _history.push({ role: 'user', text: opts.question, thumb: opts.photoUrl, photos: opts.photos });
+    const placeholderIdx = _history.length;
+    _history.push({ role: 'assistant', text: '보정 중이에요…', _processing: true });
+    _renderHistory();
+
+    if (!window.ChatAutoEdit || typeof window.ChatAutoEdit.processPhoto !== 'function') {
+      _history[placeholderIdx].text = '자동 보정 모듈 로드 중이에요. 잠시 후 다시 시도해주세요.';
+      _history[placeholderIdx]._processing = false;
+      _renderHistory();
+      return true;
+    }
+    const preset = shop.hair ? 'hair' : shop.lash ? 'lash' : shop.nail ? 'nail' : shop.wax ? 'wax' : 'shop';
+    let result = null;
+    try {
+      result = await window.ChatAutoEdit.processPhoto({
+        src: opts.photoUrl,
+        preset,
+        ratio: intent.instagram ? '4:5' : 'original',
+        watermark: intent.instagram,
+      });
+    } catch (e) {
+      _history[placeholderIdx].text = '보정 실패: ' + ((e && e.message) || '알 수 없음');
+      _history[placeholderIdx]._processing = false;
+      _renderHistory();
+      return true;
+    }
+    if (!result || !result.dataUrl) {
+      _history[placeholderIdx].text = '보정 결과를 받지 못했어요. 다시 시도해주세요.';
+      _history[placeholderIdx]._processing = false;
+      _renderHistory();
+      return true;
+    }
+
+    // 결과 메시지 교체
+    _history[placeholderIdx] = {
+      role: 'assistant',
+      text: intent.instagram ? '보정 완료! 인스타 미리보기를 열게요.' : '보정 완료! 미리보기 확인해주세요.',
+      photo_result: { dataUrl: result.dataUrl, ratio: result.ratio, preset_label: result.preset_label },
+      photo_actions: intent.instagram
+        ? [{ id: 'instagram', label: '📷 미리보기' }, { id: 'editor', label: '더 손보기' }, { id: 'save', label: '저장' }]
+        : [{ id: 'instagram', label: '📷 인스타 미리보기' }, { id: 'editor', label: '더 손보기' }, { id: 'save', label: '저장' }, { id: 'retry', label: '다시' }],
+      photo_caption: '업종: ' + (result.preset_label || '자동'),
+    };
+    _renderHistory();
+
+    // 인스타 명령 → 캡션 prefill + 미리보기 모달 자동 오픈
+    if (intent.instagram) {
+      try {
+        const captionDraft = [
+          '🌸 시술 결과 공유합니다',
+          opts.customerCtx && opts.customerCtx.name ? '#' + opts.customerCtx.name : '',
+          '#' + (preset === 'hair' ? '헤어' : preset === 'lash' ? '속눈썹' : preset === 'nail' ? '네일' : preset === 'wax' ? '왁싱' : '뷰티'),
+          '#잇데이스튜디오 #뷰티샵 #시술후기',
+        ].filter(Boolean).join('\n\n');
+        localStorage.setItem('caption_prefill', captionDraft);
+      } catch (_e) { void _e; }
+      setTimeout(() => {
+        if (typeof window.openInstagramPreview === 'function') {
+          try { window.openInstagramPreview({ src: result.dataUrl, ratio: result.ratio }); }
+          catch (_e2) { void _e2; }
+        }
+      }, 250);
+    }
+    return true;
+  }
+
   async function _uploadPhotos(files) {
     if (_sendInFlight) return;
     // 단일 파일·FileList·배열 모두 허용
@@ -2756,55 +2960,25 @@
       photoUrls = photoUrls.filter(Boolean);
     } catch (_e) { photoUrls = []; }
 
-    // [v175 2026-05-18] 사진+텍스트 phrase shortcut — 백엔드 OCR 우회.
-    // 빈 텍스트 + 사진만 → 기존 OCR 흐름 유지 (회귀 0). question 있고 매칭될 때만 분기.
+    // [v176 2026-05-18] 사진+텍스트 phrase shortcut — 채팅 안 자동 보정 결과 표시.
+    // 빈 텍스트 + 사진만 → 기존 OCR 흐름 유지 (회귀 0).
+    // 핵심: 보정/인스타 의도 → ChatAutoEdit.processPhoto → 결과 사진을 채팅 메시지로.
     try {
-      const ql = (question || '').toLowerCase();
       const photoUrl = photoUrls[0] || '';
-      if (photoUrl && ql) {
-        let initialTab = null;
-        if (/(편집|보정|예쁘게|꾸미)/.test(ql)) initialTab = 'auto';
-        else if (/(누끼|배경)/.test(ql)) initialTab = 'bg';
-        else if (/(전후|before|애프터|b&a|비포)/i.test(ql)) initialTab = 'template';
-        else if (/(인스타|올려|게시)/.test(ql)) initialTab = 'export';
-        else if (/(캡션|글|caption)/.test(ql)) initialTab = 'export';
-        let forcedShop = null;
-        if (/(헤어|볼륨|모발|hair)/.test(ql)) forcedShop = '헤어';
-        else if (/(네일|nail)/.test(ql)) forcedShop = '네일';
-        else if (/(속눈썹|lash)/.test(ql)) forcedShop = '속눈썹';
-        else if (/(왁싱|피부|반영구|skin|tattoo)/i.test(ql)) forcedShop = '왁싱';
-        const isReels = /(릴스|reels|cover|커버)/i.test(ql);
+      if (photoUrl && question) {
         let custCtx = null;
         try {
           if (window.CustomerCache && typeof window.CustomerCache.get === 'function') {
             const list = window.CustomerCache.get() || [];
+            const ql = question.toLowerCase();
             const hit = list.find(c => c && c.name && ql.includes(String(c.name).toLowerCase()));
             if (hit) custCtx = { id: hit.id, name: hit.name };
           }
         } catch (_eC) { void _eC; }
-        if (initialTab || forcedShop || isReels) {
-          if (forcedShop) {
-            try { localStorage.setItem('shop_type_override', forcedShop); } catch (_eS) { void _eS; }
-          }
-          if (isReels && window.ReelsCover && typeof window.ReelsCover.open === 'function') {
-            window.ReelsCover.open({
-              photo_url: photoUrl,
-              customer_id: custCtx ? custCtx.id : undefined,
-              customer_name: custCtx ? custCtx.name : undefined,
-            });
-          } else if (window.PhotoEditor && typeof window.PhotoEditor.open === 'function') {
-            window.PhotoEditor.open({
-              src: photoUrl,
-              initial_tab: initialTab || 'auto',
-              customer_id: custCtx ? custCtx.id : undefined,
-              serviceName: '',
-              autoShop: !!forcedShop,
-            });
-          }
-          _history.push({ role: 'user', text: question, thumb: photoUrl, photos: photoUrls });
-          const tabLabel = ({ auto: '자동', tune: '보정', bg: '누끼·배경', template: '템플릿', export: '내보내기' })[initialTab] || (isReels ? '릴스 커버' : '자동');
-          _history.push({ role: 'assistant', text: '편집기를 ' + tabLabel + ' 탭으로 열었어요. 마지막에 인스타 미리보기까지 한 번에 가능합니다.' });
-          _renderHistory();
+        const handled = await _runChatAutoEdit({
+          photoUrl, photos: photoUrls, question, customerCtx: custCtx,
+        });
+        if (handled) {
           _sendInFlight = false;
           if (window.hapticLight) window.hapticLight();
           return; // 백엔드 호출 우회
