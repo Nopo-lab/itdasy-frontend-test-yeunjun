@@ -775,14 +775,14 @@
       .hv5-row{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;margin-bottom:14px}
       .hv5-col-7{grid-column:span 7}
       .hv5-col-5{grid-column:span 5}
-      .hv5-card{background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);padding:22px 24px;display:flex;flex-direction:column;height:100%}
+      .hv5-card{background:#fff;border-radius:16px;border:none;box-shadow:none;padding:22px 24px;display:flex;flex-direction:column;height:100%}
       .hv5-card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
       .hv5-card-title{font-size:14px;font-weight:700;letter-spacing:-0.3px;color:#191F28}
       .hv5-card-link{font-size:12px;color:#6B7684;text-decoration:none;font-weight:600;cursor:pointer;transition:color .12s;background:none;border:none;font-family:inherit;padding:0}
       .hv5-card-link:hover{color:#191F28}
 
       /* 매출 히어로 (와이드) — border 제거, 그림자만 */
-      .hv5-hero{background:linear-gradient(135deg,#FFF8FA 0%,#fff 60%);border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);padding:26px 28px;display:flex;align-items:center;gap:32px;margin-bottom:14px}
+      .hv5-hero{background:linear-gradient(135deg,#FFF8FA 0%,#fff 60%);border-radius:16px;border:none;box-shadow:none;padding:26px 28px;display:flex;align-items:center;gap:32px;margin-bottom:14px}
       .hv5-hero-l{flex:0 0 auto;min-width:280px}
       .hv5-hero-label{font-size:12px;font-weight:600;color:#333D4B;margin-bottom:8px;letter-spacing:-0.2px;display:flex;align-items:center;gap:8px}
       .hv5-hero-label-month{padding:2px 8px;border-radius:999px;background:#FFF1F3;color:#E5586E;font-size:10px;font-weight:700}
