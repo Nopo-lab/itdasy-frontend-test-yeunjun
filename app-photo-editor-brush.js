@@ -29,8 +29,12 @@
     redness: { label: '붉은기 ↓', color: 'rgba(100,160,220,0.55)' },
     gloss:   { label: '광택',    color: 'rgba(255,255,255,0.55)' },
     blur:    { label: '블러',    color: 'rgba(150,150,150,0.55)' },
+    clone:   { label: '클론 스탬프', color: 'rgba(180,120,255,0.55)' },
+    heal:    { label: '힐링 (블렌딩)', color: 'rgba(255,140,200,0.55)' },
     eraser:  { label: '지우개',  color: 'rgba(220,80,80,0.45)' },
   };
+  // 클론·힐링 사용 시: source point 설정 모드 필요
+  const _CLONE_TYPES = new Set(['clone', 'heal']);
 
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, ch =>
@@ -42,6 +46,10 @@
       state.brush = {
         type: 'smooth', size: 40, strength: 50,
         drawing: false, lastX: 0, lastY: 0,
+        // [v187] 클론·힐링 — sourcePt: 사용자가 탭한 소스 좌표, firstStrokePt: 드래그 시작 좌표
+        //   offset = sourcePt - firstStrokePt (드래그 동안 고정)
+        sourcePt: null, firstStrokePt: null,
+        awaitingSource: false,  // 'set source' 모드
       };
     }
     return state.brush;
@@ -76,9 +84,20 @@
   function _panelBrushHTML(state) {
     const b = _ensureBrushState(state);
     const chip = (k) => `<button type="button" class="pe-chip-btn${b.type===k?' on':''}" data-pe-brush-type="${k}">${_esc(BRUSHES[k].label)}</button>`;
+    // [v187] 클론·힐링 선택 시 소스 설정 UI
+    const isClone = _CLONE_TYPES.has(b.type);
+    const cloneHint = isClone ? `
+      <div style="margin-top:10px;padding:10px;background:rgba(180,120,255,0.10);border:1px dashed rgba(180,120,255,0.4);border-radius:10px;font-size:11.5px;color:#d4b8ff;line-height:1.5;">
+        ${b.sourcePt
+          ? `✓ 소스 지점 설정됨 (x:${Math.round(b.sourcePt.x)}, y:${Math.round(b.sourcePt.y)}). 이제 칠하고 싶은 곳을 드래그하세요.<br><button type="button" class="pe-chip-btn" data-pe-brush-clear-source style="margin-top:6px;">↺ 소스 다시 설정</button>`
+          : `① <b>"소스 지정"</b> 누른 뒤 ② 사진에서 복사할 좋은 영역 1회 탭. ③ 그다음 칠하고 싶은 영역 드래그.<br><button type="button" class="pe-chip-btn${b.awaitingSource?' on':''}" data-pe-brush-set-source style="margin-top:6px;">${b.awaitingSource?'소스 지정 중… (취소)':'📍 소스 지정'}</button>`
+        }
+      </div>` : '';
     return `<div class="pe-field-label">브러시 종류</div>
       <div class="pe-panel-row pe-panel-grid-3">${chip('smooth')}${chip('shine')}${chip('redness')}</div>
       <div class="pe-panel-row pe-panel-grid-3">${chip('gloss')}${chip('blur')}${chip('eraser')}</div>
+      <div class="pe-panel-row pe-panel-grid-2">${chip('clone')}${chip('heal')}</div>
+      ${cloneHint}
       <label class="pe-slider"><div class="pe-slider-head"><span>브러시 크기</span><span class="pe-slider-val" data-pe-brush-size-val>${b.size}</span></div>
         <input type="range" min="10" max="120" value="${b.size}" data-pe-brush-size /></label>
       <label class="pe-slider"><div class="pe-slider-head"><span>강도</span><span class="pe-slider-val" data-pe-brush-strength-val>${b.strength}</span></div>
@@ -87,7 +106,7 @@
         <button type="button" class="pe-chip-btn" data-pe-brush-clear>마스크 초기화</button>
         <button type="button" class="pe-action-btn" data-pe-brush-apply>✓ 적용</button>
       </div>
-      <div class="pe-hint">사진 위를 드래그해서 부분만 칠해요. 색칠된 영역에만 브러시 효과가 들어갑니다. [적용] 누르면 결과가 합쳐져요.</div>`;
+      <div class="pe-hint">드래그로 칠한 영역에만 효과. 클론/힐링은 소스 지점에서 픽셀을 가져와 다른 곳에 붙여요 (붙임머리 결합부·후면샷 정리용).</div>`;
   }
 
   function _bindBrushPanel(panel, state, helpers) {
@@ -103,8 +122,22 @@
     panel.querySelectorAll('[data-pe-brush-type]').forEach(btn => {
       btn.addEventListener('click', () => {
         b.type = btn.dataset.peBrushType;
-        panel.querySelectorAll('[data-pe-brush-type]').forEach(x => x.classList.toggle('on', x === btn));
+        // [v187] 클론·힐링 외 다른 브러시 선택 시 소스/대기 상태 초기화
+        if (!_CLONE_TYPES.has(b.type)) {
+          b.sourcePt = null; b.firstStrokePt = null; b.awaitingSource = false;
+        }
+        // 패널 다시 렌더 — cloneHint UI 갱신
+        helpers && helpers.renderPanel && helpers.renderPanel();
       });
+    });
+    // [v187] 소스 지정 버튼 / 소스 초기화
+    panel.querySelector('[data-pe-brush-set-source]')?.addEventListener('click', () => {
+      b.awaitingSource = !b.awaitingSource;
+      helpers && helpers.renderPanel && helpers.renderPanel();
+    });
+    panel.querySelector('[data-pe-brush-clear-source]')?.addEventListener('click', () => {
+      b.sourcePt = null; b.firstStrokePt = null;
+      helpers && helpers.renderPanel && helpers.renderPanel();
     });
 
     panel.querySelector('[data-pe-brush-size]')?.addEventListener('input', e => {
@@ -136,6 +169,22 @@
       if (state.activeTab !== 'brush') return;
       e.preventDefault();
       const p = _getXY(e);
+      // [v187] 소스 지정 대기 중 → 첫 탭은 소스 좌표로
+      if (b.awaitingSource && _CLONE_TYPES.has(b.type)) {
+        b.sourcePt = { x: p.x, y: p.y };
+        b.awaitingSource = false;
+        b.firstStrokePt = null;
+        if (helpers && helpers.toast) helpers.toast('소스 지정됨. 칠하고 싶은 영역 드래그');
+        helpers && helpers.renderPanel && helpers.renderPanel();
+        return;
+      }
+      // 클론·힐링 모드인데 소스 미지정 → 차단
+      if (_CLONE_TYPES.has(b.type) && !b.sourcePt) {
+        if (helpers && helpers.toast) helpers.toast('먼저 [📍 소스 지정] 누르고 복사할 영역 탭하세요');
+        return;
+      }
+      // 클론·힐링 stroke 시작점 = firstStrokePt (offset 계산 기준)
+      if (_CLONE_TYPES.has(b.type)) b.firstStrokePt = { x: p.x, y: p.y };
       b.drawing = true; b.lastX = p.x; b.lastY = p.y;
       _drawAt(p.x, p.y);
     }
@@ -192,6 +241,18 @@
     const k = (b.strength || 50) / 100;
     const type = b.type;
 
+    // [v187] 클론·힐링 — 소스 픽셀 별도 readonly 사본 필요 (자기 픽셀 덮어쓰면 cascade 오류)
+    let srcSnapshot = null;
+    let offX = 0, offY = 0;
+    if (_CLONE_TYPES.has(type)) {
+      if (!b.sourcePt || !b.firstStrokePt) {
+        return false;  // 호출자가 toast 표시 안 됨 — _start 에서 이미 안내
+      }
+      srcSnapshot = new Uint8ClampedArray(d);  // 적용 전 사본
+      offX = Math.round(b.sourcePt.x - b.firstStrokePt.x);
+      offY = Math.round(b.sourcePt.y - b.firstStrokePt.y);
+    }
+
     for (let i = 0; i < d.length; i += 4) {
       const alpha = m[i + 3] / 255;
       if (alpha < 0.05) continue;
@@ -222,6 +283,39 @@
         d[i]   = _clamp(r  * (1 - mix) + lum * mix);
         d[i+1] = _clamp(g  * (1 - mix) + lum * mix);
         d[i+2] = _clamp(bl * (1 - mix) + lum * mix);
+      } else if (type === 'clone' || type === 'heal') {
+        // 대상 픽셀 좌표 (x, y) 복원
+        const idx = i / 4;
+        const y = Math.floor(idx / w), x = idx - y * w;
+        const sx = x - offX, sy = y - offY;  // 소스 좌표 (대상에서 offset 반대 방향)
+        if (sx < 0 || sx >= w || sy < 0 || sy >= h) continue;
+        const sj = (sy * w + sx) * 4;
+        const sr = srcSnapshot[sj], sg = srcSnapshot[sj + 1], sb = srcSnapshot[sj + 2];
+        if (type === 'clone') {
+          // 단순 alpha 블렌딩 (clone) — w_l 비율로 source 픽셀 가산
+          d[i]   = _clamp(r  * (1 - w_l) + sr * w_l);
+          d[i+1] = _clamp(g  * (1 - w_l) + sg * w_l);
+          d[i+2] = _clamp(bl * (1 - w_l) + sb * w_l);
+        } else {
+          // heal — source 픽셀 + 주변 평균 (간단 3x3) 블렌딩으로 edge 자연화
+          let nr = 0, ng = 0, nb = 0, nc = 0;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+            const nj = (ny * w + nx) * 4;
+            nr += srcSnapshot[nj]; ng += srcSnapshot[nj + 1]; nb += srcSnapshot[nj + 2]; nc++;
+          }
+          if (nc > 0) {
+            const ar = nr / nc, ag = ng / nc, ab = nb / nc;
+            // 60% source + 40% 주변 평균 — 경계 부드럽게
+            const tr = sr * 0.6 + ar * 0.4;
+            const tg = sg * 0.6 + ag * 0.4;
+            const tb = sb * 0.6 + ab * 0.4;
+            d[i]   = _clamp(r  * (1 - w_l) + tr * w_l);
+            d[i+1] = _clamp(g  * (1 - w_l) + tg * w_l);
+            d[i+2] = _clamp(bl * (1 - w_l) + tb * w_l);
+          }
+        }
       }
       // eraser 는 mask 자체만 영향. 적용 픽셀 walk 영향 X.
     }
