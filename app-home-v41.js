@@ -712,6 +712,40 @@
         _runAct(el.dataset.hvAct || '');
       });
     });
+    // AI 캐러셀 paging (3-per-page)
+    _bindAiCarousel(container);
+  }
+
+  function _bindAiCarousel(container) {
+    const track = container.querySelector('#hv5AiTrack');
+    if (!track) return;
+    const cards = Array.from(track.children);
+    if (cards.length === 0) return;
+    const perPage = 3;
+    const pages = Math.max(1, Math.ceil(cards.length / perPage));
+    let page = 0;
+    const prevBtn = container.querySelector('#hv5AiPrev');
+    const nextBtn = container.querySelector('#hv5AiNext');
+    const dotsWrap = container.querySelector('#hv5AiDots');
+
+    function goTo(p) {
+      page = Math.max(0, Math.min(pages - 1, p));
+      const cardW = cards[0].getBoundingClientRect().width + 10;
+      track.scrollTo({ left: page * perPage * cardW, behavior: 'smooth' });
+      dotsWrap?.querySelectorAll('.hv5-ai-dot-nav').forEach((d, i) => {
+        d.classList.toggle('on', i === page);
+      });
+      if (prevBtn) prevBtn.disabled = page === 0;
+      if (nextBtn) nextBtn.disabled = page >= pages - 1;
+    }
+    prevBtn?.addEventListener('click', (e) => { e.stopPropagation(); goTo(page - 1); });
+    nextBtn?.addEventListener('click', (e) => { e.stopPropagation(); goTo(page + 1); });
+    dotsWrap?.querySelectorAll('.hv5-ai-dot-nav').forEach(d => {
+      d.addEventListener('click', (e) => {
+        e.stopPropagation();
+        goTo(parseInt(d.dataset.hvAiPage, 10) || 0);
+      });
+    });
   }
 
   // ─────────── 메인 렌더 ───────────
@@ -846,14 +880,22 @@
 
       /* AI 추천 */
       .hv5-ai{margin-top:8px}
-      .hv5-ai-label{display:flex;align-items:center;gap:7px;margin-bottom:14px;padding:0 4px}
-      .hv5-ai-sparkle{color:#E5586E;font-size:15px;line-height:1}
+      .hv5-ai-label{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:0 4px}
+      .hv5-ai-pulse{width:8px;height:8px;border-radius:50%;background:#10B981;position:relative;flex-shrink:0}
+      .hv5-ai-pulse::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:1.5px solid #10B981;animation:hv5-aipulse 2s ease-in-out infinite}
+      @keyframes hv5-aipulse{0%,100%{opacity:0;transform:scale(0.8)}50%{opacity:1;transform:scale(1)}}
       .hv5-ai-label-t{font-size:13px;font-weight:600;color:#333D4B}
       .hv5-ai-label-t b{font-weight:700;color:#191F28}
       .hv5-ai-label-count{font-size:11px;color:#6B7684;margin-left:auto;font-weight:600}
-      .hv5-ai-scroll{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding:2px 4px 4px}
-      .hv5-ai-scroll::-webkit-scrollbar{display:none}
-      .hv5-ai-card{flex:0 0 260px;padding:20px;border-radius:16px;border:none;cursor:pointer;background:#fff;transition:transform .18s,box-shadow .18s;font-family:inherit;text-align:left;display:flex;flex-direction:column;box-shadow:0 4px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04)}
+      .hv5-ai-scroll{display:flex;gap:10px;overflow:hidden;scroll-behavior:smooth;padding:2px 4px 4px}
+      .hv5-ai-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px}
+      .hv5-ai-nav-btn{width:30px;height:30px;border-radius:50%;border:1px solid #E5E8EB;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:#333D4B;font-family:inherit;transition:background .15s,color .15s}
+      .hv5-ai-nav-btn:hover:not(:disabled){background:#F7F8FA;color:#191F28}
+      .hv5-ai-nav-btn:disabled{opacity:0.3;cursor:default}
+      .hv5-ai-dots{display:flex;gap:6px;align-items:center}
+      .hv5-ai-dot-nav{width:6px;height:6px;border-radius:50%;background:#E5E8EB;transition:all .2s;cursor:pointer;border:none;padding:0}
+      .hv5-ai-dot-nav.on{width:18px;border-radius:4px;background:#191F28}
+      .hv5-ai-card{flex:0 0 calc((100% - 20px)/3);padding:20px;border-radius:16px;border:none;cursor:pointer;background:#fff;transition:transform .18s,box-shadow .18s;font-family:inherit;text-align:left;display:flex;flex-direction:column;box-shadow:0 4px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04)}
       .hv5-ai-card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(0,0,0,0.07),0 2px 6px rgba(0,0,0,0.05)}
       .hv5-ai-tag{display:inline-flex;align-items:center;gap:5px;margin-bottom:12px}
       .hv5-ai-dot{width:6px;height:6px;border-radius:50%}
@@ -887,7 +929,10 @@
         .hv5-hero-amt{font-size:34px;letter-spacing:-1.2px}
         .hv5-hero-stat{flex:1 1 0;min-width:0}
         .hv5-card{padding:16px 18px}
-        .hv5-ai-card{flex:0 0 220px;padding:16px}
+        .hv5-ai-card{flex:0 0 calc(100% - 8px);padding:16px}
+        .hv5-ai-scroll{overflow-x:auto;scroll-snap-type:x mandatory}
+        .hv5-ai-card{scroll-snap-align:start}
+        .hv5-ai-nav{display:none}
         .hv5-ai-hl{font-size:14px}
       }
     `;
@@ -1073,13 +1118,24 @@
         <div class="hv5-ai-desc">${_esc(c.sub || '')}</div>
         <span class="hv5-ai-btn">${_esc(c.cta || '확인')} ›</span>
       </button>`).join('');
+    const pages = Math.max(1, Math.ceil(total / 3));
+    const dots = Array.from({ length: pages }, (_, i) =>
+      `<button type="button" class="hv5-ai-dot-nav${i === 0 ? ' on' : ''}" data-hv-ai-page="${i}" aria-label="페이지 ${i + 1}"></button>`
+    ).join('');
+    const navHtml = pages > 1 ? `
+      <div class="hv5-ai-nav">
+        <button type="button" class="hv5-ai-nav-btn" id="hv5AiPrev" disabled aria-label="이전">‹</button>
+        <div class="hv5-ai-dots" id="hv5AiDots">${dots}</div>
+        <button type="button" class="hv5-ai-nav-btn" id="hv5AiNext" aria-label="다음">›</button>
+      </div>` : '';
     return `<div class="hv5-ai">
       <div class="hv5-ai-label">
-        <span class="hv5-ai-sparkle" aria-hidden="true">✦</span>
-        <span class="hv5-ai-label-t"><b>AI 비서</b>가 추천했어요</span>
+        <span class="hv5-ai-pulse" aria-hidden="true"></span>
+        <span class="hv5-ai-label-t"><b>AI 비서</b> 실시간 분석</span>
         <span class="hv5-ai-label-count">${total}가지</span>
       </div>
-      <div class="hv5-ai-scroll">${cardHtml}</div>
+      <div class="hv5-ai-scroll" id="hv5AiTrack">${cardHtml}</div>
+      ${navHtml}
     </div></div>`;  // 마지막 </div> = .hv5 wrapper 닫기
   }
 
