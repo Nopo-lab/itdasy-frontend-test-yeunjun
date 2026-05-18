@@ -9,15 +9,76 @@
   'use strict';
 
   const OFFLINE_KEY = 'itdasy_revenue_offline_v1';
-  // [v207] 기간 확장 — 지난주/지난달/직접 지정
-  const PERIODS = ['today', 'week', 'month', 'last_week', 'last_month', 'custom'];
-  const PERIOD_LABEL = {
-    today: '오늘', week: '이번주', month: '이번달',
-    last_week: '지난주', last_month: '지난달', custom: '직접 지정',
-  };
-  // 사용자 지정 기간 — period=custom 일 때 사용
+  // [v221] 기간 UX 재설계 — 일/주/월 단위 토글 + 단일 앵커 날짜 (← → 로 이동).
+  //   * 기존 6칩 (오늘/이번주/이번달/지난주/지난달/직접지정) 제거.
+  //   * 앵커 날짜 기준으로 from~to 자동 계산 → BE 는 항상 period=custom + from/to.
+  //   * 월 단위는 RevenueMonth 의 자체 nav 와 연동 (이전 로직 호환).
+  const PERIODS = ['day', 'week', 'month'];
+  const PERIOD_LABEL = { day: '일', week: '주', month: '월' };
   let _customRange = { from: null, to: null };
   const PC_BREAKPOINT = 1100;
+
+  // ── 날짜 helper (ISO YYYY-MM-DD 기준) ────────────────────
+  function _pad2(n) { return String(n).padStart(2, '0'); }
+  function _todayISO() {
+    const d = new Date();
+    return `${d.getFullYear()}-${_pad2(d.getMonth()+1)}-${_pad2(d.getDate())}`;
+  }
+  function _isoFromDate(d) {
+    return `${d.getFullYear()}-${_pad2(d.getMonth()+1)}-${_pad2(d.getDate())}`;
+  }
+  function _addDaysISO(iso, n) {
+    const d = new Date(iso + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    return _isoFromDate(d);
+  }
+  function _addMonthsISO(iso, n) {
+    const d = new Date(iso + 'T00:00:00');
+    d.setMonth(d.getMonth() + n);
+    return _isoFromDate(d);
+  }
+  function _weekStartISO(iso) {
+    // 월요일을 주 시작으로
+    const d = new Date(iso + 'T00:00:00');
+    const dow = (d.getDay() + 6) % 7;
+    d.setDate(d.getDate() - dow);
+    return _isoFromDate(d);
+  }
+  let _anchorDate = _todayISO();
+  function _computeRange() {
+    if (_currentPeriod === 'day') return { from: _anchorDate, to: _anchorDate };
+    if (_currentPeriod === 'week') {
+      const start = _weekStartISO(_anchorDate);
+      return { from: start, to: _addDaysISO(start, 6) };
+    }
+    // month — anchor 의 달 1일 ~ 말일
+    const d = new Date(_anchorDate + 'T00:00:00');
+    const from = `${d.getFullYear()}-${_pad2(d.getMonth()+1)}-01`;
+    const last = new Date(d.getFullYear(), d.getMonth()+1, 0);
+    const to = _isoFromDate(last);
+    return { from, to };
+  }
+  function _shiftAnchor(delta) {
+    if (_currentPeriod === 'day') _anchorDate = _addDaysISO(_anchorDate, delta);
+    else if (_currentPeriod === 'week') _anchorDate = _addDaysISO(_anchorDate, delta * 7);
+    else _anchorDate = _addMonthsISO(_anchorDate, delta);
+  }
+  function _periodDisplayLabel() {
+    const r = _computeRange();
+    if (_currentPeriod === 'day') {
+      const today = _todayISO();
+      if (_anchorDate === today) return '오늘';
+      if (_anchorDate === _addDaysISO(today, -1)) return '어제';
+      return r.from.replace(/-/g, '/');
+    }
+    if (_currentPeriod === 'week') {
+      const f = r.from.slice(5).replace('-', '/');
+      const t = r.to.slice(5).replace('-', '/');
+      return `${f} ~ ${t}`;
+    }
+    const d = new Date(_anchorDate + 'T00:00:00');
+    return `${d.getFullYear()}년 ${d.getMonth()+1}월`;
+  }
 
   const TAG_CLS = {
     card: 'rv-tag--card', cash: 'rv-tag--cash',
@@ -43,7 +104,7 @@
   }
   const DONUT_COLORS = ['#E5586E', '#F4A6B8', '#FBE0E7', '#C4C9D1', '#E5E7EB'];
 
-  let _currentPeriod = 'month';
+  let _currentPeriod = 'day';  // [v221] 일/주/월
   let _items = [];
   let _revWindow = 50;
   let _isOffline = false;
@@ -62,22 +123,12 @@
   };
   const _tagHTML = (m) => `<span class="rv-tag ${TAG_CLS[m] || ''}">${TAG_LABEL[m] || _esc(m || '카드')}</span>`;
 
-  // ── 기간 ────────────────────────────────────────────────
-  function _periodRange(period, baseDate) {
-    const now = baseDate ? new Date(baseDate) : new Date();
-    const start = new Date(now); const end = new Date(now);
-    if (period === 'today') {
-      start.setHours(0, 0, 0, 0); end.setHours(23, 59, 59, 999);
-    } else if (period === 'week') {
-      const day = start.getDay();
-      const mondayOffset = (day + 6) % 7;
-      start.setDate(start.getDate() - mondayOffset);
-      start.setHours(0, 0, 0, 0);
-      end.setTime(start.getTime() + 7 * 24 * 3600 * 1000 - 1);
-    } else {
-      start.setDate(1); start.setHours(0, 0, 0, 0);
-      end.setMonth(end.getMonth() + 1, 0); end.setHours(23, 59, 59, 999);
-    }
+  // ── 오프라인 폴백용 기간 변환 ────────────────────────────
+  // [v221] 앵커 기반 _computeRange() 와 별도로, 오프라인 필터링용 Date 범위 반환.
+  function _periodRange() {
+    const r = _computeRange();
+    const start = new Date(r.from + 'T00:00:00');
+    const end = new Date(r.to + 'T23:59:59');
     return { start, end };
   }
 
@@ -99,13 +150,11 @@
   }
 
   // ── SWR ────────────────────────────────────────────────
+  // [v221] 캐시 키는 단위 + from~to. 앵커 옮길 때마다 새 키.
   const _SWR_TTL = 60 * 1000;
-  // [v207] custom 은 from/to 포함 키. period prefetch 시 custom 자체는 skip.
   const _swrKey = (p) => {
-    if (p === 'custom' && _customRange.from && _customRange.to) {
-      return `pv_cache::revenue::custom::${_customRange.from}::${_customRange.to}`;
-    }
-    return 'pv_cache::revenue::' + p;
+    const r = _computeRange();
+    return `pv_cache::revenue::${p}::${r.from}::${r.to}`;
   };
   function _readSWRPeriod(p) {
     try {
@@ -123,34 +172,24 @@
     } catch (_) { /* silent */ }
   }
   function _clearSWRRevenue() {
+    // [v221] revenue 관련 캐시 prefix 일괄 삭제
     try {
-      // [v207] 6개 period 모두 무효화 + custom 모든 변형도 prefix 매칭으로 삭제
-      ['today', 'week', 'month', 'last_week', 'last_month'].forEach(p => {
-        try { localStorage.removeItem(_swrKey(p)); sessionStorage.removeItem(_swrKey(p)); } catch (_e) { void _e; }
-      });
-      // custom::* prefix
-      try {
-        const _PREFIX = 'pv_cache::revenue::custom::';
-        for (let i = localStorage.length - 1; i >= 0; i--) {
-          const k = localStorage.key(i);
-          if (k && k.indexOf(_PREFIX) === 0) localStorage.removeItem(k);
-        }
-        for (let i = sessionStorage.length - 1; i >= 0; i--) {
-          const k = sessionStorage.key(i);
-          if (k && k.indexOf(_PREFIX) === 0) sessionStorage.removeItem(k);
-        }
-      } catch (_e) { void _e; }
-      try { localStorage.removeItem('pv_cache::revenue'); sessionStorage.removeItem('pv_cache::revenue'); } catch (_e) { void _e; }
+      const PREFIX = 'pv_cache::revenue::';
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf(PREFIX) === 0) localStorage.removeItem(k);
+      }
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const k = sessionStorage.key(i);
+        if (k && k.indexOf(PREFIX) === 0) sessionStorage.removeItem(k);
+      }
     } catch (_) { /* silent */ }
   }
   async function _fetchPeriodData(p) {
     if (_periodInflight[p]) return _periodInflight[p];
-    // [v207] custom 은 from/to 가 있어야 fetch
-    let url = '/revenue?period=' + p;
-    if (p === 'custom') {
-      if (!_customRange.from || !_customRange.to) return [];
-      url += `&from=${_customRange.from}&to=${_customRange.to}`;
-    }
+    // [v221] 항상 custom + 계산된 from/to 로 호출
+    const r = _computeRange();
+    const url = `/revenue?period=custom&from=${r.from}&to=${r.to}`;
     _periodInflight[p] = _api('GET', url)
       .then(d => { const items = d.items || []; _writeSWRPeriod(p, items); return items; })
       .finally(() => { _periodInflight[p] = null; });
@@ -160,20 +199,23 @@
     const items = await _fetchPeriodData(p);
     _isOffline = false; _items = items; return _items;
   }
+  // [v221] 단위별 prefetch — 같은 앵커 기준 다른 단위 한 번씩 미리 캐싱
   function _prefetchAllPeriods() {
     PERIODS.forEach(p => {
       if (p === _currentPeriod) return;
-      // [v207] custom 은 사용자 from/to 입력 후에만. 미리 prefetch X.
-      if (p === 'custom') return;
       const swr = _readSWRPeriod(p);
       if (swr && swr.fresh) return;
+      // _computeRange 가 _currentPeriod 에 의존하므로 잠깐 단위만 교체해서 호출 후 복원
+      const saved = _currentPeriod;
+      _currentPeriod = p;
       _fetchPeriodData(p).catch(() => {});
+      _currentPeriod = saved;
     });
   }
 
   // ── CRUD ───────────────────────────────────────────────
   async function list(period) {
-    const p = PERIODS.includes(period) ? period : 'today';
+    const p = PERIODS.includes(period) ? period : 'day';
     const swr = _readSWRPeriod(p);
     if (swr) {
       _items = swr.items;
@@ -191,7 +233,7 @@
     catch (e) {
       if (e.message === 'endpoint-missing' || e.message === 'no-token') {
         _isOffline = true;
-        const { start, end } = _periodRange(p);
+        const { start, end } = _periodRange();
         const all = _loadOffline();
         _items = all.filter(r => {
           const t = new Date(r.recorded_at || r.created_at).getTime();
@@ -350,11 +392,11 @@
         if (subEl) subEl.textContent = '데이터 없음';
         return;
       }
-      const html = _renderDonut(r, { centerLabel: PERIOD_LABEL[_currentPeriod] + ' 합계' });
+      const html = _renderDonut(r, { centerLabel: _periodDisplayLabel() + ' 합계' });
       if (bodyEl) bodyEl.outerHTML = html;
       if (subEl) {
         const cnt = r.by_method ? Object.keys(r.by_method).filter(k => (r.by_method[k] || {}).total > 0).length : 0;
-        subEl.textContent = `${PERIOD_LABEL[_currentPeriod]} · ${cnt}가지`;
+        subEl.textContent = `${_periodDisplayLabel()} · ${cnt}가지`;
       }
     } catch (_e) {
       const total = _items.reduce((s, r) => s + (r.amount || 0), 0);
@@ -370,9 +412,9 @@
         by[m].total += r.amount || 0;
         by[m].count += 1;
       });
-      const html = _renderDonut({ total, by_method: by }, { centerLabel: PERIOD_LABEL[_currentPeriod] + ' 합계' });
+      const html = _renderDonut({ total, by_method: by }, { centerLabel: _periodDisplayLabel() + ' 합계' });
       if (bodyEl) bodyEl.outerHTML = html;
-      if (subEl) subEl.textContent = `${PERIOD_LABEL[_currentPeriod]} · 로컬 집계`;
+      if (subEl) subEl.textContent = `${_periodDisplayLabel()} · 로컬 집계`;
     }
   }
 
@@ -389,6 +431,19 @@
     document.body.appendChild(sheet);
     sheet.addEventListener('click', _onRootClick);
     sheet.addEventListener('keydown', _onRootKeydown);
+    // [v221] 앵커 날짜 input 변경 핸들러
+    sheet.addEventListener('change', (e) => {
+      const t = e.target;
+      if (t && t.matches && t.matches('[data-rv-anchor]')) {
+        const v = t.value;
+        if (v) {
+          _anchorDate = v;
+          _customRange = _computeRange();
+          _revWindow = 50;
+          _loadAndRender();
+        }
+      }
+    });
     return sheet;
   }
   function _onRootKeydown(e) {
@@ -399,35 +454,29 @@
     if (!btn) return;
     const act = btn.dataset.rvAct;
     if (act === 'close') return window.closeRevenue();
+    // [v221] 단위(일/주/월) 토글
     if (act === 'period') {
       const p = btn.dataset.period;
       if (!PERIODS.includes(p) || p === _currentPeriod) return;
       _currentPeriod = p; _revWindow = 50;
-      // [v207] custom 으로 막 전환했고 아직 from/to 없으면 fetch 미루고 UI만 갱신
-      if (p === 'custom' && (!_customRange.from || !_customRange.to)) {
-        _rerender();
-      } else {
-        _loadAndRender(); _prefetchAllPeriods();
-      }
+      _customRange = _computeRange();
+      _loadAndRender(); _prefetchAllPeriods();
       return;
     }
-    // [v207] 직접 지정 기간 조회
-    if (act === 'apply-custom') {
-      const sheet = document.getElementById('revenueSheet');
-      const fromEl = sheet?.querySelector('#rvFrom');
-      const toEl   = sheet?.querySelector('#rvTo');
-      const from = fromEl?.value || '';
-      const to   = toEl?.value   || '';
-      if (!from || !to) {
-        if (window.showToast) window.showToast('시작/종료 날짜를 모두 골라주세요');
-        return;
-      }
-      if (to < from) {
-        if (window.showToast) window.showToast('종료일이 시작일보다 빠를 수 없어요');
-        return;
-      }
-      _customRange = { from, to };
-      _currentPeriod = 'custom';
+    // [v221] 앵커 날짜 ← / → 이동
+    if (act === 'anchor-shift') {
+      const delta = Number(btn.dataset.delta) || 0;
+      if (!delta) return;
+      _shiftAnchor(delta);
+      _customRange = _computeRange();
+      _revWindow = 50;
+      _loadAndRender();
+      return;
+    }
+    // [v221] "오늘" 버튼 — 앵커를 오늘로 리셋
+    if (act === 'anchor-today') {
+      _anchorDate = _todayISO();
+      _customRange = _computeRange();
       _revWindow = 50;
       _loadAndRender();
       return;
@@ -467,16 +516,16 @@
         <button type="button" class="rv-header__action" data-rv-act="add-form">+ 입력</button>
       </div>
       <div class="rv-periods">
-        <div class="rv-periods__row" style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:flex;gap:6px;flex-wrap:nowrap;">
-          ${PERIODS.map(p => `<button type="button" class="rv-periods__btn${p === _currentPeriod ? ' is-on' : ''}" data-rv-act="period" data-period="${p}" style="flex-shrink:0;">${PERIOD_LABEL[p]}</button>`).join('')}
+        <div class="rv-periods__row" style="display:flex;gap:6px;align-items:center;">
+          ${PERIODS.map(p => `<button type="button" class="rv-periods__btn${p === _currentPeriod ? ' is-on' : ''}" data-rv-act="period" data-period="${p}" style="flex-shrink:0;min-width:40px;">${PERIOD_LABEL[p]}</button>`).join('')}
         </div>
-        ${_currentPeriod === 'custom' ? `
-        <div class="rv-custom-range" style="display:flex;gap:6px;align-items:center;padding:10px 0 4px;font-size:12px;flex-wrap:wrap;">
-          <input id="rvFrom" type="date" value="${_customRange.from || ''}" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);" />
-          <span style="color:var(--text-subtle);">~</span>
-          <input id="rvTo" type="date" value="${_customRange.to || ''}" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);" />
-          <button type="button" data-rv-act="apply-custom" style="padding:8px 14px;border:none;border-radius:8px;background:var(--brand-strong,#E5586E);color:#fff;cursor:pointer;font-weight:700;font-size:12px;">조회</button>
-        </div>` : ''}
+        <div class="rv-anchor" style="display:flex;gap:6px;align-items:center;padding:10px 0 4px;font-size:12px;flex-wrap:wrap;">
+          <button type="button" data-rv-act="anchor-shift" data-delta="-1" aria-label="이전" style="width:32px;height:32px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-size:14px;font-weight:600;color:var(--text);">‹</button>
+          <input type="date" data-rv-anchor value="${_anchorDate}" style="flex:1;min-width:140px;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);" />
+          <button type="button" data-rv-act="anchor-shift" data-delta="1" aria-label="다음" style="width:32px;height:32px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-size:14px;font-weight:600;color:var(--text);">›</button>
+          <button type="button" data-rv-act="anchor-today" style="padding:0 12px;height:32px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);cursor:pointer;font-size:12px;font-weight:600;color:var(--text);">오늘</button>
+          <span style="color:var(--text-subtle,#888);font-size:12px;margin-left:auto;">${_periodDisplayLabel()}</span>
+        </div>
       </div>
       <div class="rv-body" id="rvBody"></div>
       <button type="button" class="rv-fab" data-rv-act="add-form" aria-label="매출 입력" style="font-size:24px;font-weight:600;line-height:1;">+</button>
@@ -521,19 +570,21 @@
     const periods = PERIODS.map(p =>
       `<button type="button" class="rv-pc__period-btn${p === cur ? ' is-on' : ''}" data-rv-act="period" data-period="${p}">${PERIOD_LABEL[p]}</button>`
     ).join('');
-    const customForm = (cur === 'custom') ? `
-      <div class="rv-pc__custom-range" style="display:flex;gap:6px;align-items:center;padding:10px 0 0;font-size:13px;flex-wrap:wrap;">
-        <input id="rvFrom" type="date" value="${_customRange.from || ''}" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);" />
-        <span style="color:var(--text-subtle);">~</span>
-        <input id="rvTo" type="date" value="${_customRange.to || ''}" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);" />
-        <button type="button" data-rv-act="apply-custom" style="padding:8px 16px;border:none;border-radius:8px;background:var(--brand-strong,#E5586E);color:#fff;cursor:pointer;font-weight:700;font-size:13px;">조회</button>
-      </div>` : '';
+    // [v221] 단위 + 앵커 날짜 + 화살표 + 오늘 버튼 (직접지정/오늘/지난주 등 6칩 통합)
+    const anchorForm = `
+      <div class="rv-pc__anchor" style="display:flex;gap:6px;align-items:center;padding:10px 0 0;font-size:13px;flex-wrap:wrap;">
+        <button type="button" data-rv-act="anchor-shift" data-delta="-1" aria-label="이전" style="width:34px;height:34px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-size:14px;font-weight:600;color:var(--text);">‹</button>
+        <input type="date" data-rv-anchor value="${_anchorDate}" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);" />
+        <button type="button" data-rv-act="anchor-shift" data-delta="1" aria-label="다음" style="width:34px;height:34px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-size:14px;font-weight:600;color:var(--text);">›</button>
+        <button type="button" data-rv-act="anchor-today" style="padding:0 14px;height:34px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);cursor:pointer;font-size:13px;font-weight:600;color:var(--text);">오늘</button>
+        <span style="color:var(--text-subtle,#888);font-size:13px;margin-left:6px;">${_periodDisplayLabel()}</span>
+      </div>`;
     return `<div class="rv-pc__header">
       <div class="rv-pc__title">매출관리</div>
       <div class="rv-pc__spacer"></div>
       <div class="rv-pc__periods">${periods}</div>
       <button type="button" class="rv-pc__add" data-rv-act="add-form">+ 매출 입력</button>
-    </div>${customForm}`;
+    </div>${anchorForm}`;
   }
   function _renderPCChartShellHTML() {
     return `<div class="rv-pc-chart" id="rvPCChart">
@@ -777,40 +828,39 @@
     _refreshDatalists();
     // 모바일 period 버튼 상태 + 오프라인 배지
     sheet.querySelectorAll('.rv-periods__btn').forEach(b => b.classList.toggle('is-on', b.dataset.period === _currentPeriod));
+    sheet.querySelectorAll('.rv-pc__period-btn').forEach(b => b.classList.toggle('is-on', b.dataset.period === _currentPeriod));
+    // [v221] 앵커 input + 라벨 동기화
+    sheet.querySelectorAll('input[data-rv-anchor]').forEach(el => { if (el.value !== _anchorDate) el.value = _anchorDate; });
+    sheet.querySelectorAll('.rv-anchor span, .rv-pc__anchor span').forEach(el => { el.textContent = _periodDisplayLabel(); });
     const offlineBadge = sheet.querySelector('#rvOfflineBadge');
     if (offlineBadge) offlineBadge.style.display = _isOffline ? 'block' : 'none';
 
     const target = _cachedIsPC ? sheet.querySelector('#rvPCMain') : sheet.querySelector('#rvBody');
     if (!target) return;
 
-    // [v207] month / last_month 는 RevenueMonth (요일별 그래프 + 목표).
-    // last_month 는 BE summary endpoint 가 month 만 받으므로 fallbackSummary 사용.
-    if ((_currentPeriod === 'month' || _currentPeriod === 'last_month') && window.RevenueMonth) {
+    // [v221] 월 단위 → RevenueMonth (요일별 그래프 + 목표). 일/주 → RevenueToday.
+    if (_currentPeriod === 'month' && window.RevenueMonth) {
       let summary;
-      if (_currentPeriod === 'last_month') {
-        // 클라이언트 폴백 (BE summary 미지원)
+      try { summary = await window.RevenueMonth.fetchSummary(); }
+      catch (_e) {
+        console.warn('[revenue] summary fetch 실패 — 클라이언트 폴백:', _e);
         summary = window.RevenueMonth.fallbackSummary(_items);
-      } else {
-        try { summary = await window.RevenueMonth.fetchSummary(); }
-        catch (_e) {
-          console.warn('[revenue] summary fetch 실패 — 클라이언트 폴백:', _e);
-          summary = window.RevenueMonth.fallbackSummary(_items);
-        }
       }
-      // [2026-05-17] 과거 월: RevenueMonth 가 fetch 한 items 사용. 이번달: SWR _items.
+      // 과거 월은 RevenueMonth 가 자체 fetch 한 _viewItems 사용. 이번달은 SWR _items.
       const view = window.RevenueMonth.getView ? window.RevenueMonth.getView() : null;
       const viewItems = window.RevenueMonth.getViewItems ? window.RevenueMonth.getViewItems() : null;
-      const itemsToRender = (_currentPeriod === 'last_month')
-        ? _items
-        : ((view && !view.isCurrent && Array.isArray(viewItems)) ? viewItems : _items);
+      const itemsToRender = (view && !view.isCurrent && Array.isArray(viewItems)) ? viewItems : _items;
       if (_cachedIsPC) window.RevenueMonth.renderPC(target, summary, itemsToRender);
       else window.RevenueMonth.renderMobile(target, summary, itemsToRender);
       return;
     }
 
     if (window.RevenueToday) {
-      if (_cachedIsPC) window.RevenueToday.renderPC(target, _items, _currentPeriod);
-      else window.RevenueToday.renderMobile(target, _items, _currentPeriod);
+      // [v221] RevenueToday 는 'today' / 'week' 코드를 기대 → day → today 매핑.
+      const renderPeriod = _currentPeriod === 'day' ? 'today' : _currentPeriod;
+      const displayLabel = _periodDisplayLabel();
+      if (_cachedIsPC) window.RevenueToday.renderPC(target, _items, renderPeriod, displayLabel);
+      else window.RevenueToday.renderMobile(target, _items, renderPeriod, displayLabel);
     }
   }
   window._revenueBack = _rerender;

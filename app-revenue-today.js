@@ -157,13 +157,13 @@
   }
 
   // ── PC 4-stat ───────────────────────────────────────────
-  function _renderPCStats(items, period) {
+  function _renderPCStats(items, period, displayLabel) {
     const R = _R();
     const total = items.reduce((s, r) => s + (r.amount || 0), 0);
     const count = items.length;
     const avg = count > 0 ? Math.round(total / count) : 0;
     const inc = R._calcIncentive ? R._calcIncentive(total) : { net: total };
-    const lbl = period === 'today' ? '오늘' : (period === 'week' ? '이번주' : period);
+    const lbl = displayLabel || (period === 'today' ? '오늘' : (period === 'week' ? '이번주' : period));
     return `
       <div class="rvm-pcg4">
         <div class="rvm-pcstat hi">
@@ -192,12 +192,12 @@
   }
 
   // ── 모바일 ─────────────────────────────────────────────
-  function renderMobile(container, items, period) {
+  function renderMobile(container, items, period, displayLabel) {
     _ensureStyles();
     const total = items.reduce((s, r) => s + (r.amount || 0), 0);
     const count = items.length;
     const by_method = _sumByMethod(items);
-    const lbl = period === 'today' ? '오늘' : (period === 'week' ? '이번주' : period);
+    const lbl = displayLabel || (period === 'today' ? '오늘' : (period === 'week' ? '이번주' : period));
     const weekBlock = period === 'week'
       ? `<div class="rvm-sl">일별 매출</div><div class="rvm-mcard rvm-mpad">${_renderWeekDays(items, new Date())}</div>`
       : '';
@@ -217,12 +217,12 @@
   }
 
   // ── PC ─────────────────────────────────────────────────
-  function renderPC(container, items, period) {
+  function renderPC(container, items, period, displayLabel) {
     _ensureStyles();
     const R = _R();
     const total = items.reduce((s, r) => s + (r.amount || 0), 0);
     const by_method = _sumByMethod(items);
-    const lbl = period === 'today' ? '오늘' : (period === 'week' ? '이번주' : period);
+    const lbl = displayLabel || (period === 'today' ? '오늘' : (period === 'week' ? '이번주' : period));
     const weekCard = period === 'week'
       ? `<div class="rvm-cd"><div class="rvm-sl" style="margin-top:0">일별 매출</div>${_renderWeekDays(items, new Date())}</div>`
       : '';
@@ -238,7 +238,7 @@
         </div>`;
     container.innerHTML = (R._renderPCHeaderHTML ? R._renderPCHeaderHTML(period) : '') + `
       <div class="rvm-body">
-        ${_renderPCStats(items, period)}
+        ${_renderPCStats(items, period, displayLabel)}
         ${layout}
         <div class="rvm-sl">${_esc(lbl)} 매출 내역</div>
         ${_renderTransactionList(items, 12)}
