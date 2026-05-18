@@ -519,10 +519,10 @@
         fresh[8] = naver;
         fresh[9] = brief;
         // 비핵심 데이터 도착 후 해당 위젯만 재렌더
-        try { _renderBookingWidget && _renderBookingWidget(bookings); } catch(_){}
-        try { _renderRetentionWidget && _renderRetentionWidget(atRisk); } catch(_){}
-        try { _renderInventoryWidget && _renderInventoryWidget(inventory); } catch(_){}
-        try { _renderBriefWidget && _renderBriefWidget(brief); } catch(_){}
+        try { _renderBookingWidget && _renderBookingWidget(bookings); } catch(e){ console.warn('[dashboard] 예약 위젯 갱신 실패:', e); }
+        try { _renderRetentionWidget && _renderRetentionWidget(atRisk); } catch(e){ console.warn('[dashboard] 위험 고객 위젯 갱신 실패:', e); }
+        try { _renderInventoryWidget && _renderInventoryWidget(inventory); } catch(e){ console.warn('[dashboard] 재고 위젯 갱신 실패:', e); }
+        try { _renderBriefWidget && _renderBriefWidget(brief); } catch(e){ console.warn('[dashboard] 브리핑 위젯 갱신 실패:', e); }
       }).catch(() => {});
     } catch (_e) {
       // fresh 실패해도 stale 화면은 이미 표시됨 — 조용히 무시

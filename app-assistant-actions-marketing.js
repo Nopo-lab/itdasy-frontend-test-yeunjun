@@ -25,8 +25,6 @@
     setTimeout(() => _wait(cb, tries + 1), 100);
   }
 
-  _wait(_register, 0);
-
   // ──────────── CATEGORY 메타 (icon · label · color) ────────────
   // icon은 index.html의 <symbol id="ic-*"> sprite에 존재하는 것만 사용.
   // color 톤 — silent(파랑·그린), confirm(주황), 확인카드(빨강·핫핑크).
@@ -115,4 +113,6 @@
       }));
     } catch (_e) { void _e; }
   }
+
+  _wait(_register, 0);
 })();

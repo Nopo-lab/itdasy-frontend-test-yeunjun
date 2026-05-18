@@ -64,9 +64,9 @@
     } catch (e) { console.warn('[complete-flow] 화면 갱신 알림 실패:', e); }
   }
   function _refreshConnectedViews() {
-    try { if (window.Dashboard?.refresh)  Promise.resolve(window.Dashboard.refresh(true)).catch(()=>{}); } catch(e){}
-    try { if (window.MyShopV3?.refresh)   Promise.resolve(window.MyShopV3.refresh()).catch(()=>{}); } catch(e){}
-    try { if (window.RevenueHub?.refresh) Promise.resolve(window.RevenueHub.refresh()).catch(()=>{}); } catch(e){}
+    try { if (window.Dashboard?.refresh)  Promise.resolve(window.Dashboard.refresh(true)).catch(e => console.warn('[complete-flow] 대시보드 갱신 실패:', e)); } catch(e){ console.warn('[complete-flow] 대시보드 갱신 시작 실패:', e); }
+    try { if (window.MyShopV3?.refresh)   Promise.resolve(window.MyShopV3.refresh()).catch(e => console.warn('[complete-flow] 내샵 갱신 실패:', e)); } catch(e){ console.warn('[complete-flow] 내샵 갱신 시작 실패:', e); }
+    try { if (window.RevenueHub?.refresh) Promise.resolve(window.RevenueHub.refresh()).catch(e => console.warn('[complete-flow] 매출 갱신 실패:', e)); } catch(e){ console.warn('[complete-flow] 매출 갱신 시작 실패:', e); }
   }
 
   async function _apiPatch(path, body) {

@@ -3,7 +3,10 @@
    분할 (T-104):
      • 메인 (이 파일) — 시트/캔버스/탭/상태/history/save/export/auto/tune/bg/text/brand
      • app-photo-editor-beauty.js     — 뷰티 5 슬라이더 + HSV 마스킹 픽셀 walk
-     • app-photo-editor-templates.js  — 템플릿 5종 + canvas 합성
+     • app-photo-editor-templates.js  — 템플릿 6종 + canvas 합성
+     • app-photo-editor-layers.js     — 텍스트 레이어 추가/삭제/선택/순서
+     • app-photo-editor-export.js     — 저장 + 다음 단계 모달
+     • app-photo-editor-batch.js      — 슬롯 사진 N장 일괄 보정
    사용:
      PhotoEditor.open({ src, shopName?, serviceName?, price? })
      PhotoEditor.openFromAction({ photo_url, initial_tab? })
@@ -331,7 +334,10 @@
     const r = _state.ratio;
     // [v206 2026-05-19] 배치 편집 — 갤러리 slot 사진 N장 일괄 자동 보정
     //   조건: window._slots / window._popupSlotId 존재 (갤러리 모듈 로드됨)
-    const slotInfo = _peGetCurrentSlot();
+    const batch = window.PhotoEditorBatch;
+    const slotInfo = batch && typeof batch.getCurrentSlot === 'function'
+      ? batch.getCurrentSlot()
+      : null;
     const batchHtml = slotInfo
       ? `<div class="pe-field-label" style="margin-top:12px;">배치 편집 (v206)</div>
          <div class="pe-panel-row"><button type="button" class="pe-action-btn" data-pe-batch-apply>📦 이 슬롯 사진 ${slotInfo.count}장 모두 같은 보정 일괄 적용</button></div>
@@ -340,20 +346,10 @@
     return `<div class="pe-field-label">비율</div>
       <div class="pe-panel-row pe-panel-grid-4">${['original','1:1','4:5','9:16'].map(rv => _CHIP('ratio', rv, rv === 'original' ? '원본' : rv, r===rv)).join('')}</div>
       <div class="pe-panel-row pe-panel-grid-2" style="margin-top:12px;"><button type="button" class="pe-action-btn" data-pe-export="png">PNG 저장</button><button type="button" class="pe-action-btn" data-pe-export="jpg">JPG 저장</button></div>
+      <div class="pe-panel-row pe-panel-grid-2" style="margin-top:8px;"><button type="button" class="pe-chip-btn" data-pe-export="png2">2배 고화질</button><button type="button" class="pe-chip-btn" data-pe-export="webp">WebP 저장</button></div>
+      <div class="pe-panel-row" style="margin-top:8px;"><button type="button" class="pe-action-btn" data-pe-export="set">피드+스토리 세트 저장</button></div>
       ${batchHtml}
       <div class="pe-hint">저장 시 원본은 보존됩니다. 편집본만 다운로드 또는 갤러리에 추가돼요.</div>`;
-  }
-
-  // [v206 2026-05-19] 현재 갤러리 슬롯 정보 — 갤러리 모듈이 로드돼 있고 slot 활성일 때만
-  function _peGetCurrentSlot() {
-    try {
-      if (typeof window._slots === 'undefined' || typeof window._popupSlotId === 'undefined') return null;
-      const slot = (window._slots || []).find(s => s && s.id === window._popupSlotId);
-      if (!slot) return null;
-      const photos = (slot.photos || []).filter(p => p && !p.hidden);
-      if (photos.length < 2) return null;
-      return { id: slot.id, label: slot.label || '슬롯', count: photos.length };
-    } catch (_e) { return null; }
   }
 
   // ── 패널 바인딩 ───────────────────────────────────────
@@ -552,7 +548,11 @@
       _each(panel, '[data-pe-ratio]',  'click', (e) => { _state.ratio = e.currentTarget.dataset.peRatio; _renderPanel(); _redraw(); _pushHistory(); });
       _each(panel, '[data-pe-export]', 'click', (e) => _exportImage(e.currentTarget.dataset.peExport));
       // [v206] 배치 편집 — 슬롯 다른 사진에 같은 보정 일괄 적용
-      _on(panel, '[data-pe-batch-apply]', 'click', _applyBatchToSlot);
+      _on(panel, '[data-pe-batch-apply]', 'click', (e) => {
+        const batch = window.PhotoEditorBatch;
+        if (!batch || typeof batch.applyToSlot !== 'function') return _toast('배치 편집 모듈을 불러오는 중이에요');
+        batch.applyToSlot(_state, _helpers, e.currentTarget);
+      });
     },
   };
   function _bindPanel(panel, tab) {
@@ -581,132 +581,34 @@
   }
   // [v204 2026-05-19] 다중 텍스트 레이어 헬퍼 — _state.text ↔ active layer 동기화
   function _ensureLayers() {
-    if (!_state) return;
-    if (!Array.isArray(_state.layers)) _state.layers = [];
-    // 마이그레이션: layers 비었지만 text 가 있으면 layer 1개 생성
-    if (_state.layers.length === 0) {
-      const id = 'lyr-' + Date.now();
-      _state.layers.push(Object.assign({ id, type: 'text' }, _state.text || {}));
-      _state.activeLayerId = id;
+    if (window.PhotoEditorLayers && typeof window.PhotoEditorLayers.ensure === 'function') {
+      window.PhotoEditorLayers.ensure(_state);
     }
-    // active 가 없거나 사라졌으면 첫 번째 layer 활성
-    if (!_state.activeLayerId || !_state.layers.find(l => l.id === _state.activeLayerId)) {
-      _state.activeLayerId = _state.layers[0].id;
-    }
-    // active layer → _state.text 동기화 (alias)
-    const active = _state.layers.find(l => l.id === _state.activeLayerId);
-    if (active) _state.text = active;
   }
   function _syncTextToLayer() {
-    if (!_state || !Array.isArray(_state.layers) || !_state.activeLayerId) return;
-    const idx = _state.layers.findIndex(l => l.id === _state.activeLayerId);
-    if (idx >= 0) _state.layers[idx] = Object.assign({}, _state.layers[idx], _state.text, { id: _state.activeLayerId, type: 'text' });
+    if (window.PhotoEditorLayers && typeof window.PhotoEditorLayers.syncText === 'function') {
+      window.PhotoEditorLayers.syncText(_state);
+    }
   }
   function _addLayer() {
-    _ensureLayers();
-    const id = 'lyr-' + Date.now();
-    _state.layers.push({
-      id, type: 'text',
-      value: '', x: 0.5, y: 0.5 + (_state.layers.length * 0.08), color: '#ffffff',
-      font: 'sans', size: 6, bg: false, stroke: false, rot: 0,
-    });
-    _state.activeLayerId = id;
-    _state.text = _state.layers[_state.layers.length - 1];
-    _renderPanel(); _redraw(); _pushHistory();
-    _toast('새 텍스트 레이어 추가 (총 ' + _state.layers.length + '개)');
+    if (window.PhotoEditorLayers && typeof window.PhotoEditorLayers.add === 'function') {
+      window.PhotoEditorLayers.add(_state, _helpers);
+    }
   }
   function _deleteLayer() {
-    if (!_state || !_state.layers || _state.layers.length <= 1) return _toast('최소 1개는 남겨야 해요');
-    const idx = _state.layers.findIndex(l => l.id === _state.activeLayerId);
-    if (idx < 0) return;
-    _state.layers.splice(idx, 1);
-    _state.activeLayerId = _state.layers[Math.min(idx, _state.layers.length - 1)].id;
-    _ensureLayers();  // _state.text 재동기
-    _renderPanel(); _redraw(); _pushHistory();
-    _toast('레이어 삭제 (남은 ' + _state.layers.length + '개)');
+    if (window.PhotoEditorLayers && typeof window.PhotoEditorLayers.remove === 'function') {
+      window.PhotoEditorLayers.remove(_state, _helpers);
+    }
   }
   function _selectLayer(id) {
-    _state.activeLayerId = id;
-    _ensureLayers();
-    _renderPanel(); _redraw();
+    if (window.PhotoEditorLayers && typeof window.PhotoEditorLayers.select === 'function') {
+      window.PhotoEditorLayers.select(_state, _helpers, id);
+    }
   }
   function _moveLayerUp() {
-    if (!_state || !_state.layers || _state.layers.length <= 1) return;
-    const idx = _state.layers.findIndex(l => l.id === _state.activeLayerId);
-    if (idx <= 0) return _toast('이미 맨 위');
-    [_state.layers[idx - 1], _state.layers[idx]] = [_state.layers[idx], _state.layers[idx - 1]];
-    _renderPanel(); _redraw(); _pushHistory();
-  }
-
-  // [v206 2026-05-19] 배치 편집 — 현재 _state.adjust + _state.beauty 를 슬롯 다른 사진에 일괄 적용.
-  //   ChatAutoEdit.processPhoto 가 있으면 활용 (headless canvas 합성). 없으면 폴백.
-  async function _applyBatchToSlot() {
-    const slotInfo = _peGetCurrentSlot();
-    if (!slotInfo) return _toast('현재 슬롯을 찾지 못했어요');
-    const slot = (window._slots || []).find(s => s && s.id === slotInfo.id);
-    if (!slot) return _toast('슬롯 데이터 없음');
-    const photos = (slot.photos || []).filter(p => p && !p.hidden);
-    if (!photos.length) return _toast('적용할 사진이 없어요');
-    const ok = (typeof window.confirm === 'function')
-      ? window.confirm(`슬롯 사진 ${photos.length}장에 현재 보정을 일괄 적용할까요? 원본은 보존되고 편집본만 갱신.`)
-      : true;
-    if (!ok) return;
-    _toast('배치 보정 중… (' + photos.length + '장)');
-
-    // 현재 슬라이더 값 스냅샷
-    const adjust = JSON.parse(JSON.stringify(_state.adjust));
-    const beauty = JSON.parse(JSON.stringify(_state.beauty));
-
-    let done = 0, fail = 0;
-    for (const photo of photos) {
-      try {
-        const srcUrl = photo.dataUrl || photo.editedDataUrl;
-        if (!srcUrl) { fail++; continue; }
-        // headless 처리 — _redraw 와 유사 흐름
-        const result = await _composeWithSettings(srcUrl, adjust, beauty);
-        if (result) { photo.editedDataUrl = result; done++; }
-        else { fail++; }
-      } catch (_e) { fail++; }
+    if (window.PhotoEditorLayers && typeof window.PhotoEditorLayers.moveUp === 'function') {
+      window.PhotoEditorLayers.moveUp(_state, _helpers);
     }
-    // 갤러리 DB 저장 (있을 때만)
-    try {
-      if (typeof window.saveSlotToDB === 'function') await window.saveSlotToDB(slot);
-    } catch (_e) { void _e; }
-    _toast(`배치 보정 완료: ${done}장 성공, ${fail}장 실패`);
-    try { window.dispatchEvent(new CustomEvent('itdasy:gallery:photo-replaced', { detail: { kind: 'batch_edit', slotId: slot.id, count: done } })); }
-    catch (_e) { void _e; }
-  }
-
-  // headless 합성 — 한 사진에 adjust + beauty 픽셀 walk 적용 후 dataURL 반환.
-  //   메인 _redraw 와 별도로 임시 canvas 사용 (현재 편집 중 사진 영향 X).
-  async function _composeWithSettings(srcDataUrl, adjust, beauty) {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        try {
-          const iw = img.naturalWidth, ih = img.naturalHeight;
-          const k = Math.min(1080, iw) / iw;
-          const dw = Math.round(iw * k), dh = Math.round(ih * k);
-          const cv = document.createElement('canvas');
-          cv.width = dw; cv.height = dh;
-          const ctx = cv.getContext('2d');
-          const temp = adjust.temperature || 0;
-          const sepia = Math.max(0, temp) / 100, contrast = 100 + Math.max(0, -temp) * 0.3;
-          ctx.filter = `brightness(${adjust.brightness}%) saturate(${adjust.saturate}%) contrast(${contrast}%) sepia(${sepia})`;
-          ctx.drawImage(img, 0, 0, iw, ih, 0, 0, dw, dh);
-          ctx.filter = 'none';
-          if (adjust.sharpness > 10) _unsharpMask(ctx, dw, dh, adjust.sharpness / 100);
-          // beauty hook 호출
-          if (typeof _drawHooks.beauty === 'function') {
-            try { _drawHooks.beauty(ctx, dw, dh, beauty, _helpers); } catch (_e) { void _e; }
-          }
-          resolve(cv.toDataURL('image/jpeg', 0.92));
-        } catch (_e) { resolve(null); }
-      };
-      img.onerror = () => resolve(null);
-      img.src = srcDataUrl;
-    });
   }
 
   // [v202 2026-05-18] 사진 회전·좌우/상하 반전 (S1-3) — originalImg 자체를 변환 후 swap.
@@ -926,7 +828,7 @@
 
   // ── history ──────────────────────────────────────────
   // [v204 2026-05-19] layers + activeLayerId snapshot — undo/redo 시 다중 텍스트 복원
-  const _SNAP_KEYS = ['adjust', 'ratio', 'text', 'watermark', 'beauty', 'template', 'autoIntensity', 'layers', 'activeLayerId'];
+  const _SNAP_KEYS = ['originalSrc', 'removedBgDataUrl', 'preBgOriginalSrc', 'adjust', 'ratio', 'text', 'watermark', 'beauty', 'template', 'autoIntensity', 'layers', 'activeLayerId'];
   function _snapshot() {
     const o = {};
     for (const k of _SNAP_KEYS) o[k] = _state[k];
@@ -942,19 +844,35 @@
   function _undo() {
     if (!_state || _state.historyCursor <= 0) return _toast('되돌릴 작업이 없어요');
     _state.historyCursor -= 1;
-    const s = _state.history[_state.historyCursor];
-    for (const k of _SNAP_KEYS) if (s[k] !== undefined) _state[k] = s[k];
-    if (typeof _ensureLayers === 'function') _ensureLayers();  // [v204] reference 재동기
-    _renderPanel(); _redraw();
+    _restoreSnapshot(_state.history[_state.historyCursor]);
   }
   // [v183 2026-05-18] Redo — historyCursor 가 history.length-1 보다 작으면 앞으로.
   function _redo() {
     if (!_state || _state.historyCursor >= _state.history.length - 1) return _toast('다시 실행할 작업이 없어요');
     _state.historyCursor += 1;
-    const s = _state.history[_state.historyCursor];
+    _restoreSnapshot(_state.history[_state.historyCursor]);
+  }
+
+  function _restoreSnapshot(s) {
+    if (!_state || !s) return;
+    const prevSrc = _state.originalSrc;
     for (const k of _SNAP_KEYS) if (s[k] !== undefined) _state[k] = s[k];
     if (typeof _ensureLayers === 'function') _ensureLayers();  // [v204] reference 재동기
+    if (s.originalSrc && s.originalSrc !== prevSrc) return _restoreSnapshotImage(s.originalSrc);
     _renderPanel(); _redraw();
+  }
+
+  function _restoreSnapshotImage(src) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if (!_state) return;
+      _state.originalImg = img;
+      _state.originalSrc = src;
+      _renderPanel(); _redraw();
+    };
+    img.onerror = () => { _renderPanel(); _redraw(); _toast('이미지 되돌리기 실패'); };
+    img.src = src;
   }
 
   function _toggleCompare() {
@@ -965,69 +883,16 @@
   // ── 저장 / 내보내기 ───────────────────────────────────
   async function _save() { return _exportImage('png'); }
   async function _exportImage(format) {
-    if (!_state || !_state.originalImg) return _toast('편집할 사진이 없어요');
-    const cv = document.getElementById('peCanvas');
-    if (!cv) return;
-    const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
-    cv.toBlob((blob) => {
-      if (!blob) return _toast('저장 실패 — 다시 시도해 주세요');
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'itdasy-edit-' + Date.now() + '.' + format;
-      document.body.appendChild(a); a.click();
-      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 500);
-      _toast(format.toUpperCase() + ' 저장 완료');
-      if (_state) _state._savedAtCursor = _state.historyCursor;  // [v188] 미저장 경고용 마킹
-      try { window.dispatchEvent(new CustomEvent('itdasy:gallery:photo-replaced', { detail: { kind: 'export_marketing_image', source: 'photo-editor' } })); }
-      catch (_e) { void _e; }
-      _showNextSteps(cv);
-    }, mime, 0.95);
-  }
-
-  // ── 다음 단계 모달 ────────────────────────────────────
-  function _nsCaption() {
-    if (typeof window.openCaptionScenarioPopup === 'function') {
-      try { window.openCaptionScenarioPopup(); _toast('캡션 시나리오를 열었어요'); }
-      catch (_e) { _toast('캡션 화면을 여는 중 문제가 생겼어요'); }
-    } else _toast('캡션 모듈을 찾을 수 없어요');
-  }
-  function _nsInstagram(dataUrl) {
-    if (typeof window.openInstagramPreview === 'function') {
-      try {
-        // [2026-05-18] 편집기 → 인스타 미리보기 ratio 자동 전달.
-        const _curRatio = (_state && _state.ratio) ? _state.ratio : '1:1';
-        window.openInstagramPreview({ ratio: _curRatio, src: dataUrl });
-      } catch (_e) { _toast('인스타 미리보기 화면을 여는 중 문제가 생겼어요'); }
-    } else if (typeof window.showTab === 'function') { window.showTab('finish'); _toast('마무리 탭으로 이동했어요'); }
-    else _toast('인스타 미리보기 화면을 찾을 수 없어요');
-  }
-  function _showNextSteps(cv) {
-    document.getElementById('peNextStepsModal')?.remove();
-    const dataUrl = (() => { try { return cv.toDataURL('image/png'); } catch (_e) { return ''; } })();
-    const m = document.createElement('div');
-    m.id = 'peNextStepsModal'; m.className = 'pe-modal';
-    m.innerHTML = `<div class="pe-modal-backdrop" data-pe-ns="close"></div><div class="pe-modal-card">
-      <div class="pe-modal-head"><strong>저장 완료! 다음에 뭘 할까요?</strong><button type="button" class="pe-iconbtn" data-pe-ns="close" aria-label="닫기">×</button></div>
-      ${dataUrl ? `<div class="pe-modal-thumb"><img src="${dataUrl}" alt="편집본 미리보기" /></div>` : ''}
-      <div class="pe-modal-actions"><button type="button" class="pe-action-btn" data-pe-ns="caption">✨ 캡션 만들기</button><button type="button" class="pe-action-btn" data-pe-ns="attach">📎 고객 기록에 첨부</button><button type="button" class="pe-action-btn" data-pe-ns="instagram">📷 인스타 미리보기</button></div>
-      <div class="pe-hint" style="text-align:center;margin-top:10px;">다시 편집하려면 닫고 슬라이더를 조정하세요.</div></div>`;
-    document.body.appendChild(m);
-    m.addEventListener('click', (e) => {
-      const act = e.target.closest('[data-pe-ns]')?.dataset.peNs;
-      if (!act) return;
-      if (act === 'close') return m.remove();
-      m.remove();
-      if (act === 'caption') _nsCaption();
-      else if (act === 'attach') _toast('편집본을 고객 상세의 사진에 첨부하려면 시술 기록 화면을 열어주세요 (P1 결선 예정)');
-      else if (act === 'instagram') _nsInstagram(dataUrl);
-    });
+    const exp = window.PhotoEditorExport;
+    if (!exp || typeof exp.save !== 'function') return _toast('저장 모듈을 불러오는 중이에요');
+    return exp.save(format, _state, _helpers);
   }
 
   // ── 사진 로드 ─────────────────────────────────────────
   function _loadImage(src) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => { _state.originalImg = img; _state.originalSrc = src; _pushHistory(); _redraw(); };
+    img.onload = () => { _state.originalImg = img; _state.originalSrc = src; _pushHistory(); _redraw(); _renderPanel(); };
     img.onerror = () => _toast('사진을 불러오지 못했어요');
     img.src = src;
   }
@@ -1078,10 +943,29 @@
     return _open({ src: p.photo_url || p.src, initial_tab: p.initial_tab || 'auto', serviceName: p.service_name || '', price: +p.price || 0 });
   }
 
+  function _applyStatePatch(patch) {
+    if (!_state || !patch) return false;
+    if (patch.watermark) Object.assign(_state.watermark, patch.watermark);
+    if (patch.text) {
+      _ensureLayers();
+      Object.assign(_state.text, patch.text);
+      _syncTextToLayer();
+    }
+    if (patch.ratio) _state.ratio = patch.ratio;
+    _renderPanel(); _redraw(); _pushHistory();
+    return true;
+  }
+
   // 외부 모듈용 helpers (beauty / templates).
   const _helpers = {
     esc: _esc, toast: _toast, scheduleRedraw: _scheduleRedraw, redraw: _redraw,
     pushHistory: _pushHistory, renderPanel: _renderPanel, drawWatermark: _drawWatermark, slider: _slider,
+    getState: () => _state, applyStatePatch: _applyStatePatch,
+    unsharpMask: _unsharpMask,
+    applyDrawHook: (name, ...args) => {
+      if (typeof _drawHooks[name] !== 'function') return undefined;
+      return _drawHooks[name](...args);
+    },
   };
 
   // [v205 2026-05-19] 스티커 라이브러리 외부 호출 — 새 layer 추가
@@ -1107,6 +991,8 @@
   window.PhotoEditor._internal = {
     registerTabPanel: (id, p) => { _externalPanels[id] = p || {}; },
     registerDrawHook: (name, fn) => { _drawHooks[name] = fn; },
+    getState: () => _state,
+    applyStatePatch: _applyStatePatch,
     helpers: _helpers,
   };
 

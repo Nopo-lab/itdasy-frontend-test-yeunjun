@@ -6,9 +6,9 @@
      • registerDrawHook('template', drawTemplate)
 
    책임:
-     • 템플릿 패널 HTML (5종 + 해제)
+     • 템플릿 패널 HTML (6종 + 해제)
      • 템플릿 패널 이벤트 바인딩 (두 번째 사진/라벨/후기/가격 라인)
-     • 캔버스 합성: B&A 좌우/상하 · 후기 카드 · 가격표 · 시술 안내
+     • 캔버스 합성: B&A 좌우/상하 · 후기 카드 · 가격표 · 시술 안내 · 스토리
 */
 (function () {
   'use strict';
@@ -30,10 +30,12 @@
     const reviewExtra = t.id === 'review' ? `<label class="pe-field" style="margin-top:8px;"><span>후기 문구</span><textarea class="pe-input" data-pe-tpl-review rows="3" maxlength="120" placeholder="짧은 후기 1~2줄">${_esc(t.reviewText)}</textarea></label>` : '';
     const priceExtra = t.id === 'price' ? `<label class="pe-field" style="margin-top:8px;"><span>가격 라인 (줄바꿈으로 구분)</span><textarea class="pe-input" data-pe-tpl-price rows="4" maxlength="200" placeholder="시술명 | 가격&#10;예) 붙임머리 20인치 | 120,000원">${_esc(t.priceLines)}</textarea></label>` : '';
     const serviceExtra = t.id === 'service' ? `<div class="pe-hint">상단에 시술명 + 소요시간 + 가격이 자동으로 들어가요. (브랜드 탭의 샵명도 함께)</div>` : '';
+    const storyExtra = t.id === 'story' ? `<div class="pe-hint">인스타 스토리·릴스 커버용 9:16 화면으로 저장돼요. 시술명, 가격, 샵명이 자동으로 들어갑니다.</div>` : '';
     return `<div class="pe-field-label">템플릿</div>
       <div class="pe-panel-row pe-panel-grid-2">${tplBtn('ba-h','B&A 좌우')}${tplBtn('ba-v','B&A 상하')}${tplBtn('service','시술 안내')}${tplBtn('price','가격표')}</div>
-      <div class="pe-panel-row pe-panel-grid-2">${tplBtn('review','후기 카드')}${tplBtn(null,'템플릿 해제')}</div>
-      ${baExtra}${reviewExtra}${priceExtra}${serviceExtra}`;
+      <div class="pe-panel-row pe-panel-grid-2">${tplBtn('review','후기 카드')}${tplBtn('story','스토리 9:16')}</div>
+      <div class="pe-panel-row">${tplBtn(null,'템플릿 해제')}</div>
+      ${baExtra}${reviewExtra}${priceExtra}${serviceExtra}${storyExtra}`;
   }
 
   // ── 패널 바인딩 ───────────────────────────────────────
@@ -80,9 +82,9 @@
   }
 
   // ── 캔버스 합성 — drawHook 진입점 ──────────────────────
-  // 모든 템플릿은 1080×1350 (4:5) — 인스타 피드 최대.
+  // 기본은 1080×1350 (4:5), 스토리는 1080×1920 (9:16).
   function _drawTemplate(cv, img, state, helpers) {
-    const id = state.template.id, W = 1080, H = 1350;
+    const id = state.template.id, W = 1080, H = id === 'story' ? 1920 : 1350;
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d');
     ctx.fillStyle = '#1a1a20'; ctx.fillRect(0, 0, W, H);
@@ -90,6 +92,7 @@
     if (id === 'review')  return _renderTemplateReview(ctx, W, H, img, state, helpers);
     if (id === 'price')   return _renderTemplatePrice(ctx, W, H, img, state, helpers);
     if (id === 'service') return _renderTemplateService(ctx, W, H, img, state, helpers);
+    if (id === 'story')   return _renderTemplateStory(ctx, W, H, img, state, helpers);
   }
 
   function _drawFittedImage(ctx, src, dx, dy, dw, dh) {
@@ -226,6 +229,41 @@
       ctx.font = '500 22px Pretendard, "Noto Sans KR", sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.78)';
       ctx.fillText(state.shopName, 64, 170, 480);
+    }
+    ctx.restore();
+    _drawWatermarkIfAny(ctx, W, H, state, helpers);
+  }
+
+  function _renderTemplateStory(ctx, W, H, img, state, helpers) {
+    _drawFittedImage(ctx, img, 0, 0, W, H);
+    ctx.save();
+    const top = ctx.createLinearGradient(0, 0, 0, 420);
+    top.addColorStop(0, 'rgba(0,0,0,0.55)');
+    top.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = top; ctx.fillRect(0, 0, W, 420);
+
+    const bottom = ctx.createLinearGradient(0, H - 720, 0, H);
+    bottom.addColorStop(0, 'rgba(0,0,0,0)');
+    bottom.addColorStop(0.45, 'rgba(0,0,0,0.55)');
+    bottom.addColorStop(1, 'rgba(0,0,0,0.86)');
+    ctx.fillStyle = bottom; ctx.fillRect(0, H - 720, W, 720);
+
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillStyle = '#FFC83D';
+    ctx.font = '800 34px Pretendard, "Noto Sans KR", sans-serif';
+    ctx.fillText('TODAY STYLE', 72, H - 430);
+    ctx.fillStyle = '#fff';
+    ctx.font = '900 72px Pretendard, "Noto Sans KR", sans-serif';
+    _wrapText(ctx, state.serviceName || '오늘의 시술', 72, H - 370, W - 144, 82, 'left');
+    if (state.price) {
+      ctx.fillStyle = '#FFC83D';
+      ctx.font = '800 42px Pretendard, "Noto Sans KR", sans-serif';
+      ctx.fillText((state.price / 10000).toFixed(0) + '만원', 72, H - 180, W - 144);
+    }
+    if (state.shopName) {
+      ctx.fillStyle = 'rgba(255,255,255,0.72)';
+      ctx.font = '600 30px Pretendard, "Noto Sans KR", sans-serif';
+      ctx.fillText(state.shopName, 72, H - 112, W - 144);
     }
     ctx.restore();
     _drawWatermarkIfAny(ctx, W, H, state, helpers);

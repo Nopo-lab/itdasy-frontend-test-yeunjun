@@ -111,14 +111,15 @@
     wrap.addEventListener('touchcancel', _onTouchEnd);
 
     // [v203] 데스크톱 보조 — wheel + Ctrl 키 = 줌
-    wrap.addEventListener('wheel', (e) => {
+    function _onWheel(e) {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
       z.scale = Math.max(MIN, Math.min(MAX, z.scale + delta));
       if (z.scale < 1.05) _reset(wrap, z);
       else _apply(wrap, z);
-    }, { passive: false });
+    }
+    wrap.addEventListener('wheel', _onWheel, { passive: false });
 
     // 메모리 누수 방지용 cleanup 핸들러 보관
     wrap._zoomCleanup = function () {
@@ -126,6 +127,7 @@
       wrap.removeEventListener('touchmove',  _onTouchMove);
       wrap.removeEventListener('touchend',   _onTouchEnd);
       wrap.removeEventListener('touchcancel', _onTouchEnd);
+      wrap.removeEventListener('wheel', _onWheel);
       wrap._zoomBound = false;
       _reset(wrap, z);
       wrap.style.transform = '';

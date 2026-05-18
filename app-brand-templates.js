@@ -128,12 +128,9 @@
   function _readPeState() {
     try {
       const PE = window.PhotoEditor;
-      if (PE && PE._internal && PE._internal.helpers) {
-        // helpers 자체엔 state 가 없음. _state 접근 우회용 — open 중인 시트의 상태 추출.
-        // PhotoEditor 가 _state 를 노출하지 않으므로 _drawHooks 의 동작은 못함.
-        // 대신 redraw 호출 가능. 우리는 watermark/text 만 localStorage 에서 복원할 것이므로 OK.
+      if (PE && PE._internal && typeof PE._internal.getState === 'function') {
+        return PE._internal.getState();
       }
-      // 가장 안정적인 방식: PhotoEditor 가 마지막으로 저장한 _peLastState (선택).
       return window._peLastState || null;
     } catch (_e) { return null; }
   }
@@ -148,28 +145,29 @@
     const PE = window.PhotoEditor;
     let applied = false;
     try {
-      if (window._peLastState) {
+      const patch = {};
+      if (tpl.watermark) {
+        patch.watermark = {
+          value: tpl.watermark.value || '',
+          position: tpl.watermark.position || 'br',
+          opacity: (typeof tpl.watermark.opacity === 'number') ? tpl.watermark.opacity : 0.85,
+        };
+      }
+      if (tpl.text_style) {
+        patch.text = {
+          value: tpl.text_style.value || '',
+          x: (typeof tpl.text_style.x === 'number') ? tpl.text_style.x : 0.5,
+          y: (typeof tpl.text_style.y === 'number') ? tpl.text_style.y : 0.92,
+          color: tpl.text_style.color || '#ffffff',
+        };
+      }
+      if (PE && PE._internal && typeof PE._internal.applyStatePatch === 'function') {
+        applied = PE._internal.applyStatePatch(patch);
+      } else if (window._peLastState) {
         const s = window._peLastState;
-        if (tpl.watermark) {
-          s.watermark = s.watermark || {};
-          s.watermark.value = tpl.watermark.value || s.watermark.value || '';
-          s.watermark.position = tpl.watermark.position || s.watermark.position || 'br';
-          s.watermark.opacity = (typeof tpl.watermark.opacity === 'number') ? tpl.watermark.opacity : (s.watermark.opacity || 0.85);
-        }
-        if (tpl.text_style) {
-          s.text = s.text || {};
-          s.text.value = tpl.text_style.value || s.text.value || '';
-          s.text.x = (typeof tpl.text_style.x === 'number') ? tpl.text_style.x : (s.text.x || 0.5);
-          s.text.y = (typeof tpl.text_style.y === 'number') ? tpl.text_style.y : (s.text.y || 0.92);
-          s.text.color = tpl.text_style.color || s.text.color || '#ffffff';
-        }
+        if (patch.watermark) s.watermark = Object.assign(s.watermark || {}, patch.watermark);
+        if (patch.text) s.text = Object.assign(s.text || {}, patch.text);
         applied = true;
-        // 화면 갱신 — PhotoEditor 가 helpers.redraw 를 노출함.
-        if (PE && PE._internal && PE._internal.helpers) {
-          const h = PE._internal.helpers;
-          if (typeof h.renderPanel === 'function') { try { h.renderPanel(); } catch (_e) { void _e; } }
-          if (typeof h.redraw === 'function') { try { h.redraw(); } catch (_e) { void _e; } }
-        }
       }
     } catch (_e) { void _e; }
 

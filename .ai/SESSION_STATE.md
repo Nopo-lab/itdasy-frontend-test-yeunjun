@@ -2,7 +2,45 @@
 
 > 새 세션이 시작되면 **이 파일을 먼저 읽고** 현재 단계·대기 결정·마지막 체크포인트를 파악한다.
 
-**LAST UPDATED:** 2026-05-18 · v168 — 사진 편집기 P1 + Brand Kit + Today Morning + DM intent + 4:5 비율
+**LAST UPDATED:** 2026-05-19 · v206.8 — 사진편집기 완성도 보강 + 저장 세트 + 되돌리기 검증
+
+---
+
+## 🟣 2026-05-19 — v206.8 사진편집기 점검·분리·보완
+
+원영님 요청: Claude가 토큰 한도로 멈춘 뒤 남은 사진편집 작업 확인, 가짜 기능/깨진 기능 점검, 파일 분할과 새 기능 추가.
+
+완료:
+- `app-photo-editor-batch.js` 신규: 사진편집기 본체에서 배치 편집을 분리.
+- `app-photo-editor-export.js` 신규: 저장/다음 단계 모달을 본체에서 분리.
+- `app-photo-editor-layers.js` 신규: 텍스트 레이어 추가/삭제/선택/순서 변경을 본체에서 분리.
+- `app-photo-editor-brush-effects.js` 신규: 부분 보정 브러시의 실제 픽셀 계산을 브러시 화면 코드에서 분리.
+- 배치 편집 버튼에 진행 상태 표시 추가: `0/N` → `N/N`, 처리 중 버튼 비활성화.
+- `app-photo-editor-templates.js`: 인스타 스토리·릴스 커버용 `스토리 9:16` 템플릿 추가. 결과 캔버스 1080×1920.
+- `app-photo-editor-export.js`: `2배 고화질` 저장, `WebP 저장`, `피드+스토리 세트 저장` 추가.
+- `app-brand-templates.js`: 브랜드 템플릿 적용이 실제 열린 사진편집기 상태에 반영되도록 보정.
+- `app-photo-editor-brush.js`: 부분 보정 브러시가 화면에만 보이고 저장 때 사라지는 문제를 줄이도록 결과를 실제 편집 원본에 반영.
+- `app-photo-editor.js`: 부분 보정 브러시·배경 변경처럼 원본 이미지가 바뀐 작업도 되돌리기/다시실행 때 이미지까지 복구하도록 보강.
+- `app-photo-editor-zoom.js`: 편집기 재오픈 시 휠 이벤트가 쌓일 수 있는 부분 정리.
+- `app-assistant-actions-marketing.js`: 사진편집 관련 액션 등록 전 초기화 순서 오류 수정.
+- `app-complete-flow.js`, `app-dashboard.js`, `app-gallery-write.js`: 자동검사를 막던 빈 처리칸 정리.
+- 빌드 버전: `20260519-v206.8-photo-complete`.
+
+분리 결과:
+- `app-photo-editor.js`: 1073줄 → 1013줄. 저장 세트와 되돌리기 보강을 넣어 조금 늘었고, 다음 라운드 분리 대상.
+- `app-photo-editor-brush.js`: 541줄 → 447줄.
+
+확인:
+- 실제 브라우저 확인 통과: 새 빌드 로드, 분리 모듈 4개 로드, 스토리 템플릿 1080×1920 출력, 텍스트 레이어 추가, 배치 편집 테스트 슬롯 2장 편집본 생성, 브러시 픽셀 변화, 되돌리기/다시실행 이미지 복구, 피드+스토리 세트 저장, 2배 저장 후 다음 단계 모달 표시.
+- `npm run smoke` 통과.
+- `npm test -- --runInBand` 통과. 테스트 파일 없음.
+- `npm run lint` 통과. 오래된 경고 405개는 남아 있으나 막는 오류 0개.
+- `git diff --check` 통과.
+
+남은 기술 빚:
+- `app-photo-editor.js` 는 1013줄이라 500줄 기준까지는 계속 분리 필요.
+- `app-photo-editor-brush.js` 는 447줄로 500줄 아래로 내려왔지만, `_bindBrushPanel` 함수가 아직 길어 다음 라운드에서 이벤트 핸들러 분리 권장.
+- 저장/브러시/되돌리기의 큰 구멍은 막았고, 다음 작업은 본체 파일 추가 분리와 원장님들이 자주 쓰는 보정 프리셋 고도화가 좋음.
 
 ---
 

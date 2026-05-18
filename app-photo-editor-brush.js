@@ -21,8 +21,6 @@
 (function () {
   'use strict';
 
-  function _clamp(v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
-
   const BRUSHES = {
     smooth:  { label: '부드럽게', color: 'rgba(120,200,150,0.55)' },
     shine:   { label: '윤기',    color: 'rgba(255,220,100,0.55)' },
@@ -98,6 +96,59 @@
   function _removeMask() {
     const m = document.getElementById('peMaskCanvas');
     if (m) m.remove();
+  }
+
+  function _unbindBrushEvents(mainCv) {
+    if (!mainCv || !Array.isArray(mainCv._brushHandlers)) return;
+    mainCv._brushHandlers.forEach(([ev, fn]) => mainCv.removeEventListener(ev, fn));
+    mainCv._brushHandlers = null;
+    mainCv._brushBound = false;
+  }
+
+  function _computeCrop(img, ratio) {
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    if (ratio === 'original') return { sx: 0, sy: 0, sw: iw, sh: ih };
+    const parts = String(ratio || 'original').split(':').map(Number);
+    if (parts.length !== 2 || !parts[0] || !parts[1]) return { sx: 0, sy: 0, sw: iw, sh: ih };
+    const targetAR = parts[0] / parts[1], imgAR = iw / ih;
+    if (imgAR > targetAR) {
+      const sh = ih, sw = Math.round(ih * targetAR);
+      return { sx: Math.round((iw - sw) / 2), sy: 0, sw, sh };
+    }
+    const sw = iw, sh = Math.round(iw / targetAR);
+    return { sx: 0, sy: Math.round((ih - sh) / 2), sw, sh };
+  }
+
+  function _makeBrushBaseCanvas(state, mainCv) {
+    const img = state && state.originalImg;
+    if (!img || !mainCv) return null;
+    const crop = _computeCrop(img, state.ratio);
+    const cv = document.createElement('canvas');
+    cv.width = mainCv.width; cv.height = mainCv.height;
+    cv.getContext('2d').drawImage(img, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, cv.width, cv.height);
+    return cv;
+  }
+
+  function _commitBrushCanvas(baseCv, state, helpers, onDone) {
+    let dataUrl = '';
+    try { dataUrl = baseCv.toDataURL('image/jpeg', 0.95); }
+    catch (_e) { return false; }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      state.originalImg = img;
+      state.originalSrc = dataUrl;
+      state.removedBgDataUrl = null;
+      state.preBgOriginalSrc = null;
+      if (helpers && helpers.redraw) helpers.redraw();
+      if (helpers && helpers.pushHistory) helpers.pushHistory();
+      if (onDone) onDone();
+    };
+    img.onerror = () => {
+      if (helpers && helpers.toast) helpers.toast('부분 보정 적용 실패');
+    };
+    img.src = dataUrl;
+    return true;
   }
 
   function _panelBrushHTML(state) {
@@ -275,21 +326,6 @@
       b.lassoPath = [];
     }
 
-    // 메인 canvas 에 brush 이벤트 — 중복 등록 방지 위해 한 번만
-    if (!mainCv._brushBound) {
-      mainCv._brushBound = true;
-      mainCv.addEventListener('mousedown', _start);
-      mainCv.addEventListener('touchstart', _start, { passive: false });
-      mainCv.addEventListener('mousemove', _move);
-      mainCv.addEventListener('touchmove', _move, { passive: false });
-      mainCv.addEventListener('mouseup', _end);
-      mainCv.addEventListener('mouseleave', _end);
-      mainCv.addEventListener('touchend', _end);
-      // [v202] 커서 미리보기 — mouseenter/move/leave (터치는 미사용)
-      mainCv.addEventListener('mouseenter', _showCursor);
-      mainCv.addEventListener('mousemove', _moveCursor);
-      mainCv.addEventListener('mouseleave', _hideCursor);
-    }
     // [v202] cursor 핸들러 — 브러시 크기 따라 원 크기 동적
     function _showCursor() {
       if (state.activeTab !== 'brush') return;
@@ -307,6 +343,27 @@
       cursor.style.left = (e.clientX - r.left) + 'px';
       cursor.style.top = (e.clientY - r.top) + 'px';
     }
+
+    // 메인 canvas 에 brush 이벤트 — 편집기를 다시 열 때 이전 state 를 물고 있지 않게 재등록.
+    _unbindBrushEvents(mainCv);
+    const handlers = [
+      ['mousedown', _start],
+      ['touchstart', _start],
+      ['mousemove', _move],
+      ['touchmove', _move],
+      ['mouseup', _end],
+      ['mouseleave', _end],
+      ['touchend', _end],
+      ['mouseenter', _showCursor],
+      ['mousemove', _moveCursor],
+      ['mouseleave', _hideCursor],
+    ];
+    handlers.forEach(([ev, fn]) => {
+      const opts = ev === 'touchstart' || ev === 'touchmove' ? { passive: false } : undefined;
+      mainCv.addEventListener(ev, fn, opts);
+    });
+    mainCv._brushHandlers = handlers;
+    mainCv._brushBound = true;
 
     panel.querySelector('[data-pe-brush-clear]')?.addEventListener('click', () => {
       mctx.clearRect(0, 0, mask.width, mask.height);
@@ -338,108 +395,22 @@
     });
 
     panel.querySelector('[data-pe-brush-apply]')?.addEventListener('click', () => {
-      const ok = _applyBrush(mainCv, mask, b);
+      const baseCv = _makeBrushBaseCanvas(state, mainCv) || mainCv;
+      const effects = window.PhotoEditorBrushEffects;
+      const ok = effects && typeof effects.apply === 'function'
+        ? effects.apply(baseCv, mask, b)
+        : false;
       if (ok) {
-        mctx.clearRect(0, 0, mask.width, mask.height);
-        if (helpers && helpers.toast) helpers.toast('부분 보정 적용 완료');
-        if (helpers && helpers.pushHistory) helpers.pushHistory();
+        const committed = _commitBrushCanvas(baseCv, state, helpers, () => {
+          mctx.clearRect(0, 0, mask.width, mask.height);
+          if (helpers && helpers.toast) helpers.toast('부분 보정 적용 완료');
+        });
+        if (!committed) {
+          mctx.clearRect(0, 0, mask.width, mask.height);
+          if (helpers && helpers.toast) helpers.toast('부분 보정 적용 완료');
+        }
       }
     });
-  }
-
-  function _applyBrush(mainCv, maskCv, b) {
-    const ctx = mainCv.getContext('2d');
-    const mctx = maskCv.getContext('2d');
-    const w = mainCv.width, h = mainCv.height;
-    let src, mdata;
-    try {
-      src = ctx.getImageData(0, 0, w, h);
-      mdata = mctx.getImageData(0, 0, w, h);
-    } catch (_e) { return false; }
-    const d = src.data, m = mdata.data;
-    const k = (b.strength || 50) / 100;
-    const type = b.type;
-
-    // [v187] 클론·힐링 — 소스 픽셀 별도 readonly 사본 필요 (자기 픽셀 덮어쓰면 cascade 오류)
-    let srcSnapshot = null;
-    let offX = 0, offY = 0;
-    if (_CLONE_TYPES.has(type)) {
-      if (!b.sourcePt || !b.firstStrokePt) {
-        return false;  // 호출자가 toast 표시 안 됨 — _start 에서 이미 안내
-      }
-      srcSnapshot = new Uint8ClampedArray(d);  // 적용 전 사본
-      offX = Math.round(b.sourcePt.x - b.firstStrokePt.x);
-      offY = Math.round(b.sourcePt.y - b.firstStrokePt.y);
-    }
-
-    for (let i = 0; i < d.length; i += 4) {
-      const alpha = m[i + 3] / 255;
-      if (alpha < 0.05) continue;
-      const w_l = alpha * k;
-      const r = d[i], g = d[i + 1], bl = d[i + 2];
-      const lum = r * 0.299 + g * 0.587 + bl * 0.114;
-
-      if (type === 'smooth') {
-        d[i]   = _clamp(r  + 3 * w_l);
-        d[i+1] = _clamp(g  + 3 * w_l);
-        d[i+2] = _clamp(bl + 3 * w_l);
-      } else if (type === 'shine') {
-        d[i]   = _clamp(r  + 15 * w_l);
-        d[i+1] = _clamp(g  + 15 * w_l);
-        d[i+2] = _clamp(bl + 10 * w_l);
-      } else if (type === 'redness') {
-        d[i]   = _clamp(r  - 30 * w_l);
-        d[i+1] = _clamp(g  +  4 * w_l);
-        d[i+2] = _clamp(bl +  5 * w_l);
-      } else if (type === 'gloss') {
-        if (lum > 140) {
-          d[i]   = _clamp(r  + 20 * w_l);
-          d[i+1] = _clamp(g  + 20 * w_l);
-          d[i+2] = _clamp(bl + 20 * w_l);
-        }
-      } else if (type === 'blur') {
-        const mix = w_l * 0.5;
-        d[i]   = _clamp(r  * (1 - mix) + lum * mix);
-        d[i+1] = _clamp(g  * (1 - mix) + lum * mix);
-        d[i+2] = _clamp(bl * (1 - mix) + lum * mix);
-      } else if (type === 'clone' || type === 'heal') {
-        // 대상 픽셀 좌표 (x, y) 복원
-        const idx = i / 4;
-        const y = Math.floor(idx / w), x = idx - y * w;
-        const sx = x - offX, sy = y - offY;  // 소스 좌표 (대상에서 offset 반대 방향)
-        if (sx < 0 || sx >= w || sy < 0 || sy >= h) continue;
-        const sj = (sy * w + sx) * 4;
-        const sr = srcSnapshot[sj], sg = srcSnapshot[sj + 1], sb = srcSnapshot[sj + 2];
-        if (type === 'clone') {
-          // 단순 alpha 블렌딩 (clone) — w_l 비율로 source 픽셀 가산
-          d[i]   = _clamp(r  * (1 - w_l) + sr * w_l);
-          d[i+1] = _clamp(g  * (1 - w_l) + sg * w_l);
-          d[i+2] = _clamp(bl * (1 - w_l) + sb * w_l);
-        } else {
-          // heal — source 픽셀 + 주변 평균 (간단 3x3) 블렌딩으로 edge 자연화
-          let nr = 0, ng = 0, nb = 0, nc = 0;
-          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-            const nx = x + dx, ny = y + dy;
-            if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
-            const nj = (ny * w + nx) * 4;
-            nr += srcSnapshot[nj]; ng += srcSnapshot[nj + 1]; nb += srcSnapshot[nj + 2]; nc++;
-          }
-          if (nc > 0) {
-            const ar = nr / nc, ag = ng / nc, ab = nb / nc;
-            // 60% source + 40% 주변 평균 — 경계 부드럽게
-            const tr = sr * 0.6 + ar * 0.4;
-            const tg = sg * 0.6 + ag * 0.4;
-            const tb = sb * 0.6 + ab * 0.4;
-            d[i]   = _clamp(r  * (1 - w_l) + tr * w_l);
-            d[i+1] = _clamp(g  * (1 - w_l) + tg * w_l);
-            d[i+2] = _clamp(bl * (1 - w_l) + tb * w_l);
-          }
-        }
-      }
-      // eraser 는 mask 자체만 영향. 적용 픽셀 walk 영향 X.
-    }
-    ctx.putImageData(src, 0, 0);
-    return true;
   }
 
   // 탭 떠날 때 마스크 정리 — _state.activeTab 감시 (메인이 알려주는 hook 없으므로 mutation)
@@ -469,6 +440,7 @@
   // 외부에서 mask 제거 트리거 (편집기 close 시 호출 가능)
   window.PhotoEditor = window.PhotoEditor || {};
   window.PhotoEditor._brushCleanup = function () {
+    _unbindBrushEvents(document.getElementById('peCanvas'));
     _removeMask();
     _removeCursorRing();
   };

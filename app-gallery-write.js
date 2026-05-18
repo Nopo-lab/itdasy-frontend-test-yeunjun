@@ -67,7 +67,7 @@ function _initPeekCarousel(id, total) {
       if (d) { d.style.width = i === cur ? '18px' : '6px'; d.style.background = i === cur ? 'var(--accent)' : 'rgba(0,0,0,0.15)'; }
     }
     // [PERF P2-2] 슬라이드 전환 시 인접 이미지 lazy load
-    try { _lazyLoadSlide(id, cur); } catch(_){}
+    try { _lazyLoadSlide(id, cur); } catch(e){ console.warn('[gallery-write] 인접 사진 로딩 실패:', e); }
   }
 
   // 모멘텀 계산용 변수
@@ -432,4 +432,3 @@ async function doPublishFromCaption() {
     showToast('오류: ' + (window._humanError ? window._humanError(e) : e.message));
   }
 }
-
