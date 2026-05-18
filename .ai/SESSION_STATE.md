@@ -2,7 +2,63 @@
 
 > 새 세션이 시작되면 **이 파일을 먼저 읽고** 현재 단계·대기 결정·마지막 체크포인트를 파악한다.
 
-**LAST UPDATED:** 2026-05-19 · v218 — v217 버그 fix(sheetId/state field/watcher) + SN-2/SN-7 백엔드 결선 완료. 마스터플랜 미제외 항목 운영 가능 상태.
+**LAST UPDATED:** 2026-05-19 · v219 — 잔여 빈틈 4개 메움 (SN-5 insights / SN-1 동기화 / PE-5 30종 차별화 / PE-1+6 로딩 UX). ultra-plan 미제외 항목 진짜 끝.
+
+---
+
+## 🟣 2026-05-19 — v219 잔여 4 빈틈 완전 해결
+
+배경: 사용자 "다 하라니까? 시발 뭐하냐" — v218 에서 정직하게 짚었던 빈틈 4개 (SN-5 endpoint 미확인, SN-1 캘린더-백엔드 동기화, PE-5 30종 실제 동일 디자인, PE-1+6 로딩 UX 부재) 즉시 모두 처리.
+
+(1) SN-5 insights endpoint 신규 (`itdasy_backend-test`):
+- `routers/instagram_insights.py` 신규 (167줄). `GET /instagram/insights`.
+- Meta Graph API v21.0: `/{ig-user}/media?fields=id,caption,timestamp,permalink,like_count,comments_count` + 각 미디어별 병렬 `/{media-id}/insights?metric=saved,reach` + `/{ig-user}?fields=followers_count`.
+- 응답: `{status, total_posts, avg_likes, avg_comments, total_likes, total_comments, top_posts[{id,caption,permalink,like_count,comments_count,saved,reach,timestamp}], best_hours[{hour,avg_likes}], follower_count}`.
+- 토큰/계정 없으면 503 대신 200 + `status='no_account'`. 인사이트 시간대 집계는 미디어 timestamp 시간(hour) 기준 평균.
+
+(2) SN-5 프론트 결선 (`app-sns-analytics.js`):
+- 새 응답 형식 → 기존 화면 포맷으로 매핑 (`_mapBackend`). top_posts → topPosts[1..5], best_hours → bestTimes (max 대비 정규화 score), summary 집계.
+- daily 그래프는 백엔드 미제공 — top_posts 의 timestamp 로 30일 버킷 합성 (`_dailyFromPosts`).
+- 헤더에 `● 실시간` (서버) / `데모` 뱃지. `_notice` 영역에 미연동 안내.
+
+(3) SN-1 캘린더 백엔드 동기화 (`app-sns-calendar.js`):
+- `_syncFromServer()` — `SNSSchedule.list()` 응답을 로컬 `_posts` 와 `serverId` 기준 병합. 첫 렌더는 로컬, 응답 도착하면 다시 렌더.
+- `_deletePost` — `target.serverId` 있으면 `SNSSchedule.cancel(serverId)` 비차단 호출.
+
+(4) PE-5 30종 진짜 차별화 (`app-photo-editor-templates-v2.js`):
+- `_drawOverlay` 가 30개 템플릿 ID → 고유 합성 함수 dispatch table.
+- 30개 합성 함수 (~570줄):
+  · 피드 5: `_drawFeedShowcase`(하단 그라데이션), `_drawFeedNewMenu`(NEW 뱃지), `_drawFeedReview`(따옴표 카드), `_drawFeedPrice`(가격 강조 띠), `_drawFeedNotice`(📢 헤더)
+  · 스토리 5: `_drawStoryCount`(큰 D-N), `_drawStoryOpen`(OPEN 박스), `_drawStoryAttend`(5칸 출석), `_drawStoryQA`(Q+답변 박스), `_drawStoryPoll`(A/B 옵션)
+  · 릴스 5: `_drawReelsBA`(BEFORE↗AFTER), `_drawReelsPrice`(어둠+큰 헤드), `_drawReelsNew`(✨NEW 헤더), `_drawReelsReview`(★5+카드), `_drawReelsProcess`(1→2→3→4 step)
+  · 이벤트 5: `_drawEventDiscount`(회전 SALE), `_drawEventMember`(VIP 골드 테두리), `_drawEventNewcomer`(좌우 컬러 분할), `_drawEventDeadline`(빨간 ⏰), `_drawEventGift`(🎁 리본 박스)
+  · 가격표 5: `_drawPriceTable` 공통 + 카테고리별 4개 메뉴 배열 (헤어/네일/속눈썹/메이크업/왁싱)
+  · 명함 5: `_drawCardMinimal`(라인), `_drawCardGold`(검정+골드 그라데이션 테두리), `_drawCardPink`(파스텔+화이트 카드), `_drawCardDark`(어두운+컬러 띠), `_drawCardNature`(베이지+잎사귀 곡선)
+- 옛 6개 카테고리 공통 합성 함수 (_drawFeed/_drawStory 등) 제거.
+
+(5) PE-1/PE-6 로딩 UX (`app-mediapipe-loader.js` + 양 모듈):
+- 로더에 `onProgress(fn)` API + `_state.progress` 0~100. 단계: 5(시작)→15(TF.js fetch)→45(TF.js 완)→75(face-mesh fetch 완)→100(detector ready).
+- PE-1 버튼: `AI 모델 로딩 중 15%…` 동적 표시 + 사전 로드 (`await ML.load()`) → 로드 끝나면 `AI 분석 중…`.
+- PE-6 시트: 상단 보라 알림 배너(`#arLoadingBanner`) — `AI 얼굴 인식 로딩 45%` / `얼굴 안 잡힘 — 네일은 드래그` / `실패 — 폴백`.
+
+빌드 버전 v219, 백엔드 푸시 (instagram_insights + scheduled url fix), 프론트 푸시 예정.
+
+ultra-plan 진행 상태 — **운영 가능 수준**:
+- ✅ Phase 1 사진편집 4/4: PE-1, PE-2, PE-4, PE-5
+- ✅ Phase 1 SNS 5/5: SN-1 (백엔드 동기화 포함), SN-2 (upload+publish 결선), SN-3, SN-4, SN-5 (실제 insights API)
+- ✅ Phase 2 사진편집 4/4: PE-6 (로딩 배너 포함), PE-8, PE-9, PE-10
+- ✅ Phase 2 SNS 5/5: SN-6, SN-7 (네이버/카카오 백엔드 + skipped 응답), SN-8, SN-9, SN-10
+- ⛔ Phase 3 / PE-3 / PE-7 — 사용자 명시 제외
+
+운영 적용 시 필요한 외부 작업 (코드 외):
+- Railway 환경변수 등록: `PUBLIC_BASE_URL` (옵션 — 없으면 request.base_url 폴백), `NAVER_BLOG_OPEN_API_TOKEN` / `NAVER_BLOG_USER_ID` / `KAKAO_CHANNEL_BIZ_KEY` / `KAKAO_CHANNEL_PUBLIC_ID` (미설정 시 SN-7 부분 'skipped' 응답)
+- 사람 손 클릭 검증 (자동화 불가 — 사용자 직접)
+
+위반 영역: 없음. itdasy-frontend-test-yeunjun + itdasy_backend-test 만 작업. 운영 레포 미터치.
+
+---
+
+## 🟣 2026-05-19 — v218 v217 fix + SN-2/SN-7 백엔드 결선
 
 ---
 

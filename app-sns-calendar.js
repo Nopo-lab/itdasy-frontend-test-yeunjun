@@ -326,8 +326,13 @@
   }
 
   function _deletePost(postId) {
+    const target = _posts.find(p => p.id === postId);
     _posts = _posts.filter(p => p.id !== postId);
     _save();
+    // 백엔드 예약이면 서버 취소도 호출 (비차단)
+    if (target && target.serverId && window.SNSSchedule && typeof window.SNSSchedule.cancel === 'function') {
+      window.SNSSchedule.cancel(target.serverId).catch(() => {});
+    }
     const pop = document.getElementById('snsCalDayPop');
     if (pop) pop.style.display = 'none';
     _render();
@@ -375,6 +380,33 @@
     }));
   }
 
+  // 백엔드 ScheduledPost 동기화 — localStorage 와 병합 (serverId 키로 dedupe)
+  async function _syncFromServer() {
+    if (!window.SNSSchedule || typeof window.SNSSchedule.list !== 'function') return;
+    try {
+      const remote = await window.SNSSchedule.list();
+      if (!Array.isArray(remote) || !remote.length) return;
+      const localServerIds = new Set(_posts.map(p => p.serverId).filter(Boolean));
+      let added = 0;
+      remote.forEach(r => {
+        if (localServerIds.has(r.id)) return;
+        const d = new Date(r.scheduled_at);
+        _posts.push({
+          id: 'srv-' + r.id,
+          serverId: r.id,
+          date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+          time: `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`,
+          caption: r.caption || '',
+          imageUrl: r.image_url || '',
+          status: r.status || 'scheduled',
+          platform: 'instagram',
+        });
+        added++;
+      });
+      if (added > 0) { _save(); _render(); }
+    } catch (_e) { /* ignore — 오프라인이면 로컬만 사용 */ }
+  }
+
   // ── 열기/닫기 ──
   function _open() {
     const t = new Date();
@@ -382,6 +414,8 @@
     _month = t.getMonth();
     _load();
     _render();
+    // 백엔드 동기화 (비차단 — 첫 렌더는 로컬, 응답 오면 다시 렌더)
+    _syncFromServer();
     try { history.pushState({ snsCal: true }, '', location.href); } catch (_) { /* ignore */ }
   }
 

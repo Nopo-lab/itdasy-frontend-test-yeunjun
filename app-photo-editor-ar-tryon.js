@@ -166,13 +166,45 @@
     _previewCanvas.height = h;
     _renderPanel();
     _renderPreview();
-    // Face Mesh 비동기 검출
+    _showLoadingBanner('AI 얼굴 인식 모델 로딩 중…');
     if (window.MediaPipeLoader) {
+      const ML = window.MediaPipeLoader;
+      const stop = ML.onProgress((p, status) => {
+        if (status === 'loading') _showLoadingBanner(`AI 얼굴 인식 로딩 ${p}%`);
+        else if (status === 'failed') _showLoadingBanner('얼굴 인식 실패 — 네일 영역만 사용 가능 (사진 위 드래그)');
+      });
       try {
-        _landmarksCache = await window.MediaPipeLoader.detect(sourceImage);
-        _renderPreview();
-      } catch (_e) { /* ignore */ }
+        _landmarksCache = await ML.detect(sourceImage);
+        if (_landmarksCache && _landmarksCache.length) {
+          _hideLoadingBanner();
+          _renderPreview();
+        } else {
+          _showLoadingBanner('얼굴이 안 잡혔어요 — 네일은 사진 위 드래그로 칠해주세요');
+        }
+      } catch (_e) {
+        _showLoadingBanner('얼굴 인식 실패 — 네일은 사진 위 드래그로 칠해주세요');
+      } finally {
+        stop();
+      }
     }
+  }
+
+  function _showLoadingBanner(msg) {
+    if (!_sheetEl) return;
+    let banner = _sheetEl.querySelector('#arLoadingBanner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'arLoadingBanner';
+      banner.style.cssText = 'position:absolute;top:60px;left:0;right:0;margin:0 auto;max-width:340px;background:rgba(123,97,255,0.95);color:#fff;font-size:12px;font-weight:600;padding:10px 14px;border-radius:14px;text-align:center;z-index:5;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+      _sheetEl.appendChild(banner);
+    }
+    banner.textContent = msg;
+    banner.style.display = 'block';
+  }
+  function _hideLoadingBanner() {
+    if (!_sheetEl) return;
+    const banner = _sheetEl.querySelector('#arLoadingBanner');
+    if (banner) banner.style.display = 'none';
   }
 
   function _close() {

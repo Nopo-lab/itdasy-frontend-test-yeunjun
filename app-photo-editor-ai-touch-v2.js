@@ -171,11 +171,29 @@
       return;
     }
     const orig = btn.textContent;
-    btn.textContent = 'AI 분석 중…';
     btn.disabled = true;
+    // MediaPipe 로딩 진행률을 버튼 텍스트에 표시
+    let stopWatch = () => {};
+    const ML = window.MediaPipeLoader;
+    if (ML && ML.status() !== 'ready') {
+      stopWatch = ML.onProgress((p, status) => {
+        if (status === 'loading') btn.textContent = `AI 모델 로딩 중 ${p}%…`;
+        else if (status === 'ready') btn.textContent = 'AI 분석 중…';
+        else if (status === 'failed') btn.textContent = 'AI 모델 실패 — 기본 보정으로 진행';
+      });
+      // 즉시 사용자 피드백
+      btn.textContent = 'AI 모델 로딩 중 0%…';
+    } else {
+      btn.textContent = 'AI 분석 중…';
+    }
     try {
       const shopType = (window.ShopSettings && window.ShopSettings.get && window.ShopSettings.get('shop_type')) ||
                        (localStorage.getItem('itdasy_shop_type')) || 'makeup';
+      // MediaPipe 사전 로드 (실패해도 _apply 가 폴백 처리)
+      if (ML && ML.status() === 'idle') {
+        try { await ML.load(); } catch (_e) { /* 폴백 사용 */ }
+      }
+      btn.textContent = 'AI 분석 중…';
       const result = await _apply(state.originalImg, shopType);
       const url = result.toDataURL('image/png');
       const img = new Image();
@@ -191,6 +209,7 @@
     } catch (e) {
       _toast('AI 보정 실패 — 기본 보정으로 폴백');
     } finally {
+      stopWatch();
       btn.textContent = orig;
       btn.disabled = false;
     }

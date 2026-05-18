@@ -18,9 +18,70 @@
       const API = window.API || '';
       const h = window.authHeader ? window.authHeader() : {};
       const res = await fetch(API + '/instagram/insights', { headers: h });
-      if (res.ok) { _data = await res.json(); return; }
+      if (res.ok) {
+        const j = await res.json();
+        if (j.status === 'ok') { _data = _mapBackend(j); _data._fromServer = true; return; }
+        if (j.status === 'no_account') {
+          _data = _demoData();
+          _data._notice = 'Instagram 계정 미연동 — 데모 데이터 표시 중. 설정에서 IG 연동 후 실제 인사이트를 받아보세요.';
+          return;
+        }
+      }
     } catch (_) { /* ignore */ }
     _data = _demoData();
+    _data._notice = '인사이트 서버 호출 실패 — 데모 데이터 표시 중.';
+  }
+  // 백엔드 InsightsOut → 기존 화면 포맷으로 매핑
+  function _mapBackend(j) {
+    const topPosts = (j.top_posts || []).slice(0, 5).map((p, i) => ({
+      rank: i + 1,
+      caption: (p.caption || '(캡션 없음)').slice(0, 80),
+      likes: p.like_count || 0,
+      comments: p.comments_count || 0,
+      reach: p.reach || (p.like_count + p.comments_count * 3),
+      permalink: p.permalink || '',
+    }));
+    const days = ['일','월','화','수','목','금','토'];
+    const bestTimes = (j.best_hours || []).map((b) => {
+      const h = b.hour;
+      const label = h < 12 ? `오전 ${h || 12}시` : (h === 12 ? '낮 12시' : `오후 ${h - 12}시`);
+      const maxLikes = Math.max(...(j.best_hours || []).map(x => x.avg_likes), 1);
+      return { day: '', time: label, score: Math.round((b.avg_likes / maxLikes) * 100) };
+    });
+    // daily는 백엔드가 안 줌 — top_posts timestamp 기준 30일 합성
+    const daily = _dailyFromPosts(j.top_posts || []);
+    return {
+      daily,
+      topPosts,
+      bestTimes,
+      summary: {
+        totalLikes: j.total_likes || 0,
+        totalComments: j.total_comments || 0,
+        avgReach: Math.round((j.top_posts || []).reduce((s, p) => s + (p.reach || 0), 0) / Math.max(1, (j.top_posts || []).length)),
+        growthRate: 0,  // 백엔드 미제공 — 추후 보강
+      },
+    };
+  }
+  function _dailyFromPosts(posts) {
+    const buckets = {};
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const key = `${d.getMonth()+1}/${d.getDate()}`;
+      buckets[key] = { date: key, likes: 0, comments: 0, reach: 0, saves: 0 };
+    }
+    (posts || []).forEach(p => {
+      try {
+        const t = new Date(p.timestamp);
+        const key = `${t.getMonth()+1}/${t.getDate()}`;
+        if (buckets[key]) {
+          buckets[key].likes += p.like_count || 0;
+          buckets[key].comments += p.comments_count || 0;
+          buckets[key].reach += p.reach || 0;
+          buckets[key].saves += p.saved || 0;
+        }
+      } catch (_) { /* ignore */ }
+    });
+    return Object.values(buckets);
   }
   function _demoData() {
     const days = [];
@@ -53,7 +114,9 @@
       <header style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(0,0,0,0.06);">
         <button onclick="window.SNSAnalytics.close()" style="background:none;border:none;font-size:18px;cursor:pointer;margin-right:12px;">‹</button>
         <div style="font-size:15px;font-weight:800;">📊 게시물 성과 대시보드</div>
+        ${d._fromServer ? '<span style="margin-left:auto;font-size:10px;color:#4ade80;font-weight:700;">● 실시간</span>' : '<span style="margin-left:auto;font-size:10px;color:#888;">데모</span>'}
       </header>
+      ${d._notice ? `<div style="padding:8px 16px;background:#fff8e1;color:#8a6d3b;font-size:11px;border-bottom:1px solid #ffe0a3;">${_esc(d._notice)}</div>` : ''}
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:16px;">
         <div style="background:linear-gradient(135deg,#fff0f3,#ffe4ea);border-radius:14px;padding:16px;"><div style="font-size:10px;font-weight:700;color:var(--accent2);margin-bottom:4px;">총 좋아요</div><div style="font-size:24px;font-weight:900;">${(s.totalLikes||0).toLocaleString()}</div></div>
         <div style="background:linear-gradient(135deg,#f0f4ff,#e4edff);border-radius:14px;padding:16px;"><div style="font-size:10px;font-weight:700;color:#5b7dbd;margin-bottom:4px;">총 댓글</div><div style="font-size:24px;font-weight:900;">${(s.totalComments||0).toLocaleString()}</div></div>

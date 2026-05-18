@@ -1,6 +1,27 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-19 by Claude Code (v218 — 버그 fix + SN 백엔드 결선)
+**LAST UPDATED:** 2026-05-19 by Claude Code (v219 — 잔여 빈틈 4개 메움 = 진짜 완료)
+
+---
+
+## 2026-05-19 — v219 ultra-plan 잔여 빈틈 메움 (SN-5 / SN-1 / PE-5 / PE-1+6)
+
+배경: v218 보고 시 "솔직하게 빈틈 4개" 짚었음 — 사용자는 그것까지 다 처리하라는 의미였음. 모두 메움.
+
+신규 백엔드 (`itdasy_backend-test` 푸시):
+- `routers/instagram_insights.py` — `GET /instagram/insights`. Meta Graph API v21.0 호출 (`/{ig-user}/media` + 병렬 `/{media}/insights` saved+reach). top_posts/best_hours/follower_count 집계. 토큰/계정 없으면 `status='no_account'` 응답 (200).
+
+프론트 빈틈 메움:
+- **SN-5 실제 결선**: `app-sns-analytics.js` 가 새 응답 형식(`top_posts`, `best_hours`) 을 기존 화면 포맷으로 매핑. 헤더에 `● 실시간` / `데모` 뱃지. 미연동 시 안내 배너.
+- **SN-1 백엔드 동기화**: `app-sns-calendar.js` 의 `_open()` 이 `SNSSchedule.list()` 호출해서 서버 예약 병합. `_deletePost` 가 `serverId` 있으면 `SNSSchedule.cancel()` 자동 호출.
+- **PE-5 30종 진짜 차별화**: `app-photo-editor-templates-v2.js` `_drawOverlay` 가 30개 ID 분기 dispatch table. 각 템플릿마다 고유 합성 — 피드 5(쇼케이스/신메뉴/후기/가격/안내), 스토리 5(D-카운트/오픈/출석/Q&A/투표), 릴스 5(B&A/가격공개/신메뉴/후기★/4-step), 이벤트 5(SALE 회전/VIP 골드/2분할/마감/🎁), 가격표 5(헤어/네일/속눈썹/메이크업/왁싱 — 메뉴 4줄), 명함 5(미니멀/골드/핑크/다크/내추럴).
+- **PE-1/PE-6 로딩 UX**: `app-mediapipe-loader.js` 가 `onProgress(fn)` API 노출. PE-1 버튼이 `AI 모델 로딩 중 15%…` 식으로 progress 표시. PE-6 시트에 `arLoadingBanner` (보라 알림 배너) — 로딩 중/실패/얼굴 미검출 안내.
+
+빌드: `20260519-v219-truly-complete`
+백엔드: 새 commit 2개 (insights router + scheduled URL fix) test/main 푸시 완료
+확인: smoke 166 scripts pass, eslint 0 errors, headless Chrome JS 에러 0
+
+ultra-plan 미제외 항목 — **운영 가능한 수준까지 완료** (Phase 3/릴스/AI 배경 제외).
 
 ---
 

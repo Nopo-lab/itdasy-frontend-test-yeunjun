@@ -34,7 +34,19 @@
     detector: null,
     error: null,
     loadPromise: null,
+    progress: 0,    // 0~100
+    listeners: [],  // [(progress, status) => void]
   };
+
+  function _emit() {
+    _state.listeners.forEach(l => { try { l(_state.progress, _state.status); } catch (_) { /* ignore */ } });
+  }
+
+  function _setProgress(p, status) {
+    _state.progress = p;
+    if (status) _state.status = status;
+    _emit();
+  }
 
   function _loadScript(src) {
     return new Promise((resolve, reject) => {
@@ -50,14 +62,21 @@
   async function _load() {
     if (_state.status === 'ready') return _state.detector;
     if (_state.loadPromise) return _state.loadPromise;
-    _state.status = 'loading';
+    _setProgress(5, 'loading');
     _state.loadPromise = (async () => {
       try {
         if (!window.tf) {
+          _setProgress(15);
           await _loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js');
+          _setProgress(45);
+        } else {
+          _setProgress(45);
         }
         if (!window.faceLandmarksDetection) {
           await _loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.5/dist/face-landmarks-detection.min.js');
+          _setProgress(75);
+        } else {
+          _setProgress(75);
         }
         const FLD = window.faceLandmarksDetection;
         const detector = await FLD.createDetector(
@@ -65,16 +84,27 @@
           { runtime: 'tfjs', refineLandmarks: false, maxFaces: 1 }
         );
         _state.detector = detector;
-        _state.status = 'ready';
+        _setProgress(100, 'ready');
         return detector;
       } catch (e) {
-        _state.status = 'failed';
         _state.error = e && e.message;
+        _setProgress(0, 'failed');
         _state.loadPromise = null;
         throw e;
       }
     })();
     return _state.loadPromise;
+  }
+
+  function _onProgress(fn) {
+    if (typeof fn !== 'function') return () => {};
+    _state.listeners.push(fn);
+    // 현재 상태 즉시 전달
+    try { fn(_state.progress, _state.status); } catch (_) { /* ignore */ }
+    return () => {
+      const i = _state.listeners.indexOf(fn);
+      if (i >= 0) _state.listeners.splice(i, 1);
+    };
   }
 
   // canvas 또는 image element 입력 → landmarks 배열 반환 (없으면 null)
@@ -122,11 +152,13 @@
     REGIONS,
     load: _load,
     status: () => _state.status,
+    progress: () => _state.progress,
     error: () => _state.error,
     detect: _detect,
     regionPolygon: _regionPolygon,
     pathPolygon: _pathPolygon,
     drawFallbackEllipsePath: _drawFallbackEllipsePath,
     isReady: () => _state.status === 'ready',
+    onProgress: _onProgress,
   };
 })();
