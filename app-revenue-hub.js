@@ -521,9 +521,19 @@
     }, 200);
   });
 
-  window.openRevenueHub   = openRevenueHub;
+  // [v195] openRevenueHub 비활성 — v6 대시보드(openRevenue)로 일원화.
+  // 옛 list-only 진입을 차단. closeRevenueHub 는 유지 (기존 상태 정리용).
+  window.openRevenueHub   = function () {
+    if (typeof window.openRevenue === 'function') return window.openRevenue();
+    return openRevenueHub();  // 폴백 (이론상 안 옴)
+  };
   window.closeRevenueHub  = closeRevenueHub;
-  window.openRevenueInput = openRevenueHub;
+  window.openRevenueInput = function () {
+    if (typeof window.openRevenue === 'function') return window.openRevenue();
+    return openRevenueHub();
+  };
+  // 원래 함수도 참조 가능하게 (디버깅용)
+  window._origOpenRevenueHub = openRevenueHub;
   window.RevenueHub = {
     refresh:    async () => { sessionStorage.removeItem(CACHE_KEY); await _fetch(); _render(); },
     focusInput: () => document.querySelector(`#${OID} [data-field="customer_name"]`)?.focus(),
