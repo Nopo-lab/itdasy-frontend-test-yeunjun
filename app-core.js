@@ -495,9 +495,13 @@ const _USER_KEY_EXACT = ['last_login_email', 'user_oauth_provider', 'last_user_i
 // [2026-05-07 26차] user 변경 시 보존 키는 "디바이스 단위 UI 설정"만.
 // shop_* / onboarding_done 은 user 데이터 → 제거.
 // 잘못 보존되면 다른 user 로그인 시 옛 매장명/온보딩 상태가 남는다 (출시 블로커).
+// [v203.1 2026-05-19] onboarding_done 보존 — 로그아웃 후 같은 디바이스에서 재진입 시
+//   온보딩 다시 보지 않게. 다른 계정 로그인 시도 서버에서 shop_type 받아오면 갱신.
+//   원래 KEEP 빠져있어 로그아웃 후 카드 13개 화면이 잘려 보여 흰화면처럼 느껴짐.
 const _USER_KEY_KEEP = new Set([
   'theme', 'itdasy_theme', 'lang', 'i18n_lang',
   'itdasy_biometric_asked',
+  'onboarding_done',  // [v203.1] 추가
 ]);
 
 // [2026-04-26 A10] 사용자 데이터 정리 — localStorage 전수 순회는 큰 객체일 때
@@ -1095,6 +1099,13 @@ async function logout(opts) {
       await Promise.all(regs.map(r => r.unregister()));
     } catch (e) { /* SW unregister best-effort */ }
   }
+
+  // [v203.1 2026-05-19] sessionStorage 의 build_busted 도 청소 — mismatch 가드가 새 로드 시 재시도 가능하게
+  try { sessionStorage.clear(); } catch (_e) { void _e; }
+
+  // [v203.1] SW unregister 가 비동기적으로 완료될 시간 확보 (~100ms) — 즉시 reload 시
+  //   SW 가 아직 active 상태로 다음 페이지 인터셉트 가능성 있음.
+  await new Promise(r => setTimeout(r, 150));
 
   // 3. 페이지 새로고침 — cache bust 쿼리로 SW/브라우저 캐시 우회
   location.replace('index.html?_logout=' + Date.now());
@@ -1760,7 +1771,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260518-v202-photo-sprint1';
+window.APP_BUILD = '20260518-v203.1-hotfix';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;

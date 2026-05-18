@@ -319,12 +319,15 @@ body.itdasy-locked > :not(#lockOverlay, #signupOverlay, script, style, svg) {
 .pin-btn:disabled { opacity: 0.5; }
 
 /* ───── 온보딩 ───── */
+/* [v203.1 2026-05-19] 카드 13종으로 늘어 화면 넘침 → overflow-y:auto + flex-start */
 .ob-overlay {
   position: fixed; inset: 0; z-index: 10000;
   background: var(--bg);
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 32px 24px;
+  align-items: center; justify-content: flex-start;
+  padding: 40px 24px 80px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .ob-overlay.hidden { display: none; }
 
@@ -349,15 +352,15 @@ body.itdasy-locked > :not(#lockOverlay, #signupOverlay, script, style, svg) {
 }
 .ob-sub { font-size: 14px; color: var(--text2); line-height: 1.6; margin-bottom: 32px; }
 
-/* 2x2 샵 그리드 */
+/* [v203.1 2026-05-19] 13 카드 — 2열 유지하되 패딩·gap 축소로 한 화면 노출 ↑ */
 .ob-shop-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-  margin-bottom: 32px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  margin-bottom: 24px; width: 100%;
 }
 
 .ob-shop-card {
   background: var(--bg2); border: 2px solid var(--border);
-  border-radius: 20px; padding: 22px 12px; cursor: pointer;
+  border-radius: 16px; padding: 16px 10px; cursor: pointer;
   transition: all 0.2s; position: relative;
   box-shadow: 0 1px 6px rgba(0,0,0,0.05);
 }
@@ -367,8 +370,8 @@ body.itdasy-locked > :not(#lockOverlay, #signupOverlay, script, style, svg) {
 .ob-shop-card.disabled {
   opacity: 0.38; cursor: not-allowed; pointer-events: none;
 }
-.ob-shop-icon { font-size: 32px; margin-bottom: 8px; }
-.ob-shop-name { font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+.ob-shop-icon { font-size: 28px; margin-bottom: 6px; line-height: 1; }
+.ob-shop-name { font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; line-height: 1.3; }
 
 .ob-shop-badge {
   position: absolute; top: 10px; right: 10px;
