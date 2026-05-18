@@ -200,7 +200,7 @@
     [/단골|VIP|멤버십/i, 'openCustomers'],
     [/예약|booking/i, 'openBooking'],
     [/매출|revenue|입력/i, 'openRevenue'],
-    [/재고|inventory/i, 'openInventory'],
+    /* INVENTORY_HIDDEN */ // [/재고|inventory/i, 'openInventory'],
     [/안부|메시지|문자/i, 'openAssistant'],
     [/캡션|글쓰기|발행/i, 'openCaption'],
   ];

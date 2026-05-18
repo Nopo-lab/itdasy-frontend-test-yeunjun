@@ -849,10 +849,12 @@
     <span class="ms-side__icon"><span class="ic-box ic-box--amber"><svg width="20" height="20" aria-hidden="true"><use href="#ic-wallet"/></svg></span></span>
     <span class="ms-side__label">매출관리</span>
   </button>
+<!-- INVENTORY_HIDDEN
   <button type="button" class="ms-side__item" onclick="window.openInventoryHub && window.openInventoryHub();" aria-label="재고관리">
     <span class="ms-side__icon"><span class="ic-box ic-box--coral"><svg width="20" height="20" aria-hidden="true"><use href="#ic-package"/></svg></span></span>
     <span class="ms-side__label">재고관리</span>
   </button>
+-->
   <button type="button" class="ms-side__item" onclick="window.openServiceTemplates && window.openServiceTemplates();" aria-label="시술 메뉴">
     <span class="ms-side__icon"><span class="ic-box ic-box--pink"><svg width="20" height="20" aria-hidden="true"><use href="#ic-tag"/></svg></span></span>
     <span class="ms-side__label">시술 메뉴</span>
@@ -872,10 +874,6 @@
   <button type="button" class="ms-side__item" onclick="(window.openPlan || window.openPlanPopup)?.();" aria-label="플랜 · Free">
     <span class="ms-side__icon"><span class="ic-box ic-box--amber"><svg width="20" height="20" aria-hidden="true"><use href="#ic-id-card"/></svg></span></span>
     <span class="ms-side__label">플랜 · Free</span>
-  </button>
-  <button type="button" class="ms-side__item" onclick="setTimeout(function(){(window.openHelpGuide)?.();},0);" aria-label="사용 가이드">
-    <span class="ms-side__icon"><span class="ic-box ic-box--teal"><svg width="20" height="20" aria-hidden="true"><use href="#ic-book-open"/></svg></span></span>
-    <span class="ms-side__label">사용 가이드</span>
   </button>
   <button type="button" class="ms-side__item" onclick="setTimeout(function(){(window.openSupport || window.openSupportChat)?.();},0);" aria-label="문의하기">
     <span class="ms-side__icon"><span class="ic-box ic-box--teal"><svg width="20" height="20" aria-hidden="true"><use href="#ic-message-circle"/></svg></span></span>
@@ -920,9 +918,6 @@
     </button>
     <button class="sheet-row" onclick="closeSettings(); runPersonaAnalyze(true);">내 말투 새로 분석하기</button>
     <button class="sheet-row" onclick="closeSettings(); resetShopSetup();">샵 정보 다시 설정하기</button>
-    <button class="sheet-row" data-haptic="light" onclick="closeSettings(); openHelpGuide();">
-      <span class="ic-box ic-box--sm ic-box--teal" style="margin-right:6px;"><i class="ph-duotone ph-book-open"></i></span> 사용 가이드 (워크플로우)
-    </button>
     <button class="sheet-row" data-haptic="light" onclick="closeSettings(); openSupportChat();">
       <span class="ic-box ic-box--sm ic-box--blue" style="margin-right:6px;"><i class="ph-duotone ph-headset"></i></span> 고객센터 (문의하기)
       <span id="supportUnreadBadge" style="display:none;margin-left:8px;background:var(--brand);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;"></span>
@@ -1837,11 +1832,13 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
       <span class="lbl">매출관리</span>
       <i class="ph-duotone ph-caret-right" style="font-size:14px;color:var(--text-subtle);margin-left:auto;" aria-hidden="true"></i>
     </button>
+<!-- INVENTORY_HIDDEN
     <button type="button" class="drawer-item" data-drawer-route="inventory">
       <span class="ic-box ic-box--sm ic-box--coral" aria-hidden="true"><i class="ph-duotone ph-package"></i></span>
       <span class="lbl">재고관리</span>
       <i class="ph-duotone ph-caret-right" style="font-size:14px;color:var(--text-subtle);margin-left:auto;" aria-hidden="true"></i>
     </button>
+-->
 
     <div class="drawer-group">AI · 자동화</div>
     <button type="button" class="drawer-item" data-drawer-route="ai_hub">
@@ -1931,7 +1928,6 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-theme.js" defer></script>
 <script src="app-plan.js?v=20260504-1" defer></script>
 <script src="app-support.js" defer></script>
-<script src="app-help-guide.js" defer></script>
 <script src="app-customer-cache.js?v=20260506-v100" defer></script>
 <script src="app-customer.js?v=20260506-v100" defer></script>
 <script src="app-customer-dashboard.js?v=20260517-v167" defer></script>
@@ -1961,7 +1957,7 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-revenue-month.js?v=20260517-v143-mockup6" defer></script>
 <script src="app-booking-api.js" defer></script>
 <script src="app-booking-approval.js" defer></script>
-<script src="app-inventory.js" defer></script>
+<!-- INVENTORY_HIDDEN <script src="app-inventory.js" defer></script> -->
 <script src="app-nps.js" defer></script>
 <script src="app-naver-reviews.js" defer></script>
 <script src="app-video.js" defer></script>
@@ -2037,7 +2033,7 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-revenue-hub.js" defer></script>
 <script src="app-revenue-report.js" defer></script>
 <script src="js/hubs/prototype-render.js?v=20260504-1" defer></script>
-<script src="app-inventory-hub.js?v=20260504-1" defer></script>
+<!-- INVENTORY_HIDDEN <script src="app-inventory-hub.js?v=20260504-1" defer></script> -->
 <script src="app-emoji-storage.js" defer></script>
 <!-- [2026-05-17 v167] 고객별 추천 chip + AI 브리핑 (P0-3, P1-5) — customer-hub/dashboard 보다 먼저 로드 -->
 <script src="app-customer-chips.js?v=20260517-v167" defer></script>

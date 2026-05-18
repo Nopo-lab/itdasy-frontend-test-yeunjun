@@ -632,7 +632,7 @@
 
   window.openReceiptScan = openReceiptScan;
   window.openExpenseScan = () => openReceiptScan('expense');
-  window.openInventoryOrderScan = () => openReceiptScan('inventory_order');
+  /* INVENTORY_HIDDEN */ // window.openInventoryOrderScan = () => openReceiptScan('inventory_order');
 
   // Phase 8 — 통합 선택 UI: 영수증인지 주문내역인지 먼저 고르기
   window.openReceiptScanChooser = function () {

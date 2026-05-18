@@ -482,7 +482,7 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 }
 .hv-ops__grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr; /* INVENTORY_HIDDEN: 3 → 2 */
   gap: 6px;
 }
 .hv-ops__card {

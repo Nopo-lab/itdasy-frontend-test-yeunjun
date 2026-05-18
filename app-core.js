@@ -2013,7 +2013,7 @@ window._preloadTabs = async function () {
     { url: '/revenue?period=today', swrKey: 'pv_cache::revenue::today' },
     { url: '/revenue?period=week',  swrKey: 'pv_cache::revenue::week' },
     { url: '/revenue?period=month', swrKey: 'pv_cache::revenue::month' },
-    { url: '/inventory',            swrKey: 'pv_cache::inventory' },
+    /* INVENTORY_HIDDEN */ // { url: '/inventory', swrKey: 'pv_cache::inventory' },
     { url: '/services',             swrKey: 'pv_cache::service' },
     { url: '/today/brief',          swrKey: 'pv_cache::today' },
     { url: '/assistant/suggestions', swrKey: 'pv_cache::ai_suggest' },

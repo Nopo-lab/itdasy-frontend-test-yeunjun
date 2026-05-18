@@ -150,11 +150,13 @@
           <div class="v">${_krw(avg)}</div>
           <div class="s">건당 평균</div>
         </div>
+        <!-- PROFIT_HIDDEN
         <div class="rvm-pcstat">
           <div class="l">순수익</div>
-          <div class="v">${_krw(inc.net || 0)}</div>
-          <div class="s">재료${inc.settings ? inc.settings.material_pct : 15}% 기본</div>
+          <div class="v">${"$"}{_krw(inc.net || 0)}</div>
+          <div class="s">재료${"$"}{inc.settings ? inc.settings.material_pct : 15}% 기본</div>
         </div>
+        -->
       </div>`;
   }
 
@@ -193,7 +195,7 @@
     const weekCard = period === 'week'
       ? `<div class="rvm-cd"><div class="rvm-sl" style="margin-top:0">일별 매출</div>${_renderWeekDays(items, new Date())}</div>`
       : '';
-    const incentive = R._renderIncentiveCardHTML ? R._renderIncentiveCardHTML(total, 'margin:0;') : '';
+    /* PROFIT_HIDDEN */ const incentive = ''; // 순수익 카드 비활성화
     const layout = period === 'week'
       ? `<div class="rvm-pcg2" style="grid-template-columns:1fr 1fr;">
           <div class="rvm-cd"><div class="rvm-sl" style="margin-top:0">결제수단 분포</div>${_renderPaymentBars(by_method, total)}</div>

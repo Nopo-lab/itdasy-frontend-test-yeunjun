@@ -261,6 +261,7 @@
       cards.push({ ok: 1, cat: '단골 관리', dot: '#10B981', okMsg: '이탈 위험 손님 없어요' });
     }
 
+    /* INVENTORY_HIDDEN
     // 3. 재고 부족
     const lowStockRaw = brief.low_stock;
     const lowStock = Array.isArray(lowStockRaw) ? lowStockRaw.length : (Number(lowStockRaw) || 0);
@@ -272,6 +273,7 @@
     } else {
       cards.push({ ok: 1, cat: '재고 관리', dot: '#10B981', okMsg: '재고 넉넉해요' });
     }
+    */
 
     // 4. DM 자동응답
     const dmCnt = Number(dmQueueCnt) || 0;
@@ -568,18 +570,20 @@
     return _won(v);
   }
   function _renderOps(brief) {
-    const stock = _opsStock(brief);
+    /* INVENTORY_HIDDEN const stock = _opsStock(brief); */
     const custVal = _opsCustomers(brief);
     const revVal = _opsRevenue(brief);
-    const stockDanger = stock.danger ? ' is-danger' : '';
+    /* INVENTORY_HIDDEN const stockDanger = stock.danger ? ' is-danger' : ''; */
     return `
       <section class="hv-ops" aria-label="운영 관리">
         <div class="hv-ops__title">운영 관리</div>
         <div class="hv-ops__grid">
+          <!-- INVENTORY_HIDDEN
           <button type="button" class="hv-ops__card" data-hv-act="openInventory">
             <div class="hv-ops__cat">재고관리</div>
-            <div class="hv-ops__val${stockDanger}">${_esc(stock.val)}</div>
+            <div class="hv-ops__val${"$"}{stockDanger}">${"$"}{_esc(stock.val)}</div>
           </button>
+          -->
           <button type="button" class="hv-ops__card" data-hv-act="openCustomers">
             <div class="hv-ops__cat">고객관리</div>
             <div class="hv-ops__val">${_esc(custVal)}</div>
@@ -696,9 +700,11 @@
           try { window.showTab('dashboard', btn); } catch (_e) { /* ignore */ }
         }
       },
+      /* INVENTORY_HIDDEN
       openInventory: () => {
         if (typeof window.openInventoryPanel === 'function') return window.openInventoryPanel();
       },
+      */
     };
     if (map[act]) { map[act](); return; }
     if (typeof window[act] === 'function') {
@@ -1192,17 +1198,19 @@
   }
 
   function _renderOpsV5(brief) {
-    const stock = _opsStock(brief);
+    /* INVENTORY_HIDDEN const stock = _opsStock(brief); */
     const custVal = _opsCustomers(brief);
     const monthTotal = (brief && brief.this_month_total) || 0;
-    const stockDanger = stock.danger ? ' danger' : '';
+    /* INVENTORY_HIDDEN const stockDanger = stock.danger ? ' danger' : ''; */
     return `<div class="hv5-ops">
       <div class="hv5-ops-title">운영 관리</div>
       <div class="hv5-ops-grid">
+        <!-- INVENTORY_HIDDEN
         <button type="button" class="hv5-ops-card" data-hv-act="openInventory">
           <div class="hv5-ops-cat">재고관리</div>
-          <div class="hv5-ops-val${stockDanger}">${_esc(stock.val)}</div>
+          <div class="hv5-ops-val${"$"}{stockDanger}">${"$"}{_esc(stock.val)}</div>
         </button>
+        -->
         <button type="button" class="hv5-ops-card" data-hv-act="openCustomers">
           <div class="hv5-ops-cat">고객관리</div>
           <div class="hv5-ops-val">${_esc(custVal)}</div>

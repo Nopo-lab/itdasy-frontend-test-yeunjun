@@ -13,7 +13,7 @@
 
   const API = window.API || window.PROD_API || '';
   let _cache = [];
-  let _inventoryCache = [];
+  /* INVENTORY_HIDDEN */ let _inventoryCache = []; // dead — 유지 (다른 함수가 참조해도 빈 배열로 안전)
   let _monthUsage = {};  // service_name → count
 
   // ── 토큰/네트워크 ───────────────────────────────────────
@@ -41,9 +41,9 @@
   async function updateTemplate(id, body) { return _req('PATCH', `/services/${id}`, body); }
   async function deleteTemplate(id) { await _req('DELETE', `/services/${id}`); return true; }
 
+  /* INVENTORY_HIDDEN — /inventory fetch 차단. 호출은 그대로 빈 배열 반환. */
   async function loadInventoryItems() {
-    try { const d = await _req('GET', '/inventory'); _inventoryCache = (d && d.items) || []; }
-    catch (_) { _inventoryCache = []; }
+    _inventoryCache = [];
     return _inventoryCache;
   }
   async function loadConsumptions(serviceId) {
@@ -81,7 +81,7 @@
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;gap:12px;">
         <div style="min-width:0;">
           <h2 style="font-size:20px;font-weight:700;color:#191F28;margin:0;">시술 프리셋</h2>
-          <p style="font-size:13px;color:#8B95A1;margin:4px 0 0;line-height:1.5;">한 번 설정하면 예약·매출·재고가 자동으로 움직입니다</p>
+          <p style="font-size:13px;color:#8B95A1;margin:4px 0 0;line-height:1.5;">한 번 설정하면 예약·매출이 자동으로 움직입니다</p>
         </div>
         <button type="button" class="svc-add-btn" style="padding:10px 18px;border-radius:999px;background:#E5586E;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">+ 새 시술 추가</button>
       </div>`;
@@ -90,10 +90,12 @@
   // ── 카드 ───────────────────────────────────────────────
   function _renderCard(svc) {
     const price = Number(svc.default_price) || 0;
+    /* PROFIT_HIDDEN
     const matCost = Number(svc.material_cost) || 0;
     const margin = price - matCost;
     const marginPct = price > 0 ? ((margin / price) * 100).toFixed(1) : '0';
-    const consCount = Array.isArray(svc._consumptions) ? svc._consumptions.length : 0;
+    */
+    /* INVENTORY_HIDDEN const consCount = Array.isArray(svc._consumptions) ? svc._consumptions.length : 0; */
     const dur = Number(svc.default_duration_min) || 0;
     const usage = _monthUsage[svc.name] || 0;
     return `
@@ -105,12 +107,16 @@
           </div>
           <div style="font-size:20px;font-weight:700;color:#E5586E;white-space:nowrap;">${_formatPrice(price)}</div>
         </div>
+        <!-- PROFIT_HIDDEN
         <div style="margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-          <span style="font-size:14px;font-weight:600;color:${margin >= 0 ? '#0F6E56' : '#E5586E'};">마진 ${_formatPrice(margin)} (${marginPct}%)</span>
-          <span style="font-size:12px;color:#8B95A1;">재료원가 ${_formatPrice(matCost)}</span>
+          <span style="font-size:14px;font-weight:600;color:${"$"}{margin >= 0 ? '#0F6E56' : '#E5586E'};">마진 ${"$"}{_formatPrice(margin)} (${"$"}{marginPct}%)</span>
+          <span style="font-size:12px;color:#8B95A1;">재료원가 ${"$"}{_formatPrice(matCost)}</span>
         </div>
+        -->
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid #E5E8EB;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span style="font-size:11px;padding:4px 10px;border-radius:999px;background:#F7F8FA;color:#4E5968;">${consCount > 0 ? '소모재료 ' + consCount + '종' : '소모재료 미설정'}</span>
+          <!-- INVENTORY_HIDDEN
+          <span style="font-size:11px;padding:4px 10px;border-radius:999px;background:#F7F8FA;color:#4E5968;">${"$"}{consCount > 0 ? '소모재료 ' + consCount + '종' : '소모재료 미설정'}</span>
+          -->
           ${svc.retouch_period_days ? `<span style="font-size:11px;padding:4px 10px;border-radius:999px;background:#FFF1F3;color:#E5586E;">리터치 ${_esc(svc.retouch_period_days)}일</span>` : ''}
           <span style="margin-left:auto;font-size:11px;color:#8B95A1;">${usage}건 이번달</span>
           <a data-svc-edit="${_esc(svc.id)}" style="font-size:12px;color:#E5586E;font-weight:600;cursor:pointer;text-decoration:none;">수정</a>
@@ -128,7 +134,7 @@
 
   // ── 자동 연동 흐름 다이어그램 ───────────────────────────
   function _renderFlowDiagram() {
-    const steps = ['프리셋 설정', '예약 추가', '예약 완료', '매출+재고', '리터치 알림'];
+    const steps = ['프리셋 설정', '예약 추가', '예약 완료', '매출 기록', '리터치 알림'];
     const item = (s, i) => `
       <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
         <div style="width:32px;height:32px;border-radius:50%;background:#FFF1F3;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#E5586E;">${i + 1}</div>
@@ -275,7 +281,9 @@
     }, 50);
   }
 
-  // ── 재료 소모 (기존 구조 유지) ──────────────────────────
+  // ── 재료 소모 (INVENTORY_HIDDEN) — stub 만 유지 (외부 ServiceTemplates 객체 참조 보장) ──
+  /* INVENTORY_HIDDEN */ async function editConsumptions(/* serviceId */) { return; }
+  /* INVENTORY_HIDDEN
   async function editConsumptions(serviceId) {
     if (!window.openSheet) return;
     const svc = _cache.find(x => String(x.id) === String(serviceId));
@@ -336,6 +344,7 @@
       } catch (_e) { if (window.showToast) window.showToast('삭제 실패', 'error'); }
     });
   }
+  */
 
   // ── 외부 노출 ──────────────────────────────────────────
   window.openServiceTemplates = openServiceTemplates;

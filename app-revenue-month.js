@@ -120,8 +120,8 @@
     return {
       period: 'month', year: now.getFullYear(), month: now.getMonth() + 1, is_past: false,
       total, count, net_total,
-      material_cost_total: 0,
-      net_profit: net_total,
+      /* PROFIT_HIDDEN */ material_cost_total: 0,
+      /* PROFIT_HIDDEN */ net_profit: net_total,
       avg_per_customer: avg_per,
       business_days: biz,
       daily_avg,
@@ -503,10 +503,12 @@
               <span class="amt">${_krw(summary.total)}</span>
               <span class="cnt">${summary.count}건 완료</span>
             </div>
+            <!-- PROFIT_HIDDEN
             <div class="rvm5-stats">
-              <div class="rvm5-stat"><div class="l">순수익</div><div class="v">${_krw(summary.net_profit)}</div></div>
-              <div class="rvm5-stat"><div class="l">재료비</div><div class="v">${_krw(summary.material_cost_total || 0)}</div></div>
+              <div class="rvm5-stat"><div class="l">순수익</div><div class="v">${"$"}{_krw(summary.net_profit)}</div></div>
+              <div class="rvm5-stat"><div class="l">재료비</div><div class="v">${"$"}{_krw(summary.material_cost_total || 0)}</div></div>
             </div>
+            -->
           </div>
           <div class="rvm5-right">
             <div class="rvm5-card">
@@ -555,10 +557,12 @@
             <span class="amt">${_krw(summary.total)}</span>
             <span class="cnt">${summary.count}건 완료</span>
           </div>
+          <!-- PROFIT_HIDDEN
           <div class="rvm5-mhero-sub">
-            <div class="c"><div class="l">순수익</div><div class="v">${_krw(summary.net_profit)}</div></div>
-            <div class="c"><div class="l">재료비</div><div class="v">${_krw(summary.material_cost_total || 0)}</div></div>
+            <div class="c"><div class="l">순수익</div><div class="v">${"$"}{_krw(summary.net_profit)}</div></div>
+            <div class="c"><div class="l">재료비</div><div class="v">${"$"}{_krw(summary.material_cost_total || 0)}</div></div>
           </div>
+          -->
         </div>
         ${aiRow}
         <div class="rvm5-mc">
@@ -584,15 +588,19 @@
     if (isMobile) {
       const heroAmt = container.querySelector('.rvm5-mhero-top .amt');
       if (heroAmt) _countUp(heroAmt, summary.total, 800);
+      /* PROFIT_HIDDEN
       const subVals = container.querySelectorAll('.rvm5-mhero-sub .v');
       if (subVals[0]) _countUp(subVals[0], summary.net_profit, 900);
       if (subVals[1] && summary.material_cost_total > 0) _countUp(subVals[1], summary.material_cost_total, 600);
+      */
     } else {
       const heroAmt = container.querySelector('.rvm5-hero .amt');
       if (heroAmt) _countUp(heroAmt, summary.total, 800);
+      /* PROFIT_HIDDEN
       const statVals = container.querySelectorAll('.rvm5-stat .v');
       if (statVals[0]) _countUp(statVals[0], summary.net_profit, 900);
       if (statVals[1] && summary.material_cost_total > 0) _countUp(statVals[1], summary.material_cost_total, 600);
+      */
     }
   }
 

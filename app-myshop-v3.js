@@ -324,7 +324,7 @@
       _menuItemHTML({ act: 'booking', iconClass: 'ms-menu__icon--teal', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-calendar-check"/></svg>', name: '예약관리', meta: m.bookMeta }),
       _menuItemHTML({ act: 'customer', iconClass: 'ms-menu__icon--blue', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-users"/></svg>', name: '고객관리', meta: m.custMeta, metaClass: m.atRiskN ? 'is-danger' : '' }),
       _menuItemHTML({ act: 'revenue', iconClass: 'ms-menu__icon--amber', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-wallet"/></svg>', name: '매출관리', meta: m.revMeta, metaClass: 'is-ok' }),
-      _menuItemHTML({ act: 'inventory', iconClass: 'ms-menu__icon--coral', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-package"/></svg>', name: '재고관리', meta: m.stockMeta, metaClass: m.lowStock > 0 ? 'is-danger' : '', badge: m.lowStock > 0 ? m.lowStock : null }),
+      /* INVENTORY_HIDDEN */ // _menuItemHTML({ act: 'inventory', iconClass: 'ms-menu__icon--coral', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-package"/></svg>', name: '재고관리', meta: m.stockMeta, metaClass: m.lowStock > 0 ? 'is-danger' : '', badge: m.lowStock > 0 ? m.lowStock : null }),
     ].join('');
     return `<div class="ms-section"><div class="ms-section__title">운영 관리</div><div class="ms-menu">${items}</div></div>`;
   }
@@ -375,7 +375,7 @@
       _sideItemHTML({ act: 'booking',   iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-calendar-check"/></svg>',    label: '예약관리', badge: todayN > 0 ? todayN : null, badgeClass: 'is-ok' }),
       _sideItemHTML({ act: 'customer',  iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-users"/></svg>',       label: '고객관리' }),
       _sideItemHTML({ act: 'revenue',   iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-wallet"/></svg>', label: '매출관리' }),
-      _sideItemHTML({ act: 'inventory', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-package"/></svg>',     label: '재고관리', badge: lowStock > 0 ? lowStock : null }),
+      /* INVENTORY_HIDDEN */ // _sideItemHTML({ act: 'inventory', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-package"/></svg>', label: '재고관리', badge: lowStock > 0 ? lowStock : null }),
     ].join('');
   }
   function _sideHubHTML() {
@@ -641,7 +641,7 @@
       booking:        () => window.openCalendarView && window.openCalendarView(),
       customer:       () => window.openCustomerHub && window.openCustomerHub(),
       revenue:        () => (window.openRevenue || window.openRevenueHub)?.(),
-      inventory:      () => window.openInventoryHub && window.openInventoryHub(),
+      /* INVENTORY_HIDDEN */ // inventory:      () => window.openInventoryHub && window.openInventoryHub(),
       aiHub:          () => window.openAiHub && window.openAiHub(),
       dmHub:          () => window.openDMAutoreplySettings && window.openDMAutoreplySettings(),
       settings:       () => window.openSettingsHub && window.openSettingsHub(),

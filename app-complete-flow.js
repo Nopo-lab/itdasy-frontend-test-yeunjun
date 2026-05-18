@@ -305,7 +305,9 @@
     return `
       <div class="cf-auto-preview">
         <div class="cf-preview-row"><span class="cf-check">✓</span><span>${willRevenue ? `매출 ${_esc(_fmt(_ctx.amount))} 자동 기록` : '매출은 기록되지 않아요 (금액 없음)'}</span></div>
+        <!-- INVENTORY_HIDDEN
         <div class="cf-preview-row"><span class="cf-check">✓</span><span>소모재료 자동 차감 (프리셋 설정 기준)</span></div>
+        -->
         <div class="cf-preview-row"><span class="cf-check">✓</span><span>리터치 알림 자동 등록 (프리셋 설정 주기)</span></div>
       </div>`;
   }
@@ -329,13 +331,15 @@
       </div>
       <div class="cf-sub-actions">
         <button id="cfEditBooking" type="button" class="cf-sub-btn">예약 시간·고객 수정</button>
+        <!-- INVENTORY_HIDDEN
         <button id="cfInventory" type="button" class="cf-sub-btn">재고 확인</button>
+        -->
       </div>
     `;
 
     document.getElementById('cfSkip').addEventListener('click', _skipAndComplete);
     document.getElementById('cfSave').addEventListener('click', _saveAll);
-    document.getElementById('cfInventory').addEventListener('click', _openInventory);
+    /* INVENTORY_HIDDEN */ // document.getElementById('cfInventory').addEventListener('click', _openInventory);
     document.querySelectorAll('.cf-pill').forEach(btn => {
       btn.addEventListener('click', () => {
         _ctx.method = btn.dataset.method;
@@ -362,11 +366,13 @@
     });
   }
 
+  /* INVENTORY_HIDDEN
   function _openInventory() {
     _close();
     if (typeof window.openInventoryHub === 'function') window.openInventoryHub();
     else if (window.showToast) window.showToast('재고 화면을 불러올 수 없어요');
   }
+  */
 
   // 매출 미기록 — BE에 skip_revenue 플래그 전달 (리터치/재고는 그대로 처리됨)
   async function _skipAndComplete() {

@@ -98,7 +98,6 @@
       </div>
       <div class="ms-section__title" style="margin-top:14px;">도움</div>
       <div class="ms-sh">
-        ${_rowHTML('guide',    'ic-book-open',  '사용 가이드',        '워크플로우 안내', { boxColor: 'teal' })}
         ${_rowHTML('support',  'ic-headset',    '고객센터 · 문의',    '1:1 채팅 문의', { boxColor: 'blue' })}
       </div>
     `;
@@ -254,7 +253,6 @@
     if (act === 'undo')      { close(); setTimeout(() => window.openUndoHistory && window.openUndoHistory(), 200); return; }
     if (act === 'failures')  { close(); setTimeout(() => window.openFailuresHub && window.openFailuresHub(), 200); return; }
     if (act === 'membership'){ close(); setTimeout(() => window.MembershipUI && window.MembershipUI.openExpiringList && window.MembershipUI.openExpiringList(30), 200); return; }
-    if (act === 'guide')     { close(); setTimeout(() => window.openHelpGuide && window.openHelpGuide(), 200); return; }
     if (act === 'support')   { close(); setTimeout(() => (window.openSupport || window.openSupportChat) && (window.openSupport || window.openSupportChat)(), 200); return; }
     if (act === 'haptic') {
       try { window.toggleHapticSetting && window.toggleHapticSetting(); window.updateHapticToggleLabel && window.updateHapticToggleLabel(); } catch (_e) { void _e; }

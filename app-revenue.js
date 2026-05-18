@@ -231,6 +231,9 @@
     return { gross: totalKRW, material, fixed: s.fixed_monthly || 0, net: totalKRW - material - (s.fixed_monthly || 0), settings: s };
   }
   // [Step 5 · 2026-05-16] prompt 2개 → 작은 모달 1개. 카드 수수료 필드도 추가.
+  /* PROFIT_HIDDEN — 비용 설정 모달 비활성 (재료비/고정비/카드수수료 입력 UI 차단) */
+  function _openIncentiveSettings() { return; }
+  /* PROFIT_HIDDEN
   function _openIncentiveSettings() {
     const s = _incentiveSettings();
     let modal = document.getElementById('rvCostModal');
@@ -275,6 +278,7 @@
       _rerender();
     });
   }
+  */
 
   // ── 도넛 (today 뷰가 사용) ───────────────────────────────
   function _renderDonut(breakdown, opts) {
@@ -304,7 +308,9 @@
     return `<div class="rv-chart__body"><div class="rv-donut" style="background:conic-gradient(${slices});"><div class="rv-donut__center"><div class="rv-donut__total">${_formatMan(total)}</div><div class="rv-donut__label">${_esc(centerLbl)}</div></div></div><div class="rv-legend">${legend}</div></div>`;
   }
 
-  // ── 인센티브 카드 (today 뷰가 사용) ──────────────────────
+  // ── 인센티브 카드 (PROFIT_HIDDEN) — 빈 문자열 반환 stub ──
+  function _renderIncentiveCardHTML(/* totalKRW, extraStyle */) { return ''; }
+  /* PROFIT_HIDDEN
   function _renderIncentiveCardHTML(totalKRW, extraStyle) {
     const c = _calcIncentive(totalKRW);
     return `
@@ -321,6 +327,7 @@
         </div>
       </div>`;
   }
+  */
 
   // ── 도넛 비동기 로딩 (today 뷰가 호출) ───────────────────
   async function _loadDonutAsync(chartEl) {
@@ -390,7 +397,7 @@
       _loadAndRender(); _prefetchAllPeriods();
       return;
     }
-    if (act === 'incentive-cfg') return _openIncentiveSettings();
+    /* PROFIT_HIDDEN */ // if (act === 'incentive-cfg') return _openIncentiveSettings();
     if (act === 'qa-add') return _submitQuickAdd();
     if (act === 'add-form') return _openAddForm();
     if (act === 'load-more') { _revWindow += 50; _rerender(); return; }
@@ -403,7 +410,7 @@
         else if (target === 'goMyshop' && typeof window.goMyshop === 'function') window.goMyshop();
         else if (target === 'booking' && typeof window.openCalendarView === 'function') window.openCalendarView();
         else if (target === 'customer' && typeof window.openCustomerHub === 'function') window.openCustomerHub();
-        else if (target === 'inventory' && typeof window.openInventoryHub === 'function') window.openInventoryHub();
+        /* INVENTORY_HIDDEN */ // else if (target === 'inventory' && typeof window.openInventoryHub === 'function') window.openInventoryHub();
         else if (target === 'aiHub' && typeof window.openAIHub === 'function') window.openAIHub();
         else if (target === 'settings' && typeof window.openSettingsHub === 'function') window.openSettingsHub();
       } catch (_e) { void _e; }
