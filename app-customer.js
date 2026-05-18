@@ -84,11 +84,18 @@
     window._customerDataListenerInit = true;
     window.addEventListener('itdasy:data-changed', async (e) => {
       const k = e.detail && e.detail.kind;
-      if (k === 'create_customer' || k === 'update_customer' || k === 'create_revenue' || k === 'create_booking') {
+      // [v212] delete_customer 추가 — 디테일에서 삭제 시 목록 즉시 갱신
+      if (k === 'create_customer' || k === 'update_customer' || k === 'delete_customer' ||
+          k === 'create_revenue' || k === 'create_booking') {
         _clearSWR();
         const sheet = document.getElementById('customerSheet');
         if (sheet && sheet.style.display === 'flex') {
           try { await _fetchFresh(); _rerender && _rerender(); } catch (_e) { void _e; }
+          // PC 면 우측 디테일이 삭제된 고객을 보여주고 있을 수 있음 → 빈 상태로 복귀
+          if (k === 'delete_customer') {
+            const mount = sheet.querySelector('#cdDetailMount');
+            if (mount) mount.innerHTML = '<div class="pc-r-empty">왼쪽에서 손님을 선택하세요</div>';
+          }
         }
       }
     });
@@ -268,8 +275,10 @@
     );
   }
 
-  // [v208] PC 한 화면 분할 판정 (PC width 1100+ 이면 좌측 리스트 + 우측 디테일)
-  const _PC_BREAKPOINT = 1100;
+  // [v212] PC 한 화면 분할 판정 — 사이드바(232px) + 좌목록(380px) + 디테일(통계 3카드) 까지 모두 표시되려면
+  // 전체 viewport 가 충분히 넓어야 함. 부족하면 모바일 풀화면 시트로 폴백.
+  // 1280 = 232(sidebar) + 380(pc-l) + 64(padding) + 600(min detail) 근사.
+  const _PC_BREAKPOINT = 1280;
   function _isPC() { return window.innerWidth >= _PC_BREAKPOINT; }
 
   // ── UI: 오버레이 시트 (v4 — 목업 mockup-customer-v4.html) ───────
@@ -707,7 +716,17 @@
     }
   };
 
+  // [v212] viewport 폭이 바뀌어 PC/모바일 모드 미스매치면 시트 재생성
+  function _resetSheetIfModeMismatched() {
+    const sheet = document.getElementById('customerSheet');
+    if (!sheet) return;
+    const wasPC = sheet.classList.contains('cv4-pc');
+    if (wasPC === _isPC()) return;
+    sheet.remove();
+  }
+
   window.openCustomers = async function () {
+    _resetSheetIfModeMismatched();
     const sheet = _ensureSheet();
     sheet.style.display = 'flex';
     sheet.classList.add('dt-shown');
@@ -739,6 +758,23 @@
     if (sheet) { sheet.style.display = 'none'; sheet.classList.remove('dt-shown'); }
     document.body.style.overflow = '';
   };
+
+  // [v212] 창 리사이즈로 PC↔모바일 모드 변경되면 자동 재생성
+  if (!window._customerResizeListenerInit) {
+    window._customerResizeListenerInit = true;
+    let _rzTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(_rzTimer);
+      _rzTimer = setTimeout(() => {
+        const sheet = document.getElementById('customerSheet');
+        if (!sheet || sheet.style.display === 'none') return;
+        const wasPC = sheet.classList.contains('cv4-pc');
+        if (wasPC !== _isPC()) {
+          if (typeof window.openCustomers === 'function') window.openCustomers();
+        }
+      }, 200);
+    });
+  }
 
   // ── 픽커 (외부 컴포넌트 재사용) ──────────────────────────
   //   await Customer.pick({ selectedId })  →  {id, name} | null (취소)

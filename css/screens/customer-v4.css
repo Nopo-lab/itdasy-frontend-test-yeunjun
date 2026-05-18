@@ -16,9 +16,12 @@
 
 #customerSheet .cv4-chips { display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap; }
 #customerSheet .cv4-chip {
-  font-size:12px;padding:6px 12px;border-radius:20px;cursor:pointer;font-weight:500;white-space:nowrap;
+  font-size:12px;padding:6px 10px;border-radius:20px;cursor:pointer;font-weight:500;white-space:nowrap;
   transition:background .15s,color .15s;border:none;flex-shrink:0;
 }
+/* [v212] PC 좌측 380px 안에 6칩 들어가도록 더 빠듯하게 */
+#customerSheet.cv4-pc .cv4-chip { padding:6px 9px;font-size:11px; }
+#customerSheet.cv4-pc .cv4-chips { gap:4px; }
 #customerSheet .cv4-chip.off { background:var(--surface-2,#F7F8FA);color:#999; }
 #customerSheet .cv4-chip.green { background:#EEFBF3;color:#16B55E; }
 #customerSheet .cv4-chip.brand { background:#FFF1F3;color:#E5586E; }

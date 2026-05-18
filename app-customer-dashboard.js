@@ -505,6 +505,7 @@
           <div class="d-actions">
             <button class="d-act primary" data-cv4-act="booking">예약 잡기</button>
             ${phone ? `<button class="d-act ghost" data-cv4-act="call">전화</button>` : ''}
+            <button class="d-act ghost" data-cv4-act="edit">편집</button>
             <button class="d-act danger" data-cv4-act="delete">삭제</button>
           </div>
         </div>
@@ -540,17 +541,37 @@
         } else if (act === 'call') {
           if (c.phone) window.location.href = 'tel:' + String(c.phone).replace(/[^0-9+]/g, '');
         } else if (act === 'delete') {
-          if (typeof window.deleteCustomer === 'function') {
-            window.deleteCustomer(c.id, c.name);
-          } else if (window.confirm('이 고객을 삭제할까요? 매출 기록은 보존됩니다.')) {
-            // 백업 — Customer.remove 직접 호출
-            (window.Customer && window.Customer.remove ? window.Customer.remove(c.id) : Promise.resolve())
-              .then(() => {
-                if (window.showToast) window.showToast('삭제됐어요');
-                closeCustomerDashboard();
-                if (typeof window._rerenderCustomerList === 'function') window._rerenderCustomerList();
-              })
-              .catch(() => { if (window.showToast) window.showToast('삭제 실패'); });
+          // [v212] 삭제 → Customer.remove (이벤트 자동 dispatch → 목록 즉시 갱신)
+          const ok = window._confirm2
+            ? window._confirm2(`'${c.name || '이 고객'}'을 삭제할까요? 매출 기록은 보존됩니다.`)
+            : window.confirm(`'${c.name || '이 고객'}'을 삭제할까요? 매출 기록은 보존됩니다.`);
+          if (!ok) return;
+          const removeFn = (window.Customer && window.Customer.remove)
+            ? window.Customer.remove
+            : (typeof window._customerDelete === 'function' ? window._customerDelete : null);
+          if (!removeFn) {
+            if (window.showToast) window.showToast('삭제 함수 미준비');
+            return;
+          }
+          Promise.resolve(removeFn(c.id))
+            .then(() => {
+              if (window.showToast) window.showToast('삭제됐어요');
+              // 모바일 시트 닫기 (열려있는 경우)
+              if (typeof window.closeCustomerDashboard === 'function') window.closeCustomerDashboard();
+              // PC 디테일 mount 정리 (열려있는 경우)
+              const pcMount = document.querySelector('#customerSheet #cdDetailMount');
+              if (pcMount) pcMount.innerHTML = '<div class="pc-r-empty">왼쪽에서 손님을 선택하세요</div>';
+            })
+            .catch((err) => {
+              console.warn('[customer delete]', err);
+              if (window.showToast) window.showToast('삭제 실패 — 다시 시도해주세요');
+            });
+        } else if (act === 'edit') {
+          // [v212] 편집 — 이름/전화/메모/생일/태그 수정 (인라인 시트)
+          if (typeof window._openCustomerEditSheet === 'function') {
+            window._openCustomerEditSheet(c);
+          } else if (window.showToast) {
+            window.showToast('편집 기능 준비 중');
           }
         } else if (act === 'toggle-more') {
           // [v211] data-vr-extra 로 모든 추가 row 토글 — 한 번 펼친 후 다시 접기도 동작
@@ -609,6 +630,81 @@
     if (sheet) sheet.style.display = 'none';
     document.body.style.overflow = '';
     _currentCustomerId = null;
+  };
+
+  // [v212] 편집 모달 — 이름/전화/생일/메모/태그 수정
+  window._openCustomerEditSheet = function (c) {
+    if (!c || !c.id) return;
+    const old = document.getElementById('custEditModal');
+    if (old) old.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'custEditModal';
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:20px;';
+    const tags = Array.isArray(c.tags) ? c.tags.join(', ') : '';
+    wrap.innerHTML = `
+      <div style="background:var(--surface,#fff);border-radius:18px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;padding:24px;box-shadow:0 24px 64px rgba(0,0,0,0.18);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <strong style="font-size:18px;color:var(--text);">고객 정보 편집</strong>
+          <button type="button" id="custEditClose" aria-label="닫기" style="background:var(--surface-2,#F7F8FA);border:none;width:32px;height:32px;border-radius:50%;font-size:14px;cursor:pointer;color:var(--text);">✕</button>
+        </div>
+        <label style="display:block;font-size:12px;color:#888;margin-bottom:4px;">이름 *</label>
+        <input id="cedName" type="text" maxlength="50" value="${_esc(c.name || '')}" style="width:100%;height:42px;padding:0 14px;border-radius:10px;border:1px solid var(--border,#E5E7EB);background:var(--surface,#fff);font-size:14px;color:var(--text);outline:none;font-family:inherit;margin-bottom:14px;" />
+        <label style="display:block;font-size:12px;color:#888;margin-bottom:4px;">전화번호</label>
+        <input id="cedPhone" type="tel" maxlength="20" value="${_esc(c.phone || '')}" placeholder="010-1234-5678" style="width:100%;height:42px;padding:0 14px;border-radius:10px;border:1px solid var(--border,#E5E7EB);background:var(--surface,#fff);font-size:14px;color:var(--text);outline:none;font-family:inherit;margin-bottom:14px;" />
+        <label style="display:block;font-size:12px;color:#888;margin-bottom:4px;">생일 (MM-DD)</label>
+        <input id="cedBirthday" type="text" maxlength="5" value="${_esc(c.birthday || '')}" placeholder="03-14" style="width:100%;height:42px;padding:0 14px;border-radius:10px;border:1px solid var(--border,#E5E7EB);background:var(--surface,#fff);font-size:14px;color:var(--text);outline:none;font-family:inherit;margin-bottom:14px;" />
+        <label style="display:block;font-size:12px;color:#888;margin-bottom:4px;">태그 (쉼표 구분)</label>
+        <input id="cedTags" type="text" value="${_esc(tags)}" placeholder="VIP, 속눈썹, 단골" style="width:100%;height:42px;padding:0 14px;border-radius:10px;border:1px solid var(--border,#E5E7EB);background:var(--surface,#fff);font-size:14px;color:var(--text);outline:none;font-family:inherit;margin-bottom:14px;" />
+        <label style="display:block;font-size:12px;color:#888;margin-bottom:4px;">메모</label>
+        <textarea id="cedMemo" maxlength="500" rows="4" placeholder="두피 예민함, 토요일 오전 선호 등" style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border,#E5E7EB);background:var(--surface,#fff);font-size:14px;color:var(--text);outline:none;font-family:inherit;resize:vertical;line-height:1.5;margin-bottom:20px;">${_esc(c.memo || '')}</textarea>
+        <div style="display:flex;gap:8px;">
+          <button type="button" id="custEditCancel" style="flex:1;padding:12px;border:1px solid var(--border,#E5E7EB);border-radius:12px;background:var(--surface,#fff);font-size:14px;font-weight:600;cursor:pointer;color:#666;">취소</button>
+          <button type="button" id="custEditSave" style="flex:2;padding:12px;border:none;border-radius:12px;background:var(--text,#111);color:var(--surface,#fff);font-size:14px;font-weight:600;cursor:pointer;">저장</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    const close = () => wrap.remove();
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
+    wrap.querySelector('#custEditClose').addEventListener('click', close);
+    wrap.querySelector('#custEditCancel').addEventListener('click', close);
+    wrap.querySelector('#cedName').focus();
+    wrap.querySelector('#custEditSave').addEventListener('click', async () => {
+      const name = wrap.querySelector('#cedName').value.trim();
+      if (!name) {
+        if (window.showToast) window.showToast('이름은 필수예요');
+        return;
+      }
+      const payload = {
+        name: name.slice(0, 50),
+        phone: wrap.querySelector('#cedPhone').value.trim() || null,
+        birthday: wrap.querySelector('#cedBirthday').value.trim() || null,
+        tags: wrap.querySelector('#cedTags').value.split(',').map(t => t.trim()).filter(Boolean).slice(0, 10),
+        memo: wrap.querySelector('#cedMemo').value.trim() || null,
+      };
+      const updateFn = window.Customer && window.Customer.update;
+      if (!updateFn) {
+        if (window.showToast) window.showToast('저장 함수 미준비');
+        return;
+      }
+      try {
+        await updateFn(c.id, payload);
+        if (window.showToast) window.showToast('저장 완료');
+        close();
+        // 디테일 다시 로드 — PC mount 우선, 없으면 모바일 시트
+        const pcMount = document.querySelector('#customerSheet #cdDetailMount');
+        if (pcMount && pcMount.querySelector('.cv4-detail')) {
+          window._renderCustomerDetail(pcMount, c.id);
+        }
+        if (_currentCustomerId === c.id) {
+          const mobileBody = document.querySelector('#customerDashSheet #cdBody');
+          if (mobileBody) window._renderCustomerDetail(mobileBody, c.id);
+        }
+      } catch (e) {
+        console.warn('[customer edit]', e);
+        if (window.showToast) window.showToast('저장 실패 — 다시 시도해주세요');
+      }
+    });
   };
 
   // Wave D3 (2026-04-24) — 챗봇·외부 데이터 변경 감지 → 고객 상세 대시보드 재로드
