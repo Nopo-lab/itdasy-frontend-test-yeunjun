@@ -190,25 +190,126 @@ function updateHeaderProfile(handle, tone, picUrl) {
 }
 
 // ───── 업종별 설정 ─────
+// [v192 2026-05-18] SHOP_CONFIG 13종 통합 — 온보딩 카드와 1:1 매핑.
+//   기존 2종(붙임머리/네일아트)만 정의 → 나머지 11종 추가.
+//   tagLabel/treatments/defaultTag/baGuide 일관 정의로 applyShopType() 폴백 제거.
 const SHOP_CONFIG = {
   '붙임머리': {
-    question:    '오늘 어떤 붙임머리 작업을 하셨나요? 💇',
+    question:    '오늘 어떤 붙임머리 작업을 하셨나요?',
     tagLabel:    '인치 선택',
     treatments:  ['18인치','20인치','22인치','24인치','26인치','28인치','30인치','특수인치','옴브레','재시술'],
     defaultTag:  '24인치',
-    baGuide:     '시술 전후 머리 길이 변화를 극명하게 보여주세요. 옆모습 기준이 효과적이에요 💇',
+    baGuide:     '시술 전후 머리 길이 변화를 극명하게 보여주세요. 옆모습 기준이 효과적이에요',
+  },
+  '헤어샵': {
+    question:    '오늘 어떤 헤어 작업을 하셨나요?',
+    tagLabel:    '시술 종류',
+    treatments:  ['커트','펌','매직','염색','뿌리염색','클리닉','셋팅펌','C컬','S컬','발레아쥬','하이라이트','옴브레'],
+    defaultTag:  '펌',
+    baGuide:     '시술 전후 모양·결·컬러 차이를 자연광 아래 정면·측면으로',
+  },
+  '두피탈모': {
+    question:    '오늘 어떤 두피·탈모 관리 하셨나요?',
+    tagLabel:    '관리 종류',
+    treatments:  ['두피스케일링','두피세럼','LED','MTS','약물','클리닉','홈케어'],
+    defaultTag:  '두피스케일링',
+    baGuide:     '두피 클로즈업 + 전체 헤어라인. 청결감·풍성함 강조',
+  },
+  '메이크업': {
+    question:    '오늘 어떤 메이크업 하셨나요?',
+    tagLabel:    '메이크업 종류',
+    treatments:  ['데일리','웨딩','파티','촬영','SNS룩','브라이덜','내추럴','글로우'],
+    defaultTag:  '데일리',
+    baGuide:     '눈/입/피부 클로즈업 + 전체 정면. 조명 정자세 권장',
+  },
+  '눈썹': {
+    question:    '오늘 어떤 눈썹 작업을 하셨나요?',
+    tagLabel:    '시술 종류',
+    treatments:  ['셰이딩','왁싱','정리','다듬기','컬러','일자눈썹','아치형'],
+    defaultTag:  '정리',
+    baGuide:     '눈썹 정면 + 측면. Before/After 라인 차이 강조',
+  },
+  '속눈썹': {
+    question:    '오늘 어떤 속눈썹 작업을 하셨나요?',
+    tagLabel:    '시술 종류',
+    treatments:  ['속눈썹펌','래쉬리프트','속눈썹연장','클래식','볼륨','3D','5D','J컬','C컬','D컬','L컬','메가볼륨'],
+    defaultTag:  '속눈썹펌',
+    baGuide:     '눈 close-up + 옆모습 컬 라인. 자연광',
   },
   '네일아트': {
-    question:    '오늘 어떤 네일 작업을 하셨나요? 💅',
+    question:    '오늘 어떤 네일 작업을 하셨나요?',
     tagLabel:    '시술 종류',
-    treatments:  ['젤네일','아트네일','아크릴','스컬프처','네일케어','오프','재시술','페디큐어'],
+    treatments:  ['젤네일','아트네일','아크릴','스컬프처','네일케어','오프','재시술','페디큐어','그라데이션','프렌치'],
     defaultTag:  '젤네일',
-    baGuide:     '손톱 클로즈업으로 Before/After 변화를 선명하게 보여주세요 💅',
+    baGuide:     '손톱 클로즈업으로 Before/After 변화를 선명하게',
+  },
+  '패디': {
+    question:    '오늘 어떤 패디·풋케어 작업을 하셨나요?',
+    tagLabel:    '시술 종류',
+    treatments:  ['페디큐어','풋케어','각질제거','발마사지','젤페디','아트페디','홈케어'],
+    defaultTag:  '페디큐어',
+    baGuide:     '발 전체 + 발톱 클로즈업. 깔끔한 배경에서',
+  },
+  '왁싱': {
+    question:    '오늘 어떤 왁싱 작업을 하셨나요?',
+    tagLabel:    '부위 선택',
+    treatments:  ['브라질리언','하이바이','로우바이','얼굴','풀바디','다리','팔','겨드랑이','등','눈썹'],
+    defaultTag:  '브라질리언',
+    baGuide:     '시술 부위 깔끔하게. 위생감·청결감 우선',
+  },
+  '바디': {
+    question:    '오늘 어떤 바디관리 하셨나요?',
+    tagLabel:    '관리 종류',
+    treatments:  ['전신마사지','부분마사지','셀룰라이트','림프','스크럽','보디팩','홈케어'],
+    defaultTag:  '전신마사지',
+    baGuide:     '시술 부위 + 관리 도구. 자연 보정 위주',
+  },
+  '피부': {
+    question:    '오늘 어떤 피부관리 하셨나요?',
+    tagLabel:    '관리 종류',
+    treatments:  ['딥클렌징','수분관리','모공관리','MTS','LED','필링','각질','홈케어'],
+    defaultTag:  '수분관리',
+    baGuide:     '얼굴 정면 close-up. 자극 부위 자연 보정',
+  },
+  '반영구': {
+    question:    '오늘 어떤 반영구 작업을 하셨나요?',
+    tagLabel:    '시술 종류',
+    treatments:  ['눈썹','아이라인','입술','헤어라인','MTS','리터치','SMP'],
+    defaultTag:  '눈썹',
+    baGuide:     '시술 부위 close-up + 정면. 발색·라인 강조',
+  },
+  '기타': {
+    question:    '오늘 어떤 작업을 하셨나요?',
+    tagLabel:    '시술 종류',
+    treatments:  ['시술A','시술B','시술C','상담','홈케어'],
+    defaultTag:  '시술A',
+    baGuide:     '시술 부위 + 전체 컷. 자연광 권장',
   },
 };
 
 // [v182 2026-05-18] 챗봇 _generateChatCaption 이 정확히 동일한 photo_context 만들도록 노출.
 try { window.SHOP_CONFIG = SHOP_CONFIG; } catch (_e) { void _e; }
+
+// [v192 2026-05-18] shop_type 정규화 헬퍼 — 5개 분산 호출 곳 통합.
+//   raw shop_type (localStorage 값) → 내부 카테고리 8종 + label·api_category.
+//   사진편집기, 캡션, 페르소나 API 등에서 일관되게 사용.
+window.itdasyNormalizeShopType = function (raw) {
+  const t = String(raw || '').toLowerCase();
+  // 카테고리 매핑 (내부 8종) + persona API category + 한글 label
+  if (/(붙임머리|extension)/.test(t))       return { cat: 'hair',   apiCat: 'extension', label: '붙임머리' };
+  if (/(헤어샵|미용|hair)/.test(t))          return { cat: 'hair',   apiCat: 'extension', label: '헤어샵' };
+  if (/(두피|탈모|scalp)/.test(t))           return { cat: 'scalp',  apiCat: 'extension', label: '두피탈모' };
+  if (/(메이크업|makeup)/.test(t))           return { cat: 'makeup', apiCat: 'extension', label: '메이크업' };
+  if (/(눈썹|brow)/.test(t))                 return { cat: 'makeup', apiCat: 'extension', label: '눈썹' };
+  if (/(속눈썹|lash)/.test(t))               return { cat: 'lash',   apiCat: 'extension', label: '속눈썹' };
+  if (/(네일아트|네일|nail)/.test(t))        return { cat: 'nail',   apiCat: 'nail',      label: '네일아트' };
+  if (/(패디|풋케어|pedi|foot)/.test(t))     return { cat: 'nail',   apiCat: 'nail',      label: '패디' };
+  if (/(왁싱|wax)/.test(t))                  return { cat: 'wax',    apiCat: 'extension', label: '왁싱' };
+  if (/(바디|body)/.test(t))                 return { cat: 'wax',    apiCat: 'extension', label: '바디' };
+  if (/(피부|skin)/.test(t))                 return { cat: 'skin',   apiCat: 'extension', label: '피부' };
+  if (/(반영구|문신|tattoo)/.test(t))        return { cat: 'skin',   apiCat: 'extension', label: '반영구' };
+  return { cat: 'general', apiCat: 'extension', label: '기타' };
+};
 
 function applyShopType(type) {
   const cfg = SHOP_CONFIG[type];
@@ -1659,7 +1760,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260518-v201-fix-batch';
+window.APP_BUILD = '20260518-v202-photo-sprint1';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;

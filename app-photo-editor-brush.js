@@ -66,7 +66,6 @@
       m.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;opacity:1;mix-blend-mode:screen;';
       const wrap = mainCv.parentElement;
       if (wrap) {
-        // 부모 position:relative 보장
         const cs = window.getComputedStyle(wrap);
         if (cs.position === 'static') wrap.style.position = 'relative';
         wrap.appendChild(m);
@@ -77,6 +76,23 @@
       m.height = mainCv.height;
     }
     return m;
+  }
+
+  // [v202 2026-05-18] 브러시 커서 미리보기 원 (S1-13) — pointer 따라 div
+  function _ensureCursorRing(mainCv) {
+    let c = document.getElementById('peBrushCursor');
+    if (!c) {
+      c = document.createElement('div');
+      c.id = 'peBrushCursor';
+      c.style.cssText = 'position:absolute;pointer-events:none;border:2px solid rgba(255,255,255,0.85);box-shadow:0 0 0 1px rgba(0,0,0,0.5);border-radius:50%;transform:translate(-50%,-50%);display:none;z-index:5;';
+      const wrap = mainCv.parentElement;
+      if (wrap) wrap.appendChild(c);
+    }
+    return c;
+  }
+  function _removeCursorRing() {
+    const c = document.getElementById('peBrushCursor');
+    if (c) c.remove();
   }
 
   function _removeMask() {
@@ -110,8 +126,9 @@
         <input type="range" min="10" max="120" value="${b.size}" data-pe-brush-size /></label>
       <label class="pe-slider"><div class="pe-slider-head"><span>강도</span><span class="pe-slider-val" data-pe-brush-strength-val>${b.strength}</span></div>
         <input type="range" min="10" max="100" value="${b.strength}" data-pe-brush-strength /></label>
-      <div class="pe-panel-row pe-panel-grid-2" style="margin-top:8px;">
+      <div class="pe-panel-row pe-panel-grid-3" style="margin-top:8px;">
         <button type="button" class="pe-chip-btn" data-pe-brush-clear>마스크 초기화</button>
+        <button type="button" class="pe-chip-btn" data-pe-brush-invert>↺ 반전</button>
         <button type="button" class="pe-action-btn" data-pe-brush-apply>✓ 적용</button>
       </div>
       <div class="pe-hint">드래그로 칠한 영역에만 효과. 클론/힐링은 소스 지점에서 픽셀을 가져와 다른 곳에 붙여요 (붙임머리 결합부·후면샷 정리용).</div>`;
@@ -126,6 +143,7 @@
     }
     const mask = _ensureMaskCanvas(mainCv);
     const mctx = mask.getContext('2d');
+    const cursor = _ensureCursorRing(mainCv);
 
     panel.querySelectorAll('[data-pe-brush-type]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -267,11 +285,56 @@
       mainCv.addEventListener('mouseup', _end);
       mainCv.addEventListener('mouseleave', _end);
       mainCv.addEventListener('touchend', _end);
+      // [v202] 커서 미리보기 — mouseenter/move/leave (터치는 미사용)
+      mainCv.addEventListener('mouseenter', _showCursor);
+      mainCv.addEventListener('mousemove', _moveCursor);
+      mainCv.addEventListener('mouseleave', _hideCursor);
+    }
+    // [v202] cursor 핸들러 — 브러시 크기 따라 원 크기 동적
+    function _showCursor() {
+      if (state.activeTab !== 'brush') return;
+      cursor.style.display = 'block';
+    }
+    function _hideCursor() { cursor.style.display = 'none'; }
+    function _moveCursor(e) {
+      if (state.activeTab !== 'brush') return;
+      const r = mainCv.getBoundingClientRect();
+      // CSS px 기준 브러시 크기 — canvas pixel size vs CSS rect size 비율
+      const cssK = r.width / Math.max(1, mainCv.width);
+      const sz = Math.max(8, b.size * cssK * 2);
+      cursor.style.width = sz + 'px';
+      cursor.style.height = sz + 'px';
+      cursor.style.left = (e.clientX - r.left) + 'px';
+      cursor.style.top = (e.clientY - r.top) + 'px';
     }
 
     panel.querySelector('[data-pe-brush-clear]')?.addEventListener('click', () => {
       mctx.clearRect(0, 0, mask.width, mask.height);
       if (helpers && helpers.toast) helpers.toast('마스크 초기화');
+    });
+    // [v202 2026-05-18] 마스크 invert (S1-14) — 캔버스 전체 alpha 반전
+    panel.querySelector('[data-pe-brush-invert]')?.addEventListener('click', () => {
+      try {
+        const img = mctx.getImageData(0, 0, mask.width, mask.height);
+        const d = img.data;
+        const color = (BRUSHES[b.type] && BRUSHES[b.type].color) || 'rgba(255,255,255,0.5)';
+        // color "rgba(R,G,B,A)" 파싱
+        const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+        const r = m ? +m[1] : 255, g = m ? +m[2] : 255, bl = m ? +m[3] : 255;
+        const a = m && m[4] !== undefined ? Math.round(+m[4] * 255) : 128;
+        for (let i = 0; i < d.length; i += 4) {
+          const wasFilled = d[i + 3] > 10;
+          if (wasFilled) {
+            d[i + 3] = 0;
+          } else {
+            d[i] = r; d[i + 1] = g; d[i + 2] = bl; d[i + 3] = a;
+          }
+        }
+        mctx.putImageData(img, 0, 0);
+        if (helpers && helpers.toast) helpers.toast('마스크 반전');
+      } catch (e) {
+        if (helpers && helpers.toast) helpers.toast('반전 실패: ' + (e.message || ''));
+      }
     });
 
     panel.querySelector('[data-pe-brush-apply]')?.addEventListener('click', () => {
@@ -405,5 +468,8 @@
 
   // 외부에서 mask 제거 트리거 (편집기 close 시 호출 가능)
   window.PhotoEditor = window.PhotoEditor || {};
-  window.PhotoEditor._brushCleanup = _removeMask;
+  window.PhotoEditor._brushCleanup = function () {
+    _removeMask();
+    _removeCursorRing();
+  };
 })();

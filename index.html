@@ -41,7 +41,7 @@
 <meta name="theme-color" content="#F2F4F6">
 <title>잇데이 스튜디오</title>
 <script>
-  window.__LATEST_BUILD__ = '20260518-v201-fix-batch';
+  window.__LATEST_BUILD__ = '20260518-v202-photo-sprint1';
   setTimeout(function(){
     // [v126] app-core.js 가 truncated 돼서 window.APP_BUILD 자체가 undefined 인 케이스도
     // stale 로 간주해 캐시·SW 일괄 청소 후 reload. 기존 mismatch 가드는 APP_BUILD 정의 시에만
@@ -759,6 +759,31 @@
       <div class="ob-shop-card" data-type="반영구" onclick="selectShopType(this)" role="button" tabindex="0" aria-label="반영구 선택">
         <div class="ob-shop-icon"><i class="ph-duotone ph-pencil-simple" style="font-size:28px" aria-hidden="true"></i></div>
         <div class="ob-shop-name">반영구</div>
+      </div>
+      <!-- [v192 2026-05-18] 온보딩 신규 6종 추가 — 메이크업/눈썹/두피탈모/패디/바디/기타 -->
+      <div class="ob-shop-card" data-type="메이크업" onclick="selectShopType(this)" role="button" tabindex="0" aria-label="메이크업 선택">
+        <div class="ob-shop-icon"><i class="ph-duotone ph-palette" style="font-size:28px" aria-hidden="true"></i></div>
+        <div class="ob-shop-name">메이크업</div>
+      </div>
+      <div class="ob-shop-card" data-type="눈썹" onclick="selectShopType(this)" role="button" tabindex="0" aria-label="눈썹 선택">
+        <div class="ob-shop-icon"><i class="ph-duotone ph-eye" style="font-size:28px" aria-hidden="true"></i></div>
+        <div class="ob-shop-name">눈썹</div>
+      </div>
+      <div class="ob-shop-card" data-type="두피탈모" onclick="selectShopType(this)" role="button" tabindex="0" aria-label="두피탈모 선택">
+        <div class="ob-shop-icon"><i class="ph-duotone ph-drop" style="font-size:28px" aria-hidden="true"></i></div>
+        <div class="ob-shop-name">두피·탈모</div>
+      </div>
+      <div class="ob-shop-card" data-type="패디" onclick="selectShopType(this)" role="button" tabindex="0" aria-label="패디 선택">
+        <div class="ob-shop-icon"><i class="ph-duotone ph-sparkle" style="font-size:28px" aria-hidden="true"></i></div>
+        <div class="ob-shop-name">패디·풋케어</div>
+      </div>
+      <div class="ob-shop-card" data-type="바디" onclick="selectShopType(this)" role="button" tabindex="0" aria-label="바디 선택">
+        <div class="ob-shop-icon"><i class="ph-duotone ph-heart" style="font-size:28px" aria-hidden="true"></i></div>
+        <div class="ob-shop-name">바디관리</div>
+      </div>
+      <div class="ob-shop-card" data-type="기타" onclick="selectShopType(this)" role="button" tabindex="0" aria-label="기타 선택">
+        <div class="ob-shop-icon"><i class="ph-duotone ph-dots-three-circle" style="font-size:28px" aria-hidden="true"></i></div>
+        <div class="ob-shop-name">기타 뷰티</div>
       </div>
     </div>
   </div>
@@ -1869,7 +1894,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
   }
   window.toggleEmailFold = toggleEmailFold;
 </script>
-<script src="app-core.js?v=20260518-v201"></script>
+<script src="app-core.js?v=20260518-v202"></script>
 <script src="app-drawer.js?v=20260518-v194" defer></script>
 <script src="app-secure-storage.js?v=20260506-v101" defer></script>
 <script src="app-shop-settings.js?v=20260506-v101" defer></script>
@@ -1911,7 +1936,7 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-gallery-assign.js" defer></script>
 <script src="app-gallery-slot-editor.js" defer></script>
 <script src="app-gallery-bg.js?v=20260518-v186" defer></script>
-<script src="app-photo-enhance.js?v=20260518-v183" defer></script>
+<script src="app-photo-enhance.js?v=20260518-v202" defer></script>
 <script src="app-gallery-element.js" defer></script>
 <script src="app-gallery-review.js" defer></script>
 <script src="app-gallery-write.js" defer></script>
@@ -1985,11 +2010,11 @@ window._lazyImgly = function _lazyImgly() {
 <!-- [2026-05-18 v168] 사진 편집기 P1 + Brand Kit + Today Morning -->
 <script src="app-brand-kit.js?v=20260518-v172" defer></script>
 <!-- [v173 2026-05-18] 사진 편집기 3파일 분할 (main 547 + beauty 162 + templates 254) -->
-<script src="app-photo-editor.js?v=20260518-v191" defer></script>
-<script src="app-photo-editor-beauty.js?v=20260518-v183" defer></script>
+<script src="app-photo-editor.js?v=20260518-v202" defer></script>
+<script src="app-photo-editor-beauty.js?v=20260518-v202" defer></script>
 <script src="app-photo-editor-templates.js?v=20260518-v184" defer></script>
 <!-- [v185 2026-05-18] 부분 보정 브러시 (5종 + 지우개) -->
-<script src="app-photo-editor-brush.js?v=20260518-v191" defer></script>
+<script src="app-photo-editor-brush.js?v=20260518-v202" defer></script>
 <!-- [v172 2026-05-18] 릴스 커버 + 브랜드 템플릿 저장 + 캡션 prefill + B&A 자동 chip -->
 <script src="app-reels-cover.js?v=20260518-v172" defer></script>
 <script src="app-brand-templates.js?v=20260518-v172" defer></script>

@@ -47,7 +47,7 @@
     } catch (_e) { /* CORS·메모리 부족 시 skip */ }
   }
 
-  // ── 슬라이더 정의 (key → meta) ──
+  // ── 슬라이더 정의 (key → meta) ── [v192 2026-05-18] 4종 신규 (lipPop/eyeColor/browSharp/nailShape) + scalpBoost / hairyArm
   const SLIDERS = {
     // 얼굴·피부
     skin:          { label: '피부톤 정리',     group: 'face', min: 0,   max: 100, step: 1 },
@@ -56,46 +56,68 @@
     eyeShadow:     { label: '눈가 그림자',     group: 'face', min: 0,   max: 100, step: 1 },
     textureSmooth: { label: '결 정리 (자연)',  group: 'face', min: 0,   max: 100, step: 1 },
     yellowness:    { label: '노란기 완화',     group: 'face', min: 0,   max: 100, step: 1 },
+    // 메이크업 (v192 신규)
+    lipPop:        { label: '입술 발색',       group: 'face', min: 0,   max: 100, step: 1 },
+    eyeColor:      { label: '아이 색감',       group: 'face', min: 0,   max: 100, step: 1 },
+    browSharp:     { label: '눈썹 선명',       group: 'face', min: 0,   max: 100, step: 1 },
     // 손·네일
-    handSkin:      { label: '손 피부톤',       group: 'hand', min: 0,   max: 100, step: 1 },
+    handSkin:      { label: '손/발 피부톤',    group: 'hand', min: 0,   max: 100, step: 1 },
     nailGloss:     { label: '네일 광택',       group: 'hand', min: 0,   max: 100, step: 1 },
     coolness:      { label: '푸른기 완화 (손)', group: 'hand', min: 0,   max: 100, step: 1 },
+    nailShape:     { label: '네일 경계 선명',  group: 'hand', min: 0,   max: 100, step: 1 },
     // 모발
     hairShine:     { label: '모발 윤기',       group: 'hair', min: 0,   max: 100, step: 1 },
     hairColor:     { label: '모발 색감 (- 차가운 / + 따뜻)', group: 'hair', min: -50, max: 50, step: 1 },
     hairDetail:    { label: '머리결',          group: 'hair', min: 0,   max: 100, step: 1 },
     hairColorPop:  { label: '염색 컬러 강조',  group: 'hair', min: 0,   max: 100, step: 1 },
+    scalpBoost:    { label: '두피 톤 (풍성감)', group: 'hair', min: 0,   max: 100, step: 1 },
+    hairyArm:      { label: '바디 잔털 시각화 ↓', group: 'face', min: 0, max: 100, step: 1 },
     // 속눈썹
     lashSharp:     { label: '속눈썹 선명도',   group: 'lash', min: 0,   max: 100, step: 1 },
     closeUpDetail: { label: '눈가 디테일 (close-up)', group: 'lash', min: 0,   max: 100, step: 1 },
   };
 
-  // shop_type → 추천 보정 슬라이더 우선순위 (5~6개)
+  // shop_type → 추천 보정 슬라이더 우선순위. v192 신규 3 카테고리 (makeup/scalp/general).
   const SHOP_FEATURED = {
-    hair: ['hairShine', 'hairDetail', 'hairColor', 'hairColorPop', 'yellowness', 'redness'],
-    lash: ['lashSharp', 'closeUpDetail', 'eyeShadow', 'redness', 'skin', 'yellowness'],
-    nail: ['nailGloss', 'handSkin', 'coolness', 'yellowness', 'redness'],
-    wax:  ['skin', 'redness', 'blemish', 'textureSmooth', 'eyeShadow'],
+    hair:    ['hairShine', 'hairDetail', 'hairColor', 'hairColorPop', 'yellowness', 'redness'],
+    scalp:   ['scalpBoost', 'hairShine', 'hairDetail', 'skin', 'redness'],
+    makeup:  ['skin', 'redness', 'lipPop', 'eyeColor', 'browSharp', 'yellowness'],
+    lash:    ['lashSharp', 'closeUpDetail', 'eyeShadow', 'redness', 'skin', 'yellowness'],
+    nail:    ['nailGloss', 'handSkin', 'coolness', 'nailShape', 'yellowness', 'redness'],
+    wax:     ['skin', 'redness', 'blemish', 'textureSmooth', 'eyeShadow', 'hairyArm'],
+    skin:    ['skin', 'redness', 'blemish', 'textureSmooth', 'eyeShadow'],
+    general: ['skin', 'redness', 'blemish', 'textureSmooth'],
   };
 
-  // AI 필요 항목 — 컬·웨이브·볼륨·두피·붙임머리 등은 픽셀 walk 불가 → 카드 발급 후 활성화 예정.
   const AI_FEATURES = {
-    hair: ['컬·웨이브 또렷하게', '잔머리 정리', '볼륨/풍성함 강화', '두피·정수리 휑함 완화', '붙임머리 결합부 자연스럽게'],
-    lash: ['컬 또렷하게', '빈 부분 자연스럽게 보완'],
-    nail: ['큐티클·주변부 정리', '컬러 정확도 보정', '배경 깔끔화'],
-    wax:  ['부위 강조 자동', '결 자연 보정 (강도)'],
+    hair:   ['컬·웨이브 또렷하게', '잔머리 정리', '볼륨/풍성함 강화', '두피·정수리 휑함 완화', '붙임머리 결합부 자연스럽게'],
+    scalp:  ['두피 휑함 자연 보완', '잔모 강조', 'AI 모발 풍성함'],
+    makeup: ['AI 메이크업 가상 시술', '발색 자연 보강', '얼굴 부위 자동 마스크'],
+    lash:   ['컬 또렷하게', '빈 부분 자연스럽게 보완'],
+    nail:   ['큐티클·주변부 정리', '컬러 정확도 보정', '배경 깔끔화'],
+    wax:    ['부위 강조 자동', '결 자연 보정 (강도)'],
+    skin:   ['자극 부위 자연 복원', '잡티 AI 제거'],
+    general: ['AI 일반 보정 보강'],
   };
 
+  // [v192] 정규화 헬퍼 (app-core.js itdasyNormalizeShopType) 활용. 없으면 폴백 분기.
   function _detectShopCat() {
     try {
+      if (typeof window.itdasyNormalizeShopType === 'function') {
+        const r = window.itdasyNormalizeShopType(localStorage.getItem('shop_type') || '');
+        return r.cat;  // 'hair' | 'scalp' | 'makeup' | 'lash' | 'nail' | 'wax' | 'skin' | 'general'
+      }
       const t = (localStorage.getItem('shop_type') || '').toLowerCase();
       if (!t) return null;
+      if (/(메이크업|눈썹|makeup|brow)/.test(t)) return 'makeup';
+      if (/(두피|탈모|scalp)/.test(t)) return 'scalp';
       if (/(헤어|붙임머리|미용|hair|extension)/.test(t)) return 'hair';
       if (/(속눈썹|lash)/.test(t)) return 'lash';
-      if (/(네일|nail)/.test(t)) return 'nail';
-      if (/(왁싱|피부|반영구|문신|skin|tattoo|wax)/.test(t)) return 'wax';
+      if (/(네일|nail|패디|풋케어|pedi|foot)/.test(t)) return 'nail';
+      if (/(왁싱|바디|wax|body)/.test(t)) return 'wax';
+      if (/(피부|반영구|문신|skin|tattoo)/.test(t)) return 'skin';
     } catch (_e) { void _e; }
-    return null;
+    return 'general';
   }
 
   function _slider(esc, key, val) {
@@ -193,6 +215,16 @@
         scheduleRedraw();
       });
       inp.addEventListener('change', () => pushHistory());
+      // [v202 2026-05-18] 더블탭 reset (S1-2)
+      inp.addEventListener('dblclick', () => {
+        const key = inp.dataset.peSlider;
+        state.beauty[key] = 0;
+        inp.value = 0;
+        const out = panel.querySelector(`[data-pe-slider-val="${key}"]`);
+        if (out) out.textContent = 0;
+        scheduleRedraw(); pushHistory();
+        if (helpers && helpers.toast) helpers.toast('초기화: ' + (SLIDERS[key] ? SLIDERS[key].label : key));
+      });
     });
     // 전체 보정 보기 토글
     const toggleBtn = panel.querySelector('[data-pe-beauty-toggle]');
@@ -222,7 +254,8 @@
     if (!b) return;
     const anyOn = b.skin || b.redness || b.hairShine || b.nailGloss || b.lashSharp
       || b.blemish || b.handSkin || b.hairColor || b.hairDetail || b.eyeShadow
-      || b.yellowness || b.coolness || b.textureSmooth || b.hairColorPop || b.closeUpDetail;
+      || b.yellowness || b.coolness || b.textureSmooth || b.hairColorPop || b.closeUpDetail
+      || b.lipPop || b.eyeColor || b.browSharp || b.nailShape || b.scalpBoost || b.hairyArm;
     if (!anyOn) return;
 
     let data;
@@ -242,6 +275,13 @@
     const coolK     = (b.coolness || 0) / 100;
     const txK       = (b.textureSmooth || 0) / 100;
     const hairPopK  = (b.hairColorPop || 0) / 100;
+    // [v202 2026-05-18] 신규 6종 walk
+    const lipK      = (b.lipPop || 0) / 100;
+    const eyeK      = (b.eyeColor || 0) / 100;
+    const browK     = (b.browSharp || 0) / 100;
+    const nailShK   = (b.nailShape || 0) / 100;
+    const scalpK    = (b.scalpBoost || 0) / 100;
+    const armK      = (b.hairyArm || 0) / 100;
 
     // 저주파 (블러) — blemish / textureSmooth 둘 다 필요.
     let blurD = null;
@@ -351,6 +391,43 @@
           d[i+2] = _clamp(d[i+2] + 8 * nailK);
         }
       }
+      // [v202] 입술 발색 — 붉은 hue (R > G+15 AND R > B+15) 마스크에 채도 ↑
+      if (lipK > 0) {
+        const lum = (r * 0.299 + g * 0.587 + bl * 0.114);
+        if (r > g + 15 && r > bl + 15 && lum > 60 && lum < 200) {
+          d[i]   = _clamp(d[i]   + 15 * lipK);
+          d[i+1] = _clamp(d[i+1] -  3 * lipK);
+          d[i+2] = _clamp(d[i+2] -  3 * lipK);
+        }
+      }
+      // [v202] 아이 색감 — 어두운 영역 (lum<90) 채도 ↑ (아이라인·아이섀도)
+      if (eyeK > 0) {
+        const lum = (r * 0.299 + g * 0.587 + bl * 0.114);
+        if (lum < 90) {
+          d[i]   = _clamp(d[i]   + (r  - lum) * 0.5 * eyeK);
+          d[i+1] = _clamp(d[i+1] + (g  - lum) * 0.5 * eyeK);
+          d[i+2] = _clamp(d[i+2] + (bl - lum) * 0.5 * eyeK);
+        }
+      }
+      // [v202] 두피 풍성감 — 모발 영역(어두운+회색조) 가산 + 주변 명도 ↑로 풍성함 fake
+      if (scalpK > 0) {
+        const lum = (r * 0.299 + g * 0.587 + bl * 0.114);
+        if (lum < 100 && Math.abs(r - g) < 30 && Math.abs(g - bl) < 30) {
+          d[i]   = _clamp(d[i]   + 10 * scalpK);
+          d[i+1] = _clamp(d[i+1] + 10 * scalpK);
+          d[i+2] = _clamp(d[i+2] +  6 * scalpK);
+        }
+      }
+      // [v202] 바디 잔털 시각화 ↓ — 피부 영역 + 어두운 픽셀(잔털) 명도 ↑로 톤 평균
+      if (armK > 0) {
+        const isSkinHere = r > 80 && r > g && g > bl && (r - bl) > 15 && (r - bl) < 110;
+        const lum = (r * 0.299 + g * 0.587 + bl * 0.114);
+        if (isSkinHere && lum < 130) {
+          d[i]   = _clamp(d[i]   + 8 * armK);
+          d[i+1] = _clamp(d[i+1] + 7 * armK);
+          d[i+2] = _clamp(d[i+2] + 5 * armK);
+        }
+      }
     }
     ctx.putImageData(data, 0, 0);
 
@@ -359,6 +436,9 @@
     if (b.hairDetail > 10) _unsharpMask(ctx, w, h, b.hairDetail / 300);
     if (b.lashSharp > 10) _unsharpMask(ctx, w, h, b.lashSharp / 130);
     if (b.closeUpDetail > 10) _unsharpMask(ctx, w, h, b.closeUpDetail / 160);
+    // [v202] 눈썹 선명·네일 경계 — unsharp mask
+    if (b.browSharp > 10) _unsharpMask(ctx, w, h, b.browSharp / 180);
+    if (b.nailShape > 10) _unsharpMask(ctx, w, h, b.nailShape / 200);
   }
 
   // ── 메인 모듈 준비될 때까지 폴링 후 등록 ──

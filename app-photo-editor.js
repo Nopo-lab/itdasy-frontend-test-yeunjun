@@ -23,14 +23,14 @@
   const _externalPanels = {};         // tabId -> { html, bind }   (외부 모듈 등록)
   const _drawHooks = {};              // name  -> fn               (외부 모듈 등록)
 
-  // 드래그 슬라이더 동안 픽셀 합성 폭주 방지 — 80ms throttle.
+  // 드래그 슬라이더 동안 픽셀 합성 폭주 방지 — [v202] 80 → 32ms (반응성 ↑, 모바일 발열 모니터링)
   let _redrawScheduled = null;
   function _scheduleRedraw() {
     if (_redrawScheduled) return;
     _redrawScheduled = setTimeout(() => {
       _redrawScheduled = null;
       try { _redraw(); } catch (_e) { void _e; }
-    }, 80);
+    }, 32);
   }
   // Android 하드웨어 백 + iOS edge swipe — history.pushState 사용.
   let _historyPushed = false;
@@ -179,7 +179,7 @@
       <div class="pe-field-label" style="margin-top:10px;">강도</div>
       <div class="pe-panel-row pe-panel-grid-4">${intChip('natural','자연')}${intChip('standard','표준')}${intChip('strong','강조')}</div>
       <div class="pe-field-label" style="margin-top:10px;">업종별 자동 (강도 적용)</div>
-      <div class="pe-panel-row pe-panel-grid-2">${_CHIP('auto','hair','헤어·붙임머리')}${_CHIP('auto','lash','속눈썹')}${_CHIP('auto','nail','네일')}${_CHIP('auto','wax','왁싱·피부')}</div>
+      <div class="pe-panel-row pe-panel-grid-2">${_CHIP('auto','hair','헤어·붙임머리')}${_CHIP('auto','scalp','두피·탈모')}${_CHIP('auto','makeup','메이크업·눈썹')}${_CHIP('auto','lash','속눈썹')}${_CHIP('auto','nail','네일·패디')}${_CHIP('auto','wax','왁싱·바디·피부')}</div>
       <div class="pe-field-label" style="margin-top:10px;">분위기</div>
       <div class="pe-panel-row pe-panel-grid-4">${_CHIP('auto','bright','밝게')}${_CHIP('auto','vivid','선명')}${_CHIP('auto','warm','따뜻')}${_CHIP('auto','cool','차갑게')}</div>
       <div class="pe-field-label" style="margin-top:14px;">★ 내 즐겨찾기 프리셋 (${favs.length}/5)</div>
@@ -228,7 +228,15 @@
   function _panelTune() {
     const a = _state.adjust;
     return `${_slider('밝기','brightness',a.brightness,50,150,1)}${_slider('채도','saturate',a.saturate,50,150,1)}${_slider('선명도','sharpness',a.sharpness,0,100,1)}${_slider('색온도','temperature',a.temperature,-50,50,1)}
-      <div class="pe-panel-row" style="margin-top:8px;"><button type="button" class="pe-chip-btn" data-pe-tune-reset>모두 초기화</button></div>`;
+      <div class="pe-field-label" style="margin-top:10px;">방향 (v202 신규)</div>
+      <div class="pe-panel-row pe-panel-grid-4">
+        <button type="button" class="pe-chip-btn" data-pe-transform="rotL">↺ 90°</button>
+        <button type="button" class="pe-chip-btn" data-pe-transform="rotR">↻ 90°</button>
+        <button type="button" class="pe-chip-btn" data-pe-transform="flipH">⇋ 좌우</button>
+        <button type="button" class="pe-chip-btn" data-pe-transform="flipV">⇵ 상하</button>
+      </div>
+      <div class="pe-panel-row" style="margin-top:8px;"><button type="button" class="pe-chip-btn" data-pe-tune-reset>슬라이더 초기화</button></div>
+      <div class="pe-hint">방향 버튼은 원본 이미지를 회전·반전 시킵니다. 슬라이더는 따로 초기화.</div>`;
   }
   function _panelBg() {
     // [v186 2026-05-18] 편집기 내부 통합 — app-gallery-bg.js 의 GALLERY_BG_LIST + composeBgForEditor 사용.
@@ -271,6 +279,13 @@
       <div class="pe-panel-row pe-panel-grid-4">${FONTS.map(f => `<button type="button" class="pe-chip-btn${t.font===f.id?' on':''}" data-pe-text-font="${f.id}">${f.label}</button>`).join('')}</div>
       <div class="pe-field-label" style="margin-top:10px;">색상</div>
       <div class="pe-panel-row pe-panel-grid-4">${COLORS.map(c => `<button type="button" class="pe-chip-btn${t.color===c?' on':''}" data-pe-text-color="${c}" style="background:${c};color:${c==='#ffffff'||c==='#FFC83D'?'#222':'#fff'};">${COLOR_LABEL[c]}</button>`).join('')}</div>
+      <!-- [v202 2026-05-18] 색상 무한 선택 (S1-1) -->
+      <div class="pe-panel-row" style="margin-top:6px;align-items:center;gap:8px;">
+        <label style="font-size:11px;color:#c9c9d0;display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+          <span>커스텀 색상:</span>
+          <input type="color" data-pe-text-color-picker value="${_esc(t.color)}" style="width:36px;height:36px;border:none;border-radius:8px;cursor:pointer;background:transparent;" />
+        </label>
+      </div>
       <label class="pe-slider"><div class="pe-slider-head"><span>크기</span><span class="pe-slider-val">${t.size}</span></div><input type="range" min="3" max="12" value="${t.size}" data-pe-text-size /></label>
       <label class="pe-slider"><div class="pe-slider-head"><span>위치 (위↔아래)</span><span class="pe-slider-val">${Math.round(t.y*100)}</span></div><input type="range" min="5" max="95" value="${Math.round(t.y*100)}" data-pe-text-y /></label>
       <label class="pe-slider"><div class="pe-slider-head"><span>위치 (좌↔우)</span><span class="pe-slider-val">${Math.round(t.x*100)}</span></div><input type="range" min="5" max="95" value="${Math.round(t.x*100)}" data-pe-text-x /></label>
@@ -354,10 +369,20 @@
         _scheduleRedraw();
       });
       _each(panel, '[data-pe-slider]', 'change', () => _pushHistory());
+      // [v202] 슬라이더 더블탭 reset (S1-2)
+      _each(panel, '[data-pe-slider]', 'dblclick', (e) => {
+        const key = e.currentTarget.dataset.peSlider;
+        const RESET = { brightness: 100, saturate: 100, sharpness: 0, temperature: 0 };
+        _state.adjust[key] = RESET[key] || 0;
+        _renderPanel(); _redraw(); _pushHistory();
+        _toast('초기화: ' + key);
+      });
       _on(panel, '[data-pe-tune-reset]', 'click', () => {
         _state.adjust = { brightness: 100, saturate: 100, sharpness: 0, temperature: 0 };
         _renderPanel(); _redraw(); _pushHistory();
       });
+      // [v202] 회전·좌우반전 (S1-3) — originalImg 자체를 변환 후 swap
+      _each(panel, '[data-pe-transform]', 'click', (e) => _applyTransform(e.currentTarget.dataset.peTransform));
     },
     bg(panel) {
       _on(panel, '[data-pe-bg="open-existing"]', 'click', () => {
@@ -428,6 +453,12 @@
         _state.text.color = e.currentTarget.dataset.peTextColor;
         _renderPanel(); _redraw(); _pushHistory();
       });
+      // [v202] 색상 무한 선택 picker
+      _on(panel, '[data-pe-text-color-picker]', 'input', (e) => {
+        _state.text.color = e.target.value;
+        _redraw();
+      });
+      _on(panel, '[data-pe-text-color-picker]', 'change', () => _pushHistory());
       _on(panel, '[data-pe-text-bg]', 'click', () => {
         _state.text.bg = !_state.text.bg;
         _renderPanel(); _redraw(); _pushHistory();
@@ -470,7 +501,8 @@
   // ── 자동 보정 프리셋 ─────────────────────────────────
   // [v183 2026-05-18] 강도 토글 (natural/standard/strong) + 업종별 4 분기
   //   기존 PhotoEnhance.getShopPreset(shopType, intensity) 시그니처 활용.
-  const _SHOP_HINT = { hair: '헤어', lash: '속눈썹', nail: '네일', wax: '왁싱' };
+  // [v202] makeup·scalp 카테고리 추가, nail/wax 한국어 hint
+  const _SHOP_HINT = { hair: '헤어', scalp: '두피', makeup: '메이크업', lash: '속눈썹', nail: '네일', wax: '왁싱' };
   function _applyAutoShop(forceShop) {
     const PE = window.PhotoEnhance;
     if (!PE || !PE.getShopPreset) return _toast('PhotoEnhance 모듈을 불러오는 중이에요');
@@ -484,9 +516,44 @@
     _redraw(); _pushHistory();
     _toast(preset.label + ' 자동 (' + (intensity === 'natural' ? '자연' : intensity === 'strong' ? '강조' : '표준') + ') 적용');
   }
+  // [v202 2026-05-18] 사진 회전·좌우/상하 반전 (S1-3) — originalImg 자체를 변환 후 swap.
+  //   rotL/rotR/flipH/flipV. swap 시 history push.
+  function _applyTransform(kind) {
+    if (!_state || !_state.originalImg) return _toast('편집할 사진이 없어요');
+    const img = _state.originalImg;
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    const cv = document.createElement('canvas');
+    const ctx = cv.getContext('2d');
+    if (kind === 'rotL' || kind === 'rotR') {
+      cv.width = ih; cv.height = iw;
+      ctx.translate(cv.width / 2, cv.height / 2);
+      ctx.rotate((kind === 'rotL' ? -90 : 90) * Math.PI / 180);
+      ctx.drawImage(img, -iw / 2, -ih / 2);
+    } else {
+      cv.width = iw; cv.height = ih;
+      if (kind === 'flipH') { ctx.translate(iw, 0); ctx.scale(-1, 1); }
+      else if (kind === 'flipV') { ctx.translate(0, ih); ctx.scale(1, -1); }
+      ctx.drawImage(img, 0, 0);
+    }
+    const dataUrl = cv.toDataURL('image/jpeg', 0.95);
+    const newImg = new Image();
+    newImg.crossOrigin = 'anonymous';
+    newImg.onload = () => {
+      _state.originalImg = newImg;
+      _state.originalSrc = dataUrl;
+      // bg 가 적용된 경우 누끼 캐시 무효 — 방향 바뀌면 다시
+      _state.removedBgDataUrl = null;
+      _pushHistory(); _redraw();
+      _toast({ rotL: '왼쪽 90° 회전', rotR: '오른쪽 90° 회전', flipH: '좌우 반전', flipV: '상하 반전' }[kind] || '변환');
+    };
+    newImg.onerror = () => _toast('변환 실패');
+    newImg.src = dataUrl;
+  }
+
   function _applyAuto(kind) {
     if (kind === 'shop')  return _applyAutoShop();
-    if (kind === 'hair' || kind === 'lash' || kind === 'nail' || kind === 'wax') return _applyAutoShop(kind);
+    // [v202] 신규 카테고리 추가: scalp, makeup
+    if (['hair','scalp','makeup','lash','nail','wax'].includes(kind)) return _applyAutoShop(kind);
     if (kind === 'all')   _state.adjust = { brightness: 105, saturate: 110, sharpness: 30, temperature: 5 };
     if (kind === 'bright')_state.adjust = { ..._state.adjust, brightness: 115 };
     if (kind === 'vivid') _state.adjust = { ..._state.adjust, saturate: 120, sharpness: 40 };

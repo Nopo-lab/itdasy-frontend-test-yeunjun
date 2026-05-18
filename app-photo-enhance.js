@@ -221,6 +221,27 @@ window.PhotoEnhance.getShopPreset = function(shopType, intensity) {
   const _s = (v) => Math.min(100, Math.max(0, Math.round(v * k)));
   const _sym = (v) => Math.max(-50, Math.min(50, Math.round(v * k)));  // hairColor 양방향
 
+  // [v192 2026-05-18] makeup / scalp / general 카테고리 신규 추가
+  if (/(메이크업|눈썹|makeup|brow)/.test(t)) {
+    return {
+      label: '메이크업',
+      adjust: { brightness: 108, saturate: 115, sharpness: 30, temperature: 3 },
+      beauty: {
+        skin: _s(30), redness: _s(25), lipPop: _s(50), eyeColor: _s(40), browSharp: _s(30),
+        yellowness: _s(15),
+      },
+    };
+  }
+  if (/(두피|탈모|scalp)/.test(t)) {
+    return {
+      label: '두피탈모',
+      adjust: { brightness: 110, saturate: 108, sharpness: 25, temperature: 5 },
+      beauty: {
+        hairShine: _s(40), hairDetail: _s(30), scalpBoost: _s(55),
+        skin: _s(20), redness: _s(25),
+      },
+    };
+  }
   if (/(헤어|붙임머리|미용|hair|extension)/.test(t)) {
     return {
       label: '헤어',
@@ -241,30 +262,33 @@ window.PhotoEnhance.getShopPreset = function(shopType, intensity) {
       },
     };
   }
-  if (/(네일|nail)/.test(t)) {
+  if (/(네일|nail|패디|풋케어|pedi|foot)/.test(t)) {
     return {
-      label: '네일',
+      label: t.includes('패디') || /(pedi|foot)/.test(t) ? '패디' : '네일',
       adjust: { brightness: 110, saturate: 120, sharpness: 35, temperature: -3 },
       beauty: {
-        handSkin: _s(45), nailGloss: _s(70), coolness: _s(30),
+        handSkin: _s(45), nailGloss: _s(70), coolness: _s(30), nailShape: _s(35),
         redness: _s(30), yellowness: _s(25), skin: _s(15),
       },
     };
   }
-  if (/(왁싱|피부|반영구|문신|tattoo|skin)/.test(t)) {
+  if (/(왁싱|바디|피부|반영구|문신|tattoo|skin|wax|body)/.test(t)) {
+    const isBody = /(바디|body)/.test(t);
+    const isSkin = /(피부|반영구|문신|tattoo|skin)/.test(t) && !isBody;
     return {
-      label: '왁싱·피부',
+      label: isBody ? '바디' : isSkin ? '피부·반영구' : '왁싱',
       adjust: { brightness: 105, saturate: 102, sharpness: 18, temperature: 2 },
       beauty: {
         skin: _s(45), redness: _s(55), blemish: _s(40), textureSmooth: _s(35),
-        eyeShadow: _s(15),
+        eyeShadow: _s(15), hairyArm: isBody ? _s(40) : 0,
       },
     };
   }
+  // 기타 / 일반 폴백 — 전체 슬라이더 노출 보장
   return {
     label: '일반',
     adjust: { brightness: 105, saturate: 112, sharpness: 32, temperature: 5 },
-    beauty: { skin: _s(15), redness: _s(20) },
+    beauty: { skin: _s(15), redness: _s(20), yellowness: _s(10) },
   };
 };
 
