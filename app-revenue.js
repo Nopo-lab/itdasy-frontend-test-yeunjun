@@ -9,8 +9,14 @@
   'use strict';
 
   const OFFLINE_KEY = 'itdasy_revenue_offline_v1';
-  const PERIODS = ['today', 'week', 'month'];
-  const PERIOD_LABEL = { today: '오늘', week: '이번주', month: '이번달' };
+  // [v207] 기간 확장 — 지난주/지난달/직접 지정
+  const PERIODS = ['today', 'week', 'month', 'last_week', 'last_month', 'custom'];
+  const PERIOD_LABEL = {
+    today: '오늘', week: '이번주', month: '이번달',
+    last_week: '지난주', last_month: '지난달', custom: '직접 지정',
+  };
+  // 사용자 지정 기간 — period=custom 일 때 사용
+  let _customRange = { from: null, to: null };
   const PC_BREAKPOINT = 1100;
 
   const TAG_CLS = {
@@ -94,7 +100,13 @@
 
   // ── SWR ────────────────────────────────────────────────
   const _SWR_TTL = 60 * 1000;
-  const _swrKey = (p) => 'pv_cache::revenue::' + p;
+  // [v207] custom 은 from/to 포함 키. period prefetch 시 custom 자체는 skip.
+  const _swrKey = (p) => {
+    if (p === 'custom' && _customRange.from && _customRange.to) {
+      return `pv_cache::revenue::custom::${_customRange.from}::${_customRange.to}`;
+    }
+    return 'pv_cache::revenue::' + p;
+  };
   function _readSWRPeriod(p) {
     try {
       const raw = localStorage.getItem(_swrKey(p)) || sessionStorage.getItem(_swrKey(p));
@@ -112,15 +124,34 @@
   }
   function _clearSWRRevenue() {
     try {
-      ['today', 'week', 'month'].forEach(p => {
+      // [v207] 6개 period 모두 무효화 + custom 모든 변형도 prefix 매칭으로 삭제
+      ['today', 'week', 'month', 'last_week', 'last_month'].forEach(p => {
         try { localStorage.removeItem(_swrKey(p)); sessionStorage.removeItem(_swrKey(p)); } catch (_e) { void _e; }
       });
+      // custom::* prefix
+      try {
+        const _PREFIX = 'pv_cache::revenue::custom::';
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && k.indexOf(_PREFIX) === 0) localStorage.removeItem(k);
+        }
+        for (let i = sessionStorage.length - 1; i >= 0; i--) {
+          const k = sessionStorage.key(i);
+          if (k && k.indexOf(_PREFIX) === 0) sessionStorage.removeItem(k);
+        }
+      } catch (_e) { void _e; }
       try { localStorage.removeItem('pv_cache::revenue'); sessionStorage.removeItem('pv_cache::revenue'); } catch (_e) { void _e; }
     } catch (_) { /* silent */ }
   }
   async function _fetchPeriodData(p) {
     if (_periodInflight[p]) return _periodInflight[p];
-    _periodInflight[p] = _api('GET', '/revenue?period=' + p)
+    // [v207] custom 은 from/to 가 있어야 fetch
+    let url = '/revenue?period=' + p;
+    if (p === 'custom') {
+      if (!_customRange.from || !_customRange.to) return [];
+      url += `&from=${_customRange.from}&to=${_customRange.to}`;
+    }
+    _periodInflight[p] = _api('GET', url)
       .then(d => { const items = d.items || []; _writeSWRPeriod(p, items); return items; })
       .finally(() => { _periodInflight[p] = null; });
     return _periodInflight[p];
@@ -132,6 +163,8 @@
   function _prefetchAllPeriods() {
     PERIODS.forEach(p => {
       if (p === _currentPeriod) return;
+      // [v207] custom 은 사용자 from/to 입력 후에만. 미리 prefetch X.
+      if (p === 'custom') return;
       const swr = _readSWRPeriod(p);
       if (swr && swr.fresh) return;
       _fetchPeriodData(p).catch(() => {});
@@ -370,7 +403,33 @@
       const p = btn.dataset.period;
       if (!PERIODS.includes(p) || p === _currentPeriod) return;
       _currentPeriod = p; _revWindow = 50;
-      _loadAndRender(); _prefetchAllPeriods();
+      // [v207] custom 으로 막 전환했고 아직 from/to 없으면 fetch 미루고 UI만 갱신
+      if (p === 'custom' && (!_customRange.from || !_customRange.to)) {
+        _rerender();
+      } else {
+        _loadAndRender(); _prefetchAllPeriods();
+      }
+      return;
+    }
+    // [v207] 직접 지정 기간 조회
+    if (act === 'apply-custom') {
+      const sheet = document.getElementById('revenueSheet');
+      const fromEl = sheet?.querySelector('#rvFrom');
+      const toEl   = sheet?.querySelector('#rvTo');
+      const from = fromEl?.value || '';
+      const to   = toEl?.value   || '';
+      if (!from || !to) {
+        if (window.showToast) window.showToast('시작/종료 날짜를 모두 골라주세요');
+        return;
+      }
+      if (to < from) {
+        if (window.showToast) window.showToast('종료일이 시작일보다 빠를 수 없어요');
+        return;
+      }
+      _customRange = { from, to };
+      _currentPeriod = 'custom';
+      _revWindow = 50;
+      _loadAndRender();
       return;
     }
     /* PROFIT_HIDDEN */ // if (act === 'incentive-cfg') return _openIncentiveSettings();
@@ -408,9 +467,16 @@
         <button type="button" class="rv-header__action" data-rv-act="add-form">+ 입력</button>
       </div>
       <div class="rv-periods">
-        <div class="rv-periods__row">
-          ${PERIODS.map(p => `<button type="button" class="rv-periods__btn${p === _currentPeriod ? ' is-on' : ''}" data-rv-act="period" data-period="${p}">${PERIOD_LABEL[p]}</button>`).join('')}
+        <div class="rv-periods__row" style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:flex;gap:6px;flex-wrap:nowrap;">
+          ${PERIODS.map(p => `<button type="button" class="rv-periods__btn${p === _currentPeriod ? ' is-on' : ''}" data-rv-act="period" data-period="${p}" style="flex-shrink:0;">${PERIOD_LABEL[p]}</button>`).join('')}
         </div>
+        ${_currentPeriod === 'custom' ? `
+        <div class="rv-custom-range" style="display:flex;gap:6px;align-items:center;padding:10px 0 4px;font-size:12px;flex-wrap:wrap;">
+          <input id="rvFrom" type="date" value="${_customRange.from || ''}" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);" />
+          <span style="color:var(--text-subtle);">~</span>
+          <input id="rvTo" type="date" value="${_customRange.to || ''}" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);" />
+          <button type="button" data-rv-act="apply-custom" style="padding:8px 14px;border:none;border-radius:8px;background:var(--brand-strong,#E5586E);color:#fff;cursor:pointer;font-weight:700;font-size:12px;">조회</button>
+        </div>` : ''}
       </div>
       <div class="rv-body" id="rvBody"></div>
       <button type="button" class="rv-fab" data-rv-act="add-form" aria-label="매출 입력" style="font-size:24px;font-weight:600;line-height:1;">+</button>
@@ -455,12 +521,19 @@
     const periods = PERIODS.map(p =>
       `<button type="button" class="rv-pc__period-btn${p === cur ? ' is-on' : ''}" data-rv-act="period" data-period="${p}">${PERIOD_LABEL[p]}</button>`
     ).join('');
+    const customForm = (cur === 'custom') ? `
+      <div class="rv-pc__custom-range" style="display:flex;gap:6px;align-items:center;padding:10px 0 0;font-size:13px;flex-wrap:wrap;">
+        <input id="rvFrom" type="date" value="${_customRange.from || ''}" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);" />
+        <span style="color:var(--text-subtle);">~</span>
+        <input id="rvTo" type="date" value="${_customRange.to || ''}" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);" />
+        <button type="button" data-rv-act="apply-custom" style="padding:8px 16px;border:none;border-radius:8px;background:var(--brand-strong,#E5586E);color:#fff;cursor:pointer;font-weight:700;font-size:13px;">조회</button>
+      </div>` : '';
     return `<div class="rv-pc__header">
       <div class="rv-pc__title">매출관리</div>
       <div class="rv-pc__spacer"></div>
       <div class="rv-pc__periods">${periods}</div>
       <button type="button" class="rv-pc__add" data-rv-act="add-form">+ 매출 입력</button>
-    </div>`;
+    </div>${customForm}`;
   }
   function _renderPCChartShellHTML() {
     return `<div class="rv-pc-chart" id="rvPCChart">
@@ -710,17 +783,26 @@
     const target = _cachedIsPC ? sheet.querySelector('#rvPCMain') : sheet.querySelector('#rvBody');
     if (!target) return;
 
-    if (_currentPeriod === 'month' && window.RevenueMonth) {
+    // [v207] month / last_month 는 RevenueMonth (요일별 그래프 + 목표).
+    // last_month 는 BE summary endpoint 가 month 만 받으므로 fallbackSummary 사용.
+    if ((_currentPeriod === 'month' || _currentPeriod === 'last_month') && window.RevenueMonth) {
       let summary;
-      try { summary = await window.RevenueMonth.fetchSummary(); }
-      catch (_e) {
-        console.warn('[revenue] summary fetch 실패 — 클라이언트 폴백:', _e);
+      if (_currentPeriod === 'last_month') {
+        // 클라이언트 폴백 (BE summary 미지원)
         summary = window.RevenueMonth.fallbackSummary(_items);
+      } else {
+        try { summary = await window.RevenueMonth.fetchSummary(); }
+        catch (_e) {
+          console.warn('[revenue] summary fetch 실패 — 클라이언트 폴백:', _e);
+          summary = window.RevenueMonth.fallbackSummary(_items);
+        }
       }
       // [2026-05-17] 과거 월: RevenueMonth 가 fetch 한 items 사용. 이번달: SWR _items.
       const view = window.RevenueMonth.getView ? window.RevenueMonth.getView() : null;
       const viewItems = window.RevenueMonth.getViewItems ? window.RevenueMonth.getViewItems() : null;
-      const itemsToRender = (view && !view.isCurrent && Array.isArray(viewItems)) ? viewItems : _items;
+      const itemsToRender = (_currentPeriod === 'last_month')
+        ? _items
+        : ((view && !view.isCurrent && Array.isArray(viewItems)) ? viewItems : _items);
       if (_cachedIsPC) window.RevenueMonth.renderPC(target, summary, itemsToRender);
       else window.RevenueMonth.renderMobile(target, summary, itemsToRender);
       return;
