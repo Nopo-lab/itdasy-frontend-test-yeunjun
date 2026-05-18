@@ -830,8 +830,9 @@
     });
     h += '</div>';
     h += '<div class="bk-view">';
-    ['month','week','day'].forEach(v => {
-      const lbl = { month: '월', week: '주', day: '일' }[v];
+    // [v200 DAY_VIEW_HIDDEN] 일간 탭 제거 — 1인 샵에 과한 디테일.
+    ['month','week'].forEach(v => {
+      const lbl = { month: '월', week: '주' }[v];
       h += '<button class="bk-view__btn' + (v === _curView ? ' is-on' : '') + '" data-view="' + v + '">' + lbl + '</button>';
     });
     h += '</div></div>';
@@ -880,8 +881,9 @@
   // §16 PC 진입 — myshop-v3 의 .ms-side 재사용
   // ============================================================
   function _buildPCHeaderHTML(subTxt) {
-    const viewBtns = ['month','week','day'].map(v => {
-      const lbl = { month:'월', week:'주', day:'일' }[v];
+    // [v200 DAY_VIEW_HIDDEN] 일간 탭 제거 — PC 도 동일.
+    const viewBtns = ['month','week'].map(v => {
+      const lbl = { month:'월', week:'주' }[v];
       return '<button class="bk-view__btn' + (v === _curView ? ' is-on' : '') + '" data-view="' + v + '">' + lbl + '</button>';
     }).join('');
     return `
@@ -1412,6 +1414,22 @@
       <input type="hidden" id="bfSvc" value="${_esc(existing?.service_name || '')}" />
       <input id="bfSvcCustom" class="bf-svc-input" placeholder="시술명 직접 입력" style="display:none" maxlength="50" autocomplete="off" />
     </div>`;
+    // [v200] 시술비 + 예약금 + 잔금. amount 만 BE 저장, deposit 은 UI 표시(백로그).
+    const _initAmt = Number(existing?.amount) || '';
+    html += `<div class="bf-section">
+      <div class="bf-label">시술비 · 예약금</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <label style="flex:1;min-width:140px;display:flex;flex-direction:column;font-size:11px;color:#6B7684;font-weight:600;">
+          시술비
+          <input id="bfAmount" type="number" inputmode="numeric" min="0" step="1000" value="${_initAmt}" placeholder="시술 선택 시 자동" style="padding:10px;border:1px solid #E5E8EB;border-radius:10px;font-size:14px;margin-top:4px;" />
+        </label>
+        <label style="flex:1;min-width:140px;display:flex;flex-direction:column;font-size:11px;color:#6B7684;font-weight:600;">
+          예약금
+          <input id="bfDeposit" type="number" inputmode="numeric" min="0" step="1000" placeholder="선택" style="padding:10px;border:1px solid #E5E8EB;border-radius:10px;font-size:14px;margin-top:4px;" />
+        </label>
+      </div>
+      <div id="bfBalance" style="margin-top:8px;font-size:12px;color:#6B7684;text-align:right;">잔금 —</div>
+    </div>`;
     // 메모 · 직원 (토글)
     html += `<div class="bf-section" id="bfMoreSection">
       <button type="button" class="bf-more-toggle" id="bfMoreToggle">
@@ -1646,6 +1664,12 @@
           // [Step 4 · 2026-05-16] 프리셋 매칭 → 소요시간 자동 갱신 + 안내 토스트
           const tpl = _selectedSvc && (window._serviceTemplatesCache || []).find(t => t.name === _selectedSvc);
           if (tpl && tpl.default_duration_min > 0) { _durMin = tpl.default_duration_min; _updateDur(); }
+          // [v200] 시술비 자동 채움 — 사용자가 직접 수정 안 했을 때만(empty 일 때)
+          const amtInp = body.querySelector('#bfAmount');
+          if (tpl && amtInp && !amtInp.value) {
+            amtInp.value = Number(tpl.default_price) || '';
+            amtInp.dispatchEvent(new Event('input'));
+          }
           if (tpl && window.showToast) {
             const priceLbl = tpl.default_price ? _krwShort(tpl.default_price) + '원 · ' : '';
             window.showToast(`프리셋 기준: ${priceLbl}${tpl.default_duration_min || 0}분`);
@@ -1762,6 +1786,22 @@
     body._getDurMin = () => _durMin;
     body._getStartH = () => { _readStart(); return _startH; };
     body._getStartM = () => { _readStart(); return _startM; };
+
+    // [v200] 시술비/예약금 input 시 잔금 자동 계산
+    const _amtInp = body.querySelector('#bfAmount');
+    const _depInp = body.querySelector('#bfDeposit');
+    const _balOut = body.querySelector('#bfBalance');
+    function _updateBalance() {
+      if (!_balOut) return;
+      const a = +(_amtInp?.value) || 0;
+      const d = +(_depInp?.value) || 0;
+      if (a <= 0) { _balOut.textContent = '잔금 —'; return; }
+      const bal = Math.max(0, a - d);
+      _balOut.textContent = '잔금 ' + bal.toLocaleString('ko-KR') + '원';
+    }
+    _amtInp?.addEventListener('input', _updateBalance);
+    _depInp?.addEventListener('input', _updateBalance);
+    _updateBalance();
   }
 
   function _bindFormSave(body, existing, date) {
@@ -1777,6 +1817,8 @@
       // [2026-05-16] 시술명: chip 선택값(#bfSvc) 또는 직접입력값(#bfSvcCustom) 둘 다 폴백
       const svcSelected = body.querySelector('#bfSvc').value.trim();
       const svcCustom   = (body.querySelector('#bfSvcCustom')?.value || '').trim();
+      // [v200] amount 추가 — 홈 "오늘 예상매출" 합산에 사용. deposit 은 BE 미지원이라 미전송.
+      const amtVal = +body.querySelector('#bfAmount')?.value || 0;
       const payload = {
         starts_at:     `${d}T${sTime}:00+09:00`,
         ends_at:       `${d}T${eTime}:00+09:00`,
@@ -1785,6 +1827,7 @@
         service_name:  svcSelected || svcCustom || null,
         memo:          body.querySelector('#bfMemo').value.trim()      || null,
         staff_id:      body._getStaffId?.() || null,
+        amount:        amtVal > 0 ? amtVal : null,
       };
       try {
         if (existing) {
@@ -1886,6 +1929,8 @@
   // §21 뷰 전환
   // ============================================================
   function _switchView(view) {
+    // [v200 DAY_VIEW_HIDDEN] 'day' 진입은 모두 'week' 로 리디렉트.
+    if (view === 'day') view = 'week';
     _curView = view;
     const o = _overlay(); if (!o) return;
     o.querySelectorAll('.bk-view__btn').forEach(b => {

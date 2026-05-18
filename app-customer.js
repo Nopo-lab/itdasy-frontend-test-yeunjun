@@ -293,6 +293,10 @@
           <button data-seg="regular" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">⭐ 단골</button>
           <button data-seg="member" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">💳 회원권</button>
           <button data-seg="new" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">🌱 신규</button>
+          <!-- [v200] 방문 횟수 기준 필터 칩 추가 -->
+          <button data-seg="visits1" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">1회</button>
+          <button data-seg="visits23" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">2~3회</button>
+          <button data-seg="visits4plus" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">4회+</button>
           <button data-seg="atrisk" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">이탈 임박</button>
         </div>
         <div id="customerList"></div>
@@ -340,9 +344,14 @@
       const now = Date.now();
       const ATRISK_DAYS = 60;
       items = items.filter(c => {
+        const vc = c.visit_count || 0;
         if (seg === 'regular') return !!c.is_regular;
         if (seg === 'member')  return !!c.membership_active;
-        if (seg === 'new')     return (c.visit_count || 0) <= 1;
+        if (seg === 'new')     return vc <= 1;
+        // [v200] 방문 횟수 기준 분류
+        if (seg === 'visits1')     return vc === 1;
+        if (seg === 'visits23')    return vc >= 2 && vc <= 3;
+        if (seg === 'visits4plus') return vc >= 4;
         if (seg === 'atrisk') {
           if (!c.last_visit_at) return false;
           const t = Date.parse(c.last_visit_at);

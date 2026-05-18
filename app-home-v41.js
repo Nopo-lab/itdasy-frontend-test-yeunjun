@@ -1013,10 +1013,24 @@
     const completedCount = bk.filter(b => b && b.status === 'completed').length;
     // 이번달 완료 건수 — brief 에 별도 키 없으면 today completed 만. (Best effort)
     const monthCount = Number(brief.this_month_count) || completedCount;
-    // 오늘 예상 매출 — confirmed 예약의 amount 합 (FE 계산)
+    // [v200] 오늘 예상 매출 — confirmed 예약의 amount 합. amount 비어있으면 서비스 프리셋 가격 폴백.
+    const _svcCache = window._serviceTemplatesCache || [];
+    const _priceFor = (name) => {
+      const k = String(name || '').trim().toLowerCase();
+      if (!k || !_svcCache.length) return 0;
+      let hit = _svcCache.find(t => String(t.name || '').trim().toLowerCase() === k);
+      if (!hit) hit = _svcCache.find(t => {
+        const n = String(t.name || '').trim().toLowerCase();
+        return n && (k.includes(n) || n.includes(k));
+      });
+      return Number(hit && hit.default_price) || 0;
+    };
     const todayExpected = bk
       .filter(b => b && b.status === 'confirmed')
-      .reduce((s, b) => s + (Number(b.amount) || 0), 0);
+      .reduce((s, b) => {
+        const amt = Number(b.amount) || 0;
+        return s + (amt > 0 ? amt : _priceFor(b.service_name));
+      }, 0);
     const now = new Date();
     const monthLabel = (now.getMonth() + 1) + '월';
     return `<div class="hv5-hero">

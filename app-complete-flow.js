@@ -326,8 +326,12 @@
       ${_renderAutoPreview()}
 
       <div class="cf-actions">
-        <button id="cfSkip" type="button" class="cf-btn-skip">건너뛰기</button>
-        <button id="cfSave" type="button" class="cf-btn-save">시술 완료</button>
+        <button id="cfSave" type="button" class="cf-btn-save" style="width:100%;">시술 완료</button>
+      </div>
+      <div class="cf-sub-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button id="cfSkip" type="button" class="cf-sub-btn">건너뛰기 (매출 미기록)</button>
+        <button id="cfNoShow" type="button" class="cf-sub-btn">노쇼</button>
+        <button id="cfCancel" type="button" class="cf-sub-btn" style="color:#EF4444;">예약 취소</button>
       </div>
       <div class="cf-sub-actions">
         <button id="cfEditBooking" type="button" class="cf-sub-btn">예약 시간·고객 수정</button>
@@ -339,6 +343,8 @@
 
     document.getElementById('cfSkip').addEventListener('click', _skipAndComplete);
     document.getElementById('cfSave').addEventListener('click', _saveAll);
+    document.getElementById('cfNoShow').addEventListener('click', _noShow);
+    document.getElementById('cfCancel').addEventListener('click', _cancelBooking);
     /* INVENTORY_HIDDEN */ // document.getElementById('cfInventory').addEventListener('click', _openInventory);
     document.querySelectorAll('.cf-pill').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -374,6 +380,18 @@
   }
   */
 
+  // [v200] 캐시 무효화 공통 헬퍼 — 시술완료/건너뛰기/노쇼/취소 어떤 액션이든 동일하게 호출
+  function _invalidateAllCaches() {
+    ['today', 'week', 'month'].forEach(p => {
+      try { localStorage.removeItem('pv_cache::revenue::' + p); } catch (_e) { void _e; }
+      try { sessionStorage.removeItem('pv_cache::revenue::' + p); } catch (_e) { void _e; }
+    });
+    ['hv41_cache::brief', 'pv_cache::customers', 'rh_cache', 'pv_cache::dashboard'].forEach(k => {
+      try { localStorage.removeItem(k); } catch (_e) { void _e; }
+      try { sessionStorage.removeItem(k); } catch (_e) { void _e; }
+    });
+  }
+
   // 매출 미기록 — BE에 skip_revenue 플래그 전달 (리터치/재고는 그대로 처리됨)
   async function _skipAndComplete() {
     if (!_ctx.booking_id) { _close(); return; }
@@ -391,19 +409,54 @@
     try {
       await _patchBooking(_ctx.booking_id, { status: 'completed', skip_revenue: true });
       _emitChange('update_booking', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
-      // [v198] 홈 brief / 고객 리스트 / 매출 허브 캐시 명시 무효화
-      try { localStorage.removeItem('hv41_cache::brief');   } catch (_e) { /* silent */ }
-      try { sessionStorage.removeItem('hv41_cache::brief'); } catch (_e) { /* silent */ }
-      try { localStorage.removeItem('pv_cache::customers');   } catch (_e) { /* silent */ }
-      try { sessionStorage.removeItem('pv_cache::customers'); } catch (_e) { /* silent */ }
-      try { sessionStorage.removeItem('rh_cache');           } catch (_e) { /* silent */ }
+      _invalidateAllCaches();
       if (window.showToast) window.showToast('예약 완료 (매출 미기록)');
       _close();
       _refreshConnectedViews();
     } catch (e) {
       console.warn('[complete-flow] 매출 미기록 완료 실패:', e);
-      if (btn) { btn.disabled = false; btn.textContent = '매출 미기록 완료'; }
+      if (btn) { btn.disabled = false; btn.textContent = '건너뛰기 (매출 미기록)'; }
       if (window.showToast) window.showToast('완료 처리 실패: ' + (e.message || ''));
+    }
+  }
+
+  // [v200] 노쇼 처리 — BE status 'no_show' + 매출 미기록.
+  // 예약금(deposit) 매출 자동 기록은 BE Booking 모델에 deposit 컬럼 추가 후 활성화 (백로그).
+  async function _noShow() {
+    if (!_ctx.booking_id) { _close(); return; }
+    const btn = document.getElementById('cfNoShow');
+    if (btn) { btn.disabled = true; btn.textContent = '처리 중…'; }
+    try {
+      await _patchBooking(_ctx.booking_id, { status: 'no_show', skip_revenue: true });
+      _emitChange('update_booking', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
+      _invalidateAllCaches();
+      if (window.showToast) window.showToast('노쇼 처리됐어요');
+      _close();
+      _refreshConnectedViews();
+    } catch (e) {
+      console.warn('[complete-flow] 노쇼 실패:', e);
+      if (btn) { btn.disabled = false; btn.textContent = '노쇼'; }
+      if (window.showToast) window.showToast('처리 실패: ' + (e.message || ''));
+    }
+  }
+
+  // [v200] 예약 취소 — BE status 'cancelled'. confirm 후 실행.
+  async function _cancelBooking() {
+    if (!_ctx.booking_id) { _close(); return; }
+    if (!window.confirm('이 예약을 취소할까요?')) return;
+    const btn = document.getElementById('cfCancel');
+    if (btn) { btn.disabled = true; btn.textContent = '처리 중…'; }
+    try {
+      await _patchBooking(_ctx.booking_id, { status: 'cancelled' });
+      _emitChange('update_booking', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
+      _invalidateAllCaches();
+      if (window.showToast) window.showToast('예약이 취소됐어요');
+      _close();
+      _refreshConnectedViews();
+    } catch (e) {
+      console.warn('[complete-flow] 취소 실패:', e);
+      if (btn) { btn.disabled = false; btn.textContent = '예약 취소'; }
+      if (window.showToast) window.showToast('취소 실패: ' + (e.message || ''));
     }
   }
 
@@ -439,19 +492,8 @@
       const res = await _patchBooking(_ctx.booking_id, payload);
       const eff = res?.completion_effects || {};
       console.log('[complete-flow] PATCH 응답:', { payload, completion_effects: eff, amount: res?.amount });
-      // 매출 SWR 캐시 강제 무효화 — Revenue 화면 다음 진입 시 fresh fetch
-      try {
-        ['today', 'week', 'month'].forEach(p => {
-          try { localStorage.removeItem('pv_cache::revenue::' + p); } catch (_e) { /* silent */ }
-          try { sessionStorage.removeItem('pv_cache::revenue::' + p); } catch (_e) { /* silent */ }
-        });
-      } catch (_e) { /* silent */ }
-      // [v198] 홈 brief / 고객 리스트 / 매출 허브 캐시도 명시 무효화
-      try { localStorage.removeItem('hv41_cache::brief');   } catch (_e) { /* silent */ }
-      try { sessionStorage.removeItem('hv41_cache::brief'); } catch (_e) { /* silent */ }
-      try { localStorage.removeItem('pv_cache::customers');   } catch (_e) { /* silent */ }
-      try { sessionStorage.removeItem('pv_cache::customers'); } catch (_e) { /* silent */ }
-      try { sessionStorage.removeItem('rh_cache');           } catch (_e) { /* silent */ }
+      // [v200] 매출/홈/고객/허브/대시보드 모든 SWR 캐시 일괄 무효화
+      _invalidateAllCaches();
       if (_ctx.booking_id) _emitChange('update_booking', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
       if (eff.revenue_created) _emitChange('create_revenue', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id, revenue_id: eff.revenue_id });
       if (window.hapticSuccess) window.hapticSuccess();

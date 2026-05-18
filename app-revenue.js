@@ -741,6 +741,57 @@
     try { if (typeof window._markSheetClosed === 'function') window._markSheetClosed('revenue'); } catch (_e) { void _e; }
   };
 
+  // [v200] 매출 한 건 액션 시트 — 매출 내역 row 클릭 시 호출되는 글로벌 진입점.
+  // 현재는 "보기 + 삭제" 만 제공. 편집 모달은 백로그.
+  window._openRevenueEdit = function (revId) {
+    if (!revId) return;
+    const item = (_items || []).find(r => String(r.id) === String(revId));
+    if (!item) {
+      if (window.showToast) window.showToast('이 매출 기록을 찾을 수 없어요');
+      return;
+    }
+    const existing = document.getElementById('rvRowSheet');
+    if (existing) existing.remove();
+    const svc = item.service_name ? _esc(item.service_name) : '시술';
+    const amt = Number(item.amount) || 0;
+    const dateStr = String(item.recorded_at || '').slice(0, 10);
+    const methodLbl = TAG_LABEL[item.method] || item.method || '';
+    const sheet = document.createElement('div');
+    sheet.id = 'rvRowSheet';
+    sheet.style.cssText = 'position:fixed;inset:0;z-index:9050;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;justify-content:center;';
+    sheet.innerHTML = `
+      <div style="background:var(--surface,#fff);border-radius:20px 20px 0 0;width:100%;max-width:440px;padding:20px;padding-bottom:max(20px,env(safe-area-inset-bottom));">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <strong style="font-size:17px;color:var(--text);">이 매출 기록</strong>
+          <button type="button" data-rv-close style="background:none;border:none;font-size:20px;cursor:pointer;color:#8B95A1;" aria-label="닫기">✕</button>
+        </div>
+        <div style="background:var(--surface-2,#F7F8FA);border-radius:12px;padding:14px;margin-bottom:14px;">
+          <div style="font-weight:700;font-size:15px;margin-bottom:4px;">${svc}</div>
+          <div style="font-size:13px;color:#6B7684;">${dateStr} · ${_esc(methodLbl)} · <b>${amt.toLocaleString('ko-KR')}원</b></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button type="button" data-rv-close style="flex:1;padding:13px;border:1px solid #E5E8EB;border-radius:12px;background:#fff;cursor:pointer;color:#4E5968;font-weight:700;font-size:13px;">닫기</button>
+          <button type="button" data-rv-del style="flex:1;padding:13px;border:none;border-radius:12px;background:#EF4444;color:#fff;cursor:pointer;font-weight:800;font-size:14px;">삭제</button>
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:#8B95A1;text-align:center;">편집은 곧 지원될 예정이에요</div>
+      </div>`;
+    document.body.appendChild(sheet);
+    const close = () => sheet.remove();
+    sheet.addEventListener('click', (e) => { if (e.target === sheet) close(); });
+    sheet.querySelectorAll('[data-rv-close]').forEach(b => b.addEventListener('click', close));
+    sheet.querySelector('[data-rv-del]').addEventListener('click', async () => {
+      if (!window.confirm('이 매출을 삭제할까요?')) return;
+      try {
+        await remove(item.id);
+        if (window.showToast) window.showToast('삭제됐어요');
+        close();
+        try { await _loadAndRender(); } catch (_e) { void _e; }
+      } catch (e) {
+        if (window.showToast) window.showToast('삭제 실패: ' + (e?.message || ''));
+      }
+    });
+  };
+
   // ── public 객체 + 내부 API export (today/month 가 참조) ─
   window.Revenue = {
     list, create, remove,

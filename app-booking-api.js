@@ -126,6 +126,8 @@
       service_name:  payload.service_name  ? String(payload.service_name).slice(0, 50) : null,
       memo:          payload.memo          ? String(payload.memo).slice(0, 200) : null,
       status:        'confirmed',
+      // [v200] 예약 생성 시 예상 시술비. amount 가 있어야 홈 "오늘 예상매출" 합산에 활용됨.
+      amount:        (payload.amount != null && +payload.amount > 0) ? +payload.amount : null,
     };
     if (_isOffline) {
       const rec = { id: _uuid(), shop_id: localStorage.getItem('shop_id') || 'offline',
@@ -174,6 +176,12 @@
   // [2026-04-26] 메모리 캐시 무효화 — 챗봇 등 외부 mutation 발생 시 호출
   function _invalidateCache() {
     for (const k in _cache) delete _cache[k];
+    // [v200] 홈 brief / 대시보드 SWR 캐시도 함께 무효화 — 예약 추가/수정/삭제가
+    // 홈의 오늘 예상매출 / 완료 카운트에 영향을 주므로 stale 방지.
+    try { localStorage.removeItem('hv41_cache::brief');     } catch (_e) { void _e; }
+    try { sessionStorage.removeItem('hv41_cache::brief');   } catch (_e) { void _e; }
+    try { localStorage.removeItem('pv_cache::dashboard');   } catch (_e) { void _e; }
+    try { sessionStorage.removeItem('pv_cache::dashboard'); } catch (_e) { void _e; }
   }
 
   window.Booking = {

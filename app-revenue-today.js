@@ -113,7 +113,7 @@
       const who = r.customer_name ? _esc(r.customer_name) : '제품 판매';
       const svc = r.service_name ? ` · ${_esc(r.service_name)}` : '';
       const methodLbl = TAG_LABEL[r.method] || r.method || '카드';
-      return `<div class="rvm-mli">
+      return `<div class="rvm-mli" data-rev-id="${r.id}" style="cursor:pointer;">
         <div class="rvm-mdot ${isAuto ? '' : 'man'}"></div>
         <div class="rvm-minf">
           <div class="rvm-mln">${who}${svc}</div>
@@ -122,6 +122,19 @@
         <div class="rvm-mlamt">${_krw(r.amount)}</div>
       </div>`;
     }).join('');
+    // [v200] row 클릭 위임 — render 후 마운트되는 카드에 한 번만 listener 부착.
+    // 페이지 단위로 늦게 mount 되는 컨테이너라 setTimeout 0 으로 다음 tick 에 bind.
+    setTimeout(() => {
+      document.querySelectorAll('.rvm-mcard:not([data-rv-bound])').forEach(card => {
+        card.dataset.rvBound = '1';
+        card.addEventListener('click', (e) => {
+          const row = e.target.closest('[data-rev-id]');
+          if (!row) return;
+          const id = row.dataset.revId;
+          if (typeof window._openRevenueEdit === 'function') window._openRevenueEdit(id);
+        });
+      });
+    }, 0);
     return `<div class="rvm-mcard" style="padding:0 14px;">${rows}</div>`;
   }
 

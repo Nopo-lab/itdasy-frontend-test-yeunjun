@@ -431,8 +431,13 @@
       const days = list.filter(d => d.total > 0).length;
       const hit = list.filter(d => d.total >= goal.amount).length;
       const rate = days ? Math.round(hit * 100 / days) : 0;
+      const rec = recommendedGoal(summary);
+      // [v200] 수동 목표 있어도 AI 추천 링크 노출 — 사용자가 AI 추천 값으로 되돌릴 수 있게.
+      const aiHint = (rec && rec !== goal.amount)
+        ? `<button type="button" class="btn-link" data-rvm-act="accept-goal" data-amount="${rec}" style="background:none;border:none;color:#6B7684;text-decoration:underline;font-size:12px;cursor:pointer;padding:0;margin-top:4px;">AI 추천 ${_krw(rec)} 으로 변경</button>`
+        : '';
       return `<div class="${cls}">
-        <div class="t">목표 ${_krw(goal.amount)}/일 · 달성 ${rate}%</div>
+        <div class="t">목표 ${_krw(goal.amount)}/일 · 달성 ${rate}%${aiHint ? '<br>' + aiHint : ''}</div>
         <button type="button" class="btn" data-rvm-act="edit-goal">수정</button>
       </div>`;
     }
@@ -484,8 +489,9 @@
     const goal = readGoal();
     const isCur = _isCurrentMonth();
     const isPast = !!summary.is_past || !isCur;
+    // [v200] "이번달 예상" → "남은 예약 완료 시" 로 라벨 변경. 사용자 의도 명확화.
     const aiRow = (!isPast && summary.projected_total)
-      ? `<div class="rvm5-ai"><span class="badge">AI</span><span class="txt">이번달 예상 <b>${_krw(summary.projected_total)}</b></span></div>`
+      ? `<div class="rvm5-ai"><span class="badge">예상</span><span class="txt">남은 예약 완료 시 <b>${_krw(summary.projected_total)}</b></span></div>`
       : '';
     const pastBadge = isPast ? `<span class="rvm5-past-badge">지난달</span>` : '';
 
@@ -541,7 +547,7 @@
     const isCur = _isCurrentMonth();
     const isPast = !!summary.is_past || !isCur;
     const aiRow = (!isPast && summary.projected_total)
-      ? `<div class="rvm5-mai"><span class="badge">AI</span><span class="txt">이번달 예상 <b>${_krw(summary.projected_total)}</b></span></div>`
+      ? `<div class="rvm5-mai"><span class="badge">예상</span><span class="txt">남은 예약 완료 시 <b>${_krw(summary.projected_total)}</b></span></div>`
       : '';
     const pastBadge = isPast ? `<span class="rvm5-past-badge">지난달</span>` : '';
 
