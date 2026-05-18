@@ -41,6 +41,13 @@
     document.body.style.overflow = '';
     const co = document.getElementById('cal-overlay');
     if (co) co.remove();
+    // [v215] 고객 v4 시트들도 함께 닫기 (사이드바 이동 시 잔존 방지)
+    try { window.closeCustomers?.(); } catch (_e) { void _e; }
+    try { window.closeCustomerDashboard?.(); } catch (_e) { void _e; }
+    const cs = document.getElementById('customerSheet');
+    if (cs) cs.style.display = 'none';
+    const cds = document.getElementById('customerDashSheet');
+    if (cds) cds.style.display = 'none';
     // popstate 관리용 sheet-closed 신호
     ['customers', 'inventory', 'revenue', 'booking', 'revenuehub', 'aihub', 'settingshub', 'nav'].forEach(k => {
       try { window._markSheetClosed?.(k); } catch (_e) { void _e; }
