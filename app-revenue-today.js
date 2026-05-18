@@ -113,7 +113,15 @@
       const who = r.customer_name ? _esc(r.customer_name) : '제품 판매';
       const svc = r.service_name ? ` · ${_esc(r.service_name)}` : '';
       const methodLbl = TAG_LABEL[r.method] || r.method || '카드';
-      return `<div class="rvm-mli" data-rev-id="${r.id}" style="cursor:pointer;">
+      // [v201] row 자체에 amount/service/method/date 데이터 박음 — _items 미스매치 방어
+      return `<div class="rvm-mli"
+          data-rev-id="${r.id}"
+          data-rev-amount="${Number(r.amount)||0}"
+          data-rev-service="${_esc(r.service_name||'')}"
+          data-rev-customer="${_esc(r.customer_name||'')}"
+          data-rev-method="${_esc(r.method||'')}"
+          data-rev-date="${_esc(String(r.recorded_at||'').slice(0,10))}"
+          style="cursor:pointer;">
         <div class="rvm-mdot ${isAuto ? '' : 'man'}"></div>
         <div class="rvm-minf">
           <div class="rvm-mln">${who}${svc}</div>
@@ -122,19 +130,25 @@
         <div class="rvm-mlamt">${_krw(r.amount)}</div>
       </div>`;
     }).join('');
-    // [v200] row 클릭 위임 — render 후 마운트되는 카드에 한 번만 listener 부착.
-    // 페이지 단위로 늦게 mount 되는 컨테이너라 setTimeout 0 으로 다음 tick 에 bind.
-    setTimeout(() => {
-      document.querySelectorAll('.rvm-mcard:not([data-rv-bound])').forEach(card => {
-        card.dataset.rvBound = '1';
-        card.addEventListener('click', (e) => {
-          const row = e.target.closest('[data-rev-id]');
-          if (!row) return;
-          const id = row.dataset.revId;
-          if (typeof window._openRevenueEdit === 'function') window._openRevenueEdit(id);
-        });
+    // [v201] 클릭 위임 — document 1회 bind. 매번 render 해도 동작.
+    if (!window._rvRowClickBound) {
+      window._rvRowClickBound = true;
+      document.addEventListener('click', (e) => {
+        const row = e.target.closest('[data-rev-id]');
+        if (!row) return;
+        const id = row.dataset.revId;
+        // row 데이터 객체 첨부 (fallback 용)
+        const data = {
+          id,
+          amount:        +row.dataset.revAmount || 0,
+          service_name:  row.dataset.revService || '',
+          customer_name: row.dataset.revCustomer || '',
+          method:        row.dataset.revMethod || '',
+          recorded_at:   row.dataset.revDate || '',
+        };
+        if (typeof window._openRevenueEdit === 'function') window._openRevenueEdit(id, data);
       });
-    }, 0);
+    }
     return `<div class="rvm-mcard" style="padding:0 14px;">${rows}</div>`;
   }
 

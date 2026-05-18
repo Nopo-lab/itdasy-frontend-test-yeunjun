@@ -742,10 +742,11 @@
   };
 
   // [v200] 매출 한 건 액션 시트 — 매출 내역 row 클릭 시 호출되는 글로벌 진입점.
-  // 현재는 "보기 + 삭제" 만 제공. 편집 모달은 백로그.
-  window._openRevenueEdit = function (revId) {
+  // [v201] 두 번째 인자 fallbackData — _items 미스매치 시 row 의 data-* 그대로 사용.
+  window._openRevenueEdit = function (revId, fallbackData) {
     if (!revId) return;
-    const item = (_items || []).find(r => String(r.id) === String(revId));
+    let item = (_items || []).find(r => String(r.id) === String(revId));
+    if (!item && fallbackData) item = fallbackData;  // row 의 data 속성 그대로
     if (!item) {
       if (window.showToast) window.showToast('이 매출 기록을 찾을 수 없어요');
       return;

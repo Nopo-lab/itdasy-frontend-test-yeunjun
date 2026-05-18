@@ -1349,7 +1349,14 @@
   // 데이터 변경 이벤트 — 홈 탭 활성 시 재렌더 + 아바타 즉시 동기화
   if (!window._homeV41DataListenerInit) {
     window._homeV41DataListenerInit = true;
-    window.addEventListener('itdasy:data-changed', () => {
+    window.addEventListener('itdasy:data-changed', (ev) => {
+      const kind = (ev && ev.detail && ev.detail.kind) || '';
+      // [v201] 안전망 — booking/revenue/completion 관련이면 brief SWR 캐시 즉시 삭제.
+      //   booking-api 측 무효화가 있긴 하지만 racy 케이스 방어.
+      if (/booking|revenue|completion|customer/.test(kind)) {
+        try { localStorage.removeItem(SWR_KEY); } catch (_e) { void _e; }
+        try { sessionStorage.removeItem(SWR_KEY); } catch (_e) { void _e; }
+      }
       const root = document.getElementById('homeV41Root');
       if (!root) return;
       // 홈 탭 비활성이어도 아바타는 최신화 (다음 진입 시 깜빡임 방지)
@@ -1357,5 +1364,15 @@
       const homeTab = document.getElementById('tab-home');
       if (homeTab && homeTab.classList.contains('active')) _doRender(root);
     });
+  }
+
+  // [v201] 서비스 프리셋 사전 로드 — todayExpected 폴백 가격이 작동하려면 캐시 필요.
+  //   loadServiceTemplates 완료 후 홈이 mount 됐으면 한번 더 렌더.
+  if (typeof window.loadServiceTemplates === 'function' && !window._homeV41SvcWarmed) {
+    window._homeV41SvcWarmed = true;
+    window.loadServiceTemplates().then(() => {
+      const root = document.getElementById('homeV41Root');
+      if (root) _doRender(root);
+    }).catch(() => { /* silent */ });
   }
 })();

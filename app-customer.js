@@ -290,13 +290,11 @@
         <!-- [2026-04-29 E2] 자동 세그먼트 chip 4개 -->
         <div id="customerSegments" style="display:flex;gap:6px;padding:0 4px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;">
           <button data-seg="all" class="cust-seg-chip cust-seg-active" style="flex-shrink:0;padding:6px 14px;border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">전체</button>
-          <button data-seg="regular" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">⭐ 단골</button>
-          <button data-seg="member" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">💳 회원권</button>
-          <button data-seg="new" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">🌱 신규</button>
-          <!-- [v200] 방문 횟수 기준 필터 칩 추가 -->
-          <button data-seg="visits1" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">1회</button>
+          <!-- [v201] 자동 분류(신규/단골) 제거. 방문 횟수 기반 필터로 단순화. -->
+          <button data-seg="visits1" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">🌱 1회</button>
           <button data-seg="visits23" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">2~3회</button>
-          <button data-seg="visits4plus" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">4회+</button>
+          <button data-seg="visits4plus" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">⭐ 4회+</button>
+          <button data-seg="member" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">💳 회원권</button>
           <button data-seg="atrisk" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">이탈 임박</button>
         </div>
         <div id="customerList"></div>

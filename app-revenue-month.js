@@ -432,12 +432,15 @@
       const hit = list.filter(d => d.total >= goal.amount).length;
       const rate = days ? Math.round(hit * 100 / days) : 0;
       const rec = recommendedGoal(summary);
-      // [v200] 수동 목표 있어도 AI 추천 링크 노출 — 사용자가 AI 추천 값으로 되돌릴 수 있게.
-      const aiHint = (rec && rec !== goal.amount)
-        ? `<button type="button" class="btn-link" data-rvm-act="accept-goal" data-amount="${rec}" style="background:none;border:none;color:#6B7684;text-decoration:underline;font-size:12px;cursor:pointer;padding:0;margin-top:4px;">AI 추천 ${_krw(rec)} 으로 변경</button>`
+      // [v201] 수동 목표 있어도 AI 추천 링크 항상 노출 (값이 같지 않으면). 별도 row 로 분리해서 가시성 ↑.
+      const aiRow = (rec && rec !== goal.amount)
+        ? `<div style="margin-top:6px;font-size:11px;"><button type="button" data-rvm-act="accept-goal" data-amount="${rec}" style="background:none;border:none;color:var(--brand,#E5586E);text-decoration:underline;font-size:11px;cursor:pointer;padding:0;font-weight:700;">AI 추천 ${_krw(rec)} 으로 변경</button></div>`
         : '';
       return `<div class="${cls}">
-        <div class="t">목표 ${_krw(goal.amount)}/일 · 달성 ${rate}%${aiHint ? '<br>' + aiHint : ''}</div>
+        <div style="flex:1;">
+          <div class="t">목표 ${_krw(goal.amount)}/일 · 달성 ${rate}%</div>
+          ${aiRow}
+        </div>
         <button type="button" class="btn" data-rvm-act="edit-goal">수정</button>
       </div>`;
     }
@@ -625,9 +628,11 @@
         } else if (act === 'edit-goal') {
           const cur = readGoal();
           const def = cur?.amount ? String(cur.amount) : '';
-          const v = prompt('일일 목표 매출액 (원). 0 또는 빈값 = 목표 해제', def);
+          // [v201] "20만원" / "200,000원" / "200000" 모두 허용. 숫자만 추출.
+          const v = prompt('일일 목표 매출액 (원, 숫자만). 예: 200000 = 20만원.\n0 또는 빈값 = 목표 해제', def);
           if (v === null) return;
-          const n = parseInt(v, 10);
+          const cleaned = String(v).replace(/[^0-9]/g, '');
+          const n = parseInt(cleaned, 10);
           if (!n || n <= 0) { clearGoal(); if (window.showToast) window.showToast('일일 목표 해제됨'); }
           else { writeGoal(n); if (window.showToast) window.showToast(`일일 목표 ${_krw(n)} 설정됨`); }
           _triggerRerender();
