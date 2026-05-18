@@ -204,17 +204,9 @@
       </section>`;
   }
 
-  // ─────────── 헤더 (모바일) ───────────
+  // ─────────── 헤더 (모바일) — v212 제거: 샵카드와 중복 ───────────
   function _renderHeader() {
-    const shop = _shopName();
-    return `
-      <header class="ms-header">
-        <div>
-          <div class="ms-header__title">내샵관리</div>
-          <div class="ms-header__sub">${_esc(shop)}</div>
-        </div>
-      </header>
-    `;
+    return '';
   }
 
   // ─────────── 샵 카드 ───────────
@@ -613,15 +605,6 @@
   function _renderPCDash(brief, dms) {
     return `
       <main class="ms-pc" aria-label="내샵관리 PC 대시보드">
-        <header class="ms-pc__header">
-          <div>
-            <div class="ms-pc__title">내샵관리</div>
-            <div class="ms-pc__sub">${_esc(_shopName())} · 좌측 메뉴에서 운영 / 허브 / 계정 진입</div>
-          </div>
-          <button type="button" class="ms-header__btn" data-mv-act="bell" aria-label="알림">
-            <i class="ph-duotone ph-bell" style="font-size:16px" aria-hidden="true"></i>
-          </button>
-        </header>
         ${_renderShopCard(brief)}
         ${_renderPersonaCard()}
         <div class="ms-dash">
