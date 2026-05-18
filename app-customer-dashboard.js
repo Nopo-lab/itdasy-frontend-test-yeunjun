@@ -470,7 +470,7 @@
     const phone = c.phone ? _esc(c.phone) : '';
     const nextDate = _nextExpectedDate(stats, c);
     const nudge = nextDate
-      ? `<div class="nudge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#E5586E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-right:6px"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 13l.75 2.25L22 16l-2.25.75L19 19l-.75-2.25L16 16l2.25-.75L19 13z"/><path d="M5 17l.5 1.5L7 19l-1.5.5L5 21l-.5-1.5L3 19l1.5-.5L5 17z"/></svg> 다음 방문 예상: ${_esc(nextDate)}</div>`
+      ? `<div class="nudge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#E5586E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-right:6px"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 13l.75 2.25L22 16l-2.25.75L19 19l-.75-2.25L16 16l2.25-.75L19 13z"/><path d="M5 17l.5 1.5L7 19l-1.5.5L5 21l-.5-1.5L3 19l1.5-.5L5 17z"/></svg> 잇쁜이 다음 방문일 예상: ${_esc(nextDate)}</div>`
       : '';
     const top = _topService(revenues);
     const pref = top ? `<div class="d-sec"><span>선호 시술</span></div><div class="d-pref">${_esc(top)}</div>` : '';
@@ -509,7 +509,7 @@
         </div>
         ${nudge}
         <div class="d-cards">
-          <div class="dc"><div class="dc-v">${vc}<small>회</small></div><div class="dc-l">총 방문</div></div>
+          <div class="dc"><div class="dc-v">${vc}<small>회</small></div><div class="dc-l">총 방문일</div></div>
           <div class="dc"><div class="dc-v">${totalMan}<small>만</small></div><div class="dc-l">총 매출</div></div>
           <div class="dc"><div class="dc-v">${avgDays || '—'}<small>${avgDays ? '일' : ''}</small></div><div class="dc-l">평균 재방문 일</div></div>
         </div>

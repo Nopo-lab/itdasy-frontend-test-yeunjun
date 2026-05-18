@@ -398,9 +398,11 @@
             // 기존 섹션 정리 후 신규 주입 (재진입 시 중복 방지)
             const old = body.querySelector('[data-cm-memo-section]');
             if (old) old.remove();
-            // 메모 섹션을 매출 이력 위에 끼워 넣음 — 가장 위에 보이게
+            // [v210] 디테일 하단에 끼움 — 상단 침범 방지
             const wrap = document.createElement('div');
-            body.insertBefore(wrap, body.firstChild);
+            const detail = body.querySelector('.cv4-detail');
+            if (detail) detail.appendChild(wrap);
+            else body.appendChild(wrap);
             openSection(id, '', wrap);
           }
         } catch (_e) { /* ignore */ }

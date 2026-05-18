@@ -26,6 +26,8 @@
 
 /* "전체" 칩 좁게 — 검색창 너비와 균형 */
 #customerSheet .cv4-chip[data-seg="all"] { padding:6px 10px; }
+/* [v210] 활성 시 가로 확장 (목업) */
+#customerSheet .cv4-chip[data-seg="all"].is-on { flex:1;text-align:center; }
 
 /* ── 가나다 섹션 헤더 + 인덱스바 ────────────────── */
 #customerSheet .sec-hd {

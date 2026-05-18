@@ -287,11 +287,12 @@
 
     const chipsHTML = `
       <div id="customerSegments" class="cv4-chips">
-        <button data-seg="all"         class="cv4-chip is-on">전체</button>
-        <button data-seg="visits12"    class="cv4-chip off">1~2회</button>
-        <button data-seg="visits3plus" class="cv4-chip green">3회+</button>
+        <button data-seg="all"          class="cv4-chip is-on">전체</button>
+        <button data-seg="visits12"     class="cv4-chip off">1~2회</button>
+        <button data-seg="visits3plus"  class="cv4-chip green">3회+</button>
         <button data-seg="visits10plus" class="cv4-chip brand">10회+</button>
-        <button data-seg="member"      class="cv4-chip off">회원권</button>
+        <button data-seg="atrisk"       class="cv4-chip off">오래된 방문</button>
+        <button data-seg="member"       class="cv4-chip off">회원권</button>
       </div>`;
 
     if (isPC) {
@@ -303,7 +304,7 @@
               <button class="cv4-hd-add" id="customerAddBtn" aria-label="고객 추가">+</button>
             </div>
             <input id="customerSearch" type="search" placeholder="이름 · 전화번호 검색"
-                   style="width:100%;height:40px;padding:0 14px;border-radius:12px;border:none;background:var(--surface-2,#F7F8FA);font-size:14px;color:var(--text);outline:none;font-family:inherit;" />
+                   style="width:100%;height:40px;padding:0 14px 0 38px;border-radius:12px;border:none;background-color:var(--surface-2,#F7F8FA);background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23BBB' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7' stroke='%23BBB' stroke-width='2' fill='none'/%3E%3Cline x1='16.5' y1='16.5' x2='21' y2='21' stroke='%23BBB' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:12px center;font-size:14px;color:var(--text);outline:none;font-family:inherit;" />
             ${chipsHTML}
           </div>
           <div id="customerList" class="pc-items"></div>
@@ -328,7 +329,7 @@
             <button class="cv4-hd-add" id="customerAddBtn" aria-label="고객 추가">+</button>
           </div>
           <input id="customerSearch" type="search" placeholder="이름 · 전화번호 검색"
-                 style="width:100%;height:40px;padding:0 14px;border-radius:12px;border:none;background:var(--surface-2,#F7F8FA);font-size:14px;color:var(--text);outline:none;font-family:inherit;margin-bottom:10px;" />
+                 style="width:100%;height:40px;padding:0 14px 0 38px;border-radius:12px;border:none;background-color:var(--surface-2,#F7F8FA);background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23BBB' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7' stroke='%23BBB' stroke-width='2' fill='none'/%3E%3Cline x1='16.5' y1='16.5' x2='21' y2='21' stroke='%23BBB' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:12px center;font-size:14px;color:var(--text);outline:none;font-family:inherit;margin-bottom:10px;" />
           ${chipsHTML}
           <div id="customerList"></div>
           <div id="customerIdxBar" class="idx-bar"></div>
@@ -432,7 +433,9 @@
           const t = Date.parse(c.last_visit_at);
           if (!isFinite(t)) return false;
           const days = (now - t) / 86400000;
-          return days >= ATRISK_DAYS;
+          // 평균 재방문 주기(주) * 7 + 7일 grace. 없으면 60일 폴백.
+          const cycle = c.avg_cycle_weeks ? (+c.avg_cycle_weeks * 7 + 7) : ATRISK_DAYS;
+          return days >= cycle;
         }
         return true;
       });
@@ -469,12 +472,10 @@
           const vc = c.visit_count || 0;
           const barCls = _barClass(vc);
           const badgeCls = barCls;
-          const memberMark = c.membership_active ? ' · 회원권' : '';
           return `<div class="${rowCls}" data-id="${c.id}" data-chosung="${k}" role="button" tabindex="0">
             <div class="c-bar ${barCls}"></div>
             <div class="c-info">
               <div class="c-name"><span class="c-name-txt">${_esc(c.name)}</span><span class="c-badge ${badgeCls}">${vc}회</span></div>
-              ${c.phone ? `<div class="c-sub">${_esc(c.phone)}${memberMark}</div>` : (memberMark ? `<div class="c-sub">회원권 보유</div>` : '')}
             </div>
             <div class="c-arr">›</div>
           </div>`;
