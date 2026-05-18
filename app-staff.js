@@ -110,7 +110,7 @@
 
     const data = await list(true);
     const items = data.items || [];
-    const planTxt = `현재 플랜 한도: ${data.used || 0} / ${data.plan_limit || 0}명${(data.plan_limit || 0) === 0 ? ' · Pro/Premium 업그레이드 필요' : ''}`;
+    const planTxt = `현재 멤버십 한도: ${data.used || 0} / ${data.plan_limit || 0}명${(data.plan_limit || 0) === 0 ? ' · 잇데이 멤버십 확인 필요' : ''}`;
     document.getElementById('stPlan').textContent = planTxt;
     const listBox = document.getElementById('stList');
     if (!items.length) {

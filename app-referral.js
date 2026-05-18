@@ -35,7 +35,7 @@
           <div style="font-size:20px;font-weight:900;color:#222;margin-bottom:6px;letter-spacing:-0.3px;">친구 원장님을 초대하세요</div>
           <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">
             1명 가입할 때마다<br>
-            <strong style="color:var(--brand-strong);font-weight:900;">3개월 Pro 무료</strong> 드려요
+            <strong style="color:var(--brand-strong);font-weight:900;">잇데이 3개월 무료</strong> 드려요
           </div>
         </div>
 

@@ -530,7 +530,7 @@ const _CAP_ERR_MSG = {
   'fingerprint_missing':  '인스타 게시물이 더 모이면 사장님 말투에 맞춰 글이 나와요.',
   'generation_failed':    'AI 글 만들기에 실패했어요. 어떤 분위기로 만들까요? 다시 선택하시거나 1분 후 다시 시도해 주세요.',
   'content_filtered':     'AI 가 안전 정책상 이 내용을 생성할 수 없어요. 키워드를 바꿔서 다시 시도해 주세요.',
-  'quota_exceeded':       '오늘 캡션 사용량을 다 쓰셨어요. 내일 다시 시도하거나 Pro 로 업그레이드해 주세요.',
+  'quota_exceeded':       '오늘 캡션 사용량을 다 쓰셨어요. 내일 다시 시도하거나 잇데이 멤버십을 확인해 주세요.',
   'gemini_unavailable':   'AI 서버가 잠시 불안정해요. 1~2분 후 다시 시도해 주세요.',
   'timeout':              'AI 응답이 지연되고 있어요. 네트워크 확인 후 다시 시도해 주세요.',
 };
@@ -720,7 +720,7 @@ async function _doGenerateCaption(scenario, closePopup) {
     let userMsg;
     if (quotaMatch) {
       const limit = quotaMatch[1] || '3';
-      userMsg = `오늘 캡션 한도(${limit}회) 다 쓰셨어요. 내일 다시 시도하거나 Pro 로 업그레이드해 주세요.`;
+      userMsg = `오늘 캡션 한도(${limit}회) 다 쓰셨어요. 내일 다시 시도하거나 잇데이 멤버십을 확인해 주세요.`;
     } else if (/quota_exceeded/i.test(raw)) {
       userMsg = '오늘 사용 한도를 다 쓰셨어요. 내일 다시 시도해 주세요.';
     } else if (/^캡션 생성 실패/.test(raw)) {
@@ -999,7 +999,7 @@ async function regenerateCaption(overrides = {}) {
     const quotaMatch = raw.match(/quota_exceeded:caption(?::(\d+))?/i);
     if (quotaMatch) {
       const limit = quotaMatch[1] || '3';
-      userMsg = `오늘 캡션 한도(${limit}회) 다 쓰셨어요. 내일 다시 시도하거나 Pro 로 업그레이드해 주세요.`;
+      userMsg = `오늘 캡션 한도(${limit}회) 다 쓰셨어요. 내일 다시 시도하거나 잇데이 멤버십을 확인해 주세요.`;
     } else if (/^캡션 생성 실패/.test(raw)) {
       userMsg = raw;
     } else if (/Failed to fetch|NetworkError/i.test(raw)) {

@@ -1,5 +1,5 @@
-/* 사진 편집기 — AI 원터치 보정 v2 (PE-1, 2026-05-19 v217)
-   초고도화 Phase 1 #1 킬러 피처 — FaceTune 대체.
+/* 사진 편집기 — 정밀 얼굴 보정 v2 (PE-1, 2026-05-19 v217)
+   md 정리: 기본 자동보정은 기존 0초 보정, 이 모듈은 느린 정밀 보정 옵션.
 
    기능:
      • MediaPipe Face Mesh 로 얼굴 정밀 검출 (468 landmarks)
@@ -145,7 +145,7 @@
     ctx.restore();
   }
 
-  // ── 패널 통합: PhotoEditor 자동 탭에 "AI 원터치 v2" 버튼 추가 ──
+  // ── 패널 통합: PhotoEditor 자동 탭에 "정밀 보정" 보조 버튼 추가 ──
   function _injectAutoButton(panel) {
     if (!panel || panel.querySelector('[data-pe-ai-v2]')) return;
     const PE = window.PhotoEditor;
@@ -156,8 +156,8 @@
     btn.type = 'button';
     btn.className = 'pe-action-btn pe-ai-v2-btn';
     btn.dataset.peAiV2 = '1';
-    btn.style.cssText = 'margin-top:8px;background:linear-gradient(135deg,#7b61ff,#5b8def);color:#fff;font-weight:600;width:100%;';
-    btn.textContent = '✨ AI 원터치 v2 — 얼굴 정밀 보정';
+    btn.style.cssText = 'margin-top:8px;background:var(--surface-2,#F7F8FA);color:var(--text,#111);border:1px solid var(--border,#E5E7EB);font-weight:600;width:100%;';
+    btn.textContent = '정밀 얼굴 보정 (느림)';
     panel.appendChild(btn);
     btn.addEventListener('click', () => _runOnEditor(btn));
   }
@@ -177,14 +177,14 @@
     const ML = window.MediaPipeLoader;
     if (ML && ML.status() !== 'ready') {
       stopWatch = ML.onProgress((p, status) => {
-        if (status === 'loading') btn.textContent = `AI 모델 로딩 중 ${p}%…`;
-        else if (status === 'ready') btn.textContent = 'AI 분석 중…';
-        else if (status === 'failed') btn.textContent = 'AI 모델 실패 — 기본 보정으로 진행';
+        if (status === 'loading') btn.textContent = `정밀 모델 로딩 중 ${p}%…`;
+        else if (status === 'ready') btn.textContent = '얼굴 분석 중…';
+        else if (status === 'failed') btn.textContent = '정밀 모델 실패 — 기본 보정으로 진행';
       });
       // 즉시 사용자 피드백
-      btn.textContent = 'AI 모델 로딩 중 0%…';
+      btn.textContent = '정밀 모델 로딩 중 0%…';
     } else {
-      btn.textContent = 'AI 분석 중…';
+      btn.textContent = '얼굴 분석 중…';
     }
     try {
       const shopType = (window.ShopSettings && window.ShopSettings.get && window.ShopSettings.get('shop_type')) ||
@@ -193,7 +193,7 @@
       if (ML && ML.status() === 'idle') {
         try { await ML.load(); } catch (_e) { /* 폴백 사용 */ }
       }
-      btn.textContent = 'AI 분석 중…';
+      btn.textContent = '얼굴 분석 중…';
       const result = await _apply(state.originalImg, shopType);
       const url = result.toDataURL('image/png');
       const img = new Image();
@@ -203,11 +203,11 @@
         const h = PE._internal.helpers || {};
         if (h.redraw) h.redraw();
         if (h.pushHistory) h.pushHistory();
-        _toast('AI 원터치 v2 완료 (' + shopType + ' 모드)');
+        _toast('정밀 얼굴 보정 완료 (' + shopType + ' 모드)');
       };
       img.src = url;
     } catch (e) {
-      _toast('AI 보정 실패 — 기본 보정으로 폴백');
+      _toast('정밀 보정 실패 — 빠른 자동보정을 사용해주세요');
     } finally {
       stopWatch();
       btn.textContent = orig;

@@ -116,7 +116,7 @@
     } else {
       quotaEl.textContent = `${count} / ${limit}`;
       quotaEl.style.color = (count >= limit) ? '#DC2626' : (count >= limit - 3 ? '#E68A00' : '#9CA3AF');
-      quotaEl.title = `Free 플랜은 손님당 메모 ${limit}개까지에요. Pro로 업그레이드하면 무제한이에요.`;
+      quotaEl.title = `체험 상태에서는 손님당 메모 ${limit}개까지예요. 잇데이 멤버십에서 더 쓸 수 있어요.`;
     }
   }
 
@@ -210,7 +210,7 @@
           const cards = listEl.querySelectorAll('[data-cm-memo]');
           if (cards.length >= limit) {
             if (window.showToast) {
-              window.showToast(`Free 플랜은 손님당 메모 ${limit}개까지에요. Pro로 업그레이드하면 무제한이에요.`);
+              window.showToast(`체험 상태에서는 손님당 메모 ${limit}개까지예요. 잇데이 멤버십을 확인해 주세요.`);
             }
             return;
           }

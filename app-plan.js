@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
-   플랜 팝업 — Free/Pro/Premium 비교 + 사용량 + 체험 시작/업그레이드
+   플랜 팝업 — md 정리: 월 6,900원 단일 멤버십 + 사용량 안내
 
    기존 planPopup HTML은 있었으나 열기·액션 함수가 없어서
    모든 플랜 배지·업그레이드 버튼이 무반응이던 버그 수정.
@@ -11,9 +11,8 @@
   let _currentPlan = 'free';
 
   function _planDisplayName(plan) {
-    if (plan === 'premium') return 'Premium';
-    if (plan === 'pro') return 'Pro';
-    return 'Free';
+    if (plan === 'free') return '체험';
+    return '잇데이';
   }
 
   async function openPlanPopup() {
@@ -80,14 +79,14 @@
     btn.style.opacity = '1';
     btn.style.cursor = 'pointer';
     if (_selectedPlan === 'free') {
-      btn.textContent = 'Free 로 전환하기';
+      btn.textContent = '체험 상태로 유지';
       btn.style.background = 'linear-gradient(135deg,#888,#aaa)';
     } else if (_selectedPlan === 'pro') {
-      btn.textContent = (_currentPlan === 'free') ? '14일 무료체험 시작하기' : 'Pro 로 업그레이드';
+      btn.textContent = (_currentPlan === 'free') ? '월 6,900원 시작하기' : '잇데이 멤버십으로 전환';
       btn.style.background = 'linear-gradient(135deg,var(--brand),#ff9aa8)';
     } else if (_selectedPlan === 'premium') {
-      btn.textContent = (_currentPlan === 'free') ? 'Premium 시작하기' : 'Premium 으로 업그레이드';
-      btn.style.background = 'linear-gradient(135deg,#833ab4,#a052d2)';
+      btn.textContent = '잇데이 멤버십으로 전환';
+      btn.style.background = 'linear-gradient(135deg,var(--brand),#ff9aa8)';
     }
   }
 
@@ -101,8 +100,8 @@
       if (!res.ok) throw new Error('usage ' + res.status);
       const u = await res.json();
       const rows = [];
-      if (u.caption_today !== undefined) rows.push(`• 캡션: ${u.caption_today}/${u.caption_limit || '∞'}`);
-      if (u.removebg_today !== undefined) rows.push(`• 누끼: ${u.removebg_today}/${u.removebg_limit || '∞'}`);
+      if (u.caption_today !== undefined) rows.push(`• AI 캡션/해시태그: ${u.caption_today}/${u.caption_limit || '∞'}`);
+      if (u.removebg_today !== undefined) rows.push(`• 누끼·배경: ${u.removebg_today}/${u.removebg_limit || '∞'}`);
       if (u.analyze_month !== undefined) rows.push(`• 말투 분석: ${u.analyze_month}/${u.analyze_limit || '∞'} (이번 달)`);
       if (u.publish_month !== undefined) rows.push(`• 인스타 발행: ${u.publish_month}/${u.publish_limit || '∞'} (이번 달)`);
       box.innerHTML = rows.length ? rows.join('<br>') : '사용량 정보를 불러올 수 없어요';
@@ -133,7 +132,7 @@
       badge.style.color = '#fff';
     } else if (plan === 'premium') {
       badge.textContent = _planDisplayName(plan);
-      badge.style.background = 'linear-gradient(135deg,#833ab4,#a052d2)';
+      badge.style.background = 'linear-gradient(135deg,var(--brand),#ff9aa8)';
       badge.style.color = '#fff';
     } else {
       badge.textContent = _planDisplayName(plan);
@@ -149,7 +148,7 @@
     if (_selectedPlan === _currentPlan) return;
     if (_selectedPlan === 'free') {
       if (window.hapticMedium) window.hapticMedium();
-      if (typeof window.showToast === 'function') window.showToast('Free 전환은 설정에서 플랜 취소로 진행해주세요');
+      if (typeof window.showToast === 'function') window.showToast('체험 상태 변경은 설정에서 진행해주세요');
       return;
     }
 
@@ -158,15 +157,13 @@
     if (isNative) {
       if (window.hapticMedium) window.hapticMedium();
       if (typeof window.showToast === 'function') {
-        window.showToast(_selectedPlan === 'pro'
-          ? '스토어 결제 화면으로 이동합니다 (준비중)'
-          : 'Premium 결제 화면으로 이동합니다 (준비중)');
+        window.showToast('월 6,900원 결제 화면으로 이동합니다 (준비중)');
       }
       // TODO: @capacitor-community/in-app-purchases 플러그인 호출
       return;
     }
 
-    // 웹: 14일 무료체험 API 호출 (Free → Pro 진입)
+    // 웹: 기존 백엔드의 pro 체험 API를 단일 멤버십 시작으로 사용
     if (_currentPlan === 'free' && _selectedPlan === 'pro') {
       try {
         const res = await fetch(window.API + '/subscription/start-trial', {
@@ -178,7 +175,7 @@
           throw new Error(body.detail || '요청 실패');
         }
         if (window.hapticSuccess) window.hapticSuccess();
-        if (typeof window.showToast === 'function') window.showToast('14일 무료체험 시작!');
+        if (typeof window.showToast === 'function') window.showToast('잇데이 멤버십 시작!');
         _currentPlan = 'pro';
         _updateActionButton();
         _updatePlanBadgeUI('pro');
@@ -191,7 +188,7 @@
     }
 
     if (typeof window.showToast === 'function') {
-      window.showToast('웹에서는 스토어 결제만 지원돼요. 모바일 앱을 이용해주세요');
+      window.showToast('웹에서는 신청만 가능해요. 실제 결제는 모바일 앱에서 진행해주세요');
     }
   }
 

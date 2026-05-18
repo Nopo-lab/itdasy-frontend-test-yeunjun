@@ -5,7 +5,7 @@
 
    디자인: mockups/03-myshop.html "AI · 자동화" 시트
    CSS:    css/screens/myshop-v3.css (.ms-sheet*, .ms-aih*, .ms-toggle*)
-   라우트:  7개 항목 → 기존 진입 함수 (변경 X)
+   라우트:  주요 항목 → 기존 진입 함수 (변경 X)
 */
 (function () {
   'use strict';
@@ -30,7 +30,7 @@
     }[c]));
   }
 
-  // ── 행 정의 (7개) ──────────────────────────────────────────────
+  // ── 행 정의 ──────────────────────────────────────────────
   // type: 'toggle' | 'tag' | 'badge' | 'plain'
   function _rows() {
     return [
@@ -45,6 +45,9 @@
         type: 'tag', tagText: '학습됨' },
       { act: 'caption', icon: 'ph-pencil-line', boxColor: 'pink',
         name: 'SNS 캡션', meta: '시나리오 · 1초 · 음성 3가지',
+        type: 'plain' },
+      { act: 'snsCalendar', icon: 'ph-calendar-dots', boxColor: 'teal',
+        name: 'SNS 캘린더', meta: '게시물 날짜 메모 · 테스트용',
         type: 'plain' },
       { act: 'posts', icon: 'ph-squares-four', boxColor: 'teal',
         name: '게시물 관리', meta: '완료 슬롯 · 마무리 탭',
@@ -122,8 +125,9 @@
 
   // ── 시트 마크업 빌드 ──────────────────────────────────────────
   function _buildSheet() {
-    const rows = _rows().map(_rowHtml).join('');
-    const sub = `7가지 · ${_onCount()}개 켜짐`;
+    const items = _rows();
+    const rows = items.map(_rowHtml).join('');
+    const sub = `${items.length}가지 · ${_onCount()}개 켜짐`;
     return `
       <div class="ms-sheet__overlay" data-close="1"></div>
       <div id="aihCard" class="ms-sheet" role="dialog" aria-modal="true" aria-labelledby="aihTitle">
@@ -214,7 +218,7 @@
     btn.classList.toggle('is-on', next);
     btn.setAttribute('aria-pressed', next ? 'true' : 'false');
     const sub = sheet.querySelector('#aihSub');
-    if (sub) sub.textContent = `7가지 · ${_onCount()}개 켜짐`;
+    if (sub) sub.textContent = `${_rows().length}가지 · ${_onCount()}개 켜짐`;
     try { window.hapticLight && window.hapticLight(); } catch (_e) { void _e; }
     try {
       window.dispatchEvent(new CustomEvent('itdasy:data-changed', {
@@ -229,6 +233,7 @@
     kakao:   'openKakaoHub',
     persona: 'openPersonaSurveyModal',
     caption: 'openCaptionScenarioPopup',
+    snsCalendar: '__snsCalendarOpen',
     posts:   null,
     memo:    'openAssistantFactsSheet',
     capture: 'openSmartCapture',
@@ -238,6 +243,7 @@
   function _canRoute(act) {
     if (act === 'posts') return typeof window.showTab === 'function';
     if (act === 'photoEditor') return !!(window.PhotoEditor && typeof window.PhotoEditor.open === 'function');
+    if (act === 'snsCalendar') return !!(window.SNSCalendar && typeof window.SNSCalendar.open === 'function');
     const fn = _ROUTE_MAP[act];
     return !!(fn && typeof window[fn] === 'function');
   }
@@ -247,6 +253,14 @@
     if (act === 'photoEditor') {
       try { window.PhotoEditor.open({}); }
       catch (_e) { if (window.showToast) window.showToast('편집기를 여는 중 문제가 생겼어요'); }
+      return;
+    }
+    if (act === 'snsCalendar') {
+      try { window.SNSCalendar.open(); }
+      catch (err) {
+        console.warn('[AIHub] SNS 캘린더 열기 실패', err);
+        if (window.showToast) window.showToast('SNS 캘린더를 여는 중 문제가 생겼어요');
+      }
       return;
     }
     if (act === 'posts') {

@@ -161,7 +161,7 @@
       const limit = data.plan_limit != null ? data.plan_limit : null;
       const plan = data.plan || '';
       if (sub && limit !== null) {
-        sub.textContent = `현재 ${items.length}명 등록 · ${plan || '플랜'} 한도 ${limit}명. 한도 초과 시 Pro/Premium 업그레이드 필요.`;
+        sub.textContent = `현재 ${items.length}명 등록 · ${plan || '멤버십'} 한도 ${limit}명. 한도 초과 시 잇데이 멤버십 확인 필요.`;
       }
       if (!items.length) {
         list.innerHTML = '<div style="font-size:12px;color:var(--text3,#999);">아직 등록된 직원이 없어요.</div>';
@@ -201,7 +201,7 @@
         let detail = '';
         try { const j = await res.json(); detail = j.detail || ''; } catch (_e) { void _e; }
         if (res.status === 402 || res.status === 403) {
-          _toast(detail || '플랜 한도를 초과했어요. Pro/Premium 업그레이드가 필요해요.');
+          _toast(detail || '멤버십 한도를 초과했어요. 잇데이 멤버십을 확인해 주세요.');
         } else {
           _toast('직원 추가 실패 — ' + (detail || ('HTTP ' + res.status)));
         }

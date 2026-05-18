@@ -5,10 +5,8 @@
    기능:
      • 월간/주간 뷰 캘린더
      • 게시물 드래그 배치 — 날짜 셀에 게시 아이템 drag-and-drop
-     • 빈 날짜 AI 제안 — Gemini API 연동 (업종·시즌·트렌드 기반)
-     • 예약 발행 연동 (SN-2 app-sns-schedule.js)
-     • 피드 그리드 미리보기 연동 (SN-3)
-     • localStorage 기반 로컬 저장 (서버 동기화는 추후)
+     • 빈 날짜 아이디어 제안 — 서버 비용 없는 로컬 샘플 문구
+     • localStorage 기반 로컬 저장
 
    진입: window.SNSCalendar.open()
    ──────────────────────────────────────────────────────────── */
@@ -36,7 +34,8 @@
     try { _posts = JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch (_) { _posts = []; }
   }
   function _save() {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(_posts)); } catch (_) { /* ignore */ }
+    try { localStorage.setItem(LS_KEY, JSON.stringify(_posts)); }
+    catch (err) { console.warn('[SNSCalendar] 저장 실패', err); }
   }
   function _postsForDate(dateStr) {
     return _posts.filter(p => p.date === dateStr);
@@ -137,8 +136,7 @@
     html += `
       <div class="sns-cal-actions">
         <button type="button" class="sns-cal-add-btn" data-act="add">＋ 새 게시물</button>
-        <button type="button" class="sns-cal-ai-btn" data-act="ai-suggest">✨ AI 빈 날짜 제안</button>
-        <button type="button" class="sns-cal-grid-btn" data-act="grid-preview">📱 피드 미리보기</button>
+        <button type="button" class="sns-cal-ai-btn" data-act="ai-suggest">＋ 빈 날짜 아이디어</button>
       </div>`;
 
     sheet.innerHTML = html;
@@ -157,7 +155,6 @@
         if (act === 'next') { _month++; if (_month > 11) { _month = 0; _year++; } if (_weekStart) _weekStart.setDate(_weekStart.getDate()+7); _render(); }
         if (act === 'add') _addPost();
         if (act === 'ai-suggest') _aiSuggest();
-        if (act === 'grid-preview') { if (window.SNSGridPreview) window.SNSGridPreview.open(); else _toast('피드 미리보기 모듈 로딩 중'); }
       });
     });
 
@@ -223,7 +220,7 @@
       <div style="background:var(--surface,#fff);width:100%;max-width:400px;border-radius:20px;padding:24px;max-height:80vh;overflow-y:auto;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
           <div style="font-size:17px;font-weight:800;">${dayLabel} 게시물</div>
-          <button onclick="document.getElementById('snsCalDayPop').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;">×</button>
+          <button type="button" data-cal-act="close-day" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;">×</button>
         </div>
         ${posts.length === 0
           ? '<div style="text-align:center;padding:32px 0;color:#999;font-size:13px;">이 날짜에 게시물이 없어요</div>'
@@ -235,15 +232,28 @@
               </div>
               <div style="font-size:13px;line-height:1.5;color:var(--text);">${_esc((p.caption||'내용 없음').slice(0,100))}</div>
               <div style="display:flex;gap:8px;margin-top:10px;">
-                <button onclick="window.SNSCalendar._editPost('${p.id}')" style="flex:1;height:34px;border:1px solid #ddd;border-radius:10px;background:#fff;font-size:12px;font-weight:600;cursor:pointer;">편집</button>
-                <button onclick="window.SNSCalendar._deletePost('${p.id}')" style="flex:1;height:34px;border:1px solid #fca5a5;border-radius:10px;background:#fff;color:#ef4444;font-size:12px;font-weight:600;cursor:pointer;">삭제</button>
+                <button type="button" data-cal-act="edit-post" data-post-id="${_esc(p.id)}" style="flex:1;height:34px;border:1px solid #ddd;border-radius:10px;background:#fff;font-size:12px;font-weight:600;cursor:pointer;">편집</button>
+                <button type="button" data-cal-act="delete-post" data-post-id="${_esc(p.id)}" style="flex:1;height:34px;border:1px solid #fca5a5;border-radius:10px;background:#fff;color:#ef4444;font-size:12px;font-weight:600;cursor:pointer;">삭제</button>
               </div>
             </div>
           `).join('')}
-        <button onclick="window.SNSCalendar._addPostForDate('${dateStr}')" style="width:100%;height:44px;border:1.5px dashed #ddd;border-radius:14px;background:#fff;font-size:13px;font-weight:700;color:var(--accent);cursor:pointer;margin-top:8px;">＋ 이 날짜에 게시물 추가</button>
+        <button type="button" data-cal-act="add-for-date" data-date="${_esc(dateStr)}" style="width:100%;height:44px;border:1.5px dashed #ddd;border-radius:14px;background:#fff;font-size:13px;font-weight:700;color:var(--accent);cursor:pointer;margin-top:8px;">＋ 이 날짜에 게시물 추가</button>
       </div>`;
     pop.style.display = 'flex';
     pop.onclick = e => { if (e.target === pop) pop.style.display = 'none'; };
+    _bindDayPopEvents(pop);
+  }
+
+  function _bindDayPopEvents(pop) {
+    pop.querySelectorAll('[data-cal-act]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const act = btn.dataset.calAct;
+        if (act === 'close-day') pop.style.display = 'none';
+        if (act === 'edit-post') _editPost(btn.dataset.postId);
+        if (act === 'delete-post') _deletePost(btn.dataset.postId);
+        if (act === 'add-for-date') _addPostForDate(btn.dataset.date);
+      });
+    });
   }
 
   // ── 게시물 CRUD ──
@@ -311,8 +321,11 @@
       </div>`;
     pop.style.display = 'flex';
 
-    pop.querySelector('#snsEditCancel').onclick = () => { pop.style.display = 'none'; _render(); };
-    pop.querySelector('#snsEditSave').onclick = () => {
+    pop.querySelector('#snsEditCancel').addEventListener('click', () => {
+      pop.style.display = 'none';
+      _render();
+    });
+    pop.querySelector('#snsEditSave').addEventListener('click', () => {
       post.date = pop.querySelector('#snsEditDate').value;
       post.time = pop.querySelector('#snsEditTime').value;
       post.caption = pop.querySelector('#snsEditCaption').value;
@@ -322,7 +335,7 @@
       pop.style.display = 'none';
       _render();
       _toast('게시물 저장 완료');
-    };
+    });
   }
 
   function _deletePost(postId) {
@@ -331,7 +344,9 @@
     _save();
     // 백엔드 예약이면 서버 취소도 호출 (비차단)
     if (target && target.serverId && window.SNSSchedule && typeof window.SNSSchedule.cancel === 'function') {
-      window.SNSSchedule.cancel(target.serverId).catch(() => {});
+      window.SNSSchedule.cancel(target.serverId).catch(err => {
+        console.warn('[SNSCalendar] 예약 취소 실패', err);
+      });
     }
     const pop = document.getElementById('snsCalDayPop');
     if (pop) pop.style.display = 'none';
@@ -339,7 +354,7 @@
     _toast('게시물 삭제 완료');
   }
 
-  // ── AI 빈 날짜 제안 ──
+  // ── 빈 날짜 아이디어 제안 ──
   async function _aiSuggest() {
     const daysInMonth = new Date(_year, _month + 1, 0).getDate();
     const emptyDates = [];
@@ -349,7 +364,7 @@
     }
     if (emptyDates.length === 0) return _toast('이번 달은 빈 날짜가 없어요! 👏');
 
-    _toast('AI가 콘텐츠 아이디어를 준비하고 있어요…');
+    _toast('빈 날짜에 넣을 아이디어를 준비하고 있어요...');
     const shopType = localStorage.getItem('itdasy_shop_type') || '뷰티샵';
     const suggestions = _generateLocalSuggestions(emptyDates.slice(0, 5), shopType);
 
@@ -361,7 +376,7 @@
       });
     });
     _save(); _render();
-    _toast(`AI가 ${suggestions.length}개 콘텐츠를 제안했어요! 편집해서 사용하세요.`);
+    _toast(`${suggestions.length}개 콘텐츠 아이디어를 넣었어요. 편집해서 사용하세요.`);
   }
 
   function _generateLocalSuggestions(dates, shopType) {
@@ -404,7 +419,9 @@
         added++;
       });
       if (added > 0) { _save(); _render(); }
-    } catch (_e) { /* ignore — 오프라인이면 로컬만 사용 */ }
+    } catch (err) {
+      console.warn('[SNSCalendar] 예약 목록 불러오기 실패', err);
+    }
   }
 
   // ── 열기/닫기 ──
@@ -414,14 +431,16 @@
     _month = t.getMonth();
     _load();
     _render();
-    // 백엔드 동기화 (비차단 — 첫 렌더는 로컬, 응답 오면 다시 렌더)
+    // 예약 모듈이 켜진 경우에만 기존 예약을 불러온다.
     _syncFromServer();
-    try { history.pushState({ snsCal: true }, '', location.href); } catch (_) { /* ignore */ }
+    try { history.pushState({ snsCal: true }, '', location.href); }
+    catch (err) { console.warn('[SNSCalendar] 화면 기록 실패', err); }
   }
 
   function _close() {
     if (_sheetEl) _sheetEl.style.display = 'none';
-    try { history.back(); } catch (_) { /* ignore */ }
+    try { history.back(); }
+    catch (err) { console.warn('[SNSCalendar] 뒤로가기 실패', err); }
   }
 
   window.addEventListener('popstate', () => {

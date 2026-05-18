@@ -158,7 +158,7 @@
   async function create(payload) {
     if (!payload || !payload.name) throw new Error('name-required');
     if (_overLimit()) {
-      const msg = 'Free 플랜은 고객 ' + FREE_CUSTOMER_LIMIT + '명까지 등록할 수 있어요. Pro 로 업그레이드해 주세요.';
+      const msg = '체험 상태에서는 고객 ' + FREE_CUSTOMER_LIMIT + '명까지 등록할 수 있어요. 잇데이 멤버십에서 더 등록할 수 있어요.';
       if (window.showToast) window.showToast(msg);
       if (typeof window.openPlanPopup === 'function') {
         setTimeout(() => window.openPlanPopup(), 500);

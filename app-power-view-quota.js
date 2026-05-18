@@ -41,8 +41,8 @@
       const ratio = Math.min(100, Math.round((n / FREE_LIMIT) * 100));
       const near = n >= FREE_LIMIT * 0.9;
       const cls = near ? 'pv-quota-chip is-warn' : 'pv-quota-chip';
-      const label = near ? `Free ${n}/${FREE_LIMIT} — Pro 업그레이드 권유` : `Free ${n}/${FREE_LIMIT}`;
-      return `<button type="button" class="${cls}" data-pv-quota-open title="Pro 무제한 + AI 비서 자동 분석">
+      const label = near ? `체험 ${n}/${FREE_LIMIT} — 멤버십 확인` : `체험 ${n}/${FREE_LIMIT}`;
+      return `<button type="button" class="${cls}" data-pv-quota-open title="잇데이 멤버십 + AI 비서 자동 분석">
         ${_esc(label)}
         <span class="pv-quota-chip__bar"><span class="pv-quota-chip__fill" style="width:${ratio}%;"></span></span>
       </button>`;
@@ -53,7 +53,7 @@
     try {
       if (typeof window.openPlan === 'function') return window.openPlan();
       if (typeof window.openPlanPopup === 'function') return window.openPlanPopup();
-      if (typeof window.showToast === 'function') window.showToast('Pro 플랜으로 무제한 + AI 자동 분석 가능');
+      if (typeof window.showToast === 'function') window.showToast('잇데이 멤버십에서 더 많이 쓸 수 있어요');
     } catch (_e) { /* silent */ }
   }
 
