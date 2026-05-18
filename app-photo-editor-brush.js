@@ -49,9 +49,10 @@
         // [v187] 클론·힐링 — sourcePt: 사용자가 탭한 소스 좌표, firstStrokePt: 드래그 시작 좌표
         sourcePt: null, firstStrokePt: null,
         awaitingSource: false,  // 'set source' 모드
-        // [v189] 사각형 선택 도구 — 드래그로 직사각형 마스크 채움
-        selMode: 'free',   // 'free' (자유 드래그) | 'rect' (사각형)
-        rectStart: null,   // { x, y } — rect 드래그 시작점
+        // [v189] 사각형 선택 + [v191] Lasso (자유 곡선 폐곡선)
+        selMode: 'free',   // 'free' | 'rect' | 'lasso'
+        rectStart: null,   // rect 드래그 시작점
+        lassoPath: [],     // lasso 점 배열 — drag 동안 누적, end 시 polygon close + fill
       };
     }
     return state.brush;
@@ -103,7 +104,7 @@
       <div class="pe-panel-row pe-panel-grid-3">${chip('gloss')}${chip('blur')}${chip('eraser')}</div>
       <div class="pe-panel-row pe-panel-grid-2">${chip('clone')}${chip('heal')}</div>
       <div class="pe-field-label" style="margin-top:10px;">그리기 모드</div>
-      <div class="pe-panel-row pe-panel-grid-2">${modeChip('free','✎ 자유 드래그')}${modeChip('rect','▭ 사각형')}</div>
+      <div class="pe-panel-row pe-panel-grid-3">${modeChip('free','✎ 자유 드래그')}${modeChip('rect','▭ 사각형')}${modeChip('lasso','◯ 올가미')}</div>
       ${cloneHint}
       <label class="pe-slider"><div class="pe-slider-head"><span>브러시 크기</span><span class="pe-slider-val" data-pe-brush-size-val>${b.size}</span></div>
         <input type="range" min="10" max="120" value="${b.size}" data-pe-brush-size /></label>
@@ -197,9 +198,10 @@
       }
       if (_CLONE_TYPES.has(b.type)) b.firstStrokePt = { x: p.x, y: p.y };
       b.drawing = true; b.lastX = p.x; b.lastY = p.y;
-      // [v189] rect 모드 — 드래그 시작점 저장, 그리기는 _end 에서 한 번에
       if (b.selMode === 'rect') {
         b.rectStart = { x: p.x, y: p.y };
+      } else if (b.selMode === 'lasso') {
+        b.lassoPath = [{ x: p.x, y: p.y }];
       } else {
         _drawAt(p.x, p.y);
       }
@@ -209,10 +211,8 @@
       e.preventDefault();
       const p = _getXY(e);
       if (b.selMode === 'rect') {
-        // rect 모드 — 라이브 프리뷰 (mask 그렸다 지웠다 매번)
         if (!b.rectStart) return;
         mctx.clearRect(0, 0, mask.width, mask.height);
-        // 기존 적용된 stroke 보존 안 함 — 단순화. P3+ 에서 추가.
         const x1 = Math.min(b.rectStart.x, p.x), y1 = Math.min(b.rectStart.y, p.y);
         const x2 = Math.max(b.rectStart.x, p.x), y2 = Math.max(b.rectStart.y, p.y);
         mctx.globalCompositeOperation = b.type === 'eraser' ? 'destination-out' : 'source-over';
@@ -221,7 +221,19 @@
         b.lastX = p.x; b.lastY = p.y;
         return;
       }
-      // free 모드 — 기존 점간 보간 stroke
+      if (b.selMode === 'lasso') {
+        // [v191] 점 누적 + 매 프레임 라이브 폴리곤 라인 그리기 (마스크 아직 채우지 않음)
+        b.lassoPath.push({ x: p.x, y: p.y });
+        mctx.clearRect(0, 0, mask.width, mask.height);
+        mctx.strokeStyle = (BRUSHES[b.type] && BRUSHES[b.type].color) || 'rgba(255,255,255,0.5)';
+        mctx.lineWidth = 2;
+        mctx.beginPath();
+        b.lassoPath.forEach((pt, i) => i ? mctx.lineTo(pt.x, pt.y) : mctx.moveTo(pt.x, pt.y));
+        mctx.stroke();
+        b.lastX = p.x; b.lastY = p.y;
+        return;
+      }
+      // free 모드
       const dx = p.x - b.lastX, dy = p.y - b.lastY;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const step = Math.max(1, b.size / 4);
@@ -230,8 +242,19 @@
       b.lastX = p.x; b.lastY = p.y;
     }
     function _end() {
+      // [v191] lasso end — 폴리곤 close + fill (실제 마스크 채움)
+      if (b.drawing && b.selMode === 'lasso' && b.lassoPath.length >= 3) {
+        mctx.clearRect(0, 0, mask.width, mask.height);
+        mctx.globalCompositeOperation = b.type === 'eraser' ? 'destination-out' : 'source-over';
+        mctx.fillStyle = (BRUSHES[b.type] && BRUSHES[b.type].color) || 'rgba(255,255,255,0.5)';
+        mctx.beginPath();
+        b.lassoPath.forEach((pt, i) => i ? mctx.lineTo(pt.x, pt.y) : mctx.moveTo(pt.x, pt.y));
+        mctx.closePath();
+        mctx.fill();
+      }
       b.drawing = false;
       b.rectStart = null;
+      b.lassoPath = [];
     }
 
     // 메인 canvas 에 brush 이벤트 — 중복 등록 방지 위해 한 번만

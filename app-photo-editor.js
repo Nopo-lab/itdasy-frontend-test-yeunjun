@@ -265,7 +265,7 @@
     ];
     const COLORS = ['#ffffff', '#1a1a20', '#F18091', '#FFC83D'];
     const COLOR_LABEL = { '#ffffff': '흰', '#1a1a20': '검', '#F18091': '핑크', '#FFC83D': '노랑' };
-    return `<label class="pe-field"><span>텍스트</span><input type="text" class="pe-input" data-pe-text-val placeholder="시술명·이벤트 문구 등" value="${_esc(t.value)}" maxlength="40" /></label>
+    return `<label class="pe-field"><span>텍스트 (여러 줄 가능 — Enter)</span><textarea class="pe-input" data-pe-text-val rows="3" maxlength="120" placeholder="시술명·이벤트 문구 등&#10;여러 줄도 OK">${_esc(t.value)}</textarea></label>
       <div class="pe-panel-row pe-panel-grid-2" style="margin-top:8px;">${_CHIP('text-prefill','service','시술명 자동')}${_CHIP('text-prefill','price','가격 자동')}</div>
       <div class="pe-field-label" style="margin-top:10px;">폰트</div>
       <div class="pe-panel-row pe-panel-grid-4">${FONTS.map(f => `<button type="button" class="pe-chip-btn${t.font===f.id?' on':''}" data-pe-text-font="${f.id}">${f.label}</button>`).join('')}</div>
@@ -595,30 +595,39 @@
       ctx.rotate(rot * Math.PI / 180);
       ctx.translate(-tx, -ty);
     }
-    // 배경 박스
+    // [v190] 다중 줄 — \n 으로 split, lineHeight = fs * 1.25
+    const lines = String(t.value).split('\n').filter(s => s.length > 0);
+    const lineH = Math.round(fs * 1.25);
+    const totalH = lineH * lines.length;
+    // 배경 박스 — 가장 넓은 줄 기준
     if (t.bg) {
-      const m = ctx.measureText(t.value);
+      let maxW = 0;
+      for (const ln of lines) maxW = Math.max(maxW, ctx.measureText(ln).width);
       const padX = Math.round(fs * 0.4), padY = Math.round(fs * 0.25);
-      const bw = Math.min(w * 0.95, m.width + padX * 2);
-      const bh = fs + padY * 2;
+      const bw = Math.min(w * 0.95, maxW + padX * 2);
+      const bh = totalH + padY * 2;
       const isLight = (t.color === '#ffffff' || t.color === '#FFC83D');
       ctx.fillStyle = isLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.85)';
       ctx.fillRect(tx - bw / 2, ty - bh / 2, bw, bh);
     } else if (!t.stroke) {
-      // 외곽선 켜져 있으면 그림자 X (외곽선이 더 또렷)
       ctx.shadowColor = 'rgba(0,0,0,0.45)';
       ctx.shadowBlur = Math.round(fs * 0.18);
     }
-    // [v188] 외곽선 — 색상 반대편 색으로 stroke
+    // [v188] 외곽선
     if (t.stroke) {
       ctx.lineWidth = Math.max(2, Math.round(fs * 0.08));
       ctx.lineJoin = 'round';
       const isLight = (t.color === '#ffffff' || t.color === '#FFC83D');
       ctx.strokeStyle = isLight ? '#000' : '#fff';
-      ctx.strokeText(t.value, tx, ty, w * 0.9);
     }
     ctx.fillStyle = t.color || '#ffffff';
-    ctx.fillText(t.value, tx, ty, w * 0.9);
+    // 각 줄 그리기 — 첫 줄이 중앙 위쪽에서 시작하도록 ty 보정
+    const startY = ty - (totalH - lineH) / 2;
+    lines.forEach((ln, i) => {
+      const y = startY + i * lineH;
+      if (t.stroke) ctx.strokeText(ln, tx, y, w * 0.9);
+      ctx.fillText(ln, tx, y, w * 0.9);
+    });
     ctx.restore();
   }
 
