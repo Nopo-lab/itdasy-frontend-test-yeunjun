@@ -63,7 +63,11 @@
       beauty: { skin: 0, redness: 0, hairShine: 0, nailGloss: 0, lashSharp: 0, blemish: 0, handSkin: 0, hairColor: 0, hairDetail: 0, eyeShadow: 0 },
       template: { id: null, leftLabel: '전', rightLabel: '후', reviewText: '', priceLines: '' },
       // [v188 2026-05-18] 텍스트 v2 — stroke (외곽선), rotation, x slider 추가
+      // [v204 2026-05-19] 다중 레이어 — _state.text 는 active layer alias.
+      //   _state.layers[] 가 source of truth. text 비면 layers[0] = 빈 text layer.
       text: { value: '', x: 0.5, y: 0.92, color: '#ffffff', font: 'sans', size: 6, bg: false, stroke: false, rot: 0 },
+      layers: [],          // [v204] { id, type:'text', value, x, y, color, font, size, bg, stroke, rot }
+      activeLayerId: null, // [v204] 현재 편집 중 layer id
       watermark: { value: '', position: 'br', opacity: 0.85 },
       showOriginal: false, history: [], historyCursor: -1,
     };
@@ -264,7 +268,9 @@
       <div class="pe-hint">카드 누르면 자동 누끼 + 합성. 같은 사진은 누끼 캐시되어 다른 배경 즉시 적용. Free 한도 누끼 2/일.</div>`;
   }
   function _panelText() {
-    const t = _state.text;
+    // [v204 2026-05-19] 다중 레이어 — _state.layers 우선, active layer 가 _state.text alias
+    _ensureLayers();
+    const t = _state.text;  // active layer 가 _state.text 와 동기화됨
     const FONTS = [
       { id: 'sans', label: 'Sans' },
       { id: 'serif', label: 'Serif' },
@@ -273,7 +279,21 @@
     ];
     const COLORS = ['#ffffff', '#1a1a20', '#F18091', '#FFC83D'];
     const COLOR_LABEL = { '#ffffff': '흰', '#1a1a20': '검', '#F18091': '핑크', '#FFC83D': '노랑' };
-    return `<label class="pe-field"><span>텍스트 (여러 줄 가능 — Enter)</span><textarea class="pe-input" data-pe-text-val rows="3" maxlength="120" placeholder="시술명·이벤트 문구 등&#10;여러 줄도 OK">${_esc(t.value)}</textarea></label>
+    // [v204] 레이어 리스트 헤더
+    const layers = _state.layers || [];
+    const layerListHtml = layers.length > 1
+      ? `<div class="pe-field-label">텍스트 레이어 (${layers.length})</div>
+         <div class="pe-panel-row" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+           ${layers.map((l, i) => `<button type="button" class="pe-chip-btn${l.id === _state.activeLayerId ? ' on' : ''}" data-pe-layer-select="${l.id}" title="${_esc(l.value || '(빈 텍스트)').slice(0, 20)}">${i + 1}. ${_esc((l.value || '빈 텍스트').slice(0, 8))}</button>`).join('')}
+         </div>`
+      : '';
+    const layerActionsHtml = `
+      <div class="pe-panel-row pe-panel-grid-3" style="margin-bottom:10px;">
+        <button type="button" class="pe-chip-btn" data-pe-layer-add>＋ 새 텍스트</button>
+        ${layers.length > 1 ? '<button type="button" class="pe-chip-btn" data-pe-layer-del>🗑 삭제</button>' : ''}
+        ${layers.length > 1 ? '<button type="button" class="pe-chip-btn" data-pe-layer-up>↑ 위로</button>' : ''}
+      </div>`;
+    return `${layerListHtml}${layerActionsHtml}<label class="pe-field"><span>텍스트 (여러 줄 가능 — Enter)</span><textarea class="pe-input" data-pe-text-val rows="3" maxlength="120" placeholder="시술명·이벤트 문구 등&#10;여러 줄도 OK">${_esc(t.value)}</textarea></label>
       <div class="pe-panel-row pe-panel-grid-2" style="margin-top:8px;">${_CHIP('text-prefill','service','시술명 자동')}${_CHIP('text-prefill','price','가격 자동')}</div>
       <div class="pe-field-label" style="margin-top:10px;">폰트</div>
       <div class="pe-panel-row pe-panel-grid-4">${FONTS.map(f => `<button type="button" class="pe-chip-btn${t.font===f.id?' on':''}" data-pe-text-font="${f.id}">${f.label}</button>`).join('')}</div>
@@ -433,7 +453,12 @@
       });
     },
     text(panel) {
-      _on(panel, '[data-pe-text-val]', 'input', (e) => { _state.text.value = e.target.value; _redraw(); });
+      // [v204] 레이어 관리 — 추가/삭제/선택/순서
+      _on(panel, '[data-pe-layer-add]', 'click', _addLayer);
+      _on(panel, '[data-pe-layer-del]', 'click', _deleteLayer);
+      _on(panel, '[data-pe-layer-up]',  'click', _moveLayerUp);
+      _each(panel, '[data-pe-layer-select]', 'click', (e) => _selectLayer(e.currentTarget.dataset.peLayerSelect));
+      _on(panel, '[data-pe-text-val]', 'input', (e) => { _state.text.value = e.target.value; _syncTextToLayer(); _redraw(); });
       _on(panel, '[data-pe-text-y]',   'input', (e) => { _state.text.y = +e.target.value / 100; _redraw(); });
       _on(panel, '[data-pe-text-x]',   'input', (e) => { _state.text.x = +e.target.value / 100; _redraw(); });
       _on(panel, '[data-pe-text-rot]', 'input', (e) => { _state.text.rot = +e.target.value; _redraw(); });
@@ -516,6 +541,65 @@
     _redraw(); _pushHistory();
     _toast(preset.label + ' 자동 (' + (intensity === 'natural' ? '자연' : intensity === 'strong' ? '강조' : '표준') + ') 적용');
   }
+  // [v204 2026-05-19] 다중 텍스트 레이어 헬퍼 — _state.text ↔ active layer 동기화
+  function _ensureLayers() {
+    if (!_state) return;
+    if (!Array.isArray(_state.layers)) _state.layers = [];
+    // 마이그레이션: layers 비었지만 text 가 있으면 layer 1개 생성
+    if (_state.layers.length === 0) {
+      const id = 'lyr-' + Date.now();
+      _state.layers.push(Object.assign({ id, type: 'text' }, _state.text || {}));
+      _state.activeLayerId = id;
+    }
+    // active 가 없거나 사라졌으면 첫 번째 layer 활성
+    if (!_state.activeLayerId || !_state.layers.find(l => l.id === _state.activeLayerId)) {
+      _state.activeLayerId = _state.layers[0].id;
+    }
+    // active layer → _state.text 동기화 (alias)
+    const active = _state.layers.find(l => l.id === _state.activeLayerId);
+    if (active) _state.text = active;
+  }
+  function _syncTextToLayer() {
+    if (!_state || !Array.isArray(_state.layers) || !_state.activeLayerId) return;
+    const idx = _state.layers.findIndex(l => l.id === _state.activeLayerId);
+    if (idx >= 0) _state.layers[idx] = Object.assign({}, _state.layers[idx], _state.text, { id: _state.activeLayerId, type: 'text' });
+  }
+  function _addLayer() {
+    _ensureLayers();
+    const id = 'lyr-' + Date.now();
+    _state.layers.push({
+      id, type: 'text',
+      value: '', x: 0.5, y: 0.5 + (_state.layers.length * 0.08), color: '#ffffff',
+      font: 'sans', size: 6, bg: false, stroke: false, rot: 0,
+    });
+    _state.activeLayerId = id;
+    _state.text = _state.layers[_state.layers.length - 1];
+    _renderPanel(); _redraw(); _pushHistory();
+    _toast('새 텍스트 레이어 추가 (총 ' + _state.layers.length + '개)');
+  }
+  function _deleteLayer() {
+    if (!_state || !_state.layers || _state.layers.length <= 1) return _toast('최소 1개는 남겨야 해요');
+    const idx = _state.layers.findIndex(l => l.id === _state.activeLayerId);
+    if (idx < 0) return;
+    _state.layers.splice(idx, 1);
+    _state.activeLayerId = _state.layers[Math.min(idx, _state.layers.length - 1)].id;
+    _ensureLayers();  // _state.text 재동기
+    _renderPanel(); _redraw(); _pushHistory();
+    _toast('레이어 삭제 (남은 ' + _state.layers.length + '개)');
+  }
+  function _selectLayer(id) {
+    _state.activeLayerId = id;
+    _ensureLayers();
+    _renderPanel(); _redraw();
+  }
+  function _moveLayerUp() {
+    if (!_state || !_state.layers || _state.layers.length <= 1) return;
+    const idx = _state.layers.findIndex(l => l.id === _state.activeLayerId);
+    if (idx <= 0) return _toast('이미 맨 위');
+    [_state.layers[idx - 1], _state.layers[idx]] = [_state.layers[idx], _state.layers[idx - 1]];
+    _renderPanel(); _redraw(); _pushHistory();
+  }
+
   // [v202 2026-05-18] 사진 회전·좌우/상하 반전 (S1-3) — originalImg 자체를 변환 후 swap.
   //   rotL/rotR/flipH/flipV. swap 시 history push.
   function _applyTransform(kind) {
@@ -587,7 +671,12 @@
     if (typeof _drawHooks.beauty === 'function') {
       try { _drawHooks.beauty(ctx, dw, dh, _state.beauty, _helpers); } catch (_e) { void _e; }
     }
-    if (_state.text.value) _drawText(ctx, dw, dh, _state.text);
+    // [v204 2026-05-19] 다중 텍스트 레이어 — layers[] 우선, 없으면 단일 text 폴백
+    if (Array.isArray(_state.layers) && _state.layers.length > 0) {
+      _state.layers.forEach(l => { if (l && l.value) _drawText(ctx, dw, dh, l); });
+    } else if (_state.text && _state.text.value) {
+      _drawText(ctx, dw, dh, _state.text);
+    }
     if (_state.watermark.value) _drawWatermark(ctx, dw, dh, _state.watermark);
   }
 
@@ -720,7 +809,8 @@
   }
 
   // ── history ──────────────────────────────────────────
-  const _SNAP_KEYS = ['adjust', 'ratio', 'text', 'watermark', 'beauty', 'template', 'autoIntensity'];
+  // [v204 2026-05-19] layers + activeLayerId snapshot — undo/redo 시 다중 텍스트 복원
+  const _SNAP_KEYS = ['adjust', 'ratio', 'text', 'watermark', 'beauty', 'template', 'autoIntensity', 'layers', 'activeLayerId'];
   function _snapshot() {
     const o = {};
     for (const k of _SNAP_KEYS) o[k] = _state[k];
@@ -738,6 +828,7 @@
     _state.historyCursor -= 1;
     const s = _state.history[_state.historyCursor];
     for (const k of _SNAP_KEYS) if (s[k] !== undefined) _state[k] = s[k];
+    if (typeof _ensureLayers === 'function') _ensureLayers();  // [v204] reference 재동기
     _renderPanel(); _redraw();
   }
   // [v183 2026-05-18] Redo — historyCursor 가 history.length-1 보다 작으면 앞으로.
@@ -746,6 +837,7 @@
     _state.historyCursor += 1;
     const s = _state.history[_state.historyCursor];
     for (const k of _SNAP_KEYS) if (s[k] !== undefined) _state[k] = s[k];
+    if (typeof _ensureLayers === 'function') _ensureLayers();  // [v204] reference 재동기
     _renderPanel(); _redraw();
   }
 
