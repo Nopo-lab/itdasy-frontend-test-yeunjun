@@ -2,7 +2,26 @@
 
 > 새 세션이 시작되면 **이 파일을 먼저 읽고** 현재 단계·대기 결정·마지막 체크포인트를 파악한다.
 
-**LAST UPDATED:** 2026-05-19 · v222 — ultra-plan-review.md 기준 기능 정리 + SNS 캘린더 버튼 + 단일 멤버십 문구
+**LAST UPDATED:** 2026-05-19 · v223 — ultra-plan-review.md 기준 엄격 정리
+
+---
+
+## 🟣 2026-05-19 — v223 md 기준 엄격 정리
+
+배경: 사용자 지시 "코드 md대로 수정해 1차 2차니 뭐니 멈추지 말고". v222 에서 남겨둔 테스트용 SNS 캘린더 버튼과 PE-4 드래그 텍스트 로드를 md 기준으로 다시 정리.
+
+완료:
+- `app-ai-hub.js`: 첫 화면 순서를 사진 편집기 → SNS 캡션 → 해시태그 매니저 중심으로 변경. SNS 캘린더 행 제거.
+- `index.html`: `app-sns-calendar.js`, `app-photo-editor-text-dnd.js` 로드 제거. 이미 숨긴 AR/영상/성과/예약/크로스발행 등도 계속 미로드.
+- `app-sns-hashtag.js`: 해시태그 매니저를 핵심 기능으로 유지하면서 인라인 클릭 제거, 복사 실패 경고 처리.
+- `app-photo-editor-templates-v2.js`, `app-photo-editor-templates.js`, `app-instagram.js`: 릴스 커버 노출 문구를 스토리/세로 홍보 이미지 쪽으로 정리.
+- `app-assistant.js`, `app-auto-ba.js`: 영상 자동편집 진입 대신 사진 카드/Before-After 비교로 연결.
+- `app-myshop-v3.js`, `app-drawer.js`, `app-power-view-quota.js`: Free/Pro 잔여 문구 일부를 체험/멤버십으로 정리.
+- 빌드 버전: `20260519-v223-md-strict`.
+
+남음:
+- 파일 삭제는 하지 않음. 삭제는 AGENTS.md 기준 빨간불이라 별도 승인 필요. 현재는 앱에서 불러오지 않게 처리.
+- 실제 결제/스토어 상품 ID 정리는 백엔드/스토어 작업이라 별도.
 
 ---
 

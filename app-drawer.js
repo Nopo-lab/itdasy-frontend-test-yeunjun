@@ -114,7 +114,7 @@
       const plan =
         (window.__plan && window.__plan.name) ||
         localStorage.getItem('itdasy_plan_name') ||
-        'Free 플랜';
+        '체험';
       nameEl.textContent = shopName;
       if (planEl) planEl.textContent = plan;
       if (avatarEl) avatarEl.textContent = (shopName || '잇').trim().charAt(0);

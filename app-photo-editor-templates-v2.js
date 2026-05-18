@@ -1,11 +1,11 @@
 /* 사진 편집기 — 템플릿 마켓 v2 (PE-5, 2026-05-19 v217)
-   초고도화 Phase 1 #5 — Canva 수준 30+ 템플릿.
+   md 기준 핵심 기능 — 사진 편집용 30+ 템플릿.
 
    기능:
      • 6 카테고리 × 5+ 템플릿 = 30+ 종 등록
        - 피드 (1080×1350): 시술 자랑, 신메뉴, 후기, 가격 강조, 안내
        - 스토리 (1080×1920): 카운트다운, 오픈 알림, 출석체크, Q&A, 투표
-       - 릴스 커버 (1080×1920): 비포애프터, 가격, 신메뉴, 후기, 시술과정
+       - 세로 홍보 (1080×1920): 비포애프터, 가격, 신메뉴, 후기, 시술과정
        - 이벤트 (1080×1080): 할인, 회원가, 신규, 데드라인, 무료증정
        - 가격표 (1080×1350): 헤어/네일/속눈썹/메이크업/왁싱 5종
        - 명함 (1080×1080): 미니멀, 골드, 핑크, 다크, 자연
@@ -23,7 +23,7 @@
   const CATS = [
     { id: 'feed',    label: '피드',    ratio: '4:5', size: [1080, 1350] },
     { id: 'story',   label: '스토리',  ratio: '9:16', size: [1080, 1920] },
-    { id: 'reels',   label: '릴스커버', ratio: '9:16', size: [1080, 1920] },
+    { id: 'reels',   label: '세로 홍보', ratio: '9:16', size: [1080, 1920] },
     { id: 'event',   label: '이벤트',  ratio: '1:1', size: [1080, 1080] },
     { id: 'price',   label: '가격표',  ratio: '4:5', size: [1080, 1350] },
     { id: 'card',    label: '명함',    ratio: '1:1', size: [1080, 1080] },
@@ -43,11 +43,11 @@
     { id: 'story-attend',    cat: 'story', label: '출석체크',  prefillText: 'CHECK-IN', accent: 'soft' },
     { id: 'story-qa',        cat: 'story', label: 'Q&A 받기', prefillText: 'Q&A 받습니다', accent: 'soft' },
     { id: 'story-poll',      cat: 'story', label: '투표',     prefillText: '어떤 게 좋아요?', accent: 'primary' },
-    // ── 릴스 커버 5 ──
+    // ── 세로 홍보 5 ──
     { id: 'reels-ba',        cat: 'reels', label: '비포애프터', prefillText: 'BEFORE → AFTER', accent: 'gold' },
     { id: 'reels-price',     cat: 'reels', label: '가격 공개',  prefillText: '가격 공개!', accent: 'gold' },
     { id: 'reels-newmenu',   cat: 'reels', label: '신메뉴',    prefillText: 'NEW', accent: 'primary' },
-    { id: 'reels-review',    cat: 'reels', label: '후기 영상',  prefillText: 'REAL REVIEW', accent: 'soft' },
+    { id: 'reels-review',    cat: 'reels', label: '고객 후기',  prefillText: 'REAL REVIEW', accent: 'soft' },
     { id: 'reels-process',   cat: 'reels', label: '시술 과정',  prefillText: 'PROCESS', accent: 'primary' },
     // ── 이벤트 5 ──
     { id: 'event-discount',  cat: 'event', label: '할인',      prefillText: '50% OFF', accent: 'gold' },
@@ -261,7 +261,7 @@
       'story-attend':    () => _drawStoryAttend(ctx, dw, dh, head, accent, shopName),
       'story-qa':        () => _drawStoryQA(ctx, dw, dh, head, accent, shopName),
       'story-poll':      () => _drawStoryPoll(ctx, dw, dh, head, accent, shopName),
-      // 릴스 5
+      // 세로 홍보 5
       'reels-ba':        () => _drawReelsBA(ctx, dw, dh, head, accent, shopName),
       'reels-price':     () => _drawReelsPrice(ctx, dw, dh, head, accent, shopName),
       'reels-newmenu':   () => _drawReelsNew(ctx, dw, dh, head, accent, shopName),
@@ -411,7 +411,7 @@
     ctx.fillText(shop, dw/2, dh*0.7);
   }
 
-  // ── 릴스 커버 5 (1080×1920 / 9:16) ──
+  // ── 세로 홍보 5 (1080×1920 / 9:16) ──
   function _drawReelsBA(ctx, dw, dh, head, accent, shop) {
     // 좌우 분할 BEFORE / AFTER 라벨
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, dh*0.42, dw, dh*0.16);

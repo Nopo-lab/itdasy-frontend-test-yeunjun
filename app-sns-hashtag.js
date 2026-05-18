@@ -1,12 +1,10 @@
 /* ─────────────────────────────────────────────────────────────
-   잇데이 — 해시태그 매니저 (SN-4, Phase 1)
+   잇데이 — 해시태그 매니저 (SN-4)
    2026-05-19 v207
 
    기능:
      • 업종별 추천 해시태그 세트 (최대 10세트 저장)
      • 원터치 삽입 — 캡션 영역에 자동 추가
-     • 성과 기반 순위 표시 (향후 인사이트 연동)
-     • 인기 해시태그 탐색
 
    진입: window.SNSHashtag.open()
    ──────────────────────────────────────────────────────────── */
@@ -34,7 +32,11 @@
   function _toast(msg) { if (window.showToast) window.showToast(msg); }
 
   function _load() {
-    try { _sets = JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch (_) { _sets = []; }
+    try { _sets = JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
+    catch (err) {
+      console.warn('[SNSHashtag] 저장된 세트 불러오기 실패', err);
+      _sets = [];
+    }
     // 첫 진입 시 업종 기반 기본 세트 생성
     if (_sets.length === 0) {
       const shopType = localStorage.getItem('itdasy_shop_type') || '헤어샵';
@@ -46,7 +48,8 @@
   }
 
   function _save() {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(_sets)); } catch (_) { /* ignore */ }
+    try { localStorage.setItem(LS_KEY, JSON.stringify(_sets)); }
+    catch (err) { console.warn('[SNSHashtag] 세트 저장 실패', err); }
   }
 
   function _open() {
@@ -75,30 +78,50 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
               <div style="font-size:14px;font-weight:700;">${_esc(s.name)}</div>
               <div style="display:flex;gap:6px;">
-                <button onclick="window.SNSHashtag._copy(${i})" style="padding:4px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:11px;font-weight:600;cursor:pointer;">📋 복사</button>
-                <button onclick="window.SNSHashtag._insert(${i})" style="padding:4px 10px;border:none;border-radius:8px;background:var(--accent,#F18091);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">삽입</button>
+                <button type="button" data-hashtag-act="copy" data-hashtag-idx="${i}" style="padding:4px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:11px;font-weight:600;cursor:pointer;">📋 복사</button>
+                <button type="button" data-hashtag-act="insert" data-hashtag-idx="${i}" style="padding:4px 10px;border:none;border-radius:8px;background:var(--accent,#F18091);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">삽입</button>
               </div>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;">
               ${s.tags.map(tag => `<span style="padding:4px 10px;border-radius:20px;background:rgba(241,128,145,0.08);color:var(--accent2);font-size:11px;font-weight:600;">${_esc(tag)}</span>`).join('')}
             </div>
             <div style="margin-top:8px;display:flex;gap:6px;">
-              <button onclick="window.SNSHashtag._editSet(${i})" style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;text-decoration:underline;">편집</button>
-              ${s.id !== 'default' ? `<button onclick="window.SNSHashtag._deleteSet(${i})" style="font-size:10px;color:#ef4444;background:none;border:none;cursor:pointer;text-decoration:underline;">삭제</button>` : ''}
+              <button type="button" data-hashtag-act="edit" data-hashtag-idx="${i}" style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;text-decoration:underline;">편집</button>
+              ${s.id !== 'default' ? `<button type="button" data-hashtag-act="delete" data-hashtag-idx="${i}" style="font-size:10px;color:#ef4444;background:none;border:none;cursor:pointer;text-decoration:underline;">삭제</button>` : ''}
             </div>
           </div>
         `).join('')}
 
-        ${_sets.length < MAX_SETS ? `<button onclick="window.SNSHashtag._addSet()" style="width:100%;height:44px;border:1.5px dashed #ddd;border-radius:14px;background:#fff;font-size:13px;font-weight:700;color:var(--accent);cursor:pointer;">＋ 새 해시태그 세트 추가</button>` : ''}
+        ${_sets.length < MAX_SETS ? `<button type="button" data-hashtag-act="add" style="width:100%;height:44px;border:1.5px dashed #ddd;border-radius:14px;background:#fff;font-size:13px;font-weight:700;color:var(--accent);cursor:pointer;">＋ 새 해시태그 세트 추가</button>` : ''}
       </div>`;
+    _bindPopupEvents(pop);
   }
 
-  function _copy(idx) {
+  function _bindPopupEvents(pop) {
+    pop.querySelectorAll('[data-hashtag-act]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.hashtagIdx);
+        const act = btn.dataset.hashtagAct;
+        if (act === 'copy') void _copy(idx);
+        if (act === 'insert') _insert(idx);
+        if (act === 'edit') _editSet(idx);
+        if (act === 'delete') _deleteSet(idx);
+        if (act === 'add') _addSet();
+      });
+    });
+  }
+
+  async function _copy(idx) {
     const s = _sets[idx];
     if (!s) return;
     const text = s.tags.join(' ');
-    try { navigator.clipboard.writeText(text); _toast('해시태그 복사 완료!'); }
-    catch (_) { _toast('복사 실패 — 수동으로 복사해 주세요'); }
+    try {
+      await navigator.clipboard.writeText(text);
+      _toast('해시태그 복사 완료!');
+    } catch (err) {
+      console.warn('[SNSHashtag] 복사 실패', err);
+      _toast('복사 실패 — 수동으로 복사해 주세요');
+    }
     s.usageCount = (s.usageCount || 0) + 1;
     _save();
   }
@@ -120,7 +143,7 @@
       }
     }
     if (inserted) _toast('해시태그 삽입 완료!');
-    else { _copy(idx); _toast('캡션 영역을 찾지 못해 클립보드에 복사했어요'); }
+    else { void _copy(idx); _toast('캡션 영역을 찾지 못해 클립보드에 복사했어요'); }
     s.usageCount = (s.usageCount || 0) + 1;
     _save();
   }

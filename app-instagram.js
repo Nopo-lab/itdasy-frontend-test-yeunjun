@@ -653,7 +653,7 @@ window._dismissIpcCard = _dismissIpcCard;
 // 설계 §10:
 //   1:1   → 1080×1080 (피드 정사각)
 //   4:5   → 1080×1350 (피드 세로, 디폴트 추천)
-//   9:16  → 1080×1920 (스토리/릴스 커버)
+//   9:16  → 1080×1920 (스토리)
 // 사진 편집기에서 저장하면 _state.ratio 가 자동 전달돼서
 // 인스타 미리보기 컨테이너의 aspect-ratio 가 그 비율에 맞춰 잡힘.
 // 'original' 이나 누락 시 4:5 추천 (인스타 권장 비율).
@@ -662,7 +662,7 @@ function _resolveIgPreviewRatio(ratio) {
   const map = {
     '1:1':  { ar: '1/1',   w: 1080, h: 1080, label: '피드 정사각' },
     '4:5':  { ar: '4/5',   w: 1080, h: 1350, label: '피드 세로' },
-    '9:16': { ar: '9/16',  w: 1080, h: 1920, label: '스토리·릴스' },
+    '9:16': { ar: '9/16',  w: 1080, h: 1920, label: '스토리' },
   };
   if (ratio && map[ratio]) return { key: ratio, ...map[ratio] };
   // back-compat: 인자 없으면 1:1 기본 (기존 호출자 보호)

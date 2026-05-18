@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
-   파워뷰 — Free/Pro 한도 표시 (2026-05-10)
+   파워뷰 — 체험/멤버십 한도 표시 (2026-05-10)
 
    차단 X (사용자 가드레일: 코드 활성, UI 자문만 윤곽).
    탭별 행 수가 한도에 가까워지면 헤더 옆 chip 으로 알림.
@@ -8,7 +8,7 @@
    ── 가드레일 ──
    1. 백엔드 신규 0
    2. 차단 X — 정보 표시만
-   3. Pro/Premium 사용자에겐 표시 안 함 (window.isPaidPlan)
+   3. 멤버십 사용자는 표시 안 함 (window.isPaidPlan)
    4. 파일 ≤200줄
 
    사용:
@@ -54,7 +54,9 @@
       if (typeof window.openPlan === 'function') return window.openPlan();
       if (typeof window.openPlanPopup === 'function') return window.openPlanPopup();
       if (typeof window.showToast === 'function') window.showToast('잇데이 멤버십에서 더 많이 쓸 수 있어요');
-    } catch (_e) { /* silent */ }
+    } catch (err) {
+      console.warn('[PVQuota] 멤버십 화면 열기 실패', err);
+    }
   }
 
   function bind() {

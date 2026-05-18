@@ -34,21 +34,24 @@
   // type: 'toggle' | 'tag' | 'badge' | 'plain'
   function _rows() {
     return [
+      { act: 'photoEditor', icon: 'ph-magic-wand', boxColor: 'pink',
+        name: '사진 편집기', meta: '자동 보정 · Before/After · 템플릿',
+        type: 'badge' },
+      { act: 'caption', icon: 'ph-pencil-line', boxColor: 'pink',
+        name: 'SNS 캡션', meta: '사진 올리면 글·해시태그까지',
+        type: 'plain' },
+      { act: 'hashtag', icon: 'ph-hash', boxColor: 'teal',
+        name: '해시태그 매니저', meta: '업종별 추천 · 원터치 복사',
+        type: 'plain' },
+      { act: 'persona', icon: 'ph-user-circle-gear', boxColor: 'purple',
+        name: 'AI 페르소나', meta: '원장님 말투 학습 · 캡션 일관성',
+        type: 'tag', tagText: '학습됨' },
       { act: 'dm', icon: 'ph-chat-circle-dots', boxColor: 'blue',
         name: 'DM 자동응답', meta: '인스타 DM → AI 자동 답장',
         type: 'toggle', toggleKey: KEY_DM },
       { act: 'kakao', icon: 'ph-bell-ringing', boxColor: 'amber',
         name: '카카오 알림톡', meta: '예약확정 · 리마인드 · 생일',
         type: 'toggle', toggleKey: KEY_KAKAO },
-      { act: 'persona', icon: 'ph-user-circle-gear', boxColor: 'purple',
-        name: 'AI 페르소나', meta: '원장님 말투 학습 · 캡션 일관성',
-        type: 'tag', tagText: '학습됨' },
-      { act: 'caption', icon: 'ph-pencil-line', boxColor: 'pink',
-        name: 'SNS 캡션', meta: '시나리오 · 1초 · 음성 3가지',
-        type: 'plain' },
-      { act: 'snsCalendar', icon: 'ph-calendar-dots', boxColor: 'teal',
-        name: 'SNS 캘린더', meta: '게시물 날짜 메모 · 테스트용',
-        type: 'plain' },
       { act: 'posts', icon: 'ph-squares-four', boxColor: 'teal',
         name: '게시물 관리', meta: '완료 슬롯 · 마무리 탭',
         type: 'plain' },
@@ -57,10 +60,6 @@
         type: 'plain' },
       { act: 'capture', icon: 'ph-scan', boxColor: 'violet',
         name: '스마트 캡처', meta: '카톡 · 명함 · 가격표 OCR',
-        type: 'badge' },
-      // P0-PE (2026-05-17 v167) 사진 편집기 진입로
-      { act: 'photoEditor', icon: 'ph-magic-wand', boxColor: 'pink',
-        name: '사진 편집기', meta: '자동 보정 · 슬라이더 · 4:5 · 워터마크',
         type: 'badge' },
     ];
   }
@@ -103,7 +102,7 @@
   function _rowHtml(row) {
     const newBadge = row.type === 'badge'
       ? `<span class="ms-aih__badge-new">NEW</span>` : '';
-    // Phase1: Phosphor vs 레거시 SVG
+    // Phosphor vs 레거시 SVG
     const isPhosphor = row.icon.startsWith('ph-');
     const iconInner = isPhosphor
       ? `<i class="ph-duotone ${_esc(row.icon)}" aria-hidden="true"></i>`
@@ -227,13 +226,13 @@
     } catch (_e) { void _e; }
   }
 
-  // ── 7개 항목 라우터 (동작 변경 X) ─────────────────────────────
+  // ── 항목 라우터 ─────────────────────────────
   const _ROUTE_MAP = {
     dm:      'openDMAutoreplySettings',
     kakao:   'openKakaoHub',
     persona: 'openPersonaSurveyModal',
     caption: 'openCaptionScenarioPopup',
-    snsCalendar: '__snsCalendarOpen',
+    hashtag: '__snsHashtagOpen',
     posts:   null,
     memo:    'openAssistantFactsSheet',
     capture: 'openSmartCapture',
@@ -243,7 +242,7 @@
   function _canRoute(act) {
     if (act === 'posts') return typeof window.showTab === 'function';
     if (act === 'photoEditor') return !!(window.PhotoEditor && typeof window.PhotoEditor.open === 'function');
-    if (act === 'snsCalendar') return !!(window.SNSCalendar && typeof window.SNSCalendar.open === 'function');
+    if (act === 'hashtag') return !!(window.SNSHashtag && typeof window.SNSHashtag.open === 'function');
     const fn = _ROUTE_MAP[act];
     return !!(fn && typeof window[fn] === 'function');
   }
@@ -255,11 +254,11 @@
       catch (_e) { if (window.showToast) window.showToast('편집기를 여는 중 문제가 생겼어요'); }
       return;
     }
-    if (act === 'snsCalendar') {
-      try { window.SNSCalendar.open(); }
+    if (act === 'hashtag') {
+      try { window.SNSHashtag.open(); }
       catch (err) {
-        console.warn('[AIHub] SNS 캘린더 열기 실패', err);
-        if (window.showToast) window.showToast('SNS 캘린더를 여는 중 문제가 생겼어요');
+        console.warn('[AIHub] 해시태그 매니저 열기 실패', err);
+        if (window.showToast) window.showToast('해시태그 매니저를 여는 중 문제가 생겼어요');
       }
       return;
     }

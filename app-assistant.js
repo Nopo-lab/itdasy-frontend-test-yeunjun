@@ -2846,7 +2846,7 @@
       instagram: /(인스타|올려|게시|업로드|포스트)/.test(ql),
       ba: /(전후|before|애프터|b&a|비포)/i.test(ql),
       bg: /(누끼|배경)/.test(ql),
-      reels: /(릴스|reels|cover|커버)/i.test(ql),
+      videoCard: /(릴스|reels|shorts|숏폼|cover|커버)/i.test(ql),
       explicit_editor: /(편집기|에디터|직접|손볼)/.test(ql),
     };
     const shop = {
@@ -2876,17 +2876,17 @@
       _renderHistory();
       return true;
     }
-    // 릴스 → ReelsCover.open
-    if (intent.reels) {
-      if (window.ReelsCover && typeof window.ReelsCover.open === 'function') {
-        window.ReelsCover.open({
-          photo_url: opts.photoUrl,
+    // 영상 자동 편집 대신 사진 카드/스토리 템플릿으로 유도한다.
+    if (intent.videoCard) {
+      if (window.PhotoEditor && typeof window.PhotoEditor.open === 'function') {
+        window.PhotoEditor.open({
+          src: opts.photoUrl,
+          initial_tab: 'template',
           customer_id: opts.customerCtx ? opts.customerCtx.id : undefined,
-          customer_name: opts.customerCtx ? opts.customerCtx.name : undefined,
         });
       }
       _history.push({ role: 'user', text: opts.question, thumb: opts.photoUrl, photos: opts.photos });
-      _history.push({ role: 'assistant', text: '릴스 커버 화면을 열었어요.' });
+      _history.push({ role: 'assistant', text: '사진 카드 화면을 열었어요. 스토리용 이미지나 전후 카드로 바로 만들 수 있어요.' });
       _renderHistory();
       return true;
     }

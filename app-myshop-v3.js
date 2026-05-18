@@ -88,11 +88,11 @@
       if (typeof window.getCurrentPlanLabel === 'function') return window.getCurrentPlanLabel();
       const badge = document.getElementById('planBadge');
       const text = badge && badge.textContent ? badge.textContent.trim() : '';
-      return text || 'Free';
-    } catch (_e) { return 'Free'; }
+      return text || '체험';
+    } catch (_e) { return '체험'; }
   }
   function _planText() {
-    return _planLabel().replace(/\s*플랜$/g, '') + ' 플랜';
+    return _planLabel().replace(/\s*플랜$/g, '');
   }
   function _won(n) {
     try { return '₩' + (Number(n) || 0).toLocaleString('ko-KR'); }

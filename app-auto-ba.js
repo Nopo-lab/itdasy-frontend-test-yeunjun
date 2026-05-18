@@ -2,8 +2,8 @@
    비포/애프터 자동 감지 배너 (#4 · 2026-04-20)
 
    같은 customer_id 로 2장+ 포트폴리오 사진이 쌓이면
-   대시보드 열릴 때 '영상 만들래요?' 자동 제안 배너 1개 노출.
-   탭 시 Video 시트를 열고 before/after 자동 로딩.
+   대시보드 열릴 때 '전후 비교 만들래요?' 자동 제안 배너 1개 노출.
+   탭 시 사진 편집기의 Before/After 비교 화면으로 연결.
 
    공개:
    - AutoBA.scanAndSuggest()  → Promise<{pair?, count}>
@@ -13,20 +13,30 @@
   'use strict';
 
   const CACHE_KEY = 'itdasy_autoba_dismissed_v1';
+  const API_PATHS = { portfolio: '/portfolio' };
 
-  async function _apiGet(path) {
+  function _apiUrl(key) {
+    if (!window.API || !API_PATHS[key]) throw new Error('no-api');
+    return new URL(API_PATHS[key], window.API).toString();
+  }
+
+  async function _apiGet(key) {
     if (!window.API || !window.authHeader) throw new Error('no-auth');
-    const res = await fetch(window.API + path, { headers: window.authHeader() });
+    const res = await fetch(_apiUrl(key), { headers: window.authHeader() });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return await res.json();
   }
 
   function _loadDismissed() {
     try { return new Set(JSON.parse(localStorage.getItem(CACHE_KEY) || '[]')); }
-    catch (_) { return new Set(); }
+    catch (err) {
+      console.warn('[AutoBA] 닫은 제안 목록 불러오기 실패', err);
+      return new Set();
+    }
   }
   function _saveDismissed(set) {
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify([...set])); } catch (_) { void 0; }
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify([...set])); }
+    catch (err) { console.warn('[AutoBA] 닫은 제안 목록 저장 실패', err); }
   }
 
   /**
@@ -36,9 +46,12 @@
   async function scanAndSuggest() {
     let items = [];
     try {
-      const d = await _apiGet('/portfolio');
+      const d = await _apiGet('portfolio');
       items = Array.isArray(d) ? d : (d.items || []);
-    } catch (_) { return { pair: null, count: 0 }; }
+    } catch (err) {
+      console.warn('[AutoBA] 전후 사진 후보 불러오기 실패', err);
+      return { pair: null, count: 0 };
+    }
 
     if (!items.length) return { pair: null, count: 0 };
 
@@ -82,7 +95,7 @@
 
   /**
    * 배너 DOM 요소 반환. scanAndSuggest 후 pair 가 있을 때만.
-   * 사용자가 '만들기' 클릭하면 Video 시트를 열고 before/after URL 로 preload.
+   * 사용자가 '만들기' 클릭하면 사진 편집기 B/A 비교로 연결.
    */
   async function getBanner() {
     const { pair } = await scanAndSuggest();
@@ -95,15 +108,15 @@
         ${pair.after.image_url ? `<img src="${_esc(pair.after.image_url)}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;border:2px solid #fff;margin-left:-10px;">` : ''}
       </div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;font-weight:800;margin-bottom:2px;">${pair.customer_name ? _esc(pair.customer_name) + '님 ' : ''}비포·애프터 영상?</div>
-        <div style="font-size:10px;color:#888;line-height:1.4;">같은 고객 사진 2장 감지 — 탭 한 번에 릴스 완성</div>
+        <div style="font-size:12px;font-weight:800;margin-bottom:2px;">${pair.customer_name ? _esc(pair.customer_name) + '님 ' : ''}비포·애프터 카드?</div>
+        <div style="font-size:10px;color:#888;line-height:1.4;">같은 고객 사진 2장 감지 — 바로 전후 비교 이미지로 만들기</div>
       </div>
       <button data-auto-ba="make" style="padding:8px 14px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand-strong));color:#fff;cursor:pointer;font-weight:800;font-size:12px;flex-shrink:0;">만들기</button>
       <button data-auto-ba="dismiss" style="background:none;border:none;color:var(--text-subtle);font-size:18px;cursor:pointer;flex-shrink:0;" aria-label="닫기">✕</button>
     `;
     el.querySelector('[data-auto-ba="make"]').addEventListener('click', () => {
       if (window.hapticMedium) window.hapticMedium();
-      _openVideoWithPair(pair);
+      _openBAWithPair(pair);
     });
     el.querySelector('[data-auto-ba="dismiss"]').addEventListener('click', () => {
       const s = _loadDismissed();
@@ -114,16 +127,35 @@
     return el;
   }
 
-  async function _openVideoWithPair(pair) {
-    // 이미지 URL → Blob → File 로 변환해서 Video 시트에 preload
-    if (typeof window.openVideo !== 'function') return;
-    window.openVideo();
-
-    // Video 준비 후 슬롯 주입은 복잡 → URL 만 띄우고 사용자가 선택하도록 안내
-    // (차후 Video 모듈에 prefill API 추가하면 자동화 가능)
-    if (window.showToast) {
-      window.showToast('사진 2장을 드롭존에 드래그해 주세요 (자동 로딩은 다음 버전에서)');
+  function _openBAWithPair(pair) {
+    if (!pair || !pair.after || !pair.after.image_url) return;
+    if (!window.PhotoEditor || typeof window.PhotoEditor.open !== 'function') {
+      if (window.showToast) window.showToast('사진 편집기를 불러오는 중이에요');
+      return;
     }
+    window.PhotoEditor.open({
+      src: pair.after.image_url,
+      initial_tab: 'ba',
+      customer_id: pair.customer_id,
+    });
+    _loadBeforeImage(pair.before && pair.before.image_url);
+  }
+
+  function _loadBeforeImage(src) {
+    if (!src || !window.PhotoEditorBA || typeof window.PhotoEditorBA.setSecondImage !== 'function') {
+      if (window.showToast) window.showToast('비교할 사진을 한 장 더 골라주세요');
+      return;
+    }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      window.PhotoEditorBA.setSecondImage(img);
+      if (window.showToast) window.showToast('전후 비교 화면을 열었어요');
+    };
+    img.onerror = () => {
+      if (window.showToast) window.showToast('비교 사진을 불러오지 못했어요');
+    };
+    img.src = src;
   }
 
   window.AutoBA = { scanAndSuggest, getBanner };

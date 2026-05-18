@@ -1,5 +1,5 @@
 /* MediaPipe Face Mesh 공용 로더 (2026-05-19 v217)
-   PE-1 AI 원터치 v2 / PE-6 AR 가상 시술 공통 사용.
+   PE-1 정밀 얼굴 보정용.
 
    책임:
      • Face Landmarker (TF.js 기반) CDN 비동기 로드

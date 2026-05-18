@@ -30,7 +30,7 @@
     const reviewExtra = t.id === 'review' ? `<label class="pe-field" style="margin-top:8px;"><span>후기 문구</span><textarea class="pe-input" data-pe-tpl-review rows="3" maxlength="120" placeholder="짧은 후기 1~2줄">${_esc(t.reviewText)}</textarea></label>` : '';
     const priceExtra = t.id === 'price' ? `<label class="pe-field" style="margin-top:8px;"><span>가격 라인 (줄바꿈으로 구분)</span><textarea class="pe-input" data-pe-tpl-price rows="4" maxlength="200" placeholder="시술명 | 가격&#10;예) 붙임머리 20인치 | 120,000원">${_esc(t.priceLines)}</textarea></label>` : '';
     const serviceExtra = t.id === 'service' ? `<div class="pe-hint">상단에 시술명 + 소요시간 + 가격이 자동으로 들어가요. (브랜드 탭의 샵명도 함께)</div>` : '';
-    const storyExtra = t.id === 'story' ? `<div class="pe-hint">인스타 스토리·릴스 커버용 9:16 화면으로 저장돼요. 시술명, 가격, 샵명이 자동으로 들어갑니다.</div>` : '';
+    const storyExtra = t.id === 'story' ? `<div class="pe-hint">인스타 스토리용 9:16 화면으로 저장돼요. 시술명, 가격, 샵명이 자동으로 들어갑니다.</div>` : '';
     return `<div class="pe-field-label">템플릿</div>
       <div class="pe-panel-row pe-panel-grid-2">${tplBtn('ba-h','B&A 좌우')}${tplBtn('ba-v','B&A 상하')}${tplBtn('service','시술 안내')}${tplBtn('price','가격표')}</div>
       <div class="pe-panel-row pe-panel-grid-2">${tplBtn('review','후기 카드')}${tplBtn('story','스토리 9:16')}</div>

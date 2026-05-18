@@ -1,5 +1,5 @@
 /* 사진 편집기 — Before/After 인터랙티브 슬라이더 (PE-2, 2026-05-19)
-   초고도화 Phase 1 첫 번째 킬러 피처.
+   md 기준 핵심 기능.
 
    기능:
      • 전/후 사진을 하나의 캔버스에 겹치고, 드래그 가능한 구분선으로 비교
@@ -554,7 +554,13 @@
   // 공개 API
   window.PhotoEditorBA = {
     getState: () => _baState,
-    setSecondImage: (img) => { _baState.secondImg = img; _baState.enabled = true; },
+    setSecondImage: (img) => {
+      _baState.secondImg = img;
+      _baState.enabled = true;
+      const helpers = window.PhotoEditor && window.PhotoEditor._internal && window.PhotoEditor._internal.helpers;
+      if (helpers && typeof helpers.renderPanel === 'function') helpers.renderPanel();
+      if (helpers && typeof helpers.redraw === 'function') helpers.redraw();
+    },
     setPosition: (p) => { _baState.position = Math.max(0, Math.min(1, p)); },
   };
 })();

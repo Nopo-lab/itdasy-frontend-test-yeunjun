@@ -41,7 +41,7 @@
 <meta name="theme-color" content="#F2F4F6">
 <title>잇데이 스튜디오</title>
 <script>
-  window.__LATEST_BUILD__ = '20260519-v222-md-focus';
+  window.__LATEST_BUILD__ = '20260519-v223-md-strict';
   setTimeout(function(){
     // [v126] app-core.js 가 truncated 돼서 window.APP_BUILD 자체가 undefined 인 케이스도
     // stale 로 간주해 캐시·SW 일괄 청소 후 reload. 기존 mismatch 가드는 APP_BUILD 정의 시에만
@@ -111,7 +111,7 @@
 <!-- [2026-05-17 v166] AI 추천/고객 chip 터치 정상화 (iOS Safari/PWA) -->
 <link rel="stylesheet" href="css/screens/ai-chip.css?v=20260517-v166">
 <link rel="stylesheet" href="css/screens/photo-editor.css?v=20260518-v169">
-<!-- [v207 2026-05-19] SNS 관리 모듈 CSS (SN-1~5) -->
+<!-- [v223 2026-05-19] 해시태그 매니저 CSS -->
 <link rel="stylesheet" href="css/screens/sns-modules.css?v=20260519-v207">
 <link rel="stylesheet" href="css/screens/brand-kit.css?v=20260518-v168">
 <link rel="stylesheet" href="style.css?v=20260519-v213">
@@ -1869,8 +1869,8 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
   }
   window.toggleEmailFold = toggleEmailFold;
 </script>
-<script src="app-core.js?v=20260519-v222-md-focus"></script>
-<script src="app-drawer.js?v=20260518-v194" defer></script>
+<script src="app-core.js?v=20260519-v223-md-strict"></script>
+<script src="app-drawer.js?v=20260519-v223-md-strict" defer></script>
 <script src="app-secure-storage.js?v=20260506-v101" defer></script>
 <script src="app-shop-settings.js?v=20260519-v222-md-focus" defer></script>
 <script src="app-backup.js" defer></script>
@@ -1884,7 +1884,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (_e) { void _e; }
 <script src="app-dm-confirm-queue.js?v=20260502-3" defer></script>
 <script src="app-dm-conversations.js?v=20260502-3" defer></script>
 <script src="app-dm-manual-replies.js?v=0501" defer></script>
-<script src="app-instagram.js?v=20260518-v182" defer></script>
+<script src="app-instagram.js?v=20260519-v223-md-strict" defer></script>
 <script src="app-persona-survey.js" defer></script>
 <script src="components/scenario-selector.js" defer></script>
 <script src="app-caption.js?v=20260519-v222-md-focus" defer></script>
@@ -1931,7 +1931,7 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-customer-cache.js?v=20260506-v100" defer></script>
 <script src="app-customer.js?v=20260519-v222-md-focus" defer></script>
 <script src="app-customer-dashboard.js?v=20260519-v220" defer></script>
-<!-- [2026-04-29 W5] 회원권 / 정기권 UI — Premium 차별화 -->
+<!-- [2026-04-29 W5] 회원권 / 정기권 UI -->
 <script src="app-membership.js" defer></script>
 <!-- [2026-04-30] 시트 진입/종료 애니메이션 헬퍼 (SheetAnim) -->
 <script src="app-sheet-anim.js" defer></script>
@@ -1941,8 +1941,8 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-assistant-facts.js" defer></script>
 <!-- [2026-04-30] 스마트 캡처 — 카톡 자동 임포트 (E3) + 명함 OCR (E4) -->
 <script src="app-smart-capture.js" defer></script>
-<!-- [2026-04-30] AI 자동화 허브 — DM/카카오/페르소나/캡션/게시물/메모/캡처 통합 -->
-<script src="app-ai-hub.js?v=20260519-v222-md-focus" defer></script>
+<!-- [2026-04-30] AI 자동화 허브 — 사진편집/캡션/해시태그 중심 -->
+<script src="app-ai-hub.js?v=20260519-v223-md-strict" defer></script>
 <!-- [2026-04-30] 설정 · 연동 허브 — 샵정보/네이버/백업/실패/앱설정 통합 -->
 <script src="app-settings-hub.js?v=20260518-v193" defer></script>
 <!-- [2026-04-30] 챗봇 액션 되돌리기 + Chain 모드 토글 -->
@@ -1960,24 +1960,24 @@ window._lazyImgly = function _lazyImgly() {
 <!-- INVENTORY_HIDDEN <script src="app-inventory.js" defer></script> -->
 <script src="app-nps.js" defer></script>
 <script src="app-naver-reviews.js" defer></script>
-<!-- md 정리: 릴스/숏폼 편집은 숨김. 파일은 보존하고 로드만 끔. -->
+<!-- md 정리: 영상 편집은 숨김. 파일은 보존하고 로드만 끔. -->
 <script src="app-import.js" defer></script>
 <script src="app-insights.js" defer></script>
 <script src="app-dashboard.js?v=20260519-v206.8-photo-complete" defer></script>
 
 <script src="app-photo-match.js" defer></script>
 <script src="app-complete-flow.js?v=20260519-v206.8-photo-complete" defer></script>
-<script src="app-auto-ba.js" defer></script>
+<script src="app-auto-ba.js?v=20260519-v223-md-strict" defer></script>
 <script src="app-today-brief.js?v=20260518-v193" defer></script>
 <script src="app-home-v41-config.js" defer></script>
 <script src="app-home-v41.js?v=20260519-v206.8-photo-complete" defer></script>
 <!-- [2026-04-30] 내샵관리 v3 — 모바일 메인 + PC 사이드바·도넛·위젯·피드 -->
-<script src="app-myshop-v3.js?v=20260518-v193" defer></script>
+<script src="app-myshop-v3.js?v=20260519-v223-md-strict" defer></script>
 <script src="app-birthday.js" defer></script>
 <!-- 렉 박멸 — 챗봇/DM/영수증 무거운 스크립트는 defer 로 비차단 로드 (FCP ~120~250ms 단축 체감) -->
 <!-- [v176 2026-05-18] 챗봇 자동 보정 헬퍼 (headless canvas) — assistant 가 결과 사진을 채팅 안에 표시 -->
 <script src="app-chat-auto-edit.js?v=20260518-v183" defer></script>
-<script src="app-assistant.js?v=20260518-v182" defer></script>
+<script src="app-assistant.js?v=20260519-v223-md-strict" defer></script>
 <!-- [2026-05-17 v166] AI 비서 마케팅·고객 케어 kind 8종 (CATEGORY 외부 등록) -->
 <script src="app-assistant-actions-marketing.js?v=20260519-v206.8-photo-complete" defer></script>
 <!-- [v170 2026-05-18] 백엔드 미구현 kind에 대한 프론트 로컬 mock — [테스트 모드] 명시 토스트 -->
@@ -1990,7 +1990,7 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-photo-editor-export.js?v=20260519-v206.8-photo-complete" defer></script>
 <script src="app-photo-editor-batch.js?v=20260519-v206.8-photo-complete" defer></script>
 <script src="app-photo-editor-beauty.js?v=20260519-v206.8-photo-complete" defer></script>
-<script src="app-photo-editor-templates.js?v=20260519-v206.8-photo-complete" defer></script>
+<script src="app-photo-editor-templates.js?v=20260519-v223-md-strict" defer></script>
 <!-- [v185 2026-05-18] 부분 보정 브러시 (5종 + 지우개) -->
 <script src="app-photo-editor-brush-effects.js?v=20260519-v206.8-photo-complete" defer></script>
 <script src="app-photo-editor-brush.js?v=20260519-v206.8-photo-complete" defer></script>
@@ -1998,19 +1998,16 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-photo-editor-zoom.js?v=20260519-v206.8-photo-complete" defer></script>
 <!-- [v205 2026-05-19] 스티커 라이브러리 (뷰티 도메인 30종 — 텍스트 기반 프리셋) -->
 <script src="app-photo-editor-stickers.js?v=20260519-v205" defer></script>
-<!-- [PE-2 2026-05-19] Before/After 인터랙티브 슬라이더 — 초고도화 Phase 1 킬러 피처 -->
-<script src="app-photo-editor-ba-slider.js?v=20260519-PE2" defer></script>
+<!-- [PE-2 2026-05-19] Before/After 인터랙티브 슬라이더 — md 핵심 기능 -->
+<script src="app-photo-editor-ba-slider.js?v=20260519-v223-md-strict" defer></script>
 <!-- md 정리: PE-8/PE-9/PE-10 별도 기능은 숨김. PE-8은 빠른 보정에 흡수, PE-9는 템플릿으로 흡수, PE-10은 삭제 후보. -->
-<!-- [v207 2026-05-19] md 유지: SNS 캘린더 테스트 진입 + 해시태그 매니저 -->
-<script src="app-sns-calendar.js?v=20260519-v222-md-focus" defer></script>
-<script src="app-sns-hashtag.js?v=20260519-SN4" defer></script>
-<!-- md 정리: SN-2/SN-3/SN-5/SN-6~10은 보류·삭제 후보라 로드하지 않음. -->
-<!-- [v217 2026-05-19] md 유지: PE-1 정밀 보정 + PE-4 조용히 유지 + PE-5 30종 템플릿 -->
-<script src="app-mediapipe-loader.js?v=20260519-v217" defer></script>
+<!-- [v223 2026-05-19] md 핵심: 해시태그 매니저만 유지. SNS 일정/예약/성과/크로스발행은 로드하지 않음. -->
+<script src="app-sns-hashtag.js?v=20260519-v223-md-strict" defer></script>
+<!-- [v223 2026-05-19] md 핵심: PE-1 정밀 보정 + PE-5 30종 템플릿. PE-4 드래그 텍스트는 보류라 로드하지 않음. -->
+<script src="app-mediapipe-loader.js?v=20260519-v223-md-strict" defer></script>
 <script src="app-photo-editor-ai-touch-v2.js?v=20260519-v222-md-focus" defer></script>
-<script src="app-photo-editor-text-dnd.js?v=20260519-PE4" defer></script>
-<script src="app-photo-editor-templates-v2.js?v=20260519-PE5" defer></script>
-<!-- md 정리: PE-6 AR 가상시술과 릴스 커버는 숨김. -->
+<script src="app-photo-editor-templates-v2.js?v=20260519-v223-md-strict" defer></script>
+<!-- md 정리: PE-6 AR 가상시술과 영상 커버는 숨김. -->
 <!-- [v172 2026-05-18] 브랜드 템플릿 저장 + 캡션 prefill + B&A 자동 chip -->
 <script src="app-brand-templates.js?v=20260519-v206.8-photo-complete" defer></script>
 <script src="app-caption-prefill.js?v=20260518-v172" defer></script>
@@ -2025,27 +2022,27 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-service-templates.js?v=20260518-v193" defer></script>
 <script src="app-power-view.js" defer></script>
 <script src="app-power-view-render.js" defer></script>
-<!-- Phase 1 Tier A (2026-05-09): 정렬·필터 + ⚡ 행 액션 — 모두 self-contained, 실패 시 fall-through -->
+<!-- 파워뷰 보조: 정렬·필터 + ⚡ 행 액션 -->
 <script src="app-power-view-sort-filter.js?v=20260509-tierA" defer></script>
 <script src="app-power-view-actions.js?v=20260509-tierA" defer></script>
-<!-- Phase 1 Tier B (2026-05-09): 다중선택 + Undo (Cmd+Z) -->
+<!-- 파워뷰 보조: 다중선택 + Undo (Cmd+Z) -->
 <script src="app-power-view-select.js?v=20260509-tierB" defer></script>
 <script src="app-power-view-undo.js?v=20260509-tierB" defer></script>
-<!-- Phase 2 (2026-05-09): 조건부 포맷 + 합계행 + 페이지네이션 + Export + 컬럼 + 클립보드 -->
+<!-- 파워뷰 보조: 조건부 포맷 + 합계행 + 페이지네이션 + Export + 컬럼 + 클립보드 -->
 <script src="app-power-view-format.js?v=20260509-p2" defer></script>
 <script src="app-power-view-totals.js?v=20260509-p2" defer></script>
 <script src="app-power-view-pagination.js?v=20260509-p2" defer></script>
 <script src="app-power-view-export.js?v=20260509-p2" defer></script>
 <script src="app-power-view-cols.js?v=20260509-p2" defer></script>
 <script src="app-power-view-clipboard.js?v=20260509-p2" defer></script>
-<!-- Phase 3 (2026-05-10): AI 비서 통합 + 수식 + 그룹화 + 음성 -->
+<!-- 파워뷰 보조: AI 비서 통합 + 수식 + 그룹화 + 음성 -->
 <script src="app-power-view-formula.js?v=20260510-p3" defer></script>
 <script src="app-power-view-group.js?v=20260510-p3" defer></script>
 <script src="app-power-view-voice.js?v=20260510-p3" defer></script>
 <script src="app-power-view-ai-inline.js?v=20260510-p3" defer></script>
-<!-- Phase 4 (2026-05-10): 운영 분석 모달 + Free/Pro quota 칩 -->
+<!-- 파워뷰 보조: 운영 분석 모달 + 멤버십 안내 칩 -->
 <script src="app-power-view-ops.js?v=20260510-p4" defer></script>
-<script src="app-power-view-quota.js?v=20260519-v222-md-focus" defer></script>
+<script src="app-power-view-quota.js?v=20260519-v223-md-strict" defer></script>
 <script src="app-power-view-viz.js?v=20260510-p4b" defer></script>
 <script src="app-import-wizard.js" defer></script>
 <script src="app-killer-widgets.js?v=20260504-1" defer></script>
