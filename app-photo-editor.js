@@ -288,8 +288,9 @@
          </div>`
       : '';
     const layerActionsHtml = `
-      <div class="pe-panel-row pe-panel-grid-3" style="margin-bottom:10px;">
+      <div class="pe-panel-row" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
         <button type="button" class="pe-chip-btn" data-pe-layer-add>＋ 새 텍스트</button>
+        <button type="button" class="pe-chip-btn" data-pe-sticker-open>🎨 스티커</button>
         ${layers.length > 1 ? '<button type="button" class="pe-chip-btn" data-pe-layer-del>🗑 삭제</button>' : ''}
         ${layers.length > 1 ? '<button type="button" class="pe-chip-btn" data-pe-layer-up>↑ 위로</button>' : ''}
       </div>`;
@@ -457,6 +458,14 @@
       _on(panel, '[data-pe-layer-add]', 'click', _addLayer);
       _on(panel, '[data-pe-layer-del]', 'click', _deleteLayer);
       _on(panel, '[data-pe-layer-up]',  'click', _moveLayerUp);
+      // [v205 2026-05-19] 스티커 라이브러리 열기
+      _on(panel, '[data-pe-sticker-open]', 'click', () => {
+        if (window.PhotoEditor && typeof window.PhotoEditor.openStickerLibrary === 'function') {
+          window.PhotoEditor.openStickerLibrary();
+        } else {
+          _toast('스티커 모듈 로드 중이에요');
+        }
+      });
       _each(panel, '[data-pe-layer-select]', 'click', (e) => _selectLayer(e.currentTarget.dataset.peLayerSelect));
       _on(panel, '[data-pe-text-val]', 'input', (e) => { _state.text.value = e.target.value; _syncTextToLayer(); _redraw(); });
       _on(panel, '[data-pe-text-y]',   'input', (e) => { _state.text.y = +e.target.value / 100; _redraw(); });
@@ -968,7 +977,23 @@
     pushHistory: _pushHistory, renderPanel: _renderPanel, drawWatermark: _drawWatermark, slider: _slider,
   };
 
-  window.PhotoEditor = { open: _open, close: _close, openFromAction: _openFromAction };
+  // [v205 2026-05-19] 스티커 라이브러리 외부 호출 — 새 layer 추가
+  function _addStickerLayer(preset) {
+    if (!_state) return;
+    _ensureLayers();
+    const id = 'lyr-' + Date.now();
+    // preset 은 { value, color, font, size, bg, stroke }
+    _state.layers.push(Object.assign({
+      id, type: 'text',
+      x: 0.5, y: 0.5 + (_state.layers.length * 0.06), rot: 0,
+    }, preset));
+    _state.activeLayerId = id;
+    _state.text = _state.layers[_state.layers.length - 1];
+    _renderPanel(); _redraw(); _pushHistory();
+    _toast('스티커 추가: ' + (preset.value || ''));
+  }
+
+  window.PhotoEditor = { open: _open, close: _close, openFromAction: _openFromAction, addStickerLayer: _addStickerLayer };
   // 외부 모듈 (beauty / templates) 등록 API.
   //   registerTabPanel(tabId, { html: (state)=>string, bind: (panel, state, helpers)=>void })
   //   registerDrawHook(name, fn)   • name: 'beauty' | 'template' (호출은 _redraw 안)
