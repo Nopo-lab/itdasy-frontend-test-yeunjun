@@ -18,7 +18,7 @@
     // 핵심 4 운영 메뉴
     bookings:     () => _call(['openCalendarView']),
     customer:     () => _call(['openCustomerHub']),
-    revenue:      () => _call(['openRevenueHub']),
+    revenue:      () => _call(['openRevenue', 'openRevenueHub']),
     /* INVENTORY_HIDDEN */ // inventory: () => _call(['openInventoryHub']),
     // 통합 허브 (AI 자동화 / 설정·연동)
     ai_hub:       () => _call(['openAiHub']),
@@ -39,7 +39,7 @@
     },
     caption:   () => _call(['openCaptionScenarioPopup']),
     naver:     () => _call(['openNaverLink']),
-    payment:   () => _call(['openRevenueHub', 'openRevenueInput']),
+    payment:   () => _call(['openRevenue', 'openRevenueHub', 'openRevenueInput']),
     shopinfo:  () => _call(['openShopSettings']),
     failures:  () => _call(['openFailuresHub']),
     backup:    () => _call(['openBackupScreen']),

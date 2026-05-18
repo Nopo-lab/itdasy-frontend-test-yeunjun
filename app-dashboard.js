@@ -355,7 +355,7 @@
         if (window.hapticLight) window.hapticLight();
         const tab = btn.dataset.metric;
         if      (tab === 'booking')   { if (typeof window.openCalendarView  === 'function') window.openCalendarView(); }
-        else if (tab === 'revenue')   { if (typeof window.openRevenueHub    === 'function') window.openRevenueHub(); }
+        else if (tab === 'revenue')   { (window.openRevenue || window.openRevenueHub)?.(); }
         /* INVENTORY_HIDDEN */ // else if (tab === 'inventory') { if (typeof window.openInventoryHub === 'function') window.openInventoryHub(); }
         else if (tab === 'customer')  { if (typeof window.openCustomerHub   === 'function') window.openCustomerHub(); }
       });
