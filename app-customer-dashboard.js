@@ -484,7 +484,8 @@
       const dt = String(r.recorded_at || '').slice(5, 10).replace('-', '/');
       const amt = Number(r.amount) || 0;
       const man = amt > 0 ? Math.round(amt / 10000) + '만' : '-';
-      return `<div class="vr hidden"><div class="vr-d">${_esc(dt)}</div><div class="vr-s">${_esc(r.service_name || '시술')}</div><div class="vr-p">${man}</div></div>`;
+      // [v211] data-extra=1 로 식별 → 접기/펼치기 토글이 항상 동작
+      return `<div class="vr hidden" data-vr-extra="1"><div class="vr-d">${_esc(dt)}</div><div class="vr-s">${_esc(r.service_name || '시술')}</div><div class="vr-p">${man}</div></div>`;
     }).join('');
     const moreLink = revenues.length > 5
       ? `<span class="d-sec-link" data-cv4-act="toggle-more">더보기</span>`
@@ -552,7 +553,8 @@
               .catch(() => { if (window.showToast) window.showToast('삭제 실패'); });
           }
         } else if (act === 'toggle-more') {
-          scopeEl.querySelectorAll('.vr.hidden').forEach(el => el.classList.toggle('hidden'));
+          // [v211] data-vr-extra 로 모든 추가 row 토글 — 한 번 펼친 후 다시 접기도 동작
+          scopeEl.querySelectorAll('.vr[data-vr-extra]').forEach(el => el.classList.toggle('hidden'));
           btn.textContent = btn.textContent === '더보기' ? '접기' : '더보기';
         }
       });

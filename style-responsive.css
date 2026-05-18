@@ -203,7 +203,9 @@
   #planPopup,
   #supportChatModal,
   #slotPopup.dt-overlay,
-  #navSheet {
+  #navSheet,
+  #customerSheet,
+  #customerDashSheet {
     inset: var(--app-header-h) 0 0 232px !important;
     width: auto !important;
     height: auto !important;
@@ -216,6 +218,11 @@
     justify-content: flex-start !important;
     overflow-y: auto !important;
     z-index: 950 !important;            /* 사이드바(10000) 보다 아래 */
+  }
+  /* v211 — 고객 시트 PC 한 화면 분할: overflow hidden 으로 좌/우 별도 스크롤. */
+  #customerSheet.cv4-pc {
+    overflow: hidden !important;
+    height: auto !important;
   }
   /* navSheet 내부 — 바텀시트 슬라이드 제거, 풀패널 콘텐츠로 */
   #navSheetInner {

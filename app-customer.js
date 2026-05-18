@@ -280,6 +280,8 @@
     sheet.id = 'customerSheet';
     sheet.classList.add('dt-overlay');
     const isPC = _isPC();
+    // [v211] position:fixed 는 유지 (책임 분리). PC 에서는 style-responsive.css 의 공통 오버레이 규칙이
+    // inset 을 (header-h, 0, 0, 232px) 로 덮어쓰고 z-index 를 950 으로 낮춤. 모바일은 inline 그대로.
     sheet.style.cssText = isPC
       ? 'position:fixed;inset:0;z-index:9998;display:none;background:var(--surface,#fff);'
       : 'position:fixed;inset:0;z-index:9998;display:none;flex-direction:column;background:var(--surface,#fff);';
@@ -289,11 +291,13 @@
       <div id="customerSegments" class="cv4-chips">
         <button data-seg="all"          class="cv4-chip is-on">전체</button>
         <button data-seg="visits12"     class="cv4-chip off">1~2회</button>
-        <button data-seg="visits3plus"  class="cv4-chip green">3회+</button>
-        <button data-seg="visits10plus" class="cv4-chip brand">10회+</button>
+        <button data-seg="visits3plus"  class="cv4-chip green">3회 이상</button>
+        <button data-seg="visits10plus" class="cv4-chip brand">10회 이상</button>
         <button data-seg="atrisk"       class="cv4-chip off">오래된 방문</button>
         <button data-seg="member"       class="cv4-chip off">회원권</button>
       </div>`;
+
+    const searchInputStyle = "width:100%;height:40px;padding:0 14px 0 38px;border-radius:12px;border:none;background-color:var(--surface-2,#F7F8FA);background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23BBB' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7' stroke='%23BBB' stroke-width='2' fill='none'/%3E%3Cline x1='16.5' y1='16.5' x2='21' y2='21' stroke='%23BBB' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:12px center;font-size:14px;color:var(--text);outline:none;font-family:inherit;";
 
     if (isPC) {
       sheet.innerHTML = `
@@ -303,8 +307,7 @@
               <h1>고객관리</h1>
               <button class="cv4-hd-add" id="customerAddBtn" aria-label="고객 추가">+</button>
             </div>
-            <input id="customerSearch" type="search" placeholder="이름 · 전화번호 검색"
-                   style="width:100%;height:40px;padding:0 14px 0 38px;border-radius:12px;border:none;background-color:var(--surface-2,#F7F8FA);background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23BBB' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7' stroke='%23BBB' stroke-width='2' fill='none'/%3E%3Cline x1='16.5' y1='16.5' x2='21' y2='21' stroke='%23BBB' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:12px center;font-size:14px;color:var(--text);outline:none;font-family:inherit;" />
+            <input id="customerSearch" type="search" placeholder="이름 · 전화번호 검색" style="${searchInputStyle}margin-bottom:10px;" />
             ${chipsHTML}
           </div>
           <div id="customerList" class="pc-items"></div>
@@ -317,24 +320,21 @@
           <div id="cdDetailMount" class="cv4-detail" style="min-height:100%;">
             <div class="pc-r-empty">왼쪽에서 손님을 선택하세요</div>
           </div>
-          <button class="dt-back" onclick="closeCustomers()" aria-label="닫기"
-                  style="position:absolute;top:18px;right:18px;background:var(--surface-2);border:none;width:34px;height:34px;border-radius:50%;color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
         </div>
       `;
     } else {
       sheet.innerHTML = `
-        <div class="dt-body" style="padding:24px 16px 80px;position:relative;">
+        <div class="dt-body" style="padding:56px 16px 80px;position:relative;">
+          <button class="dt-back cv4-mobile-back" onclick="closeCustomers()" aria-label="뒤로"
+                  style="position:absolute;top:14px;left:10px;background:var(--surface-2,#F7F8FA);border:none;width:36px;height:36px;border-radius:12px;color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:600;z-index:2;">‹</button>
           <div class="cv4-hd">
             <h1 style="font-size:22px;font-weight:700;color:var(--text);letter-spacing:-0.5px;margin:0;">고객관리</h1>
             <button class="cv4-hd-add" id="customerAddBtn" aria-label="고객 추가">+</button>
           </div>
-          <input id="customerSearch" type="search" placeholder="이름 · 전화번호 검색"
-                 style="width:100%;height:40px;padding:0 14px 0 38px;border-radius:12px;border:none;background-color:var(--surface-2,#F7F8FA);background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23BBB' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7' stroke='%23BBB' stroke-width='2' fill='none'/%3E%3Cline x1='16.5' y1='16.5' x2='21' y2='21' stroke='%23BBB' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:12px center;font-size:14px;color:var(--text);outline:none;font-family:inherit;margin-bottom:10px;" />
+          <input id="customerSearch" type="search" placeholder="이름 · 전화번호 검색" style="${searchInputStyle}margin-bottom:10px;" />
           ${chipsHTML}
           <div id="customerList"></div>
           <div id="customerIdxBar" class="idx-bar"></div>
-          <button class="dt-back" onclick="closeCustomers()" aria-label="뒤로"
-                  style="position:absolute;top:20px;left:6px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text);padding:4px;">‹</button>
           <div style="padding-top:12px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--text-subtle);">
             <span id="customerCount"></span>
             <span id="customerOfflineBadge" class="dt-offline-badge" style="display:none;color:var(--danger);">오프라인</span>

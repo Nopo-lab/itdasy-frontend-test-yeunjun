@@ -19,15 +19,14 @@
   font-size:12px;padding:6px 12px;border-radius:20px;cursor:pointer;font-weight:500;white-space:nowrap;
   transition:background .15s,color .15s;border:none;flex-shrink:0;
 }
-#customerSheet .cv4-chip.is-on { background:var(--text,#111);color:var(--surface,#fff); }
 #customerSheet .cv4-chip.off { background:var(--surface-2,#F7F8FA);color:#999; }
 #customerSheet .cv4-chip.green { background:#EEFBF3;color:#16B55E; }
 #customerSheet .cv4-chip.brand { background:#FFF1F3;color:#E5586E; }
+/* [v211] 활성 칩은 항상 검정 — green/brand/off 위로 올라가도록 마지막에 선언 */
+#customerSheet .cv4-chip.is-on { background:var(--text,#111) !important;color:var(--surface,#fff) !important; }
 
 /* "전체" 칩 좁게 — 검색창 너비와 균형 */
-#customerSheet .cv4-chip[data-seg="all"] { padding:6px 10px; }
-/* [v210] 활성 시 가로 확장 (목업) */
-#customerSheet .cv4-chip[data-seg="all"].is-on { flex:1;text-align:center; }
+#customerSheet .cv4-chip[data-seg="all"] { padding:6px 14px; }
 
 /* ── 가나다 섹션 헤더 + 인덱스바 ────────────────── */
 #customerSheet .sec-hd {
