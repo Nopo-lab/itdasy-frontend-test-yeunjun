@@ -1817,8 +1817,9 @@
       // [2026-05-16] 시술명: chip 선택값(#bfSvc) 또는 직접입력값(#bfSvcCustom) 둘 다 폴백
       const svcSelected = body.querySelector('#bfSvc').value.trim();
       const svcCustom   = (body.querySelector('#bfSvcCustom')?.value || '').trim();
-      // [v200] amount 추가 — 홈 "오늘 예상매출" 합산에 사용. deposit 은 BE 미지원이라 미전송.
+      // [v206] amount + deposit — BE 정식 저장. 노쇼 시 deposit 으로 자동 매출 기록.
       const amtVal = +body.querySelector('#bfAmount')?.value || 0;
+      const depVal = +body.querySelector('#bfDeposit')?.value || 0;
       const payload = {
         starts_at:     `${d}T${sTime}:00+09:00`,
         ends_at:       `${d}T${eTime}:00+09:00`,
@@ -1828,6 +1829,7 @@
         memo:          body.querySelector('#bfMemo').value.trim()      || null,
         staff_id:      body._getStaffId?.() || null,
         amount:        amtVal > 0 ? amtVal : null,
+        deposit:       depVal > 0 ? depVal : null,
       };
       try {
         if (existing) {

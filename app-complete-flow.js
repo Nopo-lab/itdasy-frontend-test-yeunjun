@@ -420,21 +420,23 @@
     }
   }
 
-  // [v202] 노쇼 처리 — prompt 로 예약금 입력. 양수면 amount 매출 기록, 0/빈값이면 미기록.
-  // BE Booking.deposit 컬럼이 없어서 amount + skip_revenue:false 로 우회. customer_name 명시.
+  // [v206] 노쇼 처리 — BE 가 booking.deposit 보면 자동으로 매출 기록.
+  // 예약폼에서 미리 deposit 저장돼 있으면 그 값 사용 (prompt 의 default). 사용자가 더 받겠다면 수정 가능.
   async function _noShow() {
     if (!_ctx.booking_id) { _close(); return; }
-    const v = window.prompt('예약금 금액 (원, 숫자만). 0 또는 빈값 = 매출 미기록.\n예: 50000 = 5만원', '0');
+    const v = window.prompt('예약금 (위약금) 금액 (원). 0 또는 빈값 = 매출 미기록.\n예: 50000 = 5만원',
+                             String(_ctx.deposit || 0));
     if (v === null) return;
     const cleaned = String(v).replace(/[^0-9]/g, '');
     const deposit = parseInt(cleaned, 10) || 0;
     const btn = document.getElementById('cfNoShow');
     if (btn) { btn.disabled = true; btn.textContent = '처리 중…'; }
     try {
+      // BE 가 status='no_show' 보면 booking.deposit 으로 매출 자동 기록.
+      // FE 는 deposit 값만 갱신해서 보내면 됨. skip_revenue 는 0 일 때만.
       const payload = deposit > 0
-        ? { status: 'no_show', amount: deposit, payment_method: 'cash',
-            customer_name: _ctx.customer_name || null,
-            memo: '노쇼 · 예약금 ' + deposit.toLocaleString('ko-KR') + '원' }
+        ? { status: 'no_show', deposit, payment_method: (_ctx.method || 'cash'),
+            customer_name: _ctx.customer_name || null }
         : { status: 'no_show', skip_revenue: true,
             customer_name: _ctx.customer_name || null };
       await _patchBooking(_ctx.booking_id, payload);
@@ -543,6 +545,7 @@
         amount: _num(booking.amount) || _servicePriceFor(booking.service_name),
         method: booking.payment_method || 'card',
         starts_at: booking.starts_at || null,  // [v198] 미래예약 가드용
+        deposit: _num(booking.deposit) || 0,    // [v206] 노쇼 prompt 기본값
       };
       _ensureSheet();
       document.getElementById('completeFlowSheet').style.display = 'flex';

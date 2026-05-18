@@ -128,6 +128,8 @@
       status:        'confirmed',
       // [v200] 예약 생성 시 예상 시술비. amount 가 있어야 홈 "오늘 예상매출" 합산에 활용됨.
       amount:        (payload.amount != null && +payload.amount > 0) ? +payload.amount : null,
+      // [v206] 예약금 — 노쇼 시 BE 가 자동으로 매출 기록.
+      deposit:       (payload.deposit != null && +payload.deposit > 0) ? +payload.deposit : null,
     };
     if (_isOffline) {
       const rec = { id: _uuid(), shop_id: localStorage.getItem('shop_id') || 'offline',

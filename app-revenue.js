@@ -219,6 +219,27 @@
     return { ok: true };
   }
 
+  // [v206] 매출 한 건 편집 — BE PATCH /revenue/{id}
+  async function update(id, patch) {
+    if (_isOffline) {
+      const all = _loadOffline();
+      const i = all.findIndex(r => r.id === id);
+      if (i < 0) throw new Error('not-found');
+      all[i] = { ...all[i], ...patch };
+      _saveOffline(all);
+      const j = _items.findIndex(r => r.id === id);
+      if (j >= 0) _items[j] = all[i];
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'update_revenue', optimistic: false } })); } catch (_e) { void _e; }
+      return all[i];
+    }
+    const updated = await _api('PATCH', '/revenue/' + id, patch);
+    const j = _items.findIndex(r => r.id === id);
+    if (j >= 0) _items[j] = updated;
+    _clearSWRRevenue();
+    try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'update_revenue', optimistic: false } })); } catch (_e) { void _e; }
+    return updated;
+  }
+
   // ── 인센티브 / 비용 설정 ─────────────────────────────────
   const INCENTIVE_KEY = 'itdasy_incentive_settings_v1';
   function _incentiveSettings() {
@@ -520,10 +541,11 @@
     modal = document.createElement('div');
     modal.id = 'rvAddModal';
     modal.style.cssText = 'position:fixed;inset:0;z-index:9001;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;justify-content:center;';
+    const _isEdit = !!(prefill && prefill._edit_id);
     modal.innerHTML = `
       <div style="background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:18px;padding-bottom:max(18px,env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-          <strong style="font-size:18px;color:var(--text);">매출 입력</strong>
+          <strong style="font-size:18px;color:var(--text);">${_isEdit ? '매출 편집' : '매출 입력'}</strong>
           <button type="button" data-rv-modal-close style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);" aria-label="닫기">✕</button>
         </div>
         <label style="display:block;font-size:12px;color:var(--text-subtle);margin-bottom:4px;">금액 (원) *</label>
@@ -586,34 +608,44 @@
         if (window.showToast) window.showToast('금액을 입력해 주세요'); return;
       }
       const useMem = !!modal.querySelector('#rfUseMembership')?.checked;
+      const payload = {
+        amount, method: useMem ? 'membership' : ctx.method,
+        service_name: modal.querySelector('#rfService').value.trim() || null,
+        customer_id: ctx.customer_id,
+        customer_name: modal.querySelector('#rfCustomerName').value.trim() || null,
+        memo: modal.querySelector('#rfMemo').value.trim() || null,
+      };
       try {
-        await create({
-          amount, method: useMem ? 'membership' : ctx.method,
-          service_name: modal.querySelector('#rfService').value.trim() || null,
-          customer_id: ctx.customer_id,
-          customer_name: modal.querySelector('#rfCustomerName').value.trim() || null,
-          memo: modal.querySelector('#rfMemo').value.trim() || null,
-          use_membership: useMem,
-        });
-        if (window.Fun && typeof window.Fun.celebrate === 'function') {
-          window.Fun.celebrate(
-            useMem ? `💳 회원권 차감 ${amount.toLocaleString()}원` : `매출 +${amount.toLocaleString()}원`,
-            { emojis: useMem ? ['💳', '✨', '🌷'] : ['💰', '💵', '🎉', '✨'], count: 16 }
-          );
+        // [v206] _edit_id 있으면 PATCH, 없으면 create
+        if (ctx._edit_id) {
+          await update(ctx._edit_id, payload);
+          if (window.showToast) window.showToast('매출 기록 수정됨');
         } else {
-          if (window.hapticLight) window.hapticLight();
-          if (window.showToast) window.showToast(useMem ? '회원권 차감 완료' : '매출 기록 완료');
+          await create({ ...payload, use_membership: useMem });
+          if (window.Fun && typeof window.Fun.celebrate === 'function') {
+            window.Fun.celebrate(
+              useMem ? `💳 회원권 차감 ${amount.toLocaleString()}원` : `매출 +${amount.toLocaleString()}원`,
+              { emojis: useMem ? ['💳', '✨', '🌷'] : ['💰', '💵', '🎉', '✨'], count: 16 }
+            );
+          } else {
+            if (window.hapticLight) window.hapticLight();
+            if (window.showToast) window.showToast(useMem ? '회원권 차감 완료' : '매출 기록 완료');
+          }
         }
         _closeAddModal();
         await _loadAndRender();
       } catch (e) {
-        console.warn('[revenue] create 실패:', e);
+        console.warn('[revenue] save 실패:', e);
         if (window.showToast) window.showToast('저장 실패: ' + (e?.message || ''), { error: true });
       }
     };
   }
   function _wireAddForm(modal, prefill) {
-    const ctx = { method: 'card', customer_id: prefill?.customer_id || null };
+    const ctx = {
+      method: prefill?.method || 'card',
+      customer_id: prefill?.customer_id || null,
+      _edit_id: prefill?._edit_id || null,
+    };
     const setMethod = (m) => {
       ctx.method = m;
       modal.querySelectorAll('[data-rf-method]').forEach(b => {
@@ -623,11 +655,19 @@
         b.style.borderColor = on ? 'var(--brand-strong)' : 'var(--border)';
       });
     };
-    setMethod('card');
+    setMethod(ctx.method);
     modal.querySelectorAll('[data-rf-method]').forEach(b => b.addEventListener('click', () => setMethod(b.dataset.rfMethod)));
     modal.querySelector('#rfCustomerPick').addEventListener('click', _onPickCustomer(modal, ctx));
     modal.querySelector('#rfSave').addEventListener('click', _onSaveAddForm(modal, ctx));
     if (prefill?.customer_name) modal.querySelector('#rfCustomerName').value = prefill.customer_name;
+    // [v206] 편집 모드 prefill — amount/service/memo 채움 + 저장 버튼 라벨 변경
+    if (prefill?._edit_id) {
+      if (prefill.amount) modal.querySelector('#rfAmount').value = prefill.amount;
+      if (prefill.service_name) modal.querySelector('#rfService').value = prefill.service_name;
+      if (prefill.memo) modal.querySelector('#rfMemo').value = prefill.memo;
+      const saveBtn = modal.querySelector('#rfSave');
+      if (saveBtn) saveBtn.textContent = '수정 저장';
+    }
   }
 
   // ── 삭제 ────────────────────────────────────────────────
@@ -772,14 +812,27 @@
         </div>
         <div style="display:flex;gap:8px;">
           <button type="button" data-rv-close style="flex:1;padding:13px;border:1px solid #E5E8EB;border-radius:12px;background:#fff;cursor:pointer;color:#4E5968;font-weight:700;font-size:13px;">닫기</button>
-          <button type="button" data-rv-del style="flex:1;padding:13px;border:none;border-radius:12px;background:#EF4444;color:#fff;cursor:pointer;font-weight:800;font-size:14px;">삭제</button>
+          <button type="button" data-rv-edit style="flex:1;padding:13px;border:none;border-radius:12px;background:var(--brand-strong,#E5586E);color:#fff;cursor:pointer;font-weight:800;font-size:14px;">편집</button>
+          <button type="button" data-rv-del style="flex:1;padding:13px;border:1px solid #EF4444;border-radius:12px;background:#fff;cursor:pointer;color:#EF4444;font-weight:700;font-size:13px;">삭제</button>
         </div>
-        <div style="margin-top:10px;font-size:11px;color:#8B95A1;text-align:center;">편집은 곧 지원될 예정이에요</div>
       </div>`;
     document.body.appendChild(sheet);
     const close = () => sheet.remove();
     sheet.addEventListener('click', (e) => { if (e.target === sheet) close(); });
     sheet.querySelectorAll('[data-rv-close]').forEach(b => b.addEventListener('click', close));
+    sheet.querySelector('[data-rv-edit]').addEventListener('click', () => {
+      close();
+      // [v206] 편집 — _openAddForm 을 edit 모드로 호출
+      _openAddForm({
+        _edit_id: item.id,
+        amount: item.amount,
+        method: item.method,
+        service_name: item.service_name,
+        customer_id: item.customer_id,
+        customer_name: item.customer_name,
+        memo: item.memo,
+      });
+    });
     sheet.querySelector('[data-rv-del]').addEventListener('click', async () => {
       if (!window.confirm('이 매출을 삭제할까요?')) return;
       try {
@@ -795,7 +848,7 @@
 
   // ── public 객체 + 내부 API export (today/month 가 참조) ─
   window.Revenue = {
-    list, create, remove,
+    list, create, update, remove,
     // 내부 헬퍼·유틸 (분할 파일이 참조)
     _esc, _formatMan, _isPC, _tagHTML, _rvShopExample,
     PERIODS, PERIOD_LABEL, TAG_LABEL,
