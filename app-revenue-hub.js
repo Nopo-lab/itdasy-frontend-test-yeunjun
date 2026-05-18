@@ -455,34 +455,11 @@
   }
 
   /* ── open / close ──────────────────────────────────────────── */
+  /* [v196] openRevenueHub 내부 함수 완전 비활성 — 어떤 경로로도 hub overlay 생성 안 함.
+     v6 대시보드(openRevenue) 로 일원화. 기존 #revenuehub hash 가 남아있어도 무시. */
   function openRevenueHub() {
-    if (document.getElementById(OID)) return;
-    _state.isPC = _isPC();
-    if (!_state.isPC) {
-      const bd = document.createElement('div');
-      bd.id = OID + '-bd';
-      bd.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9000;';
-      bd.addEventListener('click', closeRevenueHub);
-      document.body.appendChild(bd);
-    }
-    const overlay = document.createElement('div');
-    overlay.id = OID;
-    overlay.setAttribute('role', 'dialog');
-    overlay.setAttribute('aria-modal', 'true');
-    if (_state.isPC) {
-      overlay.style.cssText = 'position:fixed;inset:0;z-index:9001;background:var(--bg);display:flex;flex-direction:row;';
-    } else {
-      overlay.style.cssText = 'position:fixed;inset:0 0 0 0;top:auto;height:96vh;background:var(--bg);border-radius:20px 20px 0 0;z-index:9001;display:flex;flex-direction:column;overflow:hidden;';
-    }
-    document.body.appendChild(overlay);
-    document.body.style.overflow = 'hidden';
-    _state.rows = []; _state.pending = []; _state.searchKW = ''; _state.editingId = null;
-    _render();
-    _fetch().then(() => _render()).catch(() => {});
-    try {
-      if (typeof window._registerSheet === 'function') window._registerSheet('revenuehub', closeRevenueHub);
-      if (typeof window._markSheetOpen === 'function') window._markSheetOpen('revenuehub');
-    } catch (_e) { void _e; }
+    if (typeof window.openRevenue === 'function') return window.openRevenue();
+    return;
   }
 
   function closeRevenueHub() {

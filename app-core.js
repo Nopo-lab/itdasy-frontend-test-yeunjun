@@ -1659,7 +1659,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260518-v195-kill-revenue-hub';
+window.APP_BUILD = '20260518-v196-nuke-revenue-hub-inner';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;
@@ -1684,6 +1684,16 @@ function _updateVersionBadge(swVer) {
   }
 }
 document.addEventListener('DOMContentLoaded', () => _updateVersionBadge(window.APP_BUILD));
+
+// [v196] 옛 #revenuehub hash 잔존 시 즉시 청소 — hub 시트가 죽었기 때문에
+// 사용자가 새로고침해도 항상 빈 상태로 시작하도록 함.
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    if ((window.location.hash || '').toLowerCase().includes('revenuehub')) {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  } catch (_e) { void _e; }
+});
 
 // [2026-05-05] AI 챗봇 사이드바 카드 클릭 → 기존 #assistantFab 동작 트리거.
 // 모바일은 카드 자체가 hide(media query) 되어 영향 없음.
