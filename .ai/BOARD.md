@@ -1,6 +1,21 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-19 by Claude Code (v216 ultra-plan Phase 1+2 partial)
+**LAST UPDATED:** 2026-05-19 by Claude Code (v217 ultra-plan 마무리 — PE-1/4/5/6)
+
+---
+
+## 2026-05-19 — v217 ultra-plan 마무리 (PE-1/4/5/6 + MediaPipe 공통 로더)
+
+- 출처: `~/Downloads/photo_sns_ultra_plan.md` 미완료 잔여 (v216 에서 시작한 phase 1+2 보강)
+- 신규 공통: `app-mediapipe-loader.js` — MediaPipe Face Mesh CDN 로딩 + 468 landmarks 검출 + 영역(faceOval/leftEye/rightEye/lips/foreheadTop) polygon helper. 폴백 ellipse bbox.
+- 신규 PE-1 AI 원터치 v2: `app-photo-editor-ai-touch-v2.js` — Face Mesh 정밀 마스킹 + 6 업종(hair/makeup/lashes/nail/scalp/waxing) preset. 자동 탭에 진입 버튼 주입.
+- 신규 PE-4 드래그&드롭 텍스트: `app-photo-editor-text-dnd.js` — 캔버스 텍스트 레이어 pointer drag + 핀치 줌(size) + 두 손가락 회전(rot) + 더블탭 inline 편집.
+- 신규 PE-5 템플릿 v2: `app-photo-editor-templates-v2.js` — 6 카테고리 × 5종 = 30종 (피드/스토리/릴스커버/이벤트/가격표/명함). Brand Kit primary/accent/soft 자동 적용. 검색·카테고리 탭. 템플릿 탭에 진입 버튼 주입.
+- 신규 PE-6 AR 가상 시술: `app-photo-editor-ar-tryon.js` — 헤어 컬러 6 / 입술 6 / 속눈썹 4 / 네일 6. Face Mesh 영역 자동 마스킹 + 네일은 사용자 드래그로 손톱 영역 칠하기. 전/후 토글 + PNG export. 뷰티 탭에 진입 버튼 주입.
+- `index.html`: v217 통일 + 5 모듈 로드 추가
+- 빌드 버전: `20260519-v217-ultra-plan-complete`
+- ultra-plan 마스터플랜 미제외 항목 전체 완료. 제외 항목(Phase 3 / 릴스 PE-7 / AI 배경 PE-3)은 사용자 지시로 보류.
+- 확인: smoke 166 scripts pass, eslint 0 errors (5 신규 합쳐 1 warning만), lint 0 errors / 439 warnings (기존 + 신규), diff check pass
 
 ---
 

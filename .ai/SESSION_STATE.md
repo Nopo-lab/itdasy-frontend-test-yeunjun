@@ -2,7 +2,46 @@
 
 > 새 세션이 시작되면 **이 파일을 먼저 읽고** 현재 단계·대기 결정·마지막 체크포인트를 파악한다.
 
-**LAST UPDATED:** 2026-05-19 · v216 — ultra-plan Phase 1+2 (PE-2/8/9/10 + SN-1~10) + 원영 v207~v215 통합
+**LAST UPDATED:** 2026-05-19 · v217 — ultra-plan 마무리 (PE-1/4/5/6 + MediaPipe). 마스터플랜 미제외 항목 전체 완료.
+
+---
+
+## 🟣 2026-05-19 — v217 ultra-plan 마무리 (잔여 4 사진편집 모듈 + 공통 Face Mesh)
+
+배경: v216 에서 PE-2/8/9/10 + SN-1~10 까지 푸시 완료. 사용자 "ㄱㄱ" 지시로 잔여 PE-1/4/5/6 마무리.
+
+신규 모듈 (전부 신규 파일, 기존 파일 0줄 수정):
+- `app-mediapipe-loader.js` — TF.js + face-landmarks-detection CDN 비동기 로드. `MediaPipeLoader.detect(canvas/img) → keypoints[]`, `regionPolygon(lm, name) → polygon`, `pathPolygon(ctx, polygon)`. 영역 5종 (faceOval/leftEye/rightEye/lips/foreheadTop). 폴백 `drawFallbackEllipsePath`. PE-1/PE-6 공통.
+- `app-photo-editor-ai-touch-v2.js` (PE-1) — 6 업종(hair/makeup/lashes/nail/scalp/waxing) preset 정의. `_apply(source, shopType)` → 새 canvas. 1) CSS filter 베이스 톤 → 2) Face Mesh 검출 → 3-a) 성공: 피부 영역 clip + soft blur + 입술 tint + 눈 sharpen / 3-b) 실패: 중앙 ellipse 폴백. **자동 탭에 보라색 그라데이션 버튼 자동 주입.**
+- `app-photo-editor-text-dnd.js` (PE-4) — `pointerdown` hit test → `pointermove` 로 layer.x/y 갱신. `touchmove` 두 손가락이면 핀치 거리 비율로 layer.size, angle 변화로 layer.rot. 더블탭 `window.prompt` inline 편집. `peCanvas` 자동 바인딩.
+- `app-photo-editor-templates-v2.js` (PE-5) — 30종 (피드 5 / 스토리 5 / 릴스커버 5 / 이벤트 5 / 가격표 5 / 명함 5). Brand Kit (`window.BrandKit.get()`) primary/accent/soft 자동 적용. 검색 + 카테고리 탭. 적용 시 `state.aspect`, `state.tplV2`, 텍스트 레이어 prefill. **템플릿 탭에 보라색 진입 버튼 자동 주입.**
+- `app-photo-editor-ar-tryon.js` (PE-6) — 헤어 6컬러 / 입술 6컬러 / 속눈썹 4단계 / 네일 6컬러. 전용 시트 (`#arTryOnSheet`, body 직접 마운트). Face Mesh 영역 자동 마스킹. 네일은 손 사진 대응을 위해 **사용자가 손톱 위에서 드래그하면 박스 추가**. 전/후 토글 + PNG export. **뷰티 탭에 핑크-보라 진입 버튼 자동 주입.**
+
+`index.html`:
+- 빌드 버전 v217 통일 (`window.__LATEST_BUILD__` / `APP_BUILD` / `CACHE_VERSION`).
+- 신규 5 스크립트 로드 추가 (defer, 기존 스크립트 0줄 영향).
+
+확인:
+- `node --check` 신규 5개 통과.
+- `npm run smoke` 통과 (166 scripts).
+- `npx eslint <5>` 통과 (0 errors, 1 warning — text-dnd `_bind` 줄수 74 > 50).
+- `npm run lint` 통과 (0 errors, 439 warnings — 기존 405 + 신규 22 + 일부 기존 라인 줄수 경고만).
+- `git diff --check` 통과.
+
+ultra-plan 진행률:
+- ✅ Phase 1 사진편집: PE-1, PE-2, PE-4, PE-5 (PE-3 AI 배경 제외)
+- ✅ Phase 1 SNS: SN-1 ~ SN-5
+- ✅ Phase 2 사진편집: PE-6, PE-8, PE-9, PE-10 (PE-7 릴스 제외)
+- ✅ Phase 2 SNS: SN-6 ~ SN-10 (`app-sns-phase2.js` 통합)
+- ⛔ Phase 3 전체 (PE-11/12, SN-11/12/13) — 사용자 지시로 보류
+
+기술 빚 / 다음 라운드:
+- MediaPipe 첫 검출 시 TF.js + face mesh 모델 ~2-3MB CDN 로딩. 첫 호출 1-2초 지연. 두 번째부터 즉시.
+- PE-5 템플릿 30종은 색상·prefillText 기반 합성. 실제 PNG 디자인(SVG/이미지 자산) 으로 업그레이드 권장 (디자이너 리소스 필요).
+- PE-4 핀치 줌은 두 손가락 1회 제스처. 연속 변화 시 텍스트 사이즈 24 상한 검토.
+- PE-6 네일 영역은 사용자 수동 박스. 추후 손 detection (MediaPipe Hands) 추가하면 자동화 가능.
+
+위반 영역: 없음. 원본 blob 보존·기존 누끼/자동보정/SNS 모듈 0줄 영향. PhotoEditor `_internal` 등록 API만 사용.
 
 ---
 
