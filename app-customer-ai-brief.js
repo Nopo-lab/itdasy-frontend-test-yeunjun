@@ -219,29 +219,61 @@
   }
 
   // ───────── 네트워크 (dedupe + force) ─────────
+  // [v199] BE 에 /customers/{id}/ai-brief 가 아직 없을 수도 있어서, 404/실패 시
+  //        /customers/{id}/dashboard 로 폴백하여 last_service/last_amount 보강.
   async function _tryServerBrief(customerId, force) {
     if (!window.API || !window.authHeader) return null;
-    const url = window.API + '/customers/' + encodeURIComponent(customerId) + '/ai-brief'
+    const briefUrl = window.API + '/customers/' + encodeURIComponent(customerId) + '/ai-brief'
       + (force ? '?force=1' : '');
+    const dashUrl  = window.API + '/customers/' + encodeURIComponent(customerId) + '/dashboard';
 
-    // force가 아니면 in-flight Promise 공유.
     if (!force && _inFlight.has(customerId)) return _inFlight.get(customerId);
 
     const p = (async () => {
       try {
-        const res = await fetch(url, { headers: window.authHeader() });
-        if (!res.ok) return null;
-        return await res.json();
+        // 1) 원래 ai-brief 시도
+        try {
+          const res = await fetch(briefUrl, { headers: window.authHeader() });
+          if (res.ok) return await res.json();
+        } catch (_e) { /* fall through to dashboard */ }
+        // 2) 폴백 — dashboard 응답을 ai-brief 모양으로 변환 (last_service 포함)
+        const dRes = await fetch(dashUrl, { headers: window.authHeader() });
+        if (!dRes.ok) return null;
+        const dd = await dRes.json();
+        return _dashboardToBriefShape(dd);
       } catch (_e) {
         return null;
       } finally {
-        // micro-delay 후 inFlight에서 제거 (동기 동시 호출 방어)
         setTimeout(() => _inFlight.delete(customerId), 50);
       }
     })();
 
     if (!force) _inFlight.set(customerId, p);
     return p;
+  }
+
+  // dashboard payload → ai-brief 응답 모양으로 변환. last_service/last_amount/days_since_visit 채움.
+  function _dashboardToBriefShape(dd) {
+    if (!dd || typeof dd !== 'object') return null;
+    const c     = dd.customer || {};
+    const stats = dd.stats || {};
+    const recent = dd.recent_revenues || [];
+    const last  = recent[0] || null;
+    const lastVisitAt = stats.last_visit_at || c.last_visit_at || (last && last.recorded_at) || null;
+    let daysSince = null;
+    if (lastVisitAt) {
+      const ms = Date.now() - new Date(lastVisitAt).getTime();
+      if (Number.isFinite(ms)) daysSince = Math.max(0, Math.floor(ms / 86400000));
+    }
+    return {
+      customer: Object.assign({}, c, {
+        last_visit_at: lastVisitAt,
+        avg_cycle_weeks: c.avg_cycle_weeks || 0,
+        last_service: last && last.service_name,
+        last_amount:  last && last.amount,
+      }),
+      prediction: { days_since_visit: daysSince },
+    };
   }
 
   // 백엔드 브리핑 응답을 카드 모델로 변환. 미정 필드는 클라이언트 폴백 값으로 채움.
