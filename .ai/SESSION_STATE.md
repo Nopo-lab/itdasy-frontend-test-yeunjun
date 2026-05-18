@@ -2,7 +2,61 @@
 
 > 새 세션이 시작되면 **이 파일을 먼저 읽고** 현재 단계·대기 결정·마지막 체크포인트를 파악한다.
 
-**LAST UPDATED:** 2026-05-19 · v206.8 — 사진편집기 완성도 보강 + 저장 세트 + 되돌리기 검증
+**LAST UPDATED:** 2026-05-19 · v216 — ultra-plan Phase 1+2 (PE-2/8/9/10 + SN-1~10) + 원영 v207~v215 통합
+
+---
+
+## 🟣 2026-05-19 — v216 ultra-plan Phase 1+2 부분 적용 (사진편집 4 + SNS 10)
+
+배경: 사용자(연준)가 `~/Downloads/photo_sns_ultra_plan.md` 마스터플랜에서 **Phase 3 / 릴스(PE-7) / AI 배경(PE-3) 제외** 지시. 코덱스가 v206.8 사진편집 완성도 보강 커밋 후 푸시 전에 끊김. 원영님은 그 사이 origin/main 에 v207~v215 (매출 기간 선택 + 고객관리 v4 리뉴얼) 9개 커밋 푸시.
+
+진행 순서:
+1. 원영 origin/main 위에 코덱스 2 커밋(v206 폰트·픽셀 + v206.8 사진편집기 완성도) rebase. 충돌은 빌드 버전 라인 (app-core.js / index.html / sw.js)뿐. origin 버전 유지.
+2. 2 커밋 푸시 완료 (`acf1f74`).
+3. stash 에 있던 ultra-plan WIP 복구 후 빌드 v207-ultra-plan → **v216-ultra-plan-p1-p2** 로 통일.
+4. 신규 모듈 11개 + sns-modules.css + .gitignore(playwright 산출물) 한 커밋으로 정리.
+
+신규 (사진편집 Phase 1+2 — 릴스/AI배경 제외):
+- `app-photo-editor-ba-slider.js` (PE-2 Before/After 인터랙티브 슬라이더, 560줄): vertical/horizontal 모드, 드래그 가능 구분선, 라벨 커스터마이즈, divider style 3종, PNG/JPG export.
+- `app-photo-editor-relight.js` (PE-8 AI 릴라이팅, 118줄): 조명 방향·색온도·강도 슬라이더, gradient overlay 합성.
+- `app-photo-editor-collage.js` (PE-9 스마트 콜라주, 98줄): 2~6장 사진을 grid/diagonal/horizontal 레이아웃으로 자동 배치.
+- `app-photo-editor-quality-score.js` (PE-10 품질 스코어, 149줄): 구도/조명/선명도/색감 4축 평가 + 개선 팁.
+
+신규 (SNS 관리 Phase 1 + Phase 2):
+- `app-sns-calendar.js` (SN-1 콘텐츠 캘린더, 409줄): 월간/주간 뷰, 드래그 배치, localStorage 저장, AI 빈 날짜 제안 슬롯.
+- `app-sns-schedule.js` (SN-2 예약 발행, 70줄): SNSCalendar 의 status:'scheduled' 게시물을 시간 도래 시 발행 큐로 전달.
+- `app-sns-grid-preview.js` (SN-3 피드 그리드, 152줄): 9칸/12칸 미리보기, 드래그 재배치.
+- `app-sns-hashtag.js` (SN-4 해시태그 매니저, 166줄): 업종별 추천 세트 10종 저장, 원터치 삽입.
+- `app-sns-analytics.js` (SN-5 성과 대시보드, 95줄): 좋아요/댓글/도달/저장 추이 + TOP5 + 최적 발행시간 AI 추천(폴백 demo data).
+- `app-sns-phase2.js` (SN-6~10 Phase 2 통합, 136줄): AI 포스트 원클릭, 크로스 플랫폼(IG+네이버+카카오), AI 코파일럿, 경쟁샵 벤치마크, 자동 리포스트(에버그린).
+
+신규 CSS:
+- `css/screens/sns-modules.css` (136줄): 모든 SNS 모듈 공통 스타일.
+
+`index.html` 로드:
+- v216 빌드 버전 통일 (`window.__LATEST_BUILD__` / `APP_BUILD` / `CACHE_VERSION`)
+- 신규 11개 모듈 + sns-modules.css 추가 (defer)
+- 기존 스크립트 0줄 영향
+
+확인:
+- `npm run smoke` 통과 (161 scripts).
+- `npx eslint <신규 10>` 통과 (errors 0, warnings 22 — 기존 줄수/no-unused 패턴과 동일).
+- `npm run lint` 통과 (errors 0, warnings 438 — 기존 405 + 신규 22 + 빌드라인 일부).
+- `git diff --check` 통과.
+- `node --check` 신규 10개 통과.
+
+미완료 (다음 세션 권장):
+- PE-1 AI 원터치 v2 (MediaPipe Face Mesh 정밀 마스킹)
+- PE-4 드래그&드롭 텍스트 (touchmove/touchend 핀치줌 직접 조작)
+- PE-5 템플릿 30종 확장 (현재 6 → 30+, Brand Kit 자동 적용)
+- PE-6 AI 가상 시술 (헤어컬러/네일컬러/속눈썹 AR 오버레이)
+
+명시적 제외 (사용자 지시):
+- PE-3 AI 배경 생성 (서버 API 비용 우려)
+- PE-7 릴스/숏폼 비디오 에디터
+- Phase 3 전체 (PE-11 포트폴리오 사이트, PE-12 시술기록 자동화, SN-11 리뷰 자동응답, SN-12 ROI 트래커, SN-13 UGC 수집)
+
+위반 영역: 없음. 원본 blob 보존·기존 누끼/자동보정 0줄 수정·assistant kind 0줄 영향.
 
 ---
 

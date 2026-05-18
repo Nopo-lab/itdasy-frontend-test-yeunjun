@@ -1,6 +1,22 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-19 by Codex (v206.8 사진편집기 완성도 보강)
+**LAST UPDATED:** 2026-05-19 by Claude Code (v216 ultra-plan Phase 1+2 partial)
+
+---
+
+## 2026-05-19 — v216 ultra-plan Phase 1+2 (PE-2/8/9/10 + SN-1~10)
+
+- 출처: `~/Downloads/photo_sns_ultra_plan.md` (Phase 3 / 릴스 / AI 배경 제외)
+- 신규 사진편집: `app-photo-editor-ba-slider.js`(PE-2 Before/After 슬라이더, 560줄), `app-photo-editor-relight.js`(PE-8 릴라이팅), `app-photo-editor-collage.js`(PE-9 콜라주), `app-photo-editor-quality-score.js`(PE-10 품질 스코어)
+- 신규 SNS 관리: `app-sns-calendar.js`(SN-1 월간/주간 캘린더, 409줄), `app-sns-schedule.js`(SN-2 예약 발행), `app-sns-grid-preview.js`(SN-3 9칸 미리보기), `app-sns-hashtag.js`(SN-4 해시태그 매니저), `app-sns-analytics.js`(SN-5 성과 대시보드)
+- 신규 Phase 2 SNS: `app-sns-phase2.js`(SN-6 AI 포스트 원클릭 + SN-7 크로스 플랫폼 + SN-8 AI 코파일럿 + SN-9 경쟁샵 벤치마크 + SN-10 자동 리포스트)
+- 신규 CSS: `css/screens/sns-modules.css` (캘린더·그리드·해시태그·분석 공용)
+- `index.html`: v216 로 통일, 위 모듈 11개 로드 추가 (브라우저 캐시 버스터 SN1~SN10/PE2/8/9/10)
+- 빌드 버전: `20260519-v216-ultra-plan-p1-p2`
+- 미완료(다음 라운드): PE-1 AI 원터치 v2 (MediaPipe Face Mesh), PE-4 드래그&드롭 텍스트, PE-5 템플릿 30종 확장, PE-6 AI 가상 시술
+- 명시적 제외: PE-3 AI 배경 생성, PE-7 릴스 에디터, Phase 3 전체 (PE-11/12, SN-11/12/13)
+- 통합: 원영님 origin/main (v207~v215 매출 기간 + 고객관리 v4 리뉴얼) 위에 코덱스 v206(폰트/픽셀walk/배치편집/모닝 제거) + v206.8(사진편집기 완성도) rebase 후 v216 추가
+- 확인: smoke pass, lint 0 errors (기존 + 신규 경고만), git diff --check pass
 
 ---
 

@@ -1,0 +1,136 @@
+/* ─────────────────────────────────────────────────────────────
+   잇데이 — SNS 관리 모듈 CSS (2026-05-19 v207)
+   SN-1: 콘텐츠 캘린더
+   SN-3: 피드 그리드 미리보기
+   SN-5: 성과 대시보드
+   ──────────────────────────────────────────────────────────── */
+
+/* ── SN-1: 콘텐츠 캘린더 ────────────────────────────────── */
+.sns-cal-sheet { font-family: Pretendard, 'Noto Sans KR', sans-serif; }
+
+.sns-cal-header {
+  display: flex; align-items: center; padding: 12px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.sns-cal-back {
+  background: none; border: none; font-size: 16px; font-weight: 700;
+  color: var(--accent, #F18091); cursor: pointer; margin-right: 12px;
+}
+.sns-cal-title { font-size: 15px; font-weight: 800; flex: 1; }
+.sns-cal-today-btn {
+  padding: 5px 12px; border-radius: 8px; border: 1px solid var(--accent, #F18091);
+  background: #fff; color: var(--accent); font-size: 11px; font-weight: 700; cursor: pointer;
+}
+
+.sns-cal-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px; border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+.sns-cal-toolbar button {
+  background: none; border: none; font-size: 16px; cursor: pointer; padding: 6px 10px;
+  color: var(--text, #111); border-radius: 8px;
+}
+.sns-cal-toolbar button:active { background: rgba(0,0,0,0.04); }
+.sns-cal-view-toggle {
+  display: flex; gap: 4px; background: #f5f5f5; border-radius: 10px; padding: 3px;
+}
+.sns-cal-view-toggle button {
+  padding: 5px 14px !important; border-radius: 8px !important; font-size: 12px !important;
+  font-weight: 600 !important; transition: all 0.15s;
+}
+.sns-cal-view-toggle button.on {
+  background: var(--accent, #F18091) !important; color: #fff !important;
+}
+
+/* 월간 그리드 */
+.sns-cal-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px;
+  padding: 8px; flex: 1; overflow-y: auto;
+}
+.sns-cal-day-header {
+  text-align: center; font-size: 11px; font-weight: 700; color: var(--text3, #888);
+  padding: 6px 0;
+}
+.sns-cal-cell {
+  min-height: 56px; padding: 4px; border-radius: 8px; cursor: pointer;
+  transition: background 0.12s;
+}
+.sns-cal-cell:hover { background: rgba(241,128,145,0.06); }
+.sns-cal-cell.today {
+  background: rgba(241,128,145,0.08);
+  border: 1.5px solid var(--accent, #F18091);
+}
+.sns-cal-cell.empty { cursor: default; }
+.sns-cal-date-num {
+  font-size: 12px; font-weight: 700; color: var(--text, #111);
+  display: block; margin-bottom: 2px;
+}
+.sns-cal-cell.today .sns-cal-date-num { color: var(--accent, #F18091); }
+
+.sns-cal-dots { display: flex; flex-wrap: wrap; gap: 3px; }
+.sns-cal-dot {
+  width: 14px; height: 14px; border-radius: 50%; font-size: 8px;
+  display: flex; align-items: center; justify-content: center; font-weight: 700;
+}
+.sns-cal-dot.draft { background: #e5e7eb; color: #888; }
+.sns-cal-dot.scheduled { background: #fef3c7; color: #92400e; }
+.sns-cal-dot.published { background: #d1fae5; color: #065f46; }
+.sns-cal-dot-more { font-size: 9px; color: var(--text3); font-weight: 700; }
+
+/* 주간 뷰 */
+.sns-cal-week {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+  padding: 8px; flex: 1; overflow-y: auto;
+}
+.sns-cal-week-col {
+  min-height: 200px; border-radius: 10px; background: #fafafa;
+  padding: 6px; transition: background 0.12s;
+}
+.sns-cal-week-col.today { background: rgba(241,128,145,0.06); border: 1px solid rgba(241,128,145,0.2); }
+.sns-cal-week-head {
+  text-align: center; font-size: 11px; font-weight: 700; color: var(--text3);
+  padding: 4px 0 8px; border-bottom: 1px solid rgba(0,0,0,0.04); margin-bottom: 6px;
+}
+
+.sns-cal-post-card {
+  background: #fff; border-radius: 8px; padding: 8px; margin-bottom: 6px;
+  border: 1px solid rgba(0,0,0,0.06); cursor: grab; transition: box-shadow 0.12s;
+}
+.sns-cal-post-card:active { cursor: grabbing; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.sns-cal-post-time { font-size: 10px; font-weight: 700; color: var(--accent2, #e26a85); }
+.sns-cal-post-caption { font-size: 11px; color: var(--text); margin-top: 2px; line-height: 1.4; }
+.sns-cal-post-status {
+  display: inline-block; margin-top: 4px; font-size: 9px; font-weight: 700;
+  padding: 2px 6px; border-radius: 6px;
+}
+.sns-cal-post-status.draft { background: #e5e7eb; color: #666; }
+.sns-cal-post-status.scheduled { background: #fef3c7; color: #92400e; }
+.sns-cal-post-status.published { background: #d1fae5; color: #065f46; }
+
+/* 하단 액션 */
+.sns-cal-actions {
+  display: flex; gap: 8px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+.sns-cal-add-btn, .sns-cal-ai-btn, .sns-cal-grid-btn {
+  flex: 1; height: 40px; border-radius: 12px; border: none;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.sns-cal-add-btn {
+  background: linear-gradient(135deg, var(--accent, #F18091), var(--accent2, #e26a85));
+  color: #fff;
+}
+.sns-cal-ai-btn {
+  background: rgba(241,128,145,0.08); color: var(--accent);
+  border: 1px solid rgba(241,128,145,0.2);
+}
+.sns-cal-grid-btn {
+  background: #f5f5f5; color: var(--text2, #555);
+}
+
+/* ── 반응형: 모바일 ────────────────────────────────────────── */
+@media (width <= 480px) {
+  .sns-cal-week { grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .sns-cal-post-card { padding: 6px; }
+  .sns-cal-actions { flex-direction: column; }
+}

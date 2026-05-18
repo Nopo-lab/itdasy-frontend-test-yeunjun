@@ -21,3 +21,7 @@ android/local.properties
 
 # 로컬 업로드 폴더 (샌드박스 전용, 레포에 올리지 않음)
 mnt/
+
+# Playwright 로컬 산출물 (테스트 실행시 자동 생성)
+.playwright-cli/
+output/playwright/
