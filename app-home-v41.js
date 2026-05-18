@@ -1348,17 +1348,9 @@
   function _autoMount() {
     const el = document.getElementById('homeV41Root');
     if (el) _doRender(el);
-    // [v168 2026-05-18] 모닝 브리핑 카드 — TodayMorning 모듈이 늦게 로드될 수 있어 retry.
-    function _mountMorning() {
-      const m = document.getElementById('homeMorningMount');
-      if (!m) return;
-      if (window.TodayMorning && typeof window.TodayMorning.render === 'function') {
-        try { window.TodayMorning.render('homeMorningMount'); } catch (_e) { void _e; }
-      }
-    }
-    _mountMorning();
-    setTimeout(_mountMorning, 300);
-    setTimeout(_mountMorning, 1500);
+    // [v206 2026-05-19] 모닝 브리핑 마운트 제거 — AI비서 실시간 분석과 중복.
+    //   homeMorningMount div 자체는 호환성 위해 남겨둠 (display:none).
+    //   TodayMorning 모듈은 유지 (다른 진입점에서 사용 가능).
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', _autoMount, { once: true });

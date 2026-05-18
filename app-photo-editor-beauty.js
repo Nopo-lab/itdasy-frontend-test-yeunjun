@@ -301,12 +301,16 @@
         d[i+1] = _clamp(d[i+1] +  4 * redK);
         d[i+2] = _clamp(d[i+2] +  5 * redK);
       }
-      // 노란기 완화 — 노란 cast (R≈G AND G > B by 10+) → G↓ B↑
+      // [v206 2026-05-19] 노란기 완화 — Agent 분석 반영: 강도 ×3 + 마스킹 확장
+      //   기존: G-5, B+7 (최대 0.05 변화) — 체감 0%. 노란 cast 검출 부정확.
+      //   개선: HSV-style hue 마스킹 (R > B AND R-B 비율) + 강도 G-15, B+12
       if (yelK > 0) {
-        const isYellowCast = Math.abs(r - g) < 22 && (g - bl) > 10 && r > 100;
+        // 노란 색조: R >= G > B + 어두운 노란 (피부톤은 살리고 황변만)
+        const isYellowCast = (r - bl) > 15 && (r - bl) < 90 && r >= g && (g - bl) > 8 && r > 80;
         if (isYellowCast) {
-          d[i+1] = _clamp(d[i+1] - 5 * yelK);
-          d[i+2] = _clamp(d[i+2] + 7 * yelK);
+          d[i]   = _clamp(d[i]   -  4 * yelK);   // R 살짝 ↓
+          d[i+1] = _clamp(d[i+1] - 15 * yelK);   // G ↓↓ (노란 빠지게)
+          d[i+2] = _clamp(d[i+2] + 12 * yelK);   // B ↑↑ (cool 보정)
         }
       }
       if (isSkin) {
@@ -354,13 +358,17 @@
           }
         }
       }
-      // 모발 윤기 — [v183] 강도 6 → 12, lum 범위 확장 (60~190)
+      // [v206 2026-05-19] 모발 윤기 — Agent 분석 반영: specular highlight 흉내
+      //   기존: 모든 채널 +12 (단순 명도 ↑) — "윤기" 안 보이고 그냥 밝아짐.
+      //   개선: 명도 상위 픽셀에 비선형 가산 (highlight 만 강조) + G 가중치 ↑ (자연 윤기색)
       if (hairK > 0) {
         const lum = (d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114);
-        if (lum > 60 && lum < 190 && Math.abs(d[i] - d[i+1]) < 45 && Math.abs(d[i+1] - d[i+2]) < 45) {
-          d[i]   = _clamp(d[i]   + 12 * hairK);
-          d[i+1] = _clamp(d[i+1] + 12 * hairK);
-          d[i+2] = _clamp(d[i+2] +  8 * hairK);
+        if (lum > 60 && lum < 200 && Math.abs(d[i] - d[i+1]) < 45 && Math.abs(d[i+1] - d[i+2]) < 45) {
+          // lum 130 이상 영역(반사면 후보)에 추가 가중치 — specular 강화
+          const specBoost = lum > 130 ? (lum - 130) / 70 * 0.6 + 1 : 1;  // 1.0 ~ 1.6
+          d[i]   = _clamp(d[i]   + 10 * hairK * specBoost);
+          d[i+1] = _clamp(d[i+1] + 14 * hairK * specBoost);  // G 가중치 ↑ (자연 윤기색)
+          d[i+2] = _clamp(d[i+2] +  6 * hairK * specBoost);
         }
       }
       // 모발 색감 (양방향)
@@ -372,14 +380,19 @@
           d[i+2] = _clamp(d[i+2] - 10 * hairColK);
         }
       }
-      // 염색 컬러 강조 — 어두운·중간 톤에서 채도 ↑ (lum 기준 거리 가산).
+      // [v206 2026-05-19] 염색 컬러 강조 — Agent 분석 반영: 채도 배수 ×2 + 색 있는 영역만
+      //   기존: lum<160 전부 가산 0.4 — 회색조도 영향 받아 부자연.
+      //   개선: 채도(max-min) 있는 픽셀만 + 배수 ×2 (밝은 핑크·라벤더 염색까지 강조)
       if (hairPopK > 0) {
-        const lum = (d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114);
-        if (lum < 160) {
-          const sat = 0.4 * hairPopK;
-          d[i]   = _clamp(d[i]   + (d[i]   - lum) * sat);
-          d[i+1] = _clamp(d[i+1] + (d[i+1] - lum) * sat);
-          d[i+2] = _clamp(d[i+2] + (d[i+2] - lum) * sat);
+        const maxCh = Math.max(r, g, bl), minCh = Math.min(r, g, bl);
+        const sat0 = maxCh - minCh;
+        const lum = (r * 0.299 + g * 0.587 + bl * 0.114);
+        // 채도 있는 픽셀 (sat0 > 15) + 어두운/중간 톤 (lum < 180)
+        if (sat0 > 15 && lum < 180) {
+          const k = 0.85 * hairPopK;  // 0.4 → 0.85 (2배 이상)
+          d[i]   = _clamp(r  + (r  - lum) * k);
+          d[i+1] = _clamp(g  + (g  - lum) * k);
+          d[i+2] = _clamp(bl + (bl - lum) * k);
         }
       }
       // 네일 광택

@@ -271,11 +271,17 @@
     // [v204 2026-05-19] 다중 레이어 — _state.layers 우선, active layer 가 _state.text alias
     _ensureLayers();
     const t = _state.text;  // active layer 가 _state.text 와 동기화됨
+    // [v206 2026-05-19] 폰트 4 → 9 종 (Google Fonts 5 추가). 모두 무료·상업 OK.
     const FONTS = [
-      { id: 'sans', label: 'Sans' },
-      { id: 'serif', label: 'Serif' },
-      { id: 'round', label: 'Round' },
-      { id: 'hand', label: 'Hand' },
+      { id: 'sans',     label: 'Sans' },
+      { id: 'serif',    label: 'Serif' },
+      { id: 'playfair', label: 'Playfair' },
+      { id: 'nserif',   label: '명조' },
+      { id: 'bhan',     label: '블랙 한산스' },
+      { id: 'gowun',    label: '고운 도담' },
+      { id: 'gaegu',    label: '개구' },
+      { id: 'nanumpen', label: '나눔 펜' },
+      { id: 'hand',     label: '핸드' },
     ];
     const COLORS = ['#ffffff', '#1a1a20', '#F18091', '#FFC83D'];
     const COLOR_LABEL = { '#ffffff': '흰', '#1a1a20': '검', '#F18091': '핑크', '#FFC83D': '노랑' };
@@ -323,10 +329,31 @@
   }
   function _panelExport() {
     const r = _state.ratio;
+    // [v206 2026-05-19] 배치 편집 — 갤러리 slot 사진 N장 일괄 자동 보정
+    //   조건: window._slots / window._popupSlotId 존재 (갤러리 모듈 로드됨)
+    const slotInfo = _peGetCurrentSlot();
+    const batchHtml = slotInfo
+      ? `<div class="pe-field-label" style="margin-top:12px;">배치 편집 (v206)</div>
+         <div class="pe-panel-row"><button type="button" class="pe-action-btn" data-pe-batch-apply>📦 이 슬롯 사진 ${slotInfo.count}장 모두 같은 보정 일괄 적용</button></div>
+         <div class="pe-hint">현재 슬라이더 설정으로 슬롯 (${_esc(slotInfo.label)}) 다른 사진까지 한 번에 보정.</div>`
+      : '';
     return `<div class="pe-field-label">비율</div>
       <div class="pe-panel-row pe-panel-grid-4">${['original','1:1','4:5','9:16'].map(rv => _CHIP('ratio', rv, rv === 'original' ? '원본' : rv, r===rv)).join('')}</div>
       <div class="pe-panel-row pe-panel-grid-2" style="margin-top:12px;"><button type="button" class="pe-action-btn" data-pe-export="png">PNG 저장</button><button type="button" class="pe-action-btn" data-pe-export="jpg">JPG 저장</button></div>
+      ${batchHtml}
       <div class="pe-hint">저장 시 원본은 보존됩니다. 편집본만 다운로드 또는 갤러리에 추가돼요.</div>`;
+  }
+
+  // [v206 2026-05-19] 현재 갤러리 슬롯 정보 — 갤러리 모듈이 로드돼 있고 slot 활성일 때만
+  function _peGetCurrentSlot() {
+    try {
+      if (typeof window._slots === 'undefined' || typeof window._popupSlotId === 'undefined') return null;
+      const slot = (window._slots || []).find(s => s && s.id === window._popupSlotId);
+      if (!slot) return null;
+      const photos = (slot.photos || []).filter(p => p && !p.hidden);
+      if (photos.length < 2) return null;
+      return { id: slot.id, label: slot.label || '슬롯', count: photos.length };
+    } catch (_e) { return null; }
   }
 
   // ── 패널 바인딩 ───────────────────────────────────────
@@ -524,6 +551,8 @@
     export(panel) {
       _each(panel, '[data-pe-ratio]',  'click', (e) => { _state.ratio = e.currentTarget.dataset.peRatio; _renderPanel(); _redraw(); _pushHistory(); });
       _each(panel, '[data-pe-export]', 'click', (e) => _exportImage(e.currentTarget.dataset.peExport));
+      // [v206] 배치 편집 — 슬롯 다른 사진에 같은 보정 일괄 적용
+      _on(panel, '[data-pe-batch-apply]', 'click', _applyBatchToSlot);
     },
   };
   function _bindPanel(panel, tab) {
@@ -607,6 +636,77 @@
     if (idx <= 0) return _toast('이미 맨 위');
     [_state.layers[idx - 1], _state.layers[idx]] = [_state.layers[idx], _state.layers[idx - 1]];
     _renderPanel(); _redraw(); _pushHistory();
+  }
+
+  // [v206 2026-05-19] 배치 편집 — 현재 _state.adjust + _state.beauty 를 슬롯 다른 사진에 일괄 적용.
+  //   ChatAutoEdit.processPhoto 가 있으면 활용 (headless canvas 합성). 없으면 폴백.
+  async function _applyBatchToSlot() {
+    const slotInfo = _peGetCurrentSlot();
+    if (!slotInfo) return _toast('현재 슬롯을 찾지 못했어요');
+    const slot = (window._slots || []).find(s => s && s.id === slotInfo.id);
+    if (!slot) return _toast('슬롯 데이터 없음');
+    const photos = (slot.photos || []).filter(p => p && !p.hidden);
+    if (!photos.length) return _toast('적용할 사진이 없어요');
+    const ok = (typeof window.confirm === 'function')
+      ? window.confirm(`슬롯 사진 ${photos.length}장에 현재 보정을 일괄 적용할까요? 원본은 보존되고 편집본만 갱신.`)
+      : true;
+    if (!ok) return;
+    _toast('배치 보정 중… (' + photos.length + '장)');
+
+    // 현재 슬라이더 값 스냅샷
+    const adjust = JSON.parse(JSON.stringify(_state.adjust));
+    const beauty = JSON.parse(JSON.stringify(_state.beauty));
+
+    let done = 0, fail = 0;
+    for (const photo of photos) {
+      try {
+        const srcUrl = photo.dataUrl || photo.editedDataUrl;
+        if (!srcUrl) { fail++; continue; }
+        // headless 처리 — _redraw 와 유사 흐름
+        const result = await _composeWithSettings(srcUrl, adjust, beauty);
+        if (result) { photo.editedDataUrl = result; done++; }
+        else { fail++; }
+      } catch (_e) { fail++; }
+    }
+    // 갤러리 DB 저장 (있을 때만)
+    try {
+      if (typeof window.saveSlotToDB === 'function') await window.saveSlotToDB(slot);
+    } catch (_e) { void _e; }
+    _toast(`배치 보정 완료: ${done}장 성공, ${fail}장 실패`);
+    try { window.dispatchEvent(new CustomEvent('itdasy:gallery:photo-replaced', { detail: { kind: 'batch_edit', slotId: slot.id, count: done } })); }
+    catch (_e) { void _e; }
+  }
+
+  // headless 합성 — 한 사진에 adjust + beauty 픽셀 walk 적용 후 dataURL 반환.
+  //   메인 _redraw 와 별도로 임시 canvas 사용 (현재 편집 중 사진 영향 X).
+  async function _composeWithSettings(srcDataUrl, adjust, beauty) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const iw = img.naturalWidth, ih = img.naturalHeight;
+          const k = Math.min(1080, iw) / iw;
+          const dw = Math.round(iw * k), dh = Math.round(ih * k);
+          const cv = document.createElement('canvas');
+          cv.width = dw; cv.height = dh;
+          const ctx = cv.getContext('2d');
+          const temp = adjust.temperature || 0;
+          const sepia = Math.max(0, temp) / 100, contrast = 100 + Math.max(0, -temp) * 0.3;
+          ctx.filter = `brightness(${adjust.brightness}%) saturate(${adjust.saturate}%) contrast(${contrast}%) sepia(${sepia})`;
+          ctx.drawImage(img, 0, 0, iw, ih, 0, 0, dw, dh);
+          ctx.filter = 'none';
+          if (adjust.sharpness > 10) _unsharpMask(ctx, dw, dh, adjust.sharpness / 100);
+          // beauty hook 호출
+          if (typeof _drawHooks.beauty === 'function') {
+            try { _drawHooks.beauty(ctx, dw, dh, beauty, _helpers); } catch (_e) { void _e; }
+          }
+          resolve(cv.toDataURL('image/jpeg', 0.92));
+        } catch (_e) { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = srcDataUrl;
+    });
   }
 
   // [v202 2026-05-18] 사진 회전·좌우/상하 반전 (S1-3) — originalImg 자체를 변환 후 swap.
@@ -737,11 +837,18 @@
   }
 
   // [v184 2026-05-18] 텍스트 렌더 — 폰트 4종 + 색상 + 배경 박스 + 사이즈
+  // [v206 2026-05-19] Google Fonts 5종 추가 — 모두 OFL/Apache 상업 OK.
+  //   Playfair Display, Noto Serif KR, Black Han Sans, Gowun Dodum, Gaegu, Nanum Pen Script
   const _FONT_FAM = {
-    sans:  'Pretendard, "Noto Sans KR", sans-serif',
-    serif: 'Georgia, "Noto Serif KR", serif',
-    round: '"Comic Sans MS", "Apple SD Gothic Neo", sans-serif',
-    hand:  '"Brush Script MT", "Nanum Pen Script", cursive',
+    sans:     'Pretendard, "Noto Sans KR", sans-serif',
+    serif:    'Georgia, "Noto Serif KR", serif',
+    playfair: '"Playfair Display", "Noto Serif KR", Georgia, serif',
+    nserif:   '"Noto Serif KR", "Nanum Myeongjo", serif',
+    bhan:     '"Black Han Sans", "Noto Sans KR", sans-serif',
+    gowun:    '"Gowun Dodum", "Noto Sans KR", sans-serif',
+    gaegu:    '"Gaegu", "Noto Sans KR", cursive',
+    nanumpen: '"Nanum Pen Script", "Gaegu", cursive',
+    hand:     '"Brush Script MT", "Nanum Pen Script", cursive',
   };
   function _drawText(ctx, w, h, t) {
     if (!t.value) return;
