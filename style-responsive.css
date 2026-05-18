@@ -338,6 +338,7 @@
     max-width: 1080px;
   }
   /* 사이드바 폭 변경에 맞춰 hub 영역도 260px 우측으로. 헤더 변수 사용. */
+  /* [v213] #customerSheet/#customerDashSheet 누락 픽스 — 28px 겹쳐 잘리던 문제 */
   .hub-overlay,
   #revenueSheet,
   #revenue-hub-overlay,
@@ -348,7 +349,9 @@
   #planPopup,
   #supportChatModal,
   #slotPopup.dt-overlay,
-  #navSheet {
+  #navSheet,
+  #customerSheet,
+  #customerDashSheet {
     inset: var(--app-header-h) 0 0 260px !important;
   }
 }
