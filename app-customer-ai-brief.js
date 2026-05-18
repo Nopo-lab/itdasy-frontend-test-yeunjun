@@ -143,11 +143,15 @@
 
   function _renderSummaryLine(b) {
     const parts = [];
-    if (b.lastDays !== null) {
-      const cycle = b.avgWeeks ? ' (평균 ' + b.avgWeeks + '주 주기)' : '';
-      parts.push('마지막 방문 ' + b.lastDays + '일 전' + cycle);
+    // [v198] 신규/오늘방문 명시 + 주기를 일수 단위로. 1주 미만 비정상 주기는 표시 안 함.
+    if (b.lastDays === null || b.lastDays === undefined) {
+      parts.push('신규 고객님이에요');
+    } else if (b.lastDays === 0) {
+      parts.push('오늘 방문한 고객님이에요');
     } else {
-      parts.push('아직 방문 기록이 없어요');
+      const avgDays = b.avgWeeks ? Math.round(b.avgWeeks * 7) : 0;
+      const cycle = avgDays >= 7 ? ' (평균 ' + avgDays + '일 주기)' : '';
+      parts.push('마지막 방문 ' + b.lastDays + '일 전' + cycle);
     }
     if (b.lastService) {
       const amt = b.lastAmount ? ' ' + _krwShort(b.lastAmount) : '';

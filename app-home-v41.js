@@ -695,10 +695,9 @@
         if (typeof window.openCustomers === 'function') return window.openCustomers();
       },
       openRevenue: () => {
-        if (typeof window.showTab === 'function') {
-          const btn = document.querySelector('.tab-bar__btn[data-tab="dashboard"]');
-          try { window.showTab('dashboard', btn); } catch (_e) { /* ignore */ }
-        }
+        // [v198] 홈 매출 카드 → v6 매출 대시보드 sheet. (옛 대시보드 탭 라우팅 폐기)
+        if (typeof window.openRevenue === 'function') { window.openRevenue(); return; }
+        if (typeof window.openRevenueHub === 'function') { window.openRevenueHub(); return; }
       },
       /* INVENTORY_HIDDEN
       openInventory: () => {

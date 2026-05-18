@@ -377,11 +377,26 @@
   // 매출 미기록 — BE에 skip_revenue 플래그 전달 (리터치/재고는 그대로 처리됨)
   async function _skipAndComplete() {
     if (!_ctx.booking_id) { _close(); return; }
+    // [v198] 미래 예약 완료 차단 — 자정 기준, 당일까지 허용
+    if (_ctx.starts_at) {
+      const bd = new Date(_ctx.starts_at); bd.setHours(0, 0, 0, 0);
+      const today = new Date();            today.setHours(0, 0, 0, 0);
+      if (bd > today) {
+        if (window.showToast) window.showToast('아직 시술일이 안 됐어요');
+        return;
+      }
+    }
     const btn = document.getElementById('cfSkip');
     if (btn) { btn.disabled = true; btn.textContent = '처리 중…'; }
     try {
       await _patchBooking(_ctx.booking_id, { status: 'completed', skip_revenue: true });
       _emitChange('update_booking', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
+      // [v198] 홈 brief / 고객 리스트 / 매출 허브 캐시 명시 무효화
+      try { localStorage.removeItem('hv41_cache::brief');   } catch (_e) { /* silent */ }
+      try { sessionStorage.removeItem('hv41_cache::brief'); } catch (_e) { /* silent */ }
+      try { localStorage.removeItem('pv_cache::customers');   } catch (_e) { /* silent */ }
+      try { sessionStorage.removeItem('pv_cache::customers'); } catch (_e) { /* silent */ }
+      try { sessionStorage.removeItem('rh_cache');           } catch (_e) { /* silent */ }
       if (window.showToast) window.showToast('예약 완료 (매출 미기록)');
       _close();
       _refreshConnectedViews();
@@ -393,6 +408,15 @@
   }
 
   async function _saveAll() {
+    // [v198] 미래 예약 완료 차단 — 자정 기준, 당일까지 허용
+    if (_ctx.starts_at) {
+      const bd = new Date(_ctx.starts_at); bd.setHours(0, 0, 0, 0);
+      const today = new Date();            today.setHours(0, 0, 0, 0);
+      if (bd > today) {
+        if (window.showToast) window.showToast('아직 시술일이 안 됐어요');
+        return;
+      }
+    }
     const btn = document.getElementById('cfSave');
     // [2026-05-16] amount 비어있으면 차단 — 자동 매출 기록은 amount>0 필수.
     //   매출 기록 없이 완료만 하고 싶으면 "건너뛰기" 버튼을 명확히 누르도록 유도.
@@ -422,6 +446,12 @@
           try { sessionStorage.removeItem('pv_cache::revenue::' + p); } catch (_e) { /* silent */ }
         });
       } catch (_e) { /* silent */ }
+      // [v198] 홈 brief / 고객 리스트 / 매출 허브 캐시도 명시 무효화
+      try { localStorage.removeItem('hv41_cache::brief');   } catch (_e) { /* silent */ }
+      try { sessionStorage.removeItem('hv41_cache::brief'); } catch (_e) { /* silent */ }
+      try { localStorage.removeItem('pv_cache::customers');   } catch (_e) { /* silent */ }
+      try { sessionStorage.removeItem('pv_cache::customers'); } catch (_e) { /* silent */ }
+      try { sessionStorage.removeItem('rh_cache');           } catch (_e) { /* silent */ }
       if (_ctx.booking_id) _emitChange('update_booking', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
       if (eff.revenue_created) _emitChange('create_revenue', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id, revenue_id: eff.revenue_id });
       if (window.hapticSuccess) window.hapticSuccess();
@@ -455,6 +485,7 @@
         service_name: booking.service_name || null,
         amount: _num(booking.amount) || _servicePriceFor(booking.service_name),
         method: booking.payment_method || 'card',
+        starts_at: booking.starts_at || null,  // [v198] 미래예약 가드용
       };
       _ensureSheet();
       document.getElementById('completeFlowSheet').style.display = 'flex';

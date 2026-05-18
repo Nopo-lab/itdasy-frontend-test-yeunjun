@@ -197,16 +197,21 @@
 
   function _renderRevenues(rows) {
     if (!rows || !rows.length) return '';
+    // [v198] limit 5→10, 금액 0 인 경우 '-' 로 표시
     return `
       <div class="cd-section">
         <div class="cd-sec-title">최근 방문 이력</div>
-        ${rows.slice(0, 5).map(r => `
+        ${rows.slice(0, 10).map(r => {
+          const dt = String(r.recorded_at || '').slice(5, 10).replace('-', '/');
+          const amt = Number(r.amount) || 0;
+          const amtStr = amt > 0 ? (amt / 10000).toFixed(1) + '만원' : '-';
+          return `
           <div class="cd-history-row">
-            <div class="cd-history-date">${String(r.recorded_at || '').slice(5,10).replace('-','/')}</div>
+            <div class="cd-history-date">${dt}</div>
             <div class="cd-history-text">${_esc(r.service_name || '시술')}</div>
-            <div class="cd-history-amount">${(r.amount/10000).toFixed(1)}만원</div>
-          </div>
-        `).join('')}
+            <div class="cd-history-amount">${amtStr}</div>
+          </div>`;
+        }).join('')}
       </div>
     `;
   }
@@ -275,9 +280,9 @@
   }
 
   function _renderEditBar(id, customer) {
+    // [v198] 매출 입력 버튼 삭제 — 시술완료 플로우와 중복. 매출은 캘린더→시술완료 또는 매출 대시보드에서만.
     return `
       <div class="cd-actions">
-        <button class="cd-act-btn" data-act="revenue">매출 입력</button>
         <button class="cd-act-btn" data-act="booking">예약 잡기</button>
         <button class="cd-act-btn primary" data-act="ms-topup" data-cust-id="${id}" data-cust-name="${_esc(customer.name||'')}">회원권 충전</button>
       </div>
@@ -392,14 +397,6 @@
           window._pendingBookingCustomer = { id, name };
           if (typeof window.openCalendarView === 'function') window.openCalendarView();
           else if (typeof window.openBooking === 'function') window.openBooking();
-        } else if (act === 'revenue') {
-          closeCustomerDashboard();
-          // _openRevenueAddFor 가 내부에서 openRevenue + prefill 모달까지 처리.
-          if (typeof window._openRevenueAddFor === 'function') {
-            window._openRevenueAddFor(id, name);
-          } else if (typeof window.openRevenue === 'function') {
-            window.openRevenue();
-          }
         } else if (act === 'nps') {
           closeCustomerDashboard();
           if (typeof window.openNps === 'function') window.openNps();
