@@ -105,11 +105,16 @@
     if (sheet) return sheet;
     sheet = document.createElement('div');
     sheet.id = 'customerDashSheet';
-    sheet.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;padding:20px;';
+    // [v208] 풀화면 시트 — PC 디테일과 동일한 v4 본문을 그대로 표시.
+    sheet.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;background:var(--surface,#fff);overflow-y:auto;';
     sheet.innerHTML = `
-      <div class="cust-detail" style="position:relative;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,0.15);">
-        <button onclick="closeCustomerDashboard()" style="position:absolute;top:14px;right:14px;background:var(--surface-2);border:none;width:30px;height:30px;border-radius:50%;color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;">✕</button>
-        <div id="cdBody"></div>
+      <div class="cust-detail" style="position:relative;width:100%;max-width:720px;margin:0 auto;min-height:100vh;background:var(--surface,#fff);">
+        <div class="cv4-detail-mobile-head">
+          <button class="back" onclick="closeCustomerDashboard()" aria-label="뒤로가기">‹</button>
+          <div style="flex:1;text-align:center;font-size:15px;font-weight:600;color:var(--text);">고객 정보</div>
+          <div style="width:36px;"></div>
+        </div>
+        <div id="cdBody" class="cv4-detail-mobile-body"></div>
       </div>
     `;
     document.body.appendChild(sheet);
@@ -422,6 +427,157 @@
   // 현재 열려 있는 고객 id 기억 (data-changed 이벤트 시 재로드용)
   let _currentCustomerId = null;
 
+  // ── [v208] v4 디테일 (목업 mockup-customer-v4.html 이식) ─────
+  function _visitBadgeClass(vc) {
+    if (vc >= 10) return 'b3';
+    if (vc >= 3)  return 'b2';
+    return 'b1';
+  }
+  function _topService(rows) {
+    if (!Array.isArray(rows) || !rows.length) return null;
+    const count = {};
+    rows.forEach(r => {
+      const n = (r && r.service_name) ? String(r.service_name).trim() : '';
+      if (n) count[n] = (count[n] || 0) + 1;
+    });
+    let best = null, bestCount = 0;
+    for (const k in count) { if (count[k] > bestCount) { best = k; bestCount = count[k]; } }
+    return best;
+  }
+  function _nextExpectedDate(stats, customer) {
+    const lastIso = stats && stats.last_visit_at;
+    const avgDays = (customer && +customer.avg_cycle_weeks > 0)
+      ? Math.round(+customer.avg_cycle_weeks * 7)
+      : null;
+    if (!lastIso || !avgDays) return null;
+    try {
+      const d = new Date(lastIso);
+      d.setDate(d.getDate() + avgDays);
+      return (d.getMonth() + 1) + '/' + d.getDate();
+    } catch (_e) { return null; }
+  }
+  function _buildDetailHTMLv4(d) {
+    const c = (d && d.customer) || {};
+    const stats = (d && d.stats) || {};
+    const revenues = (d && d.recent_revenues) || [];
+    const vc = Number(stats.visit_count || c.visit_count || 0);
+    const totalRev = Number(stats.total_revenue || 0);
+    const totalMan = totalRev > 0 ? Math.round(totalRev / 10000) : 0;
+    const avgDays = (c.avg_cycle_weeks ? Math.round(+c.avg_cycle_weeks * 7) : 0)
+      || (d.retention && d.retention.avg_interval_days)
+      || 0;
+    const badge = _visitBadgeClass(vc);
+    const phone = c.phone ? _esc(c.phone) : '';
+    const nextDate = _nextExpectedDate(stats, c);
+    const nudge = nextDate
+      ? `<div class="nudge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#E5586E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-right:6px"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 13l.75 2.25L22 16l-2.25.75L19 19l-.75-2.25L16 16l2.25-.75L19 13z"/><path d="M5 17l.5 1.5L7 19l-1.5.5L5 21l-.5-1.5L3 19l1.5-.5L5 17z"/></svg> 다음 방문 예상: ${_esc(nextDate)}</div>`
+      : '';
+    const top = _topService(revenues);
+    const pref = top ? `<div class="d-sec"><span>선호 시술</span></div><div class="d-pref">${_esc(top)}</div>` : '';
+    const vrRows = revenues.slice(0, 5).map(r => {
+      const dt = String(r.recorded_at || '').slice(5, 10).replace('-', '/');
+      const amt = Number(r.amount) || 0;
+      const man = amt > 0 ? Math.round(amt / 10000) + '만' : '-';
+      return `<div class="vr"><div class="vr-d">${_esc(dt)}</div><div class="vr-s">${_esc(r.service_name || '시술')}</div><div class="vr-p">${man}</div></div>`;
+    }).join('');
+    const vrHidden = revenues.slice(5, 20).map(r => {
+      const dt = String(r.recorded_at || '').slice(5, 10).replace('-', '/');
+      const amt = Number(r.amount) || 0;
+      const man = amt > 0 ? Math.round(amt / 10000) + '만' : '-';
+      return `<div class="vr hidden"><div class="vr-d">${_esc(dt)}</div><div class="vr-s">${_esc(r.service_name || '시술')}</div><div class="vr-p">${man}</div></div>`;
+    }).join('');
+    const moreLink = revenues.length > 5
+      ? `<span class="d-sec-link" data-cv4-act="toggle-more">더보기</span>`
+      : '';
+    const memo = c.memo ? `<div class="d-sec"><span>메모</span></div><div class="memo">${_esc(c.memo)}</div>` : '';
+
+    return `
+      <div class="cv4-detail">
+        <div class="d-header">
+          <div class="d-name-row">
+            <div style="display:flex;align-items:center;">
+              <div class="d-name">${_esc(c.name || '손님')} 님</div>
+              <span class="d-badge-lg c-badge ${badge}">${vc}회 방문</span>
+            </div>
+          </div>
+          ${phone ? `<div class="d-phone">${phone}</div>` : ''}
+          <div class="d-actions">
+            <button class="d-act primary" data-cv4-act="booking">예약 잡기</button>
+            ${phone ? `<button class="d-act ghost" data-cv4-act="call">전화</button>` : ''}
+            <button class="d-act danger" data-cv4-act="delete">삭제</button>
+          </div>
+        </div>
+        ${nudge}
+        <div class="d-cards">
+          <div class="dc"><div class="dc-v">${vc}<small>회</small></div><div class="dc-l">총 방문</div></div>
+          <div class="dc"><div class="dc-v">${totalMan}<small>만</small></div><div class="dc-l">총 매출</div></div>
+          <div class="dc"><div class="dc-v">${avgDays || '—'}<small>${avgDays ? '일' : ''}</small></div><div class="dc-l">평균 재방문 일</div></div>
+        </div>
+        ${pref}
+        ${revenues.length ? `
+        <div class="d-sec"><span>시술 기록</span>${moreLink}</div>
+        <div class="vr-wrap">${vrRows}${vrHidden}</div>` : ''}
+        ${memo}
+      </div>
+    `;
+  }
+  function _bindDetailV4(scopeEl, d) {
+    if (!scopeEl) return;
+    const c = (d && d.customer) || {};
+    scopeEl.querySelectorAll('[data-cv4-act]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const act = btn.dataset.cv4Act;
+        if (act === 'booking') {
+          // 모바일 시트면 닫고 캘린더 진입. PC 한 화면 분할이면 그대로.
+          if (document.getElementById('customerDashSheet')?.style.display === 'flex') {
+            closeCustomerDashboard();
+          }
+          window._pendingBookingCustomer = { id: c.id, name: c.name };
+          if (typeof window.openCalendarView === 'function') window.openCalendarView();
+          else if (typeof window.openBooking === 'function') window.openBooking();
+        } else if (act === 'call') {
+          if (c.phone) window.location.href = 'tel:' + String(c.phone).replace(/[^0-9+]/g, '');
+        } else if (act === 'delete') {
+          if (typeof window.deleteCustomer === 'function') {
+            window.deleteCustomer(c.id, c.name);
+          } else if (window.confirm('이 고객을 삭제할까요? 매출 기록은 보존됩니다.')) {
+            // 백업 — Customer.remove 직접 호출
+            (window.Customer && window.Customer.remove ? window.Customer.remove(c.id) : Promise.resolve())
+              .then(() => {
+                if (window.showToast) window.showToast('삭제됐어요');
+                closeCustomerDashboard();
+                if (typeof window._rerenderCustomerList === 'function') window._rerenderCustomerList();
+              })
+              .catch(() => { if (window.showToast) window.showToast('삭제 실패'); });
+          }
+        } else if (act === 'toggle-more') {
+          scopeEl.querySelectorAll('.vr.hidden').forEach(el => el.classList.toggle('hidden'));
+          btn.textContent = btn.textContent === '더보기' ? '접기' : '더보기';
+        }
+      });
+    });
+  }
+  window._renderCustomerDetail = async function (mountEl, customerId) {
+    if (!mountEl || !customerId) return;
+    mountEl.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#888;font-size:13px;">불러오는 중…</div>';
+    try {
+      const d = await _apiGet('/customers/' + customerId + '/dashboard');
+      mountEl.innerHTML = _buildDetailHTMLv4(d);
+      _bindDetailV4(mountEl, d);
+    } catch (e) {
+      // 폴백 — /customers/{id} 만 받아서 최소 정보 표시
+      try {
+        const cust = await _apiGet('/customers/' + customerId);
+        mountEl.innerHTML = _buildDetailHTMLv4({ customer: cust, stats: {}, recent_revenues: [] });
+        _bindDetailV4(mountEl, { customer: cust, stats: {}, recent_revenues: [] });
+        if (typeof window.showToast === 'function') window.showToast('기본 정보로 표시 중이에요');
+      } catch (_) {
+        mountEl.innerHTML = `<div style="padding:40px 20px;text-align:center;color:#c00;font-size:13px;">불러오기 실패<br><span style="color:#888;font-size:11px;">${_esc(e?.message || '네트워크 오류')}</span></div>`;
+      }
+    }
+  };
+
   window.openCustomerDashboard = async function (id) {
     if (!id) return;
     _currentCustomerId = id;
@@ -442,63 +598,8 @@
       `;
       return;
     }
-    body.innerHTML = '<div style="padding:20px;color:#888;">불러오는 중…</div>';
-    try {
-      const d = await _apiGet('/customers/' + id + '/dashboard');
-      body.innerHTML = `
-        ${_renderHero(d)}
-        <div id="cdAiBriefMount" style="padding:0 16px;"></div>
-        ${_renderStats(d)}
-        ${_renderRegularMembership(d)}
-        ${_renderRevenues(d.recent_revenues)}
-        ${_renderEditBar(d.customer.id, d.customer)}
-      `;
-      _bindActions(d.customer.id, d.customer.name);
-      _bindMembership(d);
-      // P1-5: AI 브리핑 (마지막 방문/평균주기/리터치 권장 + 상위 chip). 백엔드 ai-brief 없으면 클라이언트 컴퓨트.
-      if (window.CustomerAIBrief && typeof window.CustomerAIBrief.render === 'function') {
-        window.CustomerAIBrief.render('cdAiBriefMount', d.customer.id, { dashboardData: d });
-      }
-    } catch (e) {
-      console.warn('[customer-dashboard] 실패:', e);
-      // 폴백 조건: 네트워크 오류 / 4xx (요청 형식·인증 권한·없음) / 5xx 일부 (구현 안 됨·게이트웨이)
-      // — 422 "요청 형식이 올바르지 않습니다" 도 기본 고객 정보 폴백 대상
-      const _isNetworkErr = e.name === 'AbortError' || e.message === 'Failed to fetch' || e.message === 'NetworkError when attempting to fetch resource.';
-      const _is4xx = typeof e.status === 'number' && e.status >= 400 && e.status < 500;
-      const _isFallbackable5xx = e.status === 501 || e.status === 502 || e.status === 503;
-      const _isLegacyMatch = e.message && (e.message.includes('404') || e.message.includes('endpoint') || e.message.includes('501'));
-      if (_isNetworkErr || _is4xx || _isFallbackable5xx || _isLegacyMatch) {
-        try {
-          const cust = await _apiGet('/customers/' + id);
-          body.innerHTML = `
-            ${_renderHero({ customer: cust })}
-            <div id="cdAiBriefMount" style="padding:0 16px;"></div>
-            ${_renderStats({ customer: cust })}
-            ${_renderEditBar(cust.id, cust)}
-          `;
-          _bindActions(cust.id, cust.name);
-          if (window.CustomerAIBrief && typeof window.CustomerAIBrief.render === 'function') {
-            window.CustomerAIBrief.render('cdAiBriefMount', cust.id, { customer: cust });
-          }
-          if (typeof window.showToast === 'function') {
-            window.showToast('기본 정보로 표시 중이에요');
-          }
-          return;
-        } catch (_fallbackErr) { /* 폴백도 실패 — 아래 에러 UI 표시 */ }
-      }
-      const errMsg = e.message || '네트워크 오류';
-      body.innerHTML = `
-        <div style="padding:40px 20px;text-align:center;">
-          <div style="margin-bottom:10px;color:var(--brand);"><i class="ph-duotone ph-warning" aria-hidden="true"></i></div>
-          <div style="font-size:13px;color:#c00;">대시보드를 불러오지 못했어요</div>
-          <div style="font-size:11px;color:#888;margin-top:4px;">${_esc(errMsg)}</div>
-          <button id="cdRetryBtn" style="margin-top:14px;padding:10px 20px;border:1px solid var(--brand);background:rgba(241,128,145,0.08);color:var(--brand);border-radius:12px;font-weight:700;font-size:13px;cursor:pointer;">다시 시도</button>
-        </div>
-      `;
-      body.querySelector('#cdRetryBtn')?.addEventListener('click', () => {
-        window.openCustomerDashboard(id);
-      });
-    }
+    // [v208] 디테일 내용은 v4 마크업으로 공통 (PC 한 화면 분할도 같은 _renderCustomerDetail 사용)
+    await window._renderCustomerDetail(body, id);
   };
 
   window.closeCustomerDashboard = function () {

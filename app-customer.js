@@ -268,62 +268,135 @@
     );
   }
 
-  // ── UI: 오버레이 시트 ────────────────────────────────────
+  // [v208] PC 한 화면 분할 판정 (PC width 1100+ 이면 좌측 리스트 + 우측 디테일)
+  const _PC_BREAKPOINT = 1100;
+  function _isPC() { return window.innerWidth >= _PC_BREAKPOINT; }
+
+  // ── UI: 오버레이 시트 (v4 — 목업 mockup-customer-v4.html) ───────
   function _ensureSheet() {
     let sheet = document.getElementById('customerSheet');
     if (sheet) return sheet;
     sheet = document.createElement('div');
     sheet.id = 'customerSheet';
-    sheet.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;flex-direction:column;';
     sheet.classList.add('dt-overlay');
-    sheet.innerHTML = `
-      <header class="dt-hdr">
-        <button class="dt-back" onclick="closeCustomers()" aria-label="뒤로"><i class="ph-duotone ph-caret-left" style="font-size:20px" aria-hidden="true"></i></button>
-        <h1 class="dt-title">내 고객</h1>
-        <span id="customerCount" style="font-size:12px;color:var(--text-subtle);"></span>
-        <span id="customerOfflineBadge" class="dt-offline-badge">오프라인</span>
-      </header>
-      <div class="dt-body">
-        <div class="dt-search-wrap">
-          <input id="customerSearch" type="search" class="dt-field" placeholder="이름·연락처·태그 검색" />
+    const isPC = _isPC();
+    sheet.style.cssText = isPC
+      ? 'position:fixed;inset:0;z-index:9998;display:none;background:var(--surface,#fff);'
+      : 'position:fixed;inset:0;z-index:9998;display:none;flex-direction:column;background:var(--surface,#fff);';
+    if (isPC) sheet.classList.add('cv4-pc');
+
+    const chipsHTML = `
+      <div id="customerSegments" class="cv4-chips">
+        <button data-seg="all"         class="cv4-chip is-on">전체</button>
+        <button data-seg="visits12"    class="cv4-chip off">1~2회</button>
+        <button data-seg="visits3plus" class="cv4-chip green">3회+</button>
+        <button data-seg="visits10plus" class="cv4-chip brand">10회+</button>
+        <button data-seg="member"      class="cv4-chip off">회원권</button>
+      </div>`;
+
+    if (isPC) {
+      sheet.innerHTML = `
+        <div class="pc-l">
+          <div class="pc-l-head">
+            <div class="cv4-hd">
+              <h1>고객관리</h1>
+              <button class="cv4-hd-add" id="customerAddBtn" aria-label="고객 추가">+</button>
+            </div>
+            <input id="customerSearch" type="search" placeholder="이름 · 전화번호 검색"
+                   style="width:100%;height:40px;padding:0 14px;border-radius:12px;border:none;background:var(--surface-2,#F7F8FA);font-size:14px;color:var(--text);outline:none;font-family:inherit;" />
+            ${chipsHTML}
+          </div>
+          <div id="customerList" class="pc-items"></div>
+          <div style="padding:10px 24px 12px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--text-subtle);border-top:1px solid var(--border);">
+            <span id="customerCount"></span>
+            <span id="customerOfflineBadge" class="dt-offline-badge" style="display:none;color:var(--danger);">오프라인</span>
+          </div>
         </div>
-        <!-- [2026-04-29 E2] 자동 세그먼트 chip 4개 -->
-        <div id="customerSegments" style="display:flex;gap:6px;padding:0 4px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;">
-          <button data-seg="all" class="cust-seg-chip cust-seg-active" style="flex-shrink:0;padding:6px 14px;border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">전체</button>
-          <!-- [v201] 자동 분류(신규/단골) 제거. 방문 횟수 기반 필터로 단순화. -->
-          <button data-seg="visits1" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">🌱 1회</button>
-          <button data-seg="visits23" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">2~3회</button>
-          <button data-seg="visits4plus" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">⭐ 4회+</button>
-          <button data-seg="member" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">💳 회원권</button>
-          <button data-seg="atrisk" class="cust-seg-chip" style="flex-shrink:0;padding:6px 14px;border:1px solid #ddd;background:#fff;color:#555;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">이탈 임박</button>
+        <div class="pc-r">
+          <div id="cdDetailMount" class="cv4-detail" style="min-height:100%;">
+            <div class="pc-r-empty">왼쪽에서 손님을 선택하세요</div>
+          </div>
+          <button class="dt-back" onclick="closeCustomers()" aria-label="닫기"
+                  style="position:absolute;top:18px;right:18px;background:var(--surface-2);border:none;width:34px;height:34px;border-radius:50%;color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
         </div>
-        <div id="customerList"></div>
-      </div>
-      <footer class="dt-footer">
-        <button id="customerAddBtn" class="btn-primary" style="flex:1;">+ 고객 추가</button>
-      </footer>
-    `;
+      `;
+    } else {
+      sheet.innerHTML = `
+        <div class="dt-body" style="padding:24px 16px 80px;position:relative;">
+          <div class="cv4-hd">
+            <h1 style="font-size:22px;font-weight:700;color:var(--text);letter-spacing:-0.5px;margin:0;">고객관리</h1>
+            <button class="cv4-hd-add" id="customerAddBtn" aria-label="고객 추가">+</button>
+          </div>
+          <input id="customerSearch" type="search" placeholder="이름 · 전화번호 검색"
+                 style="width:100%;height:40px;padding:0 14px;border-radius:12px;border:none;background:var(--surface-2,#F7F8FA);font-size:14px;color:var(--text);outline:none;font-family:inherit;margin-bottom:10px;" />
+          ${chipsHTML}
+          <div id="customerList"></div>
+          <div id="customerIdxBar" class="idx-bar"></div>
+          <button class="dt-back" onclick="closeCustomers()" aria-label="뒤로"
+                  style="position:absolute;top:20px;left:6px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text);padding:4px;">‹</button>
+          <div style="padding-top:12px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--text-subtle);">
+            <span id="customerCount"></span>
+            <span id="customerOfflineBadge" class="dt-offline-badge" style="display:none;color:var(--danger);">오프라인</span>
+          </div>
+        </div>
+      `;
+    }
     document.body.appendChild(sheet);
     sheet.querySelector('#customerSearch').addEventListener('input', _rerender);
     sheet.querySelector('#customerAddBtn').addEventListener('click', _openAddForm);
-    // [2026-04-29 E2] 세그먼트 chip 클릭
+    // chip 클릭
     let _activeSeg = 'all';
-    sheet.querySelectorAll('.cust-seg-chip').forEach(btn => {
+    sheet.querySelectorAll('.cv4-chip').forEach(btn => {
       btn.addEventListener('click', () => {
         _activeSeg = btn.dataset.seg;
         window._customerSeg = _activeSeg;
-        sheet.querySelectorAll('.cust-seg-chip').forEach(b => {
-          const on = b.dataset.seg === _activeSeg;
-          b.classList.toggle('cust-seg-active', on);
-          b.style.background = on ? 'var(--brand)' : '#fff';
-          b.style.color = on ? '#fff' : '#555';
-          b.style.borderColor = on ? 'var(--brand)' : '#ddd';
-        });
+        sheet.querySelectorAll('.cv4-chip').forEach(b => b.classList.toggle('is-on', b.dataset.seg === _activeSeg));
         _windowSize = 50;
         _rerender();
       });
     });
     return sheet;
+  }
+
+  // [v208] 한글 초성 추출 — 가나다 그룹핑
+  function _firstChosung(name) {
+    const ch = String(name || '').charAt(0);
+    if (!ch) return '#';
+    const code = ch.charCodeAt(0);
+    if (code >= 0xAC00 && code <= 0xD7A3) {
+      const CHOSUNG = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+      const idx = Math.floor((code - 0xAC00) / 588);
+      const merge = { 'ㄲ':'ㄱ','ㄸ':'ㄷ','ㅃ':'ㅂ','ㅆ':'ㅅ','ㅉ':'ㅈ' };
+      const c = CHOSUNG[idx];
+      return merge[c] || c;
+    }
+    return '#';
+  }
+  const _CHOSUNG_ORDER = ['ㄱ','ㄴ','ㄷ','ㄹ','ㅁ','ㅂ','ㅅ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ','#'];
+
+  // [v208] 방문횟수 → 컬러바 클래스
+  function _barClass(vc) {
+    if (vc >= 10) return 'b3';
+    if (vc >= 3)  return 'b2';
+    return 'b1';
+  }
+  // [v208] PC 디테일 mount — 같은 _renderCustomerDetail 재사용
+  function _selectCustomer(id, rowEl) {
+    if (_isPC()) {
+      const mount = document.querySelector('#cdDetailMount');
+      if (!mount) return;
+      mount.classList.add('cv4-detail');
+      const sheet = document.getElementById('customerSheet');
+      sheet.querySelectorAll('.pi.on').forEach(el => el.classList.remove('on'));
+      if (rowEl) rowEl.classList.add('on');
+      if (typeof window._renderCustomerDetail === 'function') {
+        window._renderCustomerDetail(mount, id);
+      }
+    } else {
+      if (typeof window.openCustomerDashboard === 'function') {
+        window.openCustomerDashboard(id);
+      }
+    }
   }
 
   // [렉 박멸 2026-04-26] windowing — 고객 1000명 한 번에 렌더 → 첫 50명 + "더 보기".
@@ -343,13 +416,17 @@
       const ATRISK_DAYS = 60;
       items = items.filter(c => {
         const vc = c.visit_count || 0;
-        if (seg === 'regular') return !!c.is_regular;
-        if (seg === 'member')  return !!c.membership_active;
-        if (seg === 'new')     return vc <= 1;
-        // [v200] 방문 횟수 기준 분류
-        if (seg === 'visits1')     return vc === 1;
-        if (seg === 'visits23')    return vc >= 2 && vc <= 3;
-        if (seg === 'visits4plus') return vc >= 4;
+        // [v208] 5칩 단순화 — visits12/visits3plus/visits10plus/member
+        if (seg === 'visits12')      return vc >= 1 && vc <= 2;
+        if (seg === 'visits3plus')   return vc >= 3 && vc < 10;
+        if (seg === 'visits10plus')  return vc >= 10;
+        if (seg === 'member')        return !!c.membership_active || (Number(c.membership_balance) > 0);
+        // legacy 호환 (옛 칩 값이 localStorage 에 남아있는 경우)
+        if (seg === 'regular')       return !!c.is_regular;
+        if (seg === 'new')           return vc <= 1;
+        if (seg === 'visits1')       return vc === 1;
+        if (seg === 'visits23')      return vc >= 2 && vc <= 3;
+        if (seg === 'visits4plus')   return vc >= 4;
         if (seg === 'atrisk') {
           if (!c.last_visit_at) return false;
           const t = Date.parse(c.last_visit_at);
@@ -376,40 +453,58 @@
     const totalLen = items.length;
     const visible = items.slice(0, _windowSize);
     const hasMore = totalLen > _windowSize;
-    box.innerHTML = '<div class="dt-list">' + visible.map(c => {
-      const nsCount = c.no_show_count || 0;
-      const nsBadge = nsCount >= 3
-        ? `<span title="안 옴 ${nsCount}회 — 예약 전 주의" style="font-size:10px;font-weight:700;color:#fff;background:#dc3545;padding:2px 7px;border-radius:100px;margin-left:6px;">🚩 안 옴 ${nsCount}</span>`
-        : (nsCount > 0 ? `<span title="안 옴 ${nsCount}회" style="font-size:10px;font-weight:600;color:#B45309;background:#FEF3C7;padding:2px 6px;border-radius:100px;margin-left:6px;">안 옴 ${nsCount}</span>` : '');
-      const regularBadge = c.is_regular
-        ? `<span title="단골" class="cm-badge cm-badge--regular" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#fff;background:var(--brand);padding:2px 8px;border-radius:999px;margin-left:6px;line-height:1.4;"><i class="ph-duotone ph-star" aria-hidden="true"></i>단골</span>`
-        : '';
-      const memberBadge = c.membership_active
-        ? (() => {
-            const bal = +c.membership_balance || 0;
-            const low = bal > 0 && bal < 30000;
-            const bg = low ? '#F97316' : '#A78BFA';
-            const balText = bal >= 10000 ? `${Math.floor(bal/10000)}만원` : (bal > 0 ? `${bal.toLocaleString()}원` : '0원');
-            return `<span title="멤버십 잔액 ${bal.toLocaleString()}원" class="cm-badge cm-badge--member" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#fff;background:${bg};padding:2px 8px;border-radius:999px;margin-left:6px;line-height:1.4;"><i class="ph-duotone ph-sparkle" aria-hidden="true"></i>${balText}</span>`;
-          })()
-        : '';
-      return `
-      <button class="dt-list-it customer-row" data-id="${c.id}" type="button">
-        <div class="dt-list-it__main">
-          <p class="dt-list-it__title">${_esc(c.name)}${c.visit_count ? ` <span style="font-size:11px;font-weight:400;color:var(--brand);">방문 ${c.visit_count}회</span>` : ''}${regularBadge}${memberBadge}${nsBadge}</p>
-          <p class="dt-list-it__sub">${[c.phone ? _esc(c.phone) : '', c.memo ? _esc(c.memo).slice(0,40) : ''].filter(Boolean).join(' · ')}</p>
-        </div>
-        <i class="ph-duotone ph-caret-right" style="font-size:14px" aria-hidden="true"></i>
-      </button>`;
-    }).join('') + '</div>'
+
+    // [v208] 가나다 그룹 + v4 row 마크업
+    const isPC = _isPC();
+    const rowCls = isPC ? 'pi customer-row' : 'c-row customer-row';
+    const itemsByChosung = {};
+    visible.forEach(c => {
+      const key = _firstChosung(c.name);
+      (itemsByChosung[key] = itemsByChosung[key] || []).push(c);
+    });
+    const groupsHtml = _CHOSUNG_ORDER
+      .filter(k => itemsByChosung[k] && itemsByChosung[k].length)
+      .map(k => {
+        const rows = itemsByChosung[k].map(c => {
+          const vc = c.visit_count || 0;
+          const barCls = _barClass(vc);
+          const badgeCls = barCls;
+          const memberMark = c.membership_active ? ' · 회원권' : '';
+          return `<div class="${rowCls}" data-id="${c.id}" data-chosung="${k}" role="button" tabindex="0">
+            <div class="c-bar ${barCls}"></div>
+            <div class="c-info">
+              <div class="c-name"><span class="c-name-txt">${_esc(c.name)}</span><span class="c-badge ${badgeCls}">${vc}회</span></div>
+              ${c.phone ? `<div class="c-sub">${_esc(c.phone)}${memberMark}</div>` : (memberMark ? `<div class="c-sub">회원권 보유</div>` : '')}
+            </div>
+            <div class="c-arr">›</div>
+          </div>`;
+        }).join('');
+        const secCls = isPC ? 'pi-sec' : 'sec-hd';
+        return `<div class="${secCls}" id="cv4-sec-${encodeURIComponent(k)}">${k}</div>${rows}`;
+      }).join('');
+
+    box.innerHTML = groupsHtml
       + (hasMore
-          ? `<button id="customerLoadMore" type="button" style="width:100%;margin-top:8px;padding:11px;border:1px dashed hsl(220,15%,80%);border-radius:12px;background:#fafafa;color:#555;font-size:13px;font-weight:600;cursor:pointer;">+ ${totalLen - _windowSize}명 더 보기</button>`
+          ? `<button id="customerLoadMore" type="button" style="width:calc(100% - 20px);margin:12px 10px;padding:11px;border:1px dashed hsl(220,15%,80%);border-radius:12px;background:var(--surface-2);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;">+ ${totalLen - _windowSize}명 더 보기</button>`
           : '');
+
+    // 우측 인덱스바 (모바일만)
+    const idxBar = sheet.querySelector('#customerIdxBar');
+    if (idxBar) {
+      const presentChosung = _CHOSUNG_ORDER.filter(k => itemsByChosung[k] && itemsByChosung[k].length);
+      idxBar.innerHTML = presentChosung.map(k => `<span data-jump="${k}">${k}</span>`).join('');
+      idxBar.querySelectorAll('span[data-jump]').forEach(sp => {
+        sp.addEventListener('click', () => {
+          const target = box.querySelector(`#cv4-sec-${encodeURIComponent(sp.dataset.jump)}`);
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+    }
+
     const more = box.querySelector('#customerLoadMore');
     if (more) {
       more.addEventListener('click', () => { _windowSize += WINDOW_STEP; _rerender(); }, { once: true });
     }
-    // [PerfFix] 행 단위 리스너 5×N개 → 컨테이너 위임 1회. _rerender 시 누적 방지.
     _setupCustomerDelegation(box);
   }
 
@@ -479,11 +574,8 @@
         _swipeState.swiped = false;
         return;
       }
-      if (typeof window.openCustomerDashboard === 'function') {
-        window.openCustomerDashboard(row.dataset.id);
-      } else {
-        _openDetail(row.dataset.id);
-      }
+      // [v208] PC 면 우측 디테일 갱신, 모바일이면 풀화면 시트
+      _selectCustomer(row.dataset.id, row);
     });
   }
 
