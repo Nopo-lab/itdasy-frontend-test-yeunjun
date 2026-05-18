@@ -390,17 +390,19 @@
     if (vc >= 3)  return 'b2';
     return 'b1';
   }
-  // [v208] PC 디테일 mount — 같은 _renderCustomerDetail 재사용
+  // [v214] 디테일 표시 — _isPC() 가 아닌 시트 실제 상태(cv4-pc 클래스) 로 판단
   function _selectCustomer(id, rowEl) {
-    if (_isPC()) {
-      const mount = document.querySelector('#cdDetailMount');
-      if (!mount) return;
+    const sheet = document.getElementById('customerSheet');
+    const mount = sheet ? sheet.querySelector('#cdDetailMount') : null;
+    // 시트가 PC 분할 마크업이면 우측 mount, 아니면 풀화면 시트
+    if (sheet && sheet.classList.contains('cv4-pc') && mount) {
       mount.classList.add('cv4-detail');
-      const sheet = document.getElementById('customerSheet');
       sheet.querySelectorAll('.pi.on').forEach(el => el.classList.remove('on'));
       if (rowEl) rowEl.classList.add('on');
       if (typeof window._renderCustomerDetail === 'function') {
         window._renderCustomerDetail(mount, id);
+      } else {
+        mount.innerHTML = '<div class="pc-r-empty">디테일 모듈 미준비</div>';
       }
     } else {
       if (typeof window.openCustomerDashboard === 'function') {
@@ -520,15 +522,17 @@
 
   // ─── 고객 행 이벤트 위임 ──────────────────────────────────
   // _rerender() 가 innerHTML 을 갈아끼워도 컨테이너 자체는 유지되므로 1회 등록으로 충분.
-  let _customerDelegated = false;
+  // [v214] 단, 시트 자체가 PC↔모바일 모드 변경으로 재생성되면 listEl 도 새 DOM 이 됨 →
+  // boolean 대신 "어떤 element 에 등록했는지" 를 추적해서 새 element 면 재등록.
+  let _delegatedListEl = null;
   const _swipeState = { row: null, sx: 0, sy: 0, swiped: false, down: false };
   function _resetSwipeRow() {
     const r = _swipeState.row;
     if (r) { r.style.transform = ''; r.style.transition = 'transform 180ms ease'; }
   }
   function _setupCustomerDelegation(listEl) {
-    if (_customerDelegated || !listEl) return;
-    _customerDelegated = true;
+    if (!listEl || _delegatedListEl === listEl) return;
+    _delegatedListEl = listEl;
     const SWIPE_THRESHOLD = 60;
 
     listEl.addEventListener('pointerdown', (e) => {
