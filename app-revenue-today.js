@@ -24,7 +24,11 @@
 
   // ── 유틸 ───────────────────────────────────────────────
   const _esc = (s) => (_R()._esc ? _R()._esc(s) : String(s == null ? '' : s));
-  const _krw = (n) => (((+n) || 0)).toLocaleString('ko-KR') + '원';
+  // [v202] 천원 미만 반올림
+  const _krw = (n) => {
+    const v = (+n) || 0;
+    return (Math.round(v / 1000) * 1000).toLocaleString('ko-KR') + '원';
+  };
   function _sumByMethod(items) {
     const by = {};
     items.forEach(r => {

@@ -420,17 +420,32 @@
     }
   }
 
-  // [v200] 노쇼 처리 — BE status 'no_show' + 매출 미기록.
-  // 예약금(deposit) 매출 자동 기록은 BE Booking 모델에 deposit 컬럼 추가 후 활성화 (백로그).
+  // [v202] 노쇼 처리 — prompt 로 예약금 입력. 양수면 amount 매출 기록, 0/빈값이면 미기록.
+  // BE Booking.deposit 컬럼이 없어서 amount + skip_revenue:false 로 우회. customer_name 명시.
   async function _noShow() {
     if (!_ctx.booking_id) { _close(); return; }
+    const v = window.prompt('예약금 금액 (원, 숫자만). 0 또는 빈값 = 매출 미기록.\n예: 50000 = 5만원', '0');
+    if (v === null) return;
+    const cleaned = String(v).replace(/[^0-9]/g, '');
+    const deposit = parseInt(cleaned, 10) || 0;
     const btn = document.getElementById('cfNoShow');
     if (btn) { btn.disabled = true; btn.textContent = '처리 중…'; }
     try {
-      await _patchBooking(_ctx.booking_id, { status: 'no_show', skip_revenue: true });
+      const payload = deposit > 0
+        ? { status: 'no_show', amount: deposit, payment_method: 'cash',
+            customer_name: _ctx.customer_name || null,
+            memo: '노쇼 · 예약금 ' + deposit.toLocaleString('ko-KR') + '원' }
+        : { status: 'no_show', skip_revenue: true,
+            customer_name: _ctx.customer_name || null };
+      await _patchBooking(_ctx.booking_id, payload);
       _emitChange('update_booking', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
+      if (deposit > 0) _emitChange('create_revenue', { booking_id: _ctx.booking_id, customer_id: _ctx.customer_id });
       _invalidateAllCaches();
-      if (window.showToast) window.showToast('노쇼 처리됐어요');
+      if (window.showToast) {
+        window.showToast(deposit > 0
+          ? `노쇼 · 예약금 ${deposit.toLocaleString('ko-KR')}원 매출 기록`
+          : '노쇼 처리됐어요');
+      }
       _close();
       _refreshConnectedViews();
     } catch (e) {

@@ -1000,8 +1000,11 @@
   }
 
   function _krwOnly(n) {
-    try { return (Number(n) || 0).toLocaleString('ko-KR') + '원'; }
-    catch (_e) { return '0원'; }
+    // [v202] 천원 미만 반올림 — UX 단순화
+    try {
+      const v = Number(n) || 0;
+      return (Math.round(v / 1000) * 1000).toLocaleString('ko-KR') + '원';
+    } catch (_e) { return '0원'; }
   }
 
   // [v6] 이번달 매출 히어로 + 오른쪽 stat 2개 (오늘 예상 / 이번달 AI 예상)
@@ -1009,10 +1012,18 @@
     brief = brief || {};
     const monthTotal = Number(brief.this_month_total) || 0;
     const projected = Number(brief._projected_total) || 0;  // /revenue/summary 에서 머지됨
-    const bk = Array.isArray(brief.today_bookings) ? brief.today_bookings : [];
+    // [v202] BE today_bookings 가 비면 window.Booking.list() 메모리 캐시로 폴백
+    let bk = Array.isArray(brief.today_bookings) ? brief.today_bookings : [];
+    if (!bk.length && window.Booking && typeof window.Booking.list === 'function') {
+      try {
+        const all = window.Booking._items || [];
+        const ymd = new Date().toISOString().slice(0, 10);
+        bk = all.filter(b => b && (b.starts_at || '').slice(0, 10) === ymd);
+      } catch (_e) { /* silent */ }
+    }
     const completedCount = bk.filter(b => b && b.status === 'completed').length;
     // 이번달 완료 건수 — brief 에 별도 키 없으면 today completed 만. (Best effort)
-    const monthCount = Number(brief.this_month_count) || completedCount;
+    const monthCount = Number(brief.this_month_count) || Number(brief.completed_count) || completedCount;
     // [v200] 오늘 예상 매출 — confirmed 예약의 amount 합. amount 비어있으면 서비스 프리셋 가격 폴백.
     const _svcCache = window._serviceTemplatesCache || [];
     const _priceFor = (name) => {
@@ -1138,8 +1149,17 @@
       const stBadge = stLabel ? `<span class="hv5-s-badge ${stBadgeCls}">${stLabel}</span>` : '';
       const name = _esc(b.customer_name || b.name || '');
       const svc  = _esc(b.service_name || '');
-      const amt  = Number(b.amount) || 0;
-      const amtStr = amt > 0 ? amt.toLocaleString('ko-KR') + '원' : '';
+      // [v202] brief.today_bookings 에 amount 없으면 서비스 프리셋 가격 폴백.
+      let amt = Number(b.amount) || 0;
+      if (!amt && b.service_name) {
+        const k = String(b.service_name).trim().toLowerCase();
+        const cache = window._serviceTemplatesCache || [];
+        const hit = cache.find(t => String(t.name||'').trim().toLowerCase() === k);
+        if (hit && hit.default_price) amt = Number(hit.default_price) || 0;
+      }
+      // 천원 미만 반올림 (v202 W1 정책 동기화)
+      const amtRounded = amt > 0 ? (Math.round(amt / 1000) * 1000) : 0;
+      const amtStr = amtRounded > 0 ? amtRounded.toLocaleString('ko-KR') + '원' : '';
       return `<button type="button" class="hv5-slot${isNow ? ' now' : ''}${colorCls}" data-hv-slot="${i}" data-hv-time="${_esc(b.starts_at || '')}">
         <span class="hv5-s-time">${_esc(_hhmm(b.starts_at))}</span>
         <span class="hv5-s-bar" aria-hidden="true"></span>

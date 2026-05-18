@@ -156,7 +156,11 @@
 
   // ── 헬퍼 ───────────────────────────────────────────────
   const _esc = (s) => (_R()._esc ? _R()._esc(s) : String(s == null ? '' : s));
-  const _krw = (n) => (((+n) || 0)).toLocaleString('ko-KR') + '원';
+  // [v202] 천원 미만 반올림 — "4,194,663원" → "4,195,000원"
+  const _krw = (n) => {
+    const v = (+n) || 0;
+    return (Math.round(v / 1000) * 1000).toLocaleString('ko-KR') + '원';
+  };
   function _dayLabel(s, today) {
     const t = new Date(s);
     const dn = ['일', '월', '화', '수', '목', '금', '토'][t.getDay()];
@@ -436,9 +440,14 @@
       const aiRow = (rec && rec !== goal.amount)
         ? `<div style="margin-top:6px;font-size:11px;"><button type="button" data-rvm-act="accept-goal" data-amount="${rec}" style="background:none;border:none;color:var(--brand,#E5586E);text-decoration:underline;font-size:11px;cursor:pointer;padding:0;font-weight:700;">AI 추천 ${_krw(rec)} 으로 변경</button></div>`
         : '';
+      // [v202] 진행률 가시화 — 텍스트 옆에 막대 progress bar. 목표 갱신 시 즉시 width 변경.
+      const progressBar = `<div style="width:100%;height:6px;background:#E5E8EB;border-radius:4px;overflow:hidden;margin-top:6px;">
+        <div style="width:${Math.min(100, rate)}%;height:100%;background:var(--brand,#E5586E);transition:width 0.3s;"></div>
+      </div>`;
       return `<div class="${cls}">
         <div style="flex:1;">
           <div class="t">목표 ${_krw(goal.amount)}/일 · 달성 ${rate}%</div>
+          ${progressBar}
           ${aiRow}
         </div>
         <button type="button" class="btn" data-rvm-act="edit-goal">수정</button>
