@@ -652,7 +652,14 @@
   }
 
   function _openAddForm() {
-    _openDetail(null);
+    // [v220] 디테일에서 쓰는 _openCustomerEditSheet 을 그대로 재사용 (id 없이 호출 → 신규 추가 모달).
+    // 기존 _openDetail 의 인라인 폼은 본 시트의 리스트 영역을 통째로 덮어쓰는 UX 라
+    // 사용자 불만 → 모달로 통일.
+    if (typeof window._openCustomerEditSheet === 'function') {
+      window._openCustomerEditSheet(null);
+    } else {
+      _openDetail(null);  // 폴백
+    }
   }
 
   function _openDetail(id) {

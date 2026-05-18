@@ -505,7 +505,7 @@
           <div class="d-actions">
             <button class="d-act primary" data-cv4-act="booking">예약 잡기</button>
             ${phone ? `<button class="d-act ghost" data-cv4-act="call">전화</button>` : ''}
-            <button class="d-act ghost" data-cv4-act="edit">편집</button>
+            <button class="d-act ghost" data-cv4-act="edit">정보수정</button>
             <button class="d-act danger" data-cv4-act="delete">삭제</button>
           </div>
         </div>
@@ -633,18 +633,24 @@
   };
 
   // [v212] 편집 모달 — 이름/전화/생일/메모/태그 수정
+  // [v220] 정보수정 + 신규 추가 공용 모달.
+  //   - c 가 null/undefined 또는 c.id 없으면 신규 추가 (Customer.create)
+  //   - c.id 있으면 정보수정 (Customer.update)
   window._openCustomerEditSheet = function (c) {
-    if (!c || !c.id) return;
+    c = c || {};
+    const isNew = !c.id;
     const old = document.getElementById('custEditModal');
     if (old) old.remove();
     const wrap = document.createElement('div');
     wrap.id = 'custEditModal';
     wrap.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:20px;';
     const tags = Array.isArray(c.tags) ? c.tags.join(', ') : '';
+    const title = isNew ? '고객 추가' : '고객 정보수정';
+    const saveLabel = isNew ? '추가' : '저장';
     wrap.innerHTML = `
       <div style="background:var(--surface,#fff);border-radius:18px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;padding:24px;box-shadow:0 24px 64px rgba(0,0,0,0.18);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-          <strong style="font-size:18px;color:var(--text);">고객 정보 편집</strong>
+          <strong style="font-size:18px;color:var(--text);">${title}</strong>
           <button type="button" id="custEditClose" aria-label="닫기" style="background:var(--surface-2,#F7F8FA);border:none;width:32px;height:32px;border-radius:50%;font-size:14px;cursor:pointer;color:var(--text);">✕</button>
         </div>
         <label style="display:block;font-size:12px;color:#888;margin-bottom:4px;">이름 *</label>
@@ -659,7 +665,7 @@
         <textarea id="cedMemo" maxlength="500" rows="4" placeholder="두피 예민함, 토요일 오전 선호 등" style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border,#E5E7EB);background:var(--surface,#fff);font-size:14px;color:var(--text);outline:none;font-family:inherit;resize:vertical;line-height:1.5;margin-bottom:20px;">${_esc(c.memo || '')}</textarea>
         <div style="display:flex;gap:8px;">
           <button type="button" id="custEditCancel" style="flex:1;padding:12px;border:1px solid var(--border,#E5E7EB);border-radius:12px;background:var(--surface,#fff);font-size:14px;font-weight:600;cursor:pointer;color:#666;">취소</button>
-          <button type="button" id="custEditSave" style="flex:2;padding:12px;border:none;border-radius:12px;background:var(--text,#111);color:var(--surface,#fff);font-size:14px;font-weight:600;cursor:pointer;">저장</button>
+          <button type="button" id="custEditSave" style="flex:2;padding:12px;border:none;border-radius:12px;background:var(--text,#111);color:var(--surface,#fff);font-size:14px;font-weight:600;cursor:pointer;">${saveLabel}</button>
         </div>
       </div>
     `;
@@ -682,27 +688,33 @@
         tags: wrap.querySelector('#cedTags').value.split(',').map(t => t.trim()).filter(Boolean).slice(0, 10),
         memo: wrap.querySelector('#cedMemo').value.trim() || null,
       };
-      const updateFn = window.Customer && window.Customer.update;
-      if (!updateFn) {
+      const Customer = window.Customer;
+      if (!Customer) {
         if (window.showToast) window.showToast('저장 함수 미준비');
         return;
       }
       try {
-        await updateFn(c.id, payload);
-        if (window.showToast) window.showToast('저장 완료');
-        close();
-        // 디테일 다시 로드 — PC mount 우선, 없으면 모바일 시트
-        const pcMount = document.querySelector('#customerSheet #cdDetailMount');
-        if (pcMount && pcMount.querySelector('.cv4-detail')) {
-          window._renderCustomerDetail(pcMount, c.id);
-        }
-        if (_currentCustomerId === c.id) {
-          const mobileBody = document.querySelector('#customerDashSheet #cdBody');
-          if (mobileBody) window._renderCustomerDetail(mobileBody, c.id);
+        if (isNew) {
+          await Customer.create(payload);
+          if (window.showToast) window.showToast(`${payload.name} 추가됨`);
+          close();
+          // 리스트 새로고침은 itdasy:data-changed (create_customer) 가 자동 처리
+        } else {
+          await Customer.update(c.id, payload);
+          if (window.showToast) window.showToast('저장 완료');
+          close();
+          const pcMount = document.querySelector('#customerSheet #cdDetailMount');
+          if (pcMount && pcMount.querySelector('.cv4-detail')) {
+            window._renderCustomerDetail(pcMount, c.id);
+          }
+          if (_currentCustomerId === c.id) {
+            const mobileBody = document.querySelector('#customerDashSheet #cdBody');
+            if (mobileBody) window._renderCustomerDetail(mobileBody, c.id);
+          }
         }
       } catch (e) {
         console.warn('[customer edit]', e);
-        if (window.showToast) window.showToast('저장 실패 — 다시 시도해주세요');
+        if (window.showToast) window.showToast(isNew ? '추가 실패 — 다시 시도해주세요' : '저장 실패 — 다시 시도해주세요');
       }
     });
   };
