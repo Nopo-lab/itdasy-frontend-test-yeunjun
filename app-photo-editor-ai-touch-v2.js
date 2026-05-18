@@ -42,8 +42,8 @@
   // 메인: source canvas/image + shopType → 새 canvas
   async function _apply(source, shopType) {
     const preset = PRESETS[_toShop(shopType)];
-    const w = source.width || source.naturalWidth;
-    const h = source.height || source.naturalHeight;
+    const w = source.naturalWidth || source.width;
+    const h = source.naturalHeight || source.height;
     const out = document.createElement('canvas');
     out.width = w; out.height = h;
     const ctx = out.getContext('2d');
@@ -146,32 +146,27 @@
   }
 
   // ── 패널 통합: PhotoEditor 자동 탭에 "AI 원터치 v2" 버튼 추가 ──
-  function _injectAutoButton() {
+  function _injectAutoButton(panel) {
+    if (!panel || panel.querySelector('[data-pe-ai-v2]')) return;
     const PE = window.PhotoEditor;
-    if (!PE || !PE._internal) return false;
-    const sheet = document.getElementById('peSheet');
-    if (!sheet) return false;
-    const panel = sheet.querySelector('.pe-panel');
-    if (!panel) return false;
-    if (panel.querySelector('[data-pe-ai-v2]')) return true;
+    if (!PE || !PE._internal) return;
     const state = PE._internal.getState();
-    if (!state || state.activeTab !== 'auto') return false;
+    if (!state || state.activeTab !== 'auto') return;
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'pe-action-btn pe-ai-v2-btn';
     btn.dataset.peAiV2 = '1';
-    btn.style.cssText = 'margin-top:8px;background:linear-gradient(135deg,#7b61ff,#5b8def);color:#fff;font-weight:600;';
+    btn.style.cssText = 'margin-top:8px;background:linear-gradient(135deg,#7b61ff,#5b8def);color:#fff;font-weight:600;width:100%;';
     btn.textContent = '✨ AI 원터치 v2 — 얼굴 정밀 보정';
     panel.appendChild(btn);
     btn.addEventListener('click', () => _runOnEditor(btn));
-    return true;
   }
 
   async function _runOnEditor(btn) {
     const PE = window.PhotoEditor;
     if (!PE || !PE._internal) return;
     const state = PE._internal.getState();
-    if (!state || !state.image) {
+    if (!state || !state.originalImg) {
       _toast('사진을 먼저 불러오세요');
       return;
     }
@@ -179,16 +174,17 @@
     btn.textContent = 'AI 분석 중…';
     btn.disabled = true;
     try {
-      const shopType = (window.ShopSettings && window.ShopSettings.get && window.ShopSettings.get('shop_type')) || 'makeup';
-      const result = await _apply(state.image, shopType);
-      // 결과 이미지로 편집기 상태 교체
+      const shopType = (window.ShopSettings && window.ShopSettings.get && window.ShopSettings.get('shop_type')) ||
+                       (localStorage.getItem('itdasy_shop_type')) || 'makeup';
+      const result = await _apply(state.originalImg, shopType);
       const url = result.toDataURL('image/png');
       const img = new Image();
       img.onload = () => {
-        state.image = img;
-        state.imageBitmap = result;
-        if (PE._internal.helpers && PE._internal.helpers.redraw) PE._internal.helpers.redraw();
-        if (PE._internal.helpers && PE._internal.helpers.pushHistory) PE._internal.helpers.pushHistory();
+        state.originalImg = img;
+        state.originalSrc = url;
+        const h = PE._internal.helpers || {};
+        if (h.redraw) h.redraw();
+        if (h.pushHistory) h.pushHistory();
         _toast('AI 원터치 v2 완료 (' + shopType + ' 모드)');
       };
       img.src = url;
@@ -201,22 +197,23 @@
   }
 
   function _toast(message) {
-    if (window.toast) window.toast(message);
+    if (window.showToast) window.showToast(message);
     else if (window.PhotoEditor && window.PhotoEditor._internal && window.PhotoEditor._internal.helpers && window.PhotoEditor._internal.helpers.toast) {
       window.PhotoEditor._internal.helpers.toast(message);
     }
   }
 
-  // 편집기 열릴 때마다 버튼 주입 시도
+  // MutationObserver — panel innerHTML 갱신될 때마다 버튼 주입 (깜빡임 없음)
   function _watchEditor() {
-    let attempts = 0;
-    const iv = setInterval(() => {
-      const sheet = document.getElementById('peSheet');
-      if (sheet && sheet.style.display !== 'none') {
-        _injectAutoButton();
-      }
-      if (++attempts > 600) clearInterval(iv); // 10분 후 중단
-    }, 1000);
+    const sheet = document.getElementById('photoEditorSheet');
+    const panel = sheet && sheet.querySelector('#pePanel');
+    if (!panel) {
+      setTimeout(_watchEditor, 800);
+      return;
+    }
+    _injectAutoButton(panel);
+    const obs = new MutationObserver(() => _injectAutoButton(panel));
+    obs.observe(panel, { childList: true });
   }
 
   window.PhotoEditorAITouchV2 = {

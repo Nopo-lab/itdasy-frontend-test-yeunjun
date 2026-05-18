@@ -689,6 +689,10 @@
       _drawText(ctx, dw, dh, _state.text);
     }
     if (_state.watermark.value) _drawWatermark(ctx, dw, dh, _state.watermark);
+    // [v217] tplV2 오버레이 — Templates v2 가 등록한 추가 합성 (워터마크 위)
+    if (typeof _drawHooks.tplV2_overlay === 'function') {
+      try { _drawHooks.tplV2_overlay(ctx, dw, dh, _state, _helpers); } catch (_e) { void _e; }
+    }
   }
 
   function _computeCrop(img, ratio) {

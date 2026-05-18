@@ -108,20 +108,38 @@
     return state.layers.find(l => l.id === state.activeLayerId);
   }
 
+  // PhotoEditor `_drawText` 와 동일한 식으로 정밀 hit test:
+  //   font size px = canvas_width * (layer.size / 100)
+  //   다중 줄 측정 → 가장 넓은 줄 기준 bbox + 회전 보정
   function _hitTest(canvas, state, e) {
     if (!state || !state.layers) return null;
     const rect = canvas.getBoundingClientRect();
     const px = (e.clientX - rect.left) / rect.width;
     const py = (e.clientY - rect.top) / rect.height;
-    // 위에서부터 (역순) 검사 — 마지막에 그려진 레이어가 위에 있음
+    const cw = canvas.width, ch = canvas.height;
+    const ctx = canvas.getContext('2d');
     for (let i = state.layers.length - 1; i >= 0; i--) {
       const lyr = state.layers[i];
       if (lyr.type !== 'text' || !lyr.value) continue;
-      const half = (lyr.size || 6) / 60;  // 대략적 hit box
-      const halfH = (lyr.size || 6) / 30;
-      if (Math.abs(px - lyr.x) < half * 4 && Math.abs(py - lyr.y) < halfH) {
-        return lyr;
-      }
+      const fs = Math.round(cw * ((lyr.size || 6) / 100));
+      const lines = String(lyr.value).split('\n').filter(s => s.length > 0);
+      ctx.save();
+      ctx.font = `800 ${fs}px sans-serif`;
+      let maxW = 0;
+      for (const ln of lines) maxW = Math.max(maxW, ctx.measureText(ln).width);
+      ctx.restore();
+      const lineH = fs * 1.25;
+      const totalH = lineH * Math.max(1, lines.length);
+      // bbox 캔버스 좌표 (px ratio 단위로 변환)
+      const halfW = (maxW + fs * 0.5) / cw / 2;   // 약간의 여백 + 정규화
+      const halfH = (totalH + fs * 0.3) / ch / 2;
+      // 회전 적용 — 회전된 점을 역회전해서 원래 bbox 와 비교
+      const rot = (lyr.rot || 0) * Math.PI / 180;
+      const dx = (px - lyr.x);
+      const dy = (py - lyr.y);
+      const ux = dx * Math.cos(-rot) - dy * Math.sin(-rot);
+      const uy = dx * Math.sin(-rot) + dy * Math.cos(-rot);
+      if (Math.abs(ux) < halfW && Math.abs(uy) < halfH) return lyr;
     }
     return null;
   }

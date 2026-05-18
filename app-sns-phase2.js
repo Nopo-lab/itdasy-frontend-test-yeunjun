@@ -49,21 +49,90 @@
     if (pop) setTimeout(() => { pop.style.display = 'none'; }, 1200);
   }
 
-  // ── SN-7: 크로스 플랫폼 발행 ──
+  // ── SN-7: 크로스 플랫폼 발행 (백엔드 결선) ──
+  // 백엔드 호출:
+  //   /sns/naver-blog/post     — 네이버 블로그 OpenAPI (토큰 부재 시 status='skipped')
+  //   /sns/kakao-channel/send  — 카카오 비즈니스 메시지 (토큰 부재 시 status='skipped')
+  // Instagram 은 기존 /instagram/publish 사용.
+  async function _postNaverBlog(title, content) {
+    const API = window.API || '';
+    const baseHeaders = window.authHeader ? window.authHeader() : {};
+    const headers = Object.assign({}, baseHeaders, { 'Content-Type': 'application/json' });
+    try {
+      const res = await fetch(API + '/sns/naver-blog/post', {
+        method: 'POST', headers,
+        body: JSON.stringify({ title, content, category: '뷰티' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: data.status || 'error', detail: data.detail || '' };
+    } catch (e) {
+      return { ok: false, status: 'error', detail: (e && e.message) || '네트워크 실패' };
+    }
+  }
+  async function _sendKakaoChannel(message) {
+    const API = window.API || '';
+    const baseHeaders = window.authHeader ? window.authHeader() : {};
+    const headers = Object.assign({}, baseHeaders, { 'Content-Type': 'application/json' });
+    try {
+      const res = await fetch(API + '/sns/kakao-channel/send', {
+        method: 'POST', headers,
+        body: JSON.stringify({ message, button_label: '예약하기', button_url: 'https://itdasy.com' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: data.status || 'error', detail: data.detail || '' };
+    } catch (e) {
+      return { ok: false, status: 'error', detail: (e && e.message) || '네트워크 실패' };
+    }
+  }
+
+  async function _runCrossPublish(pop) {
+    const ig = pop.querySelector('#sn7Ig').checked;
+    const nb = pop.querySelector('#sn7Naver').checked;
+    const kk = pop.querySelector('#sn7Kakao').checked;
+    const caption = (pop.querySelector('#sn7Caption').value || '').trim();
+    const title = (pop.querySelector('#sn7Title').value || '').trim() || '오늘의 시술';
+    if (!caption) { _toast('내용을 작성해주세요'); return; }
+    const result = pop.querySelector('#sn7Result');
+    result.innerHTML = '<div style="color:#666;font-size:13px;padding:8px 0;">발행 중…</div>';
+    const lines = [];
+
+    // Instagram 은 기존 /instagram/publish 가 즉시 발행. 사진 없으면 캡션만 안 됨 → 건너뜀.
+    if (ig) lines.push('📸 Instagram: 사진 첨부가 필요해요 (사진 편집기에서 저장 후 발행)');
+
+    if (nb) {
+      const r = await _postNaverBlog(title, caption);
+      if (r.status === 'ok') lines.push('📝 네이버 블로그: ✅ 발행됨');
+      else if (r.status === 'skipped') lines.push('📝 네이버 블로그: ⚠️ API 키 미등록 — ' + (r.detail || ''));
+      else lines.push('📝 네이버 블로그: ❌ 실패 — ' + (r.detail || ''));
+    }
+    if (kk) {
+      const r = await _sendKakaoChannel(caption);
+      if (r.status === 'ok') lines.push('💬 카카오톡 채널: ✅ 발송됨');
+      else if (r.status === 'skipped') lines.push('💬 카카오톡 채널: ⚠️ API 키 미등록 — ' + (r.detail || ''));
+      else lines.push('💬 카카오톡 채널: ❌ 실패 — ' + (r.detail || ''));
+    }
+
+    result.innerHTML = lines.map(l => `<div style="font-size:12px;padding:6px 0;border-top:1px solid #f3f3f3;">${_esc(l)}</div>`).join('') ||
+      '<div style="color:#888;font-size:12px;padding:8px 0;">선택된 플랫폼이 없어요.</div>';
+  }
+
   function openCrossPlatform() {
     let pop = document.getElementById('snsCrossPop');
     if (!pop) { pop = document.createElement('div'); pop.id = 'snsCrossPop'; pop.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:16px;'; document.body.appendChild(pop); }
-    pop.innerHTML = `<div style="background:var(--surface,#fff);width:100%;max-width:400px;border-radius:20px;padding:24px;">
-      <div style="font-size:17px;font-weight:800;margin-bottom:16px;">🌐 크로스 플랫폼 발행</div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:16px;">하나의 게시물을 여러 플랫폼에 동시 발행</div>
-      <label style="display:flex;align-items:center;gap:10px;padding:12px;background:#fafafa;border-radius:12px;margin-bottom:8px;cursor:pointer;"><input type="checkbox" checked> <span style="font-size:14px;font-weight:600;">📸 Instagram</span><span style="margin-left:auto;font-size:10px;color:#4ade80;">연동됨</span></label>
-      <label style="display:flex;align-items:center;gap:10px;padding:12px;background:#fafafa;border-radius:12px;margin-bottom:8px;cursor:pointer;"><input type="checkbox"> <span style="font-size:14px;font-weight:600;">📝 네이버 블로그</span><span style="margin-left:auto;font-size:10px;color:#888;">미연동</span></label>
-      <label style="display:flex;align-items:center;gap:10px;padding:12px;background:#fafafa;border-radius:12px;margin-bottom:16px;cursor:pointer;"><input type="checkbox"> <span style="font-size:14px;font-weight:600;">💬 카카오톡 채널</span><span style="margin-left:auto;font-size:10px;color:#888;">미연동</span></label>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:16px;">💡 플랫폼별 포맷 자동 변환 (이미지 크기, 글자 수 제한 등)</div>
-      <div style="display:flex;gap:8px;"><button onclick="document.getElementById('snsCrossPop').style.display='none'" style="flex:1;height:44px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;font-weight:600;cursor:pointer;">닫기</button><button onclick="window.showToast('선택한 플랫폼에 발행 준비 중…');setTimeout(()=>window.showToast('✅ 발행 완료!'),1500)" style="flex:1.5;height:44px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-weight:800;cursor:pointer;">동시 발행</button></div>
+    pop.innerHTML = `<div style="background:var(--surface,#fff);width:100%;max-width:440px;border-radius:20px;padding:20px;max-height:90vh;overflow-y:auto;">
+      <div style="font-size:17px;font-weight:800;margin-bottom:14px;">🌐 크로스 플랫폼 발행</div>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fafafa;border-radius:12px;margin-bottom:6px;cursor:pointer;"><input type="checkbox" id="sn7Ig" checked> <span style="font-size:14px;font-weight:600;">📸 Instagram</span><span style="margin-left:auto;font-size:10px;color:#888;">사진 필요</span></label>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fafafa;border-radius:12px;margin-bottom:6px;cursor:pointer;"><input type="checkbox" id="sn7Naver"> <span style="font-size:14px;font-weight:600;">📝 네이버 블로그</span></label>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fafafa;border-radius:12px;margin-bottom:12px;cursor:pointer;"><input type="checkbox" id="sn7Kakao"> <span style="font-size:14px;font-weight:600;">💬 카카오톡 채널</span></label>
+      <label style="display:block;margin-bottom:8px;"><span style="font-size:11px;font-weight:700;color:#888;">제목 (블로그용)</span><input id="sn7Title" type="text" placeholder="오늘의 시술 결과" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-top:3px;box-sizing:border-box;"></label>
+      <label style="display:block;margin-bottom:12px;"><span style="font-size:11px;font-weight:700;color:#888;">내용 / 메시지</span><textarea id="sn7Caption" rows="4" placeholder="고객님께 전달할 메시지나 블로그 내용을 적어주세요" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;margin-top:3px;resize:vertical;font-family:inherit;box-sizing:border-box;"></textarea></label>
+      <div id="sn7Result" style="margin-bottom:12px;"></div>
+      <div style="display:flex;gap:8px;"><button id="sn7Cancel" style="flex:1;height:44px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;font-weight:600;cursor:pointer;">닫기</button><button id="sn7Submit" style="flex:1.5;height:44px;border:none;border-radius:12px;background:var(--accent,#F18091);color:#fff;font-weight:800;cursor:pointer;">동시 발행</button></div>
     </div>`;
     pop.style.display = 'flex';
     pop.onclick = e => { if (e.target === pop) pop.style.display = 'none'; };
+    pop.querySelector('#sn7Cancel').onclick = () => { pop.style.display = 'none'; };
+    pop.querySelector('#sn7Submit').onclick = () => _runCrossPublish(pop);
   }
 
   // ── SN-8: 콘텐츠 AI 코파일럿 ──

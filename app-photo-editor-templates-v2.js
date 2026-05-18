@@ -198,29 +198,197 @@
     _sheetEl.style.display = 'flex';
   }
 
-  // PhotoEditor 템플릿 탭 안에 "더 많은 템플릿 (30+)" 진입 버튼 자동 주입
+  // MutationObserver — 템플릿 탭 활성일 때마다 버튼 주입
+  function _inject(panel) {
+    if (!panel || panel.querySelector('[data-pe-tplv2]')) return;
+    const PE = window.PhotoEditor;
+    const state = PE && PE._internal && PE._internal.getState();
+    if (!state || state.activeTab !== 'template') return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pe-action-btn';
+    btn.dataset.peTplv2 = '1';
+    btn.style.cssText = 'margin-top:12px;background:linear-gradient(135deg,#7b61ff,#5b8def);color:#fff;font-weight:600;width:100%;';
+    btn.textContent = '✨ 더 많은 템플릿 (30+) — 카테고리·검색';
+    btn.addEventListener('click', () => _open());
+    panel.appendChild(btn);
+  }
+
   function _watchPanel() {
-    let attempts = 0;
-    const iv = setInterval(() => {
-      const sheet = document.getElementById('peSheet');
-      if (!sheet || sheet.style.display === 'none') return;
-      const panel = sheet.querySelector('.pe-panel');
-      if (panel && !panel.querySelector('[data-pe-tplv2]')) {
-        const PE = window.PhotoEditor;
-        const state = PE && PE._internal && PE._internal.getState();
-        if (state && state.activeTab === 'template') {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'pe-action-btn';
-          btn.dataset.peTplv2 = '1';
-          btn.style.cssText = 'margin-top:12px;background:linear-gradient(135deg,#7b61ff,#5b8def);color:#fff;font-weight:600;';
-          btn.textContent = '✨ 더 많은 템플릿 (30+) — 카테고리·검색';
-          btn.addEventListener('click', () => _open());
-          panel.appendChild(btn);
-        }
-      }
-      if (++attempts > 600) clearInterval(iv);
-    }, 700);
+    const sheet = document.getElementById('photoEditorSheet');
+    const panel = sheet && sheet.querySelector('#pePanel');
+    if (!panel) {
+      setTimeout(_watchPanel, 800);
+      return;
+    }
+    _inject(panel);
+    new MutationObserver(() => _inject(panel)).observe(panel, { childList: true });
+    _registerDrawHook();
+  }
+
+  // PhotoEditor _drawHooks.tplV2_overlay 등록 — 실제 캔버스 합성
+  function _registerDrawHook() {
+    const PE = window.PhotoEditor;
+    if (!PE || !PE._internal || !PE._internal.registerDrawHook) {
+      setTimeout(_registerDrawHook, 500);
+      return;
+    }
+    PE._internal.registerDrawHook('tplV2_overlay', (ctx, dw, dh, state, helpers) => {
+      const tpl = state && state.tplV2;
+      if (!tpl) return;
+      const t = TEMPLATES.find(x => x.id === tpl.id);
+      if (!t) return;
+      _drawOverlay(ctx, dw, dh, t, tpl);
+    });
+  }
+
+  // 카테고리별 디자인 합성 — 단순 그라데이션 대신 실제 카드 디자인
+  function _drawOverlay(ctx, dw, dh, t, brand) {
+    const accent = brand.bg || '#7b61ff';
+    const shopName = brand.shopName || '잇데이 스튜디오';
+    ctx.save();
+    switch (t.cat) {
+      case 'feed':    _drawFeed(ctx, dw, dh, t, accent, shopName); break;
+      case 'story':   _drawStory(ctx, dw, dh, t, accent, shopName); break;
+      case 'reels':   _drawReels(ctx, dw, dh, t, accent, shopName); break;
+      case 'event':   _drawEvent(ctx, dw, dh, t, accent, shopName); break;
+      case 'price':   _drawPrice(ctx, dw, dh, t, accent, shopName); break;
+      case 'card':    _drawCard(ctx, dw, dh, t, accent, shopName); break;
+    }
+    ctx.restore();
+  }
+
+  function _setShadow(ctx, alpha) {
+    ctx.shadowColor = 'rgba(0,0,0,' + alpha + ')';
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 6;
+  }
+
+  function _drawFeed(ctx, dw, dh, t, accent, shopName) {
+    // 하단 30% 강조 띠
+    const bandY = dh * 0.72;
+    const bandH = dh * 0.28;
+    const grad = ctx.createLinearGradient(0, bandY, 0, dh);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(0.5, accent + '99');
+    grad.addColorStop(1, accent);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, bandY, dw, bandH);
+    // 샵명 + 헤드라인
+    ctx.fillStyle = '#fff';
+    ctx.font = `700 ${Math.round(dh * 0.046)}px sans-serif`;
+    ctx.textAlign = 'left';
+    _setShadow(ctx, 0.35);
+    ctx.fillText(t.prefillText || t.label, dw * 0.06, dh * 0.86);
+    ctx.shadowBlur = 0;
+    ctx.font = `500 ${Math.round(dh * 0.024)}px sans-serif`;
+    ctx.globalAlpha = 0.85;
+    ctx.fillText(shopName, dw * 0.06, dh * 0.94);
+  }
+
+  function _drawStory(ctx, dw, dh, t, accent, shopName) {
+    // 상단 빈 영역 컬러 박스 + 큰 헤드라인
+    const headH = dh * 0.18;
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, 0, dw, headH);
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.font = `700 ${Math.round(dh * 0.052)}px sans-serif`;
+    _setShadow(ctx, 0.3);
+    ctx.fillText(t.prefillText || t.label, dw / 2, headH * 0.65);
+    ctx.shadowBlur = 0;
+    // 하단 샵명
+    ctx.font = `600 ${Math.round(dh * 0.025)}px sans-serif`;
+    ctx.fillStyle = '#fff';
+    ctx.globalAlpha = 0.9;
+    ctx.fillText(shopName, dw / 2, dh - dh * 0.04);
+  }
+
+  function _drawReels(ctx, dw, dh, t, accent, shopName) {
+    // 중앙에 큰 헤드라인 + 배경 어둡게
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(0, dh * 0.35, dw, dh * 0.3);
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.font = `900 ${Math.round(dh * 0.06)}px sans-serif`;
+    _setShadow(ctx, 0.5);
+    ctx.fillText(t.prefillText || t.label, dw / 2, dh * 0.52);
+    ctx.shadowBlur = 0;
+    // 하단 컬러 띠
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, dh - 8, dw, 8);
+    ctx.font = `600 ${Math.round(dh * 0.02)}px sans-serif`;
+    ctx.fillStyle = '#fff';
+    ctx.fillText(shopName, dw / 2, dh - dh * 0.05);
+  }
+
+  function _drawEvent(ctx, dw, dh, t, accent, shopName) {
+    // 코너 컬러 라운드 박스 + 큰 텍스트
+    const pad = dw * 0.06;
+    const boxW = dw * 0.6, boxH = dh * 0.25;
+    const x = (dw - boxW) / 2, y = dh * 0.4;
+    ctx.fillStyle = accent;
+    _roundRect(ctx, x, y, boxW, boxH, 24);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.font = `800 ${Math.round(dh * 0.07)}px sans-serif`;
+    ctx.fillText(t.prefillText || t.label, dw / 2, y + boxH * 0.65);
+    // 샵명
+    ctx.font = `500 ${Math.round(dh * 0.022)}px sans-serif`;
+    ctx.fillStyle = '#fff';
+    ctx.globalAlpha = 0.95;
+    _setShadow(ctx, 0.4);
+    ctx.fillText(shopName, dw / 2, dh - pad);
+  }
+
+  function _drawPrice(ctx, dw, dh, t, accent, shopName) {
+    // 상단 헤더 띠
+    const headH = dh * 0.12;
+    ctx.fillStyle = accent + 'ee';
+    ctx.fillRect(0, 0, dw, headH);
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'left';
+    ctx.font = `700 ${Math.round(dh * 0.035)}px sans-serif`;
+    ctx.fillText(t.prefillText || t.label, dw * 0.06, headH * 0.65);
+    // 하단 정보 영역
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.fillRect(0, dh - dh * 0.22, dw, dh * 0.22);
+    ctx.fillStyle = '#222';
+    ctx.font = `600 ${Math.round(dh * 0.022)}px sans-serif`;
+    ctx.fillText('샵 메뉴 안내', dw * 0.06, dh - dh * 0.15);
+    ctx.font = `400 ${Math.round(dh * 0.02)}px sans-serif`;
+    ctx.fillStyle = '#666';
+    ctx.fillText(shopName, dw * 0.06, dh - dh * 0.08);
+  }
+
+  function _drawCard(ctx, dw, dh, t, accent, shopName) {
+    // 카드 스타일 가장자리 + 중앙 텍스트
+    const inset = dw * 0.05;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = Math.max(3, dw * 0.008);
+    ctx.strokeRect(inset, inset, dw - inset * 2, dh - inset * 2);
+    ctx.fillStyle = '#000';
+    ctx.globalAlpha = 0.3;
+    ctx.fillRect(inset * 2, dh / 2 - dh * 0.08, dw - inset * 4, dh * 0.16);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.font = `700 ${Math.round(dh * 0.05)}px sans-serif`;
+    ctx.fillText(t.prefillText || t.label, dw / 2, dh / 2);
+    ctx.font = `500 ${Math.round(dh * 0.022)}px sans-serif`;
+    ctx.fillStyle = accent;
+    ctx.fillText(shopName, dw / 2, dh / 2 + dh * 0.06);
+  }
+
+  function _roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
   }
 
   window.PhotoEditorTemplatesV2 = { open: _open, TEMPLATES, CATS };

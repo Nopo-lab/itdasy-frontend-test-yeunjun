@@ -5,32 +5,59 @@
   if (window.SNSSchedule) return;
   function _toast(msg) { if (window.showToast) window.showToast(msg); }
 
+  // SN-2: 2단계 — (1) data URL 업로드 → image_url → (2) ScheduledPost 생성
+  // 실제 발행은 backend services/scheduled_publisher.publish_loop 가 scheduled_at 도달 시 IG Graph API 호출.
   async function schedulePost(opts) {
     const { imageDataUrl, caption, scheduledTime, platform } = opts || {};
     if (!imageDataUrl) return _toast('사진을 먼저 선택해주세요');
     if (!scheduledTime) return _toast('예약 시간을 설정해주세요');
 
     const API = window.API || '';
-    const headers = window.authHeader ? { ...window.authHeader(), 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+    const baseHeaders = window.authHeader ? window.authHeader() : {};
+    const headers = Object.assign({}, baseHeaders, { 'Content-Type': 'application/json' });
 
-    _toast('예약 발행 등록 중…');
+    _toast('예약 등록 중… (1/2) 사진 업로드');
+    let imageUrl = '';
     try {
-      const res = await fetch(API + '/instagram/schedule', {
+      const up = await fetch(API + '/scheduled-posts/upload', {
         method: 'POST', headers,
-        body: JSON.stringify({ image_data: imageDataUrl, caption: caption || '', scheduled_time: scheduledTime, platform: platform || 'instagram' }),
+        body: JSON.stringify({ image_data: imageDataUrl }),
+      });
+      if (!up.ok) {
+        const err = await up.json().catch(() => ({}));
+        throw new Error(err.detail || `업로드 실패 HTTP ${up.status}`);
+      }
+      const upData = await up.json();
+      imageUrl = upData.url || '';
+      if (!imageUrl) throw new Error('이미지 URL 응답 없음');
+    } catch (e) {
+      _toast('업로드 실패: ' + ((e && e.message) || '').slice(0, 60));
+      return null;
+    }
+
+    _toast('예약 등록 중… (2/2) 예약 저장');
+    try {
+      const res = await fetch(API + '/scheduled-posts', {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          image_url: imageUrl,
+          caption: caption || '',
+          hashtags: '',
+          scheduled_at: scheduledTime,
+        }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || `HTTP ${res.status}`);
       }
       const data = await res.json();
-      // 캘린더에 추가
-      if (window.SNSCalendar) {
+      if (window.SNSCalendar && typeof window.SNSCalendar.addPost === 'function') {
         const d = new Date(scheduledTime);
         window.SNSCalendar.addPost({
-          id: 'sched-' + Date.now(), date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+          id: 'sched-' + (data.id || Date.now()),
+          date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
           time: `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`,
-          caption, imageUrl: '', status: 'scheduled', platform: platform || 'instagram', serverId: data.id || null,
+          caption, imageUrl, status: 'scheduled', platform: platform || 'instagram', serverId: data.id || null,
         });
       }
       _toast('✅ 예약 발행 등록 완료!');
@@ -38,6 +65,29 @@
     } catch (e) {
       _toast('예약 실패: ' + ((e && e.message) || '').slice(0, 60));
       return null;
+    }
+  }
+
+  async function listScheduled() {
+    const API = window.API || '';
+    const headers = window.authHeader ? window.authHeader() : {};
+    try {
+      const res = await fetch(API + '/scheduled-posts', { headers });
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (_e) {
+      return [];
+    }
+  }
+
+  async function cancelScheduled(id) {
+    const API = window.API || '';
+    const headers = window.authHeader ? window.authHeader() : {};
+    try {
+      const res = await fetch(API + '/scheduled-posts/' + id, { method: 'DELETE', headers });
+      return res.ok;
+    } catch (_e) {
+      return false;
     }
   }
 
@@ -66,5 +116,10 @@
     };
   }
 
-  window.SNSSchedule = { schedule: schedulePost, openModal: openScheduleModal };
+  window.SNSSchedule = {
+    schedule: schedulePost,
+    openModal: openScheduleModal,
+    list: listScheduled,
+    cancel: cancelScheduled,
+  };
 })();

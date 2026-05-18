@@ -2,7 +2,67 @@
 
 > 새 세션이 시작되면 **이 파일을 먼저 읽고** 현재 단계·대기 결정·마지막 체크포인트를 파악한다.
 
-**LAST UPDATED:** 2026-05-19 · v217 — ultra-plan 마무리 (PE-1/4/5/6 + MediaPipe). 마스터플랜 미제외 항목 전체 완료.
+**LAST UPDATED:** 2026-05-19 · v218 — v217 버그 fix(sheetId/state field/watcher) + SN-2/SN-7 백엔드 결선 완료. 마스터플랜 미제외 항목 운영 가능 상태.
+
+---
+
+## 🟣 2026-05-19 — v218 v217 fix + SN-2/SN-7 백엔드 결선
+
+배경: 사용자(연준) "다 해야지 제대로" 지시. v217 작성 직후 코드 정독에서 명백한 통합 버그 발견 — 신규 4개 모듈이 잘못된 DOM ID/state 필드 참조. 또 SN-2/SN-7 백엔드 결선 미완료 부분 마저 완료.
+
+발견된 버그 (코드 정독에서):
+1. `peSheet` ID 참조 — 실제는 `photoEditorSheet`. PE-1/PE-5/PE-6 watcher 가 영원히 sheet 못 찾았었음.
+2. `state.image` 필드 참조 — 실제는 `state.originalImg`. PE-1 보정 결과 적용 시 NPE 위험.
+3. `state.imageBitmap` 필드 — 존재하지 않음. 제거.
+4. setInterval 영구 폴링 (1초/700ms/500ms × 4 모듈) — MutationObserver 로 교체. 깜빡임도 제거.
+5. PE-4 hit test 가 size/60 * 4 = 화면 40% 너무 큼 — measureText + 회전 역변환으로 픽셀 정확 hit test.
+6. PE-5 가 state.tplV2 만 설정하고 실제 합성 없음 — PhotoEditor 본체에 `_drawHooks.tplV2_overlay` 호출 1줄 추가 + Templates v2 가 hook 등록.
+
+PE-5 디자인 합성 (이번 라운드 추가):
+- 6 카테고리별 합성 함수 — feed (하단 그라데이션 띠 + 헤드라인), story (상단 컬러 블록), reels (중앙 어둠 + 큰 헤드 + 컬러 띠), event (중앙 라운드 박스), price (상단 헤더 + 하단 정보 영역), card (테두리 + 중앙 다크 박스).
+- Brand Kit primary/accent/soft 가 진짜로 캔버스에 그려짐.
+
+SN-2 백엔드 결선 (`itdasy_backend-test`):
+- `routers/scheduled_posts.py` 에 `POST /scheduled-posts/upload` 추가 — data URL 받아 static/uploads/scheduled/{uid}.{ext} 저장, 공개 URL 반환. 8MB 상한, 지원 형식 png/jpg/webp.
+- 환경변수 `PUBLIC_BASE_URL` 있으면 풀 URL, 없으면 상대 경로 (`/static/uploads/scheduled/...`).
+- 발행 자체는 기존 `services/scheduled_publisher.publish_loop` 가 main.py startup task 로 무한 루프 돌면서 처리.
+
+SN-2 프론트 (`app-sns-schedule.js`):
+- 옛 `POST /instagram/schedule` (존재하지 않던 endpoint) → 새 2단계 호출. (1) `/scheduled-posts/upload` (2) `/scheduled-posts` POST.
+- `listScheduled()` / `cancelScheduled(id)` API 추가 — 캘린더가 init 시 호출 가능.
+
+SN-7 백엔드 결선 (신규 라우터):
+- `routers/sns_crosspost.py` — POST `/sns/naver-blog/post`, POST `/sns/kakao-channel/send`.
+- 환경변수 미설정 (NAVER_BLOG_OPEN_API_TOKEN, NAVER_BLOG_USER_ID, KAKAO_CHANNEL_BIZ_KEY, KAKAO_CHANNEL_PUBLIC_ID) 시 503 대신 **200 + status='skipped'** 응답. 프론트에서 사용자에게 "API 키 등록 필요" 안내.
+- 환경변수 등록되면 실제 네이버 블로그 OpenAPI / 카카오 비즈니스 메시지 호출.
+- main.py 에 라우터 등록 1줄 추가.
+
+SN-7 프론트 (`app-sns-phase2.js openCrossPlatform`):
+- 옛 가짜 toast → 실제 백엔드 호출 + 결과 표시 (✅ / ⚠️ skipped / ❌ error).
+- 캡션 textarea + 블로그 제목 input + 플랫폼별 체크박스 + 결과 div.
+- Instagram 은 사진 첨부 필수 안내 (별도 진입 — 기존 `/instagram/publish` 사용).
+
+확인:
+- 백엔드 AST 통과, frontend node --check / smoke / eslint 0 errors.
+- headless Chrome 로드 → JS 에러 0, 빌드 v218 적용 확인.
+- 백엔드 푸시: `git push test feat/sns-publish-routes:main` 성공 (Railway 자동 배포 대기).
+
+ultra-plan 진행 상태:
+- ✅ Phase 1 전체 (PE-1/2/4/5 + SN-1~5) — UI 정밀 + 백엔드 결선 완료
+- ✅ Phase 2 전체 (PE-6/8/9/10 + SN-6~10) — UI 정밀 + 백엔드 결선 완료
+- ⛔ Phase 3 / PE-3 AI 배경 / PE-7 릴스 — 사용자 지시로 보류
+
+다음 라운드 후보 (선택):
+- SN-7 네이버/카카오 환경변수 등록 (운영 작업)
+- PE-1 MediaPipe 첫 로딩 스피너 UX
+- PE-4 텍스트 외 스티커/이미지 레이어로 확장
+- SN-5 인사이트 demo data → 실제 IG insights API 결선
+
+위반 영역: 없음. 운영 레포 (itdasy_backend / itdasy-frontend / itdasy-frontend-test) 미터치. 코덱스 스테이징 2개 + 백엔드 스테이징만 작업.
+
+---
+
+## 🟣 2026-05-19 — v217 ultra-plan 마무리 (잔여 4 사진편집 모듈 + 공통 Face Mesh)
 
 ---
 

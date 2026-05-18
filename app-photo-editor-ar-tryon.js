@@ -160,8 +160,10 @@
     _landmarksCache = null;
     _sheetEl._source = sourceImage;
     _sheetEl.style.display = 'flex';
-    _previewCanvas.width = sourceImage.width || sourceImage.naturalWidth || 800;
-    _previewCanvas.height = sourceImage.height || sourceImage.naturalHeight || 800;
+    const w = sourceImage.naturalWidth || sourceImage.width || 800;
+    const h = sourceImage.naturalHeight || sourceImage.height || 800;
+    _previewCanvas.width = w;
+    _previewCanvas.height = h;
     _renderPanel();
     _renderPreview();
     // Face Mesh 비동기 검출
@@ -309,32 +311,35 @@
     HAIR_COLORS, LIP_COLORS, LASH_LEVELS, NAIL_COLORS,
   };
 
-  // PhotoEditor 뷰티 탭 안에 "AR 가상 시술" 진입 버튼 자동 주입
+  // MutationObserver — 뷰티 탭 활성일 때마다 AR 버튼 주입
+  function _inject(panel) {
+    if (!panel || panel.querySelector('[data-pe-ar]')) return;
+    const PE = window.PhotoEditor;
+    const state = PE && PE._internal && PE._internal.getState();
+    if (!state || state.activeTab !== 'beauty') return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pe-action-btn';
+    btn.dataset.peAr = '1';
+    btn.style.cssText = 'margin-top:12px;background:linear-gradient(135deg,#c87c8a,#7b61ff);color:#fff;font-weight:600;width:100%;';
+    btn.textContent = '✨ AR 가상 시술 — 컬러 미리보기 (상담용)';
+    btn.addEventListener('click', () => {
+      const cur = PE && PE._internal && PE._internal.getState();
+      if (cur && cur.originalImg) _open(cur.originalImg);
+      else if (window.showToast) window.showToast('사진을 먼저 불러오세요');
+    });
+    panel.appendChild(btn);
+  }
+
   function _watchPanel() {
-    let attempts = 0;
-    const iv = setInterval(() => {
-      const sheet = document.getElementById('peSheet');
-      if (!sheet || sheet.style.display === 'none') return;
-      const panel = sheet.querySelector('.pe-panel');
-      if (panel && !panel.querySelector('[data-pe-ar]')) {
-        const PE = window.PhotoEditor;
-        const state = PE && PE._internal && PE._internal.getState();
-        if (state && state.activeTab === 'beauty') {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'pe-action-btn';
-          btn.dataset.peAr = '1';
-          btn.style.cssText = 'margin-top:12px;background:linear-gradient(135deg,#c87c8a,#7b61ff);color:#fff;font-weight:600;';
-          btn.textContent = '✨ AR 가상 시술 — 컬러 미리보기 (상담용)';
-          btn.addEventListener('click', () => {
-            if (state.image) _open(state.image);
-            else if (window.toast) window.toast('사진을 먼저 불러오세요');
-          });
-          panel.appendChild(btn);
-        }
-      }
-      if (++attempts > 600) clearInterval(iv);
-    }, 700);
+    const sheet = document.getElementById('photoEditorSheet');
+    const panel = sheet && sheet.querySelector('#pePanel');
+    if (!panel) {
+      setTimeout(_watchPanel, 800);
+      return;
+    }
+    _inject(panel);
+    new MutationObserver(() => _inject(panel)).observe(panel, { childList: true });
   }
 
   if (document.readyState === 'loading') {

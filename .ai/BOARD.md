@@ -1,6 +1,32 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-19 by Claude Code (v217 ultra-plan 마무리 — PE-1/4/5/6)
+**LAST UPDATED:** 2026-05-19 by Claude Code (v218 — 버그 fix + SN 백엔드 결선)
+
+---
+
+## 2026-05-19 — v218 버그 fix + SN-2/SN-7 백엔드 결선
+
+배경: v217 푸시 후 코드 정독에서 명백한 버그 발견 — 신규 모듈 4개가 잘못된 sheet ID(`peSheet`→실제`photoEditorSheet`) + 잘못된 image 필드(`state.image`→실제`state.originalImg`) 참조. setInterval 영구 watcher 폴링도 정리 필요. SN-2/SN-7 백엔드 결선이 빠져있던 부분도 마저 완료.
+
+프론트 fix (이번 커밋):
+- `app-photo-editor-ai-touch-v2.js`: peSheet→photoEditorSheet, state.image→state.originalImg, setInterval→MutationObserver
+- `app-photo-editor-templates-v2.js`: 동일 패턴 + 카테고리별 실제 합성 hook (`tplV2_overlay`) 등록 + 6 카테고리 디자인 합성 함수 (feed/story/reels/event/price/card)
+- `app-photo-editor-ar-tryon.js`: 동일 패턴
+- `app-photo-editor-text-dnd.js`: hit test 정밀화 — `measureText` 기반 + 회전 보정
+- `app-photo-editor.js`: redraw 끝부분에 `_drawHooks.tplV2_overlay` 호출 1줄 추가 (워터마크 위)
+
+SN-2 백엔드 결선:
+- 백엔드 `routers/scheduled_posts.py` 에 `POST /scheduled-posts/upload` 추가 (data URL → static/uploads/scheduled/ 저장 후 공개 URL 반환)
+- 프론트 `app-sns-schedule.js`: `/instagram/schedule` → `/scheduled-posts/upload` + `/scheduled-posts` 2단계 호출. listScheduled/cancelScheduled API 추가.
+- 실제 발행은 기존 `services/scheduled_publisher.publish_loop` (main.py startup task) 가 처리
+
+SN-7 백엔드 결선:
+- 신규 `routers/sns_crosspost.py` — POST `/sns/naver-blog/post` + POST `/sns/kakao-channel/send`. 환경변수 (NAVER_BLOG_OPEN_API_TOKEN 등) 부재 시 status='skipped' 응답
+- 프론트 `app-sns-phase2.js` openCrossPlatform: 가짜 toast → 실제 fetch + 결과 표시 (성공 ✅ / skipped ⚠️ / error ❌)
+
+빌드 버전: `20260519-v218-sn-backend-wired`
+백엔드: itdasy_backend-test 푸시 완료 (3dc2e0c on test/main)
+확인: smoke 166 scripts pass, eslint 0 errors, headless Chrome 로드 JS 에러 0
 
 ---
 
