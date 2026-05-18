@@ -74,7 +74,15 @@
   padding: 12px;
   overflow: hidden;
 }
-.pe-canvas-wrap { position: relative; max-width: 100%; max-height: 100%; display:flex; align-items:center; justify-content:center; }
+/* [v203 2026-05-19] 핀치 줌·패닝 — wrap 에 transform 적용 (자식 canvas/mask/cursor 모두 같이) */
+.pe-canvas-wrap {
+  position: relative;
+  max-width: 100%; max-height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.05s linear;
+  will-change: transform;
+  touch-action: none;  /* 브라우저 기본 핀치 줌 차단 — 직접 처리 */
+}
 .pe-canvas {
   display: block;
   max-width: 100%; max-height: 100%;

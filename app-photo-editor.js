@@ -834,6 +834,13 @@
     _renderTabs(); _renderPanel(); _redraw();
     if (opts.src) _loadImage(opts.src);
     _pushHistoryState();
+    // [v203 2026-05-19] 핀치 줌 attach — wrap 자식 (메인 canvas + 마스크 + 커서) 모두 같이 변환
+    try {
+      if (window.PhotoEditor && typeof window.PhotoEditor._zoomAttach === 'function') {
+        const wrap = sheet.querySelector('.pe-canvas-wrap');
+        if (wrap) window.PhotoEditor._zoomAttach(wrap, _state);
+      }
+    } catch (_e) { void _e; }
   }
   function _close(fromHistory) {
     // [v188] 미저장 변경 경고 — historyCursor > 0 = 슬라이더/마스크 적용 변경 있음.
@@ -851,6 +858,9 @@
     if (sheet) sheet.style.display = 'none';
     document.body.style.overflow = '';
     try { if (window.PhotoEditor && typeof window.PhotoEditor._brushCleanup === 'function') window.PhotoEditor._brushCleanup(); }
+    catch (_e) { void _e; }
+    // [v203] 핀치 줌 cleanup — wrap transform 초기화 + 이벤트 해제
+    try { if (window.PhotoEditor && typeof window.PhotoEditor._zoomCleanup === 'function') window.PhotoEditor._zoomCleanup(); }
     catch (_e) { void _e; }
     _state = null;
     if (!fromHistory && _historyPushed) { _historyPushed = false; try { history.back(); } catch (_e) { void _e; } }
