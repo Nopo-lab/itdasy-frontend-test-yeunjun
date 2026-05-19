@@ -1,6 +1,45 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-19 by Claude Code (v225 — Sprint 1 Pixel Zoom 32x + Grid + Minimap)
+**LAST UPDATED:** 2026-05-19 by Claude Code (v226 — Sprint 2 WebGL2 보정 파이프라인)
+
+---
+
+## 2026-05-19 — v226 Sprint 2 WebGL2 보정 파이프라인
+
+배경: plan v3 Sprint 2 (4·5 sprint 의 GPU 의존성, 먼저 깔아야 도미노로 풀림). 친구 피드백 #1·#3·#4 반영 — 셰이더 처음부터 4파일 분할, beauty.js 분기 설계 0.5일 선행, mask uniform 공통 진입점 초기부터 명시.
+
+선행 설계: `docs/sprint2-pipeline-design.md` 신규
+- beauty.js 18 슬라이더는 RGB-HSV 분기 (MediaPipe 미사용) — GL 위임 대신 영역 마스킹 픽셀 walk 그대로 유지
+- v226 GL 범위: 전역 톤 (brightness/saturate/contrast/temperature/hue/vibrance) + unsharpMask
+- _redraw() 흐름: drawImage(원본) → gl_tone hook → gl_blur hook → beauty 픽셀 walk → text → watermark → tplV2
+- u_mask 공통 진입점 (Sprint 3/5 재사용)
+
+신규 파일 (6개):
+- `app-photo-editor-gl-ctx.js` (~100줄) — WebGL2 컨텍스트, webglcontextlost 핸들러, CPU 폴백 토글
+- `app-photo-editor-gl-pipeline.js` (~210줄) — ping-pong FBO 2개, 공통 vertex shader, uniform 바인딩, u_mask sampler 공통 진입점, full-screen quad
+- `app-photo-editor-gl-shaders-tone.js` (~110줄) — brightness/contrast/saturate/temperature/hue/vibrance 한 셰이더 합침, HSV 변환, isIdentity() 빠른 패스
+- `app-photo-editor-gl-shaders-blur.js` (~110줄) — 가우시안 9-tap 2-pass 횡/종 + unsharp diff (원본+블러 두 텍스처)
+- `app-photo-editor-gl-shaders-lut.js` (~130줄) — 1D LUT sampler (Sprint 4 Curve 준비), 3D LUT sampler trilinear interpolation (Sprint 5 Film 준비)
+- `app-photo-editor-gl-bridge.js` (~50줄) — PhotoEditor._drawHooks 에 gl_tone / gl_blur 등록
+
+수정 파일:
+- `app-photo-editor.js` `_redraw()` — gl_tone/gl_blur hook 호출 분기, GL 미지원 시 CSS filter 폴백 (+15줄, -4줄 = 메인 1017→1028, 1050 한도 내)
+- `index.html` / `sw.js` / `app-core.js` — 빌드 v226 통일 + 6 모듈 defer 로드
+
+회귀 안전성:
+- GL 미지원 단말 → CSS filter 폴백 자동 (PhotoEditorGLCtx.supported = false)
+- webglcontextlost 발생 시 자동 폴백 (다음 _redraw 부터)
+- isIdentity 검사로 변화 없는 슬라이더면 GL pass 건너뛰기 (성능)
+- beauty 22 슬라이더, 다중 텍스트, 템플릿, MediaPipe AI 원터치 코드 0줄 영향
+
+빌드: `20260519-v226-webgl2-pipeline`
+확인: smoke (163 scripts) pass, eslint 0 errors, headless Chrome JS 에러 0, diff check pass
+
+남은 확인 (사람 손):
+- Galaxy A14 (저가형 GPU) — slider drag FPS 30+
+- iOS Safari webglcontextlost 강제 발생 → 폴백 자동
+- beauty 22 슬라이더 회귀 모두 정상
+- export 시 GL 결과가 peCanvas 에 정확히 합성되는지
 
 ---
 

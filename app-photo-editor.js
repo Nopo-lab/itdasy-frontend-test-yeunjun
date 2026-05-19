@@ -675,10 +675,27 @@
     ctx.clearRect(0, 0, dw, dh);
     if (_state.showOriginal) { ctx.filter = 'none'; ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh); return; }
     const a = _state.adjust, temp = a.temperature;
-    const sepia = Math.max(0, temp) / 100, contrast = 100 + Math.max(0, -temp) * 0.3;
-    ctx.filter = `brightness(${a.brightness}%) saturate(${a.saturate}%) contrast(${contrast}%) sepia(${sepia})`;
+    // [v226 Sprint 2] gl_tone hook 이 있으면 GL 톤 합성 (전역 톤만 — beauty 영역 마스킹은 아래 별도)
+    // 없거나 GL 미지원이면 기존 CSS filter 폴백 사용
+    const useGLTone = typeof _drawHooks.gl_tone === 'function' && window.PhotoEditorGLCtx && window.PhotoEditorGLCtx.supported;
+    if (!useGLTone) {
+      const sepia = Math.max(0, temp) / 100, contrast = 100 + Math.max(0, -temp) * 0.3;
+      ctx.filter = `brightness(${a.brightness}%) saturate(${a.saturate}%) contrast(${contrast}%) sepia(${sepia})`;
+    } else {
+      ctx.filter = 'none';
+    }
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
-    if (a.sharpness > 10) _unsharpMask(ctx, dw, dh, a.sharpness / 100);
+    if (useGLTone) {
+      try { _drawHooks.gl_tone(cv, _state.adjust, _helpers); } catch (_e) { void _e; }
+    }
+    if (a.sharpness > 10) {
+      const useGLBlur = typeof _drawHooks.gl_blur === 'function' && window.PhotoEditorGLCtx && window.PhotoEditorGLCtx.supported;
+      if (useGLBlur) {
+        try { _drawHooks.gl_blur(cv, a.sharpness, _helpers); } catch (_e) { _unsharpMask(ctx, dw, dh, a.sharpness / 100); }
+      } else {
+        _unsharpMask(ctx, dw, dh, a.sharpness / 100);
+      }
+    }
     if (typeof _drawHooks.beauty === 'function') {
       try { _drawHooks.beauty(ctx, dw, dh, _state.beauty, _helpers); } catch (_e) { void _e; }
     }
