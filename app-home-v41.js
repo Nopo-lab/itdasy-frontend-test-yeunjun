@@ -1013,8 +1013,23 @@
       } catch (_e) { /* silent */ }
     }
     const completedCount = bk.filter(b => b && b.status === 'completed').length;
-    // 이번달 완료 건수 — brief 에 별도 키 없으면 today completed 만. (Best effort)
-    const monthCount = Number(brief.this_month_count) || Number(brief.completed_count) || completedCount;
+    // 이번달 완료 건수.
+    // 1순위: BE brief.this_month_count (정식 필드)
+    // 2순위: Revenue 모듈이 이미 메모리에 들고있는 이번달 items 건수 (BE 미배포 폴백)
+    // 3순위: brief.completed_count (예약 기준 — 의미 다름이라 가장 마지막)
+    // 4순위: 오늘 completed 예약 수 — 0 이상이면 표시 (이전 잘못된 폴백)
+    let monthCount = Number(brief.this_month_count) || 0;
+    if (!monthCount && window.Revenue && Array.isArray(window.Revenue._items)) {
+      try {
+        const now = new Date();
+        const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        monthCount = window.Revenue._items.filter(r => {
+          const t = String(r.recorded_at || r.created_at || '').slice(0, 7);
+          return t === ym;
+        }).length;
+      } catch (_e) { /* silent */ }
+    }
+    if (!monthCount) monthCount = Number(brief.completed_count) || completedCount;
     // [v200] 오늘 예상 매출 — confirmed 예약의 amount 합. amount 비어있으면 서비스 프리셋 가격 폴백.
     const _svcCache = window._serviceTemplatesCache || [];
     const _priceFor = (name) => {
