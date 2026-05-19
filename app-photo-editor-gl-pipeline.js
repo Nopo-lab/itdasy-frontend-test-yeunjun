@@ -118,7 +118,8 @@ vec4 applyMask(vec4 original, vec4 effect) {
   }
 
   function _uploadMask(gl, maskCanvas) {
-    if (maskCanvas === _maskCanvas && _maskTex) return _maskTex;
+    // [v228 fix] canvas 인스턴스 캐시 제거 — selective 가 같은 canvas 재사용하며
+    // 내용만 갱신하므로 매번 재업로드 필요. 핀 3개 시 5~15ms 추가 — 허용 범위.
     if (_maskTex) gl.deleteTexture(_maskTex);
     _maskTex = _uploadImage(gl, maskCanvas);
     _maskCanvas = maskCanvas;
@@ -185,6 +186,20 @@ vec4 applyMask(vec4 original, vec4 effect) {
         if (uMaskEn) gl.uniform1i(uMaskEn, 1);
       } else {
         if (uMaskEn) gl.uniform1i(uMaskEn, 0);
+      }
+
+      // [v228 Sprint 4] 추가 sampler 텍스처 (u_lut 등) — slot 2 부터
+      if (op.textures) {
+        let slot = 2;
+        Object.keys(op.textures).forEach(name => {
+          const tex = op.textures[name];
+          if (!tex) return;
+          gl.activeTexture(gl.TEXTURE0 + slot);
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          const loc = gl.getUniformLocation(op.program, name);
+          if (loc !== null) gl.uniform1i(loc, slot);
+          slot++;
+        });
       }
 
       // 커스텀 uniforms

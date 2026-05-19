@@ -1,6 +1,43 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-19 by Claude Code (v227 — Sprint 3 Selective 부분 보정)
+**LAST UPDATED:** 2026-05-19 by Claude Code (v228 — Sprint 4 Tone Curve + HSL + selective fix)
+
+---
+
+## 2026-05-19 — v228 Sprint 4 Pro 탭 (Tone Curve + HSL) + Selective 1번핀 버그 fix
+
+배경: plan v3 Sprint 4. Lightroom 의 핵심 두 도구 (곡선 + HSL 분리). Sprint 3 selective 의 mask 캐시 버그 함께 fix.
+
+선행 fix:
+- `app-photo-editor-gl-pipeline.js` `_uploadMask` 캐시 제거 — selective 가 같은 canvas 재사용하며 내용만 갱신해서 두 번째 핀부터 캐시 hit 으로 GPU 에 이전 mask 그대로 남던 버그. 핀 3개 시 5~15ms 추가 — 허용.
+
+신규 (4 파일):
+- `app-photo-editor-gl-pipeline.js` 확장 — ops[i].textures 슬롯 (u_lut 등 추가 sampler 자동 바인딩, slot 2 부터)
+- `app-photo-editor-curve.js` (~245줄) — Catmull-Rom spline 곡선, 4 control point 드래그, RGB/R/G/B 채널 토글, 256-byte LUT × 4 채널 합쳐 RGBA 1024-byte 텍스처 → Sprint 2 LUT1D 셰이더 재사용
+- `app-photo-editor-hsl.js` (~210줄) — 8 색상대 (R/O/Y/G/C/B/P/M) × Saturation/Lightness = 16 슬라이더, 가우시안 falloff hue weight 셰이더 (HSV 변환 후 채도/명도 시프트)
+- `app-photo-editor-pro-tab.js` (~50줄) — registerTabPanel('pro') sub-tab 래퍼 (curve / hsl 토글), sub HTML 외부 주입 패턴 (메인 줄수 보호)
+
+수정 파일:
+- `app-photo-editor.js` — TABS 에 '프로' 추가 (1줄). `_redraw()` 에 gl_curve / gl_hsl hook 호출 6줄. 총 1050 한도 내.
+- `index.html` / `sw.js` / `app-core.js` — 빌드 v228 통일
+
+회귀 안전성:
+- Curve `_isIdentity` (모든 점이 y=x) 면 GL pass 건너뛰기
+- HSL `_isIdentity` (모든 슬라이더 0) 면 건너뛰기
+- 두 hook 모두 GL 미지원 시 자동 폴백 (효과 안 적용)
+- 기존 22 beauty, 셀렉티브 핀, 텍스트, 템플릿 0줄 영향
+- 셀렉티브 mask 캐시 fix 로 v227 핀 2/3 안 적용 버그 해결
+
+빌드: `20260519-v228-curve-hsl`
+확인: smoke (168 scripts) pass, eslint 0 errors, headless Chrome JS 0, **git fetch origin 결과 원격 변경 없음**
+
+남은 확인 (사람 손):
+- 곡선 4 control point 드래그 반응성 (모바일 터치)
+- HSL 오렌지 채도 -50 → 피부톤만 변하고 하늘은 안 변하는지
+- Pro 탭 sub-tab 전환 부드러운지
+- Sprint 3 핀 2/3개 모두 효과 적용되는지 (fix 확인)
+
+다음 Sprint: **B (Face Landmarks selective)** — Sprint 4.5. 입술/눈/얼굴 polygon 자동 mask. 사용자 결정 (위에서 B 먼저 선택).
 
 ---
 
