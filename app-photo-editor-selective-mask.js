@@ -23,7 +23,16 @@
     return _maskCanvas;
   }
 
-  // 핀 1개에 대한 radial gradient mask 그리기 (0~1 alpha)
+  // 핀 1개에 대한 mask 그리기 — type 분기 (radial / polygon)
+  function _drawPinMask(canvas, pin, source) {
+    if (pin.type === 'polygon' && Array.isArray(pin.polygon)) {
+      _drawPolygonMask(canvas, pin, source);
+    } else {
+      _drawRadialMask(canvas, pin);
+    }
+  }
+
+  // radial gradient mask (기존 핀 — type 없거나 'radial')
   function _drawRadialMask(canvas, pin) {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -39,6 +48,32 @@
     grad.addColorStop(1,    'rgba(255,255,255,0)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
+  }
+
+  // polygon mask (face-mask 모듈에서 추가한 AI 영역) — polygon 좌표는 원본 source 픽셀 기준
+  function _drawPolygonMask(canvas, pin, source) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const W = canvas.width, H = canvas.height;
+    const srcW = (source && source.naturalWidth) || (source && source.width) || W;
+    const srcH = (source && source.naturalHeight) || (source && source.height) || H;
+    const scaleX = W / srcW;
+    const scaleY = H / srcH;
+    // 부드러운 경계 위해 폴리곤 fill 후 가우시안 블러 (canvas filter)
+    ctx.save();
+    ctx.filter = `blur(${Math.max(2, Math.min(W, H) * 0.012)}px)`;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    pin.polygon.forEach((p, i) => {
+      const x = p.x * scaleX;
+      const y = p.y * scaleY;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    // 영역 확장 (feather) — 살짝 부풀려서 경계 자연스럽게
+    ctx.fill();
+    ctx.restore();
   }
 
   // 핀 슬라이더 값 → GL tone uniform
@@ -77,8 +112,10 @@
       if (effectivePins.length === 0) return;
 
       const mask = _ensureMaskCanvas(peCanvas.width, peCanvas.height);
+      // polygon 핀이 원본 좌표계 사용 — state.originalImg 참조
+      const source = state && state.originalImg;
       for (const pin of effectivePins) {
-        _drawRadialMask(mask, pin);
+        _drawPinMask(mask, pin, source);
         const op = Tone.build(_pinToAdjust(pin));
         if (!op) continue;
         op.mask = mask;

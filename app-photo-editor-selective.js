@@ -85,17 +85,49 @@
     const offY = rect.top - wRect.top;
     const W = rect.width, H = rect.height;
     const shorter = Math.min(W, H);
-    c.innerHTML = sel.pins.map(p => {
+    // polygon 핀은 별도 SVG overlay 로 외곽선 표시, radial 핀은 기존 원형 마커
+    const radialPins = sel.pins.filter(p => p.type !== 'polygon');
+    const polygonPins = sel.pins.filter(p => p.type === 'polygon');
+    const radialHTML = radialPins.map(p => {
       const px = offX + p.x * W;
       const py = offY + p.y * H;
       const r = p.radius * shorter;
       const isActive = p.id === sel.activeId;
-      return `<div class="pe-sel-marker" data-pin-id="${p.id}" style="position:absolute;left:${px - r}px;top:${py - r}px;width:${2*r}px;height:${2*r}px;border-radius:50%;border:2px ${isActive ? 'solid' : 'dashed'} ${isActive ? '#F18091' : 'rgba(255,255,255,0.85)'};box-shadow:0 0 0 2px rgba(0,0,0,0.25);pointer-events:auto;cursor:move;background:rgba(241,128,145,${isActive ? 0.08 : 0.03});">
+      // [v229 fix] 안쪽 fill 제거 (페인트 칠해짐 버그). 외곽선만 표시.
+      return `<div class="pe-sel-marker" data-pin-id="${p.id}" style="position:absolute;left:${px - r}px;top:${py - r}px;width:${2*r}px;height:${2*r}px;border-radius:50%;border:2px ${isActive ? 'solid' : 'dashed'} ${isActive ? '#F18091' : 'rgba(255,255,255,0.95)'};box-shadow:0 0 0 2px rgba(0,0,0,0.35);pointer-events:auto;cursor:move;background:transparent;">
         <div style="position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:${isActive ? '#F18091' : '#fff'};border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>
         ${isActive ? `<button type="button" data-pin-remove="${p.id}" style="position:absolute;right:-6px;top:-6px;width:22px;height:22px;border-radius:50%;border:none;background:#fff;color:#F18091;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.35);font-size:12px;">✕</button>` : ''}
       </div>`;
     }).join('');
+    // polygon 핀 SVG overlay
+    let polygonHTML = '';
+    if (polygonPins.length > 0) {
+      const src = _stateRef && _stateRef.originalImg;
+      const srcW = (src && src.naturalWidth) || W;
+      const srcH = (src && src.naturalHeight) || H;
+      const polysvg = polygonPins.map(p => {
+        const isActive = p.id === sel.activeId;
+        const pts = p.polygon.map(pt => `${(pt.x / srcW) * W},${(pt.y / srcH) * H}`).join(' ');
+        const stroke = isActive ? '#F18091' : 'rgba(255,255,255,0.95)';
+        const sw = isActive ? 3 : 2;
+        // [v229 fix] fill 제거 (페인트 칠해짐 버그). 외곽선만 표시.
+        return `<polygon points="${pts}" data-pin-id="${p.id}" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-dasharray="${isActive ? '0' : '6,4'}" style="pointer-events:auto;cursor:pointer;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5));" />`;
+      }).join('');
+      polygonHTML = `<svg style="position:absolute;left:${offX}px;top:${offY}px;width:${W}px;height:${H}px;pointer-events:none;" viewBox="0 0 ${W} ${H}">${polysvg}</svg>`;
+    }
+    c.innerHTML = polygonHTML + radialHTML;
     _bindMarkers(c, shorter);
+    // polygon 클릭 핸들러 (svg 안 polygon 은 별도 바인딩)
+    c.querySelectorAll('polygon[data-pin-id]').forEach(poly => {
+      const id = poly.dataset.pinId;
+      poly.style.pointerEvents = 'auto';
+      poly.addEventListener('click', () => {
+        const sel2 = _ensureState(_stateRef);
+        sel2.activeId = id;
+        _refreshMarkers();
+        if (_helpersRef && _helpersRef.renderPanel) _helpersRef.renderPanel();
+      });
+    });
   }
 
   function _bindMarkers(container, shorter) {
@@ -178,27 +210,34 @@
   function _panelHTML(state) {
     const sel = _ensureState(state);
     const active = _getActive(state);
-    const list = sel.pins.map(p => {
-      const isAct = p.id === sel.activeId;
-      return `<button type="button" class="pe-chip-btn ${isAct ? 'on' : ''}" data-sel-pin="${p.id}">📍 ${sel.pins.indexOf(p) + 1}번</button>`;
-    }).join('');
     const slider = (key, label, min, max, val) => `
       <label class="pe-field">
         <span>${_esc(label)} (${val})</span>
         <input type="range" class="pe-input" data-sel-slider="${key}" min="${min}" max="${max}" step="1" value="${val}" ${active ? '' : 'disabled'}>
       </label>`;
+    const radiusSlider = (active && active.type !== 'polygon') ? `
+      <label class="pe-field">
+        <span>영역 크기 (${Math.round((active.radius || 0) * 100)}%)</span>
+        <input type="range" class="pe-input" data-sel-slider="radius" min="5" max="60" step="1" value="${Math.round((active.radius || 0) * 100)}">
+      </label>` : '';
     const sliders = active ? `
       ${slider('exposure',   '노출 (밝기)', -100, 100, active.exposure)}
       ${slider('contrast',   '대비',         -100, 100, active.contrast)}
       ${slider('saturation', '채도',         -100, 100, active.saturation)}
       ${slider('structure',  '구조 (선명)',  0,   100, active.structure)}
-      <label class="pe-field">
-        <span>영역 크기 (${Math.round(active.radius * 100)}%)</span>
-        <input type="range" class="pe-input" data-sel-slider="radius" min="5" max="60" step="1" value="${Math.round(active.radius * 100)}">
-      </label>` : `<div class="pe-hint">사진을 더블탭 하면 그 자리에 핀이 추가돼요. 핀 주변만 보정됩니다.</div>`;
+      ${radiusSlider}` : `<div class="pe-hint">아래 "AI 자동 영역" 버튼을 누르거나 사진을 더블탭하세요. 그 영역만 보정됩니다.</div>`;
+    const FaceMask = window.PhotoEditorFaceMask;
+    const faceHTML = (FaceMask && typeof FaceMask.subSectionHTML === 'function') ? FaceMask.subSectionHTML(state) : '';
+    const pinChip = (p) => {
+      const isAct = p.id === sel.activeId;
+      const icon = p.type === 'polygon' ? '✨' : '📍';
+      const label = p.type === 'polygon' ? (p.regionLabel || 'AI') : ((sel.pins.filter(x => x.type !== 'polygon').indexOf(p) + 1) + '번');
+      return `<button type="button" class="pe-chip-btn ${isAct ? 'on' : ''}" data-sel-pin="${p.id}">${icon} ${_esc(label)}</button>`;
+    };
     return `<div class="pe-field-label">셀렉티브 부분 보정 (최대 ${MAX_PINS}개)</div>
-      <div class="pe-panel-row" style="display:flex;gap:6px;flex-wrap:wrap;">${list || ''}<button type="button" class="pe-chip-btn" data-sel-add>+ 핀 추가</button></div>
-      ${sliders}`;
+      <div class="pe-panel-row" style="display:flex;gap:6px;flex-wrap:wrap;">${sel.pins.map(pinChip).join('')}<button type="button" class="pe-chip-btn" data-sel-add>+ 수동 핀</button></div>
+      ${sliders}
+      ${faceHTML}`;
   }
 
   function _bindPanel(panel, state, helpers) {
@@ -227,6 +266,10 @@
       _refreshMarkers();
       helpers.renderPanel(); helpers.redraw();
     });
+    // face-mask sub-section bind (AI 자동 영역 버튼 핸들러)
+    if (window.PhotoEditorFaceMask && typeof window.PhotoEditorFaceMask.bindSubSection === 'function') {
+      try { window.PhotoEditorFaceMask.bindSubSection(panel, state, helpers); } catch (_e) { /* ignore */ }
+    }
     panel.querySelectorAll('[data-sel-slider]').forEach(input => {
       input.addEventListener('input', () => {
         const active = _getActive(state);

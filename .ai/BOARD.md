@@ -1,6 +1,43 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-19 by Claude Code (v228 — Sprint 4 Tone Curve + HSL + selective fix)
+**LAST UPDATED:** 2026-05-19 by Claude Code (v229 — Sprint 4.5 Face Mask + selective 페인트 fix + 프로 탭 UX)
+
+---
+
+## 2026-05-19 — v229 Sprint 4.5 Face Landmarks 자동 영역 + UX 보강
+
+배경: 사용자 보고 2건 — (1) 셀렉티브 마커가 "분홍 페인트" 처럼 보임, (2) 프로 탭 사용법 어려움. 동시에 plan v3 Sprint 4.5 (Face Landmarks 자동 mask) 진행.
+
+선행 fix (사용자 보고):
+- `selective.js` radial 핀: 안쪽 `background:rgba(241,128,145,0.08)` → `transparent`. 외곽선만.
+- `selective.js` polygon SVG: `fill="rgba(241,128,145,0.18)"` → `fill="none"`. 외곽선만 + drop-shadow.
+
+신규 (Face Landmarks 자동 영역):
+- `app-photo-editor-face-mask.js` (~135줄) — 셀렉티브 패널 sub-section. AI 입술/왼눈/오른눈/얼굴 전체 4 버튼. MediaPipeLoader 호출 + 진행률 표시. 검출된 polygon 을 `state.selective.pins[]` 에 type='polygon' 핀으로 추가.
+- `selective-mask.js` 확장 — `_drawPinMask` 가 type 분기 (radial vs polygon). polygon 은 ctx.filter blur 로 부드러운 경계.
+- `selective.js` 확장 — polygon 핀 마커는 SVG `<polygon>` 외곽선. 패널 chip 에 ✨ 아이콘. radius 슬라이더는 radial 핀만 표시.
+
+프로 탭 UX 보강:
+- `curve.js`: 5 빠른 프리셋 추가 (밝게/어둡게/대비 S-커브/필름 페이드/그림자 들어올리기). 가이드 박스.
+- `hsl.js`: 5 빠른 프리셋 (피부 자연/머리 따뜻/머리 차갑게/립 강조/배경 가라앉히기). 각 색상대 옆 부가 설명 (오렌지=피부톤 등). 가이드 박스.
+
+수정:
+- index.html: 6 모듈 캐시버스터 v229 통일
+- sw.js / app-core.js: 빌드 v229
+- 코덱스 origin 2 커밋 (Phase 2~6 매출통일, X1~X5 보안 fix) rebase 통합 — 충돌 없음
+
+빌드: `20260519-v229-face-mask-ux`
+확인: smoke (170 scripts) pass, eslint 0 errors, headless Chrome JS 0, **git fetch 원격 2 커밋 rebase 후 푸시 — 코덱스 작업 보존**
+
+UX 개선 요약:
+- 셀렉티브 = 외곽선만 표시 (페인트 X)
+- 프로 탭 = 프리셋 5개씩 + 가이드 박스 + 색상대 부가설명
+- 자동 영역 = 입술/눈/얼굴 한 번에 mask
+
+남은 확인 (사람 손):
+- 셀렉티브 외곽선만으로 시각적 명확한지
+- AI 자동 영역 — 입술 검출 정확도 (정면 사진)
+- 프로 탭 프리셋이 실제 사진에서 어떻게 보이는지
 
 ---
 

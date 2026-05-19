@@ -138,16 +138,37 @@ void main() {
   function _subPanelHTML(state) {
     const h = _ensureState(state);
     const modeBtn = (id, label) => `<button type="button" class="pe-chip-btn ${_mode === id ? 'on' : ''}" data-hsl-mode="${id}">${_esc(label)}</button>`;
+    const HINTS = {
+      red: '입술·코끝·붉은기 단색',
+      orange: '피부톤 (한국인 피부)',
+      yellow: '머리카락 따뜻한 톤',
+      green: '잎사귀·이끼',
+      cyan: '하늘·차가운 빛',
+      blue: '하늘·청록 머리',
+      purple: '와인 머리·네일',
+      magenta: '핑크 립·핑크 네일',
+    };
     const rows = COLORS.map(c => {
       const v = (_mode === 'sat' ? h.sat[c.id] : h.light[c.id]) || 0;
       return `<div style="display:flex;align-items:center;gap:8px;margin:6px 0;">
         <span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:${c.swatch};flex-shrink:0;"></span>
-        <span style="width:42px;font-size:12px;">${_esc(c.label)}</span>
+        <div style="width:90px;font-size:11px;line-height:1.2;"><div style="font-weight:600;">${_esc(c.label)}</div><div style="color:#888;font-size:10px;">${_esc(HINTS[c.id] || '')}</div></div>
         <input type="range" min="-100" max="100" step="1" value="${v}" data-hsl-slider="${c.id}" style="flex:1;">
         <span data-hsl-val="${c.id}" style="width:32px;text-align:right;font-size:11px;color:#888;">${v}</span>
       </div>`;
     }).join('');
     return `<div class="pe-field-label">HSL 분리 보정 (색상대별)</div>
+      <div class="pe-hint" style="background:rgba(123,97,255,0.06);border-radius:8px;padding:8px 10px;margin-bottom:8px;">
+        <strong>쉽게 쓰는 법:</strong> 원하는 컬러의 채도/밝기만 바꿔요. 예) <strong>오렌지 슬라이더</strong>=피부톤, <strong>마젠타</strong>=핑크 립/네일. 아래 프리셋으로 시작해보세요.
+      </div>
+      <div class="pe-field-label" style="margin-top:4px;font-size:11px;">빠른 프리셋</div>
+      <div class="pe-panel-row" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        <button type="button" class="pe-chip-btn" data-hsl-preset="skin-pop">피부 자연 톤</button>
+        <button type="button" class="pe-chip-btn" data-hsl-preset="hair-warm">머리 따뜻하게</button>
+        <button type="button" class="pe-chip-btn" data-hsl-preset="hair-cool">머리 차갑게 (애쉬)</button>
+        <button type="button" class="pe-chip-btn" data-hsl-preset="lip-pop">립 컬러 강조</button>
+        <button type="button" class="pe-chip-btn" data-hsl-preset="bg-mute">배경 톤 가라앉히기</button>
+      </div>
       <div class="pe-panel-row" style="display:flex;gap:6px;">
         ${modeBtn('sat', '채도 (S)')}
         ${modeBtn('light', '명도 (L)')}
@@ -155,11 +176,34 @@ void main() {
       <div style="margin-top:10px;">${rows}</div>
       <div class="pe-panel-row" style="display:flex;gap:8px;margin-top:8px;">
         <button type="button" class="pe-action-btn" data-hsl-reset>리셋</button>
-        <button type="button" class="pe-action-btn" data-hsl-toggle style="background:${h.enabled ? '#F18091' : '#888'};color:#fff;">${h.enabled ? 'HSL 적용 켜짐' : 'HSL 적용 꺼짐'}</button>
+        <button type="button" class="pe-action-btn" data-hsl-toggle style="background:${h.enabled ? '#F18091' : '#888'};color:#fff;">${h.enabled ? '적용 켜짐' : '적용 꺼짐'}</button>
       </div>`;
   }
 
+  const HSL_PRESETS = {
+    'skin-pop':  { sat: { orange: 20, red: 15 },             light: { orange: 5 } },
+    'hair-warm': { sat: { orange: 25, yellow: 30 },          light: { yellow: 8 } },
+    'hair-cool': { sat: { orange: -20, yellow: -25 },        light: { yellow: -10 } },
+    'lip-pop':   { sat: { red: 35, magenta: 30 },            light: { red: -5 } },
+    'bg-mute':   { sat: { green: -40, blue: -30, cyan: -30 }, light: {} },
+  };
+
   function _bindSubPanel(panel, state, helpers) {
+    panel.querySelectorAll('[data-hsl-preset]').forEach(b => {
+      b.addEventListener('click', () => {
+        const preset = HSL_PRESETS[b.dataset.hslPreset];
+        if (!preset) return;
+        const h = _ensureState(state);
+        // 리셋 후 프리셋 적용
+        COLORS.forEach(c => { h.sat[c.id] = 0; h.light[c.id] = 0; });
+        Object.assign(h.sat, preset.sat || {});
+        Object.assign(h.light, preset.light || {});
+        h.enabled = true;
+        if (helpers.toast) helpers.toast('HSL 프리셋: ' + b.textContent);
+        helpers.renderPanel(); helpers.redraw();
+        if (helpers.pushHistory) helpers.pushHistory();
+      });
+    });
     panel.querySelectorAll('[data-hsl-mode]').forEach(b => {
       b.addEventListener('click', () => { _mode = b.dataset.hslMode; helpers.renderPanel(); });
     });

@@ -98,18 +98,30 @@
     const c = _ensureState(state);
     const chBtn = (id, label, color) => `<button type="button" class="pe-chip-btn ${c.channel === id ? 'on' : ''}" data-curve-ch="${id}" style="${c.channel === id ? 'background:' + color + ';color:#fff;' : ''}">${_esc(label)}</button>`;
     return `<div class="pe-field-label">톤 곡선 (Curves)</div>
+      <div class="pe-hint" style="background:rgba(123,97,255,0.06);border-radius:8px;padding:8px 10px;margin-bottom:8px;">
+        <strong>쉽게 쓰는 법:</strong> 아래 프리셋부터 눌러보고, 곡선 점은 익숙해진 후에. RGB = 전체 밝기/대비, R/G/B = 각 색 채널.
+      </div>
+      <div class="pe-field-label" style="margin-top:6px;font-size:11px;">빠른 프리셋</div>
+      <div class="pe-panel-row" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        <button type="button" class="pe-chip-btn" data-curve-preset="bright">밝게</button>
+        <button type="button" class="pe-chip-btn" data-curve-preset="dark">어둡게</button>
+        <button type="button" class="pe-chip-btn" data-curve-preset="contrast">대비 강하게 (S-커브)</button>
+        <button type="button" class="pe-chip-btn" data-curve-preset="fade">필름 페이드 (옅게)</button>
+        <button type="button" class="pe-chip-btn" data-curve-preset="lift-shadow">그림자 들어올리기</button>
+      </div>
+      <div class="pe-field-label" style="font-size:11px;">채널 선택</div>
       <div class="pe-panel-row" style="display:flex;gap:6px;">
-        ${chBtn('rgb', 'RGB', '#555')}
-        ${chBtn('r', 'R', '#e74c3c')}
-        ${chBtn('g', 'G', '#27ae60')}
-        ${chBtn('b', 'B', '#3498db')}
+        ${chBtn('rgb', '전체 RGB', '#555')}
+        ${chBtn('r', 'R (빨강)', '#e74c3c')}
+        ${chBtn('g', 'G (초록)', '#27ae60')}
+        ${chBtn('b', 'B (파랑)', '#3498db')}
       </div>
       <canvas id="peCurveCanvas" width="256" height="256" style="display:block;width:100%;max-width:280px;margin:12px auto;background:#1a1a1f;border-radius:12px;touch-action:none;cursor:crosshair;"></canvas>
       <div class="pe-panel-row" style="display:flex;gap:8px;">
         <button type="button" class="pe-action-btn" data-curve-reset>리셋</button>
-        <button type="button" class="pe-action-btn" data-curve-toggle style="background:${c.enabled ? '#F18091' : '#888'};color:#fff;">${c.enabled ? '곡선 적용 켜짐' : '곡선 적용 꺼짐'}</button>
+        <button type="button" class="pe-action-btn" data-curve-toggle style="background:${c.enabled ? '#F18091' : '#888'};color:#fff;">${c.enabled ? '적용 켜짐' : '적용 꺼짐'}</button>
       </div>
-      <div class="pe-hint">곡선 위 점을 드래그하면 톤이 바뀌어요. 채널 (R/G/B) 별 색감도 조절 가능합니다.</div>`;
+      <div class="pe-hint">검은 박스 안 점을 드래그 — 왼쪽 = 어두운 영역, 오른쪽 = 밝은 영역.</div>`;
   }
 
   // ── 곡선 캔버스 렌더 + 인터랙션 ──
@@ -190,7 +202,29 @@
     });
   }
 
+  // 빠른 프리셋 — 4 control point 가 미리 설정된 곡선 모양
+  const PRESETS = {
+    bright:       [[0,0.05],[0.33,0.43],[0.66,0.76],[1,1]],
+    dark:         [[0,0],[0.33,0.23],[0.66,0.56],[1,0.95]],
+    contrast:     [[0,0],[0.25,0.15],[0.75,0.85],[1,1]],         // S-커브
+    fade:         [[0,0.12],[0.33,0.38],[0.66,0.66],[1,0.88]],   // 양 끝 압축 (필름 페이드)
+    'lift-shadow':[[0,0.18],[0.33,0.43],[0.66,0.7],[1,1]],
+  };
+
   function _bindSubPanel(panel, state, helpers) {
+    panel.querySelectorAll('[data-curve-preset]').forEach(b => {
+      b.addEventListener('click', () => {
+        const c = _ensureState(state);
+        const pts = PRESETS[b.dataset.curvePreset];
+        if (!pts) return;
+        c.channel = 'rgb';
+        c.points.rgb = pts.map(p => p.slice());
+        c.enabled = true;
+        if (helpers.toast) helpers.toast('곡선 프리셋: ' + b.textContent);
+        helpers.renderPanel(); helpers.redraw();
+        if (helpers.pushHistory) helpers.pushHistory();
+      });
+    });
     panel.querySelectorAll('[data-curve-ch]').forEach(b => {
       b.addEventListener('click', () => {
         const c = _ensureState(state);
