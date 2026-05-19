@@ -1,6 +1,50 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-19 by Claude Code (v229 — Sprint 4.5 Face Mask + selective 페인트 fix + 프로 탭 UX)
+**LAST UPDATED:** 2026-05-19 by Claude Code (v231 — Sprint 5 Healing + Film + mask RGB-only fix)
+
+---
+
+## 2026-05-19 — v231 Sprint 5 Spot Healing + Film 프리셋 8종 + mask 정확도 fix
+
+배경:
+- plan v3 Sprint 5 (Healing v2 + Film 8 LUT) 진행
+- 사용자 보고 2건: (1) 셀렉티브 노출/대비 드래그 시 얼굴 전체 페인트 칠해짐 (2) 얼굴 인식은 되는데 입술 밝게 효과 안 보임
+- 진단: mask canvas 가 transparent 배경 + white alpha gradient — WebGL 텍스처로 가져갈 때 premultiplied alpha 로 외곽 RGB 가 흔들려 의도 외 영역에 효과 적용
+
+핵심 fix (selective-mask.js):
+- mask 는 **RGB grayscale 만** 사용 (alpha 항상 1)
+- _drawRadialMask: black 배경 fill + white→black radial gradient (alpha 모두 1)
+- _drawPolygonMask: black 배경 + polygon white fill + canvas filter blur
+- 결과: m=texture(u_mask,uv).r 이 정확하게 0~1 (의도된 영역만 효과)
+
+신규 (Sprint 5):
+- `app-photo-editor-heal-v2.js` (~150줄) — 단순 inpainting (Poisson X). 클릭 위치 주변 8방향 sample 평균 + 가우시안 페더 alpha blend. brush 탭에 MutationObserver 자동 주입 — "잡티 자동 제거" 버튼 + 크기 슬라이더 + 클릭 모드 토글
+- `app-photo-editor-film-presets.js` (~270줄) — 뷰티 8 LUT 함수형 생성:
+  · 살롱 소프트 (부드러운 살결 + 따뜻한 톤)
+  · 네일 글로우 (핑크 강조 + 광택)
+  · 헤어 샤인 (대비 + 갈색)
+  · 래쉬 크리스프 (강한 대비 + 검정 진하게)
+  · 브로우 샤프 (대비 + 갈색)
+  · 스튜디오 라이트 (밝기 + 화이트밸런스 차갑게)
+  · 웜 스킨 (따뜻한 피부톤)
+  · 쿨 스킨 (차가운 피부톤)
+- 3D LUT 32×32×32 → 1024×32 canvas 펼침. Sprint 2 LUT3D 셰이더 + textures slot 재사용
+- registerTabPanel('film') — 별도 '필름' 탭. 8 프리셋 카드 미리보기 + 강도 슬라이더
+
+수정:
+- `app-photo-editor.js`: TABS 에 '필름' 추가 (1줄). _redraw 에 gl_film hook 호출 (3줄). 메인 1050 한도 내.
+- `app-photo-editor-selective-mask.js`: mask 알고리즘 RGB-only로 전면 교체 (premultiplied alpha 버그 fix)
+- index.html / sw.js / app-core.js — 빌드 v231 통일
+
+git fetch 통합:
+- origin 에 코덱스 v230 (홈 이번달 N건 fix) 새로 들어옴 → 빌드 버전 충돌
+- rebase 후 v230 → **v231** 로 올려서 충돌 해소
+- 메모리 feedback_always_fetch_before_push 적용 — stash 충돌 표시 안 깨지게 처리
+
+확인: smoke (172 scripts) pass, eslint 0 errors, headless Chrome JS 0
+
+남은 작업 (별도 sprint v232):
+- 사용자 보고 3번 "뷰티 사진편집 정체성 + Claude 디자인" — 사진편집기 UI 디자인 폴리쉬. CSS 전반 보강 + 다크모드 글래스모피즘 + 핑크-퍼플 그라데이션 액센트. 별도 sprint 큰 작업.
 
 ---
 

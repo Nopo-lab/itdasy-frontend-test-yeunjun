@@ -32,36 +32,45 @@
     }
   }
 
-  // radial gradient mask (기존 핀 — type 없거나 'radial')
+  // [v230 fix] mask 는 RGB grayscale 만 사용 (alpha 1 고정).
+  // black 배경 (RGB 0 = 효과 없음) + 영역 white (RGB 255 = 효과 100%) + 그라데이션 = 부드러운 경계.
+  // 이전: transparent 배경 + white alpha gradient — premultiplied alpha 로 WebGL 픽셀 가져갈 때
+  // 외곽 RGB 계산이 흔들려 의도 외 영역까지 효과 적용되던 버그.
+
   function _drawRadialMask(canvas, pin) {
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     const W = canvas.width, H = canvas.height;
+    // 1) black 으로 전체 채우기 (mask r=0 = 효과 없음)
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
     const cx = pin.x * W;
     const cy = pin.y * H;
     const shorter = Math.min(W, H);
     const r = pin.radius * shorter;
     if (r <= 0) return;
+    // 2) 중심 white → 외곽 black 그라데이션 (alpha 모두 1, RGB 만 변화)
     const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
     grad.addColorStop(0,    'rgba(255,255,255,1)');
-    grad.addColorStop(0.6,  'rgba(255,255,255,0.9)');
-    grad.addColorStop(1,    'rgba(255,255,255,0)');
+    grad.addColorStop(0.6,  'rgba(225,225,225,1)');
+    grad.addColorStop(1,    'rgba(0,0,0,1)');
     ctx.fillStyle = grad;
+    ctx.globalCompositeOperation = 'source-over';
     ctx.fillRect(0, 0, W, H);
   }
 
-  // polygon mask (face-mask 모듈에서 추가한 AI 영역) — polygon 좌표는 원본 source 픽셀 기준
   function _drawPolygonMask(canvas, pin, source) {
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     const W = canvas.width, H = canvas.height;
+    // 1) black 전체 (외부 = 효과 없음)
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
     const srcW = (source && source.naturalWidth) || (source && source.width) || W;
     const srcH = (source && source.naturalHeight) || (source && source.height) || H;
     const scaleX = W / srcW;
     const scaleY = H / srcH;
-    // 부드러운 경계 위해 폴리곤 fill 후 가우시안 블러 (canvas filter)
+    // 2) polygon white fill + canvas blur 로 경계 부드럽게
     ctx.save();
-    ctx.filter = `blur(${Math.max(2, Math.min(W, H) * 0.012)}px)`;
+    ctx.filter = `blur(${Math.max(3, Math.min(W, H) * 0.012)}px)`;
     ctx.fillStyle = '#fff';
     ctx.beginPath();
     pin.polygon.forEach((p, i) => {
@@ -71,7 +80,6 @@
       else ctx.lineTo(x, y);
     });
     ctx.closePath();
-    // 영역 확장 (feather) — 살짝 부풀려서 경계 자연스럽게
     ctx.fill();
     ctx.restore();
   }

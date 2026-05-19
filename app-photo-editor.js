@@ -18,6 +18,7 @@
     { id: 'auto', label: '자동' }, { id: 'tune', label: '보정' },
     { id: 'beauty', label: '뷰티' }, { id: 'brush', label: '부분 보정' },
     { id: 'selective', label: '셀렉티브' }, { id: 'pro', label: '프로' },
+    { id: 'film', label: '필름' },
     { id: 'bg', label: '누끼·배경' }, { id: 'template', label: '템플릿' },
     { id: 'text', label: '텍스트' }, { id: 'brand', label: '브랜드' },
     { id: 'export', label: '내보내기' },
@@ -715,6 +716,10 @@
     }
     if (typeof _drawHooks.gl_hsl === 'function') {
       try { _drawHooks.gl_hsl(cv, _state, _helpers); } catch (_e) { void _e; }
+    }
+    // [v230 Sprint 5] 필름 프리셋 (3D LUT) — 가장 마지막에 톤 색감 적용
+    if (typeof _drawHooks.gl_film === 'function') {
+      try { _drawHooks.gl_film(cv, _state, _helpers); } catch (_e) { void _e; }
     }
     // [v204 2026-05-19] 다중 텍스트 레이어 — layers[] 우선, 없으면 단일 text 폴백
     if (Array.isArray(_state.layers) && _state.layers.length > 0) {
