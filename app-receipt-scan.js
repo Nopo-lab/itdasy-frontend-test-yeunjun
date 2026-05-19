@@ -583,7 +583,7 @@
       tessPromise.catch(() => {});
     } catch (err) {
       body.innerHTML = `
-        <div style="padding:40px 20px;text-align:center;color:#c00;">
+        <div style="padding:40px 20px;text-align:center;color:var(--danger);">
           <div style="font-size:36px;">😵</div>
           <div style="font-size:13px;margin-top:10px;">OCR 실패: ${_esc(err.message || '')}</div>
         </div>`;

@@ -71,7 +71,9 @@
       ${item('booking', 'ic-calendar', '예약관리', false)}
       ${item('customer', 'ic-users', '고객관리', false)}
       ${item('revenue', 'ic-dollar-sign', '매출관리', true)}
+      ${ /* INVENTORY_HIDDEN — 재고관리 메뉴 숨김 (Phase 6 cleanup)
       ${item('inventory', 'ic-package', '재고관리', false)}
+      */ '' }
       <div class="ms-side__section">통합 허브</div>
       ${item('aiHub', 'ic-sparkles', 'AI · 자동화', false)}
       ${item('settings', 'ic-settings', '설정 · 연동', false)}

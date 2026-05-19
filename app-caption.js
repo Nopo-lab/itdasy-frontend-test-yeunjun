@@ -495,23 +495,25 @@ function deleteCaptionKeyword(keyword, e) {
 }
 
 function showAddKeywordInput() {
-  const keyword = prompt('추가할 키워드를 입력하세요:');
-  if (!keyword || !keyword.trim()) return;
-  const trimmed = keyword.trim();
-  const custom = _loadCustomKeywords();
-  if (!custom.includes(trimmed)) {
-    custom.push(trimmed);
-    _saveCustomKeywords(custom);
-  }
-  // 삭제 목록에서도 제거 (복원)
-  const deleted = _loadDeletedKeywords();
-  _saveDeletedKeywords(deleted.filter(k => k !== trimmed));
-  renderCaptionKeywordTags();
-  // 새로 추가된 태그 자동 선택
-  setTimeout(() => {
-    const tag = document.querySelector(`#typeTags .tag[data-v="${trimmed}"]`);
-    if (tag) tag.classList.add('on');
-  }, 50);
+  window._inlinePrompt('추가할 키워드를 입력하세요:', '', (keyword) => {
+    const trimmed = keyword.trim();
+    if (!trimmed) return;
+    const custom = _loadCustomKeywords();
+    if (!custom.includes(trimmed)) {
+      custom.push(trimmed);
+      _saveCustomKeywords(custom);
+    }
+    // 삭제 목록에서도 제거 (복원)
+    const deleted = _loadDeletedKeywords();
+    _saveDeletedKeywords(deleted.filter(k => k !== trimmed));
+    renderCaptionKeywordTags();
+    // 새로 추가된 태그 자동 선택
+    setTimeout(() => {
+      const tag = document.querySelector(`#typeTags .tag[data-v="${trimmed}"]`);
+      if (tag) tag.classList.add('on');
+    }, 50);
+  });
+  return;
 }
 
 // ===== 캡션 생성 — POST /persona/generate =====
@@ -729,41 +731,44 @@ async function _doGenerateCaption(scenario, closePopup) {
     } else if (/consent_missing/i.test(raw)) {
       // [2026-04-26] consent_missing 자동 복구 — 가입 시 자동 동의 백필 전(前) 가입자
       // 보호용. 사용자에게 한 번 컨펌 받고 /persona/consent bulk POST 후 재시도.
-      const ok = window.confirm(
-        'AI 캡션 만들기에는 개인정보 수집·AI 처리 동의가 필요합니다.\n' +
-        '가입 시 약관에 이미 동의하신 내용입니다. 지금 동의하시겠어요?'
-      );
-      if (ok) {
-        try {
-          await _personaFetch('POST', '/persona/consent', {
-            pipa_collect: true,
-            ai_processing: true,
-            versions: { pipa_collect: '1.0', ai_processing: '1.0' },
-          });
-          // 재시도 한 번
-          hideCaptionLoader(false, () => {});
-          showCaptionLoader();
-          const retry = await _personaFetch('POST', '/persona/generate', payload);
-          const finalCaption2 = retry.caption || '';
-          if (retry.log_id) _lastLogId = retry.log_id;
-          _capAiDraft = finalCaption2;
-          hideCaptionLoader(true, () => {
-            closePopup();
-            const ta = document.getElementById('captionText');
-            if (ta) { ta.value = finalCaption2; _capAutoGrow(ta); }
-            const hashEl = document.getElementById('captionHash');
-            if (hashEl) hashEl.value = '';
-            _renderCaptionActionBar(finalCaption2, '');
-            if (btn) { btn.innerHTML = '만들기'; btn.disabled = false; }
-          });
-          return;
-        } catch (e2) {
-          console.error('[caption.consent.retry] 실패:', e2);
-          userMsg = '동의 처리 후 재시도 실패. 잠시 후 다시 시도해주세요.';
+      window._inlineConfirm(
+        'AI 캡션 만들기에는 개인정보 수집·AI 처리 동의가 필요합니다.\n가입 시 약관에 이미 동의하신 내용입니다. 지금 동의하시겠어요?',
+        async () => {
+          try {
+            await _personaFetch('POST', '/persona/consent', {
+              pipa_collect: true,
+              ai_processing: true,
+              versions: { pipa_collect: '1.0', ai_processing: '1.0' },
+            });
+            // 재시도 한 번
+            hideCaptionLoader(false, () => {});
+            showCaptionLoader();
+            const retry = await _personaFetch('POST', '/persona/generate', payload);
+            const finalCaption2 = retry.caption || '';
+            if (retry.log_id) _lastLogId = retry.log_id;
+            _capAiDraft = finalCaption2;
+            hideCaptionLoader(true, () => {
+              closePopup();
+              const ta = document.getElementById('captionText');
+              if (ta) { ta.value = finalCaption2; _capAutoGrow(ta); }
+              const hashEl = document.getElementById('captionHash');
+              if (hashEl) hashEl.value = '';
+              _renderCaptionActionBar(finalCaption2, '');
+              if (btn) { btn.innerHTML = '만들기'; btn.disabled = false; }
+            });
+          } catch (e2) {
+            console.error('[caption.consent.retry] 실패:', e2);
+            hideCaptionLoader(false, () => {
+              if (window.showToast) window.showToast('동의 처리 후 재시도 실패. 잠시 후 다시 시도해주세요.');
+              if (btn) { btn.innerHTML = '만들기'; btn.disabled = false; }
+            });
+          }
         }
-      } else {
-        userMsg = '동의가 필요해 캡션을 만들 수 없어요.';
-      }
+      );
+      // 로더 정리 후 리턴 — 동의 거부 시 콜백 미실행이므로 여기서 정리
+      hideCaptionLoader(false, () => {});
+      if (btn) { btn.innerHTML = '만들기'; btn.disabled = false; }
+      return;
     } else if (/Failed to fetch|NetworkError/i.test(raw)) {
       userMsg = '네트워크 연결 확인 후 다시 시도해주세요.';
     } else if (/timeout/i.test(raw)) {

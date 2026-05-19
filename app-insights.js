@@ -25,9 +25,7 @@
     return await res.json();
   }
 
-  function _formatKRW(n) {
-    return (+n || 0).toLocaleString('ko-KR') + '원';
-  }
+  // [2026-05-19] _formatKRW 삭제 → formatMoney (format-money.js 공통 유틸)
 
   function _relativeDays(days) {
     if (days >= 60) return Math.round(days / 30) + '개월';
@@ -84,14 +82,14 @@
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;">
           <span style="font-size:18px;">💝</span>
           <strong style="font-size:14px;">이탈 임박 고객</strong>
-          <span style="margin-left:auto;font-size:11px;color:#dc3545;font-weight:700;">${s.at_risk + s.lost}명</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--danger);font-weight:700;">${s.at_risk + s.lost}명</span>
         </div>
         ${items.map(c => `
           <div style="padding:8px 4px;border-top:1px solid rgba(0,0,0,0.05);">
             <div style="display:flex;align-items:center;gap:6px;">
               <strong style="font-size:13px;">${_esc(c.name)}</strong>
               ${c.phone ? `<span style="font-size:11px;color:#888;">${_esc(c.phone)}</span>` : ''}
-              <span style="margin-left:auto;font-size:10px;padding:1px 6px;border-radius:3px;font-weight:700;background:${c.status === 'lost' ? 'rgba(220,53,69,0.15)' : 'rgba(255,193,7,0.2)'};color:${c.status === 'lost' ? '#dc3545' : '#f57c00'};">
+              <span style="margin-left:auto;font-size:10px;padding:1px 6px;border-radius:3px;font-weight:700;background:${c.status === 'lost' ? 'rgba(220,53,69,0.15)' : 'rgba(255,193,7,0.2)'};color:${c.status === 'lost' ? 'var(--danger)' : '#f57c00'};">
                 ${c.status === 'lost' ? '이탈' : '임박'}
               </span>
             </div>
@@ -169,7 +167,7 @@
         </div>`;
     }
     const up = data.delta_pct >= 0;
-    const deltaColor = data.delta_pct >= 5 ? '#388e3c' : data.delta_pct <= -5 ? '#dc3545' : '#666';
+    const deltaColor = data.delta_pct >= 5 ? '#388e3c' : data.delta_pct <= -5 ? 'var(--danger)' : '#666';
     const arrow = data.delta_pct > 5 ? '↗' : data.delta_pct < -5 ? '↘' : '→';
     const conf = data.confidence || 'low';
     const confLabel = { high: '높음', medium: '보통', low: '낮음' }[conf] || '';
@@ -182,13 +180,13 @@
           <span style="margin-left:auto;font-size:10px;font-weight:700;color:${confColor};background:${confColor}20;padding:2px 7px;border-radius:99px;">신뢰도 ${confLabel}</span>
         </div>
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;">
-          <strong style="font-size:26px;color:var(--accent,var(--brand));font-variant-numeric:tabular-nums;">${_formatKRW(data.predicted_week)}</strong>
+          <strong style="font-size:26px;color:var(--accent,var(--brand));font-variant-numeric:tabular-nums;">${formatMoney(data.predicted_week)}</strong>
           <span style="font-size:13px;color:${deltaColor};font-weight:700;">${arrow} ${up ? '+' : ''}${data.delta_pct}%</span>
         </div>
         <div style="margin-bottom:8px;">${_sparklineSVG(data.history || [], data.predicted_week)}</div>
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-subtle);margin-bottom:8px;">
           <span>8주 전</span>
-          <span>이번 주 누적 ${_formatKRW(data.current_week)}</span>
+          <span>이번 주 누적 ${formatMoney(data.current_week)}</span>
           <span style="color:var(--brand);font-weight:700;">예측</span>
         </div>
         <div style="font-size:12px;color:#555;line-height:1.5;padding:8px 10px;background:#fff;border-radius:8px;">
@@ -450,7 +448,7 @@
       _renderBulkList();
     } catch (err) {
       const humanMsg = (window._humanError ? window._humanError(err) : (err.message || '오류'));
-      body.innerHTML = `<div style="padding:40px 16px;text-align:center;color:#dc3545;font-size:13px;line-height:1.6;">초안 생성 실패<br><span style="font-size:11px;color:#888;">${_esc(humanMsg)}</span></div>`;
+      body.innerHTML = `<div style="padding:40px 16px;text-align:center;color:var(--danger);font-size:13px;line-height:1.6;">초안 생성 실패<br><span style="font-size:11px;color:#888;">${_esc(humanMsg)}</span></div>`;
     }
   }
 

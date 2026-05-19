@@ -549,7 +549,9 @@
         ${item('booking', 'ic-calendar', '예약관리', false)}
         ${item('customer', 'ic-users', '고객관리', false)}
         ${item('revenue', 'ic-dollar-sign', '매출관리', true)}
+        ${ /* INVENTORY_HIDDEN — 재고관리 메뉴 숨김 (Phase 6 cleanup)
         ${item('inventory', 'ic-package', '재고관리', false)}
+        */ '' }
         <div class="ms-side__section">통합 허브</div>
         ${item('aiHub', 'ic-sparkles', 'AI · 자동화', false)}
         ${item('settings', 'ic-settings', '설정 · 연동', false)}
@@ -796,10 +798,10 @@
 
   // ── 삭제 ────────────────────────────────────────────────
   async function _deleteEntry(id) {
-    const ok = window._confirm2 ? window._confirm2('이 매출 기록을 삭제할까요?') : confirm('이 매출 기록을 삭제할까요?');
-    if (!ok) return;
-    try { await remove(id); if (window.hapticLight) window.hapticLight(); await _loadAndRender(); }
-    catch (_e) { if (window.showToast) window.showToast('삭제 실패'); }
+    window._inlineConfirm('이 매출 기록을 삭제할까요?', async () => {
+      try { await remove(id); if (window.hapticLight) window.hapticLight(); await _loadAndRender(); }
+      catch (_e) { if (window.showToast) window.showToast('삭제 실패'); }
+    });
   }
 
   // ── 자동완성 ────────────────────────────────────────────
@@ -965,16 +967,17 @@
         memo: item.memo,
       });
     });
-    sheet.querySelector('[data-rv-del]').addEventListener('click', async () => {
-      if (!window.confirm('이 매출을 삭제할까요?')) return;
-      try {
-        await remove(item.id);
-        if (window.showToast) window.showToast('삭제됐어요');
-        close();
-        try { await _loadAndRender(); } catch (_e) { void _e; }
-      } catch (e) {
-        if (window.showToast) window.showToast('삭제 실패: ' + (e?.message || ''));
-      }
+    sheet.querySelector('[data-rv-del]').addEventListener('click', () => {
+      window._inlineConfirm('이 매출을 삭제할까요?', async () => {
+        try {
+          await remove(item.id);
+          if (window.showToast) window.showToast('삭제됐어요');
+          close();
+          try { await _loadAndRender(); } catch (_e) { void _e; }
+        } catch (e) {
+          if (window.showToast) window.showToast('삭제 실패: ' + (e?.message || ''));
+        }
+      });
     });
   };
 

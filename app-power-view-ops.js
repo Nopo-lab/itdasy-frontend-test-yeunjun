@@ -30,10 +30,7 @@
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
     }[ch]));
   }
-  function _krw(n) {
-    try { return '₩' + (Number(n) || 0).toLocaleString('ko-KR'); }
-    catch (_e) { return '₩0'; }
-  }
+  // [2026-05-19] _krw 삭제 → formatMoney (format-money.js 공통 유틸)
 
   // ── 데이터 집계 ────────────────────────────────────────
   function _aggregate() {
@@ -122,7 +119,7 @@
       return `<rect x="${x}" y="${y}" width="${colW - 8}" height="${h}" rx="3" fill="var(--brand,var(--brand))" />
         <text x="${x + (colW - 8) / 2}" y="${H - padB + 14}" text-anchor="middle" font-size="9" fill="var(--text-subtle,#888)">${_esc(k.slice(5))}</text>`;
     }).join('');
-    const yAxis = `<text x="4" y="${padT + 8}" font-size="9" fill="var(--text-subtle,#888)">${_krw(max)}</text>
+    const yAxis = `<text x="4" y="${padT + 8}" font-size="9" fill="var(--text-subtle,#888)">${formatMoney(max)}</text>
       <text x="4" y="${H - padB - 2}" font-size="9" fill="var(--text-subtle,#888)">₩0</text>`;
     return `<svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;max-width:480px;margin:0 auto;">${yAxis}${bars}</svg>`;
   }
@@ -149,7 +146,7 @@
         <li class="pv-ops-li">
           <span class="pv-ops-li__name">${_esc(name)}</span>
           <span class="pv-ops-li__count">${s.count}건</span>
-          <strong class="pv-ops-li__sum">${_krw(s.sum)}</strong>
+          <strong class="pv-ops-li__sum">${formatMoney(s.sum)}</strong>
         </li>
       `).join('') : '<li class="pv-ops-empty">직원 정보가 기록되면 분포가 나와요</li>';
 
@@ -157,9 +154,9 @@
       const quartersHtml = quartersArr.length ? quartersArr.map(([k, v]) => `
         <tr>
           <td>${_esc(k)}</td>
-          <td style="text-align:right;">${_krw(v.gross)}</td>
-          <td style="text-align:right;color:#DC3545;font-weight:700;">-${_krw(Math.round(v.fee))}</td>
-          <td style="text-align:right;font-weight:700;">${_krw(Math.round(v.gross - v.fee))}</td>
+          <td style="text-align:right;">${formatMoney(v.gross)}</td>
+          <td style="text-align:right;color:var(--danger);font-weight:700;">-${formatMoney(Math.round(v.fee))}</td>
+          <td style="text-align:right;font-weight:700;">${formatMoney(Math.round(v.gross - v.fee))}</td>
         </tr>
       `).join('') : '<tr><td colspan="4" class="pv-ops-empty">카드 매출이 기록되면 분기별 수수료가 보여요</td></tr>';
 
@@ -168,7 +165,7 @@
         return `<li class="pv-ops-li" data-pv-ops-cid="${_esc(c.id)}" tabindex="0" role="button">
           <span class="pv-ops-li__name">${_esc(c.name || '손님')}</span>
           <span class="pv-ops-li__count" style="color:#E68A00;">D-${days}</span>
-          <strong class="pv-ops-li__sum">${_krw(c.balance)}</strong>
+          <strong class="pv-ops-li__sum">${formatMoney(c.balance)}</strong>
         </li>`;
       }).join('') : '<li class="pv-ops-empty">30일 안에 만료될 회원권이 없어요</li>';
 
@@ -180,7 +177,7 @@
         <div class="pv-ops-card" role="dialog" aria-label="운영 분석">
           <header class="pv-ops-header">
             <strong>운영 분석</strong>
-            <span class="pv-ops-sub">매출 ${agg.totalCount}건 · 합계 ${_krw(agg.totalRevenue)}</span>
+            <span class="pv-ops-sub">매출 ${agg.totalCount}건 · 합계 ${formatMoney(agg.totalRevenue)}</span>
             <button type="button" class="pv-ops-close-btn" data-pv-ops-close aria-label="닫기">
               <i class="ph-duotone ph-x" aria-hidden="true"></i>
             </button>

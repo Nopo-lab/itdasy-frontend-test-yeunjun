@@ -105,7 +105,7 @@ function _renderPopupBody(slot) {
     <div id="popupBulkBar" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div style="font-size:12px;font-weight:700;color:var(--text);"><span id="popupSelCount">0</span>장 선택됨</div>
-        <button onclick="_bulkDeletePopup()" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(220,53,69,0.4);background:transparent;color:#dc3545;font-size:11px;font-weight:700;cursor:pointer;">선택 삭제</button>
+        <button onclick="_bulkDeletePopup()" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(220,53,69,0.4);background:transparent;color:var(--danger);font-size:11px;font-weight:700;cursor:pointer;">선택 삭제</button>
       </div>
     </div>
     <div id="popupProgress" style="display:none;text-align:center;padding:16px;font-size:13px;color:var(--text3);">처리 중... ⏳</div>
@@ -236,7 +236,9 @@ async function unassignPopupPhoto(photoId, e) {
 async function addPhotosToPopup(input) {
   const slot = _slots.find(s => s.id === _popupSlotId);
   if (!slot) return;
-  for (const file of Array.from(input.files)) {
+  for (let file of Array.from(input.files)) {
+    // [A9] 2MB 초과 이미지 리사이징
+    if (typeof _resizeIfNeeded === 'function') file = await _resizeIfNeeded(file);
     const dataUrl = await _fileToDataUrl(file);
     const id = _uid();
     slot.photos.push({ id, dataUrl, mode: 'original', editedDataUrl: null });

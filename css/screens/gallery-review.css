@@ -90,7 +90,7 @@
 }
 
 .rv-error {
-  color: #dc3545;
+  color: var(--danger);
   font-size: 13px;
   padding: 8px 0;
 }

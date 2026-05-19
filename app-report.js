@@ -119,7 +119,7 @@
             <div style="font-size:10px;color:#888;">총 예약</div>
           </div>
           <div style="padding:8px;background:rgba(220,53,69,0.08);border-radius:8px;">
-            <div style="font-size:18px;font-weight:800;color:#dc3545;">${b.cancelled}</div>
+            <div style="font-size:18px;font-weight:800;color:var(--danger);">${b.cancelled}</div>
             <div style="font-size:10px;color:#888;">취소</div>
           </div>
         </div>
@@ -139,7 +139,7 @@
       const d = await _fetch(_currentY, _currentM);
       _renderBody(d);
     } catch (e) {
-      body.innerHTML = '<div style="padding:40px;text-align:center;color:#c00;">불러오기 실패: ' + (window._humanError ? window._humanError(e) : e.message) + '</div>';
+      body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--danger);">불러오기 실패: ' + (window._humanError ? window._humanError(e) : e.message) + '</div>';
     }
   }
 

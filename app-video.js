@@ -96,7 +96,7 @@
               <input data-slot-caption="${i}" value="${_esc(slot.caption || '')}" maxlength="${TEXT_MAX}" placeholder="자막 (예: ${label})" style="width:100%;padding:6px 8px;border:1px solid #eee;border-radius:6px;font-size:12px;" />
             `}
           </div>
-          ${slot?.url && _mode === 'sequence' && _slots.length > 2 ? `<button type="button" data-slot-remove="${i}" style="background:none;border:none;color:#c00;font-size:16px;cursor:pointer;padding:4px;">🗑</button>` : ''}
+          ${slot?.url && _mode === 'sequence' && _slots.length > 2 ? `<button type="button" data-slot-remove="${i}" style="background:none;border:none;color:var(--danger);font-size:16px;cursor:pointer;padding:4px;">🗑</button>` : ''}
         </label>
       </div>
     `;

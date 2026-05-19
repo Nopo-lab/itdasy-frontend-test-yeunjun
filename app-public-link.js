@@ -110,7 +110,7 @@
       _renderBody(body, info.slug, info.enabled, url);
       _bindBody(body, url);
     } catch (e) {
-      body.innerHTML = `<div style="padding:40px;text-align:center;color:#c00;">오류: ${_esc(e.message)}</div>`;
+      body.innerHTML = `<div style="padding:40px;text-align:center;color:var(--danger);">오류: ${_esc(e.message)}</div>`;
     }
   }
 

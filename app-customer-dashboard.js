@@ -34,16 +34,14 @@
   const RETENTION_BADGE = {
     ok:      null,
     at_risk: { label: '이탈 임박', color: '#f57c00', bg: 'rgba(255,193,7,0.15)' },
-    lost:    { label: '이탈', color: '#dc3545', bg: 'rgba(220,53,69,0.12)' },
+    lost:    { label: '이탈', color: 'var(--danger)', bg: 'rgba(220,53,69,0.12)' },
   };
 
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
   }
 
-  function _formatKRW(n) {
-    return (+n || 0).toLocaleString('ko-KR') + '원';
-  }
+  // [2026-05-19] _formatKRW 삭제 → formatMoney (format-money.js 공통 유틸)
 
   function _dateShort(iso) {
     if (!iso) return '—';
@@ -122,54 +120,6 @@
     return sheet;
   }
 
-  function _renderHero(d) {
-    const c = d.customer;
-    const isRegular = !!c.is_regular;
-    const isBirthday = (() => {
-      if (!c.birthday) return false;
-      const raw = String(c.birthday).trim();
-      const m = raw.match(/^(\d{1,2})[-/](\d{1,2})$/) || raw.match(/^\d{4}-(\d{1,2})-(\d{1,2})/);
-      if (!m) return false;
-      const today = new Date();
-      return +m[1] === today.getMonth() + 1 && +m[2] === today.getDate();
-    })();
-    const badges = [];
-    if (isRegular) badges.push(`<span class="badge badge-regular">단골</span>`);
-    if (c.membership_active) badges.push(`<span class="badge badge-member">회원권 ${(c.membership_balance/10000).toFixed(1)}만</span>`);
-    if (isBirthday) badges.push(`<span class="badge badge-birthday">오늘 생일</span>`);
-
-    const phoneStr = c.phone ? _esc(c.phone) : '';
-    const dobStr = c.birthday ? _esc(c.birthday) : '';
-    const fvStr = c.first_visit_at ? `첫 방문 ${_dateShort(c.first_visit_at)}` : '';
-    const metas = [phoneStr, dobStr, fvStr].filter(Boolean).join(' · ');
-
-    return `
-      <div class="cd-head" style="padding-right: 28px;">
-        <div class="cd-avatar-lg">${_esc(_initial(c.name))}</div>
-        <div class="cd-name-row">
-          <div class="cd-name">${_esc(c.name)} ${badges.join('')}</div>
-          <div class="cd-meta">${metas}</div>
-        </div>
-        <button class="cd-edit" data-act="edit">편집</button>
-      </div>
-    `;
-  }
-
-  function _renderStats(d) {
-    const s = d.stats;
-    const bal = d.customer && d.customer.membership_active ? +d.customer.membership_balance : 0;
-    return `
-      <div class="cd-stats">
-        <div class="cd-stat"><div class="cd-stat-value">${s.visit_count || 0}회</div><div class="cd-stat-label">방문</div></div>
-        <div class="cd-stat"><div class="cd-stat-value">${_formatKRW(s.total_revenue)}</div><div class="cd-stat-label">총 매출</div></div>
-        <div class="cd-stat"><div class="cd-stat-value">${bal > 0 ? (bal/10000).toFixed(1) + '만' : '0'}</div><div class="cd-stat-label">회원권 잔액</div></div>
-      </div>
-    `;
-  }
-
-  function _renderActions(id) {
-    return ``; // Actions are moved to the bottom
-  }
 
   function _renderRegularMembership(d) {
     const c = d.customer || {};
@@ -255,7 +205,7 @@
         <div style="background:#fff;border-radius:12px;border:1px solid rgba(0,0,0,0.05);overflow:hidden;">
           ${rows.map((n, i) => {
             const face = n.rating >= 9 ? '😍' : n.rating >= 7 ? '😐' : '😞';
-            const color = n.rating >= 9 ? '#388e3c' : n.rating >= 7 ? '#f57c00' : '#dc3545';
+            const color = n.rating >= 9 ? '#388e3c' : n.rating >= 7 ? '#f57c00' : 'var(--danger)';
             return `
               <div style="padding:10px 12px;${i > 0 ? 'border-top:1px solid rgba(0,0,0,0.05);' : ''}display:flex;gap:10px;align-items:flex-start;">
                 <span style="font-size:18px;">${face}</span>
@@ -354,10 +304,13 @@
         const raw = btn.dataset.cmCharge;
         let delta = 0;
         if (raw === 'custom') {
-          const v = window.prompt('충전 금액(원)', '50000');
-          if (v == null) return;
-          delta = parseInt(String(v).replace(/[^\d]/g, ''), 10) || 0;
-          if (delta <= 0) { if (window.showToast) window.showToast('금액을 다시 확인해 주세요'); return; }
+          window._inlinePrompt('충전 금액(원)', '50000', async (v) => {
+            let customDelta = parseInt(String(v).replace(/[^\d]/g, ''), 10) || 0;
+            if (customDelta <= 0) { if (window.showToast) window.showToast('금액을 다시 확인해 주세요'); return; }
+            const curBal2 = +d.customer.membership_balance || 0;
+            await _patchAndReload(id, { membership_balance: curBal2 + customDelta });
+          });
+          return;
         } else {
           delta = parseInt(raw, 10) || 0;
         }
@@ -518,6 +471,7 @@
         ${pref}
         ${revenues.length ? `
         <div class="d-sec"><span>시술 기록</span>${moreLink}</div>
+        <div style="font-size:11px;color:var(--text-muted,#999);padding:0 4px 4px;">최근 15~20건의 시술 기록을 저장합니다</div>
         <div class="vr-wrap">${vrRows}${vrHidden}</div>` : ''}
         ${memo}
       </div>
@@ -541,31 +495,28 @@
         } else if (act === 'call') {
           if (c.phone) window.location.href = 'tel:' + String(c.phone).replace(/[^0-9+]/g, '');
         } else if (act === 'delete') {
-          // [v212] 삭제 → Customer.remove (이벤트 자동 dispatch → 목록 즉시 갱신)
-          const ok = window._confirm2
-            ? window._confirm2(`'${c.name || '이 고객'}'을 삭제할까요? 매출 기록은 보존됩니다.`)
-            : window.confirm(`'${c.name || '이 고객'}'을 삭제할까요? 매출 기록은 보존됩니다.`);
-          if (!ok) return;
-          const removeFn = (window.Customer && window.Customer.remove)
-            ? window.Customer.remove
-            : (typeof window._customerDelete === 'function' ? window._customerDelete : null);
-          if (!removeFn) {
-            if (window.showToast) window.showToast('삭제 함수 미준비');
-            return;
-          }
-          Promise.resolve(removeFn(c.id))
-            .then(() => {
-              if (window.showToast) window.showToast('삭제됐어요');
-              // 모바일 시트 닫기 (열려있는 경우)
-              if (typeof window.closeCustomerDashboard === 'function') window.closeCustomerDashboard();
-              // PC 디테일 mount 정리 (열려있는 경우)
-              const pcMount = document.querySelector('#customerSheet #cdDetailMount');
-              if (pcMount) pcMount.innerHTML = '<div class="pc-r-empty">왼쪽에서 손님을 선택하세요</div>';
-            })
-            .catch((err) => {
-              console.warn('[customer delete]', err);
-              if (window.showToast) window.showToast('삭제 실패 — 다시 시도해주세요');
-            });
+          // [A7] 삭제 확인 메시지 통일 + [A8] 1번만 확인 후 API 직접 호출 (4중 확인 방지)
+          window._inlineConfirm('이 고객을 삭제하면 시술 기록도 함께 삭제돼요. 계속할까요?', () => {
+            // [A8] Customer.remove 직접 호출 — _customerDelete 는 자체 confirm 이 있어서 중복됨
+            const removeFn = (window.Customer && window.Customer.remove) ? window.Customer.remove : null;
+            if (!removeFn) {
+              if (window.showToast) window.showToast('삭제 함수 미준비');
+              return;
+            }
+            Promise.resolve(removeFn(c.id))
+              .then(() => {
+                if (window.showToast) window.showToast('삭제됐어요');
+                // 모바일 시트 닫기 (열려있는 경우)
+                if (typeof window.closeCustomerDashboard === 'function') window.closeCustomerDashboard();
+                // PC 디테일 mount 정리 (열려있는 경우)
+                const pcMount = document.querySelector('#customerSheet #cdDetailMount');
+                if (pcMount) pcMount.innerHTML = '<div class="pc-r-empty">왼쪽에서 손님을 선택하세요</div>';
+              })
+              .catch((err) => {
+                console.warn('[customer delete]', err);
+                if (window.showToast) window.showToast('삭제 실패 — 다시 시도해주세요');
+              });
+          });
         } else if (act === 'edit') {
           // [v212] 편집 — 이름/전화/메모/생일/태그 수정 (인라인 시트)
           if (typeof window._openCustomerEditSheet === 'function') {
@@ -596,7 +547,7 @@
         _bindDetailV4(mountEl, { customer: cust, stats: {}, recent_revenues: [] });
         if (typeof window.showToast === 'function') window.showToast('기본 정보로 표시 중이에요');
       } catch (_) {
-        mountEl.innerHTML = `<div style="padding:40px 20px;text-align:center;color:#c00;font-size:13px;">불러오기 실패<br><span style="color:#888;font-size:11px;">${_esc(e?.message || '네트워크 오류')}</span></div>`;
+        mountEl.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--danger);font-size:13px;">불러오기 실패<br><span style="color:#888;font-size:11px;">${_esc(e?.message || '네트워크 오류')}</span></div>`;
       }
     }
   };
@@ -615,7 +566,7 @@
       console.warn('[customer-dashboard] invalid id:', id);
       body.innerHTML = `
         <div style="padding:40px 20px;text-align:center;">
-          <div style="font-size:13px;color:#c00;">손님 정보를 찾을 수 없어요</div>
+          <div style="font-size:13px;color:var(--danger);">손님 정보를 찾을 수 없어요</div>
           <div style="font-size:11px;color:#888;margin-top:4px;">잘못된 손님 식별자입니다.</div>
         </div>
       `;

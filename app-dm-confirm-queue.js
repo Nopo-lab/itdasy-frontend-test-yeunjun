@@ -231,7 +231,7 @@
         b.addEventListener('click', () => _doAction(b, 'decline_alt'));
       });
     } catch (e) {
-      list.innerHTML = `<div style="text-align:center;color:#dc3545;padding:20px;font-size:12px;">불러오기 실패: ${_esc(e.message)}</div>`;
+      list.innerHTML = `<div style="text-align:center;color:var(--danger);padding:20px;font-size:12px;">불러오기 실패: ${_esc(e.message)}</div>`;
     }
   }
 

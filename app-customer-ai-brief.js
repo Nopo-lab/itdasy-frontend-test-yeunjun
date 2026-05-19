@@ -74,11 +74,7 @@
       ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
   }
 
-  function _krwShort(n) {
-    const v = +n || 0;
-    if (v >= 10000) return (v / 10000).toFixed(v % 10000 === 0 ? 0 : 1) + '만원';
-    return v.toLocaleString('ko-KR') + '원';
-  }
+  // [2026-05-19] _krwShort 삭제 → formatMoney (format-money.js 공통 유틸)
 
   function _daysBetween(iso, ref) {
     if (!iso) return null;
@@ -154,7 +150,7 @@
       parts.push('마지막 방문 ' + b.lastDays + '일 전' + cycle);
     }
     if (b.lastService) {
-      const amt = b.lastAmount ? ' ' + _krwShort(b.lastAmount) : '';
+      const amt = b.lastAmount ? ' ' + formatMoney(b.lastAmount) : '';
       parts.push(_esc(b.lastService) + amt);
     }
     return parts.join(' · ');

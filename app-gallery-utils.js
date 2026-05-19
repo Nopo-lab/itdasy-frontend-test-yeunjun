@@ -15,6 +15,26 @@ function _fileToDataUrl(file) {
   });
 }
 
+// [A9] 2MB 초과 이미지 리사이징 — 업로드 전 클라이언트에서 축소
+async function _resizeIfNeeded(file, maxWidth = 1920) {
+  if (file.size < 2 * 1024 * 1024) return file; // 2MB 이하면 그대로
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        blob => resolve(new File([blob], file.name, { type: 'image/jpeg' })),
+        'image/jpeg', 0.85
+      );
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 function _dataUrlToBlob(dataUrl) {
   const parts = dataUrl.split(',');
   const mime  = parts[0].match(/:(.*?);/)[1];

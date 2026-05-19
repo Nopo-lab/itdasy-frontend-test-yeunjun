@@ -262,6 +262,20 @@
     return { ok: true };
   }
 
+  // ── [B38] 한글 초성 검색 ────────────────────────────────
+  const _CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+  function _chosungMatch(query, name) {
+    if (!query || !name) return false;
+    const isAllChosung = [...query].every(c => _CHO.includes(c));
+    if (!isAllChosung) return false;
+    const nameChosung = [...name].map(c => {
+      const code = c.charCodeAt(0) - 0xAC00;
+      if (code < 0 || code > 11171) return c;
+      return _CHO[Math.floor(code / 588)];
+    }).join('');
+    return nameChosung.startsWith(query);
+  }
+
   // ── 검색 ────────────────────────────────────────────────
   function search(query) {
     if (!_cache) return [];
@@ -271,7 +285,8 @@
       (c.name && c.name.toLowerCase().includes(q)) ||
       (c.phone && c.phone.includes(q)) ||
       (c.memo && c.memo.toLowerCase().includes(q)) ||
-      (c.tags || []).some(t => t.toLowerCase().includes(q))
+      (c.tags || []).some(t => t.toLowerCase().includes(q)) ||
+      (c.name && _chosungMatch(q, c.name))
     );
   }
 
@@ -458,7 +473,7 @@
     offBadge.style.display = _isOffline ? 'inline-block' : 'none';
 
     if (!items.length) {
-      box.innerHTML = `<div class="dt-empty">${_cache && _cache.length ? (seg !== 'all' ? '이 세그먼트에 해당하는 고객이 없어요.' : '검색 결과 없음') : '아직 고객이 없어요. 아래 버튼으로 추가해 주세요.'}</div>`;
+      box.innerHTML = `<div class="dt-empty">${_cache && _cache.length ? (seg !== 'all' ? '이 세그먼트에 해당하는 고객이 없어요.' : '검색 결과 없음') : '+ 버튼을 눌러 첫 고객을 등록해보세요'}</div>`;
       return;
     }
     // 검색 키워드 바뀌면 window 리셋
@@ -638,13 +653,16 @@
   function _confirmDelete(customerId) {
     const c = (_cache || []).find(x => x.id === customerId);
     if (!c) return;
-    if (!confirm(`'${c.name}' 고객을 삭제할까요?\n방문 ${c.visit_count || 0}회 기록도 함께 사라집니다.`)) return;
-    remove(customerId).then(() => {
-      if (window.showToast) window.showToast('삭제됨');
-      _rerender();
-    }).catch(() => {
-      if (window.showToast) window.showToast('삭제 실패');
+    // [A7] 삭제 확인 메시지 통일
+    window._inlineConfirm('이 고객을 삭제하면 시술 기록도 함께 삭제돼요. 계속할까요?', () => {
+      remove(customerId).then(() => {
+        if (window.showToast) window.showToast('삭제됨');
+        _rerender();
+      }).catch(() => {
+        if (window.showToast) window.showToast('삭제 실패');
+      });
     });
+    return;
   }
 
   function _esc(s) {
@@ -662,10 +680,19 @@
     }
   }
 
+  let _isDetailOpen = false;
+  function _closeDetail() {
+    _isDetailOpen = false;
+    _rerender();
+  }
+
   function _openDetail(id) {
     const existing = id && _cache ? _cache.find(c => c.id === id) : null;
     const box = document.getElementById('customerList');
     if (!box) return;
+    // [A4] 뒤로가기로 디테일 닫기 — pushState
+    _isDetailOpen = true;
+    history.pushState({ customerDetail: true }, '');
     const c = existing || { name: '', phone: '', memo: '', tags: [], birthday: '' };
     const _formId = id ? `customer-edit::${id}` : 'customer-add';
     box.innerHTML = `
@@ -685,7 +712,14 @@
     document.getElementById('cfName')?.focus();
   }
 
-  window._customerBack = _rerender;
+  window._customerBack = _closeDetail;
+
+  // [A4] popstate 리스너 — 뒤로가기 시 디테일 닫기
+  window.addEventListener('popstate', (e) => {
+    if (_isDetailOpen) {
+      _closeDetail();
+    }
+  });
 
   window._customerSave = async function (id) {
     const payload = {
@@ -714,17 +748,19 @@
     }
   };
 
-  window._customerDelete = async function (id) {
-    { const _ok = window._confirm2 ? window._confirm2('이 고객을 삭제할까요?') : confirm('이 고객을 삭제할까요?'); if (!_ok) return; }
-    try {
-      await remove(id);
-      if (window.hapticLight) window.hapticLight();
-      if (window.showToast) window.showToast('삭제 완료');
-      _rerender();
-    } catch (e) {
-      console.warn('[customer] delete 실패:', e);
-      if (window.showToast) window.showToast('삭제 실패');
-    }
+  window._customerDelete = function (id) {
+    // [A7] 삭제 확인 메시지 통일
+    window._inlineConfirm('이 고객을 삭제하면 시술 기록도 함께 삭제돼요. 계속할까요?', async () => {
+      try {
+        await remove(id);
+        if (window.hapticLight) window.hapticLight();
+        if (window.showToast) window.showToast('삭제 완료');
+        _rerender();
+      } catch (e) {
+        console.warn('[customer] delete 실패:', e);
+        if (window.showToast) window.showToast('삭제 실패');
+      }
+    });
   };
 
   // [v212] viewport 폭이 바뀌어 PC/모바일 모드 미스매치면 시트 재생성
@@ -819,7 +855,7 @@
               <button data-pick-create style="flex:0 0 auto;padding:9px 14px;background:linear-gradient(135deg,var(--brand),#E96A7E);color:#fff;border:none;border-radius:14px;font-weight:700;font-size:13px;cursor:pointer;">+ 추가하고 선택</button>
             </div>
           </div>
-          <button data-pick-clear style="margin-top:8px;padding:10px;border:1px solid #eee;border-radius:14px;background:#fafafa;color:#c00;cursor:pointer;font-size:12px;">지정 해제 (고객 없음)</button>
+          <button data-pick-clear style="margin-top:8px;padding:10px;border:1px solid #eee;border-radius:14px;background:#fafafa;color:var(--danger);cursor:pointer;font-size:12px;">지정 해제 (고객 없음)</button>
         </div>
       `;
       document.body.appendChild(pop);
@@ -950,7 +986,7 @@
   window.editCustomer = async function (id) {
     try { if (!_cache) await list(); } catch (_) { /* ignore */ }
     const sheet = _ensureSheet();
-    sheet.style.display = 'block';
+    sheet.style.display = 'flex';  // [A5] block → flex
     document.body.style.overflow = 'hidden';
     _openDetail(id);
   };

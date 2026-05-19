@@ -452,6 +452,13 @@ function getToken() {
       const payload = JSON.parse(atob(t.split('.')[1]));
       if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
         localStorage.removeItem(_TOKEN_KEY);
+        // [A10] 토큰 만료 안내 + 로그인 화면
+        if (window.showToast) window.showToast('로그인이 만료되었어요. 다시 로그인해주세요');
+        setTimeout(() => {
+          const lock = document.getElementById('lockOverlay');
+          if (lock) lock.classList.remove('hidden');
+          try { _setAuthGateLocked(true); } catch (_) { /* ignore */ }
+        }, 1000);
         return null;
       }
     } catch { return null; }
@@ -1535,7 +1542,8 @@ window.addEventListener('load', function() {
     const el = document.getElementById(id);
     if (el) el.addEventListener('keydown', (e) => {
       if (e.isComposing || e.keyCode === 229) return;
-      if (e.key === 'Enter' && agree && agree.checked) signup();
+      // [A14] Enter 키 → signup() 직접 호출 (agree 스코프 문제 수정)
+      if (e.key === 'Enter') { e.preventDefault(); signup(); }
     });
   });
   window.signup = signup;
@@ -1689,9 +1697,9 @@ function showTab(id, btn) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
   // 사이드 nav (PC ≥768px) 활성 동기화
-  document.querySelectorAll('.side-nav__btn').forEach(b => b.classList.remove('active'));
-  const sideBtn = document.querySelector('.side-nav__btn[data-side-tab="' + id + '"]');
-  if (sideBtn) sideBtn.classList.add('active');
+  document.querySelectorAll('.ms-side__item').forEach(b => b.classList.remove('is-active'));
+  const sideBtn = document.querySelector('.ms-side__item[data-side-tab="' + id + '"]');
+  if (sideBtn) sideBtn.classList.add('is-active');
   const target = document.getElementById('tab-' + id);
   if (target) target.classList.add('active');
   if (btn) btn.classList.add('active');
@@ -2236,13 +2244,50 @@ window._humanError = function (e) {
   return raw;
 };
 
-// 2중 확인 유틸 — 파괴적 액션에 사용
-window._confirm2 = function (msg, opts) {
-  opts = opts || {};
-  const first = window.confirm((opts.first || msg));
-  if (!first) return false;
-  const second = window.confirm(opts.second || ('한 번 더 확인할게요.\n' + msg + '\n이 작업은 되돌릴 수 없어요.'));
-  return !!second;
+// --- Inline dialog helpers (Capacitor 호환) ---
+function _inlineConfirm(msg, onYes) {
+  const el = document.createElement('div');
+  el.className = 'bk-confirm-toast';
+  el.innerHTML = `
+    <div class="bk-confirm-toast__body">
+      <p>${msg}</p>
+      <div class="bk-confirm-toast__btns">
+        <button class="bk-confirm-toast__cancel">취소</button>
+        <button class="bk-confirm-toast__ok">확인</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  el.querySelector('.bk-confirm-toast__cancel').onclick = () => el.remove();
+  el.querySelector('.bk-confirm-toast__ok').onclick = () => { el.remove(); onYes(); };
+}
+
+function _inlinePrompt(msg, defaultVal, onSubmit) {
+  const el = document.createElement('div');
+  el.className = 'bk-confirm-toast';
+  el.innerHTML = `
+    <div class="bk-confirm-toast__body">
+      <p>${msg}</p>
+      <input type="text" class="bk-confirm-toast__input" value="${defaultVal || ''}" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin:8px 0;font-size:15px;">
+      <div class="bk-confirm-toast__btns">
+        <button class="bk-confirm-toast__cancel">취소</button>
+        <button class="bk-confirm-toast__ok">확인</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  const inp = el.querySelector('.bk-confirm-toast__input');
+  inp.focus(); inp.select();
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); el.querySelector('.bk-confirm-toast__ok').click(); } });
+  el.querySelector('.bk-confirm-toast__cancel').onclick = () => el.remove();
+  el.querySelector('.bk-confirm-toast__ok').onclick = () => { const v = inp.value.trim(); el.remove(); if (v !== '') onSubmit(v); };
+}
+
+window._inlineConfirm = _inlineConfirm;
+window._inlinePrompt = _inlinePrompt;
+
+// 2중 확인 유틸 — 레거시 호환 stub (호출처는 _inlineConfirm 으로 교체 완료)
+window._confirm2 = function (msg) {
+  console.warn('[_confirm2] deprecated — use _inlineConfirm');
+  return false;
 };
 
 // ─────────────────────────────────────────────────────────────

@@ -300,18 +300,20 @@ function openPortfolioItem(id, src, mainTag, tags) {
 }
 
 async function deletePortfolioItem(id, overlay) {
-  if (!confirm('삭제할까요?')) return;
-  const res = await fetch(API + '/portfolio/' + id, {
-    method: 'DELETE',
-    headers: { ...authHeader(), 'ngrok-skip-browser-warning': 'true' }
+  window._inlineConfirm('이 포트폴리오를 삭제할까요?', async () => {
+    const res = await fetch(API + '/portfolio/' + id, {
+      method: 'DELETE',
+      headers: { ...authHeader(), 'ngrok-skip-browser-warning': 'true' }
+    });
+    if (res.ok) {
+      overlay.remove();
+      loadPortfolio();
+      showToast('삭제 완료');
+    } else {
+      showToast('삭제 실패');
+    }
   });
-  if (res.ok) {
-    overlay.remove();
-    loadPortfolio();
-    showToast('삭제 완료 🗑');
-  } else {
-    showToast('삭제 실패');
-  }
+  return;
 }
 
 // =====================================================================

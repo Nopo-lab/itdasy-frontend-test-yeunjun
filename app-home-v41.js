@@ -160,12 +160,12 @@
     const diffSign = diff >= 0 ? '+' : '-';
     const diffColor = diff >= 0 ? 'var(--ok)' : 'var(--danger)';
     const diffLine = (yesterdayTotal > 0 && diff !== 0)
-      ? `<div class="hv-today-rev__diff" style="color:${diffColor}">어제보다 ${diffSign}${_won(Math.abs(diff))}</div>`
+      ? `<div class="hv-today-rev__diff" style="color:${diffColor}">어제보다 ${diffSign}${formatMoney(Math.abs(diff))}</div>`
       : '';
     return `
       <section class="hv-today-rev" aria-label="오늘 매출">
         <div class="hv-today-rev__label">오늘 매출</div>
-        <div class="hv-today-rev__amount">${_won(todayTotal)}</div>
+        <div class="hv-today-rev__amount">${formatMoney(todayTotal)}</div>
         ${diffLine}
         <div class="hv-today-rev__grid">
           <div class="hv-today-rev__cell">
@@ -178,7 +178,7 @@
           </div>
           <div class="hv-today-rev__cell">
             <div class="hv-today-rev__cell-label">이번 달</div>
-            <div class="hv-today-rev__cell-val">${_won(monthTotal)}</div>
+            <div class="hv-today-rev__cell-val">${formatMoney(monthTotal)}</div>
           </div>
         </div>
       </section>
@@ -253,7 +253,7 @@
     const atRiskRaw = brief.at_risk;
     const atRisk = Array.isArray(atRiskRaw) ? atRiskRaw.length : (Number(atRiskRaw) || 0);
     if (atRisk > 0) {
-      cards.push({ ok: 0, cat: '단골 이탈 감지', dot: '#DC4848',
+      cards.push({ ok: 0, cat: '단골 이탈 감지', dot: 'var(--danger)',
         hl: atRisk + '명 방문 주기 넘었어요',
         desc: '평균 주기보다 오래 안 오신 손님',
         btn: '고객 목록', act: 'openCustomers' });
@@ -547,10 +547,7 @@
   }
 
   // ─────────── 운영 3카드 ───────────
-  function _won(n) {
-    try { return '₩' + (Number(n) || 0).toLocaleString('ko-KR'); }
-    catch (_e) { return '₩0'; }
-  }
+  // [2026-05-19] _won → formatMoney (format-money.js 공통 유틸)
   // 데이터 없으면 0 으로 표기 — 신규 가입자도 깔끔한 빈 상태로.
   function _opsStock(brief) {
     const ls = brief ? brief.low_stock : undefined;
@@ -567,7 +564,7 @@
   }
   function _opsRevenue(brief) {
     const v = brief ? brief.this_month_total : 0;
-    return _won(v);
+    return formatMoney(v);
   }
   function _renderOps(brief) {
     /* INVENTORY_HIDDEN const stock = _opsStock(brief); */
@@ -999,13 +996,7 @@
     </div>`;
   }
 
-  function _krwOnly(n) {
-    // [v202] 천원 미만 반올림 — UX 단순화
-    try {
-      const v = Number(n) || 0;
-      return (Math.round(v / 1000) * 1000).toLocaleString('ko-KR') + '원';
-    } catch (_e) { return '0원'; }
-  }
+  // [2026-05-19] _krwOnly → formatMoney / formatEstimate (format-money.js 공통 유틸)
 
   // [v6] 이번달 매출 히어로 + 오른쪽 stat 2개 (오늘 예상 / 이번달 AI 예상)
   function _renderHeroV5(brief) {
@@ -1047,7 +1038,7 @@
     return `<div class="hv5-hero">
       <div class="hv5-hero-l">
         <div class="hv5-hero-label">이번달 매출 <span class="hv5-hero-label-month">${monthLabel}</span></div>
-        <div class="hv5-hero-amt" data-hv-count="${monthTotal}">${_krwOnly(monthTotal)}</div>
+        <div class="hv5-hero-amt" data-hv-count="${monthTotal}">${formatMoney(monthTotal)}</div>
         <div class="hv5-hero-meta">
           <div class="hv5-hero-chip">완료 <b>${monthCount}건</b></div>
         </div>
@@ -1057,11 +1048,11 @@
         <div class="hv5-hero-stats">
           <div class="hv5-hero-stat">
             <div class="hv5-hero-stat-l">오늘 예상 매출</div>
-            <div class="hv5-hero-stat-v pred" data-hv-count="${todayExpected}">${todayExpected > 0 ? _krwOnly(todayExpected) : '0원'}</div>
+            <div class="hv5-hero-stat-v pred" data-hv-count="${todayExpected}">${todayExpected > 0 ? formatEstimate(todayExpected) : '0원'}</div>
           </div>
           <div class="hv5-hero-stat">
             <div class="hv5-hero-stat-l">이번달 AI 예상 매출</div>
-            <div class="hv5-hero-stat-v" data-hv-count="${projected}">${projected > 0 ? _krwOnly(projected) : '집계 중…'}</div>
+            <div class="hv5-hero-stat-v" data-hv-count="${projected}">${projected > 0 ? formatEstimate(projected) : '집계 중…'}</div>
           </div>
         </div>
       </div>
@@ -1250,7 +1241,7 @@
         </button>
         <button type="button" class="hv5-ops-card" data-hv-act="openRevenue">
           <div class="hv5-ops-cat">매출관리</div>
-          <div class="hv5-ops-val">${_krwOnly(monthTotal)}</div>
+          <div class="hv5-ops-val">${formatMoney(monthTotal)}</div>
         </button>
       </div>
     </div></div>`;  /* </div> 닫는 .hv5 wrapper */
@@ -1288,6 +1279,17 @@
         _fetchProjectedTotal().catch(() => 0),  // [v6] 이번달 AI 예상
       ]);
       const merged = brief || (swr && swr.d) || {};
+      // [A12] 모든 API 실패 시 에러 안내
+      if (!brief && !(swr && swr.d) && (!slots || !slots.length)) {
+        container.innerHTML = `
+          <div style="text-align:center;padding:60px 20px;color:var(--text-muted)">
+            <div style="font-size:40px;margin-bottom:12px">📡</div>
+            <div style="font-size:16px;font-weight:600;margin-bottom:8px">연결이 불안정해요</div>
+            <div style="font-size:14px">인터넷 연결을 확인하고 다시 시도해주세요</div>
+            <button onclick="location.reload()" style="margin-top:16px;padding:10px 24px;background:var(--brand);color:#fff;border:none;border-radius:10px;font-size:14px;cursor:pointer">다시 시도</button>
+          </div>`;
+        return;
+      }
       merged._dmQueueCount = dmQueueCount;
       merged._onlinePendingCount = onlinePendingCount;
       merged._projected_total = projected;  // [v6]

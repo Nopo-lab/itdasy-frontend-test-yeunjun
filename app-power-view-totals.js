@@ -16,10 +16,7 @@
   'use strict';
   if (window._PVTotals) return;
 
-  function _krw(n) {
-    try { return '₩' + (Number(n) || 0).toLocaleString('ko-KR'); }
-    catch (_e) { return '₩0'; }
-  }
+  // [2026-05-19] _krw 삭제 → formatMoney (format-money.js 공통 유틸)
 
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, (ch) => ({
@@ -44,13 +41,13 @@
     return `
       <div class="pv-totals__main">
         <span class="pv-totals__label">합계</span>
-        <strong class="pv-totals__value pv-totals__value--brand">${_krw(total)}</strong>
+        <strong class="pv-totals__value pv-totals__value--brand">${formatMoney(total)}</strong>
         <span class="pv-totals__sep">·</span>
         <span class="pv-totals__label">실수령</span>
-        <strong class="pv-totals__value">${_krw(net)}</strong>
+        <strong class="pv-totals__value">${formatMoney(net)}</strong>
         <span class="pv-totals__sep">·</span>
         <span class="pv-totals__label">평균</span>
-        <strong class="pv-totals__value">${_krw(avg)}</strong>
+        <strong class="pv-totals__value">${formatMoney(avg)}</strong>
       </div>
       <div class="pv-totals__sub">${methodChips}</div>
     `;

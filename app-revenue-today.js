@@ -24,11 +24,7 @@
 
   // ── 유틸 ───────────────────────────────────────────────
   const _esc = (s) => (_R()._esc ? _R()._esc(s) : String(s == null ? '' : s));
-  // [v202] 천원 미만 반올림
-  const _krw = (n) => {
-    const v = (+n) || 0;
-    return (Math.round(v / 1000) * 1000).toLocaleString('ko-KR') + '원';
-  };
+  // [2026-05-19] _krw 삭제 → formatMoney (format-money.js 공통 유틸)
   function _sumByMethod(items) {
     const by = {};
     items.forEach(r => {
@@ -98,7 +94,7 @@
       return `<div class="rvm-dayrow">
         <div class="rvm-dd">${_esc(_dayLabel(d, today))}</div>
         <div class="rvm-db">${cell.total > 0 ? `<div class="rvm-df over" style="width:${ratio}%;"></div>` : ''}</div>
-        <div class="rvm-damt">${_krw(cell.total)}</div>
+        <div class="rvm-damt">${formatMoney(cell.total)}</div>
         <div class="rvm-dcnt">${cell.count}건</div>
       </div>`;
     }).join('');
@@ -131,7 +127,7 @@
           <div class="rvm-mln">${who}${svc}</div>
           <div class="rvm-mlsub">${_esc(time)} · ${_esc(methodLbl)} ${isAuto ? '<span class="rvm-bg au">자동</span>' : '<span class="rvm-bg mn">수동</span>'}</div>
         </div>
-        <div class="rvm-mlamt">${_krw(r.amount)}</div>
+        <div class="rvm-mlamt">${formatMoney(r.amount)}</div>
       </div>`;
     }).join('');
     // [v201] 클릭 위임 — document 1회 bind. 매번 render 해도 동작.
@@ -168,7 +164,7 @@
       <div class="rvm-pcg4">
         <div class="rvm-pcstat hi">
           <div class="l">${_esc(lbl)} 매출</div>
-          <div class="v">${_krw(total)}</div>
+          <div class="v">${formatMoney(total)}</div>
           <div class="s">완료 ${count}건</div>
         </div>
         <div class="rvm-pcstat">
@@ -178,13 +174,13 @@
         </div>
         <div class="rvm-pcstat">
           <div class="l">평균 객단가</div>
-          <div class="v">${_krw(avg)}</div>
+          <div class="v">${formatMoney(avg)}</div>
           <div class="s">건당 평균</div>
         </div>
         <!-- PROFIT_HIDDEN
         <div class="rvm-pcstat">
           <div class="l">순수익</div>
-          <div class="v">${"$"}{_krw(inc.net || 0)}</div>
+          <div class="v">${"$"}{formatMoney(inc.net || 0)}</div>
           <div class="s">재료${"$"}{inc.settings ? inc.settings.material_pct : 15}% 기본</div>
         </div>
         -->
@@ -205,7 +201,7 @@
       <div class="rvm-mbody">
         <div class="rvm-mcard rvm-mmain">
           <div class="ml">${_esc(lbl)} 매출</div>
-          <div class="mv">${_krw(total)}</div>
+          <div class="mv">${formatMoney(total)}</div>
           <div class="ms">완료 ${count}건</div>
         </div>
         ${weekBlock}

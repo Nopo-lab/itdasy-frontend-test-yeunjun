@@ -28,7 +28,7 @@
           // 1) 매너 점수 막대 — 이름 셀에 inline 추가
           if (r.manner_score != null) {
             const score = Math.max(0, Math.min(100, Number(r.manner_score)));
-            const color = score < 70 ? '#DC3545' : score < 85 ? '#E68A00' : '#2E8C7E';
+            const color = score < 70 ? 'var(--danger)' : score < 85 ? '#E68A00' : '#2E8C7E';
             cells[0] = (cells[0] || '') + `<span class="pv-manner-bar" title="매너 ${score}점${r.no_show_count ? ' (노쇼 ' + r.no_show_count + '회)' : ''}" aria-label="매너 ${score}점">
               <span class="pv-manner-bar__fill" style="width:${score}%;background:${color};"></span>
             </span>`;
@@ -106,7 +106,7 @@
           const qty = Number(r.quantity || 0);
           const threshold = Number(r.threshold || 1);
           const ratio = threshold > 0 ? Math.min(100, (qty / (threshold * 3)) * 100) : 100;
-          const color = qty <= 0 ? '#DC3545' : qty <= threshold ? '#E68A00' : '#2E8C7E';
+          const color = qty <= 0 ? 'var(--danger)' : qty <= threshold ? '#E68A00' : '#2E8C7E';
           if (cells[1]) {
             cells[1] = cells[1] + `<span class="pv-stock-bar" aria-hidden="true">
               <span class="pv-stock-bar__fill" style="width:${ratio}%;background:${color};"></span>

@@ -395,3 +395,25 @@ textarea:focus, input[type="text"]:focus {
     transform: rotate(360deg);
   }
 }
+
+/* Inline confirm/prompt (Capacitor 호환) */
+.bk-confirm-toast {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.45);
+}
+.bk-confirm-toast__body {
+  background: var(--surface, #fff); border-radius: 16px;
+  padding: 24px; width: min(320px, 90vw);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+.bk-confirm-toast__body p { margin: 0 0 16px; font-size: 15px; line-height: 1.5; color: var(--text); }
+.bk-confirm-toast__btns { display: flex; gap: 8px; justify-content: flex-end; }
+.bk-confirm-toast__cancel {
+  padding: 10px 20px; border: 1px solid var(--border); border-radius: 10px;
+  background: transparent; font-size: 14px; cursor: pointer; color: var(--text-muted);
+}
+.bk-confirm-toast__ok {
+  padding: 10px 20px; border: none; border-radius: 10px;
+  background: var(--brand); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+}

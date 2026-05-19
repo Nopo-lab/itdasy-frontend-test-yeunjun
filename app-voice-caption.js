@@ -375,7 +375,7 @@
     if (!btn || !label) return;
     if (active) {
       label.textContent = '녹음 중지';
-      btn.style.background = 'linear-gradient(135deg,#dc3545,#ff6b6b)';
+      btn.style.background = 'linear-gradient(135deg,var(--danger),#ff6b6b)';
       btn.style.animation = 'vc-mic-pulse 1.2s infinite';
     } else {
       label.textContent = _accumText ? '이어서 녹음' : '녹음 시작';

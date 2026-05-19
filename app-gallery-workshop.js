@@ -168,7 +168,9 @@ async function handleGalleryUpload(input) {
 
   // dataUrl 변환 후 newPhotos 로 따로 수집
   const newPhotos = [];
-  for (const file of toAdd) {
+  for (let file of toAdd) {
+    // [A9] 2MB 초과 이미지 리사이징
+    if (typeof _resizeIfNeeded === 'function') file = await _resizeIfNeeded(file);
     const photo = { id: _uid(), file, dataUrl: await _fileToDataUrl(file) };
     newPhotos.push(photo);
     _photos.push(photo);

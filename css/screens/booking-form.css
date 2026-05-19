@@ -570,8 +570,8 @@
 
 .bf-status-btn.on.bf-st-noshow {
   background: rgba(220, 72, 72, 0.08);
-  border-color: var(--danger, #DC4848);
-  color: var(--danger, #DC4848);
+  border-color: var(--danger, #EF4444);
+  color: var(--danger, #EF4444);
 }
 
 .bf-status-btn.on.bf-st-cancelled {
@@ -634,7 +634,7 @@
   flex: 1;
   padding: 13px 0;
   background: var(--surface-2, #F8F8F9);
-  color: var(--danger, #DC4848);
+  color: var(--danger, #EF4444);
   border: 0.5px solid rgba(220, 72, 72, 0.2);
   border-radius: 12px;
   font-size: 14px;

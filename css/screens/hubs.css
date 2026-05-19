@@ -371,11 +371,11 @@
   background: #0F1419; color: #fff; border-color: #0F1419;
 }
 .hub-fc-chip.danger {
-  color: #DC4848; border-color: rgba(220,72,72,0.25);
+  color: var(--danger); border-color: rgba(220,72,72,0.25);
   background: rgba(220,72,72,0.05);
 }
 .hub-fc-chip.danger.on {
-  background: #DC4848; color: #fff; border-color: #DC4848;
+  background: var(--danger); color: #fff; border-color: var(--danger);
 }
 
 /* ── 고객 카드 (아바타 + 배지) ─────────────────────────── */
@@ -472,11 +472,11 @@
 .inv-low-badge {
   font-size: 9.5px; font-weight: 700;
   padding: 1px 7px; border-radius: 999px;
-  background: #DC4848; color: #fff;
+  background: var(--danger); color: #fff;
   display: inline-flex; align-items: center;
 }
 .inv-forecast {
-  font-size: 10.5px; color: #DC4848; font-weight: 600;
+  font-size: 10.5px; color: var(--danger); font-weight: 600;
   display: inline-flex; align-items: center;
 }
 

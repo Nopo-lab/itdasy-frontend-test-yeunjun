@@ -156,11 +156,7 @@
 
   // ── 헬퍼 ───────────────────────────────────────────────
   const _esc = (s) => (_R()._esc ? _R()._esc(s) : String(s == null ? '' : s));
-  // [v202] 천원 미만 반올림 — "4,194,663원" → "4,195,000원"
-  const _krw = (n) => {
-    const v = (+n) || 0;
-    return (Math.round(v / 1000) * 1000).toLocaleString('ko-KR') + '원';
-  };
+  // [2026-05-19] _krw 삭제 → formatMoney / formatEstimate (format-money.js 공통 유틸)
   function _dayLabel(s, today) {
     const t = new Date(s);
     const dn = ['일', '월', '화', '수', '목', '금', '토'][t.getDay()];
@@ -412,7 +408,7 @@
           ${d.total > 0 ? `<div class="f" style="width:${ratio}%;background:${fillColor};"></div>` : ''}
           ${goalAmt ? `<div class="gl" style="left:${goalPct}%;"></div>` : ''}
         </div>
-        <div class="a ${amtCls}">${_krw(d.total)}</div>
+        <div class="a ${amtCls}">${formatMoney(d.total)}</div>
         <div class="c">${d.count}건</div>
       </div>`;
     };
@@ -438,7 +434,7 @@
       const rec = recommendedGoal(summary);
       // [v201] 수동 목표 있어도 AI 추천 링크 항상 노출 (값이 같지 않으면). 별도 row 로 분리해서 가시성 ↑.
       const aiRow = (rec && rec !== goal.amount)
-        ? `<div style="margin-top:6px;font-size:11px;"><button type="button" data-rvm-act="accept-goal" data-amount="${rec}" style="background:none;border:none;color:var(--brand,#E5586E);text-decoration:underline;font-size:11px;cursor:pointer;padding:0;font-weight:700;">AI 추천 ${_krw(rec)} 으로 변경</button></div>`
+        ? `<div style="margin-top:6px;font-size:11px;"><button type="button" data-rvm-act="accept-goal" data-amount="${rec}" style="background:none;border:none;color:var(--brand,#E5586E);text-decoration:underline;font-size:11px;cursor:pointer;padding:0;font-weight:700;">AI 추천 ${formatEstimate(rec)} 으로 변경</button></div>`
         : '';
       // [v202] 진행률 가시화 — 텍스트 옆에 막대 progress bar. 목표 갱신 시 즉시 width 변경.
       const progressBar = `<div style="width:100%;height:6px;background:#E5E8EB;border-radius:4px;overflow:hidden;margin-top:6px;">
@@ -446,7 +442,7 @@
       </div>`;
       return `<div class="${cls}">
         <div style="flex:1;">
-          <div class="t">목표 ${_krw(goal.amount)}/일 · 달성 ${rate}%</div>
+          <div class="t">목표 ${formatMoney(goal.amount)}/일 · 달성 ${rate}%</div>
           ${progressBar}
           ${aiRow}
         </div>
@@ -461,7 +457,7 @@
       </div>`;
     }
     return `<div class="${cls}">
-      <div class="t">저번달 일평균 ${_krw(rec)} 기반 추천</div>
+      <div class="t">저번달 일평균 ${formatEstimate(rec)} 기반 추천</div>
       <button type="button" class="btn" data-rvm-act="accept-goal" data-amount="${rec}">설정</button>
     </div>`;
   }
@@ -480,7 +476,7 @@
       return `<div class="${liCls}">
         <div class="dt">${_esc(date)}</div>
         <div class="nm">${who}${svc}</div>
-        <div class="am">${_krw(r.amount)}</div>
+        <div class="am">${formatMoney(r.amount)}</div>
         <span class="ch">›</span>
       </div>`;
     };
@@ -503,7 +499,7 @@
     const isPast = !!summary.is_past || !isCur;
     // [v200] "이번달 예상" → "남은 예약 완료 시" 로 라벨 변경. 사용자 의도 명확화.
     const aiRow = (!isPast && summary.projected_total)
-      ? `<div class="rvm5-ai"><span class="badge">예상</span><span class="txt">남은 예약 완료 시 <b>${_krw(summary.projected_total)}</b></span></div>`
+      ? `<div class="rvm5-ai"><span class="badge">예상</span><span class="txt">남은 예약 완료 시 <b>${formatEstimate(summary.projected_total)}</b></span></div>`
       : '';
     const pastBadge = isPast ? `<span class="rvm5-past-badge">지난달</span>` : '';
 
@@ -518,13 +514,13 @@
         <div class="rvm5-top2">
           <div class="rvm5-left">
             <div class="rvm5-hero">
-              <span class="amt">${_krw(summary.total)}</span>
+              <span class="amt">${formatMoney(summary.total)}</span>
               <span class="cnt">${summary.count}건 완료</span>
             </div>
             <!-- PROFIT_HIDDEN
             <div class="rvm5-stats">
-              <div class="rvm5-stat"><div class="l">순수익</div><div class="v">${"$"}{_krw(summary.net_profit)}</div></div>
-              <div class="rvm5-stat"><div class="l">재료비</div><div class="v">${"$"}{_krw(summary.material_cost_total || 0)}</div></div>
+              <div class="rvm5-stat"><div class="l">순수익</div><div class="v">${"$"}{formatMoney(summary.net_profit)}</div></div>
+              <div class="rvm5-stat"><div class="l">재료비</div><div class="v">${"$"}{formatMoney(summary.material_cost_total || 0)}</div></div>
             </div>
             -->
           </div>
@@ -559,7 +555,7 @@
     const isCur = _isCurrentMonth();
     const isPast = !!summary.is_past || !isCur;
     const aiRow = (!isPast && summary.projected_total)
-      ? `<div class="rvm5-mai"><span class="badge">예상</span><span class="txt">남은 예약 완료 시 <b>${_krw(summary.projected_total)}</b></span></div>`
+      ? `<div class="rvm5-mai"><span class="badge">예상</span><span class="txt">남은 예약 완료 시 <b>${formatEstimate(summary.projected_total)}</b></span></div>`
       : '';
     const pastBadge = isPast ? `<span class="rvm5-past-badge">지난달</span>` : '';
 
@@ -572,13 +568,13 @@
         </div>
         <div class="rvm5-mhero">
           <div class="rvm5-mhero-top">
-            <span class="amt">${_krw(summary.total)}</span>
+            <span class="amt">${formatMoney(summary.total)}</span>
             <span class="cnt">${summary.count}건 완료</span>
           </div>
           <!-- PROFIT_HIDDEN
           <div class="rvm5-mhero-sub">
-            <div class="c"><div class="l">순수익</div><div class="v">${"$"}{_krw(summary.net_profit)}</div></div>
-            <div class="c"><div class="l">재료비</div><div class="v">${"$"}{_krw(summary.material_cost_total || 0)}</div></div>
+            <div class="c"><div class="l">순수익</div><div class="v">${"$"}{formatMoney(summary.net_profit)}</div></div>
+            <div class="c"><div class="l">재료비</div><div class="v">${"$"}{formatMoney(summary.material_cost_total || 0)}</div></div>
           </div>
           -->
         </div>
@@ -631,20 +627,21 @@
           const amt = parseInt(btn.dataset.amount, 10);
           if (amt > 0) {
             writeGoal(amt);
-            if (window.showToast) window.showToast(`일일 목표 ${_krw(amt)} 설정됨`);
+            if (window.showToast) window.showToast(`일일 목표 ${formatMoney(amt)} 설정됨`);
             _triggerRerender();
           }
         } else if (act === 'edit-goal') {
           const cur = readGoal();
           const def = cur?.amount ? String(cur.amount) : '';
           // [v201] "20만원" / "200,000원" / "200000" 모두 허용. 숫자만 추출.
-          const v = prompt('일일 목표 매출액 (원, 숫자만). 예: 200000 = 20만원.\n0 또는 빈값 = 목표 해제', def);
-          if (v === null) return;
-          const cleaned = String(v).replace(/[^0-9]/g, '');
-          const n = parseInt(cleaned, 10);
-          if (!n || n <= 0) { clearGoal(); if (window.showToast) window.showToast('일일 목표 해제됨'); }
-          else { writeGoal(n); if (window.showToast) window.showToast(`일일 목표 ${_krw(n)} 설정됨`); }
-          _triggerRerender();
+          window._inlinePrompt('일일 목표 매출액 (원, 숫자만)\n예: 200000 = 20만원\n0 또는 빈값 = 목표 해제', def, (v) => {
+            const cleaned = String(v).replace(/[^0-9]/g, '');
+            const n = parseInt(cleaned, 10);
+            if (!n || n <= 0) { clearGoal(); if (window.showToast) window.showToast('일일 목표 해제됨'); }
+            else { writeGoal(n); if (window.showToast) window.showToast(`일일 목표 ${formatMoney(n)} 설정됨`); }
+            _triggerRerender();
+          });
+          return;
         } else if (act === 'prev-month') {
           _goPrevMonth();
           _triggerRerender();

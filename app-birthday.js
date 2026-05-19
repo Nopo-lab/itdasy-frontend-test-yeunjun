@@ -152,7 +152,7 @@
     body.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-subtle);">불러오는 중…</div>';
     _cached = await _fetch(14);
     if (!_cached) {
-      body.innerHTML = '<div style="padding:30px;text-align:center;color:#c00;">불러오기 실패</div>';
+      body.innerHTML = '<div style="padding:30px;text-align:center;color:var(--danger);">불러오기 실패</div>';
       return;
     }
     _renderBody(_cached);

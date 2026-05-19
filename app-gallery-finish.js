@@ -198,7 +198,7 @@ function _galleryItemDetail(galleryId) {
           <button id="_gd_republish" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;"><i class="ph-duotone ph-camera" style="font-size:15px" aria-hidden="true"></i>다시 올리기</button>
           <div style="display:flex;gap:8px;">
             <button id="_gd_download" style="flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--border);background:transparent;font-size:12px;color:var(--text2);cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:5px;"><i class="ph-duotone ph-download-simple" style="font-size:13px" aria-hidden="true"></i>저장</button>
-            <button id="_gd_delete" style="flex:1;padding:10px;border-radius:12px;border:1.5px solid rgba(220,53,69,0.3);background:transparent;font-size:12px;color:#dc3545;cursor:pointer;">삭제</button>
+            <button id="_gd_delete" style="flex:1;padding:10px;border-radius:12px;border:1.5px solid rgba(220,53,69,0.3);background:transparent;font-size:12px;color:var(--danger);cursor:pointer;">삭제</button>
           </div>
         </div>
       </div>

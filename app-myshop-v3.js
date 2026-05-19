@@ -94,12 +94,7 @@
   function _planText() {
     return _planLabel().replace(/\s*플랜$/g, '');
   }
-  function _won(n) {
-    try { return '₩' + (Number(n) || 0).toLocaleString('ko-KR'); }
-    catch (_e) { return '₩0'; }
-  }
-  // [2026-05-16] M/k 단위 표기 폐기 — 풀 자릿수 그대로 (사용자 요청)
-  function _wonShort(n) { return _won(n); }
+  // [2026-05-19] _won/_wonShort 삭제 → formatMoney (format-money.js 공통 유틸)
   function _todayYMD() {
     return new Date().toISOString().split('T')[0];
   }
@@ -253,7 +248,7 @@
         <div class="ms-shop__stats">
           <div class="ms-shop__stat">
             <div class="ms-shop__stat-label">이번달 매출</div>
-            <div class="ms-shop__stat-value">${_esc(_wonShort(s.rev))}</div>
+            <div class="ms-shop__stat-value">${_esc(formatMoney(s.rev))}</div>
             ${s.revTrend ? `<div class="ms-shop__stat-trend">${_esc(s.revTrend)}</div>` : ''}
           </div>
           <div class="ms-shop__stat">
@@ -305,7 +300,7 @@
         ? `${totalC}명${atRiskN ? ` · 이탈 위험 ${atRiskN}명` : ''}`
         : (atRiskN ? `이탈 위험 ${atRiskN}명` : '고객 관리'),
       atRiskN,
-      revMeta: `${_wonShort(rev)}${mom != null ? ` · ${mom >= 0 ? '+' : ''}${Number(mom).toFixed(0)}%` : ''}`,
+      revMeta: `${formatMoney(rev)}${mom != null ? ` · ${mom >= 0 ? '+' : ''}${Number(mom).toFixed(0)}%` : ''}`,
       stockMeta: lowStock > 0 ? `${lowStock}개 부족` : '재고 정상',
       lowStock,
     };
@@ -460,7 +455,7 @@
       <div class="ms-legend__row">
         <span class="ms-legend__dot" style="background:${r.color};"></span>
         <span class="ms-legend__name">${_esc(r.name)}</span>
-        <span class="ms-legend__value">${_esc(_wonShort(r.value).replace('₩', ''))}</span>
+        <span class="ms-legend__value">${_esc(formatMoney(r.value))}</span>
         <span class="ms-legend__pct">${_esc(r.pct)}%</span>
       </div>
     `).join('');
@@ -476,7 +471,7 @@
         <div class="ms-chart__body">
           <div class="ms-donut" style="background:${d.gradient};" aria-hidden="true">
             <div class="ms-donut__center">
-              <div class="ms-donut__total">${_esc(_wonShort(d.total))}</div>
+              <div class="ms-donut__total">${_esc(formatMoney(d.total))}</div>
               <div class="ms-donut__label">이번달 합계</div>
             </div>
           </div>

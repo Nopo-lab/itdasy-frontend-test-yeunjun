@@ -30,13 +30,13 @@
   // color 톤 — silent(파랑·그린), confirm(주황), 확인카드(빨강·핫핑크).
   const KIND_META = {
     draft_message:           { icon: 'ic-pen-line',      label: '메시지 초안', color: '#0EA5E9' },
-    send_message:            { icon: 'ic-send',          label: '메시지 발송', color: '#DC3545' },
+    send_message:            { icon: 'ic-send',          label: '메시지 발송', color: 'var(--danger)' },
     create_treatment_record: { icon: 'ic-check-circle',  label: '시술 기록',   color: '#15803D' },
     apply_photo_enhance:     { icon: 'ic-wand-sparkles', label: '사진 보정',   color: '#A78BFA' },
     remove_bg_and_swap:      { icon: 'ic-scissors',      label: '배경 교체',   color: '#7C3AED' },
     make_before_after:       { icon: 'ic-layers',        label: '전·후 카드',  color: '#2B8C7E' },
     draft_caption:           { icon: 'ic-sparkles',      label: '캡션 초안',   color: '#F18091' },
-    publish_instagram:       { icon: 'ic-upload',        label: '인스타 게시', color: '#DC3545' },
+    publish_instagram:       { icon: 'ic-upload',        label: '인스타 게시', color: 'var(--danger)' },
     // P0-PE (사진 편집기, 2026-05-17 v167)
     open_photo_editor:       { icon: 'ic-sliders-horizontal', label: '편집기 열기', color: '#F18091' },
     apply_photo_preset:      { icon: 'ic-wand-sparkles', label: '자동 보정',    color: '#A78BFA' },
@@ -47,7 +47,7 @@
     // P0-CHATBOT-SHORTCUT (v175, 2026-05-18) — 챗봇 사진+텍스트 즉시 진입 트리오
     attach_photo_to_customer:        { icon: 'ic-image-plus', label: '고객 사진 첨부',     color: '#15803D' },
     analyze_photo_and_recommend_edit:{ icon: 'ic-sparkles',   label: '사진 분석',          color: '#A78BFA' },
-    prepare_instagram_post_bundle:   { icon: 'ic-upload',     label: '인스타 게시 묶음',   color: '#DC3545' },
+    prepare_instagram_post_bundle:   { icon: 'ic-upload',     label: '인스타 게시 묶음',   color: 'var(--danger)' },
   };
 
   // ──────────── invalidate 매핑 (실행 후 화면 즉시 반영) ────────────

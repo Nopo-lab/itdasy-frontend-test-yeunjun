@@ -13,7 +13,7 @@
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[ch]));
   }
-  function _krw(n) { return Number(n || 0).toLocaleString('ko-KR') + '원'; }
+  // [2026-05-19] _krw 삭제 → formatMoney (format-money.js 공통 유틸)
 
   function _ensureSheet() {
     let sheet = document.getElementById('pricelistSheet');
@@ -123,7 +123,7 @@
                 <div style="font-size:13px;font-weight:600;color:#333;">${_esc(s.name)}</div>
                 <div style="font-size:10px;color:#888;margin-top:2px;">${_esc(s.category)} · ${s.default_duration_min || 60}분</div>
               </div>
-              <div style="font-size:14px;font-weight:700;color:#7C3AED;">${_krw(s.default_price)}</div>
+              <div style="font-size:14px;font-weight:700;color:#7C3AED;">${formatMoney(s.default_price)}</div>
             </div>
           `).join('')}
         </div>

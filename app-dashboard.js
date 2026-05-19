@@ -14,12 +14,7 @@
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
   }
-  function _formatKRWShort(n) {
-    const v = +n || 0;
-    if (v >= 10000) return Math.round(v / 1000) / 10 + '만';
-    if (v >= 1000) return Math.round(v / 100) / 10 + '천';
-    return v.toLocaleString('ko-KR');
-  }
+  // [2026-05-19] _formatKRWShort 삭제 → formatMan (format-money.js 공통 유틸)
 
   // T-326 — sessionStorage 캐시. [2026-04-30] 1분 → 5분 (재진입 hit 율 ↑, fetch 빈도 ↓)
   const _CACHE_TTL = 5 * 60 * 1000;
@@ -169,7 +164,7 @@
           ${_ic(IC.dollar, 14)}
           ${_esc(_periodLabel(period))} 브리핑
         </div>
-        <p class="db-hero__val">${_formatKRWShort(periodAmount)}원</p>
+        <p class="db-hero__val">${formatMan(periodAmount)}</p>
         <span class="db-hero__delta">
           ${_ic(deltaIcon, 14)}
           ${_esc(deltaStr)}
@@ -237,7 +232,7 @@
             <div class="db-wid__ic">${_ic(IC.chart)}</div>
             <span class="db-wid__ttl">매출관리</span>
           </div>
-          <p class="db-wid__val">${_formatKRWShort(periodAmount)}원</p>
+          <p class="db-wid__val">${formatMan(periodAmount)}</p>
           <span class="db-wid__sub ${deltaCls}">${_ic(deltaIcon, 12)} ${_esc(deltaStr)}</span>
         </button>
         <button class="db-wid" data-metric="customer">

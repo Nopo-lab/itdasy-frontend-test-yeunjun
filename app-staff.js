@@ -123,7 +123,7 @@
             <div style="font-weight:700;font-size:14px;">${(s.name || '').replace(/[<>&"]/g,'')}</div>
             <div style="font-size:11px;color:var(--text-2,#666);">${(s.role || '').replace(/[<>&"]/g,'') || '—'}${s.phone ? ' · ' + s.phone.replace(/[<>&"]/g,'') : ''}</div>
           </div>
-          <button class="st-del" data-id="${s.id}" style="background:none;border:1px solid #dc3545;color:#dc3545;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer;">삭제</button>
+          <button class="st-del" data-id="${s.id}" style="background:none;border:1px solid var(--danger);color:var(--danger);padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer;">삭제</button>
         </div>
       `).join('');
       listBox.querySelectorAll('.st-del').forEach(btn => {

@@ -56,7 +56,7 @@
       <div style="padding:4px;">
         <div style="font-size:12px;color:#888;line-height:1.5;margin-bottom:12px;">
           이전에 쓰시던 관리 앱에서 엑셀·CSV 로 내보낸 파일을 올리면 잇데이로 한 번에 가져와요.<br>
-          <span style="color:#c00;">사용자 본인 데이터에 한함. 고객 개인정보 처리 동의 필수.</span>
+          <span style="color:var(--danger);">사용자 본인 데이터에 한함. 고객 개인정보 처리 동의 필수.</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr;gap:10px;">
           ${Object.entries(KIND_LABELS).map(([k, v]) => `
@@ -363,7 +363,7 @@
         <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0;">
           <div style="flex:1;font-size:13px;">
             ${_esc(FIELD_LABELS[f] || f)}
-            ${isRequired ? '<span style="color:#c00;font-size:11px;"> *</span>' : ''}
+            ${isRequired ? '<span style="color:var(--danger);font-size:11px;"> *</span>' : ''}
           </div>
           <select data-map-field="${f}" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:12px;">
             ${optionsHtml.replace(`value="${_esc(current)}"`, `value="${_esc(current)}" selected`)}
@@ -382,7 +382,7 @@
       const missingEl = body.querySelector('#importMissing');
       const btn = body.querySelector('#importCommitBtn');
       if (missing.length) {
-        missingEl.innerHTML = `<span style="color:#c00;">필수 필드 누락: ${missing.map(f => FIELD_LABELS[f] || f).join(', ')}</span>`;
+        missingEl.innerHTML = `<span style="color:var(--danger);">필수 필드 누락: ${missing.map(f => FIELD_LABELS[f] || f).join(', ')}</span>`;
         btn.disabled = true;
         btn.style.background = '#ddd'; btn.style.color = '#888'; btn.style.cursor = 'not-allowed';
       } else {

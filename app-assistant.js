@@ -51,7 +51,7 @@
     create_revenue:        { icon: 'ic-dollar-sign',     label: '매출 기록', color: '#388e3c' },
     create_booking:        { icon: 'ic-calendar',        label: '예약 추가', color: 'var(--brand)' },
     update_booking:        { icon: 'ic-edit-3',          label: '예약 수정', color: '#A78BFA' },
-    cancel_booking:        { icon: 'ic-x',               label: '예약 취소', color: '#DC3545' },
+    cancel_booking:        { icon: 'ic-x',               label: '예약 취소', color: 'var(--danger)' },
     reschedule_booking:    { icon: 'ic-refresh-cw',      label: '예약 변경', color: '#0288D1' },
     create_expense:        { icon: 'ic-credit-card',     label: '지출 기록', color: '#E07A5F' },
     upsert_inventory:      { icon: 'ic-package',         label: '재고 입고', color: '#2B8C7E' },
@@ -60,7 +60,7 @@
     // [QA-r11 PR4-C 2026-05-16] 신규 6종
     charge_membership:     { icon: 'ic-credit-card',     label: '회원권 충전', color: '#7C3AED' },
     use_membership:        { icon: 'ic-credit-card',     label: '회원권 사용', color: '#6D28D9' },
-    mark_booking_no_show:  { icon: 'ic-x-octagon',       label: '노쇼 처리', color: '#DC3545' },
+    mark_booking_no_show:  { icon: 'ic-x-octagon',       label: '노쇼 처리', color: 'var(--danger)' },
     mark_booking_completed:{ icon: 'ic-check-circle',    label: '시술 완료', color: '#15803D' },
     refund_revenue:        { icon: 'ic-corner-up-left',  label: '환불 처리', color: '#F97316' },
     update_service_price:  { icon: 'ic-dollar-sign',     label: '가격 변경', color: '#0EA5E9' },
@@ -940,7 +940,7 @@
       create_customer: { icon: 'ic-user',           label: '고객 등록',       color: '#4ECDC4' },
       create_nps:      { icon: 'ic-star',           label: '후기 기록',       color: '#FFD700' },
       update_booking:  { icon: 'ic-edit-3',         label: '예약 수정',       color: '#A78BFA' },
-      cancel_booking:  { icon: 'ic-trash-2',        label: '예약 취소',       color: '#DC3545' },
+      cancel_booking:  { icon: 'ic-trash-2',        label: '예약 취소',       color: 'var(--danger)' },
       reschedule_booking: { icon: 'ic-refresh-cw',  label: '예약 시간 변경',  color: '#0288D1' },
       update_customer: { icon: 'ic-edit-3',         label: '고객 정보 수정',  color: '#4ECDC4' },
       create_expense:  { icon: 'ic-credit-card',    label: '지출 기록',       color: '#E07A5F' },
@@ -949,7 +949,7 @@
       // [QA-r11 PR4-C 2026-05-16] 신규 6종 배지
       charge_membership:     { icon: 'ic-credit-card',  label: '회원권 충전',   color: '#7C3AED' },
       use_membership:        { icon: 'ic-credit-card',  label: '회원권 사용',   color: '#6D28D9' },
-      mark_booking_no_show:  { icon: 'ic-x-octagon',    label: '노쇼 처리',     color: '#DC3545' },
+      mark_booking_no_show:  { icon: 'ic-x-octagon',    label: '노쇼 처리',     color: 'var(--danger)' },
       mark_booking_completed:{ icon: 'ic-check-circle', label: '시술 완료',     color: '#15803D' },
       refund_revenue:        { icon: 'ic-corner-up-left', label: '환불 처리',   color: '#F97316' },
       update_service_price:  { icon: 'ic-dollar-sign',  label: '가격 변경',     color: '#0EA5E9' },
@@ -969,8 +969,8 @@
           errLine = `<div style="font-size:11px;color:hsl(0,60%,35%);margin-top:4px;line-height:1.4;">사유: ${_esc(_msg.action_error)}</div>`;
         }
       } catch (_e) { void _e; }
-      return `<div style="margin-top:6px;padding:10px 12px;background:rgba(220,53,69,0.08);border-radius:12px;border-left:3px solid #dc3545;">
-        <div style="font-size:11px;font-weight:700;color:#dc3545;">실패 — 다시 말씀해 주세요</div>
+      return `<div style="margin-top:6px;padding:10px 12px;background:rgba(220,53,69,0.08);border-radius:12px;border-left:3px solid var(--danger);">
+        <div style="font-size:11px;font-weight:700;color:var(--danger);">실패 — 다시 말씀해 주세요</div>
         ${errLine}
       </div>`;
     }

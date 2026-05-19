@@ -27,9 +27,7 @@
     if (typeof window.showToast === 'function') window.showToast(msg, opts);
   }
 
-  function _krw(n) {
-    return Number(n || 0).toLocaleString('ko-KR') + '원';
-  }
+  // [2026-05-19] _krw 삭제 → formatMoney (format-money.js 공통 유틸)
 
   function _ensureSheet() {
     let el = document.getElementById('membershipSheet');
@@ -75,7 +73,7 @@
         const svc = it.service_name ? ` · ${(it.service_name + '').replace(/[<>&"]/g,'')}` : '';
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid #f3f3f3;">
           <div style="font-size:12px;color:#444;">${dt}${svc}</div>
-          <div style="font-size:13px;font-weight:700;color:${color};">${sign}${_krw(it.amount || 0)}</div>
+          <div style="font-size:13px;font-weight:700;color:${color};">${sign}${formatMoney(it.amount || 0)}</div>
         </div>`;
       }).join('');
       container.innerHTML = `
@@ -100,7 +98,7 @@
       <div style="margin-bottom:14px;color:var(--text-2,#666);font-size:13px;">${customerName || '고객'}님 회원권 충전</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
         ${[30000, 50000, 100000, 200000, 300000, 500000].map(amt => `
-          <button class="ms-quick-btn" data-amt="${amt}" style="padding:14px 6px;border-radius:10px;border:1px solid var(--border,#e5e5e5);background:var(--bg-2,#fafafa);font-weight:700;font-size:13px;cursor:pointer;">${_krw(amt)}</button>
+          <button class="ms-quick-btn" data-amt="${amt}" style="padding:14px 6px;border-radius:10px;border:1px solid var(--border,#e5e5e5);background:var(--bg-2,#fafafa);font-weight:700;font-size:13px;cursor:pointer;">${formatMoney(amt)}</button>
         `).join('')}
       </div>
       <div style="margin-bottom:14px;">
@@ -141,11 +139,11 @@
         });
         // [2026-04-29] 충전 성공 — 큰 confetti
         if (window.Fun && window.Fun.celebrate) {
-          window.Fun.celebrate(`💳 ${customerName}님 +${_krw(amount)} (잔액 ${_krw(r.membership_balance)})`, {
+          window.Fun.celebrate(`💳 ${customerName}님 +${formatMoney(amount)} (잔액 ${formatMoney(r.membership_balance)})`, {
             emojis: ['💳', '✨', '💖', '🌷'], count: 16,
           });
         } else {
-          _toast(`충전 완료! 잔액 ${_krw(r.membership_balance)}`);
+          _toast(`충전 완료! 잔액 ${formatMoney(r.membership_balance)}`);
         }
         sheet.style.display = 'none';
         try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'membership_topup' } })); } catch (_) { void 0; }
@@ -157,7 +155,7 @@
 
   // ── 사용 시트 ───────────────────────────────────────────────
   function openUseSheet(customerId, customerName, currentBalance) {
-    const balanceTxt = currentBalance != null ? `현재 잔액 ${_krw(currentBalance)}` : '';
+    const balanceTxt = currentBalance != null ? `현재 잔액 ${formatMoney(currentBalance)}` : '';
     const html = `
       <div style="margin-bottom:14px;color:var(--text-2,#666);font-size:13px;">${customerName || '고객'}님 회원권 사용 · ${balanceTxt}</div>
       <div style="margin-bottom:14px;">
@@ -186,7 +184,7 @@
           amount,
           service_name: svc || null,
         });
-        _toast(`사용 완료! 잔액 ${_krw(r.membership_balance)}`);
+        _toast(`사용 완료! 잔액 ${formatMoney(r.membership_balance)}`);
         sheet.style.display = 'none';
         // [2026-04-29] 잔액 부족 경고 토스트 (백엔드가 warning 필드 반환)
         if (r.warning) {
@@ -215,7 +213,7 @@
         <div style="padding:14px;border:1px solid var(--border,#e5e5e5);border-radius:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-weight:700;font-size:15px;">${(it.name || '').replace(/[<>&"]/g,'')}</div>
-            <div style="color:var(--text-2,#666);font-size:12px;margin-top:3px;">잔액 ${_krw(it.membership_balance)} · ${it.days_until_expire ?? '-'}일 후 만료</div>
+            <div style="color:var(--text-2,#666);font-size:12px;margin-top:3px;">잔액 ${formatMoney(it.membership_balance)} · ${it.days_until_expire ?? '-'}일 후 만료</div>
           </div>
           <button class="ms-row-topup" data-id="${it.customer_id}" data-name="${(it.name || '').replace(/[<>&"]/g,'')}" style="padding:8px 14px;background:var(--brand);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">충전 안내</button>
         </div>
@@ -228,7 +226,7 @@
       });
     } catch (e) {
       const sheet = document.getElementById('membershipSheet');
-      sheet.querySelector('#msBody').innerHTML = `<div style="text-align:center;padding:40px 0;color:#dc3545;">불러오기 실패: ${e.message}</div>`;
+      sheet.querySelector('#msBody').innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--danger);">불러오기 실패: ${e.message}</div>`;
     }
   }
 

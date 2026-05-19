@@ -169,11 +169,7 @@
     if (!hit) hit = list.find(t => k.includes((t.name || '').trim().toLowerCase()) || (t.name || '').trim().toLowerCase().includes(k));
     return hit && hit.default_price ? hit.default_price : null;
   }
-  function _krwShort(n) {
-    // [2026-05-17 v6] 사용자 보고 — K/M(만/천) 단위 풀자릿수로 통일. "129만" → "1,290,000원"
-    if (!n || n <= 0) return '';
-    return Number(n).toLocaleString('ko-KR') + '원';
-  }
+  // [2026-05-19] _krwShort 삭제 → formatMoney (format-money.js 공통 유틸)
 
   function _mapItems(items) {
     return items.map(b => {
@@ -265,7 +261,7 @@
         todayCnt++;
         if (it.status === 'completed') todayDone++;
         else if (it.status !== 'cancelled' && it.status !== 'no_show') todayWait++;
-        if (it.amount) estRevenue += it.amount;
+        if (it.status === 'completed' && it.amount) estRevenue += it.amount;
       }
       if (sd >= ws && sd < we && it.status !== 'cancelled' && it.status !== 'no_show') {
         weekCnt++;
@@ -279,7 +275,7 @@
     items.forEach(it => {
       if (it.status === 'cancelled' || it.status === 'no_show') return;
       cnt++;
-      if (it.amount) rev += it.amount;
+      if (it.status === 'completed' && it.amount) rev += it.amount;
     });
     return { cnt, rev };
   }
@@ -403,7 +399,7 @@
       block.style.height = height + 'px';
       block.style.left = '54px';
       block.style.right = '12px';
-      const priceStr = it.amount ? ' · ' + _krwShort(it.amount) : '';
+      const priceStr = it.amount ? ' · ' + formatMoney(it.amount) : '';
       const svcStr = it.svc ? '<span class="bk-block__svc">' + _esc(it.svc) + priceStr + '</span>' : '';
       block.innerHTML = '<span class="bk-bar"></span>'
         + '<div class="bk-block__body">'
@@ -621,7 +617,7 @@
       const dotCls = idx === 0 ? 'bk-staff-dot--pink' : (idx === 1 ? 'bk-staff-dot--gray' : 'bk-staff-dot--dark');
       const cnt = filtered.filter(it => it.staff_idx === idx).length;
       const rev = filtered.filter(it => it.staff_idx === idx).reduce((s, it) => s + (it.amount || 0), 0);
-      const meta = cnt + '건' + (rev ? ' · 매출 ' + _krwShort(rev) : '');
+      const meta = cnt + '건' + (rev ? ' · 매출 ' + formatMoney(rev) : '');
       h += '<div class="bk-pc-day__h-cell">';
       h += '<div class="bk-pc-day__h-staff-name"><span class="bk-staff-dot ' + dotCls + '"></span>' + _esc(sf.name) + '</div>';
       h += '<div class="bk-pc-day__h-meta">' + meta + '</div></div>';
@@ -663,7 +659,7 @@
       block.dataset.bookingId = it.id;
       block.style.top = top + 'px';
       block.style.height = height + 'px';
-      const priceStr = it.amount ? ' · ' + _krwShort(it.amount) : '';
+      const priceStr = it.amount ? ' · ' + formatMoney(it.amount) : '';
       const svcStr = it.svc ? '<span class="bk-pc-day__block-svc">' + _esc(it.svc) + priceStr + '</span>' : '';
       block.innerHTML = '<span class="bk-bar"></span>'
         + '<div class="bk-pc-day__block-body">'
@@ -810,7 +806,7 @@
     h += '<div class="bk-stats__row"><div class="bk-stats__label">완료</div><div class="bk-stats__value" style="color:var(--success,#10A56B)">' + stats.todayDone + '건</div></div>';
     h += '<div class="bk-stats__row"><div class="bk-stats__label">대기</div><div class="bk-stats__value">' + stats.todayWait + '건</div></div>';
     h += '<div class="bk-stats__row"><div class="bk-stats__label">이번주</div><div class="bk-stats__value">' + stats.weekCnt + '건</div></div>';
-    h += '<div class="bk-stats__row"><div class="bk-stats__label">예상 매출</div><div class="bk-stats__value">' + (stats.estRevenue ? _krwShort(stats.estRevenue) : '-') + '</div></div>';
+    h += '<div class="bk-stats__row"><div class="bk-stats__label">남은 예약 완료 시</div><div class="bk-stats__value">' + (stats.estRevenue ? formatMoney(stats.estRevenue) : '-') + '</div></div>';
     h += '</div>';
     return h;
   }
@@ -849,7 +845,7 @@
   // ============================================================
   function _renderMobileLayout() {
     const summ = _monthSummary(_mappedCache);
-    const subTxt = '예약 ' + summ.cnt + '건' + (summ.rev ? ' · 매출 ' + _krwShort(summ.rev) : '');
+    const subTxt = '예약 ' + summ.cnt + '건' + (summ.rev ? ' · 매출 ' + formatMoney(summ.rev) : '');
     const o = document.createElement('div');
     o.id = OVERLAY_ID;
     o.className = 'bk-root bk-root--mobile';
@@ -864,7 +860,11 @@
             <i class="ph-duotone ph-caret-left" style="font-size:14px" aria-hidden="true"></i>
           </button>
           <div class="bk-header__title-wrap">
-            <div class="bk-header__month" id="bk-month-label">${_curYear}년 ${_curMonth}월</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <button id="bk-month-prev" aria-label="이전 달" style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px 6px;color:var(--text-primary,#333);">&lt;</button>
+              <div class="bk-header__month" id="bk-month-label">${_curYear}년 ${_curMonth}월</div>
+              <button id="bk-month-next" aria-label="다음 달" style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px 6px;color:var(--text-primary,#333);">&gt;</button>
+            </div>
             <div class="bk-header__sub" id="bk-month-sub">${subTxt}</div>
             <span id="cal-offline-badge" style="display:none;font-size:10px;font-weight:700;color:var(--danger);background:rgba(220,53,69,.1);padding:2px 8px;border-radius:999px;margin-left:6px;">오프라인</span>
           </div>
@@ -917,7 +917,7 @@
 
   function _renderPCLayout() {
     const summ = _monthSummary(_mappedCache);
-    const subTxt = '이번달 ' + summ.cnt + '건' + (summ.rev ? ' · 매출 ' + _krwShort(summ.rev) : '');
+    const subTxt = '이번달 ' + summ.cnt + '건' + (summ.rev ? ' · 매출 ' + formatMoney(summ.rev) : '');
     const o = document.createElement('div');
     o.id = OVERLAY_ID;
     o.className = 'bk-root bk-root--pc';
@@ -944,6 +944,9 @@
   // ============================================================
   function _bindHeader(o) {
     o.querySelector('#bk-back')?.addEventListener('click', _close);
+    // [A1] 모바일 달 이동 버튼
+    o.querySelector('#bk-month-prev')?.addEventListener('click', _prevMonth);
+    o.querySelector('#bk-month-next')?.addEventListener('click', _nextMonth);
     o.querySelector('#bk-today-btn')?.addEventListener('click', () => {
       _curDate = new Date();
       _curYear = _curDate.getFullYear();
@@ -1154,12 +1157,12 @@
     const sub = o.querySelector('#bk-month-sub');
     if (sub) {
       const summ = _monthSummary(_filterByStaff(_mappedCache));
-      sub.textContent = '예약 ' + summ.cnt + '건' + (summ.rev ? ' · 매출 ' + _krwShort(summ.rev) : '');
+      sub.textContent = '예약 ' + summ.cnt + '건' + (summ.rev ? ' · 매출 ' + formatMoney(summ.rev) : '');
     }
     const pcStats = o.querySelector('#bk-pc-stats');
     if (pcStats) {
       const summ = _monthSummary(_filterByStaff(_mappedCache));
-      pcStats.innerHTML = '<div>이번달 <b>' + summ.cnt + '건</b></div>' + (summ.rev ? '<div>매출 <b>' + _krwShort(summ.rev) + '</b></div>' : '');
+      pcStats.innerHTML = '<div>이번달 <b>' + summ.cnt + '건</b></div>' + (summ.rev ? '<div>매출 <b>' + formatMoney(summ.rev) + '</b></div>' : '');
     }
   }
 
@@ -1530,14 +1533,16 @@
       ch.addEventListener('click', () => {
         const v = ch.dataset.dur;
         if (v === 'custom') {
-          const raw = prompt('소요 시간 (분)', String(_durMin));
-          if (raw == null) return;
-          const n = parseInt(raw, 10);
-          if (!isFinite(n) || n < 5 || n > 600) {
-            if (window.showToast) window.showToast('5~600 분 사이로 입력해 주세요');
-            return;
-          }
-          _durMin = n;
+          window._inlinePrompt('소요 시간 (분)', String(_durMin), (raw) => {
+            const n = parseInt(raw, 10);
+            if (!isFinite(n) || n < 5 || n > 600) {
+              if (window.showToast) window.showToast('5~600 분 사이로 입력해 주세요');
+              return;
+            }
+            _durMin = n;
+            _updateDur();
+          });
+          return;
         } else {
           _durMin = parseInt(v, 10);
         }
@@ -1676,7 +1681,7 @@
             amtInp.dispatchEvent(new Event('input'));
           }
           if (tpl && window.showToast) {
-            const priceLbl = tpl.default_price ? _krwShort(tpl.default_price) + '원 · ' : '';
+            const priceLbl = tpl.default_price ? formatMoney(tpl.default_price) + ' · ' : '';
             window.showToast(`프리셋 기준: ${priceLbl}${tpl.default_duration_min || 0}분`);
           }
         });
@@ -1823,6 +1828,23 @@
       const eTime = _pad(adjEh) + ':' + _pad(adjEm);
       const endDate = crossesMidnight ? _nextDay(d) : d;
       if (!crossesMidnight && sTime >= eTime) { if (window.showToast) window.showToast('종료 시간이 시작보다 늦어야 해요'); return; }
+      // [A3] 과거 날짜 예약 방지
+      if (!existing) {
+        const today = new Date().toISOString().slice(0, 10);
+        if (d < today) {
+          if (window.showToast) window.showToast('과거 날짜에는 예약을 추가할 수 없어요');
+          return;
+        }
+      }
+      // [A2] 시간 충돌 시 저장 차단
+      {
+        const starts = `${d}T${sTime}:00+09:00`;
+        const ends = `${endDate}T${eTime}:00+09:00`;
+        if (window.Booking?.hasConflict?.(starts, ends, existing?.id)) {
+          if (window.showToast) window.showToast('이 시간에 이미 예약이 있어요');
+          return;
+        }
+      }
       // [2026-05-16] 시술명: chip 선택값(#bfSvc) 또는 직접입력값(#bfSvcCustom) 둘 다 폴백
       const svcSelected = body.querySelector('#bfSvc').value.trim();
       const svcCustom   = (body.querySelector('#bfSvcCustom')?.value || '').trim();
@@ -1866,17 +1888,18 @@
   }
 
   function _bindFormActions(body, existing, date) {
-    body.querySelector('#bfDelete')?.addEventListener('click', async () => {
-      if (!confirm('이 예약을 삭제할까요?')) return;
-      try {
-        await window.Booking.remove(existing.id);
-        window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'delete_booking', booking_id: existing.id, customer_id: existing.customer_id || null } }));
-        if (window.hapticLight) window.hapticLight();
-        if (window.showToast) window.showToast('삭제 완료');
-        if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
-        _mappedCache = await _loadMonth(_curYear, _curMonth);
-        _renderViewBody();
-      } catch (_) { if (window.showToast) window.showToast('삭제 실패'); }
+    body.querySelector('#bfDelete')?.addEventListener('click', () => {
+      window._inlineConfirm('이 예약을 삭제할까요?', async () => {
+        try {
+          await window.Booking.remove(existing.id);
+          window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'delete_booking', booking_id: existing.id, customer_id: existing.customer_id || null } }));
+          if (window.hapticLight) window.hapticLight();
+          if (window.showToast) window.showToast('삭제 완료');
+          if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
+          _mappedCache = await _loadMonth(_curYear, _curMonth);
+          _renderViewBody();
+        } catch (_) { if (window.showToast) window.showToast('삭제 실패'); }
+      });
     });
     // [2026-05-16] #bfComplete 카드는 _buildFormHTML 에서 제거 — 핸들러도 삭제.
     const STATUS_LABEL = { confirmed: '확정', completed: '완료', cancelled: '취소', no_show: '안 옴' };

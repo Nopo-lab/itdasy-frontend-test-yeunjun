@@ -19,7 +19,7 @@
   };
 
   function _esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch])); }
-  function _krw(n) { return (n || 0).toLocaleString('ko-KR') + '원'; }
+  // [2026-05-19] _krw 삭제 → formatMoney (format-money.js 공통 유틸)
 
   // 2026-04-24 — icon 은 Lucide sprite id (렌더 시 <svg><use href="#..."/></svg> 로 변환)
   const TABS = [
@@ -48,7 +48,7 @@
           ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;background:#A78BFA;color:#fff;font-size:11px;font-weight:700;"><i class="ph-duotone ph-sparkle" aria-hidden="true"></i>가입</span>`
           : '<span style="color:#bbb;font-size:11px;">—</span>',
         r.membership_active
-          ? `<span style="font-weight:700;color:${(+r.membership_balance || 0) < 30000 && (+r.membership_balance || 0) > 0 ? '#F97316' : '#6B21A8'};">${_krw(r.membership_balance)}</span>`
+          ? `<span style="font-weight:700;color:${(+r.membership_balance || 0) < 30000 && (+r.membership_balance || 0) > 0 ? '#F97316' : '#6B21A8'};">${formatMoney(r.membership_balance)}</span>`
           : '<span style="color:#bbb;">—</span>',
         `${r.visit_count || 0}회`,
       ],
@@ -119,9 +119,9 @@
       row: (r) => [
         _esc(r.customer_name || '—'),
         _esc(r.service_name || '—'),
-        `<span style="font-weight:800;color:#1a1a1a;">${_krw(r.amount)}</span>`,
+        `<span style="font-weight:800;color:#1a1a1a;">${formatMoney(r.amount)}</span>`,
         `<span style="padding:3px 9px;border-radius:100px;background:#FEF4F5;color:var(--brand-strong);font-size:11px;font-weight:700;">${_esc(({card:'카드',cash:'현금',transfer:'계좌이체',bank_transfer:'계좌이체',etc:'기타'}[r.method])||r.method||'—')}</span>`,
-        `<span style="color:#2B8C7E;font-weight:700;">${r.net_amount != null ? _krw(r.net_amount) : _krw(r.amount)}</span>`,
+        `<span style="color:#2B8C7E;font-weight:700;">${r.net_amount != null ? formatMoney(r.net_amount) : formatMoney(r.amount)}</span>`,
       ],
       editFields: [
         { key: 'customer_name', type: 'text' },
@@ -129,7 +129,7 @@
         { key: 'amount',        type: 'number' },
         { key: 'method',        type: 'text', placeholder: '카드|현금|계좌이체' },
         { key: 'net_amount',    type: 'text', readonly: true,
-          format: (r) => _krw(r.net_amount != null ? r.net_amount : r.amount) },
+          format: (r) => formatMoney(r.net_amount != null ? r.net_amount : r.amount) },
       ],
       search: (r, kw) => ((r.customer_name || '') + ' ' + (r.service_name || '') + ' ' + (r.method || '')).toLowerCase().includes(kw),
       empty: { icon: '💰', title: '매출 기록이 없어요', desc: '카드는 3.4% 수수료가 자동 차감돼서 실 수령액이 바로 보여요.' },
@@ -237,7 +237,7 @@
       headers: ['시술명', '기본 금액', '소요', '분류'],
       row: (r) => [
         `<strong>${_esc(r.name)}</strong>`,
-        `<span style="font-weight:700;">${_krw(r.default_price)}</span>`,
+        `<span style="font-weight:700;">${formatMoney(r.default_price)}</span>`,
         `<span style="color:var(--text-muted);">${r.default_duration_min || 0}분</span>`,
         `<span style="padding:3px 9px;border-radius:100px;background:#F3E8FF;color:#6B21A8;font-size:11px;font-weight:700;">${_esc(({nail:'네일',hair:'헤어',lash:'속눈썹',skin:'피부',eye:'속눈썹',wax:'왁싱',hair_extension:'붙임머리',etc:'기타'}[r.category])||r.category||'기타')}</span>`,
       ],
@@ -329,7 +329,7 @@
     if (missing) {
       if (window.showToast) window.showToast(`필수: ${missing}`);
       const el = document.querySelector(`#power-view-overlay .pv-qadd [data-field="${missing}"]`);
-      if (el) { el.focus(); el.style.borderColor = '#dc3545'; setTimeout(() => { el.style.borderColor = ''; }, 1200); }
+      if (el) { el.focus(); el.style.borderColor = 'var(--danger)'; setTimeout(() => { el.style.borderColor = ''; }, 1200); }
       return;
     }
     const btn = document.getElementById('pv-add-btn');
@@ -795,9 +795,12 @@
   }
 
   // T-383 에서 실구현 예정. 현재는 기존 월간리포트로 연결.
-  window.openRevenueReport = function() {
-    if (typeof window.openReport === 'function') window.openReport();
-  };
+  // [A15] app-revenue-report.js 가 openRevenueReport 을 정의하므로, 아직 없을 때만 폴백 등록
+  if (typeof window.openRevenueReport !== 'function') {
+    window.openRevenueReport = function() {
+      if (typeof window.openReport === 'function') window.openReport();
+    };
+  }
 
   // ── 전역 이벤트 위임 ─────────────────────────────────
   document.addEventListener('click', (e) => {

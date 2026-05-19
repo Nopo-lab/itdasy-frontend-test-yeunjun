@@ -155,5 +155,5 @@
 
   window.openRevenueReport  = openRevenueReport;
   window.closeRevenueReport = closeRevenueReport;
-  window.openReport = function () { openRevenueReport('month'); };
+  // [A15] openReport 충돌 해소 — app-report.js 의 openReport 와 이름 겹침 제거
 })();

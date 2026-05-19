@@ -12,7 +12,7 @@
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[ch]));
   }
-  function _krw(n) { return Number(n || 0).toLocaleString('ko-KR') + '원'; }
+  // [2026-05-19] _krw 삭제 → formatMoney (format-money.js 공통 유틸)
 
   function _ensureSheet() {
     let sheet = document.getElementById('smartCaptureSheet');
@@ -183,7 +183,7 @@
               ${it.phone ? `<div>전화: ${_esc(it.phone)}</div>` : ''}
               ${it.starts_at ? `<div>시간: ${_esc(it.starts_at)}</div>` : ''}
               ${it.service_name ? `<div>시술: ${_esc(it.service_name)}</div>` : ''}
-              ${it.amount ? `<div>금액: <strong>${_krw(it.amount)}</strong></div>` : ''}
+              ${it.amount ? `<div>금액: <strong>${formatMoney(it.amount)}</strong></div>` : ''}
               ${it.rating ? `<div style="display:inline-flex;align-items:center;gap:2px;color:#F59E0B;">${'<i class=\"ph-duotone ph-star\" style=\"font-size:12px;\" aria-hidden=\"true\"></i>'.repeat(it.rating)}</div>` : ''}
               ${it.comment ? `<div style="color:#555;">${_esc(it.comment)}</div>` : ''}
               ${it.memo ? `<div style="color:#888;font-size:11px;">${_esc(it.memo)}</div>` : ''}

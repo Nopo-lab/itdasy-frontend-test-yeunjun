@@ -128,7 +128,7 @@ function _renderAiRecommendTab(root, slots) {
     <div class="sec-sub" style="margin-bottom:16px;">${subText}</div>
     ${cardsHtml}
     <div id="aiRecommendBatchBar" style="display:none;position:fixed;bottom:65px;left:0;right:0;z-index:200;padding:10px 16px;background:rgba(255,255,255,0.99);border-top:1px solid var(--border);box-shadow:0 -2px 16px rgba(0,0,0,0.1);">
-      <button onclick="_batchDeleteAiSlots()" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#dc3545,#c82333);color:#fff;font-size:13px;font-weight:800;cursor:pointer;">선택한 작업 삭제</button>
+      <button onclick="_batchDeleteAiSlots()" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--danger),#c82333);color:#fff;font-size:13px;font-weight:800;cursor:pointer;">선택한 작업 삭제</button>
     </div>`;
 }
 

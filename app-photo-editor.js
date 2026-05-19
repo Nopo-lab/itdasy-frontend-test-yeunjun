@@ -213,16 +213,17 @@
       _toast('5개 한도. 기존 프리셋 길게 눌러 삭제 후 다시 저장');
       return;
     }
-    const name = (typeof window.prompt === 'function' ? window.prompt('프리셋 이름 (예: 헤어 진하게)', '내 프리셋 ' + (list.length + 1)) : '내 프리셋 ' + (list.length + 1));
-    if (!name) return;
-    list.push({
-      name: String(name).slice(0, 20),
-      adjust: JSON.parse(JSON.stringify(_state.adjust)),
-      beauty: JSON.parse(JSON.stringify(_state.beauty)),
+    window._inlinePrompt('프리셋 이름 (예: 헤어 진하게)', '내 프리셋 ' + (list.length + 1), (name) => {
+      list.push({
+        name: String(name).slice(0, 20),
+        adjust: JSON.parse(JSON.stringify(_state.adjust)),
+        beauty: JSON.parse(JSON.stringify(_state.beauty)),
+      });
+      _saveFavoritesList(list);
+      _renderPanel();
+      _toast('프리셋 저장: ' + name);
     });
-    _saveFavoritesList(list);
-    _renderPanel();
-    _toast('프리셋 저장: ' + name);
+    return;
   }
   function _applyFavorite(idx) {
     const list = _loadFavorites();
@@ -399,9 +400,9 @@
         e.preventDefault();
         const i = +e.currentTarget.dataset.peFavApply;
         const list = _loadFavorites();
-        if (typeof window.confirm === 'function' && window.confirm('프리셋 "' + (list[i] && list[i].name) + '" 삭제할까요?')) {
+        window._inlineConfirm('프리셋 "' + (list[i] && list[i].name) + '" 삭제할까요?', () => {
           list.splice(i, 1); _saveFavoritesList(list); _renderPanel(); _toast('프리셋 삭제');
-        }
+        });
       });
       _on(panel, '[data-pe-fav-save]', 'click', _saveCurrentAsFavorite);
     },
@@ -958,10 +959,10 @@
     if (_state && _state.history && _state.history.length > 1) {
       const dirty = (_state.historyCursor > 0) && (_state._savedAtCursor !== _state.historyCursor);
       if (dirty && !fromHistory) {
-        const ok = (typeof window.confirm === 'function')
-          ? window.confirm('편집한 내용이 저장되지 않았어요. 정말 닫을까요?')
-          : true;
-        if (!ok) return;
+        window._inlineConfirm('편집한 내용이 저장되지 않았어요. 정말 닫을까요?', () => {
+          _close(true);
+        });
+        return;
       }
     }
     const sheet = document.getElementById('photoEditorSheet');

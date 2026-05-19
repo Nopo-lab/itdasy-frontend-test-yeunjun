@@ -274,7 +274,7 @@ tr.pv-row-warn { background: rgba(255, 193, 7, 0.08); }
 tr.pv-row-warn td:first-of-type { box-shadow: inset 3px 0 0 #F57C00; }
 
 tr.pv-row-danger { background: rgba(220, 53, 69, 0.08); }
-tr.pv-row-danger td:first-of-type { box-shadow: inset 3px 0 0 #DC3545; }
+tr.pv-row-danger td:first-of-type { box-shadow: inset 3px 0 0 var(--danger); }
 
 tr.pv-row-highlight { background: rgba(46, 140, 126, 0.08); }
 tr.pv-row-highlight td:first-of-type { box-shadow: inset 3px 0 0 #2E8C7E; }
@@ -321,7 +321,7 @@ tr.pv-row-low-balance td:first-of-type { box-shadow: inset 3px 0 0 #E68A00; }
 }
 .pv-totals__value--brand { color: var(--brand, #F18091); }
 .pv-totals__value--warn { color: #E68A00; }
-.pv-totals__value--danger { color: #DC3545; }
+.pv-totals__value--danger { color: var(--danger); }
 .pv-totals__sep { color: var(--text-subtle, #ccc); margin: 0 4px; }
 .pv-totals__chip {
   padding: 3px 9px;
@@ -719,7 +719,7 @@ tr[data-pv-error="true"] .pv-row-status {
 }
 tr[data-pv-error="true"] .pv-row-status__error {
   display: inline-block;
-  color: #DC3545;
+  color: var(--danger);
 }
 
 /* 다크 모드 */

@@ -545,7 +545,7 @@
 }
 .cv-tt-day-hdr.sun .cv-tt-dnum,
 .cv-tt-day-hdr.sun .cv-tt-dow {
-  color: var(--danger, #DC3545);
+  color: var(--danger, #EF4444);
 }
 .cv-tt-day-hdr.sat .cv-tt-dnum,
 .cv-tt-day-hdr.sat .cv-tt-dow {

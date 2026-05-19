@@ -118,18 +118,18 @@ function handleBgUpload(input) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    const name = prompt('배경 이름을 입력하세요:', file.name.replace(/\.[^.]+$/, ''));
-    if (!name) return;
-    const userBgs = _loadUserBgs();
-    userBgs.push({
-      id: 'user_' + Date.now(),
-      name: name.slice(0, 10),
-      type: 'user',
-      imageData: e.target.result,
+    window._inlinePrompt('배경 이름을 입력하세요:', file.name.replace(/\.[^.]+$/, ''), (name) => {
+      const userBgs = _loadUserBgs();
+      userBgs.push({
+        id: 'user_' + Date.now(),
+        name: name.slice(0, 10),
+        type: 'user',
+        imageData: e.target.result,
+      });
+      _saveUserBgs(userBgs);
+      _renderBgPanel();
+      showToast('배경이 추가됐어요!');
     });
-    _saveUserBgs(userBgs);
-    _renderBgPanel();
-    showToast('배경이 추가됐어요!');
   };
   reader.readAsDataURL(file);
   input.value = '';

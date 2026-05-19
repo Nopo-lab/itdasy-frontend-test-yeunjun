@@ -280,7 +280,7 @@
         if (it.trigger_intent) triggers.push(_INTENT_LABEL[it.trigger_intent] || it.trigger_intent);
         if (it.trigger_time_start && it.trigger_time_end) triggers.push(`${it.trigger_time_start}~${it.trigger_time_end}`);
         if (it.trigger_customer_type && it.trigger_customer_type !== 'all') triggers.push(_CUST_LABEL[it.trigger_customer_type] || it.trigger_customer_type);
-        const triggerSummary = triggers.length ? triggers.join(' · ') : '<span style="color:#dc3545;">트리거 없음 (매칭 안 됨)</span>';
+        const triggerSummary = triggers.length ? triggers.join(' · ') : '<span style="color:var(--danger);">트리거 없음 (매칭 안 됨)</span>';
         const modeColor = it.mode === 'exact' ? '#10B981' : '#7C3AED';
         return `
           <div data-id="${it.id}" style="padding:12px;background:#FAFAFA;border:1px solid #f0f0f0;border-radius:14px;margin-bottom:8px;${!it.enabled ? 'opacity:0.5;' : ''}">
@@ -335,7 +335,7 @@
         });
       });
     } catch (e) {
-      list.innerHTML = `<div style="text-align:center;color:#dc3545;padding:20px;font-size:12px;">불러오기 실패: ${_esc(e.message)}</div>`;
+      list.innerHTML = `<div style="text-align:center;color:var(--danger);padding:20px;font-size:12px;">불러오기 실패: ${_esc(e.message)}</div>`;
     }
   }
 
