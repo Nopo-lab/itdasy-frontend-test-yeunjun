@@ -119,6 +119,11 @@
       ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   }
   function _pad(n)  { return String(n).padStart(2, '0'); }
+  function _nextDay(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }
   function _ds(d)   { return d.getFullYear() + '-' + _pad(d.getMonth()+1) + '-' + _pad(d.getDate()); }
   function _fmt(d)  { return _pad(d.getHours()) + ':' + _pad(d.getMinutes()); }
   function _overlay()  { return document.getElementById(OVERLAY_ID); }
@@ -1812,8 +1817,12 @@
       const endMin = sh * 60 + sm + dur;
       const eh = Math.floor(endMin / 60) % 24, em = endMin % 60;
       const sTime = _pad(sh) + ':' + _pad(sm);
-      const eTime = _pad(eh) + ':' + _pad(em);
-      if (sTime >= eTime && endMin < 1440) { if (window.showToast) window.showToast('종료 시간이 시작보다 늦어야 해요'); return; }
+      const crossesMidnight = endMin >= 1440;
+      const adjEh = crossesMidnight ? Math.floor((endMin - 1440) / 60) : eh;
+      const adjEm = crossesMidnight ? (endMin - 1440) % 60 : em;
+      const eTime = _pad(adjEh) + ':' + _pad(adjEm);
+      const endDate = crossesMidnight ? _nextDay(d) : d;
+      if (!crossesMidnight && sTime >= eTime) { if (window.showToast) window.showToast('종료 시간이 시작보다 늦어야 해요'); return; }
       // [2026-05-16] 시술명: chip 선택값(#bfSvc) 또는 직접입력값(#bfSvcCustom) 둘 다 폴백
       const svcSelected = body.querySelector('#bfSvc').value.trim();
       const svcCustom   = (body.querySelector('#bfSvcCustom')?.value || '').trim();
@@ -1822,7 +1831,7 @@
       const depVal = +body.querySelector('#bfDeposit')?.value || 0;
       const payload = {
         starts_at:     `${d}T${sTime}:00+09:00`,
-        ends_at:       `${d}T${eTime}:00+09:00`,
+        ends_at:       `${endDate}T${eTime}:00+09:00`,
         customer_id:   body._getCustId?.() || null,
         customer_name: body.querySelector('#bfCustName').value.trim() || null,
         service_name:  svcSelected || svcCustom || null,

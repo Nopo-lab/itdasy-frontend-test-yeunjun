@@ -317,7 +317,7 @@
     overlay.querySelector('[data-rh-qa] [data-field="customer_name"]')?.focus();
   }
   function _buildBody(v) {
-    if (!v.amount || isNaN(+v.amount)) throw new Error('금액 필수');
+    if (!v.amount || isNaN(+v.amount) || +v.amount < 0) throw new Error('금액은 0보다 커야 합니다');
     return {
       customer_name: v.customer_name || null,
       service_name:  v.service_name  || null,

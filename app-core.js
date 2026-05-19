@@ -467,7 +467,7 @@ function _clearAllSWRCache() {
   _swrClearScheduled = true;
   requestAnimationFrame(() => {
     _swrClearScheduled = false;
-    const prefixes = ['pv_cache::', 'itdasy:cache', 'dash_cache::'];
+    const prefixes = ['pv_cache::', 'itdasy:cache', 'dash_cache::', 'hv41_cache::', 'mv3_cache::'];
     const exactKeys = ['ch_cache', 'ih_cache', 'rh_cache'];
     [localStorage, sessionStorage].forEach(store => {
       try {
@@ -490,7 +490,7 @@ window._clearAllSWRCache = _clearAllSWRCache;
 //   남는 문제 해결. 토큰 변경만으로는 same-user 토큰 갱신 vs other-user
 //   새 토큰을 구분 못 하므로 user_id 기준으로 비교.
 // ──────────────────────────────────────────────
-const _USER_KEY_PREFIXES = ['itdasy_', 'pv_cache::', 'persona_'];
+const _USER_KEY_PREFIXES = ['itdasy_', 'itdasy:', 'pv_cache::', 'persona_'];
 const _USER_KEY_EXACT = ['last_login_email', 'user_oauth_provider', 'last_user_id', 'shop_id'];
 // [2026-05-07 26차] user 변경 시 보존 키는 "디바이스 단위 UI 설정"만.
 // shop_* / onboarding_done 은 user 데이터 → 제거.
@@ -1220,7 +1220,6 @@ async function _tryBiometricLogin() {
 let _signupInFlight = false;
 async function signup() {
   if (_signupInFlight) return;
-  _signupInFlight = true;
   const name = document.getElementById('signupName').value.trim();
   const email = document.getElementById('signupEmail').value.trim();
   const password = document.getElementById('signupPassword').value;
@@ -1240,6 +1239,7 @@ async function signup() {
     errEl.style.display = 'block'; return;
   }
   btn.textContent = '가입 중…'; btn.disabled = true;
+  _signupInFlight = true;
   // 2026-05-01 ── 이전 필드 에러 마크 제거
   ['signupEmail','signupPassword','signupName'].forEach(id => {
     const el = document.getElementById(id);
