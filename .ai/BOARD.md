@@ -1,6 +1,49 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-19 by Claude Code (v224 — review.md 삭제 대상 파일 git rm + IAP 가격 매핑)
+**LAST UPDATED:** 2026-05-19 by Claude Code (v225 — Sprint 1 Pixel Zoom 32x + Grid + Minimap)
+
+---
+
+## 2026-05-19 — v225 사진편집기 정수 고도화 Sprint 1 (Pixel Zoom 32x)
+
+배경: 사용자(연준) "사진편집앱의 정수" 요구. plan `/Users/kang-yeonjun/.claude/plans/glistening-gathering-flamingo.md` v3 (친구 피드백 2회 반영) 승인 후 진행. Sprint 1 = 사용자 1순위 (4배 → 픽셀 단위).
+
+전략:
+- 1.0 ~ 7.99x: CSS transform (기존 v203 유지)
+- 8.0 ~ 32.0x: pixel 모드 — peCanvas 스냅샷 → overlay canvas 에 nearest 재렌더 (drawImage with imageSmoothingEnabled=false)
+- hysteresis: 7.5↔7.0
+- scale ≥ 16: 픽셀 그리드 1px 경계 표시 (Photoshop 스타일)
+- 우상단 120×120 미니맵 + 빨간 viewport 박스
+
+신규 파일:
+- `app-photo-editor-zoom-pixel.js` (~165줄) — 스냅샷/overlay/가시영역 sub-imagedata. exit 시 즉시 메모리 해제 (canvas.width=0 GC 유도)
+- `app-photo-editor-zoom-grid.js` (~85줄) — scale ≥ 16 시 1px 그리드, stride < 6 px 면 자동 숨김 (성능)
+- `app-photo-editor-zoom-minimap.js` (~115줄) — thumbnail 한 번 그림 + viewport 매 update 시 재그림
+
+수정 파일:
+- `app-photo-editor-zoom.js` — MAX 4 → 32. 모드 디스패처 추가. wheel 줌 스텝을 scale 비례 (작을 땐 0.1, 클 땐 1.2). `_applyScale` 가 hysteresis 자동 처리.
+- `index.html` — 3 신규 모듈 defer 로드, 빌드 v225
+- `sw.js` / `app-core.js` — 빌드 통일
+
+데이터 흐름:
+1. zoom.js 가 scale 변경 감지 → 7.5→8.0 진입 시 PhotoEditorZoomPixel.enter() 호출
+2. pixel 모듈이 peCanvas 스냅샷 → overlay 생성 → peCanvas hidden → 첫 렌더
+3. pixel 모듈이 매 update 시 `pePixelZoomChange` 이벤트 dispatch
+4. grid/minimap 모듈이 이벤트 구독해서 자체 갱신
+5. scale ≤ 7.0 복귀 시 pixel.exit() → overlay 제거 + ImageData null
+
+회귀 안전성:
+- 기존 transform 모드 (1.0~7.99) 동작 동일
+- pixel 모드 진입 시 wrap.transform 1.0 reset (기존 텍스트 레이어/템플릿/MediaPipe 보정 결과는 스냅샷에 캡처됨)
+- pixel 모듈 미로드 시 폴백: scale을 7.0으로 클램프
+
+빌드: `20260519-v225-pixel-zoom-32x`
+확인: smoke (157 scripts) pass, eslint 0 errors, headless Chrome JS 에러 0
+
+남은 확인 (사람 손):
+- 실제 4032×3024 폰 원본 입력 + iPhone SE 2 (RAM 3GB) 메모리 검증
+- 더블탭 reset 정상 (pixel 모드 → transform 모드 → 1.0)
+- pan 클램프 — 스냅샷 영역 밖으로 못 나감
 
 ---
 
