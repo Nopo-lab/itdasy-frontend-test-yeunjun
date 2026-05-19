@@ -1,0 +1,370 @@
+/* 사진 편집기 — 디자인 폴리쉬 (Sprint v232 2026-05-19)
+   "뷰티 + 사진편집 정체성 + Claude 디자인":
+   - 다크 베이스 + 핑크→퍼플 그라데이션 액센트
+   - 카드/시트/버튼에 glassmorphism (backdrop-filter blur)
+   - 부드러운 라운드 (14~18px) + 깊이감 있는 그림자
+   - 마이크로 인터랙션 (hover lift, focus glow)
+   - 슬라이더·인풋 모던 스타일
+
+   기존 photo-editor.css 위에 cascade 폴리쉬.
+*/
+
+/* ─────────────────────────────────────────────
+   1. 베이스 — 어두운 그라데이션 + 깊이감
+   ───────────────────────────────────────────── */
+.pe-sheet {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(241,128,145,0.07), transparent 50%),
+    radial-gradient(circle at 80% 100%, rgba(123,97,255,0.07), transparent 50%),
+    #0b0b10 !important;
+}
+
+.pe-root {
+  background: transparent !important;
+  color: #f0f0f5 !important;
+}
+
+/* ─────────────────────────────────────────────
+   2. 탑바 — glassmorphism
+   ───────────────────────────────────────────── */
+.pe-topbar {
+  background: rgba(15, 15, 22, 0.65) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255,255,255,0.04) !important;
+  padding: 12px 14px !important;
+}
+.pe-title {
+  font-size: 15px !important;
+  letter-spacing: -0.2px;
+  background: linear-gradient(135deg, #fff 0%, #d8d8e8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.pe-back-btn {
+  background: rgba(255,255,255,0.07) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 14px !important;
+}
+.pe-back-btn:hover { background: rgba(255,255,255,0.12) !important; transform: translateY(-1px); }
+.pe-back-btn:active { transform: scale(0.96); }
+
+.pe-iconbtn {
+  background: rgba(255,255,255,0.06) !important;
+  border-radius: 12px !important;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pe-iconbtn:hover { background: rgba(255,255,255,0.12) !important; transform: translateY(-1px); }
+
+.pe-btn-primary {
+  background: linear-gradient(135deg, #F18091 0%, #c87c8a 35%, #7b61ff 100%) !important;
+  background-size: 200% 100%;
+  background-position: 0% 50%;
+  border-radius: 14px !important;
+  padding: 10px 18px !important;
+  box-shadow: 0 4px 16px rgba(241,128,145,0.35), 0 1px 3px rgba(0,0,0,0.2);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.2px;
+}
+.pe-btn-primary:hover {
+  background-position: 100% 50%;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(241,128,145,0.45), 0 2px 4px rgba(0,0,0,0.25);
+}
+.pe-btn-primary:active { transform: scale(0.97); }
+
+/* ─────────────────────────────────────────────
+   3. 스테이지 (캔버스 영역)
+   ───────────────────────────────────────────── */
+.pe-stage {
+  background: transparent !important;
+  padding: 16px !important;
+}
+.pe-canvas {
+  border-radius: 12px !important;
+  box-shadow:
+    0 16px 48px rgba(0,0,0,0.55),
+    0 4px 12px rgba(0,0,0,0.35),
+    0 0 0 1px rgba(255,255,255,0.04) !important;
+}
+
+/* ─────────────────────────────────────────────
+   4. 탭바 — glassmorphism + 활성 그라데이션
+   ───────────────────────────────────────────── */
+.pe-tabs {
+  background: rgba(15, 15, 22, 0.7) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(255,255,255,0.04) !important;
+  padding: 10px 12px !important;
+  gap: 6px !important;
+}
+.pe-tab {
+  background: rgba(255,255,255,0.04) !important;
+  color: #a0a0b0 !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  padding: 9px 16px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.1px;
+}
+.pe-tab:hover { background: rgba(255,255,255,0.08) !important; color: #d0d0e0 !important; }
+.pe-tab.on {
+  background: linear-gradient(135deg, rgba(241,128,145,0.25) 0%, rgba(123,97,255,0.25) 100%) !important;
+  color: #fff !important;
+  border-color: rgba(241,128,145,0.45) !important;
+  box-shadow: 0 4px 16px rgba(241,128,145,0.2), 0 0 0 1px rgba(255,255,255,0.06) inset;
+}
+
+/* ─────────────────────────────────────────────
+   5. 패널 — 글래스모피즘 베이스
+   ───────────────────────────────────────────── */
+.pe-panel {
+  background: rgba(20, 20, 28, 0.65) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-top: 1px solid rgba(255,255,255,0.04) !important;
+  padding: 16px 14px 24px !important;
+  max-height: 42vh !important;
+}
+.pe-field-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e8e8f0;
+  letter-spacing: -0.1px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.pe-hint {
+  font-size: 11.5px;
+  color: rgba(255,255,255,0.55);
+  line-height: 1.5;
+  padding: 0;
+}
+
+/* ─────────────────────────────────────────────
+   6. 칩 버튼 — 모던 라운드 + 활성 그라데이션
+   ───────────────────────────────────────────── */
+.pe-chip-btn {
+  background: rgba(255,255,255,0.04) !important;
+  color: #d8d8e8 !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  padding: 10px 14px !important;
+  border-radius: 12px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.1px;
+}
+.pe-chip-btn:hover {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  transform: translateY(-1px);
+}
+.pe-chip-btn.on {
+  background: linear-gradient(135deg, rgba(241,128,145,0.25) 0%, rgba(123,97,255,0.25) 100%) !important;
+  color: #fff !important;
+  border-color: rgba(241,128,145,0.45) !important;
+  box-shadow: 0 4px 14px rgba(241,128,145,0.22);
+}
+.pe-chip-btn:active { transform: scale(0.96); }
+
+/* ─────────────────────────────────────────────
+   7. 액션 버튼 — primary / secondary 두 톤
+   ───────────────────────────────────────────── */
+.pe-action-btn {
+  width: 100%;
+  padding: 13px 16px !important;
+  background: linear-gradient(135deg, #F18091 0%, #c87c8a 50%, #7b61ff 100%) !important;
+  background-size: 200% 100%;
+  background-position: 0% 50%;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 14px !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(241,128,145,0.3), 0 1px 3px rgba(0,0,0,0.2);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.pe-action-btn:hover {
+  background-position: 100% 50%;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(241,128,145,0.4), 0 2px 5px rgba(0,0,0,0.25);
+}
+.pe-action-btn:active { transform: scale(0.98); }
+.pe-action-btn[disabled] { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+/* secondary 변형 — 그라데이션 없이 글래스 */
+.pe-action-btn-secondary {
+  background: rgba(255,255,255,0.06) !important;
+  color: #f0f0f5 !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  box-shadow: none;
+}
+.pe-action-btn-secondary:hover {
+  background: rgba(255,255,255,0.1) !important;
+  border-color: rgba(255,255,255,0.18) !important;
+}
+
+/* ─────────────────────────────────────────────
+   8. 슬라이더 — 모던 트랙 + 그라데이션 thumb
+   ───────────────────────────────────────────── */
+.pe-input[type="range"],
+input[type="range"].pe-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: linear-gradient(to right, rgba(241,128,145,0.4) 0%, rgba(123,97,255,0.4) 100%);
+  border-radius: 999px;
+  outline: none;
+  margin: 6px 0;
+}
+.pe-input[type="range"]::-webkit-slider-thumb,
+input[type="range"].pe-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fff 0%, #f0f0f5 100%);
+  border: 2px solid rgba(241,128,145,0.6);
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1);
+  transition: transform 0.15s ease;
+}
+.pe-input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+.pe-input[type="range"]::-webkit-slider-thumb:active { transform: scale(0.95); }
+.pe-input[type="range"]::-moz-range-thumb,
+input[type="range"].pe-input::-moz-range-thumb {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid rgba(241,128,145,0.6);
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+}
+
+/* ─────────────────────────────────────────────
+   9. 텍스트/숫자 인풋
+   ───────────────────────────────────────────── */
+.pe-input[type="text"],
+.pe-input[type="search"],
+textarea.pe-input {
+  background: rgba(255,255,255,0.05) !important;
+  color: #f0f0f5 !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  padding: 11px 14px !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  outline: none;
+  transition: all 0.18s ease;
+}
+.pe-input[type="text"]:focus,
+.pe-input[type="search"]:focus,
+textarea.pe-input:focus {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(241,128,145,0.45) !important;
+  box-shadow: 0 0 0 3px rgba(241,128,145,0.15) !important;
+}
+
+/* ─────────────────────────────────────────────
+   10. 필름 프리셋 카드 (별도 클래스)
+   ───────────────────────────────────────────── */
+button[data-film-preset] {
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+  padding: 0 !important;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+button[data-film-preset]:hover {
+  border-color: rgba(255,255,255,0.15) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+}
+button[data-film-preset] > div:last-child {
+  background: rgba(20, 20, 28, 0.85) !important;
+  color: #f0f0f5 !important;
+  padding: 8px 10px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+}
+
+/* ─────────────────────────────────────────────
+   11. 셀렉티브 핀 마커 (이미 inline 스타일이지만 강화)
+   ───────────────────────────────────────────── */
+.pe-sel-marker {
+  transition: border-width 0.2s ease, transform 0.1s ease;
+}
+.pe-sel-marker:hover { transform: scale(1.05); }
+
+/* ─────────────────────────────────────────────
+   12. AR 시트 / face-mask 같은 외부 시트도 글래스 베이스
+   ───────────────────────────────────────────── */
+#arTryOnSheet,
+#snsCrossPop,
+#snsAiPostPop,
+#snsCalendarSheet {
+  background: rgba(11, 11, 16, 0.85) !important;
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+}
+
+/* ─────────────────────────────────────────────
+   13. 작은 아이콘 (Lucide SVG)
+   ───────────────────────────────────────────── */
+.pe-ic {
+  width: 14px; height: 14px;
+  flex-shrink: 0;
+  vertical-align: -2px;
+}
+.pe-ic-lg {
+  width: 18px; height: 18px;
+}
+
+/* ─────────────────────────────────────────────
+   14. 가이드 박스 (프로 탭, AI 영역)
+   ───────────────────────────────────────────── */
+.pe-guide-box {
+  background: linear-gradient(135deg, rgba(241,128,145,0.08) 0%, rgba(123,97,255,0.08) 100%);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  font-size: 11.5px;
+  color: rgba(255,255,255,0.78);
+  line-height: 1.5;
+}
+.pe-guide-box strong {
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ─────────────────────────────────────────────
+   15. 스크롤바 (다크 모드)
+   ───────────────────────────────────────────── */
+.pe-panel::-webkit-scrollbar { width: 4px; }
+.pe-panel::-webkit-scrollbar-track { background: transparent; }
+.pe-panel::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 999px;
+}
+.pe-panel::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }

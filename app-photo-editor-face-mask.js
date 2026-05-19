@@ -145,15 +145,16 @@
     let statusBar = '';
     if (status === 'loading') {
       const p = sel.faceProgress || 0;
-      statusBar = `<div style="background:rgba(123,97,255,0.1);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:12px;color:#5b8def;">🤖 AI 얼굴 분석 중 ${p}%…</div>`;
+      statusBar = `<div style="background:rgba(123,97,255,0.1);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:12px;color:#a0b6ff;display:flex;align-items:center;gap:6px;"><svg class="pe-ic" viewBox="0 0 24 24"><use href="#ic-bot"/></svg> AI 얼굴 분석 중 ${p}%…</div>`;
     } else if (status === 'failed') {
       statusBar = `<div style="background:rgba(244,67,54,0.1);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:12px;color:#c0392b;">AI 모델 로드 실패. 인터넷 연결 확인 후 다시 시도</div>`;
     } else if (status === 'noface') {
       statusBar = `<div style="background:rgba(255,193,7,0.1);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:12px;color:#a07000;">얼굴을 찾지 못했어요. 정면 사진을 사용해주세요</div>`;
     }
-    const btns = REGIONS.map(r => `<button type="button" class="pe-chip-btn" data-face-region="${r.id}" style="background:linear-gradient(135deg,#c87c8a,#7b61ff);color:#fff;">✨ ${_esc(r.label)}</button>`).join(' ');
-    return `<div style="margin-top:14px;padding-top:14px;border-top:1px dashed rgba(0,0,0,0.08);">
-      <div class="pe-field-label">✨ AI 자동 영역 (얼굴 인식)</div>
+    const iconFor = (id) => id === 'lips' ? 'ic-smile' : (id === 'face' ? 'ic-smile' : 'ic-eye');
+    const btns = REGIONS.map(r => `<button type="button" class="pe-chip-btn" data-face-region="${r.id}" style="background:linear-gradient(135deg,#c87c8a,#7b61ff);color:#fff;border:none;"><svg class="pe-ic" viewBox="0 0 24 24"><use href="#${iconFor(r.id)}"/></svg> ${_esc(r.label)}</button>`).join(' ');
+    return `<div style="margin-top:14px;padding-top:14px;border-top:1px dashed rgba(255,255,255,0.08);">
+      <div class="pe-field-label"><svg class="pe-ic" viewBox="0 0 24 24" style="margin-right:4px;"><use href="#ic-wand-sparkles"/></svg> AI 자동 영역 (얼굴 인식)</div>
       <div class="pe-panel-row" style="display:flex;gap:6px;flex-wrap:wrap;">${btns}</div>
       ${statusBar}
       <div class="pe-hint">위 버튼을 누르면 AI 가 영역을 자동으로 잡아 마스크를 만들어요. 첫 사용 시 2-3MB 모델을 받습니다.</div>

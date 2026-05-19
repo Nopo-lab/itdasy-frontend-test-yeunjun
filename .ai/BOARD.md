@@ -1,6 +1,57 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-19 by Claude Code (v231 — Sprint 5 Healing + Film + mask RGB-only fix)
+**LAST UPDATED:** 2026-05-19 by Claude Code (v232 — 디자인 폴리쉬 + Lucide 교체)
+
+---
+
+## 2026-05-19 — v232 사진편집기 디자인 폴리쉬 (Claude 디자인 + 잇데이 정체성)
+
+배경: 사용자 보고 3번 "뷰티 + 사진편집 정체성 살려서 Claude 디자인으로 메뉴 개선해줘". Sprint v232 별도 분리 진행.
+
+디자인 컨셉:
+- **베이스**: 다크 그라데이션 (#0b0b10 + 핑크/퍼플 radial glow)
+- **액센트**: 핑크 #F18091 → 퍼플 #7b61ff 그라데이션
+- **글래스모피즘**: 패널·탑바·탭바 `backdrop-filter: blur(20-24px) saturate(180%)`
+- **라운드**: 12~14px 통일
+- **그림자**: 부드럽고 깊이감 있게 (0 8px 24px rgba(0,0,0,0.3))
+- **마이크로 인터랙션**: hover translateY(-1px) + active scale(0.97)
+
+신규 파일:
+- `css/screens/photo-editor-pro.css` (~330줄) — 기존 photo-editor.css 위 cascade 폴리쉬 (전체 cascade 안전)
+  · 탑바·탭바 glassmorphism
+  · 패널 backdrop-filter blur
+  · 칩 버튼 활성 시 핑크-퍼플 그라데이션
+  · 액션 버튼 primary (그라데이션) + secondary (글래스)
+  · 슬라이더 트랙 그라데이션 + thumb glow
+  · 필름 프리셋 카드 hover lift
+  · 가이드 박스 (.pe-guide-box) 핑크-퍼플 그라데이션
+  · 스크롤바 다크 모드
+
+이모지 → Lucide 교체 (메모리 `feedback_itdasy_lucide_only` 준수):
+- selective.js: 📍 → `#ic-pin`, ✨ → `#ic-wand-sparkles`
+- face-mask.js: ✨ → `#ic-wand-sparkles`, 🤖 → `#ic-bot`. 영역별 `#ic-eye`/`#ic-smile`
+- film-presets.js: 🎞 → `#ic-film`
+- heal-v2.js: ✨ → `#ic-wand-sparkles`
+- curve.js / hsl.js 가이드 박스: 인라인 스타일 → `.pe-guide-box` 클래스
+
+신규 Lucide 아이콘 (index.html sprite):
+- `#ic-pin`, `#ic-film`, `#ic-droplet`, `#ic-eye`, `#ic-smile`
+
+수정:
+- index.html — photo-editor-pro.css 로드, 신규 아이콘 5개 sprite 추가, 빌드 v232
+- sw.js / app-core.js — v232 통일
+
+기존 동작 영향:
+- photo-editor.css 코드 0줄 변경 (cascade 만 추가)
+- 신규 CSS 가 기존 inline 스타일 일부 override (의도된 동작)
+- AR/SNS 등 다른 시트는 영향 없음
+
+확인: smoke (172 scripts) pass, eslint 0 errors, headless Chrome JS 0, **원격 변경 없음 (fetch 통합 안전)**
+
+남은 확인 (사람 손):
+- iOS Safari `backdrop-filter` 호환 (iOS 14+ 지원, prefix -webkit- 적용됨)
+- Capacitor Android WebView backdrop-filter 지원
+- 슬라이더 thumb glow 너무 진하지 않은지
 
 ---
 

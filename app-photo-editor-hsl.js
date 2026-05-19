@@ -158,7 +158,7 @@ void main() {
       </div>`;
     }).join('');
     return `<div class="pe-field-label">HSL 분리 보정 (색상대별)</div>
-      <div class="pe-hint" style="background:rgba(123,97,255,0.06);border-radius:8px;padding:8px 10px;margin-bottom:8px;">
+      <div class="pe-guide-box">
         <strong>쉽게 쓰는 법:</strong> 원하는 컬러의 채도/밝기만 바꿔요. 예) <strong>오렌지 슬라이더</strong>=피부톤, <strong>마젠타</strong>=핑크 립/네일. 아래 프리셋으로 시작해보세요.
       </div>
       <div class="pe-field-label" style="margin-top:4px;font-size:11px;">빠른 프리셋</div>

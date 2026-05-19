@@ -230,7 +230,9 @@
     const faceHTML = (FaceMask && typeof FaceMask.subSectionHTML === 'function') ? FaceMask.subSectionHTML(state) : '';
     const pinChip = (p) => {
       const isAct = p.id === sel.activeId;
-      const icon = p.type === 'polygon' ? '✨' : '📍';
+      const icon = p.type === 'polygon'
+        ? '<svg class="pe-ic" viewBox="0 0 24 24"><use href="#ic-wand-sparkles"/></svg>'
+        : '<svg class="pe-ic" viewBox="0 0 24 24"><use href="#ic-pin"/></svg>';
       const label = p.type === 'polygon' ? (p.regionLabel || 'AI') : ((sel.pins.filter(x => x.type !== 'polygon').indexOf(p) + 1) + '번');
       return `<button type="button" class="pe-chip-btn ${isAct ? 'on' : ''}" data-sel-pin="${p.id}">${icon} ${_esc(label)}</button>`;
     };

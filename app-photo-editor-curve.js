@@ -98,7 +98,7 @@
     const c = _ensureState(state);
     const chBtn = (id, label, color) => `<button type="button" class="pe-chip-btn ${c.channel === id ? 'on' : ''}" data-curve-ch="${id}" style="${c.channel === id ? 'background:' + color + ';color:#fff;' : ''}">${_esc(label)}</button>`;
     return `<div class="pe-field-label">톤 곡선 (Curves)</div>
-      <div class="pe-hint" style="background:rgba(123,97,255,0.06);border-radius:8px;padding:8px 10px;margin-bottom:8px;">
+      <div class="pe-guide-box">
         <strong>쉽게 쓰는 법:</strong> 아래 프리셋부터 눌러보고, 곡선 점은 익숙해진 후에. RGB = 전체 밝기/대비, R/G/B = 각 색 채널.
       </div>
       <div class="pe-field-label" style="margin-top:6px;font-size:11px;">빠른 프리셋</div>

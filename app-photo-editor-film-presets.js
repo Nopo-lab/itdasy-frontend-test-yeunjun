@@ -219,8 +219,8 @@
     const f = _ensureState(state);
     const cards = Object.keys(PRESETS).map(id => _previewCard(id, PRESETS[id], f.presetId === id)).join('');
     const activePreset = f.presetId && PRESETS[f.presetId];
-    return `<div class="pe-field-label">🎞 필름 프리셋 (뷰티 큐레이션 8종)</div>
-      <div class="pe-hint" style="background:rgba(123,97,255,0.06);border-radius:8px;padding:8px 10px;margin-bottom:8px;">
+    return `<div class="pe-field-label"><svg class="pe-ic" viewBox="0 0 24 24" style="margin-right:4px;"><use href="#ic-film"/></svg> 필름 프리셋 (뷰티 큐레이션 8종)</div>
+      <div class="pe-guide-box">
         탭하면 즉시 적용. 강도 슬라이더로 세기 조절. 다시 같은 카드 누르면 해제.
       </div>
       <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:8px;margin:8px 0;">${cards}</div>

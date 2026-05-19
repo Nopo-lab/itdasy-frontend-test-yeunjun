@@ -152,10 +152,10 @@
     wrap.dataset.peHealV2 = '1';
     wrap.style.cssText = 'background:rgba(123,97,255,0.06);border-radius:12px;padding:10px 12px;margin:8px 0;';
     wrap.innerHTML = `
-      <div class="pe-field-label" style="margin-bottom:6px;">✨ 잡티 자동 제거 (클릭 한 번)</div>
-      <div class="pe-hint" style="margin-bottom:8px;font-size:11px;">아래 버튼 켜고 사진에서 잡티를 한 번 클릭하면 자동으로 제거돼요.</div>
+      <div class="pe-field-label" style="margin-bottom:6px;"><svg class="pe-ic" viewBox="0 0 24 24" style="margin-right:4px;"><use href="#ic-wand-sparkles"/></svg> 잡티 자동 제거 (클릭 한 번)</div>
+      <div class="pe-hint" style="margin-bottom:8px;">아래 버튼 켜고 사진에서 잡티를 한 번 클릭하면 자동으로 제거돼요.</div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button type="button" id="peHealToggle" class="pe-action-btn" style="flex:1;background:${_enabled ? '#F18091' : 'linear-gradient(135deg,#c87c8a,#7b61ff)'};color:#fff;font-weight:600;">${_enabled ? '잡티 클릭 모드 ON (끄기)' : '잡티 자동 제거 켜기'}</button>
+        <button type="button" id="peHealToggle" class="pe-action-btn">${_enabled ? '잡티 클릭 모드 ON (끄기)' : '잡티 자동 제거 켜기'}</button>
       </div>
       <label class="pe-field" style="margin-top:8px;">
         <span>잡티 크기 (${_radius}px)</span>
