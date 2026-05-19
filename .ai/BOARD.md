@@ -1,6 +1,34 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-19 by Codex (v223 — md 기준 엄격 정리)
+**LAST UPDATED:** 2026-05-19 by Claude Code (v224 — review.md 삭제 대상 파일 git rm + IAP 가격 매핑)
+
+---
+
+## 2026-05-19 — v224 review.md 정합성 마무리 (삭제 대상 파일 실제 제거)
+
+배경: 코덱스가 v222/v223 에서 review.md 기반으로 보류/삭제 대상 로드 끄기 + 가격 문구 정리 진행. v224 는 사용자 "전부 정리" 지시에 따라 삭제 카테고리 파일을 git history 에 남기는 방식으로 실제 제거.
+
+삭제 대상 파일 (review.md "삭제" 카테고리, git rm):
+- `app-photo-editor-ar-tryon.js` (PE-6) — 웹앱 AR 비현실적
+- `app-photo-editor-quality-score.js` (PE-10) — 원장님은 사진작가 아님
+- `app-sns-phase2.js` (SN-6/SN-7/SN-8/SN-9/SN-10 통합) — 5개 모두 검토 결과 삭제·보류 (SN-8 만 보류이나 단일 파일이라 일괄 제거; 필요 시 git history 에서 복구)
+- `backend/routers/sns_crosspost.py` (SN-7 백엔드) + main.py 라우터 등록 제거
+
+가격 매핑 (review.md "월 6,900원 1티어"):
+- `backend/routers/iap.py` PRODUCT_TO_PLAN 에 신규 매핑 추가:
+  · `itdasy_membership_monthly` → "membership"
+  · `itdasy_membership_monthly_6900` → "membership"
+- 기존 pro/premium ID 호환성 유지 (이미 결제한 사용자 보호)
+- `backend/docs/cost_simulation.md` 시뮬레이션 갱신 (₩19,900 → ₩6,900 단일 + 종량제 보강 필요 명시)
+
+보류 카테고리 (코덱스 v222/v223 에서 로드만 끔, 파일 보존):
+- PE-4 텍스트 드래그, PE-8 조명, PE-9 콜라주, SN-1 캘린더, SN-2 예약 발행, SN-3 그리드, SN-5 분석
+- 필요 시 index.html 에 다시 로드 한 줄만 추가하면 부활
+
+활성 (review.md "살림" 4개):
+- PE-1 AI 원터치 v2 (MediaPipe) + PE-2 Before/After + PE-5 템플릿 30종 + SN-4 해시태그 매니저
+
+빌드 버전: `20260519-v224-review-aligned`
 
 ---
 
