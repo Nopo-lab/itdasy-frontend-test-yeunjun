@@ -656,7 +656,7 @@
     if (kind === 'shop')  return _applyAutoShop();
     // [v202] 신규 카테고리 추가: scalp, makeup
     if (['hair','scalp','makeup','lash','nail','wax'].includes(kind)) return _applyAutoShop(kind);
-    if (kind === 'all')   _state.adjust = { brightness: 105, saturate: 110, sharpness: 30, temperature: 5 };
+    if (kind === 'all')   _state.adjust = { brightness: 105, saturate: 110, sharpness: 24, temperature: 5 };
     if (kind === 'bright')_state.adjust = { ..._state.adjust, brightness: 115 };
     if (kind === 'vivid') _state.adjust = { ..._state.adjust, saturate: 120, sharpness: 40 };
     if (kind === 'warm')  _state.adjust = { ..._state.adjust, temperature: 18 };
@@ -691,7 +691,12 @@
     } else {
       ctx.filter = 'none';
     }
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+    ctx.filter = 'none';
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
     if (useGLTone) {
       try { _drawHooks.gl_tone(cv, _state.adjust, _helpers); } catch (_e) { void _e; }
     }
@@ -721,6 +726,9 @@
     if (typeof _drawHooks.gl_film === 'function') {
       try { _drawHooks.gl_film(cv, _state, _helpers); } catch (_e) { void _e; }
     }
+    ctx.filter = 'none';
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
     // [v204 2026-05-19] 다중 텍스트 레이어 — layers[] 우선, 없으면 단일 text 폴백
     if (Array.isArray(_state.layers) && _state.layers.length > 0) {
       _state.layers.forEach(l => { if (l && l.value) _drawText(ctx, dw, dh, l); });
@@ -737,7 +745,8 @@
   function _computeCrop(img, ratio) {
     const iw = img.naturalWidth, ih = img.naturalHeight;
     if (ratio === 'original') {
-      const maxW = Math.min(1080, iw), k = maxW / iw;
+      const maxPixels = 16777216;  // 4032×3024 원본은 그대로, 초고해상도만 안전 축소
+      const k = iw * ih > maxPixels ? Math.sqrt(maxPixels / (iw * ih)) : 1;
       return { sx: 0, sy: 0, sw: iw, sh: ih, dw: Math.round(iw * k), dh: Math.round(ih * k) };
     }
     const [rw, rh] = ratio.split(':').map(Number);
@@ -871,7 +880,7 @@
 
   // ── history ──────────────────────────────────────────
   // [v204 2026-05-19] layers + activeLayerId snapshot — undo/redo 시 다중 텍스트 복원
-  const _SNAP_KEYS = ['originalSrc', 'removedBgDataUrl', 'preBgOriginalSrc', 'adjust', 'ratio', 'text', 'watermark', 'beauty', 'template', 'autoIntensity', 'layers', 'activeLayerId'];
+  const _SNAP_KEYS = ['originalSrc', 'removedBgDataUrl', 'preBgOriginalSrc', 'adjust', 'ratio', 'text', 'watermark', 'beauty', 'template', 'autoIntensity', 'layers', 'activeLayerId', 'selective', 'film', 'curve', 'hsl'];
   function _snapshot() {
     const o = {};
     for (const k of _SNAP_KEYS) o[k] = _state[k];

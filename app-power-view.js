@@ -20,6 +20,7 @@
 
   function _esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch])); }
   // [2026-05-19] _krw 삭제 → formatMoney (format-money.js 공통 유틸)
+  const _krw = window.formatMoney || ((v) => (Math.floor(Number(v) || 0).toLocaleString('ko-KR') + '원'));
 
   // 2026-04-24 — icon 은 Lucide sprite id (렌더 시 <svg><use href="#..."/></svg> 로 변환)
   const TABS = [

@@ -245,7 +245,7 @@
         const f = _ensureState(state);
         // 같은 거 다시 누르면 해제
         if (f.presetId === id) f.presetId = null;
-        else { f.presetId = id; f.strength = 100; }
+        else { f.presetId = id; f.strength = 75; }
         helpers.renderPanel(); helpers.redraw();
         if (helpers.pushHistory) helpers.pushHistory();
         if (helpers.toast && f.presetId) helpers.toast('필름 프리셋: ' + PRESETS[id].label);
@@ -293,6 +293,8 @@
       const ctx2d = peCanvas.getContext('2d');
       ctx2d.save();
       ctx2d.filter = 'none';
+      ctx2d.globalAlpha = 1;
+      ctx2d.globalCompositeOperation = 'source-over';
       if (f.strength < 100) {
         ctx2d.globalAlpha = f.strength / 100;
       }

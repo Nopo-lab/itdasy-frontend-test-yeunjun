@@ -40,6 +40,11 @@
   function _drawRadialMask(canvas, pin) {
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.filter = 'none';
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, W, H);
     // 1) black 으로 전체 채우기 (mask r=0 = 효과 없음)
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
@@ -61,6 +66,11 @@
   function _drawPolygonMask(canvas, pin, source) {
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.filter = 'none';
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, W, H);
     // 1) black 전체 (외부 = 효과 없음)
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
@@ -82,21 +92,23 @@
     ctx.closePath();
     ctx.fill();
     ctx.restore();
+    ctx.filter = 'none';
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
   }
 
   // 핀 슬라이더 값 → GL tone uniform
-  // exposure -100~100 → brightness 0.5~1.5  (선형)
-  // contrast -100~100 → contrast 0.5~1.5
-  // saturation -100~100 → saturate 0~2
-  // structure 0~100   → vibrance 0~1 (sharpness 대체)
+  // [v233 fix] 보수적 매핑 — 슬라이더 ±100 도 자연스러운 범위.
+  // 이전: exposure ±100 → brightness ±50% (너무 극단, 얼굴 흰색 plateau).
+  // 이후: exposure ±100 → brightness ±30%, saturation ±100 → saturate ±50%.
   function _pinToAdjust(pin) {
     return {
-      brightness:  100 + pin.exposure * 0.5,
-      contrast:    100 + pin.contrast * 0.5,
-      saturate:    100 + pin.saturation,
+      brightness:  100 + (pin.exposure || 0) * 0.3,
+      contrast:    100 + (pin.contrast || 0) * 0.3,
+      saturate:    100 + (pin.saturation || 0) * 0.5,
       temperature: 0,
       hue:         0,
-      vibrance:    Math.max(0, pin.structure),
+      vibrance:    Math.max(0, pin.structure || 0) * 0.5,
     };
   }
 
@@ -132,6 +144,8 @@
         const ctx2d = peCanvas.getContext('2d');
         ctx2d.save();
         ctx2d.filter = 'none';
+        ctx2d.globalAlpha = 1;
+        ctx2d.globalCompositeOperation = 'source-over';
         ctx2d.drawImage(out, 0, 0, peCanvas.width, peCanvas.height);
         ctx2d.restore();
       }

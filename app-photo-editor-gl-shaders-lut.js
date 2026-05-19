@@ -28,32 +28,47 @@ void main() {
   outColor = applyMask(original, effect);
 }`;
 
-  // 3D LUT: 32×32×32 → 2D 펼침 (32 slices, 각 32×32 tile)
-  // 텍스처 크기: 1024×32 (32 slices × 32 px × 32 rows)
-  // 또는 32×1024 (가로 32, 세로 32×32=1024)
-  // trilinear interpolation: B 채널을 32 단계로 양자화 → 두 slice 사이 보간
+  // 3D LUT: 32×32×32 → 1024×32 펼침 (32 slices × 32 r-pixels 가로, 32 g 세로)
+  // [v233 fix] 텍스처 NEAREST + 셰이더에서 r/g/b 8-corner trilinear interpolation 직접 계산.
+  // 이전: GL LINEAR 필터가 슬라이스 경계 (b 변경 시 r 축 인접 픽셀) 평균 → 격자형 윤곽선/색반전 artifact.
+  // 이후: 8 모서리 NEAREST 샘플 + 코드로 직접 trilinear → 슬라이스 경계 아티팩트 0.
   const FS_LUT3D = `
 uniform sampler2D u_lut;
 uniform float u_lutSize;   // 32
 
+// 정확한 픽셀 중심에서 NEAREST 샘플링 — (b * size + r + 0.5) / (size*size), (g + 0.5) / size
+vec3 sampleLUT(float ri, float gi, float bi) {
+  float size = u_lutSize;
+  float texW = size * size;  // 1024
+  float u = (bi * size + ri + 0.5) / texW;
+  float v = (gi + 0.5) / size;
+  return texture(u_lut, vec2(u, v)).rgb;
+}
+
 vec3 lookup3D(vec3 c) {
   float size = u_lutSize;
-  float slicePixSize = 1.0 / size;
-  float sliceSize = 1.0 / size;
-  float zSlice0 = floor(c.b * (size - 1.0));
-  float zSlice1 = min(zSlice0 + 1.0, size - 1.0);
-  float zFrac = c.b * (size - 1.0) - zSlice0;
-  vec2 uv0 = vec2(
-    (zSlice0 + c.r) / size,
-    c.g
-  );
-  vec2 uv1 = vec2(
-    (zSlice1 + c.r) / size,
-    c.g
-  );
-  vec3 col0 = texture(u_lut, uv0).rgb;
-  vec3 col1 = texture(u_lut, uv1).rgb;
-  return mix(col0, col1, zFrac);
+  float maxIdx = size - 1.0;
+  vec3 idx = clamp(c, 0.0, 1.0) * maxIdx;
+  vec3 i0 = floor(idx);
+  vec3 i1 = min(i0 + 1.0, maxIdx);
+  vec3 f = idx - i0;
+  // 8 모서리 샘플 (NEAREST)
+  vec3 c000 = sampleLUT(i0.r, i0.g, i0.b);
+  vec3 c100 = sampleLUT(i1.r, i0.g, i0.b);
+  vec3 c010 = sampleLUT(i0.r, i1.g, i0.b);
+  vec3 c110 = sampleLUT(i1.r, i1.g, i0.b);
+  vec3 c001 = sampleLUT(i0.r, i0.g, i1.b);
+  vec3 c101 = sampleLUT(i1.r, i0.g, i1.b);
+  vec3 c011 = sampleLUT(i0.r, i1.g, i1.b);
+  vec3 c111 = sampleLUT(i1.r, i1.g, i1.b);
+  // trilinear blend
+  vec3 c00 = mix(c000, c100, f.r);
+  vec3 c01 = mix(c001, c101, f.r);
+  vec3 c10 = mix(c010, c110, f.r);
+  vec3 c11 = mix(c011, c111, f.r);
+  vec3 c0 = mix(c00, c10, f.g);
+  vec3 c1 = mix(c01, c11, f.g);
+  return mix(c0, c1, f.b);
 }
 
 void main() {
@@ -93,6 +108,8 @@ void main() {
   }
 
   // 3D LUT 업로드 — canvas = (size×size) × size = 1024×32 등
+  // [v233 fix] NEAREST 필터로 변경 — 슬라이스 경계 LINEAR 보간 artifact 제거.
+  // 셰이더에서 직접 8-corner trilinear interpolation 수행.
   function _upload3D(canvas /*, size */) {
     if (!_ensure()) return null;
     const gl = window.PhotoEditorGLCtx.gl;
@@ -101,8 +118,8 @@ void main() {
     gl.bindTexture(gl.TEXTURE_2D, _lut3DTex);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     return _lut3DTex;
@@ -110,18 +127,20 @@ void main() {
 
   function _build1D(lutArray) {
     if (!_ensure()) return null;
-    const tex = _upload1D(lutArray);
-    if (!tex) return null;
-    return { program: _prog1D, uniforms: {} };
-    // u_lut binding 은 pipeline.run 직전에 caller 가 직접 처리 (sampler 위치 텍스처 1번)
-    // 또는 pipeline 에 ops 항목별 texture 슬롯 추가 — Sprint 4 진입 시 보강
+    const op = { program: _prog1D, uniforms: {} };
+    if (lutArray) {
+      const tex = _upload1D(lutArray);
+      if (!tex) return null;
+      op.textures = { u_lut: tex };
+    }
+    return op;
   }
 
   function _build3D(lutCanvas, size) {
     if (!_ensure()) return null;
     const tex = _upload3D(lutCanvas, size);
     if (!tex) return null;
-    return { program: _prog3D, uniforms: { u_lutSize: size || 32 } };
+    return { program: _prog3D, uniforms: { u_lutSize: size || 32 }, textures: { u_lut: tex } };
   }
 
   // 단위 (identity) 1D LUT — 테스트/폴백 용

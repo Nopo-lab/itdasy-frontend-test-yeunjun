@@ -2,7 +2,37 @@
 
 > 새 세션이 시작되면 **이 파일을 먼저 읽고** 현재 단계·대기 결정·마지막 체크포인트를 파악한다.
 
-**LAST UPDATED:** 2026-05-19 · v223 — ultra-plan-review.md 기준 엄격 정리
+**LAST UPDATED:** 2026-05-19 · v233 — 사진편집 렌더링 깨짐 긴급 수정
+
+---
+
+## 🟣 2026-05-19 — v233 사진편집 렌더링 깨짐 긴급 수정
+
+배경: 사용자 제보. 얼굴 인식/셀렉티브 보정에서 흰색·분홍색 덩어리, 필름 프리셋에서 윤곽선/색반전처럼 깨짐, 자동보정에서 사진이 흐려지는 현상.
+
+완료:
+- `app-photo-editor-gl-pipeline.js`: mask 업로드가 원본 사진 텍스처 자리(TEXTURE0)를 덮던 핵심 버그 수정. 이제 원본은 원본대로, mask 는 mask 자리(TEXTURE1)로 분리.
+- `app-photo-editor-gl-shaders-lut.js`: 필름 3D LUT 가 실제 보정표 텍스처를 쓰게 수정. `네일 글로우` 등 필름이 사진 자체를 보정표처럼 읽는 깨짐 경로 제거.
+- `app-photo-editor-gl-shaders-blur.js`: 자동보정 선명도 단계가 흐린 결과를 그대로 반환하던 경로 제거.
+- `app-photo-editor-selective-mask.js`: mask canvas 상태 초기화 강화. 흰/분홍 mask 가 결과 이미지에 직접 합성되지 않게 안전화.
+- `app-photo-editor.js`: original 비율에서 4032×3024 원본 해상도 유지, 렌더 후 canvas 상태 초기화, undo/redo 에 selective/film/curve/hsl 포함.
+- `app-photo-editor-film-presets.js`: 필름 기본 강도 75% 로 낮춰 자연스러운 뷰티 보정 쪽으로 조정.
+- `app-power-view.js`: 페이지 로드 중 `_krw is not defined` 오류 수정.
+- 빌드 버전: `20260519-v233-photo-render-hotfix`.
+
+확인:
+- JS 문법 확인, 자동검사, `git diff --check` 통과.
+- `npm run smoke` 통과 (172 scripts).
+- `npm test -- --runInBand` 정상 종료 (테스트 파일 없음).
+- Playwright + WebGL 검증 통과:
+  · 4032×3024 원본 크기 유지.
+  · 자동보정 흐림 없음.
+  · 셀렉티브 분홍/흰 덩어리 없음.
+  · 필름 색감 변화 정상, 윤곽선/색반전 spike 없음.
+  · 브라우저 심각 오류 0개.
+
+남음:
+- 실제 iPhone Safari / 구형 Android 실기기 손검사는 별도. 자동 브라우저에서는 WebGL SwiftShader 로 경로 확인 완료.
 
 ---
 

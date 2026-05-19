@@ -55,8 +55,6 @@ void main() {
 
   let _progBlur = null;
   let _progUnsharp = null;
-  let _intermediateFBO = null;
-
   function _ensure() {
     const Pipe = window.PhotoEditorGLPipeline;
     const Ctx  = window.PhotoEditorGLCtx;
@@ -80,34 +78,19 @@ void main() {
       { program: _progBlur, uniforms: { u_radius: radius, u_dir: [0, 1], u_texSize: [input.width, input.height] } },
     ], { width: input.width, height: input.height });
     if (!blurredCanvas) return null;
-    // unsharp pass: input 원본 + blurredCanvas 를 u_blurred 로
-    // pipeline.run 의 인터페이스는 u_blurred 같은 두 번째 sampler 직접 지원 안 함
-    // 따라서 GL 직접 호출 (간단)
+    // unsharp pass: input 원본 + blurredCanvas 를 u_blurred 로 전달.
+    // [v233 fix] 직접 gl.drawArrays 경로는 VAO 바인딩이 빠지면 마지막 blur 결과만 남는다.
+    // 공통 pipeline 으로 마지막 pass 까지 처리해 흐림 반환을 막는다.
     const Ctx = window.PhotoEditorGLCtx;
     const gl = Ctx.gl;
-    // 원본 텍스처 새로 업로드
-    const inputTex = _uploadImage(gl, input);
     const blurTex  = _uploadImage(gl, blurredCanvas);
-    Ctx.resize(input.width, input.height);
-    gl.useProgram(_progUnsharp);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, inputTex);
-    const uImg = gl.getUniformLocation(_progUnsharp, 'u_image');
-    if (uImg) gl.uniform1i(uImg, 0);
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, blurTex);
-    const uBlur = gl.getUniformLocation(_progUnsharp, 'u_blurred');
-    if (uBlur) gl.uniform1i(uBlur, 1);
-    const uMaskEn = gl.getUniformLocation(_progUnsharp, 'u_maskEnabled');
-    if (uMaskEn) gl.uniform1i(uMaskEn, 0);
-    const uStr = gl.getUniformLocation(_progUnsharp, 'u_strength');
-    if (uStr) gl.uniform1f(uStr, strength);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, input.width, input.height);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    gl.deleteTexture(inputTex);
+    const out = Pipe.run(input, [{
+      program: _progUnsharp,
+      uniforms: { u_strength: strength },
+      textures: { u_blurred: blurTex },
+    }], { width: input.width, height: input.height });
     gl.deleteTexture(blurTex);
-    return Ctx.canvas;
+    return out;
   }
 
   function _uploadImage(gl, source) {

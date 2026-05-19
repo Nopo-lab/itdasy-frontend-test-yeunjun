@@ -179,8 +179,10 @@ vec4 applyMask(vec4 original, vec4 effect) {
       const uMask = gl.getUniformLocation(op.program, 'u_mask');
       const uMaskEn = gl.getUniformLocation(op.program, 'u_maskEnabled');
       if (op.mask) {
-        const mTex = _uploadMask(gl, op.mask);
+        // [v233 fix] mask 업로드 전에 TEXTURE1 로 전환.
+        // 이전에는 TEXTURE0 에 mask 를 업로드해 u_image 원본 자리가 mask 로 바뀌었다.
         gl.activeTexture(gl.TEXTURE1);
+        const mTex = _uploadMask(gl, op.mask);
         gl.bindTexture(gl.TEXTURE_2D, mTex);
         if (uMask) gl.uniform1i(uMask, 1);
         if (uMaskEn) gl.uniform1i(uMaskEn, 1);

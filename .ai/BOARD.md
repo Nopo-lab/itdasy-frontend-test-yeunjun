@@ -1,6 +1,34 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-19 by Claude Code (v232 — 디자인 폴리쉬 + Lucide 교체)
+**LAST UPDATED:** 2026-05-19 by Codex (v233 — 사진편집 렌더링 깨짐 긴급 수정)
+
+---
+
+## 2026-05-19 — v233 사진편집 렌더링 깨짐 긴급 수정 (Codex)
+
+배경: 사용자 제보 — 얼굴/셀렉티브 보정 시 흰색·분홍색 덩어리, 필름 프리셋이 윤곽선/색반전처럼 깨짐, 자동보정이 흐려짐.
+
+수정:
+- `app-photo-editor-gl-pipeline.js`: 마스크 업로드가 원본 사진 텍스처 자리를 덮던 문제 수정. 이제 mask 는 TEXTURE1 에만 올라가고, 원본은 TEXTURE0 에 유지됨.
+- `app-photo-editor-gl-shaders-lut.js`: 필름 3D LUT 텍스처를 실제 `u_lut` 로 바인딩. 기존에는 사진 자체를 LUT 처럼 읽을 수 있어 색반전/윤곽선 깨짐 위험이 있었음. 3D LUT 는 NEAREST + 직접 trilinear 보간.
+- `app-photo-editor-gl-shaders-blur.js`: 자동보정 선명도 단계가 마지막 blur 결과를 그대로 반환하던 경로 제거. 공통 GL pipeline 으로 unsharp pass 처리.
+- `app-photo-editor-selective-mask.js`: mask canvas 상태 초기화 강화. mask RGB 를 결과에 직접 그리지 않고 alpha 역할로만 사용.
+- `app-photo-editor.js`: original 비율은 4032×3024 원본 유지(초고해상도만 안전 축소), 렌더 후 `filter/globalAlpha/composite` 초기화, undo/redo 에 selective/film/curve/hsl 상태 포함.
+- `app-photo-editor-film-presets.js`: 필름 기본 강도 75% 로 자연스럽게 조정.
+- `app-power-view.js`: 페이지 로드 중 `_krw is not defined` 오류 수정.
+
+확인:
+- JS 문법 확인, 자동검사, 공백 검사 통과.
+- `npm run smoke` 통과: 172 scripts, build `20260519-v233-photo-render-hotfix`.
+- `npm test -- --runInBand`: 테스트 파일 없음, 정상 종료.
+- Playwright + WebGL(SwiftShader) 픽셀 검증:
+  · 4032×3024 원본 크기 유지 확인.
+  · 자동보정 edgeMean 25.64 → 34.94, 흐림 없음.
+  · 셀렉티브 분홍 overlay 0%, 흰 mask 덩어리 기준 통과.
+  · 필름 `네일 글로우` 실제 색감 변화 확인, 윤곽선/색반전 spike 없음.
+  · 브라우저 심각 오류 0개.
+
+빌드: `20260519-v233-photo-render-hotfix`.
 
 ---
 
