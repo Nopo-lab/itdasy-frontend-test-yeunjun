@@ -17,6 +17,7 @@
   const TABS = [
     { id: 'auto', label: '자동' }, { id: 'tune', label: '보정' },
     { id: 'beauty', label: '뷰티' }, { id: 'brush', label: '부분 보정' },
+    { id: 'selective', label: '셀렉티브' },
     { id: 'bg', label: '누끼·배경' }, { id: 'template', label: '템플릿' },
     { id: 'text', label: '텍스트' }, { id: 'brand', label: '브랜드' },
     { id: 'export', label: '내보내기' },
@@ -556,6 +557,10 @@
     },
   };
   function _bindPanel(panel, tab) {
+    // [v227 Sprint 3] selective 가 아닌 탭 진입 시 핀 마커 자동 제거
+    if (tab !== 'selective' && window.PhotoEditorSelective && typeof window.PhotoEditorSelective.onLeave === 'function') {
+      try { window.PhotoEditorSelective.onLeave(_state); } catch (_e) { void _e; }
+    }
     const ext = _externalPanels[tab];
     if (ext && typeof ext.bind === 'function') { try { ext.bind(panel, _state, _helpers); } catch (_e) { void _e; } return; }
     if (_BINDERS[tab]) _BINDERS[tab](panel);
@@ -698,6 +703,10 @@
     }
     if (typeof _drawHooks.beauty === 'function') {
       try { _drawHooks.beauty(ctx, dw, dh, _state.beauty, _helpers); } catch (_e) { void _e; }
+    }
+    // [v227 Sprint 3] Selective 부분 보정 — 핀 N개면 각 핀 mask 기반 GL pass
+    if (typeof _drawHooks.gl_selective === 'function') {
+      try { _drawHooks.gl_selective(cv, _state, _helpers); } catch (_e) { void _e; }
     }
     // [v204 2026-05-19] 다중 텍스트 레이어 — layers[] 우선, 없으면 단일 text 폴백
     if (Array.isArray(_state.layers) && _state.layers.length > 0) {

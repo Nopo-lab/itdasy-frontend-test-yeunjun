@@ -1,6 +1,48 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-05-19 by Claude Code (v226 — Sprint 2 WebGL2 보정 파이프라인)
+**LAST UPDATED:** 2026-05-19 by Claude Code (v227 — Sprint 3 Selective 부분 보정)
+
+---
+
+## 2026-05-19 — v227 Sprint 3 Selective (한 점 탭 부분 보정)
+
+배경: plan v3 Sprint 3 — Snapseed 의 Selective. Sprint 2 GL pipeline 의 u_mask 진입점 첫 실사용.
+
+기능:
+- 캔버스 더블탭 → 그 위치에 핀 추가 (최대 3개)
+- 핀 마커 (분홍 점선 원 + 가운데 분홍 동그라미)
+- 핀 드래그 → 위치 이동
+- 핀 ✕ 버튼 → 삭제
+- 4 슬라이더: 노출 / 대비 / 채도 / 구조(선명도)
+- 영역 크기 슬라이더 (5~60%, 캔버스 짧은쪽 기준)
+- 셀렉티브 탭 떠나면 마커 자동 제거 (효과는 유지)
+
+신규 파일 (2개):
+- `app-photo-editor-selective.js` (~225줄) — 핀 관리, UI 마커, 슬라이더 패널 (registerTabPanel API)
+- `app-photo-editor-selective-mask.js` (~85줄) — radial gradient mask + `_drawHooks.gl_selective` 등록. 핀별 GL pass 순차 호출, Sprint 2 Tone 셰이더 재사용 (mask uniform 진입점)
+
+수정 파일:
+- `app-photo-editor.js` — TABS 에 '셀렉티브' 추가 (1줄). `_redraw()` 에 gl_selective hook (3줄). `_bindPanel` 에 selective 탭 떠날 때 onLeave (3줄). 총 +7줄 — 1050 한도 내.
+- `index.html` / `sw.js` / `app-core.js` — 빌드 v227 통일
+
+핀 → GL uniform 매핑:
+- exposure (-100~100) → brightness 0.5~1.5
+- contrast (-100~100) → contrast 0.5~1.5
+- saturation (-100~100) → saturate 0~2
+- structure (0~100) → vibrance 0~1 (MVP, sharpening 은 별도 sprint)
+
+회귀 안전성:
+- selective 탭 미진입 시 마커 안 보임, 영향 0
+- 핀이 0개거나 effective 값이 모두 0이면 gl_selective hook 자체 건너뛰기 (`_hasEffect` 검사)
+- 기존 22 beauty 슬라이더, 텍스트, 템플릿 — 코드 0줄 영향
+
+빌드: `20260519-v227-selective`
+확인: smoke (165 scripts) pass, eslint 0 errors, headless Chrome JS 0
+
+남은 확인 (사람 손):
+- 핀 3개 동시 효과 — 각 핀 독립 적용 확인
+- 핀 드래그 반응성 (모바일 터치)
+- 영역 크기 조절 시 마커 크기와 mask 크기 일치
 
 ---
 
