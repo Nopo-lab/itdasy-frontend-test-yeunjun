@@ -74,46 +74,12 @@
 	    return [];
 	  }
 
-	  function _editorState() {
-	    try {
-	      var PE = window.PhotoEditor;
-	      return PE && PE._internal && PE._internal.getState ? PE._internal.getState() : null;
-	    } catch (_e) { return null; }
-	  }
-
 	  function _currentCanvasUrl() {
 	    try {
 	      var cv = document.getElementById('peCanvas');
 	      if (cv && cv.width && cv.height) return cv.toDataURL('image/jpeg', 0.92);
 	    } catch (_e) { void 0; }
 	    return '';
-	  }
-
-	  function _imageToDataUrl(img) {
-	    if (!img) return '';
-	    try {
-	      var cv = document.getElementById('peCanvas');
-	      var w = (cv && cv.width) || img.naturalWidth || img.width || 800;
-	      var h = (cv && cv.height) || img.naturalHeight || img.height || 1000;
-	      var iw = img.naturalWidth || img.width || w;
-	      var ih = img.naturalHeight || img.height || h;
-	      var out = document.createElement('canvas');
-	      var ctx = out.getContext('2d');
-	      var scale = Math.max(w / iw, h / ih);
-	      var dw = iw * scale;
-	      var dh = ih * scale;
-	      out.width = w; out.height = h;
-	      ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, w, h);
-	      ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
-	      return out.toDataURL('image/jpeg', 0.9);
-	    } catch (_e) { return ''; }
-	  }
-
-	  function _captureBeforeDataUrl() {
-	    var st = _editorState();
-	    if (!st) return '';
-	    if (st.originalSrc && /^data:image\//.test(String(st.originalSrc))) return st.originalSrc;
-	    return _imageToDataUrl(st.originalImg);
 	  }
 
   // Action Hub 버튼: 템플릿보기·인스타 미리보기·캡션복사·내보내기(safe) + 고객기록저장(confirm, 보조).
@@ -143,8 +109,7 @@
       return { ok: false, message: '사진 홍보 모듈을 불러오는 중이에요. 잠시 후 다시 시도해 주세요.' };
 	    }
 	    // 보정 적용 + 업종 판단 + 저장 pending (기존 T-104/T-104.5 흐름 그대로)
-	    var beforeDataUrl = _captureBeforeDataUrl();
-	    var res = window.ItdasyPhotoFlow.runPromoFlow(text, ctx) || {};
+		    var res = window.ItdasyPhotoFlow.runPromoFlow(text, ctx) || {};
     if (res.needsPhoto) {
       // [CF-1] 안내만 하지 말고 "사진 열기" 다음 행동 버튼 제공.
       var openActs = (window.ItdasyActionHub && window.ItdasyActionHub.normalizeActions)
@@ -159,11 +124,11 @@
 	    var effect = res.ok ? buildPromoEffectText(recipeId) : '보정 적용 중 일부 문제가 있어 편집기에서 직접 조정할 수 있어요.';
 	    var afterDataUrl = _currentCanvasUrl();
 	    var recoIds = buildPromoTemplateRecos(text, ctx);   // [TPL-3] 추천 템플릿 3개
-	    var promoResult = {
-	      recipeId: recipeId, industryLabel: buildPromoIndustryLabel(recipeId), effect: effect,
-	      caption: caption, templateRecos: recoIds, beforeDataUrl: beforeDataUrl, afterDataUrl: afterDataUrl,
-	      customerName: (ctx.currentCustomer && ctx.currentCustomer.name) || '',
-	    };
+		    var promoResult = {
+		      recipeId: recipeId, industryLabel: buildPromoIndustryLabel(recipeId), effect: effect,
+		      caption: caption, templateRecos: recoIds, afterDataUrl: afterDataUrl,
+		      customerName: (ctx.currentCustomer && ctx.currentCustomer.name) || '',
+		    };
 	    var msg = '홍보용으로 보정했어요.\n' + effect
       + '\n\n캡션 초안:\n"' + caption + '"'
       + '\n\n' + buildPromoTemplateSuggestion(recipeId)

@@ -18,7 +18,7 @@
   }
 
   function _imageBlock(p, idx, esc) {
-    const before = p.beforeDataUrl || '';
+    const before = p.beforeSource === 'real' ? (p.beforeDataUrl || '') : '';
     const after = p.afterDataUrl || p.dataUrl || '';
     if (before && after) {
       return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;">
@@ -29,7 +29,7 @@
     if (after) {
       return `<div style="margin-top:10px;">
         <img data-asst-photo-result="${idx}" src="${esc(after)}" alt="Instagram Ready" style="width:100%;max-height:360px;object-fit:cover;border-radius:14px;display:block;background:#F2F4F6;cursor:zoom-in;" />
-        <div style="font-size:11px;color:#8B95A1;margin-top:6px;">원본 비교는 사진 상태에 따라 생략될 수 있어요.</div>
+        <div style="font-size:11px;color:#8B95A1;margin-top:6px;">홍보용 결과 이미지예요.</div>
       </div>`;
     }
     return `<div style="margin-top:10px;padding:18px;border-radius:14px;background:#F7F8FA;color:#6B7684;font-size:12px;font-weight:700;text-align:center;">홍보 결과를 준비했어요.</div>`;
@@ -77,12 +77,13 @@
     const p = message && message.promo_result;
     if (!p) return '';
     const esc = (deps && deps.esc) || _escDefault;
+    const title = (p.beforeSource === 'real' && p.beforeDataUrl) ? 'Before / After' : '홍보 결과';
     const note = p.customerName
       ? `${p.customerName}님 기록 연결은 확인 후 진행돼요.`
       : '고객을 선택하면 시술 기록으로 저장할 수 있어요.';
     return `<div class="asst-promo-result" style="margin-bottom:10px;width:100%;max-width:360px;border:1px solid #E5E8EB;border-radius:16px;background:#fff;padding:12px;box-shadow:0 8px 22px rgba(25,31,40,.08);">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-        <span style="font-size:10px;font-weight:900;color:#4E5968;">Before / After</span>
+        <span style="font-size:10px;font-weight:900;color:#4E5968;">${esc(title)}</span>
         <span style="font-size:10px;font-weight:900;color:#fff;background:#191F28;border-radius:999px;padding:5px 8px;">Instagram Ready</span>
       </div>
       ${_imageBlock(p, idx, esc)}

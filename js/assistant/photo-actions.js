@@ -5,7 +5,8 @@
 
   function _bodyContains(el) {
     const body = document.getElementById('asstBody');
-    return !!(el && body && body.contains(el));
+    const dock = document.getElementById('asstResultDock');
+    return !!(el && ((body && body.contains(el)) || (dock && dock.contains(el))));
   }
 
   function _sheetContains(el) {

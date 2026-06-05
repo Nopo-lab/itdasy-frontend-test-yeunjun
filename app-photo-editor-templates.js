@@ -235,7 +235,7 @@
     });
     panel.querySelector('[data-pe-r4-open-all]')?.addEventListener('click', () => _openMarket());
     panel.querySelector('[data-pe-r4-apply-reco]')?.addEventListener('click', (e) =>
-      _applyMarketTemplate(e.currentTarget.dataset.peR4ApplyReco, helpers));
+      _selectMarketTemplate(e.currentTarget.dataset.peR4ApplyReco, helpers));
     panel.querySelectorAll('[data-pe-r4-tpl]').forEach(btn => {
       btn.addEventListener('click', () => _selectMarketTemplate(btn.dataset.peR4Tpl, helpers));
     });
@@ -254,7 +254,7 @@
     const tpl = _marketTpl(tplId);
     const api = window.PhotoEditorTemplatesV2;
     if (!tpl || !api) return _toast('템플릿을 불러오는 중이에요');
-    if (tpl.tier === 'pro' && typeof api.openPreview === 'function') { api.openPreview(tplId); return; }
+    if (typeof api.openPreview === 'function') { api.openPreview(tplId); return; }
     _applyMarketTemplate(tplId, helpers);
   }
 
@@ -264,7 +264,7 @@
     const state = window.PhotoEditor && window.PhotoEditor._internal && window.PhotoEditor._internal.getState();
     if (state && state.tplV2 === undefined) state.tplV2 = null;
     if (state && helpers && typeof helpers.pushHistory === 'function') helpers.pushHistory();
-    if (state && state.template) { state.template.id = null; state.secondImg = null; }
+    if (state && state.template) state.template.id = null;
     api.apply(tplId);
     if (helpers && typeof helpers.renderPanel === 'function') helpers.renderPanel();
   }
@@ -342,13 +342,13 @@
     return [w, h, src.length, src.slice(0, 80), src.slice(-80)].join('|');
   }
 
-  function _drawFittedImage(ctx, src, dx, dy, dw, dh) {
+  function _drawFittedImage(ctx, src, dx, dy, dw, dh, placeholder) {
     if (!src) {
       ctx.fillStyle = '#2a2a32'; ctx.fillRect(dx, dy, dw, dh);
       ctx.fillStyle = '#888';
       ctx.font = '600 28px Pretendard, "Noto Sans KR", sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('두 번째 사진 고르기', dx + dw/2, dy + dh/2);
+      ctx.fillText(placeholder || '사진 고르기', dx + dw/2, dy + dh/2);
       return;
     }
     const srcW = src.naturalWidth || src.width, srcH = src.naturalHeight || src.height;
@@ -363,14 +363,14 @@
     const PAD = 24;
     if (horizontal) {
       const halfW = (W - PAD * 3) / 2, innerH = H - PAD * 2 - 120;
-      _drawFittedImage(ctx, img, PAD, PAD, halfW, innerH);
-      _drawFittedImage(ctx, state.secondImg, PAD * 2 + halfW, PAD, halfW, innerH);
+      _drawFittedImage(ctx, state.secondImg, PAD, PAD, halfW, innerH, '시술 전 사진 추가');
+      _drawFittedImage(ctx, img, PAD * 2 + halfW, PAD, halfW, innerH, '시술 후 사진');
       _drawBALabel(ctx, PAD + halfW/2, PAD + 36, state.template.leftLabel);
       _drawBALabel(ctx, PAD * 2 + halfW + halfW/2, PAD + 36, state.template.rightLabel);
     } else {
       const halfH = (H - PAD * 3 - 120) / 2;
-      _drawFittedImage(ctx, img, PAD, PAD, W - PAD * 2, halfH);
-      _drawFittedImage(ctx, state.secondImg, PAD, PAD * 2 + halfH, W - PAD * 2, halfH);
+      _drawFittedImage(ctx, state.secondImg, PAD, PAD, W - PAD * 2, halfH, '시술 전 사진 추가');
+      _drawFittedImage(ctx, img, PAD, PAD * 2 + halfH, W - PAD * 2, halfH, '시술 후 사진');
       _drawBALabel(ctx, PAD + 70, PAD + 36, state.template.leftLabel);
       _drawBALabel(ctx, PAD + 70, PAD * 2 + halfH + 36, state.template.rightLabel);
     }

@@ -56,7 +56,7 @@
       promoResult: {
         recipeId, caption, templateRecos: recos,
         industryLabel: _industry(recipeId), effect: _effect(recipeId),
-        beforeDataUrl: opts.photoUrl || '', afterDataUrl: result.dataUrl,
+        afterDataUrl: result.dataUrl,
         customerName: (ctx.currentCustomer && ctx.currentCustomer.name) || '',
       },
       hubActions: _actions(ctx, recipeId, caption, recos, result.dataUrl),

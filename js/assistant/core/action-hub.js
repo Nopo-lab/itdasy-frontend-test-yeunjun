@@ -93,6 +93,49 @@
   }
 
   function _nav(fn) { try { if (typeof fn === 'function') { fn(); return true; } } catch (_e) { void 0; } return false; }
+  function _closeAssistant() {
+    try { if (typeof window.closeAssistant === 'function') window.closeAssistant(); } catch (_e) { void 0; }
+  }
+
+  function _openPhotoEditorRoute(p) {
+    var PE = window.PhotoEditor;
+    if (!PE || !PE.open) return;
+    _closeAssistant();
+    PE.open({
+      src: p.photo_url || p.src || p.dataUrl,
+      secondSrc: p.secondSrc || p.second_src || null,
+      initial_tab: p.initial_tab || p.tab || 'tune',
+      initialState: p.initialState || null,
+    });
+  }
+
+  function _openTemplatePanelRoute(p) {
+    var recos = (p.recommendedIds && p.recommendedIds.length) ? p.recommendedIds : null;
+    var PE = window.PhotoEditor; var pe = PE && PE._internal;
+    var src = p.photo_url || p.src || p.dataUrl;
+    if (pe && pe.getState && pe.getState()) _switchTemplateTab(pe);
+    else if (PE && PE.open && src) {
+      _closeAssistant();
+      PE.open({ src: src, secondSrc: p.secondSrc || p.second_src || null, initial_tab: 'template', initialState: p.initialState || null });
+    }
+    if (window.PhotoEditorTemplatesV2 && typeof window.PhotoEditorTemplatesV2.open === 'function') {
+      window.PhotoEditorTemplatesV2.open(_templatePanelContext(p, src, recos));
+    }
+  }
+
+  function _switchTemplateTab(pe) {
+    pe.getState().activeTab = 'template';
+    if (pe.helpers && pe.helpers.renderPanel) pe.helpers.renderPanel();
+  }
+
+  function _templatePanelContext(p, src, recos) {
+    return {
+      recommendedIds: recos || [],
+      src: src,
+      initialState: p.initialState || null,
+      secondSrc: p.secondSrc || p.second_src || null,
+    };
+  }
   function _copy(text) {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(String(text || '')); return true; }
@@ -135,21 +178,10 @@
       case 'copy_caption':
         return { message: _copy(p.caption || p.text || '') ? '캡션을 복사했어요. 붙여넣어 사용하세요.' : '복사할 캡션이 없어요.' };
       case 'open_photo_editor':
-        _nav(function () { window.PhotoEditor && window.PhotoEditor.open && window.PhotoEditor.open({ src: p.dataUrl, initial_tab: p.tab || 'tune' }); });
+        _nav(function () { _openPhotoEditorRoute(p); });
         return { navigated: true };
       case 'open_template_panel':
-        _nav(function () {
-          // [TPL-3] 추천 id 있으면 템플릿 갤러리를 추천 3개 상단 고정으로 연다.
-          var recos = (p.recommendedIds && p.recommendedIds.length) ? p.recommendedIds : null;
-          if (recos && window.PhotoEditorTemplatesV2 && typeof window.PhotoEditorTemplatesV2.open === 'function') {
-            window.PhotoEditorTemplatesV2.open({ recommendedIds: recos });
-            return;
-          }
-          var PE = window.PhotoEditor; var pe = PE && PE._internal;
-          // 편집기가 이미 열려 있으면 사진 유지한 채 탭만 전환, 아니면 src 로 새로 열기.
-          if (pe && typeof pe.applyStatePatch === 'function' && pe.getState && pe.getState()) pe.applyStatePatch({ activeTab: 'template' });
-          else if (PE && PE.open) PE.open({ src: p.dataUrl, initial_tab: 'template' });
-        });
+        _nav(function () { _openTemplatePanelRoute(p); });
         return { navigated: true, message: (p.recommendedIds && p.recommendedIds.length) ? '추천 템플릿을 열었어요.' : '템플릿 탭을 열었어요.' };
       case 'open_instagram': {
         // [CF-4] 클릭 시점 라이브 캔버스 재캡처(템플릿 적용본 반영). 없으면 payload fallback.

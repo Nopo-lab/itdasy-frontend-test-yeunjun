@@ -292,9 +292,9 @@
 
   function _applyTemplateCard(tplId) {
     if (!_hasImage()) { _pickThenTemplate(tplId); return; }
-    if (window.PhotoEditorTemplatesV2 && typeof window.PhotoEditorTemplatesV2.apply === 'function') {
-      window.PhotoEditorTemplatesV2.apply(tplId);
+    if (window.PhotoEditorTemplatesV2 && typeof window.PhotoEditorTemplatesV2.openPreview === 'function') {
       _gotoEditor('template', 'template');
+      setTimeout(() => window.PhotoEditorTemplatesV2?.openPreview?.(tplId), 80);
       return;
     }
     _gotoEditor('template', 'template');

@@ -12,6 +12,7 @@
   let _searchTerm = '';
   let _selectedTag = '';     // [TPL-2] 업종/용도 필터('' = 전체). 'ind:nail' | 'pur:before_after'
   let _recoIds = [];         // [TPL-3] 잇비 추천 템플릿 id(상단 고정 섹션)
+  let _openContext = null;
   const IND_LABEL = MARKET_DATA.INDUSTRY_LABEL || {};
   const PUR_LABEL = MARKET_DATA.PURPOSE_LABEL || {};
   // [TPL-2] 필터칩 목록(전체 + 업종 + 용도). 카드 cat 카테고리와 별개의 교차 필터.
@@ -49,7 +50,7 @@
     if (_sheetEl) return _sheetEl;
     _sheetEl = document.createElement('div');
     _sheetEl.id = 'tplV2Sheet';
-    _sheetEl.style.cssText = 'position:fixed;inset:0;background:#111217;z-index:10050;display:none;flex-direction:column;';
+    _sheetEl.style.cssText = 'position:fixed;inset:0;background:#111217;z-index:10600;display:none;flex-direction:column;';
     _sheetEl.innerHTML = `
       <style>
         /* v320-A 캔바풍 템플릿 카드 폴리싱 — 다크 프리미엄 테마(studio.css) 기반 (scoped #tplV2Sheet) */
@@ -183,7 +184,7 @@
     html += filtered.map(t => _cardHtml(t, bk)).join('');
     grid.innerHTML = html;
     grid.querySelectorAll('[data-tpv2-tpl]').forEach(b => {
-      b.addEventListener('click', () => _openPreview(b.dataset.tpv2Tpl));
+      b.addEventListener('click', () => _openPreview(b.dataset.tpv2Tpl, _openContext));
     });
     _renderThumbs(grid, bk);
   }
@@ -239,7 +240,31 @@
   }
 
   // [TPL-1] 카드 탭 → 큰 미리보기 시트. Pro 잠금이어도 미리보기는 보임. "적용하기"로 _apply.
-  function _openPreview(tplId) {
+  function _editorState() {
+    try { return window.PhotoEditor?._internal?.getState?.() || null; }
+    catch (_e) { return null; }
+  }
+
+  function _ensureEditorForPreview(context) {
+    if (_editorState()) return true;
+    const c = context || {};
+    const src = c.src || c.photo_url || c.dataUrl || c.data_url;
+    if (!src || !window.PhotoEditor || typeof window.PhotoEditor.open !== 'function') {
+      _toast('편집기를 먼저 열어주세요');
+      return false;
+    }
+    try { if (typeof window.closeAssistant === 'function') window.closeAssistant(); } catch (_e) { void 0; }
+    window.PhotoEditor.open({
+      src,
+      secondSrc: c.secondSrc || c.second_src || null,
+      initial_tab: 'template',
+      initialState: c.initialState || null,
+    });
+    return true;
+  }
+
+  function _openPreview(tplId, context) {
+    if (!_ensureEditorForPreview(context)) return;
     const tpl = TEMPLATES.find(t => t.id === tplId);
     if (!tpl) return;
     const cat = CATS.find(c => c.id === tpl.cat);
@@ -253,9 +278,11 @@
     let pv = document.getElementById('tpv2PreviewSheet');
     if (!pv) {
       pv = document.createElement('div'); pv.id = 'tpv2PreviewSheet';
-      pv.style.cssText = 'position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:24px;';
+      pv.style.cssText = 'position:fixed;inset:0;z-index:10620;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:24px;';
       document.body.appendChild(pv);
     }
+    pv.style.zIndex = '10620';
+    document.body.appendChild(pv);
     const imgHtml = big
       ? `<div style="aspect-ratio:${ar};max-height:62vh;border-radius:14px;background:#fff url(${big}) center/contain no-repeat;box-shadow:0 12px 40px rgba(0,0,0,.5);"></div>`
       : `<div style="aspect-ratio:${ar};max-height:62vh;border-radius:14px;background:linear-gradient(135deg,${color}33,${color});display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;">${_esc(tpl.prefillText || tpl.label)}</div>`;
@@ -304,9 +331,10 @@
     const PE = window.PhotoEditor;
     if (!PE || !PE._internal) { _toast('편집기를 먼저 열어주세요'); return; }
     const state = PE._internal.getState();
-    if (!state) return;
+    if (!state) { _toast('편집기를 먼저 열어주세요'); return; }
     // 비율 설정
     state.ratio = cat.ratio;
+    if (state.template) state.template.id = null;
     state.tplV2 = {
       id: tpl.id,
       label: tpl.label,
@@ -326,8 +354,11 @@
         active.bg = true;
       }
     }
-    if (PE._internal.helpers && PE._internal.helpers.scheduleRedraw) PE._internal.helpers.scheduleRedraw();
-    if (PE._internal.helpers && PE._internal.helpers.pushHistory) PE._internal.helpers.pushHistory();
+    const helpers = PE._internal.helpers || {};
+    if (helpers.renderPanel) helpers.renderPanel();
+    if (helpers.redraw) helpers.redraw();
+    else if (helpers.scheduleRedraw) helpers.scheduleRedraw();
+    if (helpers.pushHistory) helpers.pushHistory();
     _toast('템플릿 적용: ' + tpl.label);
     if (_sheetEl) _sheetEl.style.display = 'none';
   }
@@ -346,7 +377,8 @@
     if (arg && typeof arg === 'object') {
       initialCat = arg.cat || null;
       _recoIds = Array.isArray(arg.recommendedIds) ? arg.recommendedIds.slice(0, 3) : [];
-    } else { initialCat = arg || null; _recoIds = []; }
+      _openContext = arg;
+    } else { initialCat = arg || null; _recoIds = []; _openContext = null; }
     if (initialCat) _selectedCat = initialCat;
     _selectedTag = '';   // 추천/일반 진입 시 태그필터 초기화(혼동 방지)
     _renderCats();
@@ -425,7 +457,7 @@
   }
   // 잇비가 추천 카드 영역을 그린 뒤, 그 컨테이너에 썸네일 즉시 주입 + 클릭→미리보기 바인딩.
   //   추천 카드는 3개뿐 + 어시스턴트 시트 안 → IO root 불일치 회피 위해 즉시 paint.
-  function bindRecoCards(containerEl) {
+  function bindRecoCards(containerEl, context) {
     if (!containerEl) return;
     var TH = window.PhotoEditorTemplateThumb, bk = _getBrandKit();
     containerEl.querySelectorAll('[data-tpv2-thumb]').forEach(function (el) {
@@ -439,10 +471,10 @@
       }
     });
     containerEl.querySelectorAll('[data-tpv2-tpl]').forEach(function (b) {
-      b.addEventListener('click', function () { _openPreview(b.dataset.tpv2Tpl); });
+      b.addEventListener('click', function () { _openPreview(b.dataset.tpv2Tpl, context || _openContext); });
     });
   }
-  function openPreview(tplId) { _ensureSheet(); _openPreview(tplId); }
+  function openPreview(tplId, context) { _ensureSheet(); _openPreview(tplId, context || _openContext); }
 
   window.PhotoEditorTemplatesV2 = { open: _open, apply: _apply, openPreview, recoCardHtml, bindRecoCards, TEMPLATES, CATS };
 

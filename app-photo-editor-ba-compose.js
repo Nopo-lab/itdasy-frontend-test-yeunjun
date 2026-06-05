@@ -38,7 +38,7 @@
   function draw(ctx, w, h, state, tpl, data) {
     _hasBefore = !!(state && state.secondImg);   // [UX-BA-2] 시술 전 사진 유무
     const after = _copyCanvas(ctx.canvas);
-    const before = _beforeCanvas(state, after);   // secondImg 있을 때만 실제 사용 (없으면 placeholder)
+    const before = _hasBefore ? state.secondImg : after;
     ctx.save();
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = _bg(tpl);
@@ -51,17 +51,6 @@
     const out = document.createElement('canvas');
     out.width = canvas.width; out.height = canvas.height;
     out.getContext('2d').drawImage(canvas, 0, 0);
-    return out;
-  }
-
-  function _beforeCanvas(state, fallback) {
-    const src = state && state.secondImg ? state.secondImg : fallback;
-    const out = document.createElement('canvas');
-    out.width = fallback.width; out.height = fallback.height;
-    const ctx = out.getContext('2d');
-    ctx.filter = state && state.secondImg ? 'brightness(92%) saturate(90%)' : 'brightness(92%) grayscale(18%) sepia(8%)';
-    ctx.drawImage(src, 0, 0, out.width, out.height);
-    ctx.filter = 'none';
     return out;
   }
 

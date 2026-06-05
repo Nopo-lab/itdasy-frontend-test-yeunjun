@@ -411,6 +411,19 @@
     img.onerror = () => _toast('사진을 불러오지 못했어요');
     img.src = src;
   }
+  function _loadSecondImage(src) {
+    if (!src) return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if (!_state) return;
+      _state.secondImg = img;
+      _renderPanel();
+      _redraw();
+    };
+    img.onerror = () => _toast('시술 전 사진을 불러오지 못했어요');
+    img.src = src;
+  }
   function _replaceImage(src, message) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -443,6 +456,7 @@
     try { if (window.PhotoEditorNavV7?.isEnabled?.()) window.PhotoEditorNavV7.mount(); } catch (_e) { void _e; }
     try { window.PhotoEditorTextDnD?.bind?.(sheet.querySelector('#peCanvas')); } catch (_e) { void _e; }
     if (opts.src) _loadImage(opts.src);
+    if (opts.secondSrc) _loadSecondImage(opts.secondSrc);
     _pushHistoryState();
     // [v203 2026-05-19] 핀치 줌 attach — wrap 자식 (메인 canvas + 마스크 + 커서) 모두 같이 변환
     try {
@@ -481,7 +495,14 @@
   }
   function _openFromAction(p) {
     p = p || {};
-    return _open({ src: p.photo_url || p.src, initial_tab: p.initial_tab || 'auto', serviceName: p.service_name || '', price: +p.price || 0, initialState: p.initialState || null });
+    return _open({
+      src: p.photo_url || p.src || p.dataUrl,
+      secondSrc: p.secondSrc || p.second_src || null,
+      initial_tab: p.initial_tab || p.tab || 'auto',
+      serviceName: p.service_name || '',
+      price: +p.price || 0,
+      initialState: p.initialState || null,
+    });
   }
 
   function _applyStatePatch(patch) {

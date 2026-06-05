@@ -295,6 +295,7 @@
           <button data-assistant-menu aria-label="잇비 설정" title="잇비 설정" style="background:transparent;border:none;width:32px;height:32px;border-radius:50%;color:#191F28;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:20px;line-height:1;justify-self:end;">⋯</button>
         </div>
         <div id="asstBody" style="flex:1;overflow-y:auto;padding:4px;"></div>
+        <div id="asstResultDock" style="display:none;flex-shrink:0;max-height:min(42vh,360px);overflow-y:auto;padding:8px 4px 10px;border-top:1px solid #F2F4F6;background:#FFFFFF;box-shadow:0 -8px 20px rgba(25,31,40,0.06);position:relative;z-index:2;"></div>
         <div id="asstQuickLabel" style="font-size:11px;color:#8B95A1;padding:8px 4px 4px;font-weight:600;">이런 것도 돼요</div>
         <div id="asstSuggest" style="display:flex;gap:6px;overflow-x:auto;margin-top:0;padding:4px 0;"></div>
         <div id="asstTypeahead" style="display:none;gap:6px;overflow-x:auto;margin-top:6px;padding:2px 0;"></div>
@@ -326,7 +327,7 @@
         '#assistantSheetPanel button { touch-action: manipulation; transition: background .12s ease, transform .08s ease; }',
         '#assistantSheetPanel button:active { transform: scale(.96); }',
         // [2026-05-26] 메시지·액션 카드 등장 — slide-up + fade
-        '#asstBody .asst-msg, #asstBody .asst-card { animation: asstSlideUp .4s ease both; }',
+        '#asstBody .asst-msg, #asstBody .asst-card, #asstResultDock .asst-dock-card { animation: asstSlideUp .4s ease both; }',
         '@keyframes asstSlideUp { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }',
         // 완료 체크 아이콘 pop
         '.asst-card--done > span:first-child { animation: asstPop .35s cubic-bezier(.4,1.6,.6,1) both; }',
@@ -359,6 +360,7 @@
         '  #asstBody { padding: 16px 0 !important; display: flex; flex-direction: column; align-items: center; }',
         // [2026-06-05] 메시지 컬럼 가운데정렬(좌우 대칭). 버블 좌/우 정렬은 메시지 내부 flex 가 처리.
         '  #asstBody > * { width: 100%; max-width: 880px; margin-left: auto; margin-right: auto; padding-left: 20px; padding-right: 20px; box-sizing: border-box; }',
+        '  #asstResultDock > * { width: 100%; max-width: 880px; margin-left: auto; margin-right: auto; box-sizing: border-box; }',
         '  #asstBody .asst-msg, #asstBody .asst-user-msg { max-width: 100% !important; }',
         '  #asstBody .asst-msg--ai > div:last-child, #asstBody .asst-msg--user > div { max-width: 88% !important; }',
         '  #assistantSheetHeader { padding-left: 20px; padding-right: 20px; }',
@@ -583,23 +585,75 @@
     </div>`;
   }
 
+  function _latestResult() {
+    for (let i = _history.length - 1; i >= 0; i--) {
+      const m = _history[i];
+      if (m && (m.promo_result || m.photo_result || m.itbi_cards)) return { msg: m, idx: i };
+    }
+    return null;
+  }
+
+  function _renderResultDock() {
+    const dock = document.getElementById('asstResultDock');
+    if (!dock) return;
+    const hit = _latestResult();
+    if (!hit) { dock.style.display = 'none'; dock.innerHTML = ''; return; }
+    const html = _renderResultDockContent(hit.msg, hit.idx);
+    if (!html) { dock.style.display = 'none'; dock.innerHTML = ''; return; }
+    dock.innerHTML = html;
+    dock.style.display = 'block';
+    _bindTemplateRecoCards(dock);
+  }
+
+  function _renderResultDockContent(m, idx) {
+    const promo = _renderPromoResult(m, idx);
+    const promoCards = _renderItbiCardsPromo(m, idx);
+    const photo = _renderPhotoResult(m, idx);
+    const recos = _renderTplRecos(m, idx);
+    const hub = _renderHubActions(m, idx);
+    const body = [promo, promoCards, photo, recos, hub].filter(Boolean).join('');
+    if (!body) return '';
+    return `<div class="asst-dock-card" style="padding:4px 0;">
+      <div style="font-size:11px;color:#6B7684;font-weight:800;margin:0 0 6px 2px;">최근 결과</div>
+      ${body}
+    </div>`;
+  }
+
   function _renderHistoryImpl() {
     const body = document.getElementById('asstBody');
     if (!body) return;
     if (!_history.length) {
       body.innerHTML = _renderEmptyHistory();
+      _renderResultDock();
       return;
     }
     body.innerHTML = _history.map((m, idx) => _renderHistoryMessage(m, idx)).join('');
     body.scrollTop = body.scrollHeight;
     _bindActionButtons();
-    // [CF-2] 추천 템플릿 카드 썸네일 주입 + 클릭→미리보기 바인딩.
+    _bindTemplateRecoCards(body);
+    _renderResultDock();
+  }
+
+  function _bindTemplateRecoCards(root) {
     try {
       const TV = window.PhotoEditorTemplatesV2;
-      if (TV && typeof TV.bindRecoCards === 'function') {
-        body.querySelectorAll('[data-asst-tpl-recos]').forEach((el) => TV.bindRecoCards(el));
-      }
+      if (!root || !TV || typeof TV.bindRecoCards !== 'function') return;
+      root.querySelectorAll('[data-asst-tpl-recos]').forEach((el) => TV.bindRecoCards(el, _templateRecoContext(el)));
     } catch (_e) { void 0; }
+  }
+
+  function _templateRecoContext(el) {
+    const idx = parseInt(el.getAttribute('data-asst-tpl-recos') || '', 10);
+    const msg = _history[idx] || {};
+    const pr = msg.photo_result || {};
+    const promo = msg.promo_result || {};
+    const src = pr.originalSrc || promo.sourceUrl || pr.dataUrl || promo.afterDataUrl || '';
+    if (!src) return null;
+    return {
+      src,
+      secondSrc: pr.secondSrc || '',
+      initialState: pr.params || null,
+    };
   }
 
   function _renderEmptyHistory() {
@@ -1394,8 +1448,10 @@
     if (!Array.isArray(cards)) return true;
     const card = cards.find((c) => c.id === cardId);
     const src = m.photo_result && m.photo_result.originalSrc;
+    const secondSrc = m.photo_result && m.photo_result.secondSrc;
     if (!card || !src || !window.PhotoEditor || typeof window.PhotoEditor.open !== 'function') return true;
-    window.PhotoEditor.open({ src: src, initial_tab: card.initial_tab || 'beauty', initialState: card.state });
+    try { if (typeof window.closeAssistant === 'function') window.closeAssistant(); } catch (_e) { void 0; }
+    window.PhotoEditor.open({ src: src, secondSrc: secondSrc || null, initial_tab: card.initial_tab || 'beauty', initialState: card.state });
     return true;
   }
 
@@ -1978,12 +2034,20 @@
 
   function _openPhotoEditorForChat(opts, initialTab) {
     if (window.PhotoEditor && typeof window.PhotoEditor.open === 'function') {
-      window.PhotoEditor.open({
+      const openOpts = {
         src: opts.photoUrl,
+        secondSrc: opts.secondSrc || null,
         initial_tab: initialTab,
         customer_id: opts.customerCtx ? opts.customerCtx.id : undefined,
-      });
+      };
+      if (opts.initialState) openOpts.initialState = opts.initialState;
+      try { if (typeof window.closeAssistant === 'function') window.closeAssistant(); } catch (_e) { void 0; }
+      window.PhotoEditor.open(openOpts);
     }
+  }
+
+  function _beforeAfterInitialState() {
+    return { template: { id: 'ba-h', leftLabel: 'BEFORE', rightLabel: 'AFTER' } };
   }
 
   function _pushPhotoShortcutMessage(opts, text) {
@@ -2009,8 +2073,18 @@
       return true;
     }
     if (intent.ba) {
-      _openPhotoEditorForChat(opts, 'template');
-      _pushPhotoShortcutMessage(opts, '전·후 카드 화면을 열었어요. 두 번째 사진을 골라주세요.');
+      const photos = Array.isArray(opts.photos) ? opts.photos : [];
+      const hasPair = photos.length >= 2;
+      const beforeSrc = photos[0] || '';
+      const afterSrc = hasPair ? photos[1] : (opts.photoUrl || beforeSrc);
+      _openPhotoEditorForChat(Object.assign({}, opts, {
+        photoUrl: afterSrc,
+        secondSrc: hasPair ? beforeSrc : null,
+        initialState: _beforeAfterInitialState(),
+      }), 'template');
+      _pushPhotoShortcutMessage(opts, hasPair
+        ? '전·후 카드 화면을 열었어요. 첫 사진은 Before, 둘째 사진은 After로 넣었어요.'
+        : '전·후 카드 화면을 열었어요. 시술 전 사진을 추가하면 비교가 완성돼요.');
       return true;
     }
     return false;
@@ -2078,7 +2152,7 @@
       itbi_cards: itbiCards,
       promo_result: promo ? promo.promoResult : null,
       photo_actions: promo ? [] : _chatAutoEditActions(intent.instagram),
-      // [PR1] promo hubActions 의 open_photo_editor 도 원본+initialState 를 싣게 post-process(photo-chain.js 미수정 — 코덱스 충돌 회피).
+      // [PR1] promo hubActions 의 editor/template 액션에도 원본+initialState 를 싣게 보강.
       hub_actions: promo ? _injectHandoffIntoHubActions(promo.hubActions, handoff) : _photoHubActions(intent.instagram, result.dataUrl, '업종: ' + (result.preset_label || '자동'), handoff),
       photo_caption: promo ? promo.promoResult.caption : '업종: ' + (result.preset_label || '자동'),
     };
@@ -2098,16 +2172,16 @@
     ];
   }
 
-  // [PR1] promo hubActions 의 open_photo_editor 액션에 원본 src + initialState(params) 주입.
-  //   photo-chain.js 의 promo 액션 빌더는 payload:{} 라 핸드오프 유실 → 여기서 비파괴 복제 후 보강.
-  //   기존 promo 흐름(인스타/템플릿/캡션/고객기록)은 그대로, editor 진입만 보정값 유지.
+  // [PR1] promo hubActions 의 editor/template 액션에 원본 src + initialState(params) 주입.
   function _injectHandoffIntoHubActions(actions, handoff) {
     if (!Array.isArray(actions) || !handoff || !handoff.originalSrc) return actions;
     return actions.map((a) => {
-      if (a && a.kind === 'open_photo_editor') {
+      if (a && (a.kind === 'open_photo_editor' || a.kind === 'open_template_panel')) {
         return Object.assign({}, a, {
           payload: Object.assign({}, a.payload || {}, {
-            photo_url: handoff.originalSrc, initial_tab: 'beauty', initialState: handoff.params,
+            photo_url: handoff.originalSrc,
+            initial_tab: a.kind === 'open_template_panel' ? 'template' : 'beauty',
+            initialState: handoff.params,
           }),
         });
       }
@@ -2125,11 +2199,14 @@
       : {};
     const acts = [
       { id: 'instagram', kind: 'open_instagram', label: '인스타 미리보기', phase: 'safe', route: 'photo' },
-      { id: 'editor', kind: 'open_photo_editor', label: '더 손보기', phase: 'safe', route: 'photo', payload: editorPayload },
+      { id: 'editor', kind: 'open_photo_editor', label: '더 손보기', phase: 'safe', route: 'hub', payload: editorPayload },
       { id: 'save', kind: 'export_image', label: '내보내기', phase: 'safe', route: 'photo' },
     ];
     if (!isInstagram) acts.push({ id: 'retry', kind: 'retry_edit', label: '다시 보정', phase: 'safe', route: 'photo' });
-    acts.push({ id: 'pe_template', kind: 'open_template_panel', label: '템플릿 보기', phase: 'safe', route: 'hub', payload: { dataUrl } });
+    const templatePayload = (handoff && handoff.originalSrc)
+      ? { dataUrl, photo_url: handoff.originalSrc, initialState: handoff.params }
+      : { dataUrl };
+    acts.push({ id: 'pe_template', kind: 'open_template_panel', label: '템플릿 보기', phase: 'safe', route: 'hub', payload: templatePayload });
     acts.push({ id: 'save_customer', kind: 'save_photo_to_customer', label: '고객기록에 저장', phase: 'confirm', route: 'hub', payload: { caption } });
     return acts;
   }
