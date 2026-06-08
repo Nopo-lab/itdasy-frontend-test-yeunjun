@@ -128,14 +128,11 @@
     if (!photoUrl) photoUrl = _solidBase();
     if (!photoUrl) return null;
 
-    var reviewTplData = null;
-    try { reviewTplData = (window.PhotoEditorTemplatesV2.TEMPLATES || []).find(function (t) { return t && t.id === REVIEW_TPL_ID; }) || null; } catch (_e) { reviewTplData = null; }
-
     var state = _runAutoApply(
       REVIEW_TPL_ID, photoUrl,
       function (base) { return buildReviewSlotValues(base, ctx, text); },
       function (st) { if (hadPhoto && st.tplV2.imageSlots && st.tplV2.imageSlots.main_photo) st.tplV2.imageSlots.main_photo.src = photoUrl; },
-      reviewTplData
+      _reviewTplData()
     );
     if (!state) return null;
 
@@ -196,7 +193,9 @@
     } catch (_e) { void _e; }
   }
 
-  function handleBeforeAfterCard(text, ctx, opts) {
+  // before/after 사진 해석 — opts.photos(≥2:전/후, 1:후) → SI.resolve → 없으면 needsPhoto.
+  //   handleBeforeAfterCard 와 applySample 이 공유(중복 제거).
+  function _resolveBaPhotos(opts) {
     opts = opts || {};
     var SI = window.ItdasySourceImage;
     var photos = (opts.photos && opts.photos.length) ? opts.photos.filter(Boolean) : [];
@@ -219,31 +218,103 @@
       if (st0 && st0.secondImg && sheet0 && sheet0.style.display !== 'none') prevSecond = st0.secondImg;
     } catch (_e) { prevSecond = null; }
 
-    var tplId = _pickBaTemplate(text);
-    var baTplData = null;
+    return { afterUrl: afterUrl, beforeUrl: beforeUrl, prevSecond: prevSecond, needsPhoto: false };
+  }
+
+  // cat:'ba' 템플릿 데이터(edit-sheet before/after 슬롯). 없으면 null.
+  function _baTplData(tplId) {
     try {
       var MD = window.PhotoEditorTemplateMarketData;
-      baTplData = (MD && typeof MD.lookupById === 'function') ? MD.lookupById(tplId) : null;   // cat:'ba' → edit-sheet before/after 슬롯
-    } catch (_e) { baTplData = null; }
+      return (MD && typeof MD.lookupById === 'function') ? MD.lookupById(tplId) : null;
+    } catch (_e) { return null; }
+  }
+  // v3-review-card 템플릿 데이터. 없으면 null.
+  function _reviewTplData() {
+    try { return (window.PhotoEditorTemplatesV2.TEMPLATES || []).find(function (t) { return t && t.id === REVIEW_TPL_ID; }) || null; } catch (_e) { return null; }
+  }
 
+  function handleBeforeAfterCard(text, ctx, opts) {
+    var ph = _resolveBaPhotos(opts);
+    if (ph.needsPhoto) return { needsPhoto: true };
+
+    var tplId = _pickBaTemplate(text);
     var state = _runAutoApply(
-      tplId, afterUrl,
+      tplId, ph.afterUrl,
       function (base) { return buildBASlotValues(base, ctx, text); },
-      function (st) { if (!beforeUrl && prevSecond) st.secondImg = prevSecond; },   // after_photo.src ''=현재 캔버스(=open 한 after)
-      baTplData
+      function (st) { if (!ph.beforeUrl && ph.prevSecond) st.secondImg = ph.prevSecond; },   // after_photo.src ''=현재 캔버스(=open 한 after)
+      _baTplData(tplId)
     );
     if (!state) return null;
 
-    if (beforeUrl) _loadBeforeIntoState(beforeUrl);
+    if (ph.beforeUrl) _loadBeforeIntoState(ph.beforeUrl);
 
     var sv = state.tplV2.slotValues || {};
     return {
       templateId: tplId,
       templateLabel: _baLabel(tplId),
       headline: sv.headline || '시술 전후',
-      hasBefore: !!beforeUrl || !!prevSecond,
+      hasBefore: !!ph.beforeUrl || !!ph.prevSecond,
       hasAfter: true,
     };
+  }
+
+  // ── M2: 매처 샘플 자동 적용 ─────────────────────────────
+  //   review / before_after 만 처리. price 는 app-assistant 의 기존 가격표 흐름이 소유 → null 반환.
+  //   payload.slotValues 는 matcher.toAutoApplyPayload 가 이미 (샘플+override) 병합 + sanitize 한 값.
+  //   기존 _runAutoApply / _resolveBaPhotos / _loadBeforeIntoState 를 그대로 재사용(새 파이프라인 0).
+  function applySample(payload, ctx, opts) {
+    opts = opts || {};
+    if (!payload || !payload.autoApplyEligible) return null;   // event(templateId null) 제외
+    var slots = payload.slotValues || {};
+
+    if (payload.purpose === 'review') {
+      var SI = window.ItdasySourceImage;
+      var src = (SI && typeof SI.resolve === 'function') ? SI.resolve() : null;
+      var photoUrl = (src && src.dataUrl) ? src.dataUrl : '';
+      var hadPhoto = !!photoUrl;
+      if (!photoUrl) photoUrl = _solidBase();
+      if (!photoUrl) return null;
+      var rTpl = payload.templateId || REVIEW_TPL_ID;
+      var rState = _runAutoApply(
+        rTpl, photoUrl,
+        function (base) { return Object.assign({}, base, slots); },   // 샘플 slotValues 를 템플릿 base 위에 덮음
+        function (st) { if (hadPhoto && st.tplV2.imageSlots && st.tplV2.imageSlots.main_photo) st.tplV2.imageSlots.main_photo.src = photoUrl; },
+        _reviewTplData()
+      );
+      if (!rState) return null;
+      var rSv = rState.tplV2.slotValues || {};
+      return {
+        templateId: rTpl,
+        templateLabel: '후기 인용 카드',
+        reviewExcerpt: String(rSv.review_text || '').slice(0, 40),
+        customerLabel: rSv.customer_label || '고객님',
+        hadPhoto: hadPhoto,
+      };
+    }
+
+    if (payload.purpose === 'before_after') {
+      var ph = _resolveBaPhotos(opts);
+      if (ph.needsPhoto) return { needsPhoto: true };
+      var bTpl = payload.templateId || BA_TPL_DEFAULT;
+      var bState = _runAutoApply(
+        bTpl, ph.afterUrl,
+        function (base) { return Object.assign({}, base, slots); },
+        function (st) { if (!ph.beforeUrl && ph.prevSecond) st.secondImg = ph.prevSecond; },
+        _baTplData(bTpl)
+      );
+      if (!bState) return null;
+      if (ph.beforeUrl) _loadBeforeIntoState(ph.beforeUrl);
+      var bSv = bState.tplV2.slotValues || {};
+      return {
+        templateId: bTpl,
+        templateLabel: _baLabel(bTpl),
+        headline: bSv.headline || '시술 전후',
+        hasBefore: !!ph.beforeUrl || !!ph.prevSecond,
+        hasAfter: true,
+      };
+    }
+
+    return null;   // price / 기타 → app-assistant 가 처리
   }
 
   window.ItdasyTemplateAutoApply = {
@@ -253,5 +324,6 @@
     buildBASlotValues: buildBASlotValues,
     handleReviewCard: handleReviewCard,
     handleBeforeAfterCard: handleBeforeAfterCard,
+    applySample: applySample,
   };
 })();

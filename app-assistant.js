@@ -1639,6 +1639,25 @@
   }
 
   // 완료 카드 — dataURL 미포함(요약 payload + 버튼만). 저장/인스타는 클릭 시점 현재 캔버스 기준.
+  //   [M2] _tryReviewCardShortcut 과 _tryTemplateSampleShortcut(review) 이 공유.
+  function _pushReviewResultCard(result) {
+    var payload = {
+      templateId: result.templateId || 'v3-review-card',
+      templateLabel: result.templateLabel || '후기 인용 카드',
+      reviewExcerpt: result.reviewExcerpt || '',
+      customerLabel: result.customerLabel || '고객님',
+    };
+    _history.push({
+      role: 'assistant',
+      text: _reviewResultText(result),
+      review_template_result: payload,
+      hub_actions: _reviewResultActions(payload),
+    });
+    _renderHistory();
+    if (window.hapticLight) window.hapticLight();
+    if (window.showToast) window.showToast('후기 카드를 넣었어요. 문구 편집에서 확인해 주세요.');
+  }
+
   function _tryReviewCardShortcut(input, q) {
     try {
       var M = window.ItdasyTemplateAutoApply;
@@ -1652,21 +1671,7 @@
         _renderHistory();
         return true;
       }
-      var payload = {
-        templateId: result.templateId || 'v3-review-card',
-        templateLabel: result.templateLabel || '후기 인용 카드',
-        reviewExcerpt: result.reviewExcerpt || '',
-        customerLabel: result.customerLabel || '고객님',
-      };
-      _history.push({
-        role: 'assistant',
-        text: _reviewResultText(result),
-        review_template_result: payload,
-        hub_actions: _reviewResultActions(payload),
-      });
-      _renderHistory();
-      if (window.hapticLight) window.hapticLight();
-      if (window.showToast) window.showToast('후기 카드를 넣었어요. 문구 편집에서 확인해 주세요.');
+      _pushReviewResultCard(result);
       return true;
     } catch (e) {
       try { console.warn('[assistant-review-card] apply failed', e); } catch (_logErr) { void _logErr; }
@@ -1705,6 +1710,25 @@
     ].join('\n');
   }
 
+  // [M2] _tryBeforeAfterCardShortcut 과 _tryTemplateSampleShortcut(before_after) 이 공유.
+  function _pushBaResultCard(result) {
+    var payload = {
+      templateId: result.templateId || 'v3-ba-clean-rose',
+      templateLabel: result.templateLabel || '시술 전후 카드',
+      hasBefore: !!result.hasBefore,
+      hasAfter: !!result.hasAfter,
+    };
+    _history.push({
+      role: 'assistant',
+      text: _baResultText(result),
+      ba_template_result: payload,
+      hub_actions: _baResultActions(payload),
+    });
+    _renderHistory();
+    if (window.hapticLight) window.hapticLight();
+    if (window.showToast) window.showToast('전후 카드를 넣었어요. 문구 편집에서 확인해 주세요.');
+  }
+
   function _tryBeforeAfterCardShortcut(input, q) {
     try {
       var M = window.ItdasyTemplateAutoApply;
@@ -1718,21 +1742,7 @@
         _renderHistory();
         return true;
       }
-      var payload = {
-        templateId: result.templateId || 'v3-ba-clean-rose',
-        templateLabel: result.templateLabel || '시술 전후 카드',
-        hasBefore: !!result.hasBefore,
-        hasAfter: !!result.hasAfter,
-      };
-      _history.push({
-        role: 'assistant',
-        text: _baResultText(result),
-        ba_template_result: payload,
-        hub_actions: _baResultActions(payload),
-      });
-      _renderHistory();
-      if (window.hapticLight) window.hapticLight();
-      if (window.showToast) window.showToast('전후 카드를 넣었어요. 문구 편집에서 확인해 주세요.');
+      _pushBaResultCard(result);
       return true;
     } catch (e) {
       try { console.warn('[assistant-ba-card] apply failed', e); } catch (_logErr) { void _logErr; }
@@ -1772,6 +1782,99 @@
   function _priceTemplateFailed() {
     if (window.showToast) window.showToast('가격표를 넣지 못했어요. 다시 시도해 주세요.');
     return true;
+  }
+
+  // [M2] 매처 price 샘플 → v3 가격표 슬롯 주입. 빈 값(shop_name/phone='')은 템플릿 기본 유지.
+  function _injectPriceSampleSlots(state, slotValues) {
+    if (!state || !state.tplV2) return false;
+    const sv = slotValues || {};
+    const next = Object.assign({}, state.tplV2.slotValues || {});
+    if (Array.isArray(sv.services) && sv.services.length) next.services = sv.services;
+    if (sv.headline) next.headline = sv.headline;
+    if (sv.subtitle) next.subtitle = sv.subtitle;
+    if (sv.cta) next.cta = sv.cta;
+    if (sv.phone) next.phone = sv.phone;
+    if (sv.shop_name) next.shop_name = sv.shop_name;
+    state.tplV2.slotValues = next;
+    return true;
+  }
+
+  // [M2] price 샘플 적용 — _applyPriceTemplateDraft 메커닉/결과 UX 재사용(draft 대신 sample.slotValues).
+  function _applyPriceSample(payload) {
+    try {
+      const PE = window.PhotoEditor, TV = window.PhotoEditorTemplatesV2;
+      if (!PE || !PE.open || !PE._internal || !TV || !TV.apply) return _priceTemplateFailed();
+      const slotValues = (payload && payload.slotValues) || {};
+      const services = Array.isArray(slotValues.services) ? slotValues.services : [];
+      if (!services.length) return _priceTemplateFailed();
+      const tplId = payload.templateId;
+      const tpl = _priceTemplateById(tplId);
+      if (!tplId || !tpl) return _priceTemplateFailed();
+      let source = '';
+      try { const src = window.ItdasySourceImage && window.ItdasySourceImage.resolve(); source = (src && src.dataUrl) ? src.dataUrl : ''; } catch (_e) { source = ''; }
+      PE.open({ src: source, initial_tab: 'template' });
+      TV.apply(tplId);
+      const helpers = PE._internal.helpers || {};
+      const state = PE._internal.getState && PE._internal.getState();
+      if (!_injectPriceSampleSlots(state, slotValues)) return _priceTemplateFailed();
+      if (helpers.renderPanel) helpers.renderPanel();
+      if (helpers.scheduleRedraw) helpers.scheduleRedraw();
+      if (helpers.pushHistory) helpers.pushHistory();
+      _openPriceEditSheet(state, tplId, tpl, helpers);
+      if (window.showToast) window.showToast('가격표를 넣었어요. 문구 편집에서 확인해 주세요.');
+      _pushPriceTemplateResult(tpl, tplId, services);
+      return true;
+    } catch (e) {
+      try { console.warn('[assistant-price-sample] apply failed', e); } catch (_logErr) { void _logErr; }
+      return _priceTemplateFailed();
+    }
+  }
+
+  // [M2] 매처 샷컷 — 자연어 → 샘플 매칭 → 기존 I2/I3 자동 적용. 기존 price/review/ba 샷컷보다 앞.
+  //   매칭 단계 실패/예외는 부수효과 0 으로 false → 기존 fallback(_tryPriceListDraft 등) 그대로.
+  //   매칭 성공 후(=user 메시지 push 후) 예외는 true 로 흡수 → 이중 push 방지.
+  function _tryTemplateSampleShortcut(input, q) {
+    let payload = null, ctx = {}, photos = [];
+    try {
+      const MM = window.ItdasyTemplateSampleMatcher;
+      if (!MM || typeof MM.matchTemplateSample !== 'function') return false;
+      ctx = (window.ItdasyAssistantContext && window.ItdasyAssistantContext.collect && window.ItdasyAssistantContext.collect()) || {};
+      photos = _lastUserPhotos();
+      const sample = MM.matchTemplateSample(q, { photoCount: photos.length });
+      if (!sample) return false;   // ← 매칭 실패(모호 입력 포함): 손대지 않고 기존 흐름으로
+      payload = MM.toAutoApplyPayload(sample, q, ctx);
+      if (!payload || !payload.purpose) return false;
+    } catch (e) {
+      try { console.warn('[assistant-template-sample] match failed', e); } catch (_logErr) { void _logErr; }
+      return false;   // 매칭 단계 예외 → fallback 보존
+    }
+    // ── 매칭 성공: 여기부터 소비. 이후 오류는 true 로 흡수(이중 push 방지). ──
+    try {
+      _clearAssistantInput(input);
+      _history.push({ role: 'user', text: q });
+      if (payload.purpose === 'event' || !payload.autoApplyEligible) {
+        _history.push({ role: 'assistant', text: '이벤트 템플릿은 준비 중이에요. 지금은 가격표·후기·전후 카드부터 만들 수 있어요.' });
+        _renderHistory();
+        return true;
+      }
+      if (payload.purpose === 'price') { _applyPriceSample(payload); return true; }
+      const TA = window.ItdasyTemplateAutoApply;
+      const result = (TA && typeof TA.applySample === 'function') ? TA.applySample(payload, ctx, { photos: photos }) : null;
+      if (!result || result.needsPhoto) {
+        _history.push({ role: 'assistant', text: (payload.purpose === 'before_after')
+          ? '전후 카드를 만들려면 사진이 필요해요. 시술 후 사진을 먼저 올려 주세요.'
+          : '카드를 넣지 못했어요. 사진을 먼저 선택하거나 다시 시도해 주세요.' });
+        _renderHistory();
+        return true;
+      }
+      if (payload.purpose === 'review') _pushReviewResultCard(result);
+      else _pushBaResultCard(result);
+      return true;
+    } catch (e) {
+      try { console.warn('[assistant-template-sample] apply failed', e); } catch (_logErr) { void _logErr; }
+      try { _history.push({ role: 'assistant', text: '카드를 넣지 못했어요. 다시 시도해 주세요.' }); _renderHistory(); } catch (_e2) { void _e2; }
+      return true;   // 이미 user push 됨 → fallback 재진입 금지
+    }
   }
 
   function _templateIdsForPicker(action, msg) {
@@ -3632,6 +3735,7 @@
     if (!q) return;
     // [P0a] pending 사진이 없어도, 직전에 채팅으로 올린 사진(≤5분)이 있고 텍스트가 사진 명령이면
     //   그 사진을 대상으로 기존 사진 shortcut 경로를 재사용("사진+네일 손님이야" 연결). 아니면 기존 흐름.
+    if (_tryTemplateSampleShortcut(input, q)) return;   // [M2] 매처 샘플 → I2/I3 자동 적용 — null 이면 false 로 아래 fallback
     if (_tryPriceListDraft(input, q)) return;
     if (_tryReviewCardShortcut(input, q)) return;   // [I3a] 후기 카드 자동 적용 — promo chain/photo-followup 보다 먼저
     if (_tryBeforeAfterCardShortcut(input, q)) return;   // [I3b] 전후(BA) 카드 자동 적용 — promo chain/photo-followup 보다 먼저
