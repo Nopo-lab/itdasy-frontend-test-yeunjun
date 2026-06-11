@@ -337,11 +337,151 @@
     _text(ctx, sv.footer || 'YOUR BEAUTY, OUR PASSION', dw / 2, dh * 0.965, '700 16px "Noto Sans KR", sans-serif', c.sub, 'center');
   }
 
-  // ── 등록(분할 전 ROUTES/DONE 와 동일: 6종 모두 좌표 완료 → done=true) ──
+  // ── BP-6 봄 이벤트 전용 로컬 헬퍼(_es*) — core 무변경, 이 파일 안에서만 사용 ──
+  function _esNewsScrap(ctx, x, y, w, h, rot) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    ctx.shadowColor = 'rgba(0,0,0,0.08)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
+    ctx.fillStyle = '#F3EEE5'; ctx.fillRect(0, 0, w, h); ctx.shadowColor = 'transparent';
+    ctx.fillStyle = 'rgba(150,140,128,0.32)';
+    for (var i = 0; i < Math.floor(h / 16); i++) ctx.fillRect(9, 12 + i * 16, w - 18 - (i % 3) * 14, 2.5);
+    ctx.restore();
+  }
+  function _esIcon(ctx, type, cx, cy, s, color) {
+    ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (type === 'dye') {
+      ctx.beginPath(); ctx.arc(cx, cy + s * 0.08, s * 0.44, 0.12 * Math.PI, 0.88 * Math.PI); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + s * 0.04, cy - s * 0.5); ctx.lineTo(cx + s * 0.04, cy + s * 0.12); ctx.stroke();
+    } else if (type === 'clinic') {
+      _rr(ctx, cx - s * 0.22, cy - s * 0.18, s * 0.44, s * 0.6, s * 0.1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - s * 0.1, cy - s * 0.18); ctx.lineTo(cx - s * 0.1, cy - s * 0.42); ctx.lineTo(cx + s * 0.1, cy - s * 0.42); ctx.lineTo(cx + s * 0.1, cy - s * 0.18); ctx.stroke();
+    } else if (type === 'cut') {
+      ctx.beginPath(); ctx.arc(cx - s * 0.22, cy + s * 0.3, s * 0.14, 0, 2 * Math.PI); ctx.arc(cx + s * 0.22, cy + s * 0.3, s * 0.14, 0, 2 * Math.PI); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - s * 0.12, cy + s * 0.2); ctx.lineTo(cx + s * 0.32, cy - s * 0.42); ctx.moveTo(cx + s * 0.12, cy + s * 0.2); ctx.lineTo(cx - s * 0.32, cy - s * 0.42); ctx.stroke();
+    } else if (type === 'hair') {
+      for (var k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(cx + k * s * 0.24, cy - s * 0.44); ctx.quadraticCurveTo(cx + k * s * 0.24 + s * 0.2, cy, cx + k * s * 0.24, cy + s * 0.44); ctx.stroke(); }
+    }
+    ctx.restore();
+  }
+  function _esTulip(ctx, cx, cy, s, petal, stem) {
+    ctx.save();
+    ctx.strokeStyle = stem; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + s * 1.7); ctx.stroke();
+    ctx.strokeStyle = '#9BBE7E'; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(cx, cy + s * 0.8); ctx.quadraticCurveTo(cx - s * 0.7, cy + s * 0.5, cx - s * 0.8, cy + s * 1.0); ctx.stroke();
+    ctx.fillStyle = petal;
+    ctx.beginPath(); ctx.moveTo(cx, cy - s * 0.55);
+    ctx.bezierCurveTo(cx - s * 0.72, cy - s * 0.2, cx - s * 0.5, cy + s * 0.5, cx, cy + s * 0.45);
+    ctx.bezierCurveTo(cx + s * 0.5, cy + s * 0.5, cx + s * 0.72, cy - s * 0.2, cx, cy - s * 0.55); ctx.fill();
+    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.4; ctx.globalAlpha = 0.7;
+    ctx.beginPath(); ctx.moveTo(cx, cy - s * 0.4); ctx.lineTo(cx, cy + s * 0.4); ctx.stroke();
+    ctx.restore();
+  }
+  function _esCheck(ctx, cx, cy, s, color) {
+    ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(cx - s * 0.5, cy); ctx.lineTo(cx - s * 0.08, cy + s * 0.42); ctx.lineTo(cx + s * 0.55, cy - s * 0.5); ctx.stroke(); ctx.restore();
+  }
+
+  // ── 6 · 봄 시즌 이벤트 (핑크 스크랩북, ref-3 mixed: 가격표+이벤트+모델 사진) ──
+  //   kind=price 재사용(services + main_photo). 장식문구는 sv.xxx || 한글 기본값 폴백(기존 6종과 동일 패턴).
+  //   신규 시각요소(아이콘박스·튤립·콜라주·체크)는 위 _es* 로컬 헬퍼로만 — core/기존 6종 무변경.
+  function _skEventSpringMixed(ctx, dw, dh, state, tpl, data, c) {
+    var sv = (tpl && tpl.slotValues) || {};
+    var INK = '#2A2230', PINK = '#EC4E86', PINK2 = '#F2789F', SUB = '#8A7580';
+    var KRAFT = '#E3D2B4', KRAFTNOTE = '#EFE3CD';
+    // 배경(소프트 핑크) + 신문 콜라주 스크랩(좌상·좌하)
+    var bg = ctx.createLinearGradient(0, 0, 0, dh); bg.addColorStop(0, '#FCEAF1'); bg.addColorStop(1, '#F8DCE6');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, dw, dh);
+    _esNewsScrap(ctx, -dw * 0.04, -dh * 0.01, dw * 0.16, dh * 0.18, -0.08);
+    _esNewsScrap(ctx, -dw * 0.03, dh * 0.82, dw * 0.17, dh * 0.16, 0.06);
+    _blob(ctx, dw * 0.5, dh * 0.5, dw * 0.42, '#FFFFFF', 0.18);
+    // 해시태그 + 별 두들
+    _text(ctx, sv.hashtag || '#봄맞이 변신은 지금이 기회!', dw * 0.07, dh * 0.062, '400 30px "Nanum Pen Script", cursive', INK, 'left');
+    _star(ctx, dw * 0.45, dh * 0.05, 13, PINK2);
+    // 헤드라인 2줄(헤비) + 핑크 브러시 밑줄 + 하트
+    _text(ctx, sv.headline_top || '봄 시즌', dw * 0.055, dh * 0.155, '400 96px "Black Han Sans", sans-serif', INK, 'left');
+    _brushUnderline(ctx, dw * 0.06, dw * 0.45, dh * 0.175, PINK2);
+    _text(ctx, sv.headline_bottom || '이벤트', dw * 0.055, dh * 0.245, '400 96px "Black Han Sans", sans-serif', INK, 'left');
+    _heart(ctx, dw * 0.52, dh * 0.135, 17, null, PINK);
+    // 서브 배너(핑크 브러시 하이라이트) + 꽃
+    _brushHighlight(ctx, dw * 0.055, dh * 0.285, dw * 0.40, dh * 0.05, '#F6A8C4');
+    _text(ctx, sv.sub_banner || '설레는 봄, 예뻐질 시간', dw * 0.075, dh * 0.318, '700 30px "Gowun Dodum", sans-serif', '#FFFFFF', 'left');
+    _flower(ctx, dw * 0.43, dh * 0.305, 16, '#F6A8C4');
+    // 서브 문구 2줄
+    _text(ctx, sv.sub1 || '다가오는 봄, 스타일로 꽃 피워보세요.', dw * 0.06, dh * 0.365, '400 23px "Noto Sans KR", sans-serif', SUB, 'left');
+    _text(ctx, sv.sub2 || '지금이 가장 예뻐질 타이밍!', dw * 0.06, dh * 0.39, '400 23px "Noto Sans KR", sans-serif', SUB, 'left');
+    // 우측 모델 사진(폴라로이드 + 마스킹테이프), 뒤 콜라주
+    _esNewsScrap(ctx, dw * 0.49, dh * 0.06, dw * 0.16, dh * 0.20, 0.05);
+    _polaroid(ctx, dw * 0.71, dh * 0.30, dw * 0.50, dh * 0.46, 0.028, _resolveMain(tpl), '', 20, INK, c, { tape: true, tapeLabel: '' });
+    // 우상단 크라프트 탭(샵명)
+    ctx.save(); ctx.translate(dw * 0.78, dh * 0.045); ctx.rotate(0.02);
+    ctx.fillStyle = KRAFT; ctx.shadowColor = 'rgba(0,0,0,0.1)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
+    ctx.fillRect(-dw * 0.16, -dh * 0.018, dw * 0.32, dh * 0.058); ctx.shadowColor = 'transparent'; ctx.restore();
+    _text(ctx, sv.shop_label || data.shop || 'BEAUTY ROOM', dw * 0.78, dh * 0.045, '700 24px "Playfair Display", serif', '#5A4632', 'center');
+    _text(ctx, sv.shop_sub || 'HAIR SALON', dw * 0.78, dh * 0.072, '400 13px "Noto Sans KR", sans-serif', '#8A7355', 'center');
+    // Spring EVENT 원형 배지(사진 위)
+    var bx = dw * 0.86, by = dh * 0.215, br = dw * 0.082;
+    ctx.save(); var bgr = ctx.createLinearGradient(bx - br, by - br, bx + br, by + br); bgr.addColorStop(0, '#F2789F'); bgr.addColorStop(1, '#EC4E86');
+    ctx.shadowColor = 'rgba(236,78,134,0.4)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 4; ctx.fillStyle = bgr;
+    ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    _text(ctx, 'Spring', bx, by - 4, '400 30px "Nanum Pen Script", cursive', '#FFFFFF', 'center');
+    _text(ctx, 'EVENT', bx, by + 22, '800 20px "Montserrat", sans-serif', '#FFFFFF', 'center');
+    // 가격 4행 카드(아이콘 박스 + 시술명 + 가격 + 설명)
+    var svc = (data.services && data.services.length) ? data.services : [
+      { name: '염색', price: '120,000~', desc: '디자인 염색 / 탈색 별도' },
+      { name: '클리닉', price: '90,000', desc: '모발케어 맞춤 클리닉' },
+      { name: '커트', price: '30,000', desc: '디자인 커트' },
+      { name: '붙임머리', price: '상담 문의', desc: '자연스러운 변신, 맞춤 상담' },
+    ];
+    var icons = ['dye', 'clinic', 'cut', 'hair'];
+    var rx = dw * 0.045, rw = dw * 0.47, rH = dh * 0.066, rGap = dh * 0.012, rY0 = dh * 0.41;
+    for (var i = 0; i < Math.min(svc.length, 4); i++) {
+      var s = svc[i] || {}, ry = rY0 + i * (rH + rGap);
+      ctx.save(); ctx.fillStyle = '#FFFFFF'; ctx.shadowColor = 'rgba(180,130,150,0.18)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4;
+      _rr(ctx, rx, ry, rw, rH, 12); ctx.fill(); ctx.restore();
+      if (i % 2 === 1) _paperclip(ctx, rx + 6, ry + rH * 0.5, '#C2A9BC');
+      var bs = rH * 0.72, bX = rx + rH * 0.22;
+      ctx.save(); var ig = ctx.createLinearGradient(bX, ry, bX, ry + bs); ig.addColorStop(0, '#F2789F'); ig.addColorStop(1, '#EC4E86');
+      ctx.fillStyle = ig; _rr(ctx, bX, ry + (rH - bs) / 2, bs, bs, 9); ctx.fill(); ctx.restore();
+      _esIcon(ctx, icons[i % 4], bX + bs / 2, ry + rH / 2, bs * 0.5, '#FFFFFF');
+      var tx = bX + bs + dw * 0.025;
+      _text(ctx, s.name || ('시술 ' + (i + 1)), tx, ry + rH * 0.46, '700 30px "Noto Sans KR", sans-serif', INK, 'left');
+      _text(ctx, s.desc || '', tx, ry + rH * 0.78, '400 16px "Noto Sans KR", sans-serif', SUB, 'left');
+      _text(ctx, s.price || '', rx + rw - dw * 0.025, ry + rH * 0.5, '700 26px "Noto Sans KR", sans-serif', PINK, 'right');
+    }
+    // 검정 리본 CTA + 하트
+    var ctaY = dh * 0.69;
+    ctx.save(); ctx.fillStyle = INK; ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 3;
+    _rr(ctx, rx, ctaY, rw, dh * 0.05, 8); ctx.fill(); ctx.restore();
+    _text(ctx, sv.cta || data.cta || '예약은 프로필 링크 / DM', rx + rw / 2, ctaY + dh * 0.032, '700 25px "Gowun Dodum", sans-serif', '#FFFFFF', 'center');
+    _heart(ctx, rx + rw + dw * 0.02, ctaY + dh * 0.025, 14, PINK, null);
+    // EVENT 혜택 크라프트 노트(우하단) + 마스킹테이프 + 체크 3
+    var nX = dw * 0.55, nY = dh * 0.73, nW = dw * 0.40, nH = dh * 0.205;
+    ctx.save(); ctx.fillStyle = KRAFTNOTE; ctx.shadowColor = 'rgba(120,100,70,0.22)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 6;
+    _rr(ctx, nX, nY, nW, nH, 6); ctx.fill(); ctx.restore();
+    _washiTape(ctx, nX + nW * 0.5, nY - 4, nW * 0.42, 40, -0.04, 'rgba(242,140,170,0.7)', '');
+    _text(ctx, sv.benefit_title || 'EVENT 혜택', nX + nW * 0.5, nY + dh * 0.04, '700 30px "Nanum Pen Script", cursive', PINK, 'center');
+    var benefits = (sv.benefits && sv.benefits.length) ? sv.benefits : ['시술 시 홈케어 샘플 증정', '리뷰 작성 시 10% 할인', '신규 고객 10% 할인'];
+    for (var b = 0; b < Math.min(benefits.length, 3); b++) {
+      var byy = nY + dh * 0.075 + b * dh * 0.038;
+      _esCheck(ctx, nX + dw * 0.045, byy, 12, PINK);
+      _text(ctx, benefits[b], nX + dw * 0.075, byy + 7, '400 19px "Noto Sans KR", sans-serif', '#6A5A45', 'left');
+    }
+    // 튤립(노트 좌측) + 스마일
+    _esTulip(ctx, dw * 0.515, dh * 0.70, 20, '#F49CC0', '#7FA05C');
+    _esTulip(ctx, dw * 0.55, dh * 0.71, 17, '#F6B6D0', '#7FA05C');
+    ctx.save(); ctx.strokeStyle = PINK2; ctx.fillStyle = PINK2; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+    var smx = dw * 0.93, smy = dh * 0.95;
+    ctx.beginPath(); ctx.arc(smx, smy, dw * 0.03, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(smx - dw * 0.011, smy - dw * 0.006, 2.4, 0, Math.PI * 2); ctx.arc(smx + dw * 0.011, smy - dw * 0.006, 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(smx, smy + dw * 0.004, dw * 0.015, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke(); ctx.restore();
+  }
+
+  // ── 등록(6종 + BP-6 봄 이벤트 = 7종, 모두 좌표 완료 → done=true) ──
   BP._register('bp-price-blackgold', _skBlackGold, true);
   BP._register('bp-ba-nail-polaroid', _skNailPolaroid, true);
   BP._register('bp-ba-nail-pink-polaroid', _skNailPinkPolaroid, true);
   BP._register('bp-ba-skin-acne-pink', _skSkinAcnePink, true);
   BP._register('bp-ba-hair-extension-polaroid', _skHairExtPolaroid, true);
   BP._register('bp-review-lash-blue', _skLashReview, true);
+  BP._register('bp-event-spring-mixed', _skEventSpringMixed, true);
 })();

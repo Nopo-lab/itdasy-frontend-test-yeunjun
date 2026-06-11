@@ -122,6 +122,31 @@
         footer: 'YOUR BEAUTY, OUR PASSION', cta: '상담 가능',
       },
     },
+    {
+      id: 'bp-event-spring-mixed', cat: 'price', tier: 'free',
+      label: '이벤트 · 봄 시즌 (가격+혜택 믹스)', kind: 'price', purpose: 'price', industry: 'hair',
+      accent: 'pink', prefillText: 'SPRING EVENT', ratio: '4:5',
+      palette: { bg: '#FBE9EE', ink: '#2A2230', sub: '#8A7580', accent: '#EC4E86', line: '#F3D9E2', badge: '#EC4E86' },
+      previewMeta: { decor: ['news-collage', 'brush', 'heart', 'star', 'polaroid', 'washi-tape', 'kraft-note', 'tulip', 'icon-box'], photoSlots: ['main'] },
+      // [BP-6] 레퍼런스(봄 시즌 이벤트 · Beauty Room) — services/main_photo 는 시트 편집(kind=price 스키마),
+      //   나머지 장식문구(hashtag/headline/sub_banner/benefits/cta 등)는 draw 함수의 한글 기본값으로 렌더(시트 미편집).
+      defaultCopy: {
+        shop_label: 'BEAUTY ROOM', shop_sub: 'HAIR SALON',
+        hashtag: '#봄맞이 변신은 지금이 기회!',
+        headline_top: '봄 시즌', headline_bottom: '이벤트',
+        sub_banner: '설레는 봄, 예뻐질 시간',
+        sub1: '다가오는 봄, 스타일로 꽃 피워보세요.', sub2: '지금이 가장 예뻐질 타이밍!',
+        services: [
+          { name: '염색', price: '120,000~', desc: '디자인 염색 / 탈색 별도' },
+          { name: '클리닉', price: '90,000', desc: '모발케어 맞춤 클리닉' },
+          { name: '커트', price: '30,000', desc: '디자인 커트' },
+          { name: '붙임머리', price: '상담 문의', desc: '자연스러운 변신, 맞춤 상담' },
+        ],
+        benefit_title: 'EVENT 혜택',
+        benefits: ['시술 시 홈케어 샘플 증정', '리뷰 작성 시 10% 할인', '신규 고객 10% 할인'],
+        cta: '예약은 프로필 링크 / DM',
+      },
+    },
   ];
 
   window.PhotoEditorBeautyPackData = { VERSION: 'bp-2026060902', TEMPLATES: TEMPLATES };

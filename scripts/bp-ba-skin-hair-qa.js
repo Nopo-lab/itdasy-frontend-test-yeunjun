@@ -45,7 +45,7 @@ const afterURL = 'data:image/png;base64,' + png(6,180,60,90).toString('base64');
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const loadImg = (src) => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
     const vis = (MD.visibleTemplates() || []).map(t => t.id);
-    all._bpCount = vis.filter(x => /^bp-/.test(x)).length;     // 6 기대
+    all._bpCount = vis.filter(x => /^bp-/.test(x)).length;     // 7 기대(BP-6 event-spring 추가)
     all._v3Count = vis.filter(x => /^v3-/.test(x)).length;     // 5 무회귀
     all._existingNailPink = !!MD.lookupById('bp-ba-nail-pink-polaroid');
     all._existingNailPolaroid = !!MD.lookupById('bp-ba-nail-polaroid');
@@ -148,7 +148,7 @@ const afterURL = 'data:image/png;base64,' + png(6,180,60,90).toString('base64');
   let pass = 0, fail = 0;
   function check(label, v) { console.log((v ? '  ✅ ' : '  ❌ ') + label); v ? pass++ : fail++; }
   console.log('\n=== bp-ba-skin-acne-pink + hair-extension QA (v429) ===');
-  check('BP 6종 노출', R._bpCount === 6);
+  check('BP 7종 노출', R._bpCount === 7);
   check('v3 5종 무회귀', R._v3Count === 5);
   check('기존 nail-pink 무회귀', R._existingNailPink);
   check('기존 nail-polaroid 무회귀', R._existingNailPolaroid);

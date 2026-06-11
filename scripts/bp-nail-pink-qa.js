@@ -45,7 +45,7 @@ const afterURL = 'data:image/png;base64,' + png(6,180,60,90).toString('base64');
     // 1) 갤러리 노출 + 칩
     const vis = (MD.visibleTemplates() || []).map(t => t.id);
     out.galleryVisible = vis.includes(ID);
-    out.bpCount = vis.filter(x => /^bp-/.test(x)).length;     // 6 기대(blackgold/nail-polaroid/nail-pink/lash/skin-acne/hair-ext, BP-5)
+    out.bpCount = vis.filter(x => /^bp-/.test(x)).length;     // 7 기대(blackgold/nail-polaroid/nail-pink/lash/skin-acne/hair-ext/event-spring, BP-6)
     out.v3Count = vis.filter(x => /^v3-/.test(x)).length;     // 무회귀
     out.premiumChip = /^bp-/.test(ID);                        // premium 칩 필터 매칭
     const data = MD.lookupById(ID);
@@ -158,7 +158,7 @@ const afterURL = 'data:image/png;base64,' + png(6,180,60,90).toString('base64');
     'lookupById purpose=before_after': R.purpose === 'before_after',
     'lookupById industry=nail': R.industry === 'nail',
     'kind=before_after': R.kind === 'before_after',
-    'BP 6종 노출': R.bpCount === 6,
+    'BP 7종 노출': R.bpCount === 7,
     'v3 5종 무회귀': R.v3Count === 5,
     '기존 nail-polaroid 무회귀': R.existingNailPolaroid,
     'SKELETON 워터마크 없음': R.noWatermark,

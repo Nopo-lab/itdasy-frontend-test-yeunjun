@@ -74,6 +74,7 @@
     'bp-ba-skin-acne-pink': ['beautyPack', 'BEFORE / AFTER', '여드름 케어 전후', '2주 집중 관리 결과'],
     'bp-ba-hair-extension-polaroid': ['beautyPack', 'BEFORE / AFTER', '붙임머리 전후', '볼륨감이 달라지는 순간'],
     'bp-review-lash-blue': ['beautyPack', 'REAL REVIEW',    '속눈썹 후기',        '또렷하고 자연스러운 눈매 변화'],
+    'bp-event-spring-mixed': ['beautyPack', 'SPRING EVENT', '봄 시즌 이벤트',      '설레는 봄, 예뻐질 시간'],
   };
 
   const PAL = {
