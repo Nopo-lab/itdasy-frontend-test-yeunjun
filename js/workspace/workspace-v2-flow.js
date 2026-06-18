@@ -46,7 +46,29 @@
     if (typeof window._fileToDataUrl === 'function') return window._fileToDataUrl(f);
     return new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res(r.result); }; r.onerror = rej; r.readAsDataURL(f); });
   }
-  function curPhoto() { var p = d.photos.filter(function (x) { return x.role !== 'exclude'; }); return (p[1] || p[0] || d.photos[0]); }
+  function editablePhotos() { return d.photos.filter(function (x) { return x.role !== 'exclude'; }); }
+  // 대표 사진 — 캡션/미리보기/저장 썸네일/게시 이미지(전후면 '후' 우선). 기존 동작 유지.
+  function curPhoto() { var p = editablePhotos(); return (p[1] || p[0] || d.photos[0]); }
+  // 편집 대상 사진 — 편집 화면에서 전/후 전환(editIdx)으로 선택. 전후는 '전(before)' 기본, 일반은 첫 사진.
+  function curEditPhoto() {
+    var p = editablePhotos();
+    if (!p.length) return d.photos[0];
+    if (d.editIdx == null) d.editIdx = 0;
+    if (d.editIdx < 0 || d.editIdx >= p.length) d.editIdx = 0;
+    return p[d.editIdx];
+  }
+  // 전/후(또는 다중) 편집 대상 전환 — 현재 보정을 먼저 굽고(다른 사진 오적용 방지) 편집 상태 초기화.
+  function switchEditPhoto(idx) {
+    var p = editablePhotos();
+    if (idx < 0 || idx >= p.length || idx === (d.editIdx || 0)) return;
+    bakeEdit().then(function () {
+      d.editIdx = idx;
+      d.adjust = newAdjust(); d.undo = []; d.redo = []; d.previewUrl = null;
+      d.originalPreview = false; d.simpleTool = null;
+      d.bgAction = null; d.bgColor = null; d.bgFail = false; d.bgBusy = false;
+      setScreen('edit');
+    });
+  }
   function photoUrl(p) { return p ? (p.editedDataUrl || p.dataUrl) : ''; }
   // [C5] _barClass: vc(방문횟수) → b1/b2/b3 클래스
   function barClass(vc) {
@@ -100,9 +122,19 @@
   }
 
   function renderEdit() {
-    var base = photoUrl(curPhoto());
+    var base = photoUrl(curEditPhoto());
     var url = d.originalPreview ? base : (d.previewUrl || base);
     var tool = d.simpleTool || null;
+    // 전/후(또는 다중) 사진 편집 전환 — 2장 이상일 때만. 각 사진을 각각 보정 가능.
+    var eps = editablePhotos();
+    var switcher = '';
+    if (eps.length >= 2) {
+      var curIdx = (d.editIdx == null) ? 0 : d.editIdx;
+      switcher = '<div class="ed-baswitch" role="tablist">' + eps.map(function (p, i) {
+        var lbl = p.role === 'before' ? '전 사진' : (p.role === 'after' ? '후 사진' : ('사진 ' + (i + 1)));
+        return '<button type="button" class="ed-baswitch__btn' + (i === curIdx ? ' on' : '') + '" data-fl-editsel="' + i + '" role="tab" aria-selected="' + (i === curIdx) + '" style="background-image:url(' + esc(photoUrl(p)) + ')"><span>' + esc(lbl) + '</span></button>';
+      }).join('') + '</div>';
+    }
     var toolsHtml = '<div class="ed-tools-row">' + SIMPLE_TOOLS.map(function (t) {
       return '<button type="button" class="ed-tool-cir' + (tool === t.k ? ' on' : '') + '" data-fl-simpletool="' + t.k + '">' +
         '<span class="ed-cir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="' + t.path + '"/></svg></span>' +
@@ -143,6 +175,7 @@
       '</div>';
     }
     return '' +
+      switcher +
       '<div class="ed-photo" data-fl-edphoto style="background-image:url(' + esc(url) + ');filter:' + ((d.originalPreview || d.previewUrl) ? 'none' : filterCss(d.adjust)) + '"></div>' +
       toolsHtml + sliderHtml + bgHtml + tplHtml +
       '<div class="ed-linkrow"><button type="button" class="ed-link-btn" data-fl="openeditor">정밀 편집기 열기</button></div>';
@@ -351,11 +384,12 @@
       if (a === 'roles') { toast('역할 — ' + _roleSummary()); return; }
       if (a === 'publish') { return publish(); }
       if (a === 'openeditor') {
-        var ph = curPhoto();
+        var ph = curEditPhoto();
         if (window.PhotoEditor && typeof window.PhotoEditor.open === 'function') window.PhotoEditor.open(ph);
         else toast('편집기를 불러오지 못했어요');
         return;
       }
+      var edsel = t.closest('[data-fl-editsel]'); if (edsel) { return switchEditPhoto(+edsel.getAttribute('data-fl-editsel')); }
       var simpletool = t.closest('[data-fl-simpletool]');
       if (simpletool) {
         var tk = simpletool.getAttribute('data-fl-simpletool');
@@ -415,7 +449,7 @@
       if (e.target.matches('[data-fl-range]')) {
         var k = e.target.getAttribute('data-fl-range'); d.adjust[k] = +e.target.value;
         var p = el.querySelector('[data-fl-edphoto]');
-        if (p && !d.originalPreview) { d.previewUrl = null; p.style.backgroundImage = 'url(' + esc(photoUrl(curPhoto())) + ')'; p.style.filter = filterCss(d.adjust); }
+        if (p && !d.originalPreview) { d.previewUrl = null; p.style.backgroundImage = 'url(' + esc(photoUrl(curEditPhoto())) + ')'; p.style.filter = filterCss(d.adjust); }
         var v = el.querySelector('[data-fl-rangeval]'); if (v) v.textContent = (d.adjust[k] > 0 ? '+' : '') + d.adjust[k];
       }
       if (e.target.matches('[data-fl-capbody]')) { d.caption = e.target.textContent; var cc = el.querySelector('[data-fl-capcount]'); if (cc) cc.textContent = (d.caption || '').length; }
@@ -435,7 +469,7 @@
   }
 
   function _refreshPreview() {
-    var photo = curPhoto(); if (!photo) return;
+    var photo = curEditPhoto(); if (!photo) return;
     var base = photo.editedDataUrl || photo.dataUrl;
     var p = el.querySelector('[data-fl-edphoto]');
     var nonzero = d.adjust && Object.keys(d.adjust).some(function (k) { return d.adjust[k]; });
@@ -462,7 +496,7 @@
   }
 
   function applyBg(action) {
-    var photo = curPhoto();
+    var photo = curEditPhoto();
     if (!photo) { toast('사진이 없어요'); return; }
     if (!(window.WorkspaceAdapter && window.WorkspaceAdapter.applyWorkspaceBgAction)) { toast('배경 모듈을 불러오지 못했어요'); return; }
     var prev = d.bgAction;
@@ -476,7 +510,7 @@
   }
 
   function bakeEdit() {
-    var photo = curPhoto();
+    var photo = curEditPhoto();
     var nonzero = photo && d.adjust && Object.keys(d.adjust).some(function (k) { return d.adjust[k]; });
     if (!photo || !nonzero) return Promise.resolve();
     var src = photo.editedDataUrl || photo.dataUrl;
@@ -533,7 +567,7 @@
 
   function openCropFlow() {
     if (!(window.WorkspaceAdapter && window.WorkspaceAdapter.openCrop)) { toast('크롭 모듈을 불러오지 못했어요'); return; }
-    var idx = d.photos.indexOf(curPhoto()); if (idx < 0) idx = 0;
+    var idx = d.photos.indexOf(curEditPhoto()); if (idx < 0) idx = 0;
     window.WorkspaceAdapter.openCrop({
       photos: d.photos, index: idx, ratio: CROP_RATIO[d.tplPurpose] || '4:5',
       onApply: function (photoId, dataUrl, meta) {
@@ -678,7 +712,7 @@
       capLen: cm.length_tier || 'medium', capTone: cm.tone_override || 'normal', logId: cm.log_id || null,
       publish: (slot && slot.publish) ? Object.assign({}, slot.publish) : { status: 'draft', instagramPreparedAt: null, publishedAt: null },
       recent: [], recentLoaded: false, capLoading: false, capSeg: 'rec',
-      simpleTool: null, editTab: 'basic', control: null, adjust: newAdjust(), undo: [], redo: [], originalPreview: false, previewUrl: null, bgAction: null, bgColor: null, bgBusy: false, bgFail: false,
+      simpleTool: null, editTab: 'basic', control: null, editIdx: null, adjust: newAdjust(), undo: [], redo: [], originalPreview: false, previewUrl: null, bgAction: null, bgColor: null, bgBusy: false, bgFail: false,
       captionAxes: null, captionTemplate: '',
     };
     if (d.photos.length && !hadRoles) reassignRoles();

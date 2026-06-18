@@ -77,6 +77,14 @@
 .wsv2flow .grid-add span { font-size: 11px; }
 
 /* B. 편집 (FC3: 도구 한 줄 + 슬라이더 + 정밀편집 링크, 탭/하단바 제거) */
+/* 전/후(다중) 사진 편집 전환 스위처 — 전후 콘텐츠에서 각 사진을 각각 보정 */
+.wsv2flow .ed-baswitch { display: flex; gap: 8px; margin-bottom: 10px; }
+.wsv2flow .ed-baswitch__btn { flex: 1 1 0; min-width: 0; display: flex; align-items: flex-end; justify-content: center;
+  height: 52px; border-radius: var(--r-md); border: 1.5px solid var(--border); background: var(--frame) center/cover;
+  padding: 5px; cursor: pointer; position: relative; overflow: hidden; }
+.wsv2flow .ed-baswitch__btn::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,.05)); }
+.wsv2flow .ed-baswitch__btn span { position: relative; font-size: 11.5px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+.wsv2flow .ed-baswitch__btn.on { border-color: var(--brand-strong); box-shadow: var(--shadow-brand); }
 .wsv2flow .ed-photo { width: 100%; height: 300px; border-radius: var(--r-lg); background: var(--frame) center/cover; margin-bottom: 13px; transition: filter .12s; box-shadow: var(--shadow-sm); }
 .wsv2flow .ed-tools-row { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 14px; }
 .wsv2flow .ed-tools-row::-webkit-scrollbar { display: none; }
