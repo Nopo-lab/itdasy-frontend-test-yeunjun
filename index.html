@@ -46,9 +46,11 @@
 <meta name="theme-color" content="#F2F4F6">
 <title>잇데이 · Itdasy</title>
 <script>
-window.__LATEST_BUILD__ = '20260705-v690-editcarousel';
+window.__LATEST_BUILD__ = '20260705-v691-slotsync';
   // [C2] 작업실 V2 플래그 — false 로 바꾸면 기존 작업실로 즉시 롤백 가능
   window.ITDASY_WORKSPACE_V2 = true;
+  // [slot-sync] 작업실 콘텐츠 계정 기준 기기 간 동기화 (스테이징 검증용 ON). false 로 끄면 로컬 전용 동작 복귀.
+  window.ITDASY_SLOT_SYNC = (window.ITDASY_SLOT_SYNC !== false);
   // [skin-v3] 작업실 톤 리스킨(따뜻한 아이보리+로즈 CTA). false 로 끄면 기존 톤.
   // 색/그림자만 바꾸는 스코프 CSS(css/workspace-skin-v3.css), 작업실 오버레이에만 적용.
   window.ITDASY_WS_SKIN_V3 = (window.ITDASY_WS_SKIN_V3 !== false);
@@ -2229,7 +2231,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
 <script src="app-core.js?v=20260705-v690-editcarousel"></script>
 <!-- 2026-06-16 통합 인박스 채널 마크 공유 모듈 — 실시간 DM·홈 카드 공용(app-core 직후, 소비자 전에 로드) -->
 <script src="js/channel-mark.js?v=20260616-brand-fix3"></script>
-<script src="js/load-groups.js?v=20260705-v690-editcarousel" defer></script>
+<script src="js/load-groups.js?v=20260705-v691-slotsync" defer></script>
 <script src="js/loader.js?v=20260611-split3" defer></script>
 <script src="js/navigation/entrypoints.js?v=20260525-v269-ai-gpt-cleanup" defer></script>
 <script src="format-money.js?v=20260616-v492-hotfixD-booking"></script>

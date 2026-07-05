@@ -12,6 +12,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/itd-editor/safe-zone.js?v=20260630-v621-safezone',
   'js/itd-editor/itd-editor.js?v=20260705-v690-editcarousel',
   'js/workspace/workspace-adapter.js?v=20260705-v685-carousel',
+  'js/workspace/workspace-sync.js?v=20260705-v691-slotsync',
   'js/workspace/workspace-crop.js?v=20260626-v568-pc-edit-carousel',
   'js/workspace/workspace-v2-home.js?v=20260705-v688-navback',
   'js/workspace/flow/caption-text.js?v=20260702-v638-usab5',
