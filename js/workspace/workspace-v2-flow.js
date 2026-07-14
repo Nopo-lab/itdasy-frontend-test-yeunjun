@@ -403,7 +403,7 @@
           }
         } catch (_ppe) { void _ppe; }
         d.previewUrl = null;
-        _learnShopStyle(meta && meta.layers);   // [v587·C] 편집 결과를 우리샵 스타일로 학습
+        _learnShopStyle(meta && meta.layers);   // [v587·C] 편집 결과를 우리샵 스타일로 학습 · [T-115 P3] 기억 ON이면 '지운 역할'만
         // [#3] 편집 완료 시점엔 내 콘텐츠에 저장하지 않음(중간본 쌓임 방지). 편집 결과는 d.photos 메모리에 유지되어
         //   미리보기·발행에 그대로 쓰이고, 실제 저장은 워크플로 최종(발행/고객연결/저장)에서만.
         // [워크플로 재정렬] 편집기 완료 후 다음 목적지(예: 캡션→편집기→미리보기). 없으면 캡션 유지.
@@ -421,13 +421,20 @@
     d._editorNext = 'caption';
     _openStoryEditor();
   }
-  // [v587·C] ShopStyle 학습 피드백 루프 — 편집기에서 바꾼 폰트/색/위치/외곽선을 활성 스타일에
-  //   되저장해 다음 사진부터 같은 스타일로 자동배치한다. (중앙x → 좌상단x 역변환)
+  // [v587·C] ShopStyle 학습 피드백 루프 — 편집기 결과를 활성 스타일에 되저장.
+  // [T-115 P3] '배치 학습'과 '지운 역할 기억' 두 가지를 하는데, 소유자가 갈렸다.
+  //   ① 배치(위치·크기·폰트·외곽선) → 작업 기억(WorkMemory)이 소유. 기억이 켜져 있으면 여기선 안 배운다.
+  //      둘 다 배우면 같은 걸 두 곳에 저장해 '왜 내 스타일이 저절로 바뀌지?' 가 된다(예측 불가).
+  //      기억이 꺼져 있으면(기본값) 예전 그대로 배운다 — 안 그러면 대체재 없이 기능만 잃는다.
+  //   ② 지운 역할(enabled:false) → 여기가 계속 소유. 기억엔 대응물이 없고, 이게 없으면
+  //      _buildShopStyleLayers 가 지운 레이어를 다시 올리고 편집기 _renderMissingIncoming 도
+  //      '빠진 역할' 로 보고 되살린다. 기억을 켜도 필요하다.
   function _learnShopStyle(layers) {
     try {
       if (!Array.isArray(layers)) return;
       var SS = window.ShopStyle; if (!(SS && SS.getActive && SS.save)) return;
       var ss = SS.getActive(); if (!ss || !Array.isArray(ss.layers)) return;
+      var learnGeom = !(window.WorkMemory && window.WorkMemory.flagOn());   // [T-115 P3] 배치는 기억이 켜지면 기억 소유
       var byRole = {};
       layers.forEach(function (l) { if (l && l.type === 'text' && l.role && !byRole[l.role]) byRole[l.role] = l; });
       var TEXT_ROLES = { title: 1, sub: 1, body: 1, hashtag: 1 };
@@ -437,7 +444,11 @@
         if (!TEXT_ROLES[L.role]) return L;
         var e = byRole[L.role];
         if (e) {
-          // 존재 → 폰트/색/위치/외곽선 학습 + 다시 활성화.
+          // 존재 → 다시 활성화(사용자가 도로 올림). 배치 학습은 기억이 꺼져 있을 때만.
+          if (!learnGeom) {
+            if (L.enabled === false) { changed = true; return Object.assign({}, L, { enabled: true }); }
+            return L;
+          }
           changed = true;
           var w = (e.w != null ? e.w : (L.w != null ? L.w : 0.84));
           var leftX = Math.max(0, Math.min(1, (e.x != null ? e.x - w / 2 : L.x)));
@@ -455,6 +466,7 @@
           });
         }
         // [v590] 올렸는데 저장 결과에 없음 = 사용자가 편집기에서 제거 → 비활성화(다음부터 이 스타일은 해당 레이어 안 올림).
+        //   [T-115 P3] 기억을 켜도 이건 계속 살아있어야 한다(위 ② 참고).
         if (openedRoles.indexOf(L.role) >= 0 && L.enabled !== false) { changed = true; return Object.assign({}, L, { enabled: false }); }
         return L;
       });

@@ -138,7 +138,10 @@
     - `photos`·`photoDraw`·`adj`·`pz` 는 안 넘김 — 넘기면 지금 사진을 지난 사진으로 덮어씀(`itd-editor.js:1648`).
     - 적용 시 `markUsed()` → `useCount`↑ = 자주 쓰는 기억은 10칸 밀어내기에서 보호됨.
     - 없는 role 의 시술 텍스트는 편집기 `_renderMissingIncoming` 이 추가(중복 안 됨).
-  - **P3(미구현): 기존 `_learnShopStyle`(flow.js:435, 활성 스타일 덮어쓰기 학습) 제거·흡수.** 현재는 둘이 공존.
+  - **[P3] `_learnShopStyle`(flow.js) 과 소유권 분리 — 삭제가 아니라 '둘 중 하나만'.** 이 함수는 두 일을 한다:
+    - ① **배치 학습**(위치·크기·폰트·외곽선 → 활성 ShopStyle 덮어쓰기) → **기억이 소유**. `WorkMemory.flagOn()` 이면 여기선 안 배움(같은 걸 두 곳에 저장하면 '왜 내 스타일이 저절로 바뀌지?' 가 됨). **기억 OFF(기본)면 예전 그대로 배움** — 안 그러면 대체재 없이 기능만 잃는다.
+    - ② **지운 역할 기억**(`enabled:false`, v590) → **flow 가 계속 소유. 절대 지우면 안 됨.** 기억엔 대응물이 없고, 이게 빠지면 `_buildShopStyleLayers`(`L.enabled === false` 체크)가 지운 레이어를 다시 올리고 편집기 `_renderMissingIncoming` 도 '빠진 역할'로 보고 되살린다. **기억 ON 에서도 필요.**
+    - `window.WorkMemory` 자체가 없으면(모듈 로드 실패) 예전 동작으로 폴백.
 - flow 클러스터: **util.js**(96, `WSFlowUtil`)·**caption-text.js**(94)·**connect.js**(80)·**brand.js**(217)·**harmony-presets.js**(16)·**layout.js**(188)·**publish-progress.js**(42)·**thumbs.js**(47).
 - layout: **layout-model.js**(183, `WorkspaceLayout` 합성기 스타터A~H)·**slot-stage.js**(92, 드래그focal·핀치zoom).
 
