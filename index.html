@@ -70,6 +70,10 @@ window.__LATEST_BUILD__ = '20260705-v709-fillwide';
   // [signature 2026-07-14] 작업실 "잇데이 시그니처(로즈)" 스킨(쿨 로즈-뉴트럴 + 시그니처 로즈).
   //   false 로 끄면 작업실이 기본 토큰 톤으로. 스코프 CSS = css/workspace-signature.css.
   window.ITDASY_WS_SIGNATURE = (window.ITDASY_WS_SIGNATURE !== false);
+  // [T-115 2026-07-15] 원장 작업 기억 '다시 쓰기' — ★기본 기억을 새 사진 편집기에 자동으로 올림 (스테이징 검증용 ON).
+  //   붙잡기·설정 화면은 이 플래그와 무관하게 항상 동작. 이건 '편집기에 올리는 것'만 켜고 끈다.
+  //   롤백: ?wsmem=0 (URL 이 전역보다 우선) · 코드로 끄려면 false. 읽는 곳 = work-memory.js _flagOn().
+  window.ITDASY_WORK_MEMORY = (window.ITDASY_WORK_MEMORY !== false);
   try {
     if (window.ITDASY_WS_SIGNATURE) {
       var _addSig = function(){ document.body && document.body.classList.add('ws-sig'); };
@@ -2258,7 +2262,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
 <script src="app-core.js?v=20260714-qafix6"></script>
 <!-- 2026-06-16 통합 인박스 채널 마크 공유 모듈 — 실시간 DM·홈 카드 공용(app-core 직후, 소비자 전에 로드) -->
 <script src="js/channel-mark.js?v=20260616-brand-fix3"></script>
-<script src="js/load-groups.js?v=20260714-v747-hlfix2" defer></script>
+<script src="js/load-groups.js?v=20260715-v748-logoref" defer></script>
 <script src="js/loader.js?v=20260611-split3" defer></script>
 <script src="js/navigation/entrypoints.js?v=20260525-v269-ai-gpt-cleanup" defer></script>
 <script src="format-money.js?v=20260616-v492-hotfixD-booking"></script>
