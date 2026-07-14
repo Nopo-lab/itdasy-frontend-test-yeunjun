@@ -1717,6 +1717,8 @@
     try { return !!(window.WorkspaceAdapter && window.WorkspaceAdapter.instagram && window.WorkspaceAdapter.instagram().connected); } catch (_e) { return false; }
   }
   function _publishKind() {
+    // [T-116] 결과물이 2장 이상이면(카드 여러 개) 캐러셀 — 레이아웃을 썼다고 무조건 단일 피드가 아니다.
+    if ((d.templateOutputs || []).length >= 2) return 'carousel';
     var hasComposite = !!(d.wsLayout && d.templateOutput);
     return (!hasComposite && (editablePhotos() || []).length >= 2) ? 'carousel' : 'feed';
   }
@@ -1792,21 +1794,15 @@
       return false;
     }
     // [A1] 후기 레이아웃은 시술/캡션이 확정된 지금 재합성해 본문에 반영(레이아웃 단계엔 아직 캡션이 없었음).
-    if (d.wsLayout && d.wsLayout.kind === 'review' && window.WorkspaceLayout) {
-      return Promise.resolve(window.WorkspaceLayout.composeLayout(_fillLayoutText(d.wsLayout), editablePhotos(), d._wsAssign)).then(function (u) {
-        if (u) { d.templateOutput = u; d.previewUrl = null; }
-      });
-    }
+    // [T-116] 카드가 여러 장이면 후기 카드만 있는 게 아니라도 전부 다시 굽는다 — 결과물 배열 전체가 진실.
+    if (_WSL.hasReviewCard && _WSL.hasReviewCard() && window.WorkspaceLayout) return _WSL.composeCards();
   }
   // 편집 전환 전: 현재 보정을 굽고(bake) 다음 단계.
   function _exitEdit() { return bakeEdit(); }
   // [ws-hyper] 레이아웃 전환 전: 조정된 focal/zoom 으로 최종 이미지 합성 후 다음 단계.
+  // [T-116] 카드(=올라갈 사진)마다 한 번씩 구워 templateOutputs 배열로. 레이아웃 없는 카드는 사진 그대로.
   function _exitLayout() {
-    if (d.wsLayout && window.WorkspaceLayout) {
-      return Promise.resolve(window.WorkspaceLayout.composeLayout(_fillLayoutText(d.wsLayout), editablePhotos(), d._wsAssign)).then(function (u) {   // [A1] 후기/가격 텍스트 주입
-        if (u) { d.templateOutput = u; d.previewUrl = null; }
-      });
-    }
+    if (window.WorkspaceLayout && _WSL.composeCards) return _WSL.composeCards();
   }
   // [v531] 캡션 결과 화면에서 뒤로 = 결과만 비우고 캡션 입력으로(편집으로 안 튐). 결과 없으면 기본 pop.
   function _backCaption() {
@@ -3489,7 +3485,8 @@
 
 	  function publish(kind) {
 	    // [버그수정 2026-07-10] 레이아웃 합성본(여러 장→1장)이 있으면 캐러셀 요청도 단일 피드로 — 원본 여러 장 전송/실패 방지.
-	    if (kind === 'carousel' && d.wsLayout && d.templateOutput) kind = 'feed';
+	    // [T-116] 단, 결과물이 2장 이상이면 그 합성본들을 캐러셀로 올리는 게 맞다 — 이때만 예외.
+	    if (kind === 'carousel' && (d.templateOutputs || []).length < 2 && d.wsLayout && d.templateOutput) kind = 'feed';
 	    if (!window.WorkspaceAdapter) return;
 	    var _igp = window.WorkspaceAdapter.instagram();
 	    if (!_igp.connected) { toast('인스타 연결 후 올릴 수 있어요'); return; }
@@ -3512,7 +3509,12 @@
       }
       var cap = (d.caption || '') + (d.hashtags.length ? '\n\n' + d.hashtags.join(' ') : '');
       // [캐러셀] 여러 장이면 각 사진의 표시 이미지(편집 반영본)를 모아 보냄.
-      var _imgs = (kind === 'carousel') ? (editablePhotos() || []).map(function (p) { return dispUrl(p); }).filter(Boolean) : null;
+      // [T-116] 카드로 만든 결과물이 2장 이상이면 '원본 사진'이 아니라 '합성본'을 보내야 한다.
+      //   (안 그러면 레이아웃을 다 만들어 놓고 원본 5장이 조용히 올라간다)
+      var _outs = (d.templateOutputs || []).map(function (o) { return o && o.outputUrl; }).filter(Boolean);
+      var _imgs = (kind === 'carousel')
+        ? (_outs.length >= 2 ? _outs : (editablePhotos() || []).map(function (p) { return dispUrl(p); }).filter(Boolean))
+        : null;
       // [audit#6] 발행 직전 태그칸 flush — input 이벤트 못 받은 값(IME/붙여넣기 직후 즉시 발행)도 반영.
       try { var _utEl = el && el.querySelector('[data-fl-usertags]'); if (_utEl) d.igUserTags = String(_utEl.value || '').split(/[,\s]+/).map(function (s) { return s.replace(/^@/, '').trim(); }).filter(Boolean).slice(0, 20); } catch (_ue) { void _ue; }
       // [계정 태그] 피드에서만 — 입력한 @아이디를 자동 위치(세로로 분산)로 태그.

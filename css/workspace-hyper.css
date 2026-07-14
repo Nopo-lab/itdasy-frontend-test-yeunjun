@@ -110,3 +110,171 @@
   cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; z-index: 2;
 }
 .wsl-save:focus-visible, .wsl-card-del:focus-visible { outline: 2px solid var(--brand, #D58A95); outline-offset: 2px; }
+
+/* ── [T-116] 결과물 여러 장 — 카드 캐러셀 + 하단 레이아웃 도크 ────────────────
+   카드 1개 = 올라갈 사진 1장. 위아래 스크롤 없이 한 화면에서 끝낸다.
+   모션: 감속이 길게 빠지는 곡선으로 통일, 생겨나는 것만 스프링. */
+.wsc-wrap {
+  --wsc-ease: cubic-bezier(.16, 1, .3, 1);
+  --wsc-spring: cubic-bezier(.34, 1.4, .64, 1);
+  --wsc-fast: 140ms; --wsc-base: 240ms; --wsc-slow: 380ms;
+
+  display: flex; flex-direction: column; min-height: 0; gap: 8px;
+}
+.wsc-stage { position: relative; display: flex; flex-direction: column; min-height: 0; }
+.wsc-rail { position: relative; min-height: 0; }
+.wsc-cards {
+  display: flex; overflow: auto hidden; scroll-snap-type: x mandatory;
+  scroll-behavior: smooth; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
+}
+.wsc-cards::-webkit-scrollbar { height: 0; }
+.wsc-slide { flex: 0 0 100%; scroll-snap-align: center; padding: 0 2px; }
+
+.wsc-card {
+  background: var(--surface, #fff); border: 2px solid var(--border, rgba(0,0,0,.07));
+  border-radius: var(--r-md, 14px); padding: 9px; display: flex; flex-direction: column; gap: 8px;
+  transition: border-color var(--wsc-base) var(--wsc-ease), box-shadow var(--wsc-base) var(--wsc-ease), opacity var(--wsc-base) var(--wsc-ease);
+}
+.wsc-wrap.is-holding .wsc-card.ok { border-color: var(--brand, #D58A95); box-shadow: var(--shadow-brand, 0 10px 24px rgba(213,138,149,.30)); }
+.wsc-wrap.is-holding .wsc-card.no { opacity: .45; }
+.wsc-top { display: flex; align-items: center; gap: 7px; }
+.wsc-n {
+  min-width: 20px; height: 20px; border-radius: 999px; background: var(--text, #191F28); color: #fff;
+  font-size: 11px; font-weight: 800; display: grid; place-items: center; padding: 0 6px; flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.wsc-ttl { font-size: 12.5px; font-weight: 700; color: var(--text, #191F28); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wsc-ttl em { font-style: normal; font-weight: 500; color: var(--text-subtle, #6B7684); }
+
+/* 비율이 섞여도(1:1·4:5·9:16) 높이는 그대로 — 너비를 비율에서 계산해야 화면이 안 밀린다 */
+.wsc-prevbox { min-height: 0; display: grid; place-items: center; container-type: size; position: relative; cursor: pointer; height: 44vh; max-height: 380px; }
+.wsc-prev {
+  position: relative; overflow: hidden; border-radius: var(--r-sm, 8px);
+  background: #EDEFF2; box-shadow: inset 0 0 0 1px rgba(25,31,40,.10); container-type: size;
+}
+.wsc-prev .wsl-ph { position: absolute; display: block; background-size: cover; background-position: center; background-color: #E4E8ED; }
+.wsc-prev b { position: absolute; display: block; font-weight: 800; white-space: pre; overflow: hidden; }
+.wsc-stagehost { position: absolute; inset: 0; }
+/* slot-stage 가 host.className 을 '.wsl-stage' 로 덮어쓴다 — 카드 안에선 꽉 채우게 되돌린다 */
+.wsc-prev > .wsl-stage {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  max-width: none; margin: 0; border-radius: 0; box-shadow: none; background: transparent;
+}
+.wsc-prev--in { animation: wscPrevIn var(--wsc-base) var(--wsc-ease) both; }
+@keyframes wscPrevIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+/* 옛 레이아웃을 유령으로 겹쳐 지운다 — 딱 끊기지 않고 넘어가게 */
+.wsc-prev--ghost {
+  position: absolute; left: 50%; top: 50%; z-index: 3; pointer-events: none; transform: translate(-50%, -50%);
+  transition: opacity var(--wsc-base) var(--wsc-ease), transform var(--wsc-base) var(--wsc-ease);
+}
+.wsc-prev--ghost.out { opacity: 0; transform: translate(-50%, -50%) scale(1.03); }
+
+.wsc-tapover { position: absolute; inset: 0; display: grid; place-items: center; z-index: 4; opacity: 0; transition: opacity var(--wsc-base) var(--wsc-ease); pointer-events: none; }
+.wsc-wrap.is-holding .wsc-card.ok .wsc-tapover { opacity: 1; background: rgba(213,138,149,.16); }
+.wsc-tapover span {
+  background: var(--brand-strong, #BC6675); color: #fff; font-size: 11.5px; font-weight: 800;
+  padding: 6px 12px; border-radius: 999px; box-shadow: var(--shadow-md, 0 8px 24px rgba(0,0,0,.08));
+  transform: scale(.9); transition: transform var(--wsc-slow) var(--wsc-spring);
+}
+.wsc-wrap.is-holding .wsc-card.ok .wsc-tapover span { transform: scale(1); animation: wscBreathe 2.4s ease-in-out .4s infinite; }
+@keyframes wscBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.wsc-needs {
+  position: absolute; left: 50%; bottom: 8px; z-index: 4; background: rgba(25,31,40,.82); color: #fff;
+  font-size: 10.5px; font-weight: 700; padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+  opacity: 0; transform: translate(-50%, 4px); transition: opacity var(--wsc-base) var(--wsc-ease), transform var(--wsc-base) var(--wsc-ease);
+}
+.wsc-wrap.is-holding .wsc-card.no .wsc-needs { opacity: 1; transform: translate(-50%, 0); }
+
+.wsc-acts { display: flex; gap: 6px; }
+.wsc-act {
+  flex: 1; border: 1px solid var(--border-strong, rgba(0,0,0,.14)); background: var(--surface, #fff);
+  border-radius: 999px; padding: 7px 8px; cursor: pointer; font-size: 11.5px; font-weight: 700;
+  color: var(--text-muted, #4E5968); font-family: inherit; display: inline-flex; align-items: center;
+  justify-content: center; gap: 4px; touch-action: manipulation;
+  transition: border-color var(--wsc-fast) var(--wsc-ease), color var(--wsc-fast) var(--wsc-ease), transform var(--wsc-fast) var(--wsc-ease), opacity var(--wsc-fast) var(--wsc-ease);
+}
+.wsc-act:active:not([disabled]) { transform: scale(.96); }
+.wsc-act[disabled] { opacity: .35; cursor: default; }
+.wsc-act svg { width: 12px; height: 12px; }
+.wsc-act:focus-visible { outline: 2px solid var(--brand, #D58A95); outline-offset: 2px; }
+
+.wsc-nav {
+  position: absolute; top: 50%; z-index: 5; width: 30px; height: 30px; border-radius: 999px; cursor: pointer;
+  background: rgba(255,255,255,.96); border: 1px solid var(--border-strong, rgba(0,0,0,.14));
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(0,0,0,.08)); display: grid; place-items: center;
+  color: var(--text-muted, #4E5968); transform: translateY(-50%);
+  transition: opacity var(--wsc-base) var(--wsc-ease), transform var(--wsc-fast) var(--wsc-ease);
+}
+.wsc-nav svg { width: 15px; height: 15px; }
+.wsc-nav--prev { left: 2px; } .wsc-nav--next { right: 2px; }
+.wsc-nav:active { transform: translateY(-50%) scale(.9); }
+.wsc-nav[disabled] { opacity: 0; pointer-events: none; }
+
+.wsc-dots { display: flex; justify-content: center; align-items: center; gap: 6px; padding: 8px 0 2px; }
+.wsc-dot { width: 7px; height: 7px; border-radius: 999px; background: #D7DCE3; border: 0; padding: 0; cursor: pointer; transition: width var(--wsc-base) var(--wsc-ease), background-color var(--wsc-base) var(--wsc-ease); }
+.wsc-dot.on { background: var(--text, #191F28); width: 18px; }
+.wsc-wrap.is-holding .wsc-dot.fit { background: var(--brand, #D58A95); }
+.wsc-wrap.is-holding .wsc-dot.on.fit { background: var(--brand-strong, #BC6675); }
+
+/* 하단 도크 */
+.wsc-dock { background: var(--surface, #fff); border: 1px solid var(--border, rgba(0,0,0,.07)); border-radius: var(--r-md, 14px); padding: 9px 0 2px; }
+.wsc-hint { margin: 0 12px 8px; font-size: 11.5px; font-weight: 600; color: var(--text-subtle, #6B7684); display: flex; align-items: center; gap: 6px; min-height: 18px; transition: color var(--wsc-base) var(--wsc-ease); }
+.wsc-dock.is-holding .wsc-hint { color: var(--brand-strong, #BC6675); }
+.wsc-hint > span { animation: wscHintIn var(--wsc-base) var(--wsc-ease) both; }
+@keyframes wscHintIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.wsc-hint button { margin-left: auto; border: 0; background: none; cursor: pointer; font-family: inherit; font-size: 11px; font-weight: 700; color: var(--text-subtle, #6B7684); padding: 2px 5px; border-radius: 6px; white-space: nowrap; }
+.wsc-cats { display: flex; gap: 5px; overflow-x: auto; padding: 0 12px 8px; scroll-behavior: smooth; }
+.wsc-cats::-webkit-scrollbar { height: 0; }
+.wsc-cat { flex: none; cursor: pointer; font-family: inherit; white-space: nowrap; background: var(--surface-2, #F7F8FA); border: 0; color: var(--text-muted, #4E5968); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; transition: background-color var(--wsc-base) var(--wsc-ease), color var(--wsc-base) var(--wsc-ease), transform var(--wsc-fast) var(--wsc-ease); }
+.wsc-cat:active { transform: scale(.95); }
+.wsc-cat.on { background: var(--text, #191F28); color: #fff; }
+.wsc-cat:focus-visible { outline: 2px solid var(--brand, #D58A95); outline-offset: 2px; }
+
+.wsc-lrail { position: relative; }
+/* 오른쪽 끝을 흐리게 — "더 있다, 밀어라"가 말 없이 보이는 신호 */
+.wsc-lrail::after { content: ''; position: absolute; right: 0; top: 0; bottom: 8px; width: 24px; pointer-events: none; background: linear-gradient(to right, rgba(255,255,255,0), var(--surface, #fff)); border-radius: 0 var(--r-md, 14px) 0 0; }
+.wsc-lnav {
+  position: absolute; top: 40%; z-index: 3; width: 28px; height: 28px; border-radius: 999px; cursor: pointer;
+  background: rgba(255,255,255,.96); border: 1px solid var(--border-strong, rgba(0,0,0,.14));
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(0,0,0,.08)); display: grid; place-items: center;
+  color: var(--text-muted, #4E5968); opacity: 0; transform: translateY(-50%);
+  transition: opacity var(--wsc-base) var(--wsc-ease), transform var(--wsc-fast) var(--wsc-ease);
+}
+.wsc-lrail:hover .wsc-lnav { opacity: 1; }
+.wsc-lnav:active { transform: translateY(-50%) scale(.9); }
+.wsc-lnav:focus-visible { opacity: 1; outline: 2px solid var(--brand, #D58A95); }
+.wsc-lnav svg { width: 14px; height: 14px; }
+.wsc-lnav--prev { left: 4px; } .wsc-lnav--next { right: 4px; }
+.wsc-lnav[disabled] { display: none; }
+
+.wsc-thumbs { display: flex; gap: 9px; overflow-x: auto; padding: 2px 12px 10px; align-items: flex-end; scroll-behavior: smooth; scroll-snap-type: x proximity; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.wsc-thumbs::-webkit-scrollbar { height: 0; }
+.wsc-thumbwrap { position: relative; flex: none; }
+.wsc-thumb { scroll-snap-align: start; cursor: pointer; font-family: inherit; background: none; border: 0; padding: 0; width: 66px; display: grid; justify-items: center; gap: 5px; touch-action: manipulation; }
+/* 메뉴를 바꿀 때만 차례로 올라온다 (고를 때마다 다시 튀면 정신없다) */
+.wsc-thumbs--fresh .wsc-thumb { animation: wscThumbIn var(--wsc-slow, 380ms) var(--wsc-ease, ease) both; }
+@keyframes wscThumbIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+.wsc-thumb__f { position: relative; width: 100%; background: #fff; border-radius: 9px; overflow: hidden; border: 2px solid var(--border, rgba(0,0,0,.07)); transition: border-color var(--wsc-base) var(--wsc-ease), box-shadow var(--wsc-base) var(--wsc-ease), transform var(--wsc-base) var(--wsc-spring); }
+.wsc-thumb:active .wsc-thumb__f { transform: scale(.93); }
+.wsc-thumb.on .wsc-thumb__f { border-color: var(--brand, #D58A95); box-shadow: var(--shadow-brand, 0 10px 24px rgba(213,138,149,.30)); transform: translateY(-3px) scale(1.04); }
+.wsc-thumb:focus-visible .wsc-thumb__f { outline: 2px solid var(--brand, #D58A95); outline-offset: 2px; }
+.wsc-thumb__f svg { display: block; width: 100%; height: 100%; }
+.wsc-thumb__f rect.sl { fill: #EDEFF2; stroke: var(--text-subtle, #6B7684); stroke-width: .7; transition: fill var(--wsc-base) var(--wsc-ease), stroke var(--wsc-base) var(--wsc-ease); }
+.wsc-thumb__f rect.pn { fill: #fff; stroke: var(--border-strong, rgba(0,0,0,.14)); stroke-width: .5; }
+.wsc-thumb.on .wsc-thumb__f rect.sl { fill: var(--brand-bg, #F7EFF0); stroke: var(--brand-strong, #BC6675); }
+.wsc-thumb__cnt { position: absolute; top: 3px; right: 3px; background: rgba(25,31,40,.72); color: #fff; font-size: 8.5px; font-weight: 800; padding: 1px 4px; border-radius: 3px; font-variant-numeric: tabular-nums; transition: background-color var(--wsc-base) var(--wsc-ease); }
+.wsc-thumb.on .wsc-thumb__cnt { background: var(--brand-strong, #BC6675); }
+.wsc-thumb__n { font-size: 9.5px; font-weight: 600; color: var(--text-muted, #4E5968); text-align: center; line-height: 1.25; transition: color var(--wsc-base) var(--wsc-ease); }
+.wsc-thumb.on .wsc-thumb__n { color: var(--brand-strong, #BC6675); font-weight: 700; }
+.wsc-thumb__del {
+  position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; border-radius: 50%;
+  background: #191F28; color: #fff; border: 2px solid #fff; font-size: 13px; line-height: 1;
+  cursor: pointer; display: grid; place-items: center; padding: 0; z-index: 2;
+}
+
+/* 모션 줄이기 — 흔들리는 건 다 끄고 색만 남긴다 */
+@media (prefers-reduced-motion: reduce) {
+  .wsc-wrap *, .wsc-wrap *::before, .wsc-wrap *::after { animation: none !important; transition-duration: .01ms !important; }
+  .wsc-cards, .wsc-thumbs, .wsc-cats { scroll-behavior: auto; }
+  .wsc-thumb.on .wsc-thumb__f { transform: none; }
+}
