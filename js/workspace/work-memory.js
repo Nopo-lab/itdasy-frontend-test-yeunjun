@@ -158,9 +158,32 @@
   }
 
   // ── 붙잡기 ────────────────────────────────────────────────────
+  // [용량] 이미지 레이어(로고)는 base64 라 통째로 담으면 기억 10개가 localStorage 를 밀어낸다.
+  //   실측(2026-07-15): 로고 256px=76KB → 10개 0.79MB / 512px=285KB → 2.83MB / 1024px=1MB → 10.09MB(한도 ~6MB 초과).
+  //   같은 로고가 10벌 복사되는 게 원인인데, 로고는 이미 ShopStyle.logo 에 한 벌 있다.
+  //   → 바이트 대신 참조만 담고 쓸 때 ShopStyle 에서 꺼낸다. 자리·크기는 그대로 기억된다.
+  var LOGO_REF = 'shopLogo';
+  var INLINE_MAX = 8 * 1024;   // 이보다 작은 dataURL 은 그냥 담는다(참조할 곳도 없는 일회성 이미지)
+  function _shopLogoUrl() {
+    try {
+      var ss = window.ShopStyle && window.ShopStyle.getActive && window.ShopStyle.getActive();
+      return (ss && ss.logo && ss.logo.dataUrl) || null;
+    } catch (_e) { return null; }
+  }
+  function _shrinkLayer(l) {
+    var c = Object.assign({}, l);
+    if (c.type !== 'image' || typeof c.src !== 'string') return c;
+    if (!/^data:/.test(c.src)) return c;                       // 에셋 경로 등 → 그대로(짧음)
+    var logo = _shopLogoUrl();
+    if (logo && c.src === logo) { delete c.src; c.srcRef = LOGO_REF; return c; }   // 우리샵 로고 → 참조로
+    if (c.src.length > INLINE_MAX) return null;                // 참조할 데 없는 큰 일회성 이미지 → 기억 안 함
+    return c;
+  }
   // editState 에서 '이 사진 전용' 값 제거 → 재사용 가능한 것만.
   function _distill(st) {
     if (!st || !Array.isArray(st.layers) || !st.layers.length) return null;
+    var layers = st.layers.map(_shrinkLayer).filter(Boolean);
+    if (!layers.length) return null;
     return {
       ratio: st.ratio || '4:5',
       layoutIdx: st.layoutIdx == null ? 0 : st.layoutIdx,
@@ -168,7 +191,7 @@
       collageBg: st.collageBg || null,
       collageGap: st.collageGap == null ? null : st.collageGap,
       fitMode: st.fitMode || null,
-      layers: st.layers.map(function (l) { return Object.assign({}, l); })
+      layers: layers
       // 일부러 뺌: photos·photoDraw(구운 붓그림)·photoBg·adj·pz·cellCrop·collageBgImg — 전부 그 사진 전용.
     };
   }
@@ -324,8 +347,15 @@
       if ((l.type === 'text' || l.type === 'badge') && l.role && byRole[l.role]) {
         return Object.assign({}, l, { text: byRole[l.role] });   // 자리는 기억대로, 글자는 이번 글로
       }
+      // [용량] 로고는 참조로만 담았다 → 쓸 때 ShopStyle 에서 실제 이미지를 꺼낸다.
+      //   샵 로고를 지웠으면 되살릴 게 없으니 그 레이어는 뺀다(깨진 이미지 방지).
+      if (l.srcRef === LOGO_REF) {
+        var url = _shopLogoUrl(); if (!url) return null;
+        var c = Object.assign({}, l, { src: url }); delete c.srcRef; return c;
+      }
       return Object.assign({}, l);
-    });
+    }).filter(Boolean);
+    if (!layers.length) return null;
 
     var st = { v: 1, layers: layers, layoutOrder: (rec.layoutOrder || []).slice(), cellCrop: [] };
     if (rec.fitMode) st.fitMode = rec.fitMode;
