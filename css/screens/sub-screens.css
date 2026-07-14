@@ -312,3 +312,50 @@
 .wss-fromshop__tx { flex: 1; font-size: 12.5px; line-height: 1.5; color: var(--text-sub, #4E5968); }
 .wss-fromshop__tx b { color: var(--text, #191F28); }
 .wss-fromshop__btn { flex: 0 0 auto; height: 34px; padding: 0 12px; border: 0; border-radius: 9px; background: #BC6675; color: #fff; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+
+/* ── [성과 2026-07-14] 게시물별 성과 화면 (workspace-perf.js) ──────────────
+   라이트모드 기준(다크 정비 보류 정책). .subscreen-overlay 재사용이라 PC 오프셋은 자동. */
+.wsp-sum { padding: 14px; border-radius: 14px; background: rgba(188,102,117,.07); border: 1px solid rgba(188,102,117,.18); margin-bottom: 16px; }
+.wsp-sum__tt { font-size: 12.5px; color: #A2566A; margin-bottom: 8px; }
+.wsp-sum__row { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 13px; color: #A2566A; }
+.wsp-sum__row b { font-size: 22px; font-weight: 700; color: #8E4257; }
+.wsp-sum__row i { font-size: 13px; opacity: .5; }
+
+.wsp-bests { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 20px; }
+.wsp-best { padding: 12px; border-radius: 12px; background: var(--surface-alt, #F7F8FA); }
+.wsp-best__k { font-size: 11.5px; color: var(--text-sub, #8B95A1); margin-bottom: 6px; }
+.wsp-best__v { display: flex; align-items: center; gap: 5px; font-size: 15px; font-weight: 700; color: var(--text, #191F28); margin-bottom: 8px; }
+.wsp-best__m { font-size: 12px; color: #2A8C63; }
+.wsp-best__m b { font-weight: 700; }
+.wsp-best__s { font-size: 11px; color: var(--text-sub, #8B95A1); margin-top: 3px; }
+
+.wsp-sect { font-size: 12.5px; color: var(--text-sub, #8B95A1); margin: 0 0 8px; }
+.wsp-card { border: 1px solid var(--border, #E5E8EB); border-radius: 14px; padding: 12px; margin-bottom: 10px; background: var(--surface, #fff); }
+.wsp-card__top { display: flex; gap: 12px; }
+.wsp-card__im { width: 60px; height: 60px; border-radius: 10px; object-fit: cover; flex: 0 0 auto; background: #EDEFF2; }
+.wsp-card__im--none { display: flex; align-items: center; justify-content: center; color: #B0B8C1; font-size: 20px; }
+.wsp-card__meta { min-width: 0; flex: 1; }
+.wsp-card__tt { font-size: 14px; font-weight: 700; color: var(--text, #191F28); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wsp-card__dt { font-size: 12px; color: var(--text-sub, #8B95A1); }
+.wsp-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 6px; }
+.wsp-chip { font-size: 11px; color: #A2566A; background: rgba(188,102,117,.09); border-radius: 999px; padding: 2px 8px; }
+.wsp-chip--dim { color: var(--text-sub, #8B95A1); background: #F1F3F5; }
+.wsp-stats { display: flex; gap: 14px; margin: 12px 0 10px; font-size: 12px; color: var(--text-sub, #4E5968); }
+.wsp-stats span { display: inline-flex; align-items: center; gap: 4px; }
+
+.wsp-conv { border-radius: 10px; padding: 10px; background: var(--surface-alt, #F7F8FA); }
+.wsp-conv.is-hit { background: rgba(42,140,99,.08); }
+.wsp-conv__t { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-sub, #4E5968); }
+.wsp-conv.is-hit .wsp-conv__t { color: #2A8C63; }
+.wsp-conv__t b { font-weight: 700; }
+.wsp-conv__s { font-size: 11px; color: var(--text-sub, #8B95A1); margin-top: 5px; line-height: 1.5; }
+.wsp-conv.is-hit .wsp-conv__s { color: #2A8C63; }
+
+.wsp-lock { border: 1px solid var(--border, #E5E8EB); border-radius: 14px; padding: 14px; background: var(--surface-alt, #F7F8FA); margin-top: 16px; }
+.wsp-lock__h { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--text-sub, #4E5968); margin-bottom: 8px; }
+.wsp-lock__b { margin-left: auto; font-size: 11px; font-weight: 700; color: #B67A2E; background: rgba(214,158,46,.14); border-radius: 999px; padding: 2px 8px; }
+.wsp-lock__d { font-size: 12px; color: var(--text-sub, #8B95A1); line-height: 1.6; }
+
+.wsp-empty { padding: 32px 16px; text-align: center; font-size: 13px; line-height: 1.6; color: var(--text-sub, #8B95A1); }
+.wsp-empty b { color: var(--text, #191F28); }
+.wsp-more { width: 100%; height: 44px; margin-top: 12px; border: 1px solid var(--border, #E5E8EB); border-radius: 12px; background: var(--surface, #fff); font-size: 13px; font-weight: 600; color: var(--text-sub, #4E5968); cursor: pointer; }

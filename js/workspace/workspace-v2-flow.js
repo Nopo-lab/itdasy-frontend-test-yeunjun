@@ -3560,11 +3560,16 @@
         r = r || {};
         if (r.ok) {
           d.publish = d.publish || {}; d.publish.status = 'published'; d.publish.publishedAt = Date.now();
+          // [성과 2026-07-14] 인스타 media id 를 슬롯에 남긴다 — 성과 화면이 '이 게시물'과 인스타 지표를
+          //   이어붙이는 유일한 열쇠. 예전엔 학습 로그로만 흘려보내고 슬롯엔 안 남아서 캡션 앞글자 매칭에 의존했음.
+          var _mid = (r.data && (r.data.media_id || r.data.id)) || null;
+          var _plink = (r.data && r.data.permalink) || null;
+          if (_mid) d.publish.igMediaId = String(_mid);
+          if (_plink) d.publish.igPermalink = String(_plink);
           // [P1 학습 루프] 발행한 최종 캡션을 학습에 반영 — final_text→PastPost 역반입(백엔드). 발행 성공 시만.
           try {
             if (d.logId && window.WorkspaceAdapter.recordPublishedCaption) {
-              var _mid = (r.data && (r.data.media_id || r.data.id || r.data.permalink)) || null;
-              window.WorkspaceAdapter.recordPublishedCaption(d.logId, cap, _mid);
+              window.WorkspaceAdapter.recordPublishedCaption(d.logId, cap, _mid || _plink);
             }
           } catch (_le) { void _le; }
           // [v542] 게시 완료 상태를 저장소에 반영(이전엔 게시 전 slot 만 저장 → 새로고침 시 badge 사라짐).

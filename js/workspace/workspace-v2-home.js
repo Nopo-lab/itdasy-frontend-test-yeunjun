@@ -359,9 +359,14 @@
       }
       // 히어로 업로드 CTA
 	      if (e.target.closest('[data-wsv2-upload]')) { _pickHeroFiles(root); return; }
-      // [manage 2026-07-14] 성과 진입 — 기존 openInsights(app-insights.js) 재사용.
+      // [성과 2026-07-14] 게시물별 성과 화면(workspace-perf.js). 예전엔 openInsights(고객·매출 인사이트)로
+      //   바로 갔는데, 원장님이 성과에서 보고 싶은 건 '내가 올린 글이 예약으로 이어졌나'였다.
+      //   기존 AI 인사이트는 그 화면 맨 아래 '고객·매출 인사이트 보기' 로 살려둠(진입 소실 방지).
       if (e.target.closest('[data-wsv2-insights]')) {
-        try { if (typeof window.openInsights === 'function') window.openInsights(); } catch (_e) { void _e; }
+        try {
+          if (window.WorkspacePerf && window.WorkspacePerf.open) window.WorkspacePerf.open();
+          else if (typeof window.openInsights === 'function') window.openInsights();
+        } catch (_e) { void _e; }
         return;
       }
       // 퀵 버튼
