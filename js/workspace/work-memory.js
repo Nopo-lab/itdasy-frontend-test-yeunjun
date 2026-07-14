@@ -1,11 +1,11 @@
 /*
- * work-memory.js — 원장 작업 기억 (Work Memory) v1  [T-115 P1]
+ * work-memory.js — 원장 작업 기억 (Work Memory) v1  [T-115 P1+P2]
  *
  * "원장 작업 기억" = 원장이 편집기에서 직접 만든 꾸밈(글씨 위치·크기·폰트·스티커·선·도형)을
  *   작업실 저장/인스타 발행 시점에 붙잡아 두고 다음 사진에 다시 쓰는 것.
  *
- * P1(이 파일) = 붙잡기 + 이름짓기 + 설정에서 보기. 편집기 자동 적용(P2)은 아직 없음 —
- *   즉 이 단계는 기존 동작을 하나도 안 바꾼다(읽기만 늘어남).
+ * P1 = 붙잡기 + 이름짓기 + 설정에서 보기.
+ * P2 = 다시 쓰기(★기본을 편집기에 주입) — 플래그 기본 OFF 라 켜기 전엔 기존 동작 그대로.
  *
  * ── 왜 ShopStyle 을 안 쓰나 (2026-07-14)
  *   ShopStyle.list() 는 이미 '내 레이아웃'(_wsMyLayout)과 '우리샵 스타일'(presetKey) 두 용도가 섞여 있어
@@ -291,6 +291,64 @@
     return rec;
   }
 
+  // ── [P2] 다시 쓰기 — ★기본 기억을 편집기에 올리기 ──────────────
+  // 플래그: 기본 OFF. ?wsmem=1 로 미리보기 · ?wsmem=0 로 강제 해제 · window.ITDASY_WORK_MEMORY=true 로 전역 ON.
+  function _flagOn() {
+    try {
+      if (/[?&]wsmem=1/.test(location.search)) return true;
+      if (/[?&]wsmem=0/.test(location.search)) return false;
+      return window.ITDASY_WORK_MEMORY === true;
+    } catch (_e) { return false; }
+  }
+  function markUsed(id) {
+    var arr = list();
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i].id === id) { arr[i].lastUsedAt = _now(); arr[i].useCount = (arr[i].useCount || 1) + 1; _persist(arr); return arr[i]; }
+    }
+    return null;
+  }
+
+  // 기억 → 편집기 editState. '어떻게 생겼나'만 주고 '이 사진 전용'은 안 준다.
+  //   opts.incoming    = 이번 글의 우리샵 자동배치 레이어(role→text) — 같은 role 은 이번 글 문구로 갈아끼움.
+  //                      (지난 글 문구가 그대로 되살아나면 안 됨. 위치·크기·폰트만 기억하는 게 요점.)
+  //   opts.photoCount  = 지금 사진 수. 기억의 레이아웃과 안 맞으면 레이아웃은 안 건드림
+  //                      (예: '전후 2칸' 기억을 사진 1장에 씌우면 빈 칸이 생김).
+  function toEditState(rec, opts) {
+    if (!rec || !Array.isArray(rec.layers) || !rec.layers.length) return null;
+    opts = opts || {};
+    var incoming = opts.incoming || [];
+    var byRole = {};
+    incoming.forEach(function (l) { if (l && l.role && l.text && !byRole[l.role]) byRole[l.role] = l.text; });
+
+    var layers = rec.layers.map(function (l) {
+      if ((l.type === 'text' || l.type === 'badge') && l.role && byRole[l.role]) {
+        return Object.assign({}, l, { text: byRole[l.role] });   // 자리는 기억대로, 글자는 이번 글로
+      }
+      return Object.assign({}, l);
+    });
+
+    var st = { v: 1, layers: layers, layoutOrder: (rec.layoutOrder || []).slice(), cellCrop: [] };
+    if (rec.fitMode) st.fitMode = rec.fitMode;
+    if (rec.collageBg) st.collageBg = rec.collageBg;
+    if (rec.collageGap != null) st.collageGap = rec.collageGap;
+    // 사진 수가 맞을 때만 레이아웃 복원. 안 맞으면 레이어(글씨·꾸밈)만 얹는다.
+    var n = opts.photoCount;
+    if (rec.layoutIdx != null && (n == null || (LAY_N[rec.layoutIdx] || 1) === n)) st.layoutIdx = rec.layoutIdx;
+    // photos·photoDraw·adj·pz 는 일부러 안 넣음 — 넣으면 지금 사진을 지난 사진으로 덮어쓴다(itd-editor _restoreState:1648).
+    return st;
+  }
+
+  // flow 가 쓰는 한 줄짜리 진입점 — 플래그 OFF·기본 없음이면 null(=지금까지와 100% 동일하게 깨끗이 열림).
+  function defaultEditState(opts) {
+    try {
+      if (!_flagOn()) return null;
+      var rec = getDefault(); if (!rec) return null;
+      var st = toEditState(rec, opts); if (!st) return null;
+      markUsed(rec.id);
+      return st;
+    } catch (_e) { return null; }
+  }
+
   window.WorkMemory = {
     SCHEMA: SCHEMA, MAX: MAX,
     KEYS: { list: K_LIST, def: K_DEFAULT },
@@ -299,6 +357,7 @@
     rename: rename, remove: remove,
     describe: describe, formatWhen: formatWhen,
     captureFromSlot: captureFromSlot, captureAndNotify: captureAndNotify, showCaptureCard: showCaptureCard,
+    markUsed: markUsed, toEditState: toEditState, defaultEditState: defaultEditState, flagOn: _flagOn,
     _distill: _distill, _makeName: _makeName, _sig: _sig   // 테스트용
   };
 })();

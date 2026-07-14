@@ -130,8 +130,15 @@
   - 담는 값 = `ItdEditor._exportState()`(editState)에서 **그 사진 전용값 제거**(`photos`·`photoDraw`·`adj`·`pz`·`cellCrop`) 후 재사용분(`layers`·`ratio`·`layoutIdx`·`collage*`)만. ⚠️ **붓 그림은 기억 못 함** — `photoDraw`는 벡터가 아니라 그 사진에 구워진 PNG.
   - ShopStyle 재사용 안 함(=`list()`가 이미 '내 레이아웃'·'우리샵 스타일' 두 용도로 혼재 + `makeLayer`가 텍스트 4 role 전용이라 스티커/도형 불가).
   - 같은 작업은 지문(`_sig`)으로 dedup → useCount만 증가. 10개 초과 시 `lastUsedAt` 오래된 것부터 제거(**★기본은 보호**). quota 실패 시 밀어내고 재시도.
-  - 훅 3곳(호출 1줄씩, 로직 없음): `workspace-v2-flow.js` `save()`·`publish()` 성공·`_markPublishedNow()`. UI = `workspace-settings.js` '원장 작업 기억' 섹션 + 발행 직후 `.wm-cap` 카드(3.5초). CSS `css/screens/sub-screens.css` `wm-*`.
-  - **P2(미구현): ★기본을 편집기에 자동 적용** — 예정 플래그 `ITDASY_WORK_MEMORY`. **P3(미구현): 기존 `_learnShopStyle`(flow.js:435, 활성 스타일 덮어쓰기 학습) 제거·흡수.** 현재는 둘이 공존.
+  - 훅 4곳(호출 1줄씩, 로직 없음): `workspace-v2-flow.js` `save()`·`publish()` 성공·`_markPublishedNow()`(붙잡기) + `_openStoryEditor()`(다시 쓰기). UI = `workspace-settings.js` '원장 작업 기억' 섹션 + 발행 직후 `.wm-cap` 카드(3.5초). CSS `css/screens/sub-screens.css` `wm-*`.
+  - **[P2] 다시 쓰기 — `defaultEditState()` → ★기본 기억을 `ItdEditor.open({editState})` 로 주입.** 🚩 **플래그 기본 OFF**: `?wsmem=1` 미리보기 · `?wsmem=0` 강제해제 · `window.ITDASY_WORK_MEMORY=true` 전역ON. OFF면 `null` 반환 = 기존 동작 100% 동일.
+    - '깨끗한 열기'에서만 적용(이어서편집 `p0.editState`·ws-hyper 레이아웃 `_wsEd` 가 우선).
+    - **같은 role 텍스트는 이번 글 문구로 갈아끼움** — 자리·크기·폰트만 기억. (안 그러면 지난 글 문구가 되살아남)
+    - **기억 레이아웃 칸 수 ≠ 지금 사진 수면 `layoutIdx` 생략**(글씨·꾸밈만 얹음). 예: '전후 2칸' 기억 + 사진 1장 → 빈 칸 방지.
+    - `photos`·`photoDraw`·`adj`·`pz` 는 안 넘김 — 넘기면 지금 사진을 지난 사진으로 덮어씀(`itd-editor.js:1648`).
+    - 적용 시 `markUsed()` → `useCount`↑ = 자주 쓰는 기억은 10칸 밀어내기에서 보호됨.
+    - 없는 role 의 시술 텍스트는 편집기 `_renderMissingIncoming` 이 추가(중복 안 됨).
+  - **P3(미구현): 기존 `_learnShopStyle`(flow.js:435, 활성 스타일 덮어쓰기 학습) 제거·흡수.** 현재는 둘이 공존.
 - flow 클러스터: **util.js**(96, `WSFlowUtil`)·**caption-text.js**(94)·**connect.js**(80)·**brand.js**(217)·**harmony-presets.js**(16)·**layout.js**(188)·**publish-progress.js**(42)·**thumbs.js**(47).
 - layout: **layout-model.js**(183, `WorkspaceLayout` 합성기 스타터A~H)·**slot-stage.js**(92, 드래그focal·핀치zoom).
 
