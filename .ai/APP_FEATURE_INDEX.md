@@ -125,7 +125,13 @@
 
 ### 작업실 (js/workspace/**)
 - **js/workspace/workspace-v2-flow.js** (3881) — **작업실 전체 오케스트레이터.** 업로드→레이아웃→편집→게시글(캡션+미리보기 통합)→고객연결. 화면전환/CTA/상태(d)/네비스택, flow/*·ItdEditor·PhotoEditor·adapter 조립 허브. **[2026-07-13] 캡션 결과 화면에 발행+피드 미리보기 흡수(구 preview 스텝은 플러밍만 보존, 진입 없음). 진행바 4단계(upload·layout·caption·connect).**
-- **workspace-v2-home.js**(634) 홈 렌더러. **[2026-07-13] '피드 정렬' 진입(저장된 콘텐츠 전체를 FeedPlanner 3열 그리드로, 순서 `itdasy:feed_order` 영구저장/복원). 이어서편집 딥링크 preview→caption 재배선.** **workspace-adapter.js**(554) 기존기능 연결 어댑터(보정/누끼/캡션/고객/저장/인스타업로드/`recentMedia`). **workspace-sync.js**(425) 기기간 draft slot 동기화. **workspace-crop.js**(239)·**workspace-tpl-edit.js**(239)·**workspace-settings.js**(175)·**shop-style.js**(188, 브랜드자산)·**workspace-state.js**(78).
+- **workspace-v2-home.js**(634) 홈 렌더러. **[2026-07-13] '피드 정렬' 진입(저장된 콘텐츠 전체를 FeedPlanner 3열 그리드로, 순서 `itdasy:feed_order` 영구저장/복원). 이어서편집 딥링크 preview→caption 재배선.** **workspace-adapter.js**(554) 기존기능 연결 어댑터(보정/누끼/캡션/고객/저장/인스타업로드/`recentMedia`). **workspace-sync.js**(425) 기기간 draft slot 동기화. **workspace-crop.js**(239)·**workspace-tpl-edit.js**(239)·**workspace-settings.js**(240)·**shop-style.js**(188, 브랜드자산)·**workspace-state.js**(78).
+- **js/workspace/work-memory.js**(263, `window.WorkMemory`) — **[2026-07-14 T-115 P1] 원장 작업 기억.** 원장이 편집기에서 만든 꾸밈(글씨·스티커·선/도형)을 **작업실 저장·인스타 발행 성공 시점**에 붙잡아 최대 **10개** 보관 + 로컬 규칙으로 이름 자동생성("속눈썹 전후비교, 글씨 아래 왼쪽정렬") + ★기본 지정. 저장 `itdasy:work_memory:list`/`:default`(localStorage).
+  - 담는 값 = `ItdEditor._exportState()`(editState)에서 **그 사진 전용값 제거**(`photos`·`photoDraw`·`adj`·`pz`·`cellCrop`) 후 재사용분(`layers`·`ratio`·`layoutIdx`·`collage*`)만. ⚠️ **붓 그림은 기억 못 함** — `photoDraw`는 벡터가 아니라 그 사진에 구워진 PNG.
+  - ShopStyle 재사용 안 함(=`list()`가 이미 '내 레이아웃'·'우리샵 스타일' 두 용도로 혼재 + `makeLayer`가 텍스트 4 role 전용이라 스티커/도형 불가).
+  - 같은 작업은 지문(`_sig`)으로 dedup → useCount만 증가. 10개 초과 시 `lastUsedAt` 오래된 것부터 제거(**★기본은 보호**). quota 실패 시 밀어내고 재시도.
+  - 훅 3곳(호출 1줄씩, 로직 없음): `workspace-v2-flow.js` `save()`·`publish()` 성공·`_markPublishedNow()`. UI = `workspace-settings.js` '원장 작업 기억' 섹션 + 발행 직후 `.wm-cap` 카드(3.5초). CSS `css/screens/sub-screens.css` `wm-*`.
+  - **P2(미구현): ★기본을 편집기에 자동 적용** — 예정 플래그 `ITDASY_WORK_MEMORY`. **P3(미구현): 기존 `_learnShopStyle`(flow.js:435, 활성 스타일 덮어쓰기 학습) 제거·흡수.** 현재는 둘이 공존.
 - flow 클러스터: **util.js**(96, `WSFlowUtil`)·**caption-text.js**(94)·**connect.js**(80)·**brand.js**(217)·**harmony-presets.js**(16)·**layout.js**(188)·**publish-progress.js**(42)·**thumbs.js**(47).
 - layout: **layout-model.js**(183, `WorkspaceLayout` 합성기 스타터A~H)·**slot-stage.js**(92, 드래그focal·핀치zoom).
 

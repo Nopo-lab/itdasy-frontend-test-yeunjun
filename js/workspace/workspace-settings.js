@@ -1,7 +1,10 @@
 /* workspace-settings.js — 작업실 설정 화면 (2026-07-10)
    작업실 홈 톱니 → 여기. 편집기 기능스티커·캡션이 읽는 localStorage 키(itdasy:shop_*)를 한 곳에서 입력.
-   섹션: ① 매장 정보(상호·전화·예약링크·위치·가격·영업시간·인스타ID) ② 캡션 고정 멘트(+샵정보 자동첨부)
-        ③ 내 레이아웃(실제 합성 썸네일 · 이름변경 · 삭제).
+   섹션: ① 원장 작업 기억(T-115) ② 매장 정보 ③ 캡션 고정 멘트(+샵정보 자동첨부)
+        ④ 내 레이아웃(실제 합성 썸네일 · 이름변경 · 삭제).
+   [2026-07-14 T-115] 섹션마다 Lucide 아이콘 + 한 줄 설명(리뉴얼). 맨 위에 '원장 작업 기억' 신설 —
+     발행/저장 때 붙잡은 꾸밈을 보고 ★기본을 고른다. 데이터·이름은 work-memory.js 소유(여긴 표시만).
+     ※ '내 레이아웃'(사진 틀, ShopStyle)과 '작업 기억'(그 위 글씨·꾸밈, WorkMemory)은 다른 것 — 설명으로 구분.
    .subscreen-overlay + ss-* 디자인 재사용 → PC 사이드바 자동 안전. window.WorkspaceSettings.open(). */
 (function () {
   'use strict';
@@ -28,6 +31,7 @@
       }
     } catch (_e) { void _e; }
   }
+  var _selMem = null;   // 액션이 펼쳐진 기억 id(한 번에 하나)
   var K_FOOTER = 'itdasy:caption_footer_local';   // 고정멘트 로컬 미러(표시용) — 저장은 서버 setCaptionTemplate
   var K_SHOPINFO = 'itdasy:caption_shopinfo';
 
@@ -35,6 +39,48 @@
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function get(k) { try { return String(localStorage.getItem(k) || ''); } catch (_) { return ''; } }
   function set(k, v) { try { localStorage.setItem(k, v == null ? '' : v); } catch (_) { void _; } }
+
+  // ── 섹션 헤더(리뉴얼) — 아이콘 + 제목 + (선택)카운트
+  function _hd(icon, title, count) {
+    return '<div class="ss-hd"><span class="ss-hd__ic"><svg width="15" height="15" aria-hidden="true"><use href="#ic-' + icon + '"/></svg></span>' +
+      '<span class="ss-hd__t">' + esc(title) + '</span>' +
+      (count ? '<span class="ss-hd__n">' + esc(count) + '</span>' : '') + '</div>';
+  }
+
+  // ── ① 원장 작업 기억 ─────────────────────────────────────────
+  function _memHtml() {
+    var WM = window.WorkMemory;
+    if (!WM) return '<div class="ss-card-sub">기억 기능을 불러오지 못했어요.</div>';
+    var mine = WM.list(), defId = WM.getDefaultId();
+    var head = '<div class="ss-card-sub">발행하거나 저장할 때마다 원장님이 꾸민 그대로 기억해요. <b>★ 기본</b>으로 고른 건 다음 사진에 자동으로 올라가요.</div>';
+    if (!mine.length) {
+      return head + '<div class="wm-empty"><svg width="15" height="15" aria-hidden="true"><use href="#ic-plus"/></svg><span>아직 기억이 없어요 — 사진을 꾸며서 발행하면 여기 쌓여요</span></div>';
+    }
+    var rows = mine.slice().sort(function (a, b) { return (b.lastUsedAt || 0) - (a.lastUsedAt || 0); }).map(function (r) {
+      var on = r.id === defId, sel = r.id === _selMem;
+      return '<div class="wm' + (on ? ' is-default' : '') + (sel ? ' is-sel' : '') + '" data-wm-id="' + esc(r.id) + '">' +
+        '<div class="wm__th">' + (r.thumb ? '<img src="' + esc(r.thumb) + '" alt="">' : '') + '</div>' +
+        '<div class="wm__c"><div class="wm__name">' + esc(r.name || '내 작업') + '</div>' +
+        '<div class="wm__chips">' + esc(WM.describe(r)) + '</div>' +
+        '<div class="wm__when">' + esc(WM.formatWhen(r)) + '</div></div>' +
+        '<button type="button" class="wm__star' + (on ? ' on' : '') + '" data-haptic="light" data-wm-star="' + esc(r.id) + '" ' +
+          'aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(r.name || '') + ' 기본으로 쓰기">' +
+          '<svg width="14" height="14" aria-hidden="true"><use href="#ic-star"/></svg></button></div>' +
+        (sel ? _actsHtml(r) : '');
+    }).join('');
+    var left = window.WorkMemory.MAX - mine.length;
+    var rest = left > 0 ? '<div class="wm-empty"><svg width="14" height="14" aria-hidden="true"><use href="#ic-plus"/></svg><span>발행하면 여기 쌓여요 · ' + left + '칸 남음</span></div>' : '';
+    return head + '<div class="wm-list">' + rows + rest + '</div>';
+  }
+  // 선택된 기억 아래로 펼치는 인라인 액션(팝업 금지 — 같은 화면에서 완결)
+  function _actsHtml(rec) {
+    return '<div class="wm-acts" data-wm-acts><div class="wm-acts__t">“' + esc(rec.name || '') + '”</div>' +
+      '<div class="wm-acts__row">' +
+      '<button type="button" class="wm-btn wm-btn--pri" data-haptic="success" data-wm-star="' + esc(rec.id) + '"><svg width="12" height="12" aria-hidden="true"><use href="#ic-star"/></svg>기본으로</button>' +
+      '<button type="button" class="wm-btn" data-haptic="light" data-wm-rename="' + esc(rec.id) + '"><svg width="12" height="12" aria-hidden="true"><use href="#ic-pen-line"/></svg>이름</button>' +
+      '<button type="button" class="wm-btn wm-btn--del" data-haptic="light" data-wm-del="' + esc(rec.id) + '"><svg width="12" height="12" aria-hidden="true"><use href="#ic-trash-2"/></svg>삭제</button>' +
+      '</div></div>';
+  }
 
   function _fieldsHtml() {
     return FIELDS.map(function (f) {
@@ -69,12 +115,18 @@
     el.innerHTML =
       '<header class="ss-topbar"><button type="button" class="ss-back" data-wss-back aria-label="뒤로"><svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button><div class="ss-title">작업실 설정</div></header>' +
       '<div class="ss-body">' +
-        '<div class="ss-card"><div class="ss-card-tt">매장 정보</div>' +
+        '<div class="ss-card">' + _hd('layers', '원장 작업 기억') + '<div data-wss-mem>' + _memHtml() + '</div></div>' +
+        '<div class="ss-card">' + _hd('store', '매장 정보') +
+          '<div class="ss-card-sub">게시글에 자동으로 들어가는 우리 샵 정보예요.</div>' +
           '<div class="wss-fromshop"><div class="wss-fromshop__tx"><b>상호·전화·주소·영업시간</b>은 <b>샵 정보</b>에서 관리해요.<br>거기 입력하면 게시글에 자동으로 쓰여요.</div><button type="button" class="wss-fromshop__btn" data-wss-openshop>샵 정보 열기 ›</button></div>' +
           '<div class="ss-card-sub" style="margin:14px 0 10px">아래는 작업실 전용 항목이에요.</div>' +
           '<div data-wss-fields>' + _fieldsHtml() + '</div></div>' +
-        '<div class="ss-card"><div class="ss-card-tt">캡션 고정 멘트</div><div data-wss-footwrap>' + _footerHtml() + '</div></div>' +
-        '<div class="ss-card"><div class="ss-card-tt">내 레이아웃</div><div data-wss-layouts>' + _layoutsHtml() + '</div></div>' +
+        '<div class="ss-card">' + _hd('message-square', '캡션 고정 멘트') +
+          '<div class="ss-card-sub">게시글 끝에 항상 붙는 문구예요.</div>' +
+          '<div data-wss-footwrap>' + _footerHtml() + '</div></div>' +
+        '<div class="ss-card">' + _hd('layout-grid', '내 레이아웃') +
+          '<div class="ss-card-sub">사진이 들어갈 <b>틀</b>이에요. 위 <b>작업 기억</b>은 그 틀 위에 올라가는 <b>글씨·꾸밈</b>이고요.</div>' +
+          '<div data-wss-layouts>' + _layoutsHtml() + '</div></div>' +
       '</div>';
     document.body.appendChild(el);
     el.addEventListener('click', _onClick);
@@ -89,6 +141,39 @@
 
   function _onClick(e) {
     if (e.target.closest('[data-wss-back]')) { close(); return; }
+    // ── 작업 기억 ★기본 지정(다시 누르면 해제)
+    var st = e.target.closest('[data-wm-star]');
+    if (st) {
+      var sid = st.getAttribute('data-wm-star');
+      try {
+        if (window.WorkMemory.getDefaultId() === sid) { window.WorkMemory.clearDefault(); toast('기본을 해제했어요'); }
+        else { window.WorkMemory.setDefault(sid); toast('기본으로 쓸게요'); }
+      } catch (_e) { void _e; }
+      _refreshMem(); return;
+    }
+    // ── 작업 기억 이름 변경
+    var mr = e.target.closest('[data-wm-rename]');
+    if (mr) {
+      var mid = mr.getAttribute('data-wm-rename');
+      var rec = (window.WorkMemory && window.WorkMemory.get(mid)) || {};
+      var nv = window.prompt('이 작업을 뭐라고 부를까요?', rec.name || ''); if (nv == null) return;
+      nv = String(nv).trim(); if (!nv) return;
+      try { window.WorkMemory.rename(mid, nv); } catch (_e) { void _e; }
+      toast('이름을 바꿨어요'); _refreshMem(); return;
+    }
+    // ── 작업 기억 삭제
+    var md = e.target.closest('[data-wm-del]');
+    if (md) {
+      try { window.WorkMemory.remove(md.getAttribute('data-wm-del')); } catch (_e) { void _e; }
+      _selMem = null; toast('기억을 지웠어요'); _refreshMem(); return;
+    }
+    // ── 기억 카드 탭 → 아래로 액션 펼침(같은 화면에서 완결)
+    var mc = e.target.closest('[data-wm-id]');
+    if (mc) {
+      var cid = mc.getAttribute('data-wm-id');
+      _selMem = (_selMem === cid) ? null : cid;
+      _refreshMem(); return;
+    }
     // 샵 정보(앱 전체 설정) 열기 — 작업실 설정은 닫고 그쪽으로
     if (e.target.closest('[data-wss-openshop]')) {
       close();
@@ -129,6 +214,11 @@
     try { if (window.WorkspaceAdapter && window.WorkspaceAdapter.setCaptionTemplate) window.WorkspaceAdapter.setCaptionTemplate(text); } catch (_e) { void _e; }
   }
 
+  function _refreshMem() {
+    var el = document.getElementById(ID); if (!el) return;
+    var host = el.querySelector('[data-wss-mem]'); if (host) host.innerHTML = _memHtml();
+  }
+
   function _refreshLayouts() {
     var el = document.getElementById(ID); if (!el) return;
     var host = el.querySelector('[data-wss-layouts]'); if (host) host.innerHTML = _layoutsHtml();
@@ -157,6 +247,7 @@
     // 열 때마다 최신값으로 새로 그림
     var fh = el.querySelector('[data-wss-fields]'); if (fh) fh.innerHTML = _fieldsHtml();
     var fw = el.querySelector('[data-wss-footwrap]'); if (fw) fw.innerHTML = _footerHtml();
+    _selMem = null; _refreshMem();
     _refreshLayouts();
     el.setAttribute('aria-hidden', 'false');
     requestAnimationFrame(function () { el.classList.add('is-open'); });

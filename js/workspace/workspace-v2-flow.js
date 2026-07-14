@@ -3472,6 +3472,7 @@
     var slot = buildSlot();
     var done = function () {
       toast(d.customerName ? (d.customerName + ' 고객 기록에 저장했어요.') : '작업실에 저장했어요.');
+      try { if (window.WorkMemory) window.WorkMemory.captureAndNotify(slot, d); } catch (_wm) { void _wm; }   // [T-115] 원장 작업 기억
       close();
       if (window.WorkspaceV2 && window.WorkspaceV2.refresh) window.WorkspaceV2.refresh();
     };
@@ -3510,6 +3511,7 @@
   function _markPublishedNow() {
     d.publish = d.publish || {}; d.publish.status = 'published'; d.publish.publishedAt = Date.now();
     if (window.WorkspaceAdapter && window.WorkspaceAdapter.saveItem) { try { window.WorkspaceAdapter.saveItem(buildSlot()); } catch (_e) { void _e; } }
+    try { if (window.WorkMemory) window.WorkMemory.captureAndNotify(buildSlot(), d); } catch (_wm) { void _wm; }   // [T-115] 원장 작업 기억
     _closePublishSheet();
     toast('게시물이 저장되었습니다');
     // [v548] 게시 완료 시 작업이 끝났음을 명확히 — 플로우 닫고 작업실 홈으로(카드 게시완료 badge 갱신).
@@ -3574,6 +3576,7 @@
           } catch (_le) { void _le; }
           // [v542] 게시 완료 상태를 저장소에 반영(이전엔 게시 전 slot 만 저장 → 새로고침 시 badge 사라짐).
           if (window.WorkspaceAdapter.saveItem) { try { window.WorkspaceAdapter.saveItem(buildSlot()); } catch (_e) { void _e; } }
+          try { if (window.WorkMemory) window.WorkMemory.captureAndNotify(buildSlot(), d); } catch (_wm) { void _wm; }   // [T-115] 원장 작업 기억
           _pubFinish(function () {
             d._publishing = false;
             toast(kind === 'carousel' ? '여러 장 게시물을 올렸어요' : '인스타그램에 올렸어요');

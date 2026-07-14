@@ -359,3 +359,118 @@
 .wsp-empty { padding: 32px 16px; text-align: center; font-size: 13px; line-height: 1.6; color: var(--text-sub, #8B95A1); }
 .wsp-empty b { color: var(--text, #191F28); }
 .wsp-more { width: 100%; height: 44px; margin-top: 12px; border: 1px solid var(--border, #E5E8EB); border-radius: 12px; background: var(--surface, #fff); font-size: 13px; font-weight: 600; color: var(--text-sub, #4E5968); cursor: pointer; }
+
+/* ───────────────────────────────────────────────────────────
+   [T-115] 원장 작업 기억 (work-memory.js · workspace-settings.js)
+   + 설정 섹션 헤더 리뉴얼(아이콘 + 제목 + 카운트).
+   라이트 기준만 — 다크 정비 보류 중(레포 CLAUDE.md 2026-05-28).
+   ─────────────────────────────────────────────────────────── */
+.subscreen-overlay .ss-hd {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.subscreen-overlay .ss-hd__ic {
+  width: 26px; height: 26px; border-radius: 8px;
+  background: var(--brand-bg, #F7EFF0); color: var(--brand-strong, #BC6675);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.subscreen-overlay .ss-hd__t {
+  font-size: 15px; font-weight: 800; letter-spacing: -0.3px; flex: 1; min-width: 0;
+  color: var(--text, #191F28);
+}
+.subscreen-overlay .ss-hd__n {
+  font-size: 11px; font-weight: 700; color: var(--text-subtle, #6B7684);
+  background: var(--surface-2, #F7F8FA); border: 1px solid var(--border, rgba(0,0,0,.07));
+  padding: 3px 8px; border-radius: 999px; flex-shrink: 0;
+}
+
+/* 기억 목록 — 이름이 주인공이라 가로 행(2열 그리드는 이름이 깨짐) */
+.wm-list { display: flex; flex-direction: column; gap: 8px; margin-top: 13px; }
+.wm {
+  display: flex; gap: 11px; align-items: center; padding: 9px;
+  border: 1px solid var(--border, rgba(0,0,0,.07)); border-radius: 14px;
+  background: var(--surface, #fff); cursor: pointer;
+  transition: border-color .16s, background .16s;
+}
+.wm.is-default { border-color: var(--brand, #D58A95); background: var(--brand-bg, #F7EFF0); }
+.wm.is-sel { border-color: var(--border-strong, rgba(0,0,0,.14)); }
+.wm__th {
+  width: 50px; height: 63px; border-radius: 8px; flex-shrink: 0; overflow: hidden;
+  background: var(--surface-2, #F7F8FA); border: 1px solid var(--border, rgba(0,0,0,.07));
+}
+.wm__th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wm__c { flex: 1; min-width: 0; }
+.wm__name { font-size: 13px; font-weight: 800; letter-spacing: -0.35px; line-height: 1.4; color: var(--text, #191F28); }
+.wm__chips { font-size: 10.5px; color: var(--text-subtle, #6B7684); margin-top: 4px; line-height: 1.45; }
+.wm__when { font-size: 10px; color: var(--text-subtle, #6B7684); opacity: .8; margin-top: 2px; }
+.wm__star {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; border: none; cursor: pointer;
+  background: var(--surface-2, #F7F8FA); color: #C8CDD4;
+  display: flex; align-items: center; justify-content: center; transition: transform .1s;
+}
+.wm__star:active { transform: scale(0.88); }
+/* #ic-star 심볼은 fill/stroke 를 안 갖고 있어 쓰는 쪽이 정해줘야 한다(index.html:1571 과 같은 이유).
+   기본 아님=빈 별(윤곽) · 기본=꽉 찬 별. */
+.wm__star svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.wm__star.on svg { fill: currentColor; stroke: none; }
+.wm__star.on {
+  background: var(--brand, #D58A95); color: #fff;
+  box-shadow: 0 10px 24px rgba(213,138,149,.30);
+}
+.wm-btn--pri svg { fill: currentColor; stroke: none; }
+.wm-empty {
+  border: 1.5px dashed var(--border-strong, rgba(0,0,0,.14)); border-radius: 14px;
+  display: flex; align-items: center; justify-content: center; gap: 7px; padding: 14px;
+  color: var(--text-subtle, #6B7684); background: var(--surface-2, #F7F8FA);
+}
+.wm-empty span { font-size: 11.5px; font-weight: 600; text-align: center; }
+
+/* 인라인 액션 — 팝업 대신 카드 아래로 펼침 */
+.wm-acts {
+  background: var(--surface-2, #F7F8FA); border: 1px solid var(--border, rgba(0,0,0,.07));
+  border-radius: 14px; padding: 11px;
+}
+.wm-acts__t { font-size: 11.5px; font-weight: 800; color: var(--text-muted, #4E5968); margin-bottom: 9px; }
+.wm-acts__row { display: flex; gap: 7px; }
+.wm-btn {
+  flex: 1; border: 1px solid var(--border, rgba(0,0,0,.07)); background: var(--surface, #fff);
+  color: var(--text, #191F28); font-size: 11.5px; font-weight: 700; padding: 9px 6px;
+  border-radius: 10px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 4px; transition: transform .1s;
+}
+.wm-btn:active { transform: scale(0.95); }
+.wm-btn--pri { background: var(--brand, #D58A95); border-color: var(--brand, #D58A95); color: #fff; }
+.wm-btn--del { color: var(--danger, #EF4444); }
+
+/* 기억됐다고 알리는 카드 — 발행/저장 순간. 팝업 아님, 3.5초 뒤 사라짐.
+   토스트(z 9999 대)보다 살짝 아래에 깔되 safe-area 위로. */
+.wm-cap {
+  position: fixed; left: 12px; right: 12px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 9500;
+  background: var(--surface, #fff); border: 1px solid var(--border, rgba(0,0,0,.07));
+  border-radius: 20px; box-shadow: 0 14px 40px rgba(0,0,0,.22);
+  padding: 13px; display: flex; gap: 11px; align-items: flex-start; cursor: pointer;
+  transform: translateY(18px); opacity: 0;
+  transition: transform .32s cubic-bezier(.32,.72,0,1), opacity .32s;
+}
+.wm-cap.is-on { transform: translateY(0); opacity: 1; }
+.wm-cap__th {
+  width: 46px; height: 58px; border-radius: 8px; flex-shrink: 0; overflow: hidden;
+  background: var(--surface-2, #F7F8FA); border: 1px solid var(--border, rgba(0,0,0,.07));
+}
+.wm-cap__th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wm-cap__c { flex: 1; min-width: 0; }
+.wm-cap__k {
+  font-size: 10.5px; font-weight: 800; color: var(--brand-strong, #BC6675);
+  display: flex; align-items: center; gap: 4px;
+}
+.wm-cap__n {
+  font-size: 14.5px; font-weight: 800; letter-spacing: -0.4px; margin-top: 4px; line-height: 1.3;
+  color: var(--text, #191F28);
+}
+.wm-cap__m { font-size: 11px; color: var(--text-subtle, #6B7684); margin-top: 4px; }
+
+@media (width >= 768px) {
+  /* PC: 고정 사이드바(--side-nav-width)에 안 가리게 — 반복 사고 방지(레포 CLAUDE.md) */
+  .wm-cap { left: calc(var(--side-nav-width, 232px) + 16px); right: auto; width: 360px; }
+}
