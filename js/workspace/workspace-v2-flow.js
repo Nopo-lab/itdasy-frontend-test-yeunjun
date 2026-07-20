@@ -3804,6 +3804,13 @@
       generatedAt: d.caption ? ((slot.captionMeta && slot.captionMeta.generatedAt) || now) : null, log_id: d.logId || null,
     };
     slot.publish = Object.assign({ status: 'draft', instagramPreparedAt: null, publishedAt: null }, slot.publish, d.publish || {});
+    // [보관함 중복 2026-07-20] 작업실 v2 는 dedupeKey 가 없어 saveToGallery 가 매번 _uid() 로 새 gallery row 를
+    //   만들었다. 발행 1회에 saveItem 이 2번(발행 직전+발행 후), 초안 저장까지 더하면 같은 콘텐츠가 3~4벌씩 쌓여
+    //   고객 타임라인·보관함에 같은 사진이 여러 장 뜨고, base64 가 IndexedDB 에 중복 적재됐다.
+    //   slot.id(=재편집·발행에 걸쳐 고정, 3807) 기반 안정 키를 주면 saveToGallery(T-107)·_dedupePhotoItems 가
+    //   put-in-place 로 같은 row 를 갱신한다. 네임스페이스 'ws2:' 라 treatment-link/asst_tpl 키와 안 겹친다.
+    slot.dedupeKey = slot.dedupeKey || ('ws2:' + slot.id);
+    slot.source = slot.source || 'workspace_v2';
     d.slot = slot;   // [#13] 만든 슬롯을 고정 — 이후 저장(에디터 완료·발행 등)이 같은 id 를 갱신하게. 예전엔 매번 새 id 라 콘텐츠가 중복 저장됐음.
     return slot;
   }
