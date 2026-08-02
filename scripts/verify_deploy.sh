@@ -21,7 +21,17 @@
 
 set -uo pipefail
 
-BASE_URL="${BASE_URL:-https://nopo-lab.github.io/itdasy-frontend-test-yeunjun}"
+# [2026-08-03] 기본 URL 을 **레포에서 유도**한다. 예전엔 yeunjun 주소가 하드코딩돼 있어서,
+#   이 스크립트가 운영 레포로 동기화되자마자 운영 배포가 **남의 사이트(yeunjun)를 40번 폴링**하다
+#   SHA 불일치로 실패했다. 운영엔 그 SHA 가 있을 리 없으니 영원히 안 맞는다.
+#   (같은 유형의 사고 전례: `18ada8b fix(seo): 동기화로 박힌 test-yeunjun URL 교정`)
+#   CI 에선 GITHUB_REPOSITORY 로 자동 결정되므로 **다음에 또 복제돼도 알아서 맞는다.**
+_DEFAULT_BASE_URL="https://nopo-lab.github.io/itdasy-frontend-test-yeunjun"
+if [ -n "${GITHUB_REPOSITORY:-}" ]; then
+  _OWNER="$(printf '%s' "${GITHUB_REPOSITORY%%/*}" | tr '[:upper:]' '[:lower:]')"
+  _DEFAULT_BASE_URL="https://${_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
+fi
+BASE_URL="${BASE_URL:-$_DEFAULT_BASE_URL}"
 SHA="${1:-$(git rev-parse --short HEAD 2>/dev/null)}"
 MAX_TRIES="${MAX_TRIES:-40}"
 SLEEP_SEC="${SLEEP_SEC:-10}"
