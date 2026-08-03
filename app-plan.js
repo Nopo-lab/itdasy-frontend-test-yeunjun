@@ -11,8 +11,9 @@
   let _currentPlan = 'free';
   let _cancelScheduled = false;   // 취소 예약(만료일까지 유지)
   let _periodEnd = null;          // 다음 결제일/만료일
-  let _store = null;              // 'apple' | 'google' | 'portone' | null — 누가 결제를 갖고 있나
+  let _store = null;              // 'apple' | 'google' | 'portone' | 'demo' | null — 누가 결제를 갖고 있나
   let _productId = null;          // 스토어 구독관리 딥링크의 sku (Google)
+  let _stateUid = null;           // 위 캐시가 '누구 것' 인지 (계정 전환 시 폐기용)
 
   // Google Play 구독관리 딥링크에 필요한 패키지명.
   //   ⚠️ iOS(com.nopolab.itdasy)와 다르다 — Android 는 android/app/build.gradle 의
@@ -161,13 +162,37 @@
     }
   }
 
+  // [2026-08-03 재감사] 계정이 바뀌면 이 모듈의 캐시를 버린다.
+  //   로그아웃은 location.replace 로 페이지를 새로 띄우니 문제가 없다. 그런데 **리로드 없는
+  //   계정 전환 경로**가 있다: 토큰 만료로 게이트가 잠긴 화면에서 다른 계정으로 로그인하면
+  //   app-core 의 login() 이 applyNewSession(forcePurge) 후 lockOverlay 만 걷는다(app-core.js:1745).
+  //   그때 storage·IDB 는 비워지지만 **여기 클로저 변수는 그대로 남아**, 다음 _loadStatus 가
+  //   끝나기 전까지 이전 사용자의 플랜이 보인다 — 무료 계정에 "다음 갱신일"·유료 배지가 뜨고
+  //   isPaidPlan() 이 true 를 돌려준다(서버 한도는 별도 강제라 표시·클라 게이트 한정).
+  //   app-core 를 건드리지 않으려고 applyNewSession 이 갱신하는 last_user_id 를 그대로 쓴다.
+  function _uid() {
+    try { return localStorage.getItem('last_user_id'); } catch (_e) { return null; }
+  }
+  function _resetIfUserChanged() {
+    const u = _uid();
+    if (u === _stateUid) return;
+    _stateUid = u;   // 먼저 갱신 — 아래 재렌더가 여기 다시 들어와도 이 줄에서 즉시 빠진다(재귀 방지)
+    _currentPlan = 'free'; _store = null; _productId = null;
+    _periodEnd = null; _cancelScheduled = false;
+    // ⚠️ 변수만 비우면 **이미 그려진 DOM 은 그대로 남는다**(실측: 전환 직후 버튼이 계속
+    //   "스토어에서 구독 관리", meta 에 이전 사용자의 갱신일이 떠 있었다). 같이 다시 그린다.
+    try { _updatePlanBadgeUI('free'); _updateActionButton(); _renderSubMeta(); } catch (_e) { void _e; }
+  }
+
   async function _loadStatus() {
     const headers = window.authHeader && window.authHeader();
     if (!window.API || !headers || !headers.Authorization) return;
+    _resetIfUserChanged();
     try {
       const res = await apiFetch('/subscription/status', { headers });
       if (!res.ok) return;
       const d = await res.json();
+      _stateUid = _uid();   // 응답이 도착한 시점의 주인을 기록
       _currentPlan = (d.plan || 'free').toLowerCase();
       _cancelScheduled = !!d.cancel_at_period_end;
       _periodEnd = d.current_period_end || d.next_bill_at || null;
@@ -187,7 +212,7 @@
   //   그래서 결제 주체가 스토어면 취소 API 를 아예 안 부르고 스토어 구독관리로 보낸다.
   function _storeOwner() {
     if (_store === 'apple' || _store === 'google') return _store;
-    if (_store) return null;   // 'portone'/'toss' — 우리가 해지할 수 있는 웹 PG 결제
+    if (_store) return null;   // 'portone'/'demo' — 우리가 해지할 수 있는(또는 실결제 아닌) 경로
     // store 미상(구버전 서버 응답·체험 등). 네이티브 앱에서는 결제 경로가 IAP 뿐이므로
     // (doPlanAction 이 네이티브에서 웹 PG 를 막는다) 스토어 구독으로 보는 게 안전하다.
     if (!_isNative()) return null;
@@ -218,6 +243,7 @@
 
   // 구독 메타(만료일/취소 예약) + 취소 버튼 노출. planPopup 안에서만 의미 있음.
   function _renderSubMeta() {
+    _resetIfUserChanged();
     const meta = document.getElementById('planSubMeta');
     const cancelBtn = document.getElementById('planCancelBtn');
     const paid = ['pro', 'premium', 'membership'].includes(_currentPlan);  // [2026-07-26] membership 도 유료(취소·만료 UI 노출)
@@ -391,11 +417,12 @@
   window.refreshPlanStatus = _loadStatus;   // 결제/취소 성공 후 app-billing 이 호출
 
   // 외부에서 현재 플랜 조회 (고객·매출 한도 분기용)
-  window.getCurrentPlan = () => _currentPlan;
-  window.getCurrentPlanLabel = () => _planDisplayName(_currentPlan);
+  // 읽기 진입점마다 계정 확인 — 리로드 없는 계정 전환에서 이전 사용자 플랜이 새는 걸 막는다.
+  window.getCurrentPlan = () => { _resetIfUserChanged(); return _currentPlan; };
+  window.getCurrentPlanLabel = () => { _resetIfUserChanged(); return _planDisplayName(_currentPlan); };
   // [2026-07-26 결제] membership(정본 단일 멤버십)도 유료로 인식 — 예전엔 pro/premium 만 봐서
   //   6,900원 결제자가 무료 취급(취소 UI·유료기능 클라 게이트에서 배제)됐다.
-  window.isPaidPlan = () => ['pro', 'premium', 'membership'].includes(_currentPlan);
+  window.isPaidPlan = () => { _resetIfUserChanged(); return ['pro', 'premium', 'membership'].includes(_currentPlan); };
 
   // [C-1] 구매 복원 — 스토어에서 소유한 구독을 다시 활성화(기기 변경·재설치 후).
   async function doRestorePurchases() {
