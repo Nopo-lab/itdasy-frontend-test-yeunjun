@@ -11,6 +11,14 @@
   let _currentPlan = 'free';
   let _cancelScheduled = false;   // 취소 예약(만료일까지 유지)
   let _periodEnd = null;          // 다음 결제일/만료일
+  let _store = null;              // 'apple' | 'google' | 'portone' | null — 누가 결제를 갖고 있나
+  let _productId = null;          // 스토어 구독관리 딥링크의 sku (Google)
+
+  // Google Play 구독관리 딥링크에 필요한 패키지명.
+  //   ⚠️ iOS(com.nopolab.itdasy)와 다르다 — Android 는 android/app/build.gradle 의
+  //   applicationId(com.y2do.itdasy)가 스토어 등록분이다. capacitor.config.json 의 appId 는
+  //   스캐폴딩 기본값(iOS 쪽)이라 여기 쓰면 안 된다.
+  const ANDROID_PACKAGE = 'com.y2do.itdasy';
 
   function _planDisplayName(plan) {
     if (plan === 'free') return '체험';
@@ -163,10 +171,49 @@
       _currentPlan = (d.plan || 'free').toLowerCase();
       _cancelScheduled = !!d.cancel_at_period_end;
       _periodEnd = d.current_period_end || d.next_bill_at || null;
+      _store = d.store || null;
+      _productId = d.product_id || null;
       _updateActionButton();
       _updatePlanBadgeUI(_currentPlan);
       _renderSubMeta();
     } catch (_) { void 0; }
+  }
+
+  // ─── 해지 경로 판정 ─────────────────────────────────────────────
+  // [2026-08-03] 스토어(Apple/Google) 구독은 **스토어에서만** 해지된다.
+  //   앱에서 POST /billing/cancel 을 불러도 우리 DB 의 cancel_at_period_end 만 켜질 뿐
+  //   스토어 자동갱신은 계속 돌아 요금이 청구된다. 그런데 화면엔 "취소 예약됐어요" 라고 떠서
+  //   사용자는 해지된 줄 안다 — Apple 3.1.2 / Google Play 구독 정책 위반이자 실제 소비자 피해.
+  //   그래서 결제 주체가 스토어면 취소 API 를 아예 안 부르고 스토어 구독관리로 보낸다.
+  function _storeOwner() {
+    if (_store === 'apple' || _store === 'google') return _store;
+    if (_store) return null;   // 'portone'/'toss' — 우리가 해지할 수 있는 웹 PG 결제
+    // store 미상(구버전 서버 응답·체험 등). 네이티브 앱에서는 결제 경로가 IAP 뿐이므로
+    // (doPlanAction 이 네이티브에서 웹 PG 를 막는다) 스토어 구독으로 보는 게 안전하다.
+    if (!_isNative()) return null;
+    let p = '';
+    try { p = (window.Capacitor.getPlatform && window.Capacitor.getPlatform()) || ''; } catch (_e) { void 0; }
+    return p === 'android' ? 'google' : 'apple';
+  }
+
+  function _storeSubUrl(owner) {
+    if (owner === 'google') {
+      const sku = _productId || (window.ItdasyIAP && window.ItdasyIAP.PRODUCT_ID) || '';
+      return 'https://play.google.com/store/account/subscriptions'
+        + (sku ? ('?sku=' + encodeURIComponent(sku) + '&package=' + ANDROID_PACKAGE) : '');
+    }
+    // iOS: 앱에서는 설정 앱으로 넘기는 itms-apps 스킴, 웹에서는 https 로.
+    return _isNative()
+      ? 'itms-apps://apps.apple.com/account/subscriptions'
+      : 'https://apps.apple.com/account/subscriptions';
+  }
+
+  function _openStoreSubs() {
+    const url = _storeSubUrl(_storeOwner() || 'apple');
+    if (window.hapticLight) window.hapticLight();
+    // 네이티브는 Capacitor 가 외부 스킴/외부 도메인 이동을 가로채 시스템에 넘긴다(웹뷰는 그대로).
+    if (_isNative()) { window.location.href = url; return; }
+    window.open(url, '_blank', 'noopener');
   }
 
   // 구독 메타(만료일/취소 예약) + 취소 버튼 노출. planPopup 안에서만 의미 있음.
@@ -174,17 +221,35 @@
     const meta = document.getElementById('planSubMeta');
     const cancelBtn = document.getElementById('planCancelBtn');
     const paid = ['pro', 'premium', 'membership'].includes(_currentPlan);  // [2026-07-26] membership 도 유료(취소·만료 UI 노출)
+    const owner = paid ? _storeOwner() : null;   // 'apple'|'google' 이면 스토어 관리 구독
     if (meta) {
       if (paid && _periodEnd) {
         const dt = new Date(_periodEnd);
         const ds = isNaN(dt.getTime()) ? '' : (dt.getFullYear() + '.' + (dt.getMonth() + 1) + '.' + dt.getDate());
-        meta.textContent = _cancelScheduled ? ('취소 예약됨 · ' + ds + '까지 이용 가능') : ('다음 결제일 ' + ds);
+        if (owner) {
+          // 스토어 구독은 우리 DB 의 cancel_at_period_end 가 실제 해지 여부를 말해주지 못한다.
+          // (스토어에서 해지해도 이 값은 false 고, 반대로 과거 앱 버튼으로 켜졌어도 결제는 계속됐다)
+          // 그래서 "취소 예약됨" 이라고 단정하지 않고 갱신일만 알린다.
+          meta.textContent = '다음 갱신일 ' + ds + ' · 해지는 ' + (owner === 'google' ? 'Play 스토어' : 'App Store') + '에서';
+        } else {
+          meta.textContent = _cancelScheduled ? ('취소 예약됨 · ' + ds + '까지 이용 가능') : ('다음 결제일 ' + ds);
+        }
         meta.style.display = 'block';
       } else {
         meta.style.display = 'none';
       }
     }
-    if (cancelBtn) cancelBtn.style.display = (paid && !_cancelScheduled) ? 'block' : 'none';
+    if (cancelBtn) {
+      if (owner) {
+        // 스토어 구독 — 취소 API 를 부르지 않는다. 구독관리 화면으로 보낼 뿐.
+        // (취소 예약 여부를 알 수 없으므로 _cancelScheduled 로 숨기지도 않는다)
+        cancelBtn.textContent = '스토어에서 구독 관리';
+        cancelBtn.style.display = 'block';
+      } else {
+        cancelBtn.textContent = '구독 취소';
+        cancelBtn.style.display = (paid && !_cancelScheduled) ? 'block' : 'none';
+      }
+    }
     // [C-1] 구매 복원 버튼 — 네이티브 + IAP 플러그인 있을 때만 노출(Apple 3.1.1 필수).
     const restoreBtn = document.getElementById('planRestoreBtn');
     if (restoreBtn) {
@@ -307,10 +372,13 @@
     }
   }
 
-  // 구독 취소 — 만료일까지 Pro 유지(서버 cancel_at_period_end).
+  // 구독 취소 / 스토어 구독 관리.
+  //   스토어(Apple·Google) 결제면 서버 취소 API 를 **부르지 않는다** — 위 _storeOwner() 주석 참고.
+  //   웹 PG(포트원) 결제일 때만 만료일까지 유지하는 취소 예약(cancel_at_period_end)을 건다.
   async function doCancelSubscription() {
+    if (_storeOwner()) { _openStoreSubs(); return; }
     if (!window.ItdasyBilling) return;
-    if (!window.confirm('구독을 취소할까요? 만료일까지는 계속 이용할 수 있어요.')) return;
+    if (!window.confirm('구독을 취소할까요?\n\n· 만료일까지는 계속 이용할 수 있어요.\n· 앱스토어·Play 스토어로 결제하셨다면 여기서는 해지되지 않아요. 스토어 구독 화면에서 해지해 주세요.')) return;
     const r = await window.ItdasyBilling.cancelSubscription();
     if (r && r.ok) { _cancelScheduled = true; _renderSubMeta(); }
   }
