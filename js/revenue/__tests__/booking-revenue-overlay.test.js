@@ -139,3 +139,42 @@ describe('mergeBrief — mom_delta_pct 를 예약금 포함 기준으로 다시 
     expect(merged.mom_delta_pct).toBeUndefined();
   });
 });
+
+// [매출감사 2026-08-04] 오버레이는 **멱등**해야 한다.
+//   app-revenue-month.js 가 보정본을 SWR 캐시에 쓰고, 캐시 히트 때 또 보정을 걸고 있었다.
+//   실측: 매출 51,000 + 예약금 50,000 = 101,000 이어야 하는데 화면에 151,000 이 떴다.
+describe('mergeSummary / mergeBrief — 두 번 걸어도 예약금이 두 번 더해지지 않는다', () => {
+  const O = loadOverlay();
+  const agg = { confirmed_deposit_total: 50000, booking_count: 1 };
+
+  test('mergeSummary 를 두 번 걸어도 total 이 같다', () => {
+    const once = O.mergeSummary({ total: 51000, net_total: 51000 }, agg);
+    const twice = O.mergeSummary(once, agg);
+    expect(once.total).toBe(101000);
+    expect(twice.total).toBe(101000);      // 151,000 이 되면 안 된다
+    expect(twice.net_total).toBe(101000);
+  });
+
+  test('세 번, 네 번 걸어도 마찬가지', () => {
+    let s = { total: 51000 };
+    for (let i = 0; i < 4; i++) s = O.mergeSummary(s, agg);
+    expect(s.total).toBe(101000);
+  });
+
+  test('mergeBrief 도 멱등', () => {
+    const once = O.mergeBrief(
+      { this_month_total: 51000, prev_month_total: 1350000, payment_breakdown: {} }, agg);
+    const twice = O.mergeBrief(once, agg);
+    expect(once.this_month_total).toBe(101000);
+    expect(twice.this_month_total).toBe(101000);
+    // payment_breakdown 도 두 배가 되면 안 된다
+    expect(twice.payment_breakdown.booking_deposit).toBe(50000);
+  });
+
+  test('예약금이 그 사이 늘면 차액만 반영된다', () => {
+    const once = O.mergeSummary({ total: 51000 }, agg);        // +50,000 → 101,000
+    const grown = O.mergeSummary(once, { confirmed_deposit_total: 80000, booking_count: 2 });
+    expect(grown.total).toBe(131000);                           // 101,000 + 30,000
+    expect(grown.confirmed_deposit_total).toBe(80000);
+  });
+});

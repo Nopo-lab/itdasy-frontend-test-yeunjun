@@ -101,6 +101,23 @@
       _num(base.booking_deposit_total),
       _num(agg && agg.confirmed_deposit_total)
     );
+    // [매출감사 2026-08-04] **이미 이 함수를 거친 객체에 다시 걸면 예약금이 두 번 더해진다.**
+    //
+    //   app-revenue-month.js 가 정확히 그렇게 하고 있었다:
+    //     _doFetchSummary : summary = await _withBookingOverlay(응답)   ← 보정본을
+    //                       _swrWriteKey(_monthSwrKey(), summary)        ← 그대로 캐시에 쓴다
+    //     캐시 히트       : return await _withBookingOverlay(cachedSummary)  ← 또 건다
+    //
+    //   실측(스테이징 user 5, 2026-08-04) — 매출 5만원을 UI 로 저장한 직후 화면:
+    //     매출 51,000 + 예약금 50,000 = 101,000 이어야 하는데 **151,000** 이 떴다.
+    //   원장님이 매출 화면을 다시 열 때마다 예약금이 계속 불어난다.
+    //
+    //   호출처를 하나씩 고치는 대신 **이 함수를 멱등하게** 만든다. 호출처는 3곳이고
+    //   (month · home · myshop) 앞으로 늘어난다. 한 곳만 놓쳐도 같은 버그가 돌아온다.
+    //   이미 얹은 금액(deposit_total)을 빼서 '차액만' 더한다 — 예약금이 그 사이 늘었으면
+    //   늘어난 만큼만 반영되고, 그대로면 0 이 더해진다.
+    const prev = base._booking_revenue_overlay;
+    if (prev) return { target, delta: target - _num(prev.deposit_total) };
     return { target, delta: target };
   }
 
