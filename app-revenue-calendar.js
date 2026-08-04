@@ -104,11 +104,16 @@
   function _renderDetail(detailEl, dateStr, records) {
     const list = (records || []).slice().sort((a, b) => (b.amount || 0) - (a.amount || 0));
     const total = list.reduce((s, r) => s + (r.amount || 0), 0);
-    // 결제수단 카운트
+    // 결제수단 카운트 — [매출감사 2026-08-04] **환불은 세지 않는다.**
+    //   문구가 'N팀 완료' 다. 환불이 한 팀으로 세지면 시술을 한 번 더 한 것처럼 보인다.
+    //   서버 summary.count 도 같은 규칙이라 여기만 다르면 화면끼리 숫자가 갈린다.
+    //   금액(total)은 음수가 그대로 더해져 자동 차감된다 — 그게 순매출이라 맞다.
+    const sales = list.filter(r => (r.amount || 0) >= 0);
+    const refunds = list.length - sales.length;
     const counts = {};
-    list.forEach(r => { const k = _normMethod(r.method); counts[k] = (counts[k] || 0) + 1; });
+    sales.forEach(r => { const k = _normMethod(r.method); counts[k] = (counts[k] || 0) + 1; });
     const methodStr = METHOD_ORDER.filter(k => counts[k]).map(k => `${TAG_LABEL[k]} ${counts[k]}`).join(' · ');
-    const sub = `${list.length}팀 완료${methodStr ? ' · ' + methodStr : ''}`;
+    const sub = `${sales.length}팀 완료${refunds ? ` · 환불 ${refunds}건` : ''}${methodStr ? ' · ' + methodStr : ''}`;
     const rows = list.map(r => {
       const t = _itemTitle(r);
       const nm = _esc(t.main) + (t.sub ? `<span class="sub">${_esc(t.sub)}</span>` : '');

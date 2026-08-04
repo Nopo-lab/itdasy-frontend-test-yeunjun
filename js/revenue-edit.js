@@ -41,7 +41,10 @@
       .rv-inline-edit .rie-actions{display:flex;gap:8px}
       .rv-inline-edit .rie-del{flex:0 0 auto;padding:12px 18px;border:1px solid #EF4444;border-radius:11px;background:var(--surface,#fff);color:#EF4444;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
       .rv-inline-edit .rie-save{flex:1;padding:12px;border:none;border-radius:11px;background:var(--brand-strong,#BC6675);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
-      .rv-inline-edit .rie-save:disabled,.rv-inline-edit .rie-del:disabled{opacity:.55;cursor:default}`;
+      .rv-inline-edit .rie-save:disabled,.rv-inline-edit .rie-del:disabled,.rv-inline-edit .rie-refund:disabled{opacity:.55;cursor:default}
+      .rv-inline-edit .rie-refund{flex:0 0 auto;padding:12px 16px;border:1px solid var(--border,#E5E8EB);border-radius:11px;background:var(--surface,#fff);color:var(--text-subtle,#6B7684);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+      .rv-inline-edit .rie-note{font-size:12px;color:var(--text-subtle,#6B7684);line-height:1.5;margin:-4px 0 12px}
+      .rv-inline-edit .rie-note b{color:var(--text,#191F28);font-weight:700}`;
     document.head.appendChild(s);
   }
 
@@ -83,8 +86,10 @@
       <div class="rie-methods">
         ${METHODS.map(m => `<button type="button" class="rie-m${m.k === method ? ' on' : ''}" data-m="${m.k}">${TAG[m.k] || m.label}</button>`).join('')}
       </div>
+      <div class="rie-note" data-rie-note hidden></div>
       <div class="rie-actions">
         <button type="button" class="rie-del">삭제</button>
+        <button type="button" class="rie-refund" data-rie-refund hidden>환불</button>
         <button type="button" class="rie-save">저장</button>
       </div>`;
     rowEl.insertAdjacentElement('afterend', panel);
@@ -92,7 +97,40 @@
     const amtInput = panel.querySelector('.rie-amt');
     const saveBtn = panel.querySelector('.rie-save');
     const delBtn = panel.querySelector('.rie-del');
-    let busy = false; // 저장/삭제 연타 방어
+    const refundBtn = panel.querySelector('[data-rie-refund]');
+    const noteEl = panel.querySelector('[data-rie-note]');
+    let busy = false; // 저장/삭제/환불 연타 방어
+
+    // [매출감사 2026-08-04] 환불 — 삭제와 다르다.
+    //   삭제 = 잘못 입력한 걸 없앤다. 그날 받았다는 사실까지 사라진다.
+    //   환불 = 실제로 돈을 돌려줬다. 원매출과 환불이 **둘 다** 장부에 남는다.
+    //   원장님이 손님에게 돈을 돌려줬는데 삭제를 누르면 그 기록이 없어진다.
+    const isRefundRow = Number(item.amount) < 0 || item.refund_of_id != null;
+    if (isRefundRow) {
+      // 환불 기록 자체는 편집 대상이 아니다(서버도 400 으로 막는다).
+      amtInput.disabled = true;
+      saveBtn.disabled = true;
+      panel.querySelectorAll('.rie-m').forEach(b => { b.disabled = true; });
+      noteEl.hidden = false;
+      noteEl.innerHTML = '이건 <b>환불 기록</b>이에요. 금액은 바꿀 수 없어요.';
+    } else {
+      refundBtn.hidden = false;
+      // 이미 일부 환불된 매출이면 남은 금액을 먼저 알려준다 — 눌러보고 실패하는 것보다 낫다.
+      (async () => {
+        try {
+          const r = await window.apiFetch('/revenue/' + item.id + '/refunds');
+          if (!r.ok) return;
+          const d = await r.json();
+          if (d.refunded_total > 0) {
+            noteEl.hidden = false;
+            noteEl.innerHTML = '이미 <b>' + Number(d.refunded_total).toLocaleString('ko-KR')
+              + '원</b> 환불했어요. 남은 환불 가능액 <b>'
+              + Number(d.refundable).toLocaleString('ko-KR') + '원</b>';
+          }
+          if (d.refundable <= 0) { refundBtn.disabled = true; refundBtn.textContent = '환불 완료'; }
+        } catch (_e) { void _e; }
+      })();
+    }
 
     panel.querySelectorAll('.rie-m').forEach(b => b.addEventListener('click', () => {
       method = b.dataset.m;
@@ -132,6 +170,45 @@
       };
       if (typeof window._inlineConfirm === 'function') window._inlineConfirm('이 매출을 삭제할까요?', doDelete);
       else doDelete();
+    });
+
+    refundBtn.addEventListener('click', () => {
+      if (busy) return;
+      const full = Math.round(Number(item.amount) || 0);
+      const doRefund = async () => {
+        if (busy) return;
+        busy = true;
+        refundBtn.disabled = true; saveBtn.disabled = true; delBtn.disabled = true;
+        refundBtn.textContent = '환불 중…';
+        try {
+          // 멱등키 — 타임아웃으로 끊겨 원장님이 다시 눌러도 두 번 환불되지 않는다.
+          const txn = 'refund-' + item.id + '-' + Date.now() + '-'
+                    + Math.random().toString(36).slice(2, 8);
+          const res = await window.apiFetch('/revenue/' + item.id + '/refund', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ client_txn_id: txn }),
+          });
+          if (!res.ok) {
+            let msg = '';
+            try { msg = (await res.json()).detail || ''; } catch (_e) { void _e; }
+            throw new Error(msg || ('HTTP ' + res.status));
+          }
+          if (window.showToast) window.showToast('환불로 기록했어요', 'success');
+          closeAll();
+          _emitChanged('refund_revenue');
+        } catch (e) {
+          busy = false;
+          refundBtn.disabled = false; saveBtn.disabled = false; delBtn.disabled = false;
+          refundBtn.textContent = '환불';
+          if (window.showToast) window.showToast(e && e.message ? e.message : '환불 실패');
+        }
+      };
+      const msg = full > 0
+        ? full.toLocaleString('ko-KR') + '원을 환불로 기록할까요?\n원래 매출은 그대로 남아요.'
+        : '환불로 기록할까요?';
+      if (typeof window._inlineConfirm === 'function') window._inlineConfirm(msg, doRefund);
+      else doRefund();
     });
 
     try { panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_e) { void _e; }
