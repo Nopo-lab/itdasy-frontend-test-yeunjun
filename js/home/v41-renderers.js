@@ -110,7 +110,13 @@
     if (total === 0) {
       return { ...base, dot: '#3B82F6', hl: '아직 이번달 매출이 없어요', desc: '첫 매출 기록해보기' };
     }
-    const won = Math.round(total / 10000) + '만원';
+    // [매출감사 2026-08-04] 만원 미만이 '0만원' 으로 찍히던 것.
+    //   Math.round(4999/10000) = 0 → "0만원". total===0 분기는 이미 지나왔으므로
+    //   "아직 매출이 없어요" 도 아니고, 매출이 있는데 0원이라고 말하는 화면이 된다.
+    //   첫 매출 3,000원을 기록한 CBT 첫날 원장님이 바로 보게 되는 숫자다.
+    const won = total < 10000
+      ? total.toLocaleString('ko-KR') + '원'
+      : Math.round(total / 10000) + '만원';
     const mom = brief.mom_delta_pct;                 // 숫자 또는 null
     const p = (mom == null) ? null : Math.round(mom); // 정수 반올림 (BE는 소수1자리)
     const goal = Number(brief.monthly_goal) || 0;
