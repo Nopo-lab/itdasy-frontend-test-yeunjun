@@ -202,19 +202,11 @@
     const items = await _fetchPeriodData(p);
     _isOffline = false; _items = items; return _items;
   }
-  // [v221] 단위별 prefetch — 같은 앵커 기준 다른 단위 한 번씩 미리 캐싱
-  function _prefetchAllPeriods() {
-    PERIODS.forEach(p => {
-      if (p === _currentPeriod) return;
-      const swr = _readSWRPeriod(p);
-      if (swr && swr.fresh) return;
-      // _computeRange 가 _currentPeriod 에 의존하므로 잠깐 단위만 교체해서 호출 후 복원
-      const saved = _currentPeriod;
-      _currentPeriod = p;
-      _fetchPeriodData(p).catch(() => {});
-      _currentPeriod = saved;
-    });
-  }
+  // [매출감사 2026-08-04] `_prefetchAllPeriods` 제거.
+  //   매출 화면을 열 때마다 day·week 를 미리 받아뒀는데(요청 2회),
+  //   **그 데이터를 그릴 경로가 없다.** period 전환 UI(data-rv-act="period")가
+  //   저장소 어디에도 렌더되지 않아 _currentPeriod 는 'month' 로 고정돼 있다.
+  //   쓰지 않을 응답을 매번 받느라 모바일 데이터와 서버 시간만 썼다.
 
   // ── CRUD ───────────────────────────────────────────────
   async function list(period) {
@@ -481,7 +473,7 @@
       if (!PERIODS.includes(p) || p === _currentPeriod) return;
       _currentPeriod = p; _revWindow = 50;
       _customRange = _computeRange();
-      _loadAndRender(); _prefetchAllPeriods();
+      _loadAndRender();
       return;
     }
     // [v221] 앵커 날짜 ← / → 이동
@@ -1058,7 +1050,6 @@
     document.body.style.overflow = 'hidden';
     document.body.classList.add('rv-mode');
     _loadAndRender().catch(() => {});
-    _prefetchAllPeriods();
     try {
       if (typeof window._registerSheet === 'function') window._registerSheet('revenue', window.closeRevenue);
       if (typeof window._markSheetOpen === 'function') window._markSheetOpen('revenue');

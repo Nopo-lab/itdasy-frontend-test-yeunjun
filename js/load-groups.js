@@ -180,7 +180,6 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'app-revenue-month.js?v=local-151154',
   'app-revenue-calendar.js?v=local-151154',
   'js/revenue-edit.js?v=local-151154',
-  'app-revenue-hub.js?v=local-151154',
-  'app-revenue-report.js'
+  'app-revenue-hub.js?v=local-151154'
   ]
 });
