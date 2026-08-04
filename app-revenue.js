@@ -1206,5 +1206,32 @@
         }
       }
     });
+
+    // [매출감사 2026-08-04] **다른 탭**에서 매출이 바뀐 걸 이 탭이 몰랐다.
+    //
+    //   위 'itdasy:data-changed' 는 **같은 탭 안에서만** 도는 CustomEvent 다.
+    //   탭 A 에서 매출을 저장하면 A 는 캐시를 지우고 다시 그리지만,
+    //   탭 B 는 자기 메모리에 든 옛 요약을 계속 보여준다.
+    //
+    //   실측(스테이징, 2026-08-04): PC 에서 탭 두 개를 띄우고
+    //     탭A 에서 5만원 저장 → 서버 125,000
+    //     탭B 는 홈↔매출을 오가도 **75,000원** 을 계속 표시
+    //   캐시(localStorage)는 탭A 가 지워서 비어 있는데도 그랬다 —
+    //   탭B 가 메모리 상태로 다시 그리기 때문이다.
+    //
+    //   원장님이 PC 와 태블릿, 또는 창 두 개를 놓고 쓰면 한쪽 숫자가 계속 틀리다.
+    //   돈 화면에서 이건 그냥 두면 안 된다.
+    //
+    //   localStorage 의 'storage' 이벤트는 **다른 탭에서 바뀔 때만** 온다(자기 탭엔 안 옴).
+    //   그래서 캐시가 지워진 걸 감지해 이 탭도 같이 비우고, 매출 화면이 떠 있으면 다시 그린다.
+    window.addEventListener('storage', async (e) => {
+      if (!e || !e.key || e.key.indexOf('pv_cache::revenue::') !== 0) return;
+      if (e.newValue !== null) return;   // 삭제(무효화)된 경우만 — 갱신은 각 탭이 알아서 읽는다
+      _clearSWRRevenue();
+      const sheet = document.getElementById('revenueSheet');
+      if (sheet && sheet.style.display !== 'none') {
+        try { await _loadAndRender(); } catch (_err) { void _err; }
+      }
+    });
   }
 })();
