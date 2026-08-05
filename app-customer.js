@@ -467,9 +467,19 @@
     // [출시감사 2026-08-05 P0-1] 서버 검색 결과가 도착해 있으면 그걸 쓴다.
     //   캐시(200건) 안에서만 찾던 게 P0 의 정체였다.
     if (_serverHits && _serverHits.q === q) return _serverHits.items;
+    // [2026-08-05] 공백 무시 — **서버와 같은 규칙**이어야 한다.
+    //   백엔드에만 넣었더니 손님 200명 이하인 샵(=대다수)은 서버 검색을 아예 안 타서
+    //   `"테 스트손님1"` 이 라이브에서 0건이었다(실측). 규칙이 갈리면 화면마다 결과가 달라진다.
+    const qs = q.replace(/\s+/g, '');
+    const sq = s => String(s || '').toLowerCase().replace(/\s+/g, '');
+    // 전화는 하이픈·공백을 뺀 숫자로도 맞춰본다 (010-1234-5678 ↔ 01012345678)
+    const qd = q.replace(/\D/g, '');
     return _cache.filter(c =>
       (c.name && c.name.toLowerCase().includes(q)) ||
-      (c.phone && c.phone.includes(q)) ||
+      (c.name && qs && sq(c.name).includes(qs)) ||
+      // 전화는 **숫자 3자리 이상**일 때만 부분일치 — 서버와 같은 규칙이다.
+      //   예전엔 `c.phone.includes(q)` 라 `"0"` 한 글자에 전 고객이 걸렸다.
+      (c.phone && qd.length >= 3 && c.phone.replace(/\D/g, '').includes(qd)) ||
       (c.memo && c.memo.toLowerCase().includes(q)) ||
       (c.tags || []).some(t => t.toLowerCase().includes(q)) ||
       (c.name && _chosungMatch(q, c.name))
