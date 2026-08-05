@@ -225,25 +225,66 @@
   // ── 만료 임박 리스트 ────────────────────────────────────────
   async function openExpiringList(days) {
     days = days || 30;
-    _open('회원권 만료 임박', `<div style="text-align:center;padding:40px 0;color:var(--text-2,#666);">불러오는 중…</div>`, `${days}일 이내 만료 예정 고객`);
+    _open('회원권 만료 관리', `<div style="text-align:center;padding:40px 0;color:var(--text-2,#666);">불러오는 중…</div>`, `이미 만료됨 + ${days}일 이내 만료 예정`);
     try {
       const r = await _fetch('GET', '/memberships/expiring?days=' + days);
       const items = r.items || [];
       const sheet = document.getElementById('membershipSheet');
       if (!items.length) {
-        sheet.querySelector('#msBody').innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--text-2,#666);">${days}일 이내 만료되는 회원권이 없어요</div>`;
+        sheet.querySelector('#msBody').innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--text-2,#666);">만료됐거나 ${days}일 이내 만료되는 회원권이 없어요</div>`;
         return;
       }
+      // [회원권감사 2026-08-05] 이미 만료된 회원권이 "0일 후 만료" 로 떴다.
+      //   `days_until_expire` 가 max(0,..) 라 열흘 전에 끝난 것도 0 이었다(실측).
+      //   원장님이 그 명단 보고 "곧 만료돼요" 라고 연락하면 손님은 "이미 끝났다는데요?" 가 된다.
+      //   서버가 이제 `is_expired` 와 음수 일수를 준다 — 화면도 나눠서 보여준다.
+      const _dayLabel = (it) => {
+        const d = it.days_until_expire;
+        if (it.is_expired) return `<span style="color:var(--danger,#E5484D);font-weight:700;">만료됨${typeof d === 'number' && d < 0 ? ` (${Math.abs(d)}일 지남)` : ''}</span>`;
+        if (typeof d !== 'number') return '만료일 미정';
+        return d === 0 ? '오늘 만료' : `${d}일 후 만료`;
+      };
       const list = items.map(it => `
-        <div style="padding:14px;border:1.5px solid var(--border,#e5e5e5);border-radius:var(--r-md,14px);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+        <div style="padding:14px;border:1.5px solid ${it.is_expired ? 'var(--danger,#E5484D)' : 'var(--border,#e5e5e5)'};border-radius:var(--r-md,14px);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-weight:700;font-size:15px;">${(it.name || '').replace(/[<>&"]/g,'')}</div>
-            <div style="color:var(--text-2,#666);font-size:12px;margin-top:3px;">잔액 ${formatMoney(it.membership_balance)} · ${it.days_until_expire ?? '-'}일 후 만료</div>
+            <div style="color:var(--text-2,#666);font-size:12px;margin-top:3px;">잔액 ${formatMoney(it.membership_balance)} · ${_dayLabel(it)}</div>
+            ${it.is_expired ? '<div style="color:var(--text-2,#666);font-size:11px;margin-top:3px;">잔액은 남아 있어요. 충전하면 1년 연장되고, 해지하면 환불로 정산돼요.</div>' : ''}
           </div>
-          <button class="ms-row-topup" data-id="${it.customer_id}" data-name="${(it.name || '').replace(/[<>&"]/g,'')}" style="padding:8px 14px;background:var(--brand);color:#fff;border:none;border-radius:var(--r-pill,999px);font-size:12px;font-weight:700;cursor:pointer;">충전 안내</button>
+          <div style="display:flex;gap:6px;flex:none;">
+            <button class="ms-row-topup" data-id="${it.customer_id}" data-name="${(it.name || '').replace(/[<>&"]/g,'')}" style="min-height:44px;padding:8px 14px;background:var(--brand);color:#fff;border:none;border-radius:var(--r-pill,999px);font-size:12px;font-weight:700;cursor:pointer;">${it.is_expired ? '재충전' : '충전 안내'}</button>
+            ${it.is_expired && it.membership_balance > 0 ? `<button class="ms-row-settle" data-id="${it.customer_id}" data-name="${(it.name || '').replace(/[<>&"]/g,'')}" data-bal="${it.membership_balance}" style="min-height:44px;padding:8px 12px;background:transparent;color:var(--danger,#E5484D);border:1.5px solid var(--danger,#E5484D);border-radius:var(--r-pill,999px);font-size:12px;font-weight:700;cursor:pointer;">환불 정산</button>` : ''}
+          </div>
         </div>
       `).join('');
-      sheet.querySelector('#msBody').innerHTML = list;
+      const _hdr = (r.expired_count || 0) > 0
+        ? `<div style="padding:10px 12px;margin-bottom:10px;border-radius:12px;background:var(--surface-2,#F7F8FA);font-size:12px;color:var(--text);">이미 만료 <b>${r.expired_count}명</b> · 곧 만료 <b>${r.expiring_soon_count || 0}명</b></div>`
+        : '';
+      sheet.querySelector('#msBody').innerHTML = _hdr + list;
+      // [회원권감사 2026-08-05] 해지(정산) 진입점 — `POST /memberships/cancel` 은 백엔드에
+      //   예전부터 있었는데 **프론트·잇비 어디서도 부르지 않았다**(호출처 0건).
+      //   그래서 만료된 회원권의 잔액을 끝낼 방법이 화면에 없었다. 위 안내문("해지하면
+      //   환불로 정산돼요")이 실행 가능하려면 여기서 부를 수 있어야 한다.
+      sheet.querySelectorAll('.ms-row-settle').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (btn.dataset.busy === '1') return;
+          const bal = Number(btn.dataset.bal) || 0;
+          const ok = window.confirm(
+            `${btn.dataset.name}님 회원권을 정산할까요?\n\n남은 잔액 ${formatMoney(bal)}을 환불로 기록하고 회원권을 종료해요.\n장부에 환불 내역이 남습니다.`
+          );
+          if (!ok) return;
+          btn.dataset.busy = '1'; btn.disabled = true; btn.textContent = '정산 중…';
+          try {
+            await _fetch('POST', '/memberships/cancel/' + btn.dataset.id);
+            if (window.showToast) window.showToast(`${btn.dataset.name}님 회원권 정산 완료 (환불 ${formatMoney(bal)})`);
+            openExpiringList(days);
+          } catch (e) {
+            console.warn('[membership] 정산 실패', e);
+            if (window.showToast) window.showToast('정산 실패 — 잠시 후 다시 시도해 주세요');
+            btn.dataset.busy = '0'; btn.disabled = false; btn.textContent = '환불 정산';
+          }
+        });
+      });
       sheet.querySelectorAll('.ms-row-topup').forEach(btn => {
         btn.addEventListener('click', () => {
           openTopupSheet(parseInt(btn.dataset.id, 10), btn.dataset.name);
