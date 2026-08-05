@@ -19,6 +19,11 @@
   const OFFLINE_KEY = 'itdasy_customers_offline_v1';
   let _cache = null;
   let _isOffline = false;
+  // [출시감사 2026-08-05 P0-1] 서버 기준 전체 고객 수 / 더 있는지 / 서버 검색 결과
+  let _total = 0;
+  let _hasMore = false;
+  let _serverHits = null;   // {q, items} — 서버 검색 중일 때만 채워진다
+  let _searchTimer = null;
 
   function _now() { return new Date().toISOString(); }
 
@@ -39,6 +44,22 @@
   }
 
   // ── 네트워크 호출 공통 ────────────────────────────────────
+  // [출시감사 2026-08-05 P1-5] 서버가 준 실패 이유를 **버리지 않는다.**
+  //   예전엔 `throw new Error('HTTP ' + res.status)` 라 응답 본문을 통째로 버렸다.
+  //   그 결과 409(중복)·402(한도)·401(만료)이 전부 "다시 시도해주세요" 하나로 뭉개졌고,
+  //   409 는 재시도해도 영원히 실패하는데 재시도하라고 안내했다(실측).
+  //   백엔드가 공들여 쓴 한국어 메시지가 사용자에게 도달하지 못하던 지점.
+  function _apiError(status, payload) {
+    const d = payload && payload.detail;
+    const e = new Error('HTTP ' + status);
+    e.status = status;
+    e.detail = d;
+    // detail 이 객체면 서버가 정한 code(duplicate_customer 등)를 그대로 들고 간다
+    e.code = (d && typeof d === 'object') ? d.code : null;
+    e.serverMessage = (d && typeof d === 'object') ? d.message : (typeof d === 'string' ? d : null);
+    return e;
+  }
+
   async function _api(method, path, body) {
     if (!window.API || !window.authHeader) throw new Error('no-auth');
     const auth = window.authHeader();
@@ -48,11 +69,52 @@
       headers: { ...auth, 'Content-Type': 'application/json' },
     };
     if (body) opts.body = JSON.stringify(body);
-    const res = await apiFetch(path, opts);
+    let res;
+    try {
+      res = await apiFetch(path, opts);
+    } catch (netErr) {
+      // [출시감사 2026-08-05 P1-4] 진짜 네트워크 끊김. 예전엔 이 에러가 그대로 위로 튀어
+      //   `_isOffline` 이 영원히 false 였고, 그래서 오프라인 저장 경로가 **한 번도 안 돌았다**
+      //   (실측: 네트워크 끊고 고객 추가 → localStorage 0건 → 입력 소실).
+      const e = new Error('network-down');
+      e.status = 0;
+      e.cause = netErr;
+      throw e;
+    }
     if (res.status === 404 || res.status === 501) throw new Error('endpoint-missing');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) {
+      let payload = null;
+      try { payload = await res.json(); } catch (_e) { void _e; }
+      throw _apiError(res.status, payload);
+    }
     return res.status === 204 ? null : await res.json();
   }
+
+  // 상태코드 → 원장님이 읽고 **무엇을 해야 할지 아는** 문구.
+  //   "다시 시도해주세요" 는 재시도로 풀리는 경우(5xx·네트워크)에만 쓴다.
+  function _friendlyError(e, verb) {
+    verb = verb || '저장';
+    if (!e) return `${verb} 실패 — 다시 시도해주세요`;
+    if (e.message === 'network-down') return '인터넷 연결이 끊겼어요. 연결되면 다시 시도해 주세요';
+    switch (e.status) {
+      case 409:
+        if (e.code === 'duplicate_customer') {
+          return `이미 등록된 손님이에요${e.detail?.existing_name ? ` (${e.detail.existing_name})` : ''}`;
+        }
+        if (e.code === 'membership_balance_remains') {
+          return e.serverMessage || '회원권 잔액이 남아 있어요';
+        }
+        return e.serverMessage || '이미 있는 정보예요';
+      case 401: return '로그인이 만료됐어요. 다시 로그인해 주세요';
+      case 402: return e.serverMessage || '무료 한도에 도달했어요. 멤버십에서 계속 이용할 수 있어요';
+      case 403: return '권한이 없어요';
+      case 422: return e.serverMessage || '입력값을 확인해 주세요';
+      case 429: return '요청이 많아요. 잠시 후 다시 시도해 주세요';
+      default:
+        return `${verb} 실패 — 다시 시도해주세요`;
+    }
+  }
+  window.CustomerErrorText = _friendlyError;  // 편집 모달(app-customer-dashboard.js)이 함께 쓴다
 
   // ── Stale-while-revalidate 캐시 — localStorage persistent (앱 재시작 후에도 즉시 렌더)
   const _SWR_KEY = 'pv_cache::customers';
@@ -63,12 +125,13 @@
       const raw = localStorage.getItem(_SWR_KEY) || sessionStorage.getItem(_SWR_KEY);
       if (!raw) return null;
       const obj = JSON.parse(raw);
-      return { items: obj.d, age: Date.now() - obj.t, fresh: Date.now() - obj.t < _SWR_TTL };
+      return { items: obj.d, total: Number.isFinite(obj.n) ? obj.n : (obj.d || []).length,
+               age: Date.now() - obj.t, fresh: Date.now() - obj.t < _SWR_TTL };
     } catch (_e) { return null; }
   }
   function _writeSWR(items) {
-    if (window.CustomerCache?.set) return window.CustomerCache.set(items);
-    const payload = JSON.stringify({ t: Date.now(), d: items });
+    if (window.CustomerCache?.set) return window.CustomerCache.set(items, _total || (items || []).length);
+    const payload = JSON.stringify({ t: Date.now(), d: items, n: _total || (items || []).length });
     try { localStorage.setItem(_SWR_KEY, payload); } catch (_e) {
       try { sessionStorage.setItem(_SWR_KEY, payload); } catch (_e2) { void _e2; }
     }
@@ -77,6 +140,70 @@
     if (window.CustomerCache?.clear) return window.CustomerCache.clear();
     try { localStorage.removeItem(_SWR_KEY); } catch (_e) { void _e; }
     try { sessionStorage.removeItem(_SWR_KEY); } catch (_e) { void _e; }
+  }
+
+  // ── [출시감사 2026-08-05 P1-4] 오프라인에 쌓인 고객을 온라인 복귀 시 서버로 올린다 ──
+  //   예전엔 이런 큐가 **아예 없었다.** 오프라인 저장소에 쓰기만 하고 서버로 보내는 코드가
+  //   어디에도 없어서, 담긴 손님은 그 기기 localStorage 안에서 영원히 나오지 못했다.
+  let _flushing = false;
+  async function flushPending() {
+    if (_flushing) return { sent: 0, left: 0 };
+    const list = _loadOffline();
+    const pending = list.filter(c => c && c._pendingSync);
+    if (!pending.length) return { sent: 0, left: 0 };
+    _flushing = true;
+    let sent = 0;
+    try {
+      for (const rec of pending) {
+        try {
+          // force=true — 오프라인 중에 다른 기기에서 같은 손님을 등록했을 수 있다.
+          // 여기서 409 로 막히면 원장님이 적은 내용이 또 사라진다. 중복은 나중에 병합이 낫다.
+          await _api('POST', '/customers?force=true', {
+            name: rec.name, phone: rec.phone || null, memo: rec.memo || null,
+            tags: rec.tags || [], birthday: rec.birthday || null,
+          });
+          sent += 1;
+          const cur = _loadOffline().filter(c => c.id !== rec.id);
+          _saveOffline(cur);
+        } catch (e) {
+          if (e && (e.message === 'network-down' || e.status === 0)) break;  // 아직 오프라인 — 다음 기회에
+          // 서버가 거절(422 등) → 무한 재시도 방지로 큐에서 빼고 알린다
+          const cur = _loadOffline().filter(c => c.id !== rec.id);
+          _saveOffline(cur);
+          if (window.showToast) window.showToast(`'${rec.name}' 저장 실패 — ${_friendlyError(e, '저장')}`);
+        }
+      }
+    } finally {
+      _flushing = false;
+    }
+    if (sent) {
+      _isOffline = false;
+      _clearSWR();
+      try { await _fetchFresh(); } catch (_e) { void _e; }
+      if (window.showToast) window.showToast(`오프라인에 저장했던 손님 ${sent}명을 올렸어요`);
+      try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_customer', optimistic: false } })); } catch (_e) { void _e; }
+    }
+    return { sent, left: _loadOffline().filter(c => c._pendingSync).length };
+  }
+
+  if (typeof window !== 'undefined' && !window._customerSyncListenerInit) {
+    window._customerSyncListenerInit = true;
+    window.addEventListener('online', () => { flushPending().catch(() => {}); });
+
+    // ── [출시감사 2026-08-05 P2-1] 탭 간 동기화 ──
+    //   매출(app-revenue.js)엔 이미 storage 리스너가 있는데(커밋 c7cf3fd "창 두 개면 숫자가
+    //   갈렸다") 고객엔 없었다. 실측: 탭 A 에서 손님을 지워도 탭 B 는 계속 보여주고,
+    //   그 유령 행을 누르면 "불러오기 실패" 가 났다.
+    window.addEventListener('storage', (e) => {
+      if (e.key !== _SWR_KEY) return;   // 다른 탭이 고객 캐시를 갱신했다
+      try {
+        const swr = _readSWR();
+        if (!swr) return;
+        _cache = swr.items;
+        const sheet = document.getElementById('customerSheet');
+        if (sheet && sheet.style.display === 'flex') _rerender && _rerender();
+      } catch (_err) { void _err; }
+    });
   }
 
   // 챗봇·다른 소스 데이터 변경 감지 → 오픈된 시트 즉시 새로고침
@@ -119,13 +246,31 @@
       const items = _mergeOptimistic(await window.CustomerCache.fetchFresh());
       _isOffline = false;
       _cache = items;
+      // [출시감사 2026-08-05 P0-1] 이 분기가 우선순위라, 여기서 total 을 안 받으면
+      //   아래 직접 fetch 경로에서 아무리 채워도 실제로는 늘 0 이다.
+      const t = window.CustomerCache._lastTotal;
+      _total = Number.isFinite(t) ? t : items.length;
+      _hasMore = !!window.CustomerCache._lastHasMore;
       return _cache;
     }
     const d = await _api('GET', '/customers');
     _isOffline = false;
     _cache = _mergeOptimistic(d.items || []);
+    // [출시감사 2026-08-05 P0-1] 서버가 알려주는 **진짜 전체 수**를 들고 있는다.
+    //   예전엔 응답 total 이 잘린 개수(=200)와 같아서 화면이 "전체 200명" 이라고 우겼다.
+    //   DB 에 10만 명이 있어도 그렇게 보였다. 이제 total > 캐시길이면 서버 검색으로 넘어간다.
+    _total = Number.isFinite(d.total) ? d.total : _cache.length;
+    _hasMore = !!d.has_more;
     _writeSWR(_cache);
     return _cache;
+  }
+
+  // [출시감사 2026-08-05 P0-1] 캐시 밖 손님을 찾기 위한 서버 검색.
+  //   프론트 search() 는 캐시(최대 200건)를 filter 할 뿐이라, 201번째부터의 손님은
+  //   이름으로도 전화로도 절대 못 찾았다. CRM 에서 이건 기능 부재다.
+  async function searchServer(q) {
+    const d = await _api('GET', '/customers?limit=200&q=' + encodeURIComponent(q));
+    return { items: d.items || [], total: Number(d.total) || 0, hasMore: !!d.has_more };
   }
 
   // ── CRUD ────────────────────────────────────────────────
@@ -134,6 +279,9 @@
     const swr = _readSWR();
     if (swr) {
       _cache = swr.items;
+      // [출시감사 2026-08-05 P0-1] 캐시에 적힌 전체 수를 회수한다. 이게 없으면
+      //   캐시가 warm 한 평소 경로에서 _total 이 0 으로 남아 서버 검색이 안 켜진다.
+      if (Number.isFinite(swr.total)) _total = swr.total;
       // 신선 캐시면 끝. 오래됐으면 백그라운드로 갱신.
       if (!swr.fresh) {
         _fetchFresh().then(fresh => {
@@ -150,7 +298,11 @@
     try {
       return await _fetchFresh();
     } catch (e) {
-      if (e.message === 'endpoint-missing' || e.message === 'no-token') {
+      // [출시감사 2026-08-05 P1-4] `network-down` 추가.
+      //   예전엔 endpoint-missing / no-token 만 오프라인으로 봤다. 진짜 네트워크 끊김은
+      //   `TypeError: Failed to fetch` 라 어디에도 안 걸렸고, 그래서 오프라인 폴백 전체가
+      //   **도달 불가능한 죽은 코드**였다(파일 헤더엔 "localStorage 오프라인 폴백" 이라 적혀 있는데도).
+      if (e.message === 'endpoint-missing' || e.message === 'no-token' || e.message === 'network-down') {
         _isOffline = true;
         _cache = _loadOffline();
         return _cache;
@@ -228,11 +380,29 @@
       try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_customer', optimistic: false } })); } catch (_e) { void _e; }
       return created;
     } catch (err) {
-      // 실패 — 옵티미스틱 항목 제거 + 빨간 토스트
+      // 실패 — 옵티미스틱 항목 제거
       if (_cache) _cache = _cache.filter(c => c.id !== optimisticRecord.id);
       _writeSWR(_cache);
       try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_customer', optimistic: false, rollback: true } })); } catch (_e) { void _e; }
-      if (window.showToast) window.showToast('고객 추가 실패 — 다시 시도해주세요');
+      // [출시감사 2026-08-05 P1-4] 네트워크가 끊긴 거면 입력을 버리지 말고 오프라인에 담아둔다.
+      //   예전엔 그냥 토스트 띄우고 throw → 원장님이 적은 손님 정보가 그대로 사라졌다.
+      if (err && err.message === 'network-down') {
+        _isOffline = true;
+        const record = {
+          id: _uuid(), shop_id: localStorage.getItem('shop_id') || 'offline', ...data,
+          last_visit_at: null, visit_count: 0, created_at: _now(), deleted_at: null, _pendingSync: true,
+        };
+        const list = _loadOffline();
+        list.unshift(record);
+        _saveOffline(list);
+        if (_cache) _cache.unshift(record);
+        _writeSWR(_cache);
+        if (window.showToast) window.showToast('오프라인이라 이 기기에 저장해뒀어요. 연결되면 알려드릴게요');
+        return record;
+      }
+      // [출시감사 2026-08-05 P1-5] 토스트는 **호출부 한 곳에서만** 띄운다.
+      //   예전엔 여기와 _saveCustomerEdit 양쪽이 띄워서 실패 1회에 토스트가 4~6개 겹쳤다
+      //   (네트워크 요청은 1건인데 — 실측).
       throw err;
     }
   }
@@ -294,6 +464,9 @@
     if (!_cache) return [];
     const q = String(query || '').trim().toLowerCase();
     if (!q) return _cache;
+    // [출시감사 2026-08-05 P0-1] 서버 검색 결과가 도착해 있으면 그걸 쓴다.
+    //   캐시(200건) 안에서만 찾던 게 P0 의 정체였다.
+    if (_serverHits && _serverHits.q === q) return _serverHits.items;
     return _cache.filter(c =>
       (c.name && c.name.toLowerCase().includes(q)) ||
       (c.phone && c.phone.includes(q)) ||
@@ -316,6 +489,11 @@
     sheet = document.createElement('div');
     sheet.id = 'customerSheet';
     sheet.classList.add('dt-overlay');
+    // [출시감사 2026-08-05 접근성] 풀스크린 오버레이인데 대화상자로 선언돼 있지 않았다.
+    //   role/aria-modal 이 없으면 스크린리더가 뒤 화면까지 같이 읽어서 어디에 있는지 알 수 없다.
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', '고객관리');
     const isPC = _isPC();
     // [v211] position:fixed 는 유지 (책임 분리). PC 에서는 style-responsive.css 의 공통 오버레이 규칙이
     // inset 을 (header-h, 0, 0, 232px) 로 덮어쓰고 z-index 를 950 으로 낮춤. 모바일은 inline 그대로.
@@ -353,7 +531,7 @@
               <button class="cv4-hd-add" id="customerAddBtn" aria-label="고객 추가">+</button>
             </div>
             ${statsHTML}
-            <input id="customerSearch" type="search" placeholder="이름 · 전화번호 검색" style="${searchInputStyle}margin-bottom:10px;" />
+            <input id="customerSearch" type="search" aria-label="고객 이름 또는 전화번호로 검색" placeholder="이름 · 전화번호 검색" style="${searchInputStyle}margin-bottom:10px;" />
             ${chipsHTML}
           </div>
           <div id="customerList" class="pc-items"></div>
@@ -378,7 +556,7 @@
             <button class="cv4-hd-add" id="customerAddBtn" aria-label="고객 추가">+</button>
           </div>
           ${statsHTML}
-          <input id="customerSearch" type="search" placeholder="이름 · 전화번호 검색" style="${searchInputStyle}margin-bottom:10px;" />
+          <input id="customerSearch" type="search" aria-label="고객 이름 또는 전화번호로 검색" placeholder="이름 · 전화번호 검색" style="${searchInputStyle}margin-bottom:10px;" />
           ${chipsHTML}
           <div id="customerList"></div>
           <div id="customerIdxBar" class="idx-bar"></div>
@@ -410,7 +588,27 @@
         window._customerSeg = 'all';
         sheet.querySelectorAll('.cv4-chip, .cv4-stat').forEach(b => b.classList.toggle('is-on', b.dataset.seg === 'all'));
       }
-      _rerender();
+      const raw = String(e.target.value || '').trim();
+      const q = raw.toLowerCase();
+      if (_serverHits && _serverHits.q !== q) _serverHits = null;
+      _rerender();   // 로컬 캐시로 먼저 즉시 그린다 (대부분의 샵은 이걸로 끝)
+
+      // [출시감사 2026-08-05 P0-1] 캐시 밖에 손님이 더 있으면 서버로 찾으러 간다.
+      //   `_total <= _cache.length` 인 샵(대다수)은 네트워크를 아예 안 탄다.
+      clearTimeout(_searchTimer);
+      //  _total 이 0 = "아직 모름" → 안전하게 서버에 물어본다. 모른다고 안 물어보면
+      //  캐시 밖 손님이 다시 안 보이게 되고, 그게 원래 P0 였다.
+      const known = _total > 0;
+      if (!q || _isOffline || (known && _total <= (_cache ? _cache.length : 0))) return;
+      _searchTimer = setTimeout(async () => {
+        try {
+          const r = await searchServer(raw);
+          if (sheet.querySelector('#customerSearch').value.trim().toLowerCase() !== q) return;  // 그새 바뀜
+          _serverHits = { q, items: r.items, total: r.total, hasMore: r.hasMore };
+          _windowSize = 50;
+          _rerender();
+        } catch (_err) { void _err; }   // 실패해도 로컬 결과는 이미 떠 있다
+      }, 300);
     });
     return sheet;
   }
@@ -543,16 +741,25 @@
     const box = sheet.querySelector('#customerList');
     const count = sheet.querySelector('#customerCount');
     const offBadge = sheet.querySelector('#customerOfflineBadge');
-    count.textContent = (_cache ? _cache.length : 0) + '명' + (seg !== 'all' ? ` · ${items.length}명 표시` : '');
+    // [출시감사 2026-08-05 P0-1] 전체 수는 **서버가 센 값**(_total). 캐시 길이가 아니다.
+    const shopTotal = Math.max(_total || 0, _cache ? _cache.length : 0);
+    count.textContent = shopTotal + '명' + (seg !== 'all' ? ` · ${items.length}명 표시` : '');
     offBadge.style.display = _isOffline ? 'inline-block' : 'none';
 
     // [2026-07-08 A안] 요약 스트립 숫자 갱신 (필터와 무관하게 전체 기준)
     const elAll = sheet.querySelector('#cvStatAll');
     if (elAll) {
       const all = _cache || [];
-      elAll.textContent = all.length;
+      elAll.textContent = shopTotal;
+      // 손님이 캐시(200명)보다 많으면 아래 두 숫자는 **최근 200명 기준**이라 전체가 아니다.
+      //   틀린 수를 전체인 척 보여주느니 무엇의 숫자인지 밝힌다.
+      const partial = shopTotal > all.length;
       sheet.querySelector('#cvStatNew').textContent = all.filter(c => _isThisMonth(c.created_at)).length;
       sheet.querySelector('#cvStatVip').textContent = all.filter(c => (c.visit_count || 0) >= 4).length;
+      const newLbl = sheet.querySelector('#cvStatNew')?.nextElementSibling;
+      const vipLbl = sheet.querySelector('#cvStatVip')?.nextElementSibling;
+      if (newLbl) newLbl.textContent = partial ? '새 손님 (최근 200명 중)' : '이번 달 새 손님';
+      if (vipLbl) vipLbl.textContent = partial ? '4회+ (최근 200명 중)' : '4회+ 손님';
     }
 
     if (!items.length) {
@@ -853,8 +1060,21 @@
   };
 
   window._customerDelete = function (id) {
-    // [A7] 삭제 확인 메시지 통일
-    window._inlineConfirm('이 고객을 삭제하면 시술 기록도 함께 삭제돼요. 계속할까요?', async () => {
+    // [출시감사 2026-08-05 P1-7] 문구가 **사실과 반대**였다.
+    //   예전 문구: "이 고객을 삭제하면 시술 기록도 함께 삭제돼요."
+    //   실제로는 매출·시술 기록이 하나도 안 지워진다(실측: 삭제 전후 이번달 매출 927,000원 동일,
+    //   매출 목록엔 그 손님 이름이 그대로 남음). 지워진다고 겁주는 건 안 지워지고,
+    //   정작 되돌릴 수 없는 것(회원권 잔액)은 말하지 않았다.
+    const c = (_cache || []).find(x => x.id === id);
+    const bal = Number(c && c.membership_balance) || 0;
+    const msg = bal > 0
+      ? `${c.name}님은 회원권 잔액이 ${bal.toLocaleString()}원 남아 있어요.\n먼저 환불·정산한 뒤에 삭제할 수 있어요.`
+      : '고객 목록에서만 사라져요. 지난 매출·시술 기록은 그대로 남아요.\n삭제할까요?';
+    if (bal > 0) {
+      if (window.showToast) window.showToast(msg.replace(/\n/g, ' '));
+      return;
+    }
+    window._inlineConfirm(msg, async () => {
       try {
         await remove(id);
         if (window.hapticLight) window.hapticLight();
@@ -862,7 +1082,7 @@
         _rerender();
       } catch (e) {
         console.warn('[customer] delete 실패:', e);
-        if (window.showToast) window.showToast('삭제 실패');
+        if (window.showToast) window.showToast(_friendlyError(e, '삭제'));
       }
     });
   };

@@ -3074,7 +3074,11 @@ window._preloadTabs = async function () {
       if (!res.ok) return;
       const d = await res.json();
       const items = d.items || d;
-      const payload = JSON.stringify({ t: Date.now(), d: items });
+      // [출시감사 2026-08-05 P0-1] total 보존 — 위 주석과 같은 이유 (app-perf-recovery.js 참조).
+      const payload = JSON.stringify({
+        t: Date.now(), d: items,
+        n: Number.isFinite(d.total) ? d.total : (Array.isArray(items) ? items.length : 0),
+      });
       try { localStorage.setItem(t.swrKey, payload); } catch (_) {
         try { sessionStorage.setItem(t.swrKey, payload); } catch (_e) { void _e; }
       }

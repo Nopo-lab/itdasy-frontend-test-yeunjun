@@ -116,6 +116,16 @@
 
 ### 고객 CRM
 - **app-customer.js** (1066) — 경량 CRM `openCustomers`. **app-customer-dashboard.js**(522)·**app-customer-ai-brief.js**(496)·**app-customer-chips.js**(206)·**app-customer-memo.js**(419)·**app-customer-cache.js**(74)·**app-customer-sync.js**(53) — 대시보드/AI브리핑/추천칩/메모/캐시/예약시 자동등록.
+- **[2026-08-05 출시감사]** 🚨 **목록이 200명에서 잘려 201번째부터 앱에서 영구히 안 보이던 P0** 수정.
+  `GET /customers` 에 **`q`(서버 검색)·`limit`·`offset`** 추가, `total` 은 DB 가 센 실제 수(예전엔 잘린 개수).
+  프론트 검색은 캐시 안에서만 찾다가 → **캐시 밖이면 서버 검색**으로 넘어감(`_total > 캐시길이`일 때만, 300ms 디바운스).
+  같이 고친 것: 동시 생성 중복(DB UNIQUE `uq_customers_dedup` + `dedup_key`, 마이그 0039) ·
+  방문 횟수 3화면 불일치(`services/customer_visits.py` 단일 정의) · 목록 캐시 무효화 누락
+  (매출·회원권·예약 라우터 3곳 → `utils/kv_cache.invalidate_customer_caches`) ·
+  409/402/401 이 전부 "다시 시도해주세요"로 뭉개지던 것(`_api` 가 서버 detail 보존) ·
+  오프라인 폴백이 죽은 코드였던 것(네트워크 끊김 감지 + 온라인 복귀 시 flush) · 탭 간 동기화(storage 리스너) ·
+  회원권 잔액 남은 고객 삭제 차단. 회귀: `backend/tests/test_customer_audit_2026_08_05.py`(34건).
+  ⚠️ `POST /customers/backfill-visits` **삭제됨**(호출처 0건인데 7,917행 일괄 UPDATE).
 - **app-birthday.js** (164) — 생일/기념일 자동감지. **app-photo-match.js**(162) EXIF 고객매핑. **app-retention-ai.js**(340) 이탈위험 고객. **app-review.js**(199) 리뷰요청. **app-waitlist.js**(149) 대기자.
 
 ### DM·SNS·연동 (FE)

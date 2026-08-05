@@ -66,8 +66,14 @@
           if (!res.ok) return;
           const d = await res.json();
           const items = (d && (d.items || d)) || null;
+            // [출시감사 2026-08-05 P0-1] 서버가 센 전체 수(total)도 같이 담는다.
+            //   items 만 담으면 화면이 '캐시 길이 = 전체 수' 로 착각한다 — 고객 10만 명인데
+            //   '전체 200명' 이 뜨던 경로가 정확히 여기였다(프리페치가 목록 캐시를 먼저 덮어씀).
           if (items) {
-            _safeSet(swrKey, JSON.stringify({ t: Date.now(), d: items }));
+            _safeSet(swrKey, JSON.stringify({
+              t: Date.now(), d: items,
+              n: (d && Number.isFinite(d.total)) ? d.total : (Array.isArray(items) ? items.length : 0),
+            }));
           }
         } catch (_) { /* silent */ } finally {
           clearTimeout(timer);

@@ -467,7 +467,19 @@
       close();
     } catch (e) {
       console.warn('[customer edit]', e);
-      if (window.showToast) window.showToast(isNew ? '추가 실패 — 다시 시도해주세요' : '저장 실패 — 다시 시도해주세요');
+      // [출시감사 2026-08-05 P1-5] 서버가 준 이유를 그대로 전한다.
+      //   예전엔 상태코드와 무관하게 "다시 시도해주세요" 하나였다. 특히 409(중복)는
+      //   재시도해도 영원히 실패하는데 재시도하라고 안내했고, 전화번호 없는 동명이인 2번째
+      //   손님은 그래서 **끝내 등록할 수 없었다**(실측).
+      const txt = typeof window.CustomerErrorText === 'function'
+        ? window.CustomerErrorText(e, isNew ? '추가' : '저장')
+        : (isNew ? '추가 실패 — 다시 시도해주세요' : '저장 실패 — 다시 시도해주세요');
+      if (window.showToast) window.showToast(txt);
+      // 중복이면 기존 손님을 열어준다 — 원장님이 원한 건 "이 손님 기록" 이지 새 행이 아니다.
+      if (e && e.code === 'duplicate_customer' && e.detail && e.detail.existing_id) {
+        close();
+        setTimeout(() => window.openCustomerDashboard && window.openCustomerDashboard(e.detail.existing_id), 350);
+      }
     }
   }
 
