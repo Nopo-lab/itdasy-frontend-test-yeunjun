@@ -613,6 +613,120 @@
     return sheet;
   }
 
+  // ── [2026-08-05] 중복 손님 정리(병합) ────────────────────────────
+  //  `POST /customers/merge` 는 예전부터 있었는데 **프론트 호출처가 0건**이었다 —
+  //  즉 중복이 생겨도 원장님이 합칠 방법이 없었다. 목록에 배너를 띄우고, 여기서 끝낸다.
+  //  중복 탐색은 서버가 한다(`GET /customers/duplicates`) — 캐시 200건만 훑으면
+  //  201번째부터의 중복은 영영 못 찾고, 중복은 오래된 손님 쪽에 더 쌓인다.
+  let _dupGroups = null;      // null=아직 안 봄 · []=없음
+  let _dupChecked = false;
+
+  let _dupTotal = 0;
+  async function fetchDuplicates() {
+    const d = await _api('GET', '/customers/duplicates?limit=50');
+    _dupGroups = d.groups || [];
+    // 서버가 센 **전체** 묶음 수. 화면에 보이는 건 최대 50묶음이라 배너 숫자와 갈릴 수 있다.
+    _dupTotal = Number.isFinite(d.total_groups) ? d.total_groups : _dupGroups.length;
+    _dupChecked = true;
+    return _dupGroups;
+  }
+
+  async function mergeCustomers(sourceId, targetId) {
+    return _api('POST', `/customers/merge?source_id=${encodeURIComponent(sourceId)}&target_id=${encodeURIComponent(targetId)}`);
+  }
+
+  function _dupBannerHTML() {
+    if (!_dupGroups || !_dupGroups.length) return '';
+    const n = _dupTotal || _dupGroups.length;
+    return `
+      <button type="button" id="cvDupBanner" data-haptic
+        style="width:100%;min-height:44px;display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:10px 14px;border:1px solid var(--border,#E5E7EB);border-radius:14px;background:var(--surface-2,#F7F8FA);cursor:pointer;font-family:inherit;text-align:left;">
+        <svg width="16" height="16" aria-hidden="true" style="flex:none;"><use href="#ic-users"/></svg>
+        <span style="flex:1;font-size:13px;color:var(--text);">같은 손님으로 보이는 기록 <b>${n}묶음</b>이 있어요</span>
+        <span style="font-size:12px;color:var(--brand,#D58A95);font-weight:700;">정리하기</span>
+      </button>`;
+  }
+
+  function _bindDupBanner(box) {
+    const b = box.querySelector('#cvDupBanner');
+    if (b) b.addEventListener('click', _openMergeScreen, { once: true });
+  }
+
+  function _openMergeScreen() {
+    const box = document.getElementById('customerList');
+    if (!box) return;
+    _isDetailOpen = true;                       // 목록 재렌더가 이 화면을 덮지 않게
+    history.pushState({ customerMerge: true }, '');
+    const groups = _dupGroups || [];
+    box.innerHTML = `
+      <div id="cvMergeScreen">
+        <button type="button" data-merge-back class="dt-back" aria-label="뒤로"
+          style="min-width:44px;min-height:44px;margin-bottom:12px;"><svg width="20" height="20" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>
+        <h2 style="font-size:17px;font-weight:800;margin:0 0 4px;color:var(--text);">중복 손님 정리</h2>
+        <p style="font-size:12px;color:var(--text2,#5A6573);margin:0 0 16px;line-height:1.5;">
+          남길 손님을 고르면 나머지 기록(예약·매출·회원권·메모)이 그쪽으로 옮겨가요.<br>기록은 사라지지 않아요.
+        </p>
+        ${_dupTotal > groups.length ? `<p style="font-size:12px;color:var(--text2,#5A6573);margin:-8px 0 14px;">먼저 ${groups.length}묶음만 보여드려요. 정리하면 다음 묶음이 이어서 나와요.</p>` : ''}
+        ${groups.length ? groups.map((g, gi) => `
+          <div class="cv-dup-group" data-gi="${gi}" style="border:1px solid var(--border,#E5E7EB);border-radius:14px;padding:14px;margin-bottom:12px;">
+            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;">${_esc(g.display_name || '')}</div>
+            <div style="font-size:12px;color:var(--text2,#5A6573);margin-bottom:10px;">${_esc(g.phone || '연락처 없음')} · ${g.count}건</div>
+            <div role="radiogroup" aria-label="${_esc(g.display_name || '')} 남길 손님 선택">
+            ${g.members.map(m => `
+              <label style="display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 4px;cursor:pointer;">
+                <input type="radio" name="dup${gi}" value="${m.id}" ${m.id === g.suggested_target_id ? 'checked' : ''}
+                  style="width:20px;height:20px;flex:none;accent-color:var(--brand,#D58A95);">
+                <span style="flex:1;font-size:13px;color:var(--text);">
+                  방문 ${m.visit_count}회${m.membership_balance ? ` · 회원권 ${Number(m.membership_balance).toLocaleString()}원` : ''}
+                  ${m.memo ? `<br><span style="font-size:11px;color:var(--text2,#5A6573);">${_esc(m.memo)}</span>` : ''}
+                </span>
+              </label>`).join('')}
+            </div>
+            <button type="button" data-merge-run="${gi}" data-haptic
+              style="width:100%;min-height:44px;margin-top:8px;border:none;border-radius:12px;background:var(--brand,#D58A95);color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">
+              이 묶음 합치기
+            </button>
+          </div>`).join('') : '<div class="dt-empty">정리할 중복이 없어요.</div>'}
+      </div>`;
+    box.querySelector('[data-merge-back]').addEventListener('click', () => {
+      _isDetailOpen = false;
+      history.back();
+    });
+    box.querySelectorAll('[data-merge-run]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (btn.dataset.busy === '1') return;
+        const gi = +btn.dataset.mergeRun;
+        const g = (_dupGroups || [])[gi];
+        if (!g) return;
+        const picked = box.querySelector(`input[name="dup${gi}"]:checked`);
+        if (!picked) return;
+        const targetId = +picked.value;
+        const sources = g.members.map(m => m.id).filter(id => id !== targetId);
+        btn.dataset.busy = '1'; btn.disabled = true; btn.textContent = '합치는 중…';
+        let done = 0;
+        try {
+          // 순차 실행 — 같은 target 에 동시에 밀어넣으면 방문수 누적이 겹칠 수 있다
+          for (const sid of sources) {
+            await mergeCustomers(sid, targetId);
+            done += 1;
+          }
+          if (window.hapticLight) window.hapticLight();
+          if (window.showToast) window.showToast(`${done + 1}건을 하나로 합쳤어요`);
+          _clearSWR();
+          await _fetchFresh();
+          await fetchDuplicates();
+          if ((_dupGroups || []).length) _openMergeScreen();
+          else { _isDetailOpen = false; history.back(); }
+        } catch (e) {
+          console.warn('[customer merge]', e);
+          if (window.showToast) window.showToast(_friendlyError(e, '합치기'));
+          btn.dataset.busy = '0'; btn.disabled = false; btn.textContent = '이 묶음 합치기';
+        }
+      });
+    });
+  }
+  window._openCustomerMergeScreen = _openMergeScreen;
+
   // [v208] 한글 초성 추출 — 가나다 그룹핑
   function _firstChosung(name) {
     const ch = String(name || '').charAt(0);
@@ -763,7 +877,9 @@
     }
 
     if (!items.length) {
-      box.innerHTML = `<div class="dt-empty">${_cache && _cache.length ? (seg !== 'all' ? '이 세그먼트에 해당하는 고객이 없어요.' : '검색 결과 없음') : '+ 버튼을 눌러 첫 고객을 등록해보세요'}</div>`;
+      box.innerHTML = _dupBannerHTML()
+        + `<div class="dt-empty">${_cache && _cache.length ? (seg !== 'all' ? '이 세그먼트에 해당하는 고객이 없어요.' : '검색 결과 없음') : '+ 버튼을 눌러 첫 고객을 등록해보세요'}</div>`;
+      _bindDupBanner(box);
       return;
     }
     // 검색 키워드 바뀌면 window 리셋
@@ -805,9 +921,10 @@
         return `<div class="${secCls}" id="cv4-sec-${encodeURIComponent(k)}">${k}</div>${rows}`;
       }).join('');
 
-    box.innerHTML = groupsHtml
+    box.innerHTML = _dupBannerHTML()
+      + groupsHtml
       + (hasMore
-          ? `<button id="customerLoadMore" type="button" style="width:calc(100% - 20px);margin:12px 10px;padding:11px;border:1px dashed hsl(220,15%,80%);border-radius:12px;background:var(--surface-2);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;">+ ${totalLen - _windowSize}명 더 보기</button>`
+          ? `<button id="customerLoadMore" type="button" style="width:calc(100% - 20px);min-height:44px;margin:12px 10px;padding:11px;border:1px dashed hsl(220,15%,80%);border-radius:12px;background:var(--surface-2);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;">+ ${totalLen - _windowSize}명 더 보기</button>`
           : '');
 
     // 우측 인덱스바 (모바일만)
@@ -827,6 +944,7 @@
     if (more) {
       more.addEventListener('click', () => { _windowSize += WINDOW_STEP; _rerender(); }, { once: true });
     }
+    _bindDupBanner(box);
     _setupCustomerDelegation(box);
   }
 
@@ -1020,7 +1138,8 @@
 
   window._customerBack = _closeDetail;
 
-  // [A4] popstate 리스너 — 뒤로가기 시 디테일 닫기
+  // [A4] popstate 리스너 — 뒤로가기 시 디테일/병합 화면 닫기
+  //   병합 화면(_openMergeScreen)도 같은 플래그를 쓰므로 여기서 함께 처리된다.
   window.addEventListener('popstate', () => {
     if (_isDetailOpen) {
       _closeDetail();
@@ -1096,6 +1215,66 @@
     sheet.remove();
   }
 
+
+  // ── [2026-08-05 접근성] 포커스 트랩 · ESC 닫기 ─────────────────────
+  //  role="dialog"/aria-modal 만 붙여두면 스크린리더는 스코프되지만 **키보드는 안 갇힌다** —
+  //  실측: 시트가 열려 있어도 Tab 으로 뒤 사이드바 요소 25개가 그대로 잡혔다.
+  //  키보드만 쓰는 원장님은 시트를 열어둔 채 뒤 화면을 조작하게 된다.
+  let _trapPrevFocus = null;
+
+  function _focusablesIn(root) {
+    return [...root.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' +
+      'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )].filter(el => el.offsetParent !== null || el === document.activeElement);
+  }
+
+  function _onSheetKeydown(e) {
+    const sheet = document.getElementById('customerSheet');
+    if (!sheet || sheet.style.display !== 'flex') return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      // 안쪽 화면(상세/병합)이 열려 있으면 그것부터 닫는다 — 한 번에 다 닫지 않는다
+      if (_isDetailOpen) { history.back(); return; }
+      window.closeCustomers();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const f = _focusablesIn(sheet);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && (document.activeElement === first || !sheet.contains(document.activeElement))) {
+      e.preventDefault(); last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault(); first.focus();
+    }
+  }
+
+  function _trapOn(sheet) {
+    _trapPrevFocus = document.activeElement;
+    document.addEventListener('keydown', _onSheetKeydown, true);
+    // 배경을 보조기술·탭 순서에서 제외 (aria-modal 을 실제로 뒷받침한다)
+    [...document.body.children].forEach(el => {
+      if (el === sheet) return;
+      if (el.getAttribute('aria-hidden') === 'true') return;
+      el.dataset.custInert = '1';
+      el.setAttribute('aria-hidden', 'true');
+    });
+    setTimeout(() => { (sheet.querySelector('#customerSearch') || sheet).focus?.(); }, 60);
+  }
+
+  function _trapOff() {
+    document.removeEventListener('keydown', _onSheetKeydown, true);
+    document.querySelectorAll('[data-cust-inert="1"]').forEach(el => {
+      el.removeAttribute('aria-hidden');
+      delete el.dataset.custInert;
+    });
+    if (_trapPrevFocus && document.contains(_trapPrevFocus)) {
+      try { _trapPrevFocus.focus(); } catch (_e) { void _e; }
+    }
+    _trapPrevFocus = null;
+  }
+
   window.openCustomers = async function () {
     _resetSheetIfModeMismatched();
     const sheet = _ensureSheet();
@@ -1107,6 +1286,11 @@
     //   계속 누르면 결국 앱 종료 확인이 뜬다. aiHub·연동·설정과 같은 원인.
     if (typeof window._registerSheet === 'function') window._registerSheet('customers', window.closeCustomers);
     if (typeof window._markSheetOpen === 'function') window._markSheetOpen('customers');
+    _trapOn(sheet);
+    // 중복 손님 스캔 — 배경에서 한 번만. 실패해도 목록은 정상 동작한다.
+    if (!_dupChecked) {
+      fetchDuplicates().then(gs => { if (gs.length) _rerender(); }).catch(() => { _dupChecked = true; });
+    }
     // SWR 캐시 있으면 즉시 렌더, 없으면 first-load 만 placeholder
     const box = sheet.querySelector('#customerList');
     const swr = _readSWR();
@@ -1131,6 +1315,7 @@
 
   window.closeCustomers = function () {
     const sheet = document.getElementById('customerSheet');
+    _trapOff();
     if (sheet) { sheet.style.display = 'none'; sheet.classList.remove('dt-shown'); }
     document.body.style.overflow = '';
     // [출시감사 2026-08-02] 열 때 쌓은 history 엔트리 되돌리기.
