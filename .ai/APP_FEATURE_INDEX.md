@@ -126,6 +126,13 @@
   오프라인 폴백이 죽은 코드였던 것(네트워크 끊김 감지 + 온라인 복귀 시 flush) · 탭 간 동기화(storage 리스너) ·
   회원권 잔액 남은 고객 삭제 차단. 회귀: `backend/tests/test_customer_audit_2026_08_05.py`(34건).
   ⚠️ `POST /customers/backfill-visits` **삭제됨**(호출처 0건인데 7,917행 일괄 UPDATE).
+- **[2026-08-05 릴리즈]** 중복 손님 **정리 UI 신설** — 목록 상단 배너 → 남길 손님 선택 → 합치기.
+  `POST /customers/merge` 는 예전부터 있었지만 **프론트 호출처가 0건**이라 합칠 방법이 없었다.
+  탐색은 신설 `GET /customers/duplicates`(서버가 dedup_key 와 **같은 기준**으로 묶음, `total_groups` 는 자르기 전 실수).
+  검색은 **공백 무시 양방향**(`"김 철수"`↔`"김철수"`). 접근성: 포커스 트랩·ESC 2단계·Tab 순환·배경 aria-hidden.
+  터치 영역 44pt(칩은 `::after` 히트박스로 — 보이는 크기는 그대로).
+  🔴 회귀 1건 잡음: `before_update` 가 dedup_key 를 되살려 **동명이인 손님에게 매출·회원권이 500** 이었다
+  (`force=true` 로 만든 중복 + 0039 가 남긴 기존 중복 전부 해당). NULL = 중복 허용은 이제 sticky.
 - **app-birthday.js** (164) — 생일/기념일 자동감지. **app-photo-match.js**(162) EXIF 고객매핑. **app-retention-ai.js**(340) 이탈위험 고객. **app-review.js**(199) 리뷰요청. **app-waitlist.js**(149) 대기자.
 
 ### DM·SNS·연동 (FE)
