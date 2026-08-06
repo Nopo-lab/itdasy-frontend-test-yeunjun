@@ -2862,10 +2862,20 @@
         _history.push({ role: 'assistant', text: d.message || '✓ 완료했어요' });
       }
       _renderHistory();
-      if (window.hapticSuccess) window.hapticSuccess();
+      // [출시감사 2026-08-06] HTTP 200 이어도 `ok:false` 면 **실행이 안 된 것**이다.
+      //   send_message 는 문자 서버가 없으면 "손님에게는 안 갔어요" 를 돌려주는데,
+      //   여기서 성공 진동이 울리고 '되돌리기' 토스트까지 떠서 신호가 엇갈렸다.
+      //   게다가 그 되돌리기는 reversal_kind='none' 이라 누르면 405 다 —
+      //   원장님한테 눌러도 안 되는 버튼을 보여주는 셈이었다.
+      const _executed = d.ok !== false;
+      if (_executed) {
+        if (window.hapticSuccess) window.hapticSuccess();
+      } else if (window.hapticWarning) {
+        window.hapticWarning();
+      }
       if (window.Dashboard?.refresh) window.Dashboard.refresh(true);
       // [2026-04-30] 되돌리기 버튼 토스트 — undo_log_id 받았으면
-      if (d.undo_log_id && window.showUndoToast) {
+      if (_executed && d.undo_log_id && window.showUndoToast) {
         try { window.showUndoToast(d.message || '✓ 완료', d.undo_log_id); } catch (_e) { void _e; }
       }
     } catch (e) {
