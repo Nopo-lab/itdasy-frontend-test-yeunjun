@@ -2723,6 +2723,16 @@
       return { kind: action.kind, message: d.message || '✓ 완료', ...d };
     }
     const body = { kind: action.kind, payload: action.payload || {} };
+    // [잇비감사 2026-08-06 P1-1] 액션 카드 하나 = 멱등키 하나.
+    //   백엔드에 멱등이 없어서 같은 요청 5발이 매출 5건이 됐다(실측). 더블탭·타임아웃 후
+    //   재시도·모바일 재전송이면 원장님은 한 번 눌렀는데 장부가 여러 줄이 된다.
+    //   키를 **액션 객체에 붙여** 재시도해도 같은 값이 가게 한다 (매번 새로 만들면 무의미).
+    if (!action._txn_id) {
+      action._txn_id = (window.crypto && window.crypto.randomUUID)
+        ? window.crypto.randomUUID().replace(/-/g, '').slice(0, 32)
+        : 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    }
+    body.payload = { ...body.payload, client_txn_id: action._txn_id };
     if (action._ai_original && typeof action._ai_original === 'object') {
       body.original_payload = action._ai_original;
     }
