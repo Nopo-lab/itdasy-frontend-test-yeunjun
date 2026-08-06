@@ -146,7 +146,14 @@
     if (fx && fx.onBack && fx.onBack() === true) return true;
     if (navStack.length) {
       if (_histDepth > 0) _histDepth--;
-      if (cur === 'caption') { flushCaptionInputs(); _genToken++; }   // [버그수정] 캡션 화면 이탈 시에도 재생성 응답 무효화
+      // [버그수정] 캡션 화면 이탈 시에도 재생성 응답 무효화
+      // [출시 QA 2026-08-07] `d.capLoading` 도 같이 끈다. 예전엔 토큰만 올려서, 생성 중에
+      //   뒤로 가면 **캡션 스텝(비활성 슬라이드)의 로딩 오버레이가 화면에 그대로 남았다.**
+      //   실측: '사진 확인' 화면인데 "잇비가 우리샵 말투로 쓰는 중…" 이 좌표 (652,405) 에
+      //   `onScreen:true · visibility:visible · opacity:1` 로 보였고, 그 요소는 활성 화면 밖이었다
+      //   (`active.contains(el) === false`). 2분 넘게 사라지지 않았다 — 워치독은 **마지막 토큰**
+      //   에만 걸려서, 토큰이 올라간 옛 요청의 로딩은 아무도 안 치운다.
+      if (cur === 'caption') { flushCaptionInputs(); _genToken++; if (d) d.capLoading = false; }
       setScreen(navStack.pop(), { push: false });
       return true;
     }

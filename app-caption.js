@@ -8,12 +8,35 @@ function _capEsc(s) {
 }
 
 // ═══════════════════════════════════════════════════════
+// [출시 QA 2026-08-07] **타임아웃이 없었다.** 프록시·LB 가 응답을 매달아두면(끊김 아님)
+//   이 fetch 는 영영 settle 되지 않고, 화면은 "잇비가 우리샵 말투로 쓰는 중…" 에 갇힌다.
+//   flow 쪽 130초 워치독이 있긴 한데 그건 **마지막 토큰**에만 걸려서, 재생성으로 토큰이
+//   올라가면 앞선 요청의 로딩은 아무도 치우지 않는다(실측: 2분 넘게 잔류).
+//   요청 자체에 상한을 둬서 반드시 끝나게 한다. 120초는 app-core 의 LLM 경로 타임아웃과
+//   같은 값 — 캡션 생성은 15~60초가 정상이라 정상 응답을 자르지 않는다.
+const _PERSONA_TIMEOUT_MS = 120000;
+
 async function _personaFetch(method, path, body) {
   const headers = window.authHeader ? window.authHeader() : {};
   if (body) headers['Content-Type'] = 'application/json';
   const url = (window.API || '') + path;
-  const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), _PERSONA_TIMEOUT_MS) : null;
+  let res;
+  try {
+    res = await fetch(url, {
+      method, headers,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctl ? ctl.signal : undefined,
+    });
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error('시간이 너무 오래 걸려요 — 잠시 후 다시 시도해 주세요');
+    throw e;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
   if (res.status === 401) throw new Error('401');
+  // 비-JSON 응답(Cloud Run/LB 의 HTML 502·504)이면 data 가 {} 라 detail 이 없다 → 아래에서 'HTTP 502'.
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
   return data;
