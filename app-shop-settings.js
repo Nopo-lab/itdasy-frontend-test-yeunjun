@@ -110,9 +110,17 @@
       if (e.target.closest('[data-ss-back]')) { closeShopSettings(); return; }
       if (e.target.closest('[data-ss-save]')) { _save(); return; }
       const sw = e.target.closest('.ss-switch');
-      if (sw) { sw.classList.toggle('is-on');
+      if (sw) {
+        // [출시게이트 2026-08-06] 채널이 연결 안 된 토글은 켜지지 않는다.
+        //   회색으로만 보여주고 클릭은 되면, 켜놓고 "발송되겠지" 하고 기다리게 된다.
+        if (sw.classList.contains('is-disabled')) {
+          _toast('아직 연결되지 않은 채널이라 켤 수 없어요');
+          return;
+        }
+        sw.classList.toggle('is-on');
         sw.setAttribute('aria-checked', sw.classList.contains('is-on') ? 'true' : 'false');
-        _haptic(); }
+        _haptic();
+      }
     });
     el.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeShopSettings();
@@ -347,6 +355,22 @@
           const _on = !!data.alimtalk_auto_enabled;
           _alSw.classList.toggle('is-on', _on);
           _alSw.setAttribute('aria-checked', _on ? 'true' : 'false');
+        }
+        // [출시게이트 2026-08-06] **아직 안 되는 걸 된다고 말하지 않는다.**
+        //   토글 설명이 "켜면 발송돼요" 인데, 알림톡 채널이 연결 안 돼 있으면 켜도
+        //   아무것도 안 나간다. 실패 알림조차 안 만든다(도배 방지로 일부러 그렇게 돼 있다).
+        //   원장님은 손님에게 예약 확인이 갔다고 믿는다 — 잇비 문자에서 고쳤던
+        //   "조용히 아무것도 안 함" 과 같은 종류라 같은 방식으로 고친다.
+        const _ch = data.channels || null;
+        if (_ch && _ch.alimtalk === false && _alSw) {
+          _alSw.classList.add('is-disabled');
+          _alSw.setAttribute('aria-disabled', 'true');
+          const _sub = _alSw.closest('.ss-toggle')?.querySelector('.ss-toggle-sub');
+          if (_sub) {
+            _sub.textContent = '카카오 알림톡 채널이 아직 연결되지 않았어요. '
+              + '지금 켜도 손님에게는 발송되지 않아요 — 연결되면 알려 드릴게요.';
+            _sub.style.color = 'var(--warn, #C2410C)';
+          }
         }
         // [C-6 2026-07-27] 예약 자동확정 스위치 서버값 반영. 백엔드에 auto_confirm 컬럼을 신설해
         //   이제 GET 에서 실제 값을 내려준다(기본 False = 팀 설계대로 원장 수동 확정). 켠 샵에서만 자동확정.
