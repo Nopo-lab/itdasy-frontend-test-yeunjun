@@ -374,7 +374,8 @@
   }
   function _recoChips() {
     // [2026-07-10] 기능 스티커(위치·예약·전화·가격·시간)는 '작업실 설정'으로 이관 — 편집기에서 완전 제거.
-    //   입력은 작업실 홈 → 설정에서. 값은 캡션 샵정보 자동첨부로 반영. (addFeatureLayer/SHOP_INFO_KEY 는 롤백용 보존)
+    //   입력은 작업실 홈 → 설정에서. 값은 캡션 `_shopCTA()` 가 글 끝에 붙인다.
+    //   [출시 QA 2026-08-06] 도달 불가였던 addFeatureLayer/SHOP_INFO_KEY 도 함께 제거.
     return '';
   }
   // 활성 탭 그리드만 렌더 + 동적 refs 재캡처/바인딩(featLocTx·myStk·stkUpload).
@@ -1062,40 +1063,13 @@
     placeCenter(L, 64, 64); selectLayer(L); _pushOp({ op: 'add', L: L });
     closeStickerSheet();   // [②] 스티커 하나 고르면 하단 시트 내려가고 사진 위에서 바로 배치
   }
-  // [③] 우리샵 피처 칩(위치/예약/가격/시간) — 탭하면 텍스트 레이어로 사진 위에 올림(클릭 동작).
-  // [기능 스티커] 가게 정보 저장 — 한 번 입력하면 이후 자동으로 실제 값이 박히고, 게시 캡션에도 활용(피드용).
-  var SHOP_INFO_KEY = { loc: 'itdasy:shop_loc', book: 'itdasy:shop_book', phone: 'itdasy:shop_phone', price: 'itdasy:shop_price', time: 'itdasy:shop_hours', handle: 'itdasy:shop_handle' };
-  function shopInfoGet(k) { try { return String(localStorage.getItem(SHOP_INFO_KEY[k]) || '').trim(); } catch (_) { return ''; } }
-  function shopInfoSet(k, v) { try { localStorage.setItem(SHOP_INFO_KEY[k], v); } catch (_) { void _; } }
-  function addFeatureLayer(kind) {
-    // 실제 값을 불러오고, 없으면 '한 번만' 물어봐서 저장(다음부터 자동).
-    var conf = {
-      loc:   { ask: '가게 위치·동네를 입력하세요 (예: 인천 구월동)', val: function () { return shopInfoGet('loc'); }, fmt: function (v) { return '📍 ' + v; } },
-      phone: { ask: '가게 전화번호를 입력하세요',                  val: function () { return shopInfoGet('phone'); }, fmt: function (v) { return '☎ ' + v; } },
-      book:  { ask: '예약 링크(URL)를 입력하세요 (예: naver.me/xxxx)', val: function () { return shopInfoGet('book'); }, fmt: function () { return '예약하기 →'; }, accent: true },
-      price: { ask: '가격 안내를 입력하세요 (예: 컷 3만원~)',      val: function () { return shopInfoGet('price'); }, fmt: function (v) { return v; } },
-      time:  { ask: '영업시간을 입력하세요 (예: 매일 10-20시)',    val: function () { return shopInfoGet('time'); }, fmt: function (v) { return '🕐 ' + v; } },
-      handle:{ ask: '인스타 아이디를 입력하세요 (@ 없이)',        val: function () { return shopInfoGet('handle'); }, fmt: function (v) { return '@' + String(v).replace(/^@/, ''); } }
-    };
-    var c = conf[kind]; if (!c) return;
-    var v = c.val();
-    if (!v) {
-      var input = window.prompt(c.ask, '');   // [MVP] 첫 입력만 프롬프트 — 이후 저장돼서 자동(추후 인라인 입력으로 업글)
-      if (input == null) return;
-      v = String(input).trim(); if (!v) return;
-      if (SHOP_INFO_KEY[kind]) shopInfoSet(kind, v);   // 저장 → 다음부터 자동
-    }
-    var text = c.fmt(v);
-    var L = makeLayer('text');
-    L.font = FONTS[0]; L.color = '#FFFFFF'; L.align = 'center'; L.fontSize = 26; L.text = text;
-    L.shadow = true; L.role = (kind === 'loc' ? 'shop' : kind); L.featKind = kind; L.featValue = v;   // 캡션 연동용 메타
-    var t = el('div', 'itl-text'); t.textContent = text;
-    var css = 'font-family:' + L.font.family + ';font-weight:800;color:#FFFFFF;text-align:center;font-size:26px;text-shadow:0 2px 8px rgba(0,0,0,.4)';
-    if (c.accent) { css += ';background:linear-gradient(135deg,#D58A95,#BC6675);padding:8px 18px;border-radius:999px;text-shadow:none'; L.badge = true; }
-    t.style.cssText = css; L.el.appendChild(t); L.tx = t;
-    placeCenter(L, 150, 46); selectLayer(L); _pushOp({ op: 'add', L: L });
-    closeStickerSheet();
-  }
+  /* [출시 QA 2026-08-06] 기능 스티커(위치·예약·전화·가격·시간·계정) **삭제**.
+     2026-07-10 에 '작업실 설정'으로 이관하면서 `_recoChips()` 가 빈 문자열을 돌려주게 됐고,
+     그때부터 `[data-feat]` 버튼을 **그리는 코드가 레포 전체에 하나도 없다** → 도달 불가.
+     "롤백용 보존" 이라고 남겨뒀지만 1개월 가까이 도달 불가였고, 남아 있는 동안
+     `itdasy:shop_loc` / `itdasy:shop_hours` 두 키가 '읽기만 하고 쓰는 곳이 없는' 고아로
+     보여 감사 때마다 헷갈리게 했다. 값 입력은 작업실 설정, 반영은 캡션 `_shopCTA()` 로
+     일원화됐으므로 여기 남길 이유가 없다. (핸들러도 아래에서 같이 제거) */
   // [②] 스티커 시트 닫기 — 도구 비활성(사진 위에서 바로 만지도록). 닫아도 우측 레일은 그대로.
   function closeStickerSheet() {
     S.tool = null;
@@ -1849,7 +1823,6 @@
       }
       var dc = e.target.closest('[data-deco]'); if (dc) { addImageSticker(DECO[+dc.getAttribute('data-deco')]); return; }
       var tx = e.target.closest('[data-txtstk]'); if (tx) { var o = ((window.ItdStickers || {}).textStk || [])[+tx.getAttribute('data-txtstk')]; if (o) addTextSticker(o.t, o.f); return; }
-      var f = e.target.closest('[data-feat]'); if (f) { addFeatureLayer(f.getAttribute('data-feat')); return; }
       var b = e.target.closest('[data-stk]'); if (b) addSticker(b.getAttribute('data-stk'));
     });
     enableDragScroll(refs.stkTabs);   // [#5] 탭 줄 가로 드래그

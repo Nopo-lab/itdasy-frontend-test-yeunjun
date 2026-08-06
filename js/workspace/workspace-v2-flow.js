@@ -257,7 +257,14 @@
   // [#19] 샵정보(예약링크·전화)를 캡션 끝에 자동으로 붙일지는 사용자 선택(기본 OFF).
   //   예전엔 저장값 있으면 무조건 붙였는데("계속 알아서 하단에 놓지 말고") → 설정 토글로 opt-in 전환.
   function _shopInfoOn() { try { return localStorage.getItem('itdasy:caption_shopinfo') === '1'; } catch (_e) { return false; } }
-  function _shopInfoSaved() { try { return !!(String(localStorage.getItem('itdasy:shop_book') || '').trim() || String(localStorage.getItem('itdasy:shop_phone') || '').trim()); } catch (_e) { return false; } }
+  function _shopInfoSaved() {
+    // [출시 QA 2026-08-06] 가격·인스타도 저장 대상에 포함 — 예전엔 예약·전화만 봐서,
+    //   가격만 적어둔 원장님에겐 토글 자체가 안 보였다(켤 대상이 없다고 판단).
+    try {
+      return ['itdasy:shop_book', 'itdasy:shop_phone', 'itdasy:shop_price', 'itdasy:shop_handle']
+        .some(function (k) { return String(localStorage.getItem(k) || '').trim(); });
+    } catch (_e) { return false; }
+  }
   // [#18] 게시 크기(피드 규격) 선택 — 4:5(세로로 크게, 기본) / 1:1(정사각). 마지막 선택 기억.
   //   선택값이 편집기 캔버스→템플릿 출력→콜라주→IG 미리보기까지 관통. 스토리/릴스 9:16은 템플릿이 별도 처리.
   function _wsFormat() { try { return localStorage.getItem('itdasy:ws_format') === '11' ? '11' : '45'; } catch (_e) { return '45'; } }
@@ -283,16 +290,28 @@
   function _shopInfoToggleHtml() {
     if (!_shopInfoSaved()) return '';
     var on = _shopInfoOn();
-    return '<div class="cap-hash-row cap-shopinfo-row"><span class="cap-field-label" style="margin:0">샵정보 반영 <em style="font-weight:400;color:#9aa3ad;font-style:normal">· 예약·전화를 글 끝에</em></span>' +
+    return '<div class="cap-hash-row cap-shopinfo-row"><span class="cap-field-label" style="margin:0">샵정보 반영 <em style="font-weight:400;color:#9aa3ad;font-style:normal">· 매장 정보를 글 끝에</em></span>' +
       '<button type="button" class="cap-switch' + (on ? ' on' : '') + '" data-fl-cshopinfo role="switch" aria-checked="' + on + '"><span class="cap-switch__dot"></span></button></div>';
   }
   function _shopCTA() {
     if (!_shopInfoOn()) return '';   // 반영 OFF → 아무것도 안 붙임
+    /* [출시 QA 2026-08-06] **가격 안내·인스타 아이디가 어디에도 안 쓰이고 있었다.**
+       작업실 설정 > 매장 정보에 입력칸 3개(예약 링크·가격 안내·인스타 아이디)가 있고
+       저장도 정상인데, 소비하는 코드는 여기뿐이었고 여기는 book·phone 만 읽었다.
+       나머지 소비처로 보이던 편집기 '기능 스티커'(SHOP_INFO_KEY/addFeatureLayer)는
+       `_recoChips()` 가 빈 문자열을 돌려주면서 **버튼을 아예 안 그린다** → 도달 불가.
+       즉 원장님이 가격을 적어도 아무 일도 안 일어났다. 입력칸이 있으면 쓰여야 한다.
+       순서는 행동 유도가 강한 것부터: 예약 → 전화 → 가격 → 계정. */
     try {
-      var book = String(localStorage.getItem('itdasy:shop_book') || '').trim();
-      var phone = String(localStorage.getItem('itdasy:shop_phone') || '').trim();
-      if (book) return '\n\n📅 예약 → ' + book + (phone ? '\n☎ ' + phone : '');
-      if (phone) return '\n\n☎ 예약·문의 ' + phone;
+      var g = function (k) { return String(localStorage.getItem(k) || '').trim(); };
+      var book = g('itdasy:shop_book'), phone = g('itdasy:shop_phone');
+      var price = g('itdasy:shop_price'), handle = g('itdasy:shop_handle');
+      var lines = [];
+      if (book) lines.push('📅 예약 → ' + book);
+      if (phone) lines.push('☎ ' + (book ? '' : '예약·문의 ') + phone);
+      if (price) lines.push('💰 ' + price);
+      if (handle) lines.push('@' + handle.replace(/^@/, ''));
+      return lines.length ? '\n\n' + lines.join('\n') : '';
     } catch (_e) { void _e; }
     return '';
   }

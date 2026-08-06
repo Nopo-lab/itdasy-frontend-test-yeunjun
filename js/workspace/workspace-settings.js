@@ -141,7 +141,9 @@
   function _shopInfoToggleHtml() {
     var on = get(K_SHOPINFO) === '1';
     return '<div class="ss-toggle" style="margin-top:12px"><div><div class="ss-toggle-lbl">샵 정보 반영하기</div>' +
-      '<div class="ss-toggle-sub">켜면 게시글 <b>끝</b>에 <b>전화·예약 링크</b>가 자동으로 붙어요. 끄면 아무것도 안 붙어요.</div></div>' +
+      // [출시 QA 2026-08-06] 예전 문구는 '전화·예약 링크' 만 말했는데 입력칸은 3개였다.
+      //   이제 가격·인스타도 실제로 붙으므로(workspace-v2-flow `_shopCTA`) 문구를 사실에 맞춘다.
+      '<div class="ss-toggle-sub">켜면 게시글 <b>끝</b>에 <b>아래 적어둔 매장 정보</b>가 자동으로 붙어요. 끄면 아무것도 안 붙어요.</div></div>' +
       '<div class="ss-switch' + (on ? ' is-on' : '') + '" data-wss-shopinfo role="switch" aria-checked="' + (on ? 'true' : 'false') + '" tabindex="0"></div></div>';
   }
 
@@ -151,19 +153,35 @@
      이유: 편집기에서 해시태그 레이어를 지우면 _learnShopStyle 이 이미 enabled:false 로 기록한다
      (원장이 "지우고 작업했으면 다음부터 안 나오게" 요청한 그 동작이 이미 여기 있었다).
      설정에 저장소를 따로 두면 두 곳이 어긋나 "껐는데 또 나온다"가 된다 — 같은 스위치를 보여줄 뿐이다. */
+  /* [출시 QA 2026-08-06] 표시와 실제가 정반대였다 — 신규 원장님 기준 실측:
+       · 토글 2개가 **켜진 걸로 보인다** (`_autoRoleOn` 이 스타일 없으면 true 를 돌려줬다)
+       · 그런데 실제로는 사진에 아무것도 안 박힌다 — 오버레이는 `isConfirmed(ss)` 게이트를
+         통과해야 하는데 시드 스타일은 `confirmed:false` 이고, 스타일 자체가 없을 수도 있다
+         (workspace-v2-flow.js:311)
+       · 게다가 끄려고 누르면 "설정을 저장하지 못했어요" 만 뜨고 안 꺼진다
+         (`_setAutoRole` 이 스타일 없으면 곧장 false)
+     읽기는 "켜짐"이라 하고 쓰기는 실패하는 비대칭이었다. 둘을 같은 진실에 맞춘다. */
   function _autoRoleOn(role) {
     try {
-      var ss = window.ShopStyle && window.ShopStyle.getActive ? window.ShopStyle.getActive() : null;
-      if (!ss || !Array.isArray(ss.layers)) return true;
+      var SS = window.ShopStyle;
+      var ss = SS && SS.getActive ? SS.getActive() : null;
+      // 스타일이 없거나 아직 확정 전이면 **실제로 안 박힌다** → 꺼짐으로 보여야 맞다.
+      if (!ss || !Array.isArray(ss.layers)) return false;
+      if (SS.isConfirmed && !SS.isConfirmed(ss)) return false;
       var L = ss.layers.filter(function (x) { return x.role === role; })[0];
       return !L || L.enabled !== false;
-    } catch (_e) { return true; }
+    } catch (_e) { return false; }
   }
   function _setAutoRole(role, on) {
     try {
       var SS = window.ShopStyle;
-      if (!(SS && SS.getActive && SS.save)) return false;
-      var ss = SS.getActive();
+      if (!(SS && SS.save)) return false;
+      // 아직 스타일이 없으면 여기서 만든다. 예전엔 그냥 실패시켜서, 사진을 한 번도
+      // 안 만들어 본 원장님은 이 토글을 **영영 쓸 수 없었다.**
+      var ss = SS.getActive && SS.getActive();
+      if ((!ss || !Array.isArray(ss.layers)) && SS.ensureSeed) {
+        try { ss = SS.ensureSeed(); } catch (_se) { ss = null; }
+      }
       if (!ss || !Array.isArray(ss.layers)) return false;
       var next = ss.layers.map(function (L) {
         if (L.role !== role) return L;
