@@ -4328,8 +4328,10 @@
 	       (published 18→19 인데 인스타엔 2개). 원장님 피드에 중복이 남고 앱은 모른다.
 	       재발행이 필요한 경우(올렸는데 인스타에서 지웠다 등)가 있으므로 막지 말고 **확인을 받는다.** */
 	    var _pubState = (d.slot && d.slot.publish) || {};
-	    if (_pubState.status === 'published' && !d._republishOk) {
-	      var _when = _pubState.publishedAt ? new Date(_pubState.publishedAt) : null;
+	    var _alreadyPublished = _pubState.status === 'published' || !!d._publishedAt;
+	    if (_alreadyPublished && !d._republishOk) {
+	      var _whenMs = d._publishedAt || _pubState.publishedAt;
+	      var _when = _whenMs ? new Date(_whenMs) : null;
 	      var _label = _when ? (_when.getMonth() + 1) + '월 ' + _when.getDate() + '일 ' +
 	        String(_when.getHours()).padStart(2, '0') + ':' + String(_when.getMinutes()).padStart(2, '0') : '이미';
 	      var _ask = window.nativeConfirm
@@ -4452,6 +4454,11 @@
           } catch (_le) { void _le; }
           // [v542] 게시 완료 상태를 저장소에 반영(이전엔 게시 전 slot 만 저장 → 새로고침 시 badge 사라짐).
           // [P0-3] buildSlot 은 한 번만 — saveItem·captureAndNotify 가 같은 슬롯을 공유(큰 객체 재구성 1회로).
+          // [출시 QA 2026-08-07] **이 세션에서 올렸다는 표식.** 재발행 확인창의 판정 근거다.
+          //   `d.slot.publish` 를 보려 했더니 클라이언트 `d.slot` 엔 publish 가 실려 있지 않아
+          //   (getActiveSlot 은 open/screen/cat/service/photoCount/coverUrl/hasCaption 요약만 준다)
+          //   조건이 절대 참이 되지 않았고, 그래서 3번째 발행까지 그대로 나갔다(실측).
+          d._publishedAt = Date.now();
           var _pubSlot = buildSlot();
           if (window.WorkspaceAdapter.saveItem) { try { window.WorkspaceAdapter.saveItem(_pubSlot); } catch (_e) { void _e; } }
           try { if (window.WorkMemory) window.WorkMemory.captureAndNotify(_pubSlot, d); } catch (_wm) { void _wm; }   // [T-115] 원장 작업 기억
