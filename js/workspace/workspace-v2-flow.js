@@ -4448,7 +4448,9 @@
 	        else {
 	          var m = { not_connected: '인스타 연결이 필요해요', blob: '이미지 생성에 실패했어요', api: '업로드 API 호출에 실패했어요', server: '서버가 업로드를 거부했어요' }[r.reason] || '업로드에 실패했어요';
 	          console.warn('[wsv2flow] instagram publish failed', r);
-	          toast(r.detail ? (m + ' — ' + r.detail) : m);
+	          // [출시 QA 2026-08-07] 어댑터가 원인별 안내(재연결·권한·한도)를 만들었으면 **그 문장만** 띄운다.
+	          //   앞에 "서버가 업로드를 거부했어요 —" 를 붙이면 정작 해야 할 일이 뒤로 밀린다.
+	          toast(r.userFacing ? r.detail : (r.detail ? (m + ' — ' + r.detail) : m));
 	        }
         setScreen('caption');
       });

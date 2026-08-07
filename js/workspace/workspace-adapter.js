@@ -622,11 +622,46 @@
       if (!has(window.apiFetch)) return Promise.resolve({ ok: false, reason: 'api' });
       var kind = opts.kind || 'feed';
       // 공통 응답 파서 + POST
+      /* [출시 QA 2026-08-07] Meta 에러를 **사람 말로** 바꾼다.
+         실측: 토큰만료·InvalidToken·권한취소·OAuthError·RateLimit 5종 전부
+           "서버가 업로드를 거부했어요 — [object Object]"
+         `data.error` 가 Meta 형식({error:{message,code,error_subcode}})이라 객체인데
+         문자열로 이어붙여서 `[object Object]` 가 그대로 원장님께 보였다. 게다가 5종이
+         **같은 문구**라 무엇을 해야 하는지 알 수 없다 — 토큰 만료는 '다시 연결'이
+         유일한 해결인데 "잠시 후 다시"만 반복하게 된다. */
+      var _metaMsg = function (err) {
+        if (!err) return '';
+        if (typeof err === 'string') return err;
+        var e = err.error || err;              // {error:{...}} 또는 {...}
+        var code = Number(e.code), sub = Number(e.error_subcode);
+        // 재연결이 필요한 부류 — 여기서만 행동을 지시한다.
+        if (code === 190 || code === 102 || sub === 458 || sub === 463 || sub === 467) {
+          return '인스타 로그인이 만료됐어요 — 연동관리에서 다시 연결해 주세요';
+        }
+        if (code === 200 || code === 10 || code === 3) {
+          return '인스타 게시 권한이 없어요 — 연동관리에서 권한을 다시 허용해 주세요';
+        }
+        if (code === 4 || code === 17 || code === 32 || code === 613) {
+          return '인스타 요청 한도를 넘었어요 — 30분쯤 뒤에 다시 시도해 주세요';
+        }
+        var m = e.message || e.detail || e.error_user_msg || '';
+        return typeof m === 'string' ? m : '';
+      };
+      // 원인별 안내는 **그 문장만** 보여준다(앞에 "서버가 업로드를 거부했어요 —" 를 붙이면
+      //   정작 해야 할 일이 뒤로 밀린다). userFacing 이 그 표식이다.
+      var _ACTIONABLE = /다시 연결|권한을 다시|한도를 넘었어요/;
+      var _fail = function (data, res) {
+        var d = _metaMsg(data && (data.error || data.detail));
+        if (d) return { ok: false, reason: 'server', detail: d, userFacing: _ACTIONABLE.test(d) };
+        var raw = data && data.detail;
+        if (typeof raw === 'string' && raw) return { ok: false, reason: 'server', detail: raw };
+        return { ok: false, reason: 'server', detail: 'HTTP ' + (res ? res.status : '?') };
+      };
       var _parse = function (res) {
         return Promise.resolve(res.json().catch(function () { return {}; })).then(function (data) {
           data = data || {};
-          if (!res.ok) return { ok: false, reason: 'server', detail: data.detail || data.error || ('HTTP ' + res.status) };
-          if (data.error || data.detail) return { ok: false, reason: 'server', detail: data.error || data.detail };
+          if (!res.ok) return _fail(data, res);
+          if (data.error || data.detail) return _fail(data, res);
           var ok = data.ok === true || data.success === true || data.published === true ||
             data.id || data.media_id || data.permalink || data.status === 'published' || data.status === 'success';
           return ok ? { ok: true, data: data } : { ok: false, reason: 'ambiguous' };
