@@ -4321,6 +4321,29 @@
 	      return;
 	    }
 	    if (d._publishing || d._preflight) return;   // [카오스 P2] 사전단계(hydrate/compose) 창 재탭 차단
+	    /* [출시 QA 2026-08-07] **이미 올린 글은 다시 올리지 않는다.**
+	       실측: 발행 성공 후 뒤로 가서 '인스타에 올리기' 를 다시 누르면 "인스타그램에 올렸어요" 가
+	       또 뜨고 **인스타에 같은 사진·캡션이 2개** 올라갔다. 게다가 슬롯의 igMediaId 는 마지막
+	       것으로 덮여서, 먼저 올라간 게시물은 앱이 추적조차 못 하는 고아가 된다
+	       (published 18→19 인데 인스타엔 2개). 원장님 피드에 중복이 남고 앱은 모른다.
+	       재발행이 필요한 경우(올렸는데 인스타에서 지웠다 등)가 있으므로 막지 말고 **확인을 받는다.** */
+	    var _pubState = (d.slot && d.slot.publish) || {};
+	    if (_pubState.status === 'published' && !d._republishOk) {
+	      var _when = _pubState.publishedAt ? new Date(_pubState.publishedAt) : null;
+	      var _label = _when ? (_when.getMonth() + 1) + '월 ' + _when.getDate() + '일 ' +
+	        String(_when.getHours()).padStart(2, '0') + ':' + String(_when.getMinutes()).padStart(2, '0') : '이미';
+	      var _ask = window.nativeConfirm
+	        ? window.nativeConfirm('이미 올린 글이에요',
+	            _label + '에 인스타에 올라간 글이에요.\n다시 올리면 같은 글이 하나 더 올라가요.\n그래도 올릴까요?', '다시 올리기', '취소')
+	        : Promise.resolve(window.confirm(_label + '에 이미 올린 글이에요. 다시 올리면 하나 더 올라가요. 계속할까요?'));
+	      Promise.resolve(_ask).then(function (yes) {
+	        if (!yes) { toast('이미 올린 글이라 그대로 뒀어요'); return; }
+	        d._republishOk = true;      // 이 세션 한 번만 통과 — 다음 발행에서 다시 물어본다
+	        publish(kind);
+	      });
+	      return;
+	    }
+	    d._republishOk = false;
 	    // [v779 보스] 콜라주(한장으로 합치기)를 골랐는데 합성본이 없으면 outputUrl() 이 '첫 원본 사진'으로
 	    //   조용히 폴백해, 3장 합쳐 올렸는데 첫 장만 올라갔다(편집 미리보기는 CSS라 콜라주로 보여 눈치 못 챔).
 	    //   발행 전에 다시 굽고, 그래도 없으면 발행을 멈추고 레이아웃으로 돌려보낸다(잘못된 사진 발행 방지).
