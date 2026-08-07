@@ -4335,7 +4335,11 @@
 	       로컬 슬롯의 publish 는 workspace-sync 의 pull 이 서버 값을 그대로 넣어준다
 	       (workspace-sync.js:241 `publish: rs.publish || null`) — 즉 서버가 진실의 원천이고
 	       다른 기기/브라우저에서도 같은 값이 내려온다. */
-	    if (!d._republishOk) {
+	    /* ⚠️ 재진입 표식(`_pubGuardDone`)이 **반드시** 있어야 한다.
+	       앞 버전은 검사 후 `publish()` 를 다시 불렀는데, 재진입하면 이 조건이 또 참이라
+	       **무한 재귀**가 됐다 — 발행이 통째로 죽어서 "인스타 올리기 버튼이 안 먹는다" 가 됐다.
+	       (미발행 슬롯도 예외 없이 걸려서 정상 발행까지 막혔다.) */
+	    if (!d._pubGuardDone) {
 	      var _slotId = (d.slot && d.slot.id) || null;
 	      var _local = Promise.resolve(null);
 	      if (!d._publishedAt && _slotId && typeof window.loadSlotsFromDB === 'function') {
@@ -4348,7 +4352,9 @@
 	      _local.then(function (_remote) {
 	        var _st = (d.slot && d.slot.publish) || _remote || {};
 	        var _whenMs = d._publishedAt || _st.publishedAt;
-	        if (!(_st.status === 'published' || d._publishedAt)) { d._republishOk = false; publish(_kind); return; }
+	        var _already = _st.status === 'published' || !!d._publishedAt;
+	        d._pubGuardDone = true;              // 이 시도에 대한 검사 끝 — 재진입은 곧장 통과
+	        if (!_already) { publish(_kind); return; }
 	        var _when = _whenMs ? new Date(_whenMs) : null;
 	        var _label = _when ? (_when.getMonth() + 1) + '월 ' + _when.getDate() + '일 ' +
 	          String(_when.getHours()).padStart(2, '0') + ':' + String(_when.getMinutes()).padStart(2, '0') : '이미';
@@ -4357,14 +4363,13 @@
 	              _label + '에 인스타에 올라간 글이에요.\n다시 올리면 같은 글이 하나 더 올라가요.\n그래도 올릴까요?', '다시 올리기', '취소')
 	          : Promise.resolve(window.confirm(_label + '에 이미 올린 글이에요. 다시 올리면 하나 더 올라가요. 계속할까요?'));
 	        Promise.resolve(_ask).then(function (yes) {
-	          if (!yes) { toast('이미 올린 글이라 그대로 뒀어요'); return; }
-	          d._republishOk = true;      // 이 발행 한 번만 통과 — 다음엔 다시 물어본다
+	          if (!yes) { d._pubGuardDone = false; toast('이미 올린 글이라 그대로 뒀어요'); return; }
 	          publish(_kind);
 	        });
 	      });
 	      return;
 	    }
-	    d._republishOk = false;
+	    d._pubGuardDone = false;   // 실제 발행으로 넘어간다 — 다음 시도에선 다시 검사
 	    // [v779 보스] 콜라주(한장으로 합치기)를 골랐는데 합성본이 없으면 outputUrl() 이 '첫 원본 사진'으로
 	    //   조용히 폴백해, 3장 합쳐 올렸는데 첫 장만 올라갔다(편집 미리보기는 CSS라 콜라주로 보여 눈치 못 챔).
 	    //   발행 전에 다시 굽고, 그래도 없으면 발행을 멈추고 레이아웃으로 돌려보낸다(잘못된 사진 발행 방지).
