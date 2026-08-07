@@ -4327,21 +4327,40 @@
 	       것으로 덮여서, 먼저 올라간 게시물은 앱이 추적조차 못 하는 고아가 된다
 	       (published 18→19 인데 인스타엔 2개). 원장님 피드에 중복이 남고 앱은 모른다.
 	       재발행이 필요한 경우(올렸는데 인스타에서 지웠다 등)가 있으므로 막지 말고 **확인을 받는다.** */
-	    var _pubState = (d.slot && d.slot.publish) || {};
-	    var _alreadyPublished = _pubState.status === 'published' || !!d._publishedAt;
-	    if (_alreadyPublished && !d._republishOk) {
-	      var _whenMs = d._publishedAt || _pubState.publishedAt;
-	      var _when = _whenMs ? new Date(_whenMs) : null;
-	      var _label = _when ? (_when.getMonth() + 1) + '월 ' + _when.getDate() + '일 ' +
-	        String(_when.getHours()).padStart(2, '0') + ':' + String(_when.getMinutes()).padStart(2, '0') : '이미';
-	      var _ask = window.nativeConfirm
-	        ? window.nativeConfirm('이미 올린 글이에요',
-	            _label + '에 인스타에 올라간 글이에요.\n다시 올리면 같은 글이 하나 더 올라가요.\n그래도 올릴까요?', '다시 올리기', '취소')
-	        : Promise.resolve(window.confirm(_label + '에 이미 올린 글이에요. 다시 올리면 하나 더 올라가요. 계속할까요?'));
-	      Promise.resolve(_ask).then(function (yes) {
-	        if (!yes) { toast('이미 올린 글이라 그대로 뒀어요'); return; }
-	        d._republishOk = true;      // 이 세션 한 번만 통과 — 다음 발행에서 다시 물어본다
-	        publish(kind);
+	    /* 이미 올린 글인지 판정 — **세 곳을 본다.**
+	         ① d._publishedAt        이 세션에서 방금 올림
+	         ② d.slot.publish        슬롯 객체에 실려 있으면
+	         ③ 로컬 슬롯 저장소       새로고침·다른 탭·다른 브라우저에서도 남는 유일한 근거
+	       ③ 이 핵심이다. ①만 봤을 땐 새로고침 한 번이면 확인창이 사라져 또 중복 게시된다.
+	       로컬 슬롯의 publish 는 workspace-sync 의 pull 이 서버 값을 그대로 넣어준다
+	       (workspace-sync.js:241 `publish: rs.publish || null`) — 즉 서버가 진실의 원천이고
+	       다른 기기/브라우저에서도 같은 값이 내려온다. */
+	    if (!d._republishOk) {
+	      var _slotId = (d.slot && d.slot.id) || null;
+	      var _local = Promise.resolve(null);
+	      if (!d._publishedAt && _slotId && typeof window.loadSlotsFromDB === 'function') {
+	        _local = Promise.resolve(window.loadSlotsFromDB()).then(function (all) {
+	          var hit = (all || []).filter(function (x) { return x && String(x.id) === String(_slotId); })[0];
+	          return hit && hit.publish ? hit.publish : null;
+	        }).catch(function () { return null; });
+	      }
+	      var _kind = kind;
+	      _local.then(function (_remote) {
+	        var _st = (d.slot && d.slot.publish) || _remote || {};
+	        var _whenMs = d._publishedAt || _st.publishedAt;
+	        if (!(_st.status === 'published' || d._publishedAt)) { d._republishOk = false; publish(_kind); return; }
+	        var _when = _whenMs ? new Date(_whenMs) : null;
+	        var _label = _when ? (_when.getMonth() + 1) + '월 ' + _when.getDate() + '일 ' +
+	          String(_when.getHours()).padStart(2, '0') + ':' + String(_when.getMinutes()).padStart(2, '0') : '이미';
+	        var _ask = window.nativeConfirm
+	          ? window.nativeConfirm('이미 올린 글이에요',
+	              _label + '에 인스타에 올라간 글이에요.\n다시 올리면 같은 글이 하나 더 올라가요.\n그래도 올릴까요?', '다시 올리기', '취소')
+	          : Promise.resolve(window.confirm(_label + '에 이미 올린 글이에요. 다시 올리면 하나 더 올라가요. 계속할까요?'));
+	        Promise.resolve(_ask).then(function (yes) {
+	          if (!yes) { toast('이미 올린 글이라 그대로 뒀어요'); return; }
+	          d._republishOk = true;      // 이 발행 한 번만 통과 — 다음엔 다시 물어본다
+	          publish(_kind);
+	        });
 	      });
 	      return;
 	    }
