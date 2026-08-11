@@ -107,8 +107,22 @@ select:focus-visible {
   box-shadow: 0 0 0 3px var(--brand-bg);
 }
 
-/* [F1 2026-06-09] iOS 줌 방지: !important 제거 — viewport(user-scalable=no)로 줌 차단.
-   컴포넌트별 font-size(13px 등) 복원됨. style-polish.css의 max(16px,1em) 규칙이 실입력 칸 커버. */
+/* ── [2026-08-11] iOS 자동 확대 전역 차단 ──
+   iOS 사파리는 글자 16px 미만 입력칸에 포커스가 가면 화면을 자동 확대한다.
+   viewport 줌 잠금(user-scalable=no)은 접근성/스토어 심사 때문에 금지(index.html) —
+   모바일에서만 입력 글자를 16px로 올리는 게 유일한 정공법.
+   (위 F1 2026-06-09 메모는 폐기: viewport 잠금이 풀리면서 방어가 사라졌었고,
+    style-polish.css는 index.html에서 로드 안 됨 + max(16px,1em) 규칙도 이미 없음.)
+   !important 이유: 고객메모 textarea 등 JS 인라인 스타일(13px)까지 덮어야 해서.
+   2026-08-11 전수조사 기준 16px 초과 입력칸 0곳 → 글자 축소 부작용 없음. 데스크톱은 기존 크기 유지. */
+@media (max-width: 768px), (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  textarea,
+  select,
+  [contenteditable="true"] {
+    font-size: 16px !important;
+  }
+}
 
 :focus:not(:focus-visible) {
   outline: none;

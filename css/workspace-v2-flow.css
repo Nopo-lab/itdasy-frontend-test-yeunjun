@@ -930,12 +930,6 @@ body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
 .wsv2flow .cap-svctype__c:active { transform: scale(.95); }
 .wsv2flow .wsv2flow__cta:active:not(:disabled) { transform: scale(.985); }
 
-/* ── [버그4 2026-07-25] iOS 자동 확대 차단 ──
-   iOS 사파리는 입력칸 글자가 16px 미만이면 포커스 시 화면을 자동 확대한다.
-   (viewport 줌 잠금은 접근성/심사 때문에 의도적으로 푼 상태 — index.html 참조. 잠그는 방식 금지.)
-   작업실 플로우 입력칸을 모바일에서 16px로 올려 확대 자체가 안 일어나게. 데스크톱은 기존 크기 유지. */
-@media (max-width: 768px), (pointer: coarse) {
-  .wsv2flow input[type="text"], .wsv2flow input[type="search"], .wsv2flow input:not([type]),
-  .wsv2flow textarea, .wsv2flow .service-input, .wsv2flow .cap-usertags input,
-  .wsv2flow .cust-search input, .wsv2flow .capwiz__notein { font-size: 16px; }
-}
+/* [버그4 2026-07-25 → 2026-08-11 전역 승격] iOS 자동 확대 차단 규칙은
+   tokens.css 로 이동·전역화(전 화면 input/textarea/select/contenteditable 16px).
+   작업실 한정이던 이 블록은 중복이라 삭제 병합. */
