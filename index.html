@@ -163,7 +163,18 @@ window.__LATEST_BUILD__ = '20260705-v709-fillwide';
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
-<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet" integrity="sha384-uGEvnSEpW2nM9xJFsrxrwakwrk9QdDTQIBJh0hVMu90OaVyMAMpAK1rIn0/Kh1/k" crossorigin="anonymous">
+<!-- [2026-08-09] .min.css → 원본 .css. 앱 기본 글꼴이 통째로 안 먹고 있었다.
+     증상: 콘솔에 "Failed to find a valid digest in the 'integrity' attribute ... has been blocked"
+           link.sheet === false · document.fonts 에 Pretendard 페이스 0개.
+           개발자 맥엔 Pretendard 가 설치돼 있어 멀쩡해 보였다 — 폰트 없는 기기(대부분의
+           윈도우·안드로이드)에서는 -apple-system/sans-serif 폴백으로 보이고 있었다.
+     원인: .min.css 는 레포에 없는 파일이라 **jsDelivr 가 요청 때 clean-css 로 생성**한다.
+           응답 헤더 주석에 그쪽이 직접 써놨다 — "Do NOT use SRI with dynamically generated files!"
+           clean-css 버전이 올라가면 산출물이 바뀌고 SRI 가 깨진다. 그래서 해시만 갱신하면
+           다음 minifier 업데이트 때 똑같이 또 터진다.
+     조치: 레포에 실재하는 정적 원본(.css)으로. 2회 요청 해시 동일 확인, @font-face 9개 동일,
+           크기 차이 116바이트(3,082 vs 2,966)라 실익 없음. -->
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet" integrity="sha384-SN6A48CJQjx946+DRb8wsoifC4a8ur9ZS6R+HCTgnBHOKCa6GLXAR3Qn8d1jztxg" crossorigin="anonymous">
 <!-- [v206 2026-05-19] 사진편집 텍스트용 무료 폰트 (Google Fonts) — 모두 OFL/Apache 상업 사용 OK -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
