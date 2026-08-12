@@ -95,7 +95,15 @@
   _stub('openAssistant', 'assistant', '잇비 준비 중…');
   /* [3단계] 주변 기능(extras: DM·SNS·임포트·OCR·지원 등) — 사이드바/메뉴 직행 진입만 스텁 */
   _stub('openDMConversations', 'extras', 'DM 준비 중…');
-  _stub('openSupport', 'extras', '준비 중…');
+  /* [2026-08-12] `openSupport` 스텁 삭제 — **그런 함수는 어디에도 없다.**
+     app-support.js 가 정의하는 건 `openSupportChat` 하나뿐인데, 여기서 유령 이름으로
+     스텁을 만들어 두니 진입점들이 그걸 먼저 집었다:
+       index.html  callFirst(['openSupport','openSupportChat'])
+       app-myshop  window.openSupport || window.openSupportChat
+     스텁은 '준비 중…' 을 띄우고 extras 를 로드한 뒤 window.openSupport 를 다시 보는데,
+     실함수가 없으니 **여전히 자기 자신** → "화면을 불러오지 못했어요" 로 끝난다.
+     즉 고객센터가 두 진입점(PC 사이드바 푸터·내샵관리 하단)에서 영영 안 열렸다.
+     스텁을 없애면 두 호출부가 자동으로 openSupportChat 으로 떨어진다. */
   _stub('openSupportChat', 'extras', '준비 중…');
   _stub('openDMManualReplies', 'extras', '준비 중…');
   /* [P0-2 Phase3] 게이트된 주변 기능 화면(리포트·리마인더·리텐션·리뷰요청·음성캡션) → extras 그룹.

@@ -167,7 +167,9 @@
         if (window.openDMConfirmQueue) { window.openDMConfirmQueue(); return true; }
       }
       if (kind === 'support_reply' || kind === 'support_ai_reply') {
-        if (window.openSupportSheet) { window.openSupportSheet(); return true; }
+        // [2026-08-12] openSupportSheet 은 **어디에도 없는 이름**이었다 — 고객센터 답변·
+        //   AI 답변 알림을 눌러도 아무 화면도 안 열리고 읽음 처리만 됐다. 실함수로 교체.
+        if (window.openSupportChat) { window.openSupportChat(); return true; }
       }
       // [죽은동작 정리 2026-07-27] 예약 알림은 "예약관리 보기 →" 라벨인데 라우팅이 없어 읽음+제거만 됐다.
       //   (payload.customer_id 가 있으면 오히려 고객카드로 튀었음.) 캘린더로 보낸다. payload 분기보다 먼저.

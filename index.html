@@ -2319,7 +2319,9 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
       'integrations': () => call('openIntegrationsHub'),
       'settings-hub': () => call('openSettingsHub'),
       'plan': () => callFirst(['openPlan', 'openPlanPopup']),
-      'support': () => setTimeout(() => callFirst(['openSupport', 'openSupportChat']), 0),
+      // [2026-08-12] 'openSupport' 는 존재하지 않는 이름이었다 — loader 스텁만 있어서
+      //   callFirst 가 그걸 집고 고객센터가 안 열렸다. 실함수 이름 하나만 부른다.
+      'support': () => setTimeout(() => call('openSupportChat'), 0),
       'logout': () => call('logout'),
       'nav-sheet': () => call('openNavSheet'),
       'settings-connect-instagram': () => closeThen(() => call('connectInstagram')),

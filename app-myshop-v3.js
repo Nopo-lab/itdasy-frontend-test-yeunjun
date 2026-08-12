@@ -471,9 +471,12 @@
       /* INVENTORY_HIDDEN */ // inventory:      () => window.openInventoryHub && window.openInventoryHub(),
       aiHub:          () => window.openAiHub && window.openAiHub(),
       settings:       () => window.openSettingsHub && window.openSettingsHub(),
-      // 플랜·구독 — app-plan.js 에서 openPlanPopup 으로 노출. openPlan / openSupport 도 시도.
+      // 플랜·구독 — app-plan.js 에서 openPlanPopup 으로 노출. openPlan 도 시도.
       plan:           () => (window.openPlan || window.openPlanPopup || (() => {}))(),
-      support:        () => (window.openSupport || window.openSupportChat || (() => {}))(),
+      // [2026-08-12] `window.openSupport` 를 먼저 보던 것 → **그런 함수는 없다.**
+      //   loader 스텁만 존재해서 항상 그게 선택됐고, 스텁이 extras 를 로드한 뒤에도
+      //   실함수가 없어 "화면을 불러오지 못했어요" 로 끝났다(= 고객센터가 안 열림).
+      support:        () => (window.openSupportChat || (() => {}))(),
       logout:         () => (window.logout || (() => {}))(),
       bell:           () => window.openNotifications && window.openNotifications(),
       editShop:       () => window.openShopSettings && window.openShopSettings(),
