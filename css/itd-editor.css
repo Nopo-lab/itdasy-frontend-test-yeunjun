@@ -4,7 +4,7 @@
    색: --accent 토큰 사용(단일 제어). 스코프: .itded
    ──────────────────────────────────────────────────────────────── */
 .itded{position:fixed;inset:0;z-index:11200;display:none;flex-direction:column;background:#0F0A0C;
-  font-family:-apple-system,"Pretendard","Apple SD Gothic Neo",sans-serif;-webkit-font-smoothing:antialiased;
+  font-family:Pretendard,-apple-system,"Apple SD Gothic Neo",sans-serif;-webkit-font-smoothing:antialiased;
   touch-action:none;-webkit-user-select:none;user-select:none;overscroll-behavior:contain}
 .itded.is-open{display:flex}
 @media (width >= 768px){ .itded{left:var(--side-nav-width)} }   /* PC 사이드바 가림 방지 [v716] SSOT */

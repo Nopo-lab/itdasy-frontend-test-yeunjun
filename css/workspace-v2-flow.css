@@ -5,7 +5,7 @@
 .wsv2flow {
   position: fixed; inset: 0; z-index: 9800; display: none; flex-direction: column;
   background: #F9F8F7; color: var(--text);   /* [디자인 통일] 홈과 같은 따뜻한 크림 — 앱 전체 프리미엄 톤 일치(뷰티 살롱 감성) */
-  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 .wsv2flow.is-open { display: flex; }

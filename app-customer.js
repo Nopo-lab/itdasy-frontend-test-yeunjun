@@ -273,6 +273,46 @@
     return { items: d.items || [], total: Number(d.total) || 0, hasMore: !!d.has_more };
   }
 
+  // [출시 종결 2026-08-12] 201번째 손님부터 **목록에서** 볼 방법이 없었다.
+  //   서버는 예전부터 offset 페이지네이션과 has_more 를 준다. 그런데 `_hasMore` 는
+  //   대입만 하고 **읽는 곳이 한 군데도 없었다**(24·253·263행). "+N명 더 보기" 버튼은
+  //   이미 받아둔 캐시(최대 200건) 안에서 보이는 창만 넓힐 뿐이라, 손님이 300명이면
+  //   100명은 이름을 정확히 쳐서 서버 검색으로만 만날 수 있었다. CRM 에서 그건 기능 부재다.
+  //   여기서 다음 페이지를 이어 받는다. 서버 수정은 필요 없다 — 프론트 배선만 빠져 있었다.
+  let _loadingMore = false;
+  // 서버에 아직 안 받아온 손님이 남았나.
+  //   `_hasMore` 하나만 보면 안 된다 — SWR 캐시로 들어오는 경로(list() 의 첫 분기)는
+  //   `_total` 만 복원하고 `_hasMore` 는 false 인 채로 남는다. 실제로 그 경로 때문에
+  //   버튼이 200명에서 사라졌다(로컬 브라우저 실측: 클릭 3번 → 200행에서 멈춤).
+  //   `_total` 은 서버가 센 진짜 전체 수라 이쪽이 더 믿을 만하다.
+  function _serverHasMore() {
+    return _hasMore || (Number(_total) || 0) > (_cache ? _cache.length : 0);
+  }
+  async function loadMore() {
+    if (_loadingMore || !_serverHasMore()) return false;
+    _loadingMore = true;
+    try {
+      const off = _cache ? _cache.length : 0;
+      const d = await _api('GET', `/customers?limit=200&offset=${off}`);
+      const got = d.items || [];
+      if (got.length) {
+        // id 중복 방지 — 사이에 새 손님이 생기면 offset 이 한 칸 밀려 겹칠 수 있다.
+        const have = new Set((_cache || []).map(c => String(c.id)));
+        _cache = (_cache || []).concat(got.filter(c => !have.has(String(c.id))));
+        _writeSWR(_cache);
+      }
+      if (Number.isFinite(d.total)) _total = d.total;
+      // 서버가 has_more 를 안 주더라도 total 로 다시 판정한다.
+      _hasMore = (!!d.has_more || (Number(_total) || 0) > _cache.length) && got.length > 0;
+      return got.length > 0;
+    } catch (e) {
+      void e;
+      return false;
+    } finally {
+      _loadingMore = false;
+    }
+  }
+
   // ── CRUD ────────────────────────────────────────────────
   async function list() {
     // 1. 캐시 있으면 즉시 반환 (UI 바로 렌더)
@@ -896,8 +936,12 @@
     const lastQ = box.dataset.lastQ || '';
     if (lastQ !== q) { _windowSize = 50; box.dataset.lastQ = q; }
     const totalLen = items.length;
+    // [출시 종결 2026-08-12] 서버에 아직 안 받아온 손님이 남았는지.
+    //   검색·세그먼트 필터가 걸린 상태에서는 서버 페이지네이션을 이어붙이면 안 된다
+    //   (필터는 캐시 위에서 도는 계산이라 페이지가 섞인다). 전체 목록일 때만 켠다.
+    const serverMore = _serverHasMore() && !q && seg === 'all';
     const visible = items.slice(0, _windowSize);
-    const hasMore = totalLen > _windowSize;
+    const hasMore = totalLen > _windowSize || serverMore;
 
     // [v208] 가나다 그룹 + v4 row 마크업
     const isPC = _isPC();
@@ -934,7 +978,7 @@
     box.innerHTML = _dupBannerHTML()
       + groupsHtml
       + (hasMore
-          ? `<button id="customerLoadMore" type="button" style="width:calc(100% - 20px);min-height:44px;margin:12px 10px;padding:11px;border:1px dashed hsl(220,15%,80%);border-radius:12px;background:var(--surface-2);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;">+ ${totalLen - _windowSize}명 더 보기</button>`
+          ? `<button id="customerLoadMore" type="button" style="width:calc(100% - 20px);min-height:44px;margin:12px 10px;padding:11px;border:1px dashed hsl(220,15%,80%);border-radius:12px;background:var(--surface-2);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;">+ ${Math.max(1, (serverMore ? Math.max(shopTotal, totalLen) : totalLen) - _windowSize)}명 더 보기</button>`
           : '');
 
     // 우측 인덱스바 (모바일만)
@@ -952,7 +996,17 @@
 
     const more = box.querySelector('#customerLoadMore');
     if (more) {
-      more.addEventListener('click', () => { _windowSize += WINDOW_STEP; _rerender(); }, { once: true });
+      more.addEventListener('click', async () => {
+        _windowSize += WINDOW_STEP;
+        // [출시 종결 2026-08-12] 캐시 끝에 닿았는데 서버에 더 있으면 다음 페이지를 받아온다.
+        //   예전엔 이 분기가 없어서 창만 넓히다가 200번째에서 멈췄다.
+        if (serverMore && _windowSize > (_cache ? _cache.length : 0)) {
+          more.disabled = true;
+          more.textContent = '불러오는 중…';
+          await loadMore();
+        }
+        _rerender();
+      }, { once: true });
     }
     _bindDupBanner(box);
     _setupCustomerDelegation(box);
