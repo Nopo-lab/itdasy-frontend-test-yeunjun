@@ -4,7 +4,7 @@
   display: flex; align-items: flex-end; justify-content: center; opacity: 0; transition: opacity .26s ease; }
 .fplan-overlay.is-open { opacity: 1; }
 .fplan { width: 100%; max-width: 520px; max-height: 92vh; background: #FAF6F4; border-radius: 22px 22px 0 0;
-  padding: 8px 16px calc(20px + env(safe-area-inset-bottom)); display: flex; flex-direction: column;
+  padding: 8px 16px calc(20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); display: flex; flex-direction: column;
   transform: translateY(24px); transition: transform .26s cubic-bezier(.22,1,.36,1); box-shadow: 0 -8px 40px rgba(0,0,0,.18); }
 .fplan-overlay.is-open .fplan { transform: translateY(0); }
 

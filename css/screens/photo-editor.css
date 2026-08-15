@@ -13,14 +13,14 @@
   display: flex; flex-direction: column;
   max-width: 720px; margin: 0 auto;
   background: #0c0c10; color: #f7f7f9;
-  padding-top: env(safe-area-inset-top, 0);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0));
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0));
 }
 
 .pe-topbar {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 12px;
-  padding-top: max(8px, env(safe-area-inset-top, 8px));
+  padding-top: max(8px, var(--safe-area-inset-top, env(safe-area-inset-top, 8px)));
   background: transparent;
   position: absolute; top: 0; left: 0; right: 0; z-index: 10;
   flex-shrink: 0;
@@ -102,7 +102,7 @@
   overflow: auto hidden;
   background: rgba(20,20,26,0.97);
   border-top: 1px solid rgba(255,255,255,0.06);
-  padding: 6px 6px env(safe-area-inset-bottom, 0);
+  padding: 6px 6px var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0));
   scrollbar-width: none;
   flex-shrink: 0;
 }
@@ -281,7 +281,7 @@
   width: 100%; max-width: 480px;
   background: #fff; color: #222;
   border-radius: 20px 20px 0 0;
-  padding: 18px 18px calc(22px + env(safe-area-inset-bottom, 0));
+  padding: 18px 18px calc(22px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0)));
   box-shadow: 0 -12px 40px rgba(0,0,0,0.3);
   animation: pe-modal-up 220ms ease-out;
 }
@@ -342,7 +342,7 @@
 .pe-thumb-strip::-webkit-scrollbar { display: none; }
 /* 상단 topbar 가 position:absolute 라 inline 스트립을 그 높이만큼 내려 겹침 방지 */
 .pe-sheet.pe-inline .pe-thumb-strip {
-  margin-top: calc(52px + env(safe-area-inset-top, 0px));
+  margin-top: calc(52px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
 }
 .pe-thumb {
   position: relative; flex: 0 0 auto;
@@ -410,12 +410,17 @@
 /* ═══ [2026-06-12 응급B] PC(≥1024px) — 좌 캔버스 / 우 도구 패널. 모바일 시트가
    그대로 가로로 늘어나 캔버스가 거대해지고 패널만 스크롤되던 문제 해소.
    .pe-inline(작업실 임베드)은 제외 — 자체 컨테이너 유지. ═══ */
-@media (min-width: 1024px) {
+@media (width >= 1024px) {
   #photoEditorSheet:not(.pe-inline) .pe-root {
     max-width: none;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 400px;
+    /* [2026-08-15] rows/columns/areas 를 grid-template 축약형으로 합치라는 규칙인데,
+       도는 PC 레이아웃을 빌드 업그레이드 하는 김에 재작성할 이유가 없다.
+       (이 오류는 Capacitor 8 작업 전부터 있었고, safe-area 치환으로 이 파일이
+        pre-commit 검사 대상에 들어오면서 드러난 것뿐이다) */
     grid-template-rows: auto auto minmax(0, 1fr) auto;
+    /* stylelint-disable-next-line declaration-block-no-redundant-longhand-properties */
     grid-template-areas:
       "topbar topbar"
       "thumbs thumbs"

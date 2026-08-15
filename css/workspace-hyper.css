@@ -22,7 +22,7 @@
 
 /* ── 레이아웃 고르기 (구성 3종, 목업 ③·④) ─────────────────────────────
    위: 번호 썸네일 스트립(전부 보임, 캐러셀 없음) → 중간: 결과 미리보기 → 아래: 구성 카드 2~3개. */
-.wsc-wrap { display: flex; flex-direction: column; gap: 14px; padding: 4px 2px calc(16px + env(safe-area-inset-bottom)); }
+.wsc-wrap { display: flex; flex-direction: column; gap: 14px; padding: 4px 2px calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
 .wsc-empty { margin: 24px 8px; text-align: center; font-size: 13px; font-weight: 600; color: var(--text-subtle, #8B95A1); }
 
 /* 섹션 라벨 */

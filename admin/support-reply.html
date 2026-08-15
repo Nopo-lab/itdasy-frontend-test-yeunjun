@@ -12,8 +12,8 @@
     background: #FAFAFA;
     color: #222;
     line-height: 1.6;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+    padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   }
   header.hero {
     background: linear-gradient(135deg, #F18091 0%, #EC4899 100%);

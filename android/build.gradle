@@ -7,8 +7,11 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.1'
-        classpath 'com.google.gms:google-services:4.4.0'
+        // [2026-08-15 Capacitor 8] 8.2.1 → 8.13.0. Capacitor 8 이 요구하는 최소 AGP 다.
+        //   compileSdk 36 은 AGP 8.13+ 에서만 해석된다(그 아래면 "compile against version 36
+        //   or later" 로 빌드가 아예 실패). Gradle 8.14.3 과 짝이다 — 한쪽만 올리면 안 맞는다.
+        classpath 'com.android.tools.build:gradle:8.13.0'
+        classpath 'com.google.gms:google-services:4.4.2'
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files

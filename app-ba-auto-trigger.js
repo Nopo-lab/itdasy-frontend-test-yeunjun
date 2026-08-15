@@ -53,7 +53,7 @@
     chip.style.cssText = [
       'position:fixed',
       'left:50%',
-      'bottom:calc(env(safe-area-inset-bottom,0px) + 84px)',
+      'bottom:calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 84px)',
       'transform:translateX(-50%) translateY(20px)',
       'z-index:9700',
       'display:flex',

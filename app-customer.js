@@ -1095,7 +1095,7 @@
     wrap.id = 'custSwipeActions';
     wrap.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;justify-content:center;';
     wrap.innerHTML = `
-      <div style="width:100%;max-width:420px;background:#fff;border-radius:18px 18px 0 0;padding:14px 14px max(14px,env(safe-area-inset-bottom));box-shadow:0 -4px 24px rgba(0,0,0,0.12);">
+      <div style="width:100%;max-width:420px;background:#fff;border-radius:18px 18px 0 0;padding:14px 14px max(14px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));box-shadow:0 -4px 24px rgba(0,0,0,0.12);">
         <div style="text-align:center;margin-bottom:10px;">
           <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 10px;"></div>
           <strong style="font-size:15px;">${_esc(c.name)}</strong>
@@ -1420,7 +1420,7 @@
       const pop = document.createElement('div');
       pop.style.cssText = 'position:fixed;inset:0;z-index:10800;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;' /* [2026-06-11] 잇비(10500) 위로 — 픽커 가림 픽스 */;
       pop.innerHTML = `
-        <div style="width:100%;background:var(--bg,#fff);border-radius:20px 20px 0 0;max-height:75vh;display:flex;flex-direction:column;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom));">
+        <div style="width:100%;background:var(--bg,#fff);border-radius:20px 20px 0 0;max-height:75vh;display:flex;flex-direction:column;padding:16px;padding-bottom:max(16px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
             <strong style="font-size:16px;">고객 선택</strong>
             <button data-pick-cancel style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;">✕</button>

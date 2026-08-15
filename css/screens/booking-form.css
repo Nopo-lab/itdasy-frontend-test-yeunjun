@@ -376,7 +376,7 @@
   background:#fff;
   /* [Phase3-B #9] safe-area 반영 + 하단 여백 음수(-96px) 제거 — 스크롤 영역(.bf-wrap padding-bottom:96px)을
      상쇄해 메모칸 하단이 sticky 버튼에 가리던 문제 해결(setTimeout 땜빵 없이 레이아웃으로). */
-  padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+  padding:10px 14px calc(10px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   border-top:0.5px solid #F0F1F4;
   display:grid; grid-template-columns:1fr 2fr; gap:6px;
   z-index:10;

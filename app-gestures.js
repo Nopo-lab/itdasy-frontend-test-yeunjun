@@ -245,7 +245,7 @@
 
     sheet.innerHTML = `
       <div style="background:var(--surface,#fff); width:100%; max-width:480px;
-                  border-radius:24px 24px 0 0; padding:14px 0 calc(14px + env(safe-area-inset-bottom));
+                  border-radius:24px 24px 0 0; padding:14px 0 calc(14px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
                   transform:translateY(100%); transition:transform 0.22s cubic-bezier(0.22,1,0.36,1);">
         <div style="width:36px;height:4px;border-radius:2px;background:#e0e0e0;margin:0 auto 12px;"></div>
         ${items.map((it, i) => `

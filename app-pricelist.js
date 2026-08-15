@@ -18,7 +18,7 @@
     sheet.id = 'pricelistSheet';
     sheet.style.cssText = 'position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,0.5);display:none;align-items:flex-end;justify-content:center;';
     sheet.innerHTML = `
-      <div id="pricelistCard" style="width:100%;max-width:520px;background:#fff;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;padding:18px 18px max(18px,env(safe-area-inset-bottom));">
+      <div id="pricelistCard" style="width:100%;max-width:520px;background:#fff;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;padding:18px 18px max(18px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
           <strong style="font-size:17px;">가격표 사진으로 일괄 등록</strong>
           <button id="plClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;font-size:22px;cursor:pointer;line-height:1;">×</button>

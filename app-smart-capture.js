@@ -18,7 +18,7 @@
     sheet.style.cssText = 'position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,0.5);display:none;align-items:flex-end;justify-content:center;';
     const _ic = (id, size = 26) => `<svg width="${size}" height="${size}" aria-hidden="true"><use href="#${id}"/></svg>`;
     sheet.innerHTML = `
-      <div id="scCard" style="width:100%;max-width:540px;background:#fff;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;padding:18px 18px max(18px,env(safe-area-inset-bottom));">
+      <div id="scCard" style="width:100%;max-width:540px;background:#fff;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;padding:18px 18px max(18px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
           <span style="display:inline-flex;align-items:center;color:#BC6675;">${_ic('ic-image-plus', 20)}</span>
           <strong id="scTitle" style="font-size:17px;">스마트 캡처</strong>

@@ -15,7 +15,7 @@
   function _buttonHtml(ctx, key, label, xSide, icon) {
     const side = xSide === 'left' ? 'left:12px;' : 'right:12px;';
     const pos = key === 'close'
-      ? 'top:max(12px,env(safe-area-inset-top));right:12px;width:40px;height:40px;'
+      ? 'top:max(12px,var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));right:12px;width:40px;height:40px;'
       : `${side}top:50%;transform:translateY(-50%);width:48px;height:48px;`;
     return `<button data-lightbox-${key} aria-label="${label}" title="${label}"
       style="position:absolute;${pos}border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
@@ -31,7 +31,7 @@
     const hasNext = s.idx < s.photos.length - 1;
     ctx.overlay.innerHTML = `
       ${_buttonHtml(ctx, 'close', '닫기', 'right', 'ic-x')}
-      <div style="position:absolute;top:max(18px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.85);font-size:13px;font-weight:700;background:rgba(0,0,0,0.4);padding:6px 12px;border-radius:14px;">${s.idx + 1} / ${s.photos.length}</div>
+      <div style="position:absolute;top:max(18px,var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.85);font-size:13px;font-weight:700;background:rgba(0,0,0,0.4);padding:6px 12px;border-radius:14px;">${s.idx + 1} / ${s.photos.length}</div>
       <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;max-width:100%;overflow:hidden;">
         <img src="${ctx.esc(cur)}" alt="업로드 사진 ${s.idx + 1}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;" />
       </div>
@@ -95,7 +95,7 @@
       onKey: null,
     };
     ctx.overlay.id = 'asstLightbox';
-    ctx.overlay.style.cssText = 'position:fixed;inset:0;z-index:10500;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom);opacity:0;transition:opacity 0.15s ease-out;';
+    ctx.overlay.style.cssText = 'position:fixed;inset:0;z-index:10500;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) 12px var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));opacity:0;transition:opacity 0.15s ease-out;';
     ctx.overlay.setAttribute('role', 'dialog');
     ctx.overlay.setAttribute('aria-label', '업로드 사진 보기');
     _render(ctx);

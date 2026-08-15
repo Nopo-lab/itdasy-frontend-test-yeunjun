@@ -14,7 +14,7 @@
   flex-direction: column;
   background: #fff;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0));
 }
 
 /* 활성 시 — pe-tabs 는 숨김, nav-v7 표시 */
@@ -29,7 +29,7 @@
    nav 높이만큼 여백을 줘서 마지막 슬라이더가 nav 위로 스크롤되어 닿게 한다.
    studio/pro.css 의 .pe-panel padding !important 를 이기려면 !important 필요. */
 #photoEditorSheet.pe-nav-v7-active .pe-panel {
-  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0) + 24px) !important;
+  padding-bottom: calc(112px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0)) + 24px) !important;
 }
 
 /* v330 — entry-v6 카드 그리드/프리셋 영역 hide (사진 픽커만 노출) */

@@ -76,7 +76,7 @@
       : '잇데이는 로그인 유지·오류 진단에 필요한 최소한의 데이터만 사용합니다. 자세한 내용은 개인정보처리방침을 확인해 주세요. 언제든 설정에서 변경 가능합니다.';
 
     const html = `
-      <div id="itdasyCookieBanner" style="position:fixed;left:0;right:0;bottom:0;z-index:9950;display:flex;justify-content:center;padding:12px calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));pointer-events:none;">
+      <div id="itdasyCookieBanner" style="position:fixed;left:0;right:0;bottom:0;z-index:9950;display:flex;justify-content:center;padding:12px calc(12px + var(--safe-area-inset-right, env(safe-area-inset-right, 0px))) calc(12px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) calc(12px + var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));pointer-events:none;">
         <div style="max-width:560px;width:100%;background:rgba(20,20,25,0.99);color:#fff;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,0.3);padding:16px 18px;font-size:12.5px;line-height:1.6;pointer-events:auto;">
           <div style="font-size:13.5px;font-weight:800;margin-bottom:6px;letter-spacing:-0.2px;">🍪 ${title}</div>
           <div style="opacity:0.85;margin-bottom:12px;">

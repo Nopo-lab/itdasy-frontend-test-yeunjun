@@ -70,7 +70,7 @@
 
 .pe-panel {
   max-height: 48vh !important;
-  padding: 14px 14px calc(18px + env(safe-area-inset-bottom)) !important;
+  padding: 14px 14px calc(18px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
 }
 
 .pe-field-label {
@@ -520,7 +520,7 @@ input[data-studio-slider]::-webkit-slider-thumb {
   justify-content: center;
   background: rgba(0,0,0,0.5);
   padding: 24px;
-  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  padding-bottom: calc(24px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
 }
 .pe-reco-consent {
   width: 100%;
@@ -614,7 +614,7 @@ input[data-studio-slider]::-webkit-slider-thumb {
   justify-content: center;
   background: rgba(0,0,0,0.5);
   padding: 24px;
-  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  padding-bottom: calc(24px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
 }
 .pe-l3-consent {
   width: 100%;

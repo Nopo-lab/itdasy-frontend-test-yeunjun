@@ -59,7 +59,7 @@
     sheet.id = 'dmManualSheet';
     sheet.style.cssText = 'position:fixed;inset:0;z-index:9989;background:rgba(0,0,0,0.5);display:none;align-items:flex-end;justify-content:center;';
     sheet.innerHTML = `
-      <div id="dmrCard" style="width:100%;max-width:580px;background:#fff;border-radius:20px 20px 0 0;max-height:94vh;display:flex;flex-direction:column;padding:16px 18px max(16px,env(safe-area-inset-bottom));">
+      <div id="dmrCard" style="width:100%;max-width:580px;background:#fff;border-radius:20px 20px 0 0;max-height:94vh;display:flex;flex-direction:column;padding:16px 18px max(16px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
           <span style="display:inline-flex;align-items:center;color:#BC6675;"><i class="ph-duotone ph-pen" aria-hidden="true"></i></span>
           <strong style="font-size:17px;">멘트 관리</strong>
@@ -356,7 +356,7 @@
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center;';
     overlay.innerHTML = `
-      <div id="dmrEditCard" style="width:100%;max-width:560px;background:#fff;border-radius:20px 20px 0 0;max-height:94vh;overflow-y:auto;padding:18px 18px max(18px,env(safe-area-inset-bottom));">
+      <div id="dmrEditCard" style="width:100%;max-width:560px;background:#fff;border-radius:20px 20px 0 0;max-height:94vh;overflow-y:auto;padding:18px 18px max(18px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
           <strong style="font-size:16px;">${it.id ? '멘트 편집' : '새 멘트 추가'}</strong>
           <button id="dmrEditClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#888;display:inline-flex;align-items:center;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-x"/></svg></button>

@@ -21,11 +21,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup JDK 17
+      # [2026-08-15 Capacitor 8] 17 → 21. @capacitor/android 8.5.0 이
+      #   sourceCompatibility/targetCompatibility 를 VERSION_21 로 박아둬서
+      #   JDK 17 로는 컴파일이 안 된다.
+      - name: Setup JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -38,13 +41,14 @@ jobs:
       - name: Install Android packages
         # variables.gradle 의 compileSdk 와 반드시 같이 움직인다. 34 만 깔려 있으면
         # "compile against version 35 or later" 로 빌드가 통째로 실패한다(2026-08-15 실측).
+        # [2026-08-15 Capacitor 8] compileSdk 36 으로 올렸으므로 여기도 36.
         run: |
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Setup Node + Capacitor
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '22'
 
       - name: Install npm deps
         run: npm install --no-audit --no-fund

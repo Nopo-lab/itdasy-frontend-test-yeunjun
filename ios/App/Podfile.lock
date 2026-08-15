@@ -1,30 +1,32 @@
 PODS:
-  - AparajitaCapacitorSecureStorage (6.0.1):
+  - AparajitaCapacitorSecureStorage (8.0.0):
     - Capacitor
     - KeychainSwift (~> 21.0)
-  - Capacitor (6.2.1):
+  - Capacitor (8.5.0):
     - CapacitorCordova
-  - CapacitorApp (6.0.3):
+  - CapacitorApp (8.1.1):
     - Capacitor
-  - CapacitorBrowser (6.0.6):
+  - CapacitorBrowser (8.0.4):
     - Capacitor
-  - CapacitorCamera (6.1.3):
+  - CapacitorCamera (8.2.2):
     - Capacitor
-  - CapacitorCordova (6.2.1)
-  - CapacitorDialog (6.0.3):
+    - IONCameraLib (~> 1.0.5)
+  - CapacitorCordova (8.5.0)
+  - CapacitorDialog (8.0.1):
     - Capacitor
-  - CapacitorHaptics (6.0.3):
+  - CapacitorHaptics (8.0.2):
     - Capacitor
-  - CapacitorPushNotifications (6.0.5):
+  - CapacitorPushNotifications (8.1.2):
     - Capacitor
-  - CapacitorShare (6.0.4):
+  - CapacitorShare (8.0.1):
     - Capacitor
-  - CapacitorSplashScreen (6.0.4):
+  - CapacitorSplashScreen (8.0.2):
     - Capacitor
-  - CapacitorStatusBar (6.0.3):
+  - CapacitorStatusBar (8.0.3):
     - Capacitor
-  - CordovaPlugins (6.2.1):
+  - CordovaPlugins (8.5.0):
     - CapacitorCordova
+  - IONCameraLib (1.0.5)
   - KeychainSwift (21.0.0)
 
 DEPENDENCIES:
@@ -44,6 +46,7 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - IONCameraLib
     - KeychainSwift
 
 EXTERNAL SOURCES:
@@ -75,21 +78,22 @@ EXTERNAL SOURCES:
     :path: "../capacitor-cordova-ios-plugins"
 
 SPEC CHECKSUMS:
-  AparajitaCapacitorSecureStorage: 18190f233b0531422af8c1caa51804686d940ee0
-  Capacitor: c95400d761e376be9da6be5a05f226c0e865cebf
-  CapacitorApp: a19ccb4f5f32d2534be5c6f524d5a9b614a1e8a7
-  CapacitorBrowser: 825163a1d6adce944ac7b9e3cab101146b5a9df8
-  CapacitorCamera: 5ba135b0cb55a788758139fa2404d726bf60f0f3
-  CapacitorCordova: 8d93e14982f440181be7304aa9559ca631d77fff
-  CapacitorDialog: ee2e2bf8684020da1f64a7185a337405046acd23
-  CapacitorHaptics: 40f83026feeee9cfe36e89e9c98a3baaaf20c450
-  CapacitorPushNotifications: 35abece14371c57172e8321c9ccc8b6fa35fabfe
-  CapacitorShare: 77ff779e3b7c6ae9fb5461e52cf7ef805d429491
-  CapacitorSplashScreen: ef140a8b1ea7244e0c245ce2dd4ce5251e7ab86a
-  CapacitorStatusBar: 149cde8f1328ec3aa6cbdd872a55137ae3f98b16
-  CordovaPlugins: 1d6968748cbc887909ab0ba41e3e7ca82c51cb86
+  AparajitaCapacitorSecureStorage: 8128d05cafcb13b00448e20fb388a0edccd44b12
+  Capacitor: 00b87168591cc006ea6f5c0de681ec5c39a2c8eb
+  CapacitorApp: 305bd13c44f6f9d164e2ee66a4faa956ed8c0e06
+  CapacitorBrowser: 752e0208aa07c7aa63d1f7cde895a3e9519b2656
+  CapacitorCamera: a8e5798460aa967d0636d34d3a0bf1f69a5b5a39
+  CapacitorCordova: 9d3acbb574048e7167d2af127a0af2123e619f2f
+  CapacitorDialog: 854c5dac405081cae697c177ca43bcaa95ae67bf
+  CapacitorHaptics: 296f771ecd89c7a1bd92a7b6826a7d268e2e70f5
+  CapacitorPushNotifications: 32a7f840815f319fd9ba1c1c9b0b914be9d95237
+  CapacitorShare: 0c58305114538568059bfc07111f22dcb9cb2a82
+  CapacitorSplashScreen: 7bf61c2001557ff9e195e601c6b87344480d3c65
+  CapacitorStatusBar: eca7bc2b58d9f886f1ef9edb66e57a9b29c121af
+  CordovaPlugins: 4f82a655c31b21d49f44b82d42a4354cc3e0562f
+  IONCameraLib: ecbd8ef0077d481df429cee267bbeb1a7b9bddd0
   KeychainSwift: 4a71a45c802fd9e73906457c2dcbdbdc06c9419d
 
-PODFILE CHECKSUM: 8e280e322eea6713e198993ace0eb2dd64567f27
+PODFILE CHECKSUM: 35da4a9842d01235d41426d7414b14952a96d54f
 
 COCOAPODS: 1.16.2

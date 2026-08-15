@@ -27,7 +27,7 @@
     sheet.id = 'dmConfirmQueueSheet';
     sheet.style.cssText = 'position:fixed;inset:0;z-index:9988;background:rgba(0,0,0,0.5);display:none;align-items:flex-end;justify-content:center;';
     sheet.innerHTML = `
-      <div id="dcqCard" style="width:100%;max-width:560px;background:#F7F8FA;border-radius:20px 20px 0 0;max-height:92vh;display:flex;flex-direction:column;padding:18px 16px max(18px,env(safe-area-inset-bottom));">
+      <div id="dcqCard" style="width:100%;max-width:560px;background:#F7F8FA;border-radius:20px 20px 0 0;max-height:92vh;display:flex;flex-direction:column;padding:18px 16px max(18px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#F7EFF0;color:#BC6675;"><svg width="15" height="15" aria-hidden="true"><use href="#ic-bot"/></svg></span>
           <strong style="font-size:17px;color:#191F28;">실시간 DM</strong>

@@ -263,7 +263,7 @@
     p.id = '_instantCaptionPopup';
     p.style.cssText = 'display:none; position:fixed; inset:0; z-index:9400; background:rgba(0,0,0,0.6); align-items:flex-end; justify-content:center;';
     p.innerHTML = `
-      <div style="width:100%; max-width:480px; background:#fff; border-radius:24px 24px 0 0; padding:24px 20px calc(32px + env(safe-area-inset-bottom)); max-height:92vh; overflow-y:auto;">
+      <div style="width:100%; max-width:480px; background:#fff; border-radius:24px 24px 0 0; padding:24px 20px calc(32px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); max-height:92vh; overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
           <div style="font-size:17px; font-weight:800;">1초 캡션</div>
           <button id="_icClose" style="background:none; border:none; font-size:22px; width:44px; height:44px; cursor:pointer; color:var(--text-subtle);">✕</button>

@@ -173,12 +173,12 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
   width: 100%; max-width: 480px;
   /* [2026-04-26 A5] 노치 회피 — max-height 에서 safe-area-inset-top 만큼 여유,
      padding-top 에 safe-area 로 핸들 영역이 노치/상단 카메라 침범 안 하게 */
-  max-height: calc(88vh - env(safe-area-inset-top));
+  max-height: calc(88vh - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   overflow-y: auto;            /* 내부 스크롤 */
   overscroll-behavior: contain;
   background: #fff;
   border-radius: 28px 28px 0 0;
-  padding: max(12px, env(safe-area-inset-top)) 0 calc(24px + env(safe-area-inset-bottom));
+  padding: max(12px, var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 0 calc(24px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   box-shadow: 0 -4px 24px rgba(0,0,0,0.10);
   transform: translateY(100%);
   transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
@@ -440,7 +440,7 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
 }
 .ws-empty__bottom {
   position: fixed;
-  bottom: calc(76px + env(safe-area-inset-bottom));
+  bottom: calc(76px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   left: 0; right: 0;
   padding: 12px 16px;
   background: linear-gradient(180deg, transparent 0%, var(--bg, #fff) 35%);

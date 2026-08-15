@@ -1,29 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
 
     <!--
-      [2026-08-15 출시블로커 B1] targetSdk 34 → 35 (Play 신규 제출 요건).
-      Android 15(API 35)는 targetSdk 35+ 앱에 edge-to-edge 를 **강제**한다 — 상태바·내비바가
-      투명해지고 웹뷰가 그 아래까지 그려진다. Capacitor 6 은 이걸 처리하지 못한다
-      (인셋을 웹뷰에 안 넘겨서 `env(safe-area-inset-top)` 이 0 으로 온다. 우리 CSS 는
-       safe-area-inset-top 을 24곳에서 쓰는데 전부 무력화된다).
+      [2026-08-15 Capacitor 8 / targetSdk 36] edge-to-edge opt-out 을 **제거했다.**
 
-      Android 15 에뮬레이터 실측(2026-08-15):
-        · targetSdk 34 → 상태바가 별도 띠, 콘텐츠는 그 아래서 시작 (정상)
-        · targetSdk 35 → 상태바 띠 소멸, 앱 배경이 시계 뒤까지 올라옴.
-          StatusBar style=LIGHT 라 흰 아이콘 + 밝은 배경 = **시계가 거의 안 보임**.
-          콘텐츠 전체가 상태바 높이만큼 위로 밀림.
+      경위: targetSdk 35 로 올리던 때는 Android 15 의 edge-to-edge 강제를 Google 공식
+      opt-out(`android:windowOptOutEdgeToEdgeEnforcement`)으로 막아 34 때 동작을 유지했다.
+      레이아웃을 하나도 안 건드리는 대신, 유효기간이 있는 임시방편이었다.
 
-      → Google 이 API 35 용으로 공식 제공하는 opt-out 으로 34 때 동작을 유지한다.
-        레이아웃·CSS 를 하나도 안 건드리므로 회귀 위험 0.
+      그 기한이 끝났다. **이 플래그는 targetSdk 36 에서 무시된다.** Play 가 2026-08-31 부터
+      API 36 을 요구하므로 남겨둬 봐야 아무 효과가 없고, 오히려 "막아둔 줄 알았는데 안 막힌"
+      상태를 만든다. 그래서 3개 스타일에서 전부 뺐다.
 
-      🔴 **유효기간이 있다.** 이 플래그는 targetSdk 35 에서만 먹고 **36 에서는 무시된다.**
-         Play 는 2026-08-31 부터 신규 제출에 API 36 을 요구하므로, 그 전에 제출하지 못하면
-         AGP 8.2.1 → 8.9+ · Gradle 8.2.1 → 8.11+ · Capacitor 6 → 7 업그레이드와 함께
-         **진짜 edge-to-edge 대응**(웹뷰에 인셋 주입)을 해야 한다. 별도 과제.
+      이제 인셋은 Capacitor 8 의 System Bars 가 처리한다:
+        · capacitor.config.json → plugins.SystemBars.insetsHandling = "css"
+        · 웹뷰에 `--safe-area-inset-{top,bottom,left,right}` CSS 변수를 주입한다
+        · CSS 는 `var(--safe-area-inset-top, env(safe-area-inset-top, 0px))` 로 받는다
+          (안드로이드 구버전 WebView 는 `env(safe-area-inset-*)` 이 제대로 안 와서
+           Capacitor 가 별도 변수를 주입하는 것 — env() 만 쓰면 안드로이드에서 0 이 된다)
 
-      ⚠️ 3개 스타일 전부에 넣는 이유: 액티비티 선언 테마는 NoActionBarLaunch 인데
-         스플래시 이후 런타임에 테마가 바뀐다. 하나만 넣으면 조용히 안 먹을 수 있다.
+      ⚠️ 되돌리지 말 것. 여기에 opt-out 을 다시 넣어도 36 에서는 효과가 없고,
+         "인셋 대응이 돼 있다"는 착각만 남는다.
     -->
 
     <!-- Base application theme. -->
@@ -32,19 +29,16 @@
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
-        <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>
 
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
-        <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
-        <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
     </style>
 </resources>

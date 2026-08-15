@@ -93,7 +93,7 @@
 .copy-toast {
   position: fixed;
   /* nav(하단) 바로 위에 뜨도록 safe-area까지 감안 */
-  bottom: calc(96px + env(safe-area-inset-bottom));
+  bottom: calc(96px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   left: 50%;
   transform: translateX(-50%) translateY(16px);
   background: rgba(25,31,40,0.97);
@@ -144,17 +144,17 @@ body { font-size: 15px; line-height: 1.55; overscroll-behavior-y: contain; }
 /* 툴바: 팝업 내부 하단에 고정 (팝업이 fixed 라 absolute 가 팝업 기준) */
 #slotToolbar {
   bottom: 0 !important;
-  padding-bottom: calc(14px + env(safe-area-inset-bottom)) !important;
+  padding-bottom: calc(14px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
 }
 
 /* 본문 스크롤 여유: 툴바(높이 ~70px) + 안전영역 만큼 확보 */
 #slotPopupBody {
-  padding-bottom: calc(140px + env(safe-area-inset-bottom)) !important;
+  padding-bottom: calc(140px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
 }
 
 /* 배경/요소 하단 패널도 safe-area 반영 */
 #bgPanel > div, #elementPanel > div, #templatePanel > div, #reviewPanel > div {
-  padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+  padding-bottom: calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
 }
 
 /* ───── 스플래시 스크린 ───── */
@@ -298,8 +298,8 @@ input[type="url"] {
 button, a, [role="button"] { -webkit-tap-highlight-color: transparent; }
 
 /* safe-area 전역 유틸 */
-.safe-top { padding-top: env(safe-area-inset-top, 0); }
-.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0); }
+.safe-top { padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0)); }
+.safe-bottom { padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0)); }
 
 /* PerfFix: backdrop-filter 유틸 제거 (성능). 호출처는 불투명 배경으로 대체됨 */
 .backdrop-blur { background: rgba(var(--bg-rgb,255,255,255),0.95); }

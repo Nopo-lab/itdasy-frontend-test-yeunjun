@@ -76,7 +76,7 @@
   .sheetWrap{position:absolute;inset:0;z-index:20;display:none;}
   .sheetWrap.on{display:block;}
   .sheet__dim{position:absolute;inset:0;background:rgba(15,20,30,.42);}
-  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:24px 24px 0 0;padding:8px 20px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -12px 40px rgba(0,0,0,.28);animation:sheetUp .22s ease;}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:24px 24px 0 0;padding:8px 20px calc(22px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));box-shadow:0 -12px 40px rgba(0,0,0,.28);animation:sheetUp .22s ease;}
   @keyframes sheetUp{from{transform:translateY(30px);opacity:.4}to{transform:translateY(0);opacity:1}}
   .sheet__grip{width:40px;height:4px;border-radius:2px;background:#E0E4EA;margin:8px auto 14px;}
   .sheet__head{display:flex;align-items:center;gap:12px;margin-bottom:16px;}

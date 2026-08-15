@@ -1275,7 +1275,7 @@ window.__LATEST_BUILD__ = '20260705-v709-fillwide';
 <!-- ───── 고객센터 채팅 모달 (메신저 스타일) ───── -->
 <div id="supportChatModal" style="display:none;position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
   <div id="supportChatCard" style="width:100%;max-width:480px;height:92vh;max-height:700px;background:#fff;display:flex;flex-direction:column;border-radius:20px 20px 0 0;overflow:hidden;box-shadow:0 -4px 20px rgba(0,0,0,0.15);">
-    <div style="display:flex;align-items:center;gap:10px;padding:14px 16px calc(14px + env(safe-area-inset-top, 0px));background:linear-gradient(135deg,var(--brand),#ff9aa8);color:#fff;">
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 16px calc(14px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));background:linear-gradient(135deg,var(--brand),#ff9aa8);color:#fff;">
       <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="ph-duotone ph-chat-circle-dots" style="font-size:18px;"></i></div>
       <div style="flex:1;">
         <div style="font-size:14px;font-weight:800;letter-spacing:-0.3px;">잇데이 고객지원팀</div>
@@ -1293,7 +1293,7 @@ window.__LATEST_BUILD__ = '20260705-v709-fillwide';
       </div>
     </div>
 
-    <form id="supportChatForm" data-static-submit="support-chat" style="padding:12px 14px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #eee;background:#fff;display:flex;gap:8px;">
+    <form id="supportChatForm" data-static-submit="support-chat" style="padding:12px 14px calc(12px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));border-top:1px solid #eee;background:#fff;display:flex;gap:8px;">
       <input type="text" id="supportChatInput" maxlength="2000" placeholder="메시지 입력..." autocomplete="off" style="flex:1;padding:11px 14px;border-radius:20px;border:1px solid #e0e0e0;font-size:14px;background:#f7f7f9;outline:none;">
       <button type="submit" data-haptic="success" aria-label="메시지 보내기" style="background:linear-gradient(135deg,var(--brand),#ff9aa8);color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:18px;cursor:pointer;flex-shrink:0;">➤</button>
     </form>
@@ -1311,7 +1311,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
   style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.38);
          z-index:1500; align-items:flex-end;">
   <div id="navSheetInner" style="width:100%; background:var(--surface);
-       border-radius:24px 24px 0 0; padding:10px 20px calc(24px + env(safe-area-inset-bottom));
+       border-radius:24px 24px 0 0; padding:10px 20px calc(24px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
        transform:translateY(100%); transition:transform .26s cubic-bezier(.22,.61,.36,1);">
     <div style="width:40px;height:4px;border-radius:2px;background:var(--border-strong);margin:4px auto 14px;"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
@@ -1355,7 +1355,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
 <!-- 2026-05-01 ── 탭바 + 챗봇 묶음. align-items:flex-end 로 둘 다 바닥선 일치 (카뱅 스타일). -->
 <div id="bottomNavGroup" style="
   position: fixed;
-  bottom: var(--tab-bar-bottom, calc(14px + env(safe-area-inset-bottom, 0px)));
+  bottom: var(--tab-bar-bottom, calc(14px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))));
   left: 14px;
   right: 14px;
   display: flex;
@@ -1663,7 +1663,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
 
   </div>
 
-  <div id="analyzeOverlay" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.7); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:9999; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; padding:calc(env(safe-area-inset-top,0px) + 40px) 40px calc(env(safe-area-inset-bottom,0px) + 40px);">
+  <div id="analyzeOverlay" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.7); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:9999; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; padding:calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 40px) 40px calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 40px);">
     <div style="background:var(--surface); border-radius:28px; box-shadow:var(--shadow-md); border:1px solid var(--border); padding:40px 36px; text-align:center; min-width:260px;">
       <div style="margin-bottom:16px; display:flex; justify-content:center;">
         <svg width="56" height="56" class="itb-pulse" aria-hidden="true"><use href="#ic-bot"/></svg>
@@ -2018,7 +2018,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
     </button>
   </header>
   <!-- 2026-04-24 — 툴바(배경/B/A/요소) 키워지면서 본문 스크롤 여유도 함께 확대 (FAB+안드로이드 nav 가려짐 방지) -->
-  <div id="slotPopupBody" class="dt-body" style="padding-bottom:calc(220px + env(safe-area-inset-bottom));"></div>
+  <div id="slotPopupBody" class="dt-body" style="padding-bottom:calc(220px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));"></div>
   <!-- 하단 도구바 (ws-toolbar) — [PR-2] 편집기형 메뉴: 부위보정/배경/템플릿/텍스트/전후/저장.
        data-static-action 값은 기존 유지(핸들러/라우팅 무변경), 라벨·아이콘·순서만 변경. 아이콘=Lucide. -->
   <div id="slotToolbar" class="ws-toolbar">
@@ -2160,7 +2160,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
 <!-- [2026-06-10 QA] z-index 9999→11500: 고객 픽커(10001)·잇비(10500) 위에 떠야
      "한도 도달 → 업그레이드 유도" 팝업이 가려지지 않음 (막다른 실패 금지 원칙) -->
 <div id="planPopup" style="display:none;position:fixed;inset:0;z-index:11500;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;padding:16px;">
-  <div style="background:#fff;border-radius:24px;max-width:420px;width:100%;max-height:92vh;overflow-y:auto;padding:28px 20px calc(28px + env(safe-area-inset-bottom));box-shadow:0 20px 60px rgba(0,0,0,0.2);position:relative;">
+  <div style="background:#fff;border-radius:24px;max-width:420px;width:100%;max-height:92vh;overflow-y:auto;padding:28px 20px calc(28px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));box-shadow:0 20px 60px rgba(0,0,0,0.2);position:relative;">
     <button id="planCloseBtn" aria-label="닫기" style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:24px;cursor:pointer;color:#999;width:44px;height:44px;">✕</button>
 
     <div style="text-align:center;margin-bottom:20px;">

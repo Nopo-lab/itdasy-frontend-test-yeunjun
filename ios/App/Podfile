@@ -1,6 +1,9 @@
 require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
 
-platform :ios, '13.0'
+# [2026-08-15 Capacitor 8] 13.0 → 15.0. Capacitor 8 의 최소 배포타겟이다.
+# ⚠️ pbxproj 의 IPHONEOS_DEPLOYMENT_TARGET 과 **양쪽 다** 올려야 한다 —
+#    한쪽만 올리면 pod install 이 통과하고 Xcode 빌드에서 깨진다.
+platform :ios, '15.0'
 use_frameworks!
 
 # workaround to avoid Xcode caching of Pods that requires

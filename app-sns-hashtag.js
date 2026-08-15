@@ -68,7 +68,7 @@
 
   function _renderPopup(pop) {
     pop.innerHTML = `
-      <div style="background:var(--surface,#fff);width:100%;max-width:480px;border-radius:var(--r-xl,28px) var(--r-xl,28px) 0 0;padding:12px 16px calc(20px + env(safe-area-inset-bottom));max-height:85vh;overflow-y:auto;">
+      <div style="background:var(--surface,#fff);width:100%;max-width:480px;border-radius:var(--r-xl,28px) var(--r-xl,28px) 0 0;padding:12px 16px calc(20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));max-height:85vh;overflow-y:auto;">
         <div style="display:flex;justify-content:center;margin-bottom:14px;"><div style="width:40px;height:4px;border-radius:2px;background:#D1D6DB;"></div></div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
           <div style="width:36px;height:36px;border-radius:12px;background:var(--brand-bg);color:var(--brand-strong);display:flex;align-items:center;justify-content:center;flex:0 0 36px;">

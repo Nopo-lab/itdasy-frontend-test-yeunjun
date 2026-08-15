@@ -39,7 +39,7 @@
         #membershipSheet .ms-cta:active { transform: scale(.985); }
         #membershipSheet .ms-quick-btn[data-on="1"] { border-color: var(--brand); background: var(--brand-bg); color: var(--brand-strong); }
       </style>
-      <div class="sheet-body" style="background:var(--bg-1,#fff);width:100%;max-width:480px;border-radius:var(--r-xl,28px) var(--r-xl,28px) 0 0;padding:12px 18px env(safe-area-inset-bottom,16px);max-height:85vh;overflow:auto;">
+      <div class="sheet-body" style="background:var(--bg-1,#fff);width:100%;max-width:480px;border-radius:var(--r-xl,28px) var(--r-xl,28px) 0 0;padding:12px 18px var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 16px));max-height:85vh;overflow:auto;">
         <div style="display:flex;justify-content:center;margin-bottom:14px;"><div style="width:40px;height:4px;border-radius:2px;background:#D1D6DB;"></div></div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
           <div style="width:36px;height:36px;border-radius:12px;background:var(--brand-bg);color:var(--brand-strong);display:flex;align-items:center;justify-content:center;flex:0 0 36px;">

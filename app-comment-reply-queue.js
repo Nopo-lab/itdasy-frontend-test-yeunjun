@@ -756,7 +756,7 @@
         b.id = 'crqDevBtn';
         b.type = 'button';
         b.textContent = '댓글 응대(테스트)';
-        b.style.cssText = 'position:fixed;right:16px;bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:9000;background:#191F28;color:#fff;border:none;border-radius:22px;padding:12px 18px;font-size:13px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.2);cursor:pointer;';
+        b.style.cssText = 'position:fixed;right:16px;bottom:calc(80px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));z-index:9000;background:#191F28;color:#fff;border:none;border-radius:22px;padding:12px 18px;font-size:13px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.2);cursor:pointer;';
         b.addEventListener('click', openCommentReplyQueue);
         document.body.appendChild(b);
       };

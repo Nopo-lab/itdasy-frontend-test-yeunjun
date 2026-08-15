@@ -3,7 +3,7 @@
 .hub-fab-add {
   position: fixed;
   right: 18px;
-  bottom: max(22px, env(safe-area-inset-bottom));
+  bottom: max(22px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   z-index: 2;
   width: 54px;
   height: 54px;

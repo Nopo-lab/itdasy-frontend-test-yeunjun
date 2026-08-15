@@ -296,7 +296,7 @@
         '<div style="padding:12px 18px;">',
           '<input type="search" data-cm-q class="cm-search-input" placeholder="고객 이름·태그·내용 검색 (예: 알러지)" autocomplete="off" />',
         '</div>',
-        '<div data-cm-results style="flex:1;overflow-y:auto;padding:0 18px 24px;padding-bottom:max(24px,env(safe-area-inset-bottom));"></div>',
+        '<div data-cm-results style="flex:1;overflow-y:auto;padding:0 18px 24px;padding-bottom:max(24px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));"></div>',
       '</div>',
     ].join('');
     document.body.appendChild(sheet);

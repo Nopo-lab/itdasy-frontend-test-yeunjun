@@ -8,6 +8,7 @@
       { "ignore": ["consecutive-duplicates-with-different-values"] }
     ],
     "color-hex-length": "short",
+    "length-zero-no-unit": [true, { "ignoreFunctions": ["env", "var", "calc", "max", "min", "clamp"] }],
     "selector-max-id": 2,
     "no-descending-specificity": null,
     "alpha-value-notation": null,

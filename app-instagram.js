@@ -605,7 +605,7 @@ function _showAnalyzeError(code) {
   if (!barEl) {
     barEl = document.createElement('div');
     barEl.id = 'igAnalyzeErrorBar';
-    barEl.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 16px);z-index:99999;max-width:calc(100vw - 32px);background:#FEE8E8;color:#A32D2D;padding:12px 16px;border-radius:14px;box-shadow:var(--shadow-md,0 4px 16px rgba(0,0,0,.12));font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;';
+    barEl.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px);z-index:99999;max-width:calc(100vw - 32px);background:#FEE8E8;color:#A32D2D;padding:12px 16px;border-radius:14px;box-shadow:var(--shadow-md,0 4px 16px rgba(0,0,0,.12));font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;';
     document.body.appendChild(barEl);
   }
   barEl.innerHTML = '<span style="flex:1;word-break:keep-all;line-height:1.4;"></span>' +

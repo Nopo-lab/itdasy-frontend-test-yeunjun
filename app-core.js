@@ -355,7 +355,7 @@ function _nextToast() {
     if (!el) {
       el = document.createElement('div');
       el.id = 'itdToast';
-      el.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px) + 16px);left:50%;transform:translateX(-50%) translateY(-120%);z-index:99999;padding:12px 20px;border-radius:var(--r-md,14px);font-size:14px;font-weight:600;box-shadow:var(--shadow-md);transition:transform .3s cubic-bezier(.4,0,.2,1),opacity .3s;opacity:0;pointer-events:none;max-width:calc(100vw - 32px);text-align:center;';
+      el.style.cssText = 'position:fixed;top:calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px);left:50%;transform:translateX(-50%) translateY(-120%);z-index:99999;padding:12px 20px;border-radius:var(--r-md,14px);font-size:14px;font-weight:600;box-shadow:var(--shadow-md);transition:transform .3s cubic-bezier(.4,0,.2,1),opacity .3s;opacity:0;pointer-events:none;max-width:calc(100vw - 32px);text-align:center;';
       document.body.appendChild(el);
     }
 
@@ -2210,7 +2210,7 @@ window.startAppleLogin = async function () {
     else if (raw >= 600) offset = 0;  // glitch — 무시
     root.style.setProperty(
       '--tab-bar-bottom',
-      `calc(${BASE}px + env(safe-area-inset-bottom, 0px) + ${offset}px)`
+      `calc(${BASE}px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + ${offset}px)`
     );
   };
   const schedule = () => { if (!raf) raf = requestAnimationFrame(update); };

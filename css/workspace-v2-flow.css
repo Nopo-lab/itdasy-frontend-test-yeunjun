@@ -11,7 +11,7 @@
 .wsv2flow.is-open { display: flex; }
 
 /* 상단바 + 진행 */
-.wsv2flow__bar { flex: none; padding: calc(8px + env(safe-area-inset-top)) 16px 0;
+.wsv2flow__bar { flex: none; padding: calc(8px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 16px 0;
   display: grid; grid-template-columns: 40px 1fr 56px; align-items: center; height: 54px; }
 .wsv2flow__back { appearance: none; border: 0; background: transparent; color: var(--text);
   width: 38px; height: 38px; border-radius: var(--r-md); display: grid; place-items: center; cursor: pointer; }
@@ -33,7 +33,7 @@
 .wsv2flow__s::-webkit-scrollbar { width: 0; }
 
 /* 하단 CTA — 틴트 페이드 유지(배경 위 글 가림 방지) */
-.wsv2flow__actionbar { flex: none; display: flex; gap: 10px; padding: 12px 18px calc(14px + env(safe-area-inset-bottom));
+.wsv2flow__actionbar { flex: none; display: flex; gap: 10px; padding: 12px 18px calc(14px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   background: linear-gradient(180deg, rgba(249,248,247,0), #F9F8F7 28%); border-top: 1px solid var(--border); }
 .wsv2flow__actionbar.hidden { display: none; }
 .wsv2flow__cta { width: 100%; height: 54px; border: 0; border-radius: var(--r-lg); font-size: 16px; font-weight: 800; cursor: pointer;
@@ -166,8 +166,8 @@
 .wsv2flow .ed-vpbtn--pct { min-width: 52px; font-variant-numeric: tabular-nums; }
 .wsv2flow .ed-vpbtn--fs span { font-size: 12.5px; }
 /* 전체화면 편집 — viewport 를 화면 가득 채워 PC/모바일 모두 크게 보정. 도구바만 하단 floating 으로. */
-body.itd-edit-fs .wsv2flow .ed-photo-vp { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; max-width: none; border-radius: 0; margin: 0; z-index: 9000; background: #14100c; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); box-sizing: border-box; }
-body.itd-edit-fs .wsv2flow .ed-vptools { position: fixed; left: 8px; right: 8px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 9001; margin: 0; }
+body.itd-edit-fs .wsv2flow .ed-photo-vp { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; max-width: none; border-radius: 0; margin: 0; z-index: 9000; background: #14100c; padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); box-sizing: border-box; }
+body.itd-edit-fs .wsv2flow .ed-vptools { position: fixed; left: 8px; right: 8px; bottom: calc(10px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); z-index: 9001; margin: 0; }
 body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn { background: rgba(28,22,20,.62); color: #fff; border-color: transparent; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
 /* [v540] 마스크 보기 — 정밀 조정 안 pill toggle + inline fallback helper */
@@ -727,7 +727,7 @@ body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
 .tpl-preview { position: fixed; inset: 0; z-index: 11000; display: flex; align-items: flex-end; justify-content: center; opacity: 0; transition: opacity .18s ease; }
 .tpl-preview.open { opacity: 1; }
 .tpl-preview__backdrop { position: absolute; inset: 0; background: rgba(20,16,16,.5); }
-.tpl-preview__sheet { position: relative; z-index: 1; width: 100%; max-width: 440px; background: var(--surface, #fff); border-radius: 22px 22px 0 0; padding: 10px 18px calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 40px rgba(0,0,0,.25); transform: translateY(14px); transition: transform .2s ease; }
+.tpl-preview__sheet { position: relative; z-index: 1; width: 100%; max-width: 440px; background: var(--surface, #fff); border-radius: 22px 22px 0 0; padding: 10px 18px calc(20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); box-shadow: 0 -8px 40px rgba(0,0,0,.25); transform: translateY(14px); transition: transform .2s ease; }
 .tpl-preview.open .tpl-preview__sheet { transform: translateY(0); }
 @media (width >= 768px) { .tpl-preview { align-items: center; } .tpl-preview__sheet { border-radius: 22px; max-width: 380px; padding-bottom: 20px; } }
 .tpl-preview__grip { width: 38px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 4px auto 12px; }
@@ -745,7 +745,7 @@ body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
 .pub-ask { position: fixed; inset: 0; z-index: 11000; display: flex; align-items: flex-end; justify-content: center; opacity: 0; transition: opacity .18s ease; }
 .pub-ask.open { opacity: 1; }
 .pub-ask__bd { position: absolute; inset: 0; background: rgba(20,16,16,.5); }
-.pub-ask__sheet { position: relative; z-index: 1; width: 100%; max-width: 440px; background: var(--surface, #fff); border-radius: 26px 26px 0 0; padding: 12px 22px calc(22px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 44px rgba(40,20,28,.22); transform: translateY(14px); transition: transform .28s cubic-bezier(.24,1,.4,1); }
+.pub-ask__sheet { position: relative; z-index: 1; width: 100%; max-width: 440px; background: var(--surface, #fff); border-radius: 26px 26px 0 0; padding: 12px 22px calc(22px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); box-shadow: 0 -8px 44px rgba(40,20,28,.22); transform: translateY(14px); transition: transform .28s cubic-bezier(.24,1,.4,1); }
 .pub-ask.open .pub-ask__sheet { transform: translateY(0); }
 @media (width >= 768px) { .pub-ask { align-items: center; } .pub-ask__sheet { border-radius: 26px; max-width: 380px; padding-bottom: 22px; } }
 .pub-ask__grip { width: 40px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 4px auto 16px; }

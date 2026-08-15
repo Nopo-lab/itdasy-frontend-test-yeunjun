@@ -4,16 +4,16 @@
   --c-ink:#17191C; --c-ink2:#454B54; --c-sub:#8B95A1; --c-line:#E9EBEE; --c-soft:#F7F8FA;
   --c-rose:var(--brand,#D58A95); --c-rose-strong:var(--accent-strong,#BC6675);
 
-  padding:2px 0 calc(96px + env(safe-area-inset-bottom));
+  padding:2px 0 calc(96px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
 }
 .wshc *{box-sizing:border-box;}
 .wshc button{font-family:inherit;cursor:pointer;}
 
 /* ── [인스타 피드 홈] 프로필 헤더 + 이어서 카드 + 세그 + 3열 그리드 ── */
-.wshc--feed{ --spring:cubic-bezier(.24,1,.4,1); background:#fff; padding:0 0 calc(90px + env(safe-area-inset-top)); }
+.wshc--feed{ --spring:cubic-bezier(.24,1,.4,1); background:#fff; padding:0 0 calc(90px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); }
 
 /* 헤더 — 아바타(검정 원형) + @핸들/샵이름 + ⋯ 드롭다운 */
-.wshc-phead{ position:relative; display:flex; align-items:center; gap:12px; padding:calc(14px + env(safe-area-inset-top)) 18px 6px; }
+.wshc-phead{ position:relative; display:flex; align-items:center; gap:12px; padding:calc(14px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 18px 6px; }
 .wshc-ava{ width:44px; height:44px; border-radius:50%; background:var(--c-ink) center/cover no-repeat; color:#fff; font-size:17px; font-weight:800; display:flex; align-items:center; justify-content:center; flex:none; }
 .wshc-who{ flex:1; min-width:0; border:0; background:none; padding:0; text-align:left; }
 .wshc-who b{ display:block; font-size:17px; font-weight:800; letter-spacing:-.3px; color:var(--c-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -76,7 +76,7 @@
 /* ── [Lightbox] 콘텐츠 타일 탭 → 풀스크린 보기 (사이드바 위 z 10005, 잘림 없음) ── */
 .wshc-lb { position: fixed; inset: 0; z-index: 10005; background: rgba(18,14,16,.94); display: flex; flex-direction: column; opacity: 0; transition: opacity .2s cubic-bezier(.24,1,.4,1); -webkit-tap-highlight-color: transparent; }
 .wshc-lb.is-open { opacity: 1; }
-.wshc-lb__x { position: absolute; top: calc(12px + env(safe-area-inset-top)); right: 14px; z-index: 2; width: 40px; height: 40px; border: none; border-radius: 999px; background: rgba(255,255,255,.14); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.wshc-lb__x { position: absolute; top: calc(12px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); right: 14px; z-index: 2; width: 40px; height: 40px; border: none; border-radius: 999px; background: rgba(255,255,255,.14); color: #fff; display: grid; place-items: center; cursor: pointer; }
 .wshc-lb__x svg { width: 20px; height: 20px; }
 .wshc-lb__stage { flex: 1; position: relative; min-height: 0; }
 .wshc-lb__slide { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; opacity: 0; transition: opacity .22s cubic-bezier(.24,1,.4,1); pointer-events: none; }
@@ -84,6 +84,6 @@
 .wshc-lb__dots { display: flex; gap: 6px; justify-content: center; padding: 10px 0; }
 .wshc-lb__dots span { width: 6px; height: 6px; border-radius: 999px; background: rgba(255,255,255,.35); transition: background .18s, transform .18s; }
 .wshc-lb__dots span.on { background: #fff; transform: scale(1.3); }
-.wshc-lb__bar { padding: 8px 18px calc(16px + env(safe-area-inset-bottom)); }
+.wshc-lb__bar { padding: 8px 18px calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
 .wshc-lb__edit { width: 100%; height: 52px; border: none; border-radius: 16px; background: var(--c-rose-strong, #BC6675); color: #fff; font-size: 15.5px; font-weight: 600; cursor: pointer; transition: transform .175s cubic-bezier(.24,1,.4,1); }
 .wshc-lb__edit:active { transform: scale(.97); }

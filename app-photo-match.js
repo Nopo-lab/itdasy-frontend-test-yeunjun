@@ -128,7 +128,7 @@
       const pop = document.createElement('div');
       pop.style.cssText = 'position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,0.45);display:flex;align-items:flex-end;';
       pop.innerHTML = `
-        <div style="width:100%;background:#fff;border-radius:20px 20px 0 0;padding:18px;padding-bottom:max(18px,env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,0.15);">
+        <div style="width:100%;background:#fff;border-radius:20px 20px 0 0;padding:18px;padding-bottom:max(18px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));box-shadow:0 -8px 30px rgba(0,0,0,0.15);">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
             <span style="font-size:22px;">🤔</span>
             <strong style="font-size:15px;">혹시 이 고객 맞나요?</strong>

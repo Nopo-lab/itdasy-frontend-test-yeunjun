@@ -1307,7 +1307,7 @@
     const _memoDisp = raw.memo ? (window.itdCleanMemo ? window.itdCleanMemo(String(raw.memo)) : String(raw.memo)) : '';
     if (_memoDisp) info.push(`<div style="font-size:13px;color:var(--text-subtle,#8B95A1);margin-top:6px;white-space:pre-line;">메모 ${esc(_memoDisp)}</div>`);
     ov.innerHTML = `
-      <div style="background:var(--surface,#fff);width:100%;max-width:460px;border-radius:20px 20px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));max-height:80vh;overflow-y:auto;">
+      <div style="background:var(--surface,#fff);width:100%;max-width:460px;border-radius:20px 20px 0 0;padding:18px 18px calc(18px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));max-height:80vh;overflow-y:auto;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
           <div style="display:flex;align-items:center;gap:8px;min-width:0;">
             <strong style="font-size:18px;color:var(--text,#191F28);">${esc(raw.customer_name || '고객 미지정')}</strong>

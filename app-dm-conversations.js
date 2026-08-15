@@ -94,7 +94,7 @@
     sheet.style.cssText = _fullscreenStyle();
     sheet.innerHTML = `
       <!-- 헤더: 인스타 다이렉트 스타일 -->
-      <div style="display:flex;align-items:center;gap:8px;padding:max(14px,env(safe-area-inset-top)) 16px 12px;border-bottom:1px solid #DBDBDB;background:#fff;">
+      <div style="display:flex;align-items:center;gap:8px;padding:max(14px,var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 16px 12px;border-bottom:1px solid #DBDBDB;background:#fff;">
         <button id="dcvClose" aria-label="닫기" style="background:none;border:none;cursor:pointer;color:#262626;display:inline-flex;align-items:center;padding:4px;">
           <svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
         </button>
@@ -230,7 +230,7 @@
     sheet.style.cssText = _fullscreenStyle().replace('z-index:9988', 'z-index:9989');
     sheet.innerHTML = `
       <!-- 인스타 DM 헤더 -->
-      <div style="display:flex;align-items:center;gap:10px;padding:max(14px,env(safe-area-inset-top)) 14px 10px;border-bottom:1px solid #DBDBDB;background:#fff;">
+      <div style="display:flex;align-items:center;gap:10px;padding:max(14px,var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 14px 10px;border-bottom:1px solid #DBDBDB;background:#fff;">
         <button id="dthBack" aria-label="뒤로" style="background:none;border:none;cursor:pointer;color:#262626;display:inline-flex;align-items:center;padding:4px;">
           <svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
         </button>
@@ -252,7 +252,7 @@
       <!-- AI 초안 / 캘린더 안내 바 (잇비) -->
       <div id="dthAiBar" style="display:none;padding:8px 12px;background:#F7F8FA;border-top:1px solid #EFEFEF;font-size:12px;color:#4E5968;"></div>
       <!-- 입력 composer (챗봇 톤) -->
-      <div style="padding:8px 12px max(12px,env(safe-area-inset-bottom));background:#fff;border-top:1px solid #EFEFEF;">
+      <div style="padding:8px 12px max(12px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));background:#fff;border-top:1px solid #EFEFEF;">
         <div style="display:flex;gap:8px;margin-bottom:8px;">
           <button id="dthAiDraft" type="button" style="display:inline-flex;align-items:center;gap:5px;background:#191F28;color:#fff;border:none;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">✨ AI 초안</button>
           <button id="dthRegen" type="button" style="display:none;background:#F2F4F6;color:#4E5968;border:none;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;">다시 생성</button>

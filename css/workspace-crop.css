@@ -5,7 +5,7 @@
 .wscrop__card {
   position:absolute; left:50%; bottom:0; transform:translateX(-50%);
   width:100%; max-width:440px; background:#fffaf7; border-radius:24px 24px 0 0;
-  padding:8px 16px calc(18px + env(safe-area-inset-bottom));
+  padding:8px 16px calc(18px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   box-shadow:0 -18px 50px rgba(31,27,24,.28);
 }
 .wscrop__bar { display:grid; grid-template-columns:40px 1fr 56px; align-items:center; height:50px; }

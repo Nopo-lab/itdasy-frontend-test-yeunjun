@@ -34,6 +34,10 @@
       "backgroundColor": "#1A0C10",
       "showSpinner": false
     },
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "LIGHT"
+    },
     "StatusBar": {
       "style": "LIGHT",
       "backgroundColor": "#1A0C10",
