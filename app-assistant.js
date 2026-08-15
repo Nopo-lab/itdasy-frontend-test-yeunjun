@@ -19,13 +19,34 @@
   const _assistantGroupActions = window.ItdasyAssistantGroupActions || {};
   const _assistantSuggestionControls = window.ItdasyAssistantSuggestionControls || {};
   const _assistantCardRenderers = window.ItdasyAssistantCardRenderers || {};
+  // [연준님 2026-08-15 · A] 빈 채팅방 초기 추천질문.
+  //   예전엔 여기 5개가 하드코딩('오늘 예약 알려줘 / … / 캡션 만들어줘 / 사진 보정해줘')이라
+  //   인스타를 한 번도 연동 안 한 원장님한테도 몇 달째 같은 문구가 떴다.
+  //   이제 GET /assistant/starters 가 계정 상태(오늘 예약·매출·고객 수·인스타·대기 DM)를 보고
+  //   내려준다. LLM 0회이고, 내려오는 문구는 전부 즉답 경로라 눌러도 돈이 안 나간다.
+  //   아래 배열은 **서버 응답 전/실패 시 폴백**일 뿐이라 상태 무관하게 안전한 것만 남긴다.
   const SUGGESTIONS = _assistantCore.SUGGESTIONS || [
     '오늘 예약 알려줘',
-    '내일 예약 뭐 있어?',
-    '이번 달 매출',
-    '캡션 만들어줘',
-    '사진 보정해줘',
+    '이번 달 매출 얼마야?',
+    '단골 누구야?',
   ];
+  let _starters = null;          // 서버가 준 초기 추천질문 (null = 아직 못 받음)
+  let _startersAt = 0;
+
+  async function _loadStarters() {
+    try {
+      if (!window.API || !window.authHeader) return;
+      if (_starters && Date.now() - _startersAt < 60000) return;   // 1분 내 재요청 방지
+      const res = await apiFetch('/assistant/starters', { headers: window.authHeader() });
+      if (!res.ok) return;
+      const d = await res.json();
+      if (Array.isArray(d.items) && d.items.length) {
+        _starters = d.items;
+        _startersAt = Date.now();
+        _syncQuickSuggestVisibility();   // 이미 빈 화면이면 바로 갈아끼운다
+      }
+    } catch (_e) { void _e; }
+  }
 
   function _categoryOptionsHtml(selected) {
     if (typeof _assistantCore.categoryOptionsHtml === 'function') {
@@ -5321,6 +5342,8 @@
     _loadServerHistory();
     // [2026-04-29 F1] 능동 제안 carousel — chat 입력창 위
     _loadProactiveSuggestions();
+    // [연준님 2026-08-15 · A] 계정 상태 기반 초기 추천질문 (LLM 0회, 1분 캐시)
+    _loadStarters();
     // [2026-05-16] 대화 없으면 퀵액션(이런 것도 돼요 + chips) 표시, 있으면 숨김.
     // 챗봇 닫았다 다시 열 때 _history 가 비어있을 수도/있을 수도 → 상태에 맞춰 갱신.
     _syncQuickSuggestVisibility();
@@ -5410,6 +5433,11 @@
       const qs = document.getElementById('asstSuggest');
       if (!ql || !qs) return;
       const show = !_history || _history.length === 0;
+      // [연준님 2026-08-15 · A] 보이기 직전에 서버가 준 계정상태 기반 문구로 갈아끼운다.
+      //   (서버 응답 전이면 SUGGESTIONS 폴백이 이미 그려져 있다)
+      if (show && _starters && _assistantSuggestionControls) {
+        _assistantSuggestionControls.renderSuggest({ suggestions: _starters });
+      }
       ql.style.display = show ? '' : 'none';
       qs.style.display = show ? 'flex' : 'none';
     } catch (_e) { void _e; }
