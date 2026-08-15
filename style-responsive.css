@@ -247,6 +247,10 @@
      기존엔 absolute 라 flex 흐름 밖 → 카드가 콘텐츠만큼 늘어나고 overflow auto 가 트리거 안 됨. */
   #aiHubSheet > #aihCard,
   #settingsHubSheet > #shCard,
+  /* [2026-08-15 기기QA] 연동관리·DM확인큐도 같은 규칙 — 위 목록에 빠져 있어 PC/태블릿에서
+     시트 left=0 이 되고 사이드바(z:10000)가 왼쪽 232~260px 를 덮었다. DM 탭 버튼은 실제로 클릭 불가였다. */
+  #integrationsHubSheet > #ihCard,
+  #dmConfirmQueueSheet > #dcqCard,
   #planPopup > *:not(script),
   #supportChatModal > *:not(script) {
     position: relative !important;

@@ -426,7 +426,7 @@ async function _doGenerateCaption(scenario, closePopup, inlineHost) {
       hideCaptionLoader(false, () => {});
       if (btn) { btn.innerHTML = '만들기'; btn.disabled = false; }
       return;
-    } else if (/Failed to fetch|NetworkError/i.test(raw)) {
+    } else if (/Failed to fetch|Load failed|NetworkError/i.test(raw)) {   // Load failed = 사파리/WebKit 문구
       userMsg = '네트워크 연결 확인 후 다시 시도해주세요.';
     } else if (/timeout/i.test(raw)) {
       userMsg = 'AI 응답이 지연되고 있어요. 잠시 후 다시 시도해주세요.';
@@ -624,7 +624,7 @@ async function regenerateCaption(overrides = {}) {
       userMsg = `오늘 캡션 한도(${limit}회) 다 쓰셨어요. 내일 다시 시도하거나 잇데이 멤버십을 확인해 주세요.`;
     } else if (/^캡션 생성 실패/.test(raw)) {
       userMsg = raw;
-    } else if (/Failed to fetch|NetworkError/i.test(raw)) {
+    } else if (/Failed to fetch|Load failed|NetworkError/i.test(raw)) {   // Load failed = 사파리/WebKit 문구
       userMsg = '네트워크 오류. 다시 시도해주세요.';
     } else {
       userMsg = '재생성 실패. 잠시 후 다시 시도해주세요.';

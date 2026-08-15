@@ -84,9 +84,25 @@ function _hideLoadingOverlay() {
   setTimeout(function () { _loaderFadeOut(lo); }, wait);
 }
 
+// [2026-08-15 기기QA] preload 는 "캐시 미리 데우기"일 뿐인데 스플래시가 그 완료를 기다리고 있었다.
+//   → API 8건 중 하나만 느려도 첫 화면이 인질로 잡힌다. 실측(전 엔진, 429 없음)에서 첫 진입이
+//   4.6s ~ 15.2s 로 튀었고, 12초짜리는 정상 경로가 아니라 index.html 의 12s 워치독이 강제로 걷어낸 것이었다.
+//   preload 는 계속 백그라운드로 돌게 두고, 스플래시는 최대 _PRELOAD_CAP_MS 만 기다린다.
+var _PRELOAD_CAP_MS = 1500;
+function _preloadCapped() {
+  if (!window._preloadTabs) return Promise.resolve();
+  var p = Promise.resolve();
+  try { p = window._preloadTabs(); } catch (_) { return Promise.resolve(); }
+  // 실패해도 스플래시를 막지 않는다(캐시 워밍이므로).
+  return Promise.race([
+    Promise.resolve(p).catch(function () { }),
+    new Promise(function (r) { setTimeout(r, _PRELOAD_CAP_MS); }),
+  ]);
+}
+
 // [UX-LOAD] 로그인 직후: preload → 최소시간 → 인사(1회) → 쫀득 해제 (로그인/로딩/인사 한 화면 통일)
 async function _finishLoginLoad(withGreeting) {
-  try { if (window._preloadTabs) await window._preloadTabs(); } catch (_) { /* ignore */ }
+  try { await _preloadCapped(); } catch (_) { /* ignore */ }
   var rest = _LOAD_MIN_MS - (Date.now() - (window._loadShownAt || Date.now()));
   if (rest > 0) await new Promise(function (r) { setTimeout(r, rest); });
   if (withGreeting) {
@@ -1843,7 +1859,12 @@ async function forgotPassword() {
 // 네트워크/타임아웃 등 친근한 에러 메시지
 function _friendlyErr(e, fallback) {
   const m = String(e && e.message || e || '').toLowerCase();
-  if (m.includes('failed to fetch') || m.includes('networkerror') || m.includes('network')) {
+  // [2026-08-15 기기QA] 'load failed' 는 사파리/WebKit 의 fetch 실패 문구 —
+  //   크롬('failed to fetch')만 잡고 있어서 iOS 에서만 한글 UI 에 "Load failed" 영문이 그대로 노출됐다.
+  //   (iPhone 시뮬레이터 실측: 로그인 실패 시 빨간 글씨 "Load failed")
+  //   'the network connection was lost' / 'cancelled' 도 WebKit 계열 문구라 같이 잡는다.
+  if (m.includes('failed to fetch') || m.includes('load failed') || m.includes('networkerror')
+      || m.includes('network connection was lost') || m.includes('cancelled') || m.includes('network')) {
     return '인터넷 연결을 확인해 주세요.';
   }
   if (m.includes('timeout')) return '응답이 지연되고 있어요. 잠시 후 다시 시도해 주세요.';
@@ -2355,9 +2376,8 @@ window.addEventListener('load', async function() {
     checkOnboarding().catch(() => {});
     // [UX-LOAD] 필수 데이터 preload 완료 후 로딩 화면 해제
     (async () => {
-      try {
-        if (window._preloadTabs) await window._preloadTabs();
-      } catch (_) { /* ignore */ }
+      // [2026-08-15 기기QA] 여기도 preload 완료를 통째로 기다리면 첫 진입이 12초 워치독까지 간다. 상한 적용.
+      try { await _preloadCapped(); } catch (_) { /* ignore */ }
       _hideLoadingOverlay();
     })();
     // [2026-05-13 QA #blocker1] OAuth 직후 — 백엔드 BG 자동분석을 status 폴링으로 대기.
@@ -3145,7 +3165,8 @@ window.safeFetch = async function (url, opts = {}) {
 window._humanError = function (e) {
   if (e && e.timeout) return '서버 응답이 너무 느려요. 잠시 후 다시 시도해주세요';
   const raw = (e && (e.message || e.detail)) || String(e || '');
-  if (/HTTP\s*5\d\d|Failed to fetch|NetworkError|timeout|aborted/i.test(raw))
+  // [2026-08-15 기기QA] Load failed = 사파리/WebKit 의 fetch 실패 문구. 빠져 있어서 iOS 에서 영문 노출.
+  if (/HTTP\s*5\d\d|Failed to fetch|Load failed|NetworkError|network connection was lost|timeout|aborted|cancelled/i.test(raw))
     return '네트워크 연결을 확인해주세요';
   if (/HTTP\s*401|unauthor/i.test(raw))
     return '로그인이 만료됐어요. 다시 로그인해주세요';
