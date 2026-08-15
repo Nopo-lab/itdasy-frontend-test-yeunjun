@@ -302,7 +302,7 @@
       .rvm5-hidden{display:none}
 
       /* ── 모바일 v6 ── */
-      .rvm5-mbody{padding:14px}
+      .rvm5-mbody{padding:14px 10px}
       .rvm5-mmnav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px}
       .rvm5-mmnav .ar{width:28px;height:28px;border-radius:50%;border:1px solid #E5E8EB;display:flex;align-items:center;justify-content:center;font-size:12px;color:#191F28;background:#fff;cursor:pointer;padding:0;line-height:1}
       .rvm5-mmnav .ar:disabled{opacity:0.25;cursor:not-allowed;pointer-events:none}
@@ -322,8 +322,8 @@
       .rvm5-mai .txt{font-size:12px;color:#191F28}
       .rvm5-mai .txt b{font-weight:700}
 
-      .rvm5-mc{background:#fff;border:1px solid #E5E8EB;border-radius:14px;padding:14px;margin-bottom:8px}
-      .rvm5-mc .t{font-size:11px;font-weight:600;color:#191F28;margin-bottom:8px}
+      .rvm5-mc{margin-bottom:8px}
+      .rvm5-mc .t{font-size:12px;font-weight:600;color:#191F28;margin:16px 0 8px;letter-spacing:-.2px}
 
       .rvm5-mbr{display:flex;align-items:center;gap:5px;padding:4px 0}
       .rvm5-mbr .lb{font-size:11px;width:30px;text-align:right;color:#191F28;flex-shrink:0}

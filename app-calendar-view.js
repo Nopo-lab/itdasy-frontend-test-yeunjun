@@ -267,7 +267,11 @@
     if (its.length) {
       // [2026-05-16] PC/모바일 모두 시간 + 이름만, 최대 5줄.
       // [2026-05-17 v6] 각 줄에 작은 6px 컬러 dot — 그날 안에서 5색 순환
-      const MAX = isPC ? 5 : 3;
+      // [2026-08-16] 모바일 3줄 → 5줄. 셀 92px - 패딩6 - 날짜18 - 여백2 = 66px 가 예약칸,
+      //   한 줄은 8px x line-height1.4 = 11.2px + gap 1px → 5줄 = 60px 로 들어간다(3줄은 낭비).
+      //   6건 이상일 때만 4줄 + "+N건" (5줄 + 더보기줄 = 72px 는 넘침).
+      const CAP = 5;
+      const MAX = its.length > CAP ? CAP - 1 : CAP;
       h += `<div class="${p}__events">`;
       its.slice(0, MAX).forEach((it, _i) => {
         // [2026-05-23] is-staff2 분기 제거 — 직원 기능 폐지
@@ -277,7 +281,7 @@
         // [2026-08-15 #36] 모바일은 폭이 좁아 이름이 잘려 보임 → 시간만. PC는 시간+이름 유지.
         h += `<div class="${p}__evt${_stCls(it.status)}">${dot}${tm}${isPC ? ' ' + _esc(it.cust) : ''}</div>`;
       });
-      if (its.length > MAX) h += `<div class="${p}__more">+${its.length - MAX}</div>`;
+      if (its.length > MAX) h += `<div class="${p}__more">+${its.length - MAX}건 더</div>`;
       h += '</div>';
     }
     return h + '</div>';
@@ -2337,10 +2341,27 @@
   // ============================================================
   // §21 뷰 전환
   // ============================================================
+  // [2026-08-16] 월->주 는 사용자가 '한 단계 더 들어갔다'고 느끼는 전환인데
+  //   지금까지 history 엔트리를 안 쌓았다. 그래서 주간뷰에서 뒤로가기를 누르면
+  //   월간뷰로 돌아가는 게 아니라 예약관리 시트가 통째로 닫혀 내샵관리로 튕겼다.
+  //   가짜 시트 하나를 스택에 얹어 뒤로가기 한 번 = 월간뷰 복귀로 만든다.
+  const WEEK_SHEET = 'bookingWeek';
   function _switchView(view) {
     // [v200 DAY_VIEW_HIDDEN] 'day' 진입은 모두 'week' 로 리디렉트.
     if (view === 'day') view = 'week';
+    const prev = _curView;
     _curView = view;
+    if (prev !== view) {
+      try {
+        if (prev === 'month') {
+          // close 는 여기로 다시 들어와 prev='week' 분기를 타고 _markSheetClosed 로 정리된다.
+          if (typeof window._registerSheet === 'function') window._registerSheet(WEEK_SHEET, () => _switchView('month'));
+          if (typeof window._markSheetOpen === 'function') window._markSheetOpen(WEEK_SHEET);
+        } else if (view === 'month') {
+          if (typeof window._markSheetClosed === 'function') window._markSheetClosed(WEEK_SHEET);
+        }
+      } catch (_e) { void _e; }
+    }
     const o = _overlay(); if (!o) return;
     o.querySelectorAll('.bk-view__btn').forEach(b => {
       b.classList.toggle('is-on', b.dataset.view === view);

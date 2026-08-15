@@ -229,6 +229,12 @@
     _ensureSheet();
     document.getElementById('insightsSheet').style.display = 'block';
     document.body.style.overflow = 'hidden';
+    // [2026-08-16] 백스택 미등록이었다 — 뒤로가기가 인사이트를 안 닫고 뒤 화면을 닫았다.
+    //   await 앞에서 먼저 등록해야 로딩 중 뒤로가기도 잡힌다.
+    try {
+      if (typeof window._registerSheet === 'function') window._registerSheet('insights', window.closeInsights);
+      if (typeof window._markSheetOpen === 'function') window._markSheetOpen('insights');
+    } catch (_e) { void _e; }
     await _loadAndRender();
   };
 
@@ -236,6 +242,7 @@
     const sheet = document.getElementById('insightsSheet');
     if (sheet) sheet.style.display = 'none';
     document.body.style.overflow = '';
+    try { if (typeof window._markSheetClosed === 'function') window._markSheetClosed('insights'); } catch (_e) { void _e; }
   };
 
   // [2026-05-20] 다른 모듈에서 재활용 — 60일+ "X개월" / 14일+ "X주" / 미만 "X일"

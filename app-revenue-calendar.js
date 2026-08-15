@@ -59,9 +59,10 @@
     s.textContent = `
       .rvcal-grid .bk-month-m__cell--sel{outline:2px solid var(--brand-strong,#BC6675);outline-offset:-2px;border-radius:6px;z-index:1}
       /* 매출 칩 — 예약 .bk-month-m__evt(8px) 보다 크고 날짜 아래 로즈 알약 */
+      .rvcal-grid .bk-month-m{padding:4px 0 10px}
       .rvcal-grid .bk-month-m__cells{grid-auto-rows:64px}
-      .rvcal-grid .bk-month-m__cell{padding:6px 5px 5px 7px}
-      .rvcal-grid .bk-month-m__evt{font-size:10.5px;font-weight:600;padding:1px 6px;border-radius:4px;margin-top:4px;align-self:flex-start;line-height:1.45;font-variant-numeric:tabular-nums;background:var(--brand-bg,#F7EFF0);color:var(--brand-strong,#BC6675)}
+      .rvcal-grid .bk-month-m__cell{padding:6px 3px 5px 4px}
+      .rvcal-grid .bk-month-m__evt{font-size:10.5px;font-weight:600;padding:1px 4px;border-radius:4px;margin-top:4px;letter-spacing:-.3px;align-self:flex-start;line-height:1.45;font-variant-numeric:tabular-nums;background:var(--brand-bg,#F7EFF0);color:var(--brand-strong,#BC6675)}
       @media(min-width:1100px){
         /* 기본: 캘린더 풀폭 + 칩 크게 */
         .rvcal-grid .bk-month-m__cells{grid-auto-rows:88px}

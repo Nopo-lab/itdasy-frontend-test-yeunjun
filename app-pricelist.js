@@ -69,6 +69,11 @@
     const card = sheet.querySelector('#pricelistCard') || sheet.firstElementChild;
     if (window.SheetAnim) window.SheetAnim.open(sheet, card);
     else sheet.style.display = 'flex';
+    // [2026-08-16] 백스택 미등록이었다 — 가격표 업로드 중 뒤로가기가 뒤 화면을 닫아버렸다.
+    try {
+      if (typeof window._registerSheet === 'function') window._registerSheet('pricelist', close);
+      if (typeof window._markSheetOpen === 'function') window._markSheetOpen('pricelist');
+    } catch (_e) { void _e; }
   }
   function close() {
     const sheet = document.getElementById('pricelistSheet');
@@ -76,6 +81,7 @@
     const card = sheet.querySelector('#pricelistCard') || sheet.firstElementChild;
     if (window.SheetAnim) window.SheetAnim.close(sheet, card);
     else sheet.style.display = 'none';
+    try { if (typeof window._markSheetClosed === 'function') window._markSheetClosed('pricelist'); } catch (_e) { void _e; }
   }
 
   async function _upload(file) {

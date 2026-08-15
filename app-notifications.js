@@ -357,11 +357,18 @@
     document.getElementById('notifSheet').style.display = 'block';
     document.body.style.overflow = 'hidden';
     _renderList();
+    // [2026-08-16] 백스택 미등록이었다 — 알림을 열고 뒤로가기를 누르면 알림이 닫히는 게 아니라
+    //   뒤에 있던 화면이 닫히거나 앱이 꺼졌다.
+    try {
+      if (typeof window._registerSheet === 'function') window._registerSheet('notifications', window.closeNotifications);
+      if (typeof window._markSheetOpen === 'function') window._markSheetOpen('notifications');
+    } catch (_e) { void _e; }
   };
   window.closeNotifications = function () {
     const sheet = document.getElementById('notifSheet');
     if (sheet) sheet.style.display = 'none';
     document.body.style.overflow = '';
+    try { if (typeof window._markSheetClosed === 'function') window._markSheetClosed('notifications'); } catch (_e) { void _e; }
   };
   window.Notifications = {
     getAll: () => _items.slice(),
