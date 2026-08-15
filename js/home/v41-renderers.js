@@ -122,12 +122,14 @@
       };
     }
     const fmt = s => s.type === 'fullday' ? `${s.day_label} 종일` : `${s.day_label} ${s.from}~${s.to}`;
-    const hl = emptySlots.slice(0, 2).map(fmt).join(' · ') + ' 비어요';
     const n = emptySlots.length;
+    const hl = emptySlots.slice(0, 2).map(fmt).join(' · ') + ' 비어요';
     const desc = n > 2 ? `외 ${n - 2}곳 더 · 예약 잡기 좋은 시간` : '예약 잡기 좋은 시간';
+    // [2026-08-16] rowVal — 홈 잇비 카드 표 줄용 축약값 (한 줄 고정, "…비어요" 어절 깨짐 방지)
+    const rowVal = fmt(emptySlots[0]) + (n > 1 ? ` 외 ${n - 1}곳` : '');
     return {
       ok: 0, cat: '이번주 빈 시간', dot: '#0891B2',
-      hl, desc,
+      hl, desc, rowVal,
       btn: '예약 잡기', act: 'openCalendar',
     };
   }
@@ -263,7 +265,7 @@
   }
 
   // [2026-08-16] 실시간 분석 캐러셀 → 잇비 카드 흡수.
-  //   헤더 상태줄(모두 정상/N건 확인 필요) + 인사이트 말풍선 + 매출 미니 줄 + "나머지 N개 문제 없어요".
+  //   헤더 상태줄(모두 정상/N건 확인 필요) + 확인 필요 항목 표 줄 + "나머지 N개 문제 없어요".
   function _analysisState(cards) {
     const list = Array.isArray(cards) ? cards : [];
     const retry = list.some(c => c.retry);
@@ -283,15 +285,11 @@
     const lastTime = (typeof data.assistant_last_time === 'string') ? data.assistant_last_time : '';
     const confirm = (data.assistant_confirm_action && typeof data.assistant_confirm_action === 'object')
       ? data.assistant_confirm_action : null;
-    // 말풍선 우선순위: 기능 확인(confirm) > 분석 인사이트 > 마지막 대화 > 시간대 인사말
-    const insight = st.retry
-      ? { hl: '분석을 불러오지 못했어요 · 다시 시도', act: 'retryBrief' }
-      : list.find(c => !c.ok && !c.retry && c.act !== 'openRevenue') || null;
+    // [2026-08-16] 말풍선은 대화용만(confirm/마지막 대화/인사말). 분석 인사이트는 전부 표 줄로 —
+    //   fit-content 말풍선에 문장을 넣으니 "비/어요" 어절이 깨져서 표(라벨+값) 형태로 교체.
     let msgHtml, isEmpty = false;
     if (confirm || lastMsg) {
       msgHtml = `<div class="hv5-itbi-msg-text">${esc(lastMsg || '')}</div>`;
-    } else if (insight) {
-      msgHtml = `<button type="button" class="hv5-itbi-msg-text hv5-itbi-bubble-tap" data-hv-act="${esc(insight.act || 'openAssistant')}">${esc(insight.hl || '')}<span class="hv5-itbi-bubble-go">›</span></button>`;
     } else {
       isEmpty = true;
       msgHtml = `<div class="hv5-itbi-msg-text">${esc(_emptyStateMessage(data))}</div>`;
@@ -303,15 +301,13 @@
         </div>`
       : '';
     const timeHtml = (lastMsg && lastTime) ? `<div class="hv5-itbi-msg-time">${esc(lastTime)}</div>` : '';
-    // 매출 미니 줄 — 캐러셀 매출 카드 한 줄 요약 (줄바꿈 금지, 넘치면 말줄임)
-    const rev = list.find(c => c.act === 'openRevenue') || null;
-    const revHtml = rev
-      ? `<button type="button" class="hv5-itbi-mini" data-hv-act="openRevenue">
-          <span class="hv5-itbi-mini-label">이번달 매출</span>
-          <span class="hv5-itbi-mini-val">${esc(rev.hl || '')}</span>
+    // [2026-08-16] 확인 필요 항목 표 줄 — not-ok 카드 전부(매출·빈시간·고객·회원권·리터치·재시도)를
+    //   같은 규격 행(라벨 + 값 + ›)으로. 값은 rowVal(짧은 축약) 우선, 없으면 hl 을 말줄임.
+    const rowsHtml = list.filter(c => !c.ok).map(c => `<button type="button" class="hv5-itbi-mini" data-hv-act="${esc(c.act || 'openAssistant')}">
+          <span class="hv5-itbi-mini-label">${esc(c.cat || '')}</span>
+          <span class="hv5-itbi-mini-val">${esc(c.rowVal || c.hl || '')}</span>
           <span class="hv5-itbi-mini-arr">›</span>
-        </button>`
-      : '';
+        </button>`).join('');
     // 나머지 정상 항목 요약 줄
     const restHtml = (!st.retry && st.okCnt > 0)
       ? `<button type="button" class="hv5-itbi-rest" data-hv-act="openAssistant">
@@ -354,7 +350,7 @@
           ${timeHtml}
         </div>
       </div>
-      ${revHtml}
+      ${rowsHtml}
       ${restHtml}
       ${closingHtml}
       <div class="hv5-itbi-input">

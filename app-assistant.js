@@ -553,7 +553,12 @@
     const promoResultHtml = _renderPromoResult(m, idx);
     const photoResultHtml = _renderPhotoResult(m, idx);
     // [2026-06-10] LLM 마크다운 볼드(**텍스트**)가 별표 그대로 노출되던 버그 — escape 후 <strong> 변환 (XSS 안전)
-    const looseTextHtml = promoResultHtml ? '' : `<div style="padding:2px 2px 0;font-size:14px;line-height:1.55;color:#191F28;font-weight:500;white-space:pre-wrap;letter-spacing:-0.2px;">${_esc(_normMsg(m.text)).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')}</div>`;
+    // [2026-08-16] 브리핑은 말풍선 규격(fit-content, 회색 버블) — 전폭으로 꽉 채우던 것 교정.
+    //   body 가 이미 max-width:85% 라 버블은 그 안에서 fit → 화면 기준 70~80% 규격 준수.
+    const _textInner = _esc(_normMsg(m.text)).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    const looseTextHtml = promoResultHtml ? '' : (m.briefing_day
+      ? `<div style="background:#F2F4F6;border-radius:16px;border-top-left-radius:4px;padding:10px 14px;width:fit-content;max-width:100%;box-sizing:border-box;font-size:14px;line-height:1.55;color:#191F28;font-weight:500;white-space:pre-wrap;letter-spacing:-0.2px;">${_textInner}</div>`
+      : `<div style="padding:2px 2px 0;font-size:14px;line-height:1.55;color:#191F28;font-weight:500;white-space:pre-wrap;letter-spacing:-0.2px;">${_textInner}</div>`);
     // [2026-06-10] 타임아웃 메시지에 [다시 시도] 버튼 — 같은 질문 재타이핑 없이 1탭 재시도
     const retryHtml = m.retry_q ? `<div style="margin-top:8px;"><button type="button" data-asst-retry="${idx}" style="padding:9px 18px;border:1px solid #E5E8EB;border-radius:999px;background:#fff;color:#191F28;font-size:13px;font-weight:600;cursor:pointer;">다시 시도</button></div>` : '';
     const reportHtml = promoResultHtml ? '' : `<div style="margin-top:4px;padding-left:2px;">
@@ -5367,7 +5372,9 @@
   //   버튼은 briefing_actions 최대 2개 → 기존 data-asst-brief-act(runAction) 경로 재사용.
   let _briefingInjecting = false;
   let _briefingReadyP = null;   // [2026-08-16] 홈 '전체 보기' 스크롤이 주입 완료를 기다리는 용도
-  async function _injectDailyBriefing() {
+  // force=true(홈 '전체 보기'): 최신 데이터로 맨 아래 재발행. 단, 5분 안에 만든 게 있으면
+  //   그걸 그대로 보여준다(같은 동작 반복 → 똑같은 메시지 여러 번 발행 금지, 2026-08-16 원영).
+  async function _injectDailyBriefing(force) {
     if (_briefingInjecting) return;
     if (!(window.ItdasyDailyBriefing && typeof window.ItdasyDailyBriefing.run === 'function')) return;
     const d = new Date();
@@ -5375,16 +5382,21 @@
     // 어제 브리핑 제거 (매일 교체)
     const before = _history.length;
     _history = _history.filter((m) => !(m && m.briefing_day && m.briefing_day !== ymd));
-    if (_history.some((m) => m && m.briefing_day === ymd)) {
-      if (_history.length !== before) { _lastRenderedSig = ''; _renderHistory(); }
-      return;   // 오늘 것 이미 있음
+    const cur = _history.find((m) => m && m.briefing_day === ymd);
+    if (cur) {
+      const fresh = Number(cur.briefing_ts) && (Date.now() - cur.briefing_ts) < 5 * 60 * 1000;
+      if (!force || fresh) {
+        if (_history.length !== before) { _lastRenderedSig = ''; _renderHistory(); }
+        return;   // 오늘 것 이미 있음(재사용) — force 라도 5분 내면 그대로 보여줌
+      }
+      _history = _history.filter((m) => m !== cur);   // 오래된 오늘 브리핑 → 최신 데이터로 재발행
     }
     _briefingInjecting = true;
     try {
       const r = await window.ItdasyDailyBriefing.run();
       if (!r || !r.message) return;
       _history.push({
-        role: 'assistant', local_only: true, briefing_day: ymd,
+        role: 'assistant', local_only: true, briefing_day: ymd, briefing_ts: Date.now(),
         text: r.message,
         briefing_actions: Array.isArray(r.actions) ? r.actions.slice(0, 2) : [],
       });
@@ -5551,14 +5563,16 @@
           if (o.startVoice) {
             document.getElementById('asstMicBtn')?.click();
           }
-          // [2026-08-16] 홈 '전체 보기' — 브리핑 주입 끝나면 오늘의 브리핑 말풍선으로 스크롤
+          // [2026-08-16] 홈 '전체 보기' — 최신 데이터로 브리핑을 맨 아래 재발행(5분 내 재탭이면
+          //   이미 띄운 걸 재사용) 후 그 위치로 스크롤. 자동 주입과 경합 없게 체인으로 잇는다.
           if (o.scrollToBriefing) {
+            _briefingReadyP = Promise.resolve(_briefingReadyP).then(() => _injectDailyBriefing(true));
             Promise.resolve(_briefingReadyP).then(() => setTimeout(() => {
               try {
                 const el = document.querySelector('#asstBody [data-asst-briefing]');
                 if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
               } catch (_e2) { void _e2; }
-            }, 150));
+            }, 200));
           }
         } catch (_e) { /* ignore */ }
       }, 120);
