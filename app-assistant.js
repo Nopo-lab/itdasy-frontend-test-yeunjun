@@ -3089,6 +3089,39 @@
     }
   }
 
+  // [2026-08-15] 대화 새로 시작 — ⋯ 메뉴에서 부른다.
+  //   출시 감사에서 걸렸다: 잇비를 열면 예전에 주고받은 말이 그대로 남아 있는데
+  //   (AI 가 못 알아들은 응답·손님 전화번호 포함) **앱 어디에도 지울 방법이 없었다.**
+  //   심사관이 "AI 비서"를 열자마자 실패 대화를 보게 되는 것도 문제지만, 원장님 입장에서도
+  //   손님 번호가 대화에 남는 게 부담이다.
+  //   서버 `/assistant/session/reset` 은 이미 있었다(새 빈 세션 발급) — 프론트에 입구만 없었다.
+  async function _resetAssistantSession() {
+    if (!window.confirm('지금까지 주고받은 대화를 지울까요?\n잇비가 기억한 메모와 예약·매출 기록은 그대로 남아요.')) return;
+    try {
+      const res = await apiFetch('/assistant/session/reset', {
+        method: 'POST',
+        headers: { ...authHeader() },
+      });
+      if (!res.ok) throw new Error('reset_failed');
+      const data = await res.json();
+      _sessionId = (data && data.session_id) || null;
+      try {
+        if (_sessionId) localStorage.setItem('assistant_session_id', String(_sessionId));
+        else localStorage.removeItem('assistant_session_id');
+      } catch (_e) { void _e; }
+      // 메모리·화면도 같이 비운다. _historyLoadedFromServer 를 되돌려 놔야
+      // 다음 data-changed 때 _loadServerHistory 가 새 빈 세션을 다시 읽는다.
+      // (안 되돌리면 옛 _history 가 살아날 여지가 남는다)
+      _history = [];
+      _historyLoadedFromServer = false;
+      _lastRenderedSig = '';
+      _renderHistory();
+      if (window.showToast) window.showToast('대화를 새로 시작했어요');
+    } catch (_e) {
+      if (window.showToast) window.showToast('대화를 지우지 못했어요 — 잠시 후 다시 시도해 주세요');
+    }
+  }
+
   // [2026-05-25 v3] 잇비 헤더 ⋯ 메뉴 — 메모/액션 되돌리기 2종만.
   //   v2 는 document.body 에 z-index:10001 로 띄웠으나 잇비 시트가 opacity 로 stacking context
   //   를 만들어서 모바일 일부 환경에서 위 z-index 가 안 통함 → 잇비 시트 panel 내부에
@@ -3108,6 +3141,7 @@
         ${_row('memo', '잇비 메모', '영구 메모 · 자동 학습 패턴')}
         ${_row('import_tpl', '가격표·홍보물로 만들기', '기존 가격표 사진 → 우리 카드로 재구성')}
         ${_row('undo', '액션 되돌리기', '잇비가 한 일 되돌리기')}
+        ${_row('reset', '대화 새로 시작', '지금까지 주고받은 말 지우기')}
         <button data-tool-act="cancel" style="padding:12px;border:none;border-radius:14px;background:#f2f2f2;color:#6B7684;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;">닫기</button>
       </div>
     `;
@@ -3122,6 +3156,7 @@
         if (act === 'memo' && typeof window.openAssistantFactsSheet === 'function') return window.openAssistantFactsSheet();
         if (act === 'import_tpl' && typeof window.openTemplateImport === 'function') return window.openTemplateImport();
         if (act === 'undo' && typeof window.openUndoHistory === 'function') return window.openUndoHistory();
+        if (act === 'reset') return _resetAssistantSession();
       } catch (_e) { /* ignore */ }
     });
     // panel 안에 append (잇비 시트의 stacking context 안에서 가장 위).
@@ -4509,7 +4544,7 @@
     if (/403|permission|denied/i.test(msg)) return '🔒 권한 문제예요. 운영팀에 문의해 주세요.';
     // [P1-5] 진짜 오프라인일 때만 '인터넷 연결' 문구. 온라인인데 fetch 실패면 거짓말 대신 정직하게.
     if (!navigator.onLine) return '📡 지금 오프라인 상태예요. 인터넷 연결을 확인해 주세요.';
-    if (/network|failed to fetch|네트워크/i.test(msg)) return '⚠️ 잠깐 서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.';
+    if (/network|failed to fetch|load failed|네트워크/i.test(msg)) return '⚠️ 잠깐 서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.';   // load failed = 사파리/WebKit 문구
     return '에러: ' + (window._humanError ? window._humanError(e) : msg);
   }
 
