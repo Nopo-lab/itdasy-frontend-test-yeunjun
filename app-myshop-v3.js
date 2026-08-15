@@ -67,9 +67,9 @@
       return localStorage.getItem('shop_name') || '내 샵';
     } catch (_e) { return '내 샵'; }
   }
-  function _shopInitial(shop) {
-    return ((shop || '내')[0] || '내').toUpperCase();
-  }
+  // [2026-08-16] _shopInitial 삭제 — _shopName() 이 인스타 핸들 우선이라 이니셜이 '@' 로 찍혔고,
+  //   핸들 첫 글자도 원장님에게 의미가 없다. 프사 없을 때/복구 실패 시 폴백은 가게 아이콘으로.
+  const _AVATAR_FALLBACK_HTML = '<i class="ph-duotone ph-storefront" style="font-size:20px" aria-hidden="true"></i>';
   function _shopAvatarUrl() {
     try { return localStorage.getItem('itdasy:ig_profile_pic') || ''; }
     catch (_e) { return ''; }
@@ -117,11 +117,10 @@
   // ─────────── 샵 카드 ───────────
   function _renderShopCard(brief) {
     const shop = _shopName();
-    const initial = _shopInitial(shop);
     const avatarUrl = _shopAvatarUrl();
     const avatarHTML = avatarUrl
-      ? `<img src="${_esc(avatarUrl)}" alt="" data-ms-avatar-fallback="${_esc(initial)}" referrerpolicy="no-referrer" style="width:100%;height:100%;border-radius:inherit;object-fit:cover;">`
-      : _esc(initial);
+      ? `<img src="${_esc(avatarUrl)}" alt="" data-ms-avatar-fallback="1" referrerpolicy="no-referrer" style="width:100%;height:100%;border-radius:inherit;object-fit:cover;">`
+      : _AVATAR_FALLBACK_HTML;
     return `
       <div class="ms-shop">
         <div class="ms-shop__top">
@@ -510,9 +509,14 @@
     });
     container.querySelectorAll('[data-ms-avatar-fallback]').forEach(img => {
       img.addEventListener('error', () => {
-        const span = document.createElement('span');
-        span.textContent = img.dataset.msAvatarFallback || '';
-        img.replaceWith(span);
+        // [2026-08-16] 공용 복구(app-core handleIgAvatarError) — 만료 캐시 폐기 + status 1회
+        //   재조회 → 새 URL 재시도. 복구까지 실패하면 가게 아이콘 폴백.
+        const slot = img.parentElement;
+        if (typeof window.handleIgAvatarError === 'function' && slot) {
+          window.handleIgAvatarError(img, slot, _AVATAR_FALLBACK_HTML);
+        } else if (slot) {
+          slot.innerHTML = _AVATAR_FALLBACK_HTML;
+        }
       }, { once: true });
     });
   }

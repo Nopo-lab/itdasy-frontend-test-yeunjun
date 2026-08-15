@@ -3,6 +3,11 @@
    mockup: ../../mockups/03-myshop.html
    tokens: tokens.css */
 
+/* [2026-08-16] 내샵관리 탭 활성 시 글로벌 탑바 #headerPersona 숨김 — 바로 아래 샵 카드에
+   같은 프사가 또 있어 중복. home-v41.css:10 의 홈 규칙과 같은 패턴(!important 로
+   updateHeaderProfile 의 인라인 display:flex 를 덮음). 작업실 등 다른 탭에선 그대로 보임. */
+body:has(#tab-dashboard.active) #headerPersona { display: none !important; }
+
 /* ─────────────────────────────────────────────────────────────
    레이아웃 · 모바일 우선, PC 1100px+ 에서 사이드바 노출
    ───────────────────────────────────────────────────────────── */
