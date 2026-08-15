@@ -504,7 +504,9 @@
         return _sort === 'old' ? _ord(a) - _ord(b) : _ord(b) - _ord(a);   // 그 외 시간순
       });
     var cards = items.length ? _groupedHtml(items) :
-      '<div style="text-align:center;color:#C9CDD4;font-size:13px;padding:40px 0;">응대할 문의 댓글이 없어요</div>';
+      (_disabled
+      ? '<div style="text-align:center;color:#8B95A1;font-size:13px;padding:40px 20px;line-height:1.7;">댓글 문의 응대를 <b>꺼두셨어요</b>.<br>위 톱니(설정)에서 다시 켜면 문의 댓글을 모아드려요.</div>'
+      : '<div style="text-align:center;color:#C9CDD4;font-size:13px;padding:40px 0;">응대할 문의 댓글이 없어요</div>');
     // [2026-07-21] 운영시간 밖 + 방해금지 → 조용히 모아뒀다는 안내 (발송은 언제든 가능)
     var quietBar = _isQuietNow()
       ? '<div style="display:flex;align-items:center;gap:7px;background:#F2F4F6;border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#6B7684;">' +
@@ -766,6 +768,7 @@
      안전장치: ① _batchBusy 로 연타 차단 ② 버튼 즉시 비활성 ③ **순차 발송**(병렬로 쏘면 인스타 쪽에서
      레이트리밋·중복 위험) ④ 재시도 없음 ⑤ 낙관적 제거는 silent 로 모아서 마지막에 한 번만 렌더. */
   var _batchBusy = false;
+  var _disabled = false;   // [2026-08-15] 서버가 '이 기능 꺼짐' 이라고 알려준 상태
   function _sendBatch(ids, btn) {
     if (_batchBusy) return;
     var list = ids.map(function (id) { return ITEMS.find(function (x) { return x.id === id; }); })
@@ -806,6 +809,10 @@
         _loading = false;
         _weekReplied = (j && j.week_replied) || 0;
         var arr = (j && j.items) || [];
+        /* [2026-08-15] 원장님이 기능을 껐을 때 — 예전엔 이 분기가 없어서 0건 → **시드(예시) 폴백**으로
+           빠졌다. 끄고 들어왔는데 가짜 손님(민지·서연…) 카드가 진짜처럼 떠 있는 셈이다. */
+        if (j && j.disabled) { ITEMS = []; _realMode = true; _disabled = true; return; }
+        _disabled = false;
         if (arr.length) {
           ITEMS = arr.map(_mapReal).filter(function (x) { return !_isHidden(x); });   // [무시 영속화]
           _realMode = true;

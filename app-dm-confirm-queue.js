@@ -47,11 +47,14 @@
             width:44px;height:44px;transform:translate(-50%,-50%);}
           .dcq-tab{font-size:12.5px;padding:6px 11px;border-radius:9px;border:1px solid #E5E8EB;background:#fff;color:#8B95A1;white-space:nowrap;cursor:pointer;font-weight:600;font-family:inherit;flex:none;}
           .dcq-tab.on{background:#191F28;border-color:#191F28;color:#fff;}</style>
-        <div id="dcqTabs" style="display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;scrollbar-width:none;">
+        <!-- [2026-08-15] flex-wrap 추가 — 0건 탭을 숨겨도 4채널 다 살아있고 글씨 '크게'면 여전히 넘쳤다
+             (실측 내용 391px vs 칸 343px). 넘칠 때만 두 줄로 접힌다 = 보통 글씨·평상시엔 한 줄 그대로.
+             밀어서 보게 두면 안 된다 — scrollbar-width:none 이라 더 있다는 걸 알 방법이 없다. -->
+        <div id="dcqTabs" style="display:flex;flex-wrap:wrap;gap:6px;overflow-x:auto;margin-bottom:12px;scrollbar-width:none;">
           <button type="button" class="dcq-tab on" data-filter="all">전체 0</button>
           <button type="button" class="dcq-tab" data-filter="instagram">인스타 0</button>
           <button type="button" class="dcq-tab" data-filter="kakao">카톡 0</button>
-          <button type="button" class="dcq-tab" data-filter="naver">네이버 톡톡 0</button>
+          <button type="button" class="dcq-tab" data-filter="naver">네이버 0</button>
         </div>
         <div id="dcqList" style="flex:1;overflow-y:auto;">
           <div style="display:flex;justify-content:center;padding:40px 20px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:dcqSpin .8s linear infinite" aria-label="불러오는 중"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
@@ -365,7 +368,9 @@
   // [2026-06-16] 통합 인박스 — 채널 마크/필터. BE channel: 'instagram'|'kakao'|'naver'(talktalk 정규화됨).
   let _lastItems = [];
   let _activeFilter = 'all';
-  const _CH_LABEL = { all: '전체', instagram: '인스타', kakao: '카톡', naver: '네이버 톡톡' };
+  // [2026-08-15] '네이버 톡톡' → '네이버' — 탭 4개가 좁은 폰에서 넘쳐서 줄인다.
+  //   배지·카드에서 이미 채널 아이콘으로 구분되니 탭에서까지 풀네임일 필요가 없다.
+  const _CH_LABEL = { all: '전체', instagram: '인스타', kakao: '카톡', naver: '네이버' };
 
   // 채널 마크/정규화 — 공유 모듈(js/channel-mark.js) 정본 사용(중복 정의 금지). 폴백 instagram.
   /* [2026-08-15] 대기 시간 사람 말로 — 예전엔 분을 그대로 찍어서 이틀 묵은 카드가 "2880분 전" 이었다.
@@ -587,6 +592,12 @@
   }
 
   // [2026-06-16] 탭 카운트 갱신 — 전체 items 기준(필터 무관).
+  /* [2026-08-15 실사용 신고] "탭이 잘려 보인다" — 재현됨.
+     채널 탭 4개가 좁은 폰에 안 들어간다. 건수가 두 자리가 되거나 글씨를 '크게'로 바꾸면
+     내용 434px vs 칸 343px 로 넘쳐서 '네이버 톡톡' 이 잘렸다. overflow-x:auto 라 밀면 보이긴 하는데
+     scrollbar-width:none 으로 스크롤바를 숨겨놔서 **더 있다는 사실 자체를 모른다.**
+     → 0건인 채널 탭은 감춘다. 카톡 안 쓰는 원장님한테 '카톡 0' 은 자리만 먹는다.
+       (지금 보고 있는 탭은 0건이어도 남긴다 — 갑자기 사라지면 필터가 풀린 것처럼 보인다) */
   function _updateTabCounts(all) {
     const counts = { all: all.length, instagram: 0, kakao: 0, naver: 0 };
     all.forEach(it => { const c = _normChannel(it.channel); if (counts[c] != null) counts[c] += 1; });
@@ -594,6 +605,8 @@
       const f = t.getAttribute('data-filter');
       t.textContent = (_CH_LABEL[f] || f) + ' ' + (counts[f] || 0);
       t.classList.toggle('on', f === _activeFilter);
+      const keep = f === 'all' || f === _activeFilter || (counts[f] || 0) > 0;
+      t.style.display = keep ? '' : 'none';
     });
   }
 
