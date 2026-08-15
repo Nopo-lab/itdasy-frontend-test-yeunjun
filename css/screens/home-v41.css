@@ -783,11 +783,14 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
   font-size: 9px; font-weight: 600; color: #BC6675;
   background: #F7EFF0; padding: 2px 6px; border-radius: 4px;
 }
+/* [2026-08-16] 상태줄 = 실시간 분석 요약 ('실시간 분석 · 모두 정상' / 'N건 확인 필요') — 초록 라이브닷 */
 .hv5-itbi-status {
-  font-size: 11px; color: #BC6675; display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; color: #8B95A1; display: inline-flex; align-items: center; gap: 4px;
 }
+.hv5-itbi-status b { font-weight: 600; color: #8B95A1; }
+.hv5-itbi-status.is-warn b { color: #BC6675; }
 .hv5-itbi-status-dot {
-  width: 6px; height: 6px; border-radius: 50%; background: #BC6675;
+  width: 6px; height: 6px; border-radius: 50%; background: #1D9E75;
   display: inline-block;
   animation: hv-pulse 1.8s ease-in-out infinite;
 }
@@ -808,10 +811,55 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
   display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.hv5-itbi-msg-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.hv5-itbi-msg-text { font-size: 13px; color: #191F28; line-height: 1.55; }
+.hv5-itbi-msg-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+/* [2026-08-16] 말풍선화 — fit-content, 최대 75%, 카톡식 라운드(왼쪽 위만 각) */
+.hv5-itbi-msg-text {
+  font-size: 13px; color: #191F28; line-height: 1.55;
+  background: #F2F4F6; border-radius: 16px; border-top-left-radius: 4px;
+  padding: 9px 13px; width: fit-content; max-width: 85%;
+  text-align: left;
+}
 .hv5-itbi-msg.is-empty .hv5-itbi-msg-text { color: #8B95A1; }
 .hv5-itbi-msg-time { font-size: 11px; color: #B0B8C1; }
+/* 인사이트 말풍선(탭 가능) — 버튼이지만 말풍선과 동일 시각 */
+.hv5-itbi-bubble-tap {
+  border: 0; cursor: pointer; font-family: inherit; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: transform 0.12s ease;
+}
+.hv5-itbi-bubble-tap:active { transform: scale(0.97); }
+.hv5-itbi-bubble-go { color: #B0B8C1; font-weight: 500; flex-shrink: 0; }
+
+/* [2026-08-16] 매출 미니 줄 — 한 줄 고정, 넘치면 말줄임 (줄바꿈 금지) */
+.hv5-itbi-mini {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; margin: 0 0 8px;
+  padding: 10px 13px;
+  background: #F9FAFB; border: 0.5px solid #EDF0F3; border-radius: 12px;
+  font-family: inherit; cursor: pointer; text-align: left;
+  transition: transform 0.12s ease;
+}
+.hv5-itbi-mini:active { transform: scale(0.98); }
+.hv5-itbi-mini-label { font-size: 11px; color: #8B95A1; font-weight: 500; flex-shrink: 0; white-space: nowrap; }
+.hv5-itbi-mini-val {
+  flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: #191F28;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.hv5-itbi-mini-arr { font-size: 12px; color: #B0B8C1; flex-shrink: 0; }
+
+/* [2026-08-16] "나머지 N개는 문제 없어요" 줄 */
+.hv5-itbi-rest {
+  display: flex; align-items: center; gap: 7px;
+  width: 100%; margin: 0 0 10px;
+  padding: 8px 13px;
+  background: none; border: 0; border-radius: 10px;
+  font-size: 12px; color: #8B95A1; font-family: inherit;
+  cursor: pointer; text-align: left;
+}
+.hv5-itbi-rest:active { background: rgba(0,0,0,0.03); }
+.hv5-itbi-rest-check { color: #1D9E75; font-weight: 700; flex-shrink: 0; }
+.hv5-itbi-rest-arr { margin-left: auto; color: #B0B8C1; flex-shrink: 0; }
 
 /* 인라인 액션 버튼 */
 .hv5-itbi-actions { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -845,12 +893,19 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 }
 .hv5-itbi-input-field::placeholder { color: #B0B8C1; font-size: 12px; }
 .hv5-itbi-input-placeholder { font-size: 12px; }
-.hv5-itbi-send {
+/* [2026-08-16] 마이크↔전송 스왑 버튼 — 빈 상태=검정 마이크, 입력 중=로즈 전송 */
+.hv5-itbi-swap {
   width: 34px; height: 34px; border-radius: 50%;
-  background: #191F28; color: #fff;
+  background: #191F28; color: #fff; border: 0; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
+  flex-shrink: 0; cursor: pointer;
+  transition: background 0.15s ease, transform 0.12s ease;
 }
+.hv5-itbi-swap:active { transform: scale(0.94); }
+.hv5-itbi-swap .hv5-sw-send { display: none; transform: translate(-1px, 1px); } /* 비행기 광학 정렬 */
+.hv5-itbi-input.has-text .hv5-itbi-swap { background: #C96A78; }
+.hv5-itbi-input.has-text .hv5-sw-mic { display: none; }
+.hv5-itbi-input.has-text .hv5-sw-send { display: block; }
 
 /* [2026-07-05] 저녁 마감 리포트 유도 칩 — 하루 1번, 19시 이후만 렌더 (v41-renderers.js) */
 .hv5-itbi-closing {

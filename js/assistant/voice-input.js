@@ -111,6 +111,9 @@
     ctx.recognition = null;
     if (ctx.input && ctx.input.value) _toast('음성 인식 완료');
     try { ctx.input && ctx.input.focus(); } catch (_e) { void _e; }
+    // [2026-08-16] 인식 결과가 input.value 직접 세팅이라 input 이벤트가 없음 →
+    //   수동 dispatch 해서 마이크↔전송 스왑(_updateComposerSwap)·typeahead 갱신.
+    try { ctx.input && ctx.input.dispatchEvent(new Event('input', { bubbles: true })); } catch (_e) { void _e; }
   }
 
   function create() {

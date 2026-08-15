@@ -228,26 +228,27 @@
       });
     });
     _bindItbiCardInput(container);
-    // AI 캐러셀 paging (3-per-page)
-    _bindAiCarousel(container);
-    // [2026-07-05] 모바일 정상카드 접기 토글 — "나머지 N개는 문제 없어요"
-    const okToggle = container.querySelector('[data-hv-ok-toggle]');
-    if (okToggle) {
-      okToggle.addEventListener('click', (ev) => {
-        ev.preventDefault(); ev.stopPropagation();
-        const ai = okToggle.closest('.hv5-ai');
-        if (ai) ai.classList.toggle('show-ok');
-      });
-    }
+    // [2026-08-16] AI 캐러셀(_bindAiCarousel)·정상카드 접기 토글 삭제 — 실시간 분석이 잇비 카드로 흡수됨
   }
 
-  // [2026-05-28] 메인홈 잇비 카드 입력 — 카메라/음성/보내기 → 시트 진입
+  // [2026-05-28] 메인홈 잇비 카드 입력 — 카메라/스왑버튼(빈 상태=음성, 입력 중=전송) → 시트 진입
   function _bindItbiCardInput(container) {
     const input = container.querySelector('[data-itbi-input]');
     const fileInput = container.querySelector('[data-itbi-file]');
+    const bar = container.querySelector('.hv5-itbi-input');
+    const swapBtn = container.querySelector('[data-itbi-act="swap"]');
     const openSheet = (opts) => {
       const open = (window.AssistantSheet && window.AssistantSheet.open) || window.openAssistant;
       if (typeof open === 'function') open(opts || {});
+    };
+    const startVoice = () => {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        if (window.showToast) window.showToast('이 브라우저는 음성 입력을 지원하지 않아요');
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => { stream.getTracks().forEach(t => t.stop()); openSheet({ startVoice: true }); })
+        .catch(() => { if (window.showToast) window.showToast('마이크 권한이 필요해요'); });
     };
     container.querySelectorAll('[data-itbi-act]').forEach(btn => {
       btn.addEventListener('click', (ev) => {
@@ -255,28 +256,31 @@
         const act = btn.dataset.itbiAct;
         if (act === 'photo') {
           fileInput?.click();
-        } else if (act === 'voice') {
-          if (!navigator.mediaDevices?.getUserMedia) {
-            if (window.showToast) window.showToast('이 브라우저는 음성 입력을 지원하지 않아요');
-            return;
-          }
-          navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(stream => { stream.getTracks().forEach(t => t.stop()); openSheet({ startVoice: true }); })
-            .catch(() => { if (window.showToast) window.showToast('마이크 권한이 필요해요'); });
-        } else if (act === 'send') {
+        } else if (act === 'swap') {
           const text = (input?.value || '').trim();
-          openSheet(text ? { sendImmediate: text } : {});
-          if (input) input.value = '';
+          if (!text) { startVoice(); return; }
+          openSheet({ sendImmediate: text });
+          input.value = '';
+          if (bar) bar.classList.remove('has-text');
+          if (swapBtn) swapBtn.setAttribute('aria-label', '음성 입력');
         }
       });
     });
     if (input) {
+      // 입력 여부에 따라 마이크 ↔ 전송 스왑
+      input.addEventListener('input', () => {
+        const has = Boolean(input.value.trim());
+        if (bar) bar.classList.toggle('has-text', has);
+        if (swapBtn) swapBtn.setAttribute('aria-label', has ? '보내기' : '음성 입력');
+      });
       input.addEventListener('keydown', (ev) => {
         if (ev.key === 'Enter' && !ev.shiftKey) {
           ev.preventDefault();
           const text = input.value.trim();
           openSheet(text ? { sendImmediate: text } : {});
           input.value = '';
+          if (bar) bar.classList.remove('has-text');
+          if (swapBtn) swapBtn.setAttribute('aria-label', '음성 입력');
         }
       });
       // 카드 자체 클릭 라우팅이 input 포커스 막지 않도록
@@ -294,57 +298,6 @@
       fileInput.dataset.itbiPrompt = '';
       fileInput.value = '';
     });
-  }
-
-  function _bindAiCarousel(container) {
-    const track = container.querySelector('#hv5AiTrack');
-    if (!track) return;
-    const cards = Array.from(track.children);
-    if (cards.length === 0) return;
-    // 안전장치 — ok=0 먼저, ok=1 뒤로 재정렬 (renderer 가 이미 정렬했지만 보장)
-    cards.sort((a, b) => (+a.dataset.ok || 0) - (+b.dataset.ok || 0));
-    cards.forEach(c => track.appendChild(c));
-
-    // [2026-05-25] 모바일은 카드 1장씩 snap, PC 는 3장씩 그룹 페이징.
-    //   기존: perPage=3 고정 → 모바일 swipe 한번에 3장 넘어가 카드 못 봄.
-    const isMobile = window.matchMedia('(max-width: 540px)').matches;
-    const perPage = isMobile ? 1 : 3;
-    const pages = Math.max(1, Math.ceil(cards.length / perPage));
-    let page = 0;
-    const prevBtn = container.querySelector('#hv5AiPrev');
-    const nextBtn = container.querySelector('#hv5AiNext');
-    const dotsWrap = container.querySelector('#hv5AiDots');
-
-    function goTo(p) {
-      page = Math.max(0, Math.min(pages - 1, p));
-      const cardW = cards[0].getBoundingClientRect().width + 10;
-      track.scrollTo({ left: page * perPage * cardW, behavior: 'smooth' });
-      dotsWrap?.querySelectorAll('.hv5-ai-dot-nav').forEach((d, i) => {
-        d.classList.toggle('on', i === page);
-      });
-      if (prevBtn) prevBtn.disabled = page === 0;
-      if (nextBtn) nextBtn.disabled = page >= pages - 1;
-    }
-    prevBtn?.addEventListener('click', (e) => { e.stopPropagation(); goTo(page - 1); });
-    nextBtn?.addEventListener('click', (e) => { e.stopPropagation(); goTo(page + 1); });
-    dotsWrap?.querySelectorAll('.hv5-ai-dot-nav').forEach(d => {
-      d.addEventListener('click', (e) => {
-        e.stopPropagation();
-        goTo(parseInt(d.dataset.hvAiPage, 10) || 0);
-      });
-    });
-    // 모바일은 CSS scroll-snap 이 처리. JS 강제 페이지 이동은 PC 만.
-    if (!isMobile) {
-      let startX = 0;
-      track.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
-      track.addEventListener('touchend', (e) => {
-        const diff = startX - e.changedTouches[0].clientX;
-        if (Math.abs(diff) > 40) {
-          if (diff > 0) goTo(page + 1);
-          else goTo(page - 1);
-        }
-      }, { passive: true });
-    }
   }
 
   // ─────────── 메인 렌더 ───────────

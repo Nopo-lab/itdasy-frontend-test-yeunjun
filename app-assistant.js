@@ -329,8 +329,9 @@
         <div id="asstFooter" style="display:flex;gap:8px;margin-top:8px;align-items:center;">
           <button id="asstPhoto" aria-label="사진 업로드" title="사진 업로드" style="flex-shrink:0;width:40px;height:40px;border:none;border-radius:50%;background:#F2F4F6;color:#4E5968;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;transition:background 0.15s;">${_svg('ic-camera', 18)}</button>
           <input id="asstInput" placeholder="샵 관련해서 물어보세요…" maxlength="300" data-no-voice style="flex:1;padding:11px 16px;border:none;border-radius:999px;font-size:14px;min-width:0;background:#F2F4F6;color:#191F28;outline:none;" />
-          <button id="asstMicBtn" type="button" aria-label="음성 입력" title="음성 입력" style="flex-shrink:0;width:40px;height:40px;border:none;border-radius:50%;background:#F2F4F6;color:#4E5968;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;transition:background 0.15s, color 0.15s;">${_svg('ic-mic', 18)}</button>
-          <button id="asstSend" aria-label="보내기" title="보내기" style="flex-shrink:0;width:40px;height:40px;padding:0;border:none;border-radius:50%;background:#191F28;color:#FFFFFF;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;justify-content:center;">${_svg('ic-send', 16)}</button>
+          <!-- [2026-08-16] 마이크↔전송 스왑 — 빈 상태=마이크(검정), 입력·사진 펜딩=전송(로즈). 표시는 _updateComposerSwap 이 토글 -->
+          <button id="asstMicBtn" type="button" aria-label="음성 입력" title="음성 입력" style="flex-shrink:0;width:40px;height:40px;border:none;border-radius:50%;background:#191F28;color:#FFFFFF;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;transition:background 0.15s, color 0.15s;">${_svg('ic-mic', 18)}</button>
+          <button id="asstSend" aria-label="보내기" title="보내기" style="flex-shrink:0;width:40px;height:40px;padding:0;border:none;border-radius:50%;background:#C96A78;color:#FFFFFF;cursor:pointer;font-weight:700;display:none;align-items:center;justify-content:center;">${_svg('ic-send', 16)}</button>
         </div>
         <input id="asstCamera" type="file" accept="image/*" capture="environment" multiple style="display:none;" />
         <input id="asstGallery" type="file" accept="image/*" multiple style="display:none;" />
@@ -351,6 +352,8 @@
       st.textContent = [
         '#assistantSheetPanel button { touch-action: manipulation; transition: background .12s ease, transform .08s ease; }',
         '#assistantSheetPanel button:active { transform: scale(.96); }',
+        // [2026-08-16] 전송(비행기) 아이콘 광학정렬 — lucide send 는 NE 방향이라 좌하로 1px 보정
+        '#asstSend svg { transform: translate(-1px, 1px); }',
         // [2026-05-26] 메시지·액션 카드 등장 — slide-up + fade
         '#asstBody .asst-msg, #asstBody .asst-card { animation: asstSlideUp .4s ease both; }',
         '@keyframes asstSlideUp { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }',
@@ -455,7 +458,23 @@
       if (_typeTimer) clearTimeout(_typeTimer);
       const v = (e.target.value || '').trim();
       _typeTimer = setTimeout(() => _renderTypeahead(v), 200);
+      _updateComposerSwap();
     });
+  }
+
+  // [2026-08-16] 마이크↔전송 스왑 — 텍스트 입력 중이거나 사진 펜딩이 있으면 전송(로즈),
+  // 빈 상태면 마이크(검정). 버튼 DOM 은 둘 다 유지하고 display 만 토글
+  // (voice-input.js 가 #asstMicBtn 참조를 잡고 있고, AssistantSheet.open 의 startVoice 도 click() 호출).
+  function _updateComposerSwap() {
+    const input = document.getElementById('asstInput');
+    const mic = document.getElementById('asstMicBtn');
+    const send = document.getElementById('asstSend');
+    if (!input || !mic || !send) return;
+    const pend = document.getElementById('asstPending');
+    const hasPending = !!(pend && pend.style.display !== 'none' && pend.children.length);
+    const showSend = !!(input.value || '').trim() || hasPending;
+    send.style.display = showSend ? 'inline-flex' : 'none';
+    mic.style.display = showSend ? 'none' : 'inline-flex';
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -541,7 +560,11 @@
           <button data-report-ai="chat_answer" data-snippet="${_esc(m.text).replace(/"/g,'&quot;')}" data-source="/assistant/chat" aria-label="AI 답변 신고"
             style="background:transparent;border:none;cursor:pointer;font-size:11px;color:#C5CBD2;padding:2px 4px;display:inline-flex;align-items:center;gap:3px;">${_svg('ic-flag', 11)} 신고</button>
         </div>`;
-    return `<div class="asst-msg asst-msg--ai" style="display:flex;gap:10px;margin-bottom:14px;align-items:flex-start;">
+    // [2026-08-16] 오늘의 브리핑 — 메시지 앞 중앙 날짜칩 (카톡 날짜칩 스타일)
+    const briefChipHtml = m.briefing_day
+      ? `<div style="display:flex;justify-content:center;margin:6px 0 12px;"><span style="padding:5px 12px;border-radius:999px;background:#F2F4F6;color:#8B95A1;font-size:11.5px;font-weight:600;">오늘의 브리핑</span></div>`
+      : '';
+    return `${briefChipHtml}<div class="asst-msg asst-msg--ai" style="display:flex;gap:10px;margin-bottom:14px;align-items:flex-start;">
       <div style="width:40px;height:40px;border-radius:50%;background:#F7EFF0;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#BC6675;">${_svg('ic-bot', 22)}</div>
       <div style="max-width:85%;min-width:0;flex:1;">
         ${promoResultHtml}
@@ -714,6 +737,13 @@
   // [T-115] Daily Briefing 추천 버튼 (안전 — 화면 이동/초안 경로만). intent-chip 패턴 미러링.
   function _renderBriefingActions(m, idx) {
     if (!Array.isArray(m.briefing_actions) || !m.briefing_actions.length) return '';
+    // [2026-08-16] 오늘의 브리핑(카톡식) — 말풍선 아래 세로 버튼 최대 2개.
+    //   첫 번째=로즈(행동), 두 번째=회색. 클릭 경로는 기존 data-asst-brief-act(runAction) 재사용.
+    if (m.briefing_day) {
+      return `<div class="asst-chips asst-chips--brief" style="margin-top:8px;display:flex;flex-direction:column;gap:6px;max-width:240px;">
+        ${m.briefing_actions.slice(0, 2).map((a, i) => `<button data-asst-brief-act="${idx}:${_esc(a.id)}" style="padding:11px 16px;border:none;border-radius:12px;cursor:pointer;font-size:13.5px;font-weight:700;text-align:center;${i === 0 ? 'background:#C96A78;color:#FFFFFF;' : 'background:#F2F4F6;color:#4E5968;'}">${_esc(a.label)}</button>`).join('')}
+      </div>`;
+    }
     // [J-1] Action Hub 규격으로 렌더(phase 라벨링). 클릭은 기존 data-asst-brief-act 경로(T-115 runAction) 유지.
     if (window.ItdasyActionHub && typeof window.ItdasyActionHub.renderActionHub === 'function') {
       return window.ItdasyActionHub.renderActionHub(m.briefing_actions, { idx, defaultRoute: 'brief' });
@@ -1652,6 +1682,7 @@
   function _renderPending() {
     const pending = _getPhotoPending();
     if (pending) pending.render();
+    _updateComposerSwap();   // [2026-08-16] 사진 펜딩 생기면 전송 버튼 노출
   }
   function _addPendingPhotos(files) {
     const pending = _getPhotoPending();
@@ -3556,6 +3587,7 @@
     const input = document.getElementById('asstInput');
     const question = (input && input.value.trim()) || '';
     if (input) input.value = '';
+    _updateComposerSwap();   // [2026-08-16] 질문 소비 후 스왑 갱신
     return question;
   }
 
@@ -3919,6 +3951,7 @@
 
   function _clearAssistantInput(input) {
     if (input) input.value = '';
+    _updateComposerSwap();   // [2026-08-16] 비워지면 전송→마이크 복귀
   }
 
   function _pushUserAssistantText(userText, assistantText) {
@@ -5180,7 +5213,7 @@
         if (src && src.origin === 'chat' && src.dataUrl) {
           _sendInFlight = true;   // _uploadPhotos 와 동일하게 이중 전송 가드
           try {
-            if (await _tryPhotoShortcut(q, [src.dataUrl])) { if (input) input.value = ''; return; }
+            if (await _tryPhotoShortcut(q, [src.dataUrl])) { _clearAssistantInput(input); return; }
           } finally { _sendInFlight = false; }
         }
       } catch (_e) { void _e; }
@@ -5329,6 +5362,37 @@
     } catch (_e) { void _e; }
   };
 
+  // [2026-08-16] 카톡식 오늘의 브리핑 — 잇비 채팅 열 때 오늘 브리핑을 로컬 전용 메시지로 주입.
+  //   매일 교체(어제 것 제거), 서버 히스토리엔 안 쌓임(local_only → _pendingHistorySurvivors 가 보존).
+  //   버튼은 briefing_actions 최대 2개 → 기존 data-asst-brief-act(runAction) 경로 재사용.
+  let _briefingInjecting = false;
+  async function _injectDailyBriefing() {
+    if (_briefingInjecting) return;
+    if (!(window.ItdasyDailyBriefing && typeof window.ItdasyDailyBriefing.run === 'function')) return;
+    const d = new Date();
+    const ymd = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    // 어제 브리핑 제거 (매일 교체)
+    const before = _history.length;
+    _history = _history.filter((m) => !(m && m.briefing_day && m.briefing_day !== ymd));
+    if (_history.some((m) => m && m.briefing_day === ymd)) {
+      if (_history.length !== before) { _lastRenderedSig = ''; _renderHistory(); }
+      return;   // 오늘 것 이미 있음
+    }
+    _briefingInjecting = true;
+    try {
+      const r = await window.ItdasyDailyBriefing.run();
+      if (!r || !r.message) return;
+      _history.push({
+        role: 'assistant', local_only: true, briefing_day: ymd,
+        text: r.message,
+        briefing_actions: Array.isArray(r.actions) ? r.actions.slice(0, 2) : [],
+      });
+      _lastRenderedSig = '';
+      _renderHistory();
+    } catch (_e) { void _e; }
+    finally { _briefingInjecting = false; }
+  }
+
   window.openAssistant = function () {
     _ensureSheet();
     const sheet = document.getElementById('assistantSheet');
@@ -5336,10 +5400,13 @@
     _restoreChatPendingOnOpen();
     _lastRenderedSig = ''; // sheet 새로 열렸으니 강제 1회 풀 렌더
     _renderHistory();
+    _updateComposerSwap();   // [2026-08-16] 열 때 입력/펜딩 상태에 맞춰 마이크↔전송 정렬
     // 챗봇 열었으니 unread 점 제거
     _setUnreadAnswer(false);
     // 첫 오픈 시 서버 history 동기화 (백그라운드, 즉시 렌더에 영향 X)
     _loadServerHistory();
+    // [2026-08-16] 오늘의 브리핑 주입 (백그라운드 — local_only 라 서버 머지에도 생존)
+    _injectDailyBriefing();
     // [2026-04-29 F1] 능동 제안 carousel — chat 입력창 위
     _loadProactiveSuggestions();
     // [연준님 2026-08-15 · A] 계정 상태 기반 초기 추천질문 (LLM 0회, 1분 캐시)
