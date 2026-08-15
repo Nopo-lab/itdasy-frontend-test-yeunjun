@@ -42,9 +42,14 @@
     const initialHTML = `<span class="hv-header__initial">${esc(shopInitial(shopName()))}</span>`;
     if (src) {
       // referrerpolicy: 인스타 CDN 403 방지. onerror: 만료/실패 시 깨진 이미지 대신 이니셜.
+      // [2026-08-16] 이니셜 폴백 전에 공용 복구(app-core handleIgAvatarError) — 만료 캐시
+      //   폐기 + /instagram/status 세션당 1회 재조회 → 새 URL 재시도. 로직 중복 구현 금지.
       slot.innerHTML = `<img src="${esc(src)}" alt="" class="hv-header__avatar-img" referrerpolicy="no-referrer">`;
       const av = slot.querySelector('img');
-      if (av) av.onerror = function () { slot.innerHTML = initialHTML; };
+      if (av) av.onerror = function () {
+        if (typeof window.handleIgAvatarError === 'function') window.handleIgAvatarError(this, slot, initialHTML);
+        else slot.innerHTML = initialHTML;
+      };
     } else {
       slot.innerHTML = initialHTML;
     }

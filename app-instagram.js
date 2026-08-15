@@ -121,7 +121,10 @@ async function checkInstaStatus(fromLogin = false) {
       try {
         localStorage.setItem('itdasy:ig_connected_cache', '1');
         // 프로필 사진/핸들도 캐시 — 내샵관리 등 다른 화면에서 즉시 사용
-        if (data.profile_picture_url) localStorage.setItem('itdasy:ig_profile_pic', data.profile_picture_url);
+        // [2026-08-16] "값이 있을 때만" 덮어쓰던 구조 제거 — 서버가 빈 값(만료 URL 폐기)을 주면
+        //   FE 캐시도 비워야 한다. 안 그러면 만료 URL 이 영구 잔류(45일 방치 사고). 키 자체가
+        //   없는 응답(구버전 BE)만 스킵.
+        if ('profile_picture_url' in data) localStorage.setItem('itdasy:ig_profile_pic', data.profile_picture_url || '');
         if (data.handle) localStorage.setItem('itdasy:ig_handle', data.handle);
       } catch (_e) { /* ignore */ }
       document.getElementById('homePreConnect').style.display = 'none';

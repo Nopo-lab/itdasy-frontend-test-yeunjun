@@ -431,6 +431,43 @@ function hideInstallGuide() {
   setTimeout(() => { el.style.display = 'none'; }, 300);
 }
 
+// [2026-08-16] 인스타 프사 로드 실패(대개 CDN 서명 oe= 만료 → 403) 공용 복구 —
+//   만료 캐시를 폐기하고 /instagram/status 를 세션당 1회만 재조회해 새 URL 로 다시 그린다.
+//   동시 다발 실패(헤더+홈 아바타)는 같은 Promise 를 공유해 status 중복 호출 0.
+//   재시도 후에도 실패하면 이니셜 폴백. 호출처: updateHeaderProfile ·
+//   js/home/v41-renderers.js syncAvatar — 같은 로직 복붙 금지, 반드시 이 함수 재사용.
+let _igPicRecoverPromise = null;
+function _recoverIgProfilePic() {
+  if (_igPicRecoverPromise) return _igPicRecoverPromise;
+  _igPicRecoverPromise = (async () => {
+    try { localStorage.removeItem('itdasy:ig_profile_pic'); } catch (_e) { void _e; }
+    try {
+      const res = await apiFetch('/instagram/status', { headers: authHeader() });
+      if (!res.ok) return '';
+      const data = await res.json();
+      const pic = (data && data.connected && data.profile_picture_url) || '';
+      if (pic) { try { localStorage.setItem('itdasy:ig_profile_pic', pic); } catch (_e) { void _e; } }
+      return pic;
+    } catch (_e) { return ''; }
+  })();
+  return _igPicRecoverPromise;
+}
+window.handleIgAvatarError = function (imgEl, slotEl, fallbackHTML) {
+  const oldSrc = (imgEl && imgEl.src) || '';
+  _recoverIgProfilePic().then((fresh) => {
+    if (!slotEl || !slotEl.isConnected) return;
+    if (fresh && fresh !== oldSrc) {
+      const retry = imgEl.cloneNode(false);  // 속성(referrerpolicy 등)만 복제 — onerror 는 property 라 미복제
+      retry.src = fresh;
+      retry.onerror = function () { slotEl.innerHTML = fallbackHTML; };  // 2차 실패 → 이니셜 확정(루프 없음)
+      slotEl.innerHTML = '';
+      slotEl.appendChild(retry);
+    } else {
+      slotEl.innerHTML = fallbackHTML;
+    }
+  });
+};
+
 function updateHeaderProfile(handle, tone, picUrl) {
   const el = document.getElementById('headerPersona');
   if (!el) return;
@@ -459,9 +496,10 @@ function updateHeaderProfile(handle, tone, picUrl) {
       // referrerpolicy: 인스타 CDN 은 referrer 있으면 403 → no-referrer 필수
       avatarEl.innerHTML = `<img src="${window._esc(picUrl)}" alt="" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
       // [2026-06-05] CDN 403/URL 만료 시 깨진 이미지 대신 이니셜로 폴백
+      // [2026-08-16] 폴백 전에 만료 캐시 폐기 + status 1회 재조회로 새 URL 재시도 (공용 복구).
       const _img = avatarEl.querySelector('img');
       if (_img) _img.onerror = function () {
-        avatarEl.innerHTML = `<span class="profile-avatar__initial">${window._esc(letter)}</span>`;
+        window.handleIgAvatarError(this, avatarEl, `<span class="profile-avatar__initial">${window._esc(letter)}</span>`);
       };
     } else {
       avatarEl.innerHTML = `<span class="profile-avatar__initial">${window._esc(letter)}</span>`;
