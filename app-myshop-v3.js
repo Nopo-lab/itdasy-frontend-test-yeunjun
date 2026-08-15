@@ -196,29 +196,41 @@
       _menuItemHTML({ act: 'booking', iconClass: 'ms-menu__icon--teal', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-calendar-check"/></svg>', name: '예약관리', meta: m.bookMeta }),
       _menuItemHTML({ act: 'customer', iconClass: 'ms-menu__icon--blue', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-users"/></svg>', name: '고객관리', meta: m.custMeta, metaClass: m.atRiskN ? 'is-danger' : '' }),
       _menuItemHTML({ act: 'revenue', iconClass: 'ms-menu__icon--amber', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-wallet"/></svg>', name: '매출관리', meta: m.revMeta, metaClass: 'is-ok' }),
-      _menuItemHTML({ act: 'integrations', iconClass: 'ms-menu__icon--blue', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-link"/></svg>', name: '연동관리', meta: '인스타 · 네이버 · 카톡' }),
       /* INVENTORY_HIDDEN */ // _menuItemHTML({ act: 'inventory', iconClass: 'ms-menu__icon--coral', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-package"/></svg>', name: '재고관리', meta: m.stockMeta, metaClass: m.lowStock > 0 ? 'is-danger' : '', badge: m.lowStock > 0 ? m.lowStock : null }),
     ].join('');
     return `<div class="ms-section"><div class="ms-section__title">운영 관리</div><div class="ms-menu">${items}</div></div>`;
   }
 
-  // ─────────── 통합 허브 메뉴 2개 ───────────
-  function _renderHubMenu() {
-    const automationOn = _automationOnCount();
+  // ─────────── 손님 문의 메뉴 2개 ───────────
+  // [2026-08-16] "통합 허브" 섹션 폐지 → 손님 문의(인스타DM / 인스타 댓글).
+  //   N 은 홈 v4.1 SWR 캐시(hv41_cache::brief 의 _dmQueueCount/_commentQueueCount) 재사용 —
+  //   추가 API 호출 0 (비용 방어). 캐시 없으면 0 → meta 숨김.
+  function _inquiryCounts() {
+    try {
+      const raw = localStorage.getItem('hv41_cache::brief') || sessionStorage.getItem('hv41_cache::brief');
+      if (!raw) return { dm: 0, comment: 0 };
+      const d = (JSON.parse(raw) || {}).d || {};
+      return { dm: Number(d._dmQueueCount) || 0, comment: Number(d._commentQueueCount) || 0 };
+    } catch (_e) { return { dm: 0, comment: 0 }; }
+  }
+  function _renderInquiryMenu() {
+    const n = _inquiryCounts();
     const items = [
-      _menuItemHTML({ act: 'aiHub', iconClass: 'ms-menu__icon--purple', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-bot"/></svg>', name: '잇비 · 자동화', meta: 'DM 자동응답 · 해시태그 · 알림톡' }),
-      _menuItemHTML({ act: 'settings', iconClass: 'ms-menu__icon--gray', iconSVG: '<i class="ph-duotone ph-gear-six" style="font-size:19px;"></i>', name: '설정', meta: '샵정보 · 데이터 · 백업' }),
+      _menuItemHTML({ act: 'dmHub', iconClass: 'ms-menu__icon--purple', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-instagram"/></svg>', name: '인스타DM', meta: n.dm > 0 ? `답해둘 게 ${n.dm}개 남았어요` : '' }),
+      _menuItemHTML({ act: 'comment', iconClass: 'ms-menu__icon--pink', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-message-circle"/></svg>', name: '인스타 댓글', meta: n.comment > 0 ? `${n.comment}건 기다리는 중` : '' }),
     ].join('');
-    return `<div class="ms-section"><div class="ms-section__title">통합 허브</div><div class="ms-menu">${items}</div></div>`;
+    return `<div class="ms-section"><div class="ms-section__title">손님 문의</div><div class="ms-menu">${items}</div></div>`;
   }
 
-  // ─────────── 계정 메뉴 2개 ───────────
+  // ─────────── 내 정보 메뉴 3개 ───────────
   function _renderAccountMenu() {
     const planLabel = _planLabel();
     const items = [
-      _menuItemHTML({ act: 'plan', iconClass: 'ms-menu__icon--pink', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-id-card"/></svg>', name: '플랜 · 구독', meta: planLabel }),
+      _menuItemHTML({ act: 'integrations', iconClass: 'ms-menu__icon--blue', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-link"/></svg>', name: '연동관리', meta: '인스타 · 네이버 · 카톡' }),
+      _menuItemHTML({ act: 'settings', iconClass: 'ms-menu__icon--gray', iconSVG: '<i class="ph-duotone ph-gear-six" style="font-size:19px;"></i>', name: '내 샵 정보', meta: '샵정보 · 데이터 · 백업' }),
+      _menuItemHTML({ act: 'plan', iconClass: 'ms-menu__icon--pink', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-id-card"/></svg>', name: '내 요금제', meta: planLabel }),
     ].join('');
-    return `<div class="ms-section"><div class="ms-section__title">계정</div><div class="ms-menu">${items}</div></div>`;
+    return `<div class="ms-section"><div class="ms-section__title">내 정보</div><div class="ms-menu">${items}</div></div>`;
   }
 
   // ─────────── 하단 푸터 링크 (쿠팡식 · 모바일 전용) ───────────
@@ -252,7 +264,7 @@
   function _sideOpsHTML(brief) {
     const todayN = _todayBookingsList(brief).length;
     return [
-      '<div class="ms-side__section">운영</div>',
+      '<div class="ms-side__section">운영 관리</div>',
       _sideItemHTML({ act: 'booking',   iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-calendar-check"/></svg>',    label: '예약관리', badge: todayN > 0 ? todayN : null, badgeClass: 'is-ok' }),
       _sideItemHTML({ act: 'customer',  iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-users"/></svg>',       label: '고객관리' }),
       _sideItemHTML({ act: 'customerDm', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-message-circle"/></svg>', label: '실시간 DM' }),
@@ -260,19 +272,20 @@
       /* INVENTORY_HIDDEN */ // _sideItemHTML({ act: 'inventory', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-package"/></svg>', label: '재고관리', badge: lowStock > 0 ? lowStock : null }),
     ].join('');
   }
-  function _sideHubHTML() {
-    const automationOn = _automationOnCount();
+  function _sideInquiryHTML() {
+    const n = _inquiryCounts();
     return [
-      '<div class="ms-side__section">통합 허브</div>',
-      _sideItemHTML({ act: 'aiHub',    iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-sparkles"/></svg>', label: '잇비 · 자동화', badge: `${automationOn}/7`, badgeClass: 'is-ok' }),
-      _sideItemHTML({ act: 'settings', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-settings"/></svg>', label: '연동관리' }),
+      '<div class="ms-side__section">손님 문의</div>',
+      _sideItemHTML({ act: 'dmHub',   iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-instagram"/></svg>',      label: '인스타DM', badge: n.dm > 0 ? n.dm : null }),
+      _sideItemHTML({ act: 'comment', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-message-circle"/></svg>', label: '인스타 댓글', badge: n.comment > 0 ? n.comment : null }),
     ].join('');
   }
   function _sideAccountHTML() {
-    const planLabel = _planLabel();
     return [
-      '<div class="ms-side__section">계정</div>',
-      _sideItemHTML({ act: 'plan',    iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-id-card"/></svg>',           label: '플랜 · ' + planLabel }),
+      '<div class="ms-side__section">내 정보</div>',
+      _sideItemHTML({ act: 'integrations', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-link"/></svg>',     label: '연동관리' }),
+      _sideItemHTML({ act: 'settings', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-settings"/></svg>',      label: '내 샵 정보' }),
+      _sideItemHTML({ act: 'plan',    iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-id-card"/></svg>',        label: '내 요금제' }),
       _sideItemHTML({ act: 'support', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-message-circle"/></svg>', label: '도움말' }),
     ].join('');
   }
@@ -286,7 +299,7 @@
         <div class="ms-side__logo">잇데이</div>
         ${top}
         ${_sideOpsHTML(brief)}
-        ${_sideHubHTML()}
+        ${_sideInquiryHTML()}
         ${_sideAccountHTML()}
         <button type="button" class="ms-side__fab" data-mv-act="createShortcut">
           <i class="ph-duotone ph-sparkle" aria-hidden="true"></i>
@@ -403,8 +416,8 @@
           <div class="ms-widget__value is-amber">${atRiskN}명</div>
           <div class="ms-widget__meta">90일+ 미방문</div>
         </button>
-        <button type="button" class="ms-widget" data-mv-act="aiHub">
-          <div class="ms-widget__label">자동화</div>
+        <button type="button" class="ms-widget" data-mv-act="dmHub">
+          <div class="ms-widget__label">인스타DM</div>
           <div class="ms-widget__value is-ok">${automationOn}/7</div>
           <div class="ms-widget__meta">DM · 카톡 · 페르소나 외</div>
         </button>
@@ -469,7 +482,17 @@
       revenue:        () => (window.openRevenue || window.openRevenueHub)?.(),
       integrations:   () => window.openIntegrationsHub && window.openIntegrationsHub(),
       /* INVENTORY_HIDDEN */ // inventory:      () => window.openInventoryHub && window.openInventoryHub(),
-      aiHub:          () => window.openAiHub && window.openAiHub(),
+      // [2026-08-16] 인스타DM — app-dm-hub.js(별도 작업)가 openDmHub 를 내놓기 전까지
+      //   openAiHub 폴백이 임시 다리. dm-hub 반입 전에는 이 폴백을 지우지 말 것.
+      dmHub:          () => (window.openDmHub || window.openAiHub || (() => {}))(),
+      // 인스타 댓글 — app-comment-reply-queue.js 는 lazy(extras). 로드 보장 후 호출
+      //   (js/home/v41-actions.js openCommentQueue 와 같은 패턴).
+      comment:        () => {
+        const _open = () => { if (typeof window.openCommentReplyQueue === 'function') window.openCommentReplyQueue(); };
+        if (typeof window.openCommentReplyQueue === 'function') return _open();
+        if (window.AppLoader && window.AppLoader.ensure) Promise.resolve(window.AppLoader.ensure('extras')).then(_open).catch(_open);
+        else _open();
+      },
       settings:       () => window.openSettingsHub && window.openSettingsHub(),
       // 플랜·구독 — app-plan.js 에서 openPlanPopup 으로 노출. openPlan 도 시도.
       plan:           () => (window.openPlan || window.openPlanPopup || (() => {}))(),
@@ -480,7 +503,7 @@
       logout:         () => (window.logout || (() => {}))(),
       bell:           () => window.openNotifications && window.openNotifications(),
       editShop:       () => window.openShopSettings && window.openShopSettings(),
-      createShortcut: () => window.openAiHub && window.openAiHub(),
+      createShortcut: () => (window.openDmHub || window.openAiHub || (() => {}))(),
       goHome: () => {
         if (typeof window.showTab === 'function') {
           const btn = document.querySelector('.tab-bar__btn[data-tab="home"]');
@@ -522,7 +545,7 @@
           <div class="ms-body">
             ${_renderShopCard(brief)}
             ${_renderOpsMenu(brief)}
-            ${_renderHubMenu()}
+            ${_renderInquiryMenu()}
             ${_renderAccountMenu()}
             ${_renderFooterLinks()}
           </div>

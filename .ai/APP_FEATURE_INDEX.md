@@ -100,7 +100,7 @@
 - **js/home/v41-renderers.js**(618)·**v41-actions.js**(117)·**v41-styles.js**(4)·**app-home-v41-config.js**(29) — 홈 렌더/액션/스타일/설정.
 - **app-home-customer-msgs.js** (346) — 홈 "고객 메시지" 카드줄. `/dm-confirm-queue`(pending) 소스, 탭→DM 포커스.
 - **app-today-brief.js**(353)·**app-today-morning.js**(280)·**app-ai-suggestions.js**(85) — 오늘 집중/모닝브리핑/할일3개.
-- **app-myshop-v3.js**(608)·**app-dashboard.js**(564)·**app-insights.js**(485) — 내샵관리 v3 / 대시보드 / AI 인사이트.
+- **app-myshop-v3.js**(645)·**app-dashboard.js**(564)·**app-insights.js**(485) — 내샵관리 v3 / 대시보드 / AI 인사이트. [2026-08-16] 메뉴 3섹션 8줄 개편: 운영 관리(예약/고객/매출)·손님 문의(인스타DM=`dmHub`→openDmHub∥openAiHub 폴백, 인스타 댓글=`comment`→openCommentReplyQueue extras 보장로드)·내 정보(연동/내 샵 정보/내 요금제). "통합 허브"·`aiHub` 액트 폐지(app-ai-hub.js 파일·태그는 유지, 진입로만 끊음). index.html aside/drawer-nav + app-drawer.js(`insta_dm`/`insta_comment`/`plan`) + app-side-nav-unifier.js(`insta-dm`/`insta-comment` 매핑) 동일 개편.
 
 ### 매출
 - **app-revenue.js** (1183) — 매출관리 v5 메인 + period 디스패처. `openRevenue/window.Revenue`, CRUD·빠른추가·도넛.

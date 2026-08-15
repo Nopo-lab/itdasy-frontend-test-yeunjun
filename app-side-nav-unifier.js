@@ -8,7 +8,8 @@
   function _closeAllHubs() {
     // [2026-05-04] SheetAnim.close 의 220ms setTimeout 이 재오픈 직후 display:none 으로
     // 덮어쓰는 race condition 회피 — 직접 display 조작.
-    ['aiHubSheet', 'settingsHubSheet', 'planPopup', 'supportChatModal'].forEach(id => {
+    // [2026-08-16] dmHubSheet — app-dm-hub.js(별도 작업) 반입 대비 선등록 (미존재면 no-op).
+    ['aiHubSheet', 'dmHubSheet', 'settingsHubSheet', 'planPopup', 'supportChatModal'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.style.display = 'none';
@@ -41,6 +42,8 @@
     document.body.style.overflow = '';
     const co = document.getElementById('cal-overlay');
     if (co) co.remove();
+    // [2026-08-16] 인스타 댓글 큐(subscreen-overlay) — 사이드바 이동 시 잔존 방지
+    try { window.closeCommentReplyQueue?.(); } catch (_e) { void _e; }
     // [v215] 고객 v4 시트들도 함께 닫기 (사이드바 이동 시 잔존 방지)
     try { window.closeCustomers?.(); } catch (_e) { void _e; }
     try { window.closeCustomerDashboard?.(); } catch (_e) { void _e; }
@@ -84,7 +87,10 @@
     { action: 'customer',     sheets: ['customerSheet', 'customerDashSheet'] },
     { action: 'customer-dm',  sheets: ['dmConvSheet'] },
     { action: 'calendar',     sheets: ['cal-overlay'] },
-    { action: 'ai-hub',       sheets: ['aiHubSheet'] },
+    // [2026-08-16] ai-hub → insta-dm. dmHubSheet 는 app-dm-hub.js(별도 작업) 반입 전까지
+    //   미존재 id — _visible 이 null 로 안전 통과하므로 미리 매핑해 둔다. 반입 후 실제 id 재확인.
+    { action: 'insta-dm',      sheets: ['dmHubSheet'] },
+    { action: 'insta-comment', sheets: ['commentReplyQueueScreen'] },
     { action: 'settings-hub', sheets: ['settingsHubSheet'] },
     { action: 'plan',         sheets: ['planPopup'] },
     { action: 'support',      sheets: ['supportChatModal'] },
@@ -94,6 +100,9 @@
     // [2026-06-12 fix] offsetParent 는 position:fixed 요소에서 항상 null —
     //   매출관리 등 fixed 시트가 전부 '안 보임' 판정돼 활성이 홈으로 폴백되던 원인.
     //   display:none 이면 offsetHeight 0 이므로 높이로 판정.
+    // [2026-08-16] .subscreen-overlay(댓글 큐 등)는 translateX 슬라이드라 닫혀도
+    //   offsetHeight > 0 — aria-hidden 으로 먼저 거른다.
+    if (el && el.getAttribute('aria-hidden') === 'true') return false;
     return !!(el && el.style.display !== 'none' && el.offsetHeight > 0);
   };
   function _syncActive() {
