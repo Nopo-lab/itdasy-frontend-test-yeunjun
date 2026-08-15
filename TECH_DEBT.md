@@ -130,7 +130,20 @@ T-119 저장/export/slot/attach/dedupe + T-119-A export 안내(v365) · T-118 �
 
 ## 🟡 죽은 코드 정리 (DM 작업 완료 후 별도 턴)
 
-### `app-dm-autoreply.js` 죽은 인박스 함수 (~150줄)
+### ~~`app-dm-autoreply.js` 죽은 인박스 함수 (~150줄)~~ → **파일 삭제로 해소 (2026-08-16)**
+화면 자체를 폐기했다. 아래 원문은 이력으로 남긴다.
+
+### `app-dm-manual-replies.js` (481줄) — **도달 불가 상태**
+- 유일한 진입 버튼이 `app-dm-autoreply.js` 고급설정 안의 '멘트 관리 →' 였는데, 그 화면을
+  2026-08-16 에 폐기하면서 진입점이 사라졌다. lazy 그룹이라 호출이 없으면 로드도 안 되므로
+  런타임 비용은 0. 파일과 BE(`routers/dm_manual_replies.py`·`services/dm_manual_matcher.py`)는 살아 있다.
+- **지우지 않은 이유**: 여기 6종(인사/가격/예약/영업시간/위치/후기)이 `app-dm-menu.js` 의
+  빠른안내 버튼 항목과 거의 그대로 겹친다. 삭제가 아니라 **빠른안내 메뉴로 흡수**가 정답이다.
+  흡수하면 손님이 버튼을 눌러도, 글로 물어봐도 같은 문구 하나를 쓰게 된다.
+- 흡수 전까지는 손대지 말 것. (원장님이 이미 저장해둔 멘트가 BE 에 남아 있고, `dm_manual_matcher`
+  가 그걸 계속 매칭한다 — 파일만 지우면 편집 수단 없이 동작만 남는다.)
+
+### (이력) `app-dm-autoreply.js` 죽은 인박스 함수 (~150줄)
 - 2026-06-08 '실시간 DM' 카드 리스트(`app-dm-confirm-queue.js`)로 인박스 이관 후, autoreply 시트는
   **설정 전용**으로 전환(compose 에서 인박스 렌더 제거 + 폴링 중단). 단, 옛 인박스 함수들이 파일에 남음:
   `_renderInbox` / `_renderCard` / `_renderCustomerContext`(단골 초록뱃지) / `_renderThread`(인박스용) /
@@ -157,3 +170,4 @@ T-119 저장/export/slot/attach/dedupe + T-119-A export 안내(v365) · T-118 �
 | 2026-05-31 | 사진편집기 출시 QA 종료 기록 + 남은 P2 고도화 5종 백로그 추가 |
 | 2026-06-08 | '실시간 DM' 카드 재구성 후 app-dm-autoreply.js 죽은 인박스 함수 정리 백로그 등록 |
 | 2026-07-05 | workspace-v2-flow.js(4105줄) T-104 분할 대상 등록. slot-sync 비용방어(coalesce+GC) 배포 |
+| 2026-08-16 | app-dm-autoreply.js·dm-autoreply-v3.css 삭제(화면 폐기, 진입점 app-dm-menu.js 흡수). app-dm-manual-replies.js 도달 불가 등록 |
