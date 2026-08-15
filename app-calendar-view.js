@@ -205,8 +205,8 @@
       viewLabel = (viewStart.getMonth()+1) + '/' + viewStart.getDate();
       viewGroupLabel = '선택일';
     } else if (_curView === 'week') {
-      viewStart = new Date(_curDate); viewStart.setHours(0,0,0,0);
-      viewStart.setDate(viewStart.getDate() - viewStart.getDay());
+      // [2026-08-15 #37] 주간 시작일은 _weekStartOf 로 통일 (모바일 롤링 윈도우와 동기화)
+      viewStart = _weekStartOf(_curDate);
       viewEnd = new Date(viewStart); viewEnd.setDate(viewEnd.getDate() + 7);
       const we = new Date(viewEnd); we.setDate(we.getDate() - 1);
       viewLabel = `${viewStart.getMonth()+1}/${viewStart.getDate()} ~ ${we.getMonth()+1}/${we.getDate()}`;
@@ -274,7 +274,8 @@
         const tm = _fmt(new Date(it._raw.starts_at));
         const dotColor = _statusDotColor(it.status);
         const dot = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${dotColor};margin-right:4px;vertical-align:middle"></span>`;
-        h += `<div class="${p}__evt${_stCls(it.status)}">${dot}${tm} ${_esc(it.cust)}</div>`;
+        // [2026-08-15 #36] 모바일은 폭이 좁아 이름이 잘려 보임 → 시간만. PC는 시간+이름 유지.
+        h += `<div class="${p}__evt${_stCls(it.status)}">${dot}${tm}${isPC ? ' ' + _esc(it.cust) : ''}</div>`;
       });
       if (its.length > MAX) h += `<div class="${p}__more">+${its.length - MAX}</div>`;
       h += '</div>';
@@ -391,11 +392,20 @@
   // ============================================================
   // §7 모바일 — 주간 뷰
   // ============================================================
+  // [2026-08-15 #37] 주간 시작일 계산 SSOT — PC는 일요일 시작(달력 관습),
+  //   모바일은 기준일이 4번째 칸(가운데)에 오는 ±3일 롤링 윈도우.
+  //   기존엔 모바일도 일요일 시작이라 금·토엔 오늘이 오른쪽 끝에 몰렸다.
+  //   _calcStats 주간 범위도 이 함수를 써서 카운트·라벨이 화면과 일치하게 유지.
+  function _weekStartOf(baseDate) {
+    const ws = new Date(baseDate); ws.setHours(0, 0, 0, 0);
+    ws.setDate(ws.getDate() - (_cachedIsPC ? ws.getDay() : 3));
+    return ws;
+  }
+
   function _renderWeekMobile(baseDate, mapped) {
     const tt = _ttHours();
     const DOW = ['일','월','화','수','목','금','토'];
-    const ws = new Date(baseDate); ws.setHours(0,0,0,0);
-    ws.setDate(ws.getDate() - ws.getDay());
+    const ws = _weekStartOf(baseDate);
     const we = new Date(ws); we.setDate(ws.getDate() + 7);
     const today = new Date(); today.setHours(0,0,0,0);
     const filtered = _filterByStaff(mapped);

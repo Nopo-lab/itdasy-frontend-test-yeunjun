@@ -2450,6 +2450,22 @@ window.addEventListener('load', async function() {
         tsEl2.style.display = 'none';
       }
     }
+    // [2026-08-15 #38] 리로드 후 마지막 탭 복원 (_restoreLastTab).
+    //   iOS 백그라운드 리로드·SW 업데이트 리로드 뒤 무조건 홈으로 떨어지던 문제.
+    //   복원 대상은 상태 없이 열어도 안전한 메인 탭만 — caption/finish 처럼 진행 중
+    //   데이터(선택한 사진 등)가 필요한 화면은 빈 상태로 복원되면 더 이상해서 제외.
+    //   OAuth 복귀·보고서 복원 흐름 중엔 화면을 건드리지 않는다.
+    if (!_justOAuthed && !_pendingReport) {
+      try {
+        const _RESTORABLE = ['calendar', 'dashboard', 'workshop', 'gallery'];
+        const _lastTab = sessionStorage.getItem('itdasy_last_tab');
+        if (_lastTab && _RESTORABLE.indexOf(_lastTab) !== -1 && document.getElementById('tab-' + _lastTab)) {
+          const _lastBtn = document.querySelector('.tab-bar [data-tab="' + _lastTab + '"]')
+            || document.querySelector('.ms-side__item[data-side-tab="' + _lastTab + '"]');
+          showTab(_lastTab, _lastBtn);
+        }
+      } catch (_e) { void _e; }
+    }
     // [UX-LOAD] preload 완료 후 TodayBrief 렌더 — 캐시 히트로 즉시 표시
     setTimeout(() => {
       if (window.TodayBrief && typeof window.TodayBrief.render === 'function') {
@@ -2510,12 +2526,24 @@ function closeNavSheet() {
 function showTab(id, btn) {
   // [T-101] 잇비 컨텍스트용 현재 탭 노출 (context-resolver 가 읽음).
   try { window.__ITDASY_CURRENT_TAB__ = id; } catch (_e) { void 0; }
+  // [2026-08-15 #38] 마지막 탭 저장 — iOS 가 백그라운드 페이지를 메모리에서 내려 복귀 시
+  //   강제 리로드돼도(우리가 막을 수 없는 OS 동작) 부팅 때 이 값으로 화면을 복원한다.
+  //   sessionStorage 라 진짜 새로 켠 앱은 평소처럼 홈에서 시작. 복원 로직: _restoreLastTab().
+  try { sessionStorage.setItem('itdasy_last_tab', id); } catch (_e) { void 0; }
   // [v505] 작업실 탭에서만 헤더/네비를 프로토타입 따뜻한 톤으로 (body.ws-tab 스코프, 다른 탭 회귀 없음)
   try { document.body.classList.toggle('ws-tab', id === 'workshop'); } catch (_e) { void 0; }
   // P3.1 #2: .tab 바깥 요소 잔존 방지
   if (typeof closeSlotPopup === 'function') closeSlotPopup();
   const sg = document.getElementById('_nextSlotGuide');
   if (sg) sg.style.display = 'none';
+  // [2026-08-12 PC 갇힘] 열린 하위화면(subscreen)을 탭 전환 시 닫는다 — PC 에서 연동관리
+  //   (카카오/네이버톡톡 등)를 연 채 사이드바 탭을 누르면 오버레이가 콘텐츠를 계속 덮어
+  //   "메뉴가 안 넘어가는" 것처럼 보였다. 각 모듈의 뒤로가기(.ss-back)를 눌러주는 방식이라
+  //   모듈 자신의 close 로직(_markSheetClosed 등)을 그대로 탄다. captionWork 시트는
+  //   subscreen-overlay 가 아니라 영향 없음(아래 캡션 마커 특별 처리 유지).
+  try {
+    document.querySelectorAll('.subscreen-overlay.is-open .ss-back').forEach(b => b.click());
+  } catch (_sse) { void _sse; }
 
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
@@ -2732,11 +2760,38 @@ if ('serviceWorker' in navigator && !_isCapacitor) {
       });
     });
 
+  // 첫 상호작용 감지 — 아래 controllerchange 정책에서 "부팅 중 vs 사용 중" 구분에 쓴다.
+  window.addEventListener('pointerdown', () => { window._userInteracted = true; }, { once: true, capture: true });
+  window.addEventListener('keydown', () => { window._userInteracted = true; }, { once: true, capture: true });
+
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     // [2026-06-12] OAuth 복귀 직후 새 SW 활성화로 reload 되면 ?connected=success 가 날아가
     //   분석 오버레이가 못 뜬다. 연동 진행 중(itdasy_oauth_inflight)이면 reload 건너뜀.
     try { if (sessionStorage.getItem('itdasy_oauth_inflight')) return; } catch (_e) { void _e; }
-    window.location.reload();
+    // [2026-08-15 #38] 무조건 즉시 reload → "다른 앱 갔다 오면 새로고침 + 홈으로 리셋" 주범.
+    //   (포그라운드 복귀 때마다 _safeSwUpdate 가 돌고, 새 배포가 있으면 여기로 와서
+    //    사용자가 보는 앞에서 리로드됐다.) 정책 분리:
+    //   · 부팅 직후(첫 상호작용 전 + 로드 30초 이내) = 기존대로 즉시 reload — 배포 직후
+    //     '옛 코드 + 새 캐시' 불일치를 그 자리에서 정리 (캐시버스팅 사고 이력 유지).
+    //   · 사용 중 = 즉시 리로드하지 않고, 앱이 백그라운드로 갈 때 조용히 reload.
+    //     구버전 페이지가 잠시 더 돌지만 SW 캐시는 not-found 시 network fallback 이라 즉사하지 않고,
+    //     다음 복귀 땐 이미 새 버전. 가드: 세션당 1회(_sw_reloaded, 루프 방지).
+    if (window._sw_reloaded) return;
+    const _sinceLoad = (window.performance && performance.now) ? performance.now() : Infinity;
+    if (!window._userInteracted && _sinceLoad < 30000) {
+      window._sw_reloaded = true;
+      window.location.reload();
+      return;
+    }
+    if (window._swReloadDeferred) return;
+    window._swReloadDeferred = true;
+    document.addEventListener('visibilitychange', function _deferredSwReload() {
+      if (document.visibilityState !== 'hidden') return;
+      document.removeEventListener('visibilitychange', _deferredSwReload);
+      try { if (sessionStorage.getItem('itdasy_oauth_inflight')) return; } catch (_e) { void _e; }
+      window._sw_reloaded = true;
+      try { window.location.reload(); } catch (_e) { void _e; }
+    });
   });
 } else if (_isCapacitor) {
   console.warn('[SW] Capacitor 네이티브 — SW 미사용 (WebView 자체 캐시)');
@@ -3084,11 +3139,15 @@ window._preloadTabs = async function () {
     { url: '/revenue?period=month', swrKey: 'pv_cache::revenue::month' },
     /* INVENTORY_HIDDEN */ // { url: '/inventory', swrKey: 'pv_cache::inventory' },
     { url: '/services',             swrKey: 'pv_cache::service' },
+  ];
+  // [2026-08-12 첫로그인 3분] AI 2종은 LLM 경로(타임아웃 120s) — 첫 계정은 서버 캐시가 없어
+  //   실제 Gemini 호출로 수십 초~2분 걸린다. 이걸 await 하면 로그인 로딩이 그만큼 멈춘다(실측 3분).
+  //   → 로딩 대기에서 빼고 백그라운드로만 굽는다. 홈 브리핑/제안 카드는 SWR 라 도착하면 갱신됨.
+  const bgTabs = [
     { url: '/today/brief',          swrKey: 'pv_cache::today' },
     { url: '/assistant/suggestions', swrKey: 'pv_cache::ai_suggest' },
   ];
-  // Promise.allSettled → 일부 실패해도 나머지 진행. localStorage persistent
-  await Promise.allSettled(tabs.map(async t => {
+  const _prefetchOne = async t => {
     try {
       const res = await apiFetch(t.url, { headers });
       if (!res.ok) return;
@@ -3103,7 +3162,11 @@ window._preloadTabs = async function () {
         try { sessionStorage.setItem(t.swrKey, payload); } catch (_e) { void _e; }
       }
     } catch (_) { /* silent */ }
-  }));
+  };
+  // AI 2종: fire-and-forget — 로그인 로딩을 붙잡지 않는다
+  bgTabs.forEach(t => { _prefetchOne(t); });
+  // Promise.allSettled → 일부 실패해도 나머지 진행. localStorage persistent
+  await Promise.allSettled(tabs.map(_prefetchOne));
 };
 
 // [UX-LOAD] 자동 preload 제거 — if(getToken()) / login() 에서 직접 await 하므로 중복 방지

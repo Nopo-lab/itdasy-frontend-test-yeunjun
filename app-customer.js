@@ -928,7 +928,7 @@
 
     if (!items.length) {
       box.innerHTML = _dupBannerHTML()
-        + `<div class="dt-empty">${_cache && _cache.length ? (seg !== 'all' ? '이 세그먼트에 해당하는 고객이 없어요.' : '검색 결과 없음') : '+ 버튼을 눌러 첫 고객을 등록해보세요'}</div>`;
+        + `<div class="dt-empty">${_cache && _cache.length ? (seg !== 'all' ? '이 조건에 맞는 손님이 아직 없어요' : '검색 결과 없음') : '+ 버튼을 눌러 첫 고객을 등록해보세요'}</div>`;
       _bindDupBanner(box);
       return;
     }
@@ -1119,6 +1119,9 @@
           if (typeof window._openRevenueAddFor === 'function') window._openRevenueAddFor(c.id, c.name);
         } else if (act === 'booking') {
           window._pendingBookingCustomer = { id: c.id, name: c.name };
+          // [2026-08-15 #40] 고객관리 시트(z-index 9998)가 캘린더(9988)보다 위라
+          //   캘린더가 뒤에 열려 "화면이 안 넘어가는" 것처럼 보였다. 먼저 닫고 연다.
+          if (typeof window.closeCustomers === 'function') window.closeCustomers();
           if (typeof window.openCalendar === 'function') window.openCalendar();
         } else if (act === 'membership' && typeof window.openMembershipCharge === 'function') {
           window.openMembershipCharge(c.id, c.name, c.membership_balance || 0);

@@ -649,15 +649,9 @@
   });
   // 부팅 직후엔 로그인 버스트(_preloadTabs 8건 + brief)와 겹친다. 그게 끝난 뒤에 확인한다.
   document.addEventListener('DOMContentLoaded', () => setTimeout(_probeBackendOnline, 5000));
-  // SW v26+ activate 메시지 받으면 즉시 reload (cache busting)
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      // 새 SW 가 controller 잡으면 한 번 자동 reload — fresh state
-      if (window._sw_reloaded) return;
-      window._sw_reloaded = true;
-      try { window.location.reload(); } catch (_) { /* ignore */ }
-    });
-  }
+  // [2026-08-15 #38] SW controllerchange → reload 리스너 삭제 — app-core.js 의
+  //   단일 리스너로 통합(부팅 중 즉시 reload / 사용 중엔 백그라운드 진입 때 지연 reload).
+  //   여기 것과 이중으로 걸려 있어서 OAuth 가드도 없이 무조건 리로드되는 경로였다.
 
   // ============================================================
   // 부팅
