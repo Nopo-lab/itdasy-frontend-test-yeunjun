@@ -4512,6 +4512,10 @@
   function _textResponseMessage(data, actionsList) {
     const msg = { role: 'assistant', text: data.answer || '답을 만들지 못했어요.' };
     if (Array.isArray(data.related_questions) && data.related_questions.length) msg.related = data.related_questions.slice(0, 3);
+    // [연준님 2026-08-15] 서버가 준 '그 화면 열기' 버튼을 메시지로 옮긴다.
+    //   related·duplicate_warnings 는 옮기면서 hub_actions 만 빠져 있었다 — 렌더러(_hubActionsHtml)는
+    //   진작 있었는데 메시지에 필드가 안 실려서 버튼이 영영 안 떴다(실측: 답만 뜨고 버튼 0).
+    if (Array.isArray(data.hub_actions) && data.hub_actions.length) msg.hub_actions = data.hub_actions;
     if (Array.isArray(data.duplicate_warnings) && data.duplicate_warnings.length) {
       msg.duplicate_warnings = data.duplicate_warnings.map(w => ({ ...w, dismissed: false }));
     }
