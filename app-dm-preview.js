@@ -23,7 +23,7 @@
     s.id = 'dmPreviewStyle';
     /* 인스타 DM 은 라이트 고정. 앱 다크 토큰을 쓰면 '손님 화면' 이 아니게 되므로 전부 하드코딩. */
     s.textContent = `
-      #${ID}{position:fixed;inset:0;z-index:1200;display:flex;align-items:flex-end;justify-content:center;
+      #${ID}{position:fixed;inset:0;z-index:10700;display:flex;align-items:flex-end;justify-content:center;
         opacity:0;pointer-events:none;transition:opacity .2s}
       #${ID}.is-open{opacity:1;pointer-events:auto}
       #${ID} .dmpv-bg{position:absolute;inset:0;background:rgba(0,0,0,.45)}
