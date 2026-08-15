@@ -40,7 +40,7 @@
     },
     "StatusBar": {
       "style": "LIGHT",
-      "backgroundColor": "#1A0C10",
+      "backgroundColor": "#F2F4F6",
       "overlaysWebView": false
     },
     "PushNotifications": {
