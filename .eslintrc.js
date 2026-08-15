@@ -112,7 +112,6 @@ module.exports = {
         'app-customer-memo.js',
         'app-customer.js',
         'app-dashboard.js',
-        'app-dm-autoreply.js',
         'app-dm-confirm-queue.js',
         'app-dm-conversations.js',
         'app-dm-manual-replies.js',

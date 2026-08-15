@@ -6,7 +6,7 @@
 
   function _scopeFromTarget(el) {
     if (!el) return 'caption';
-    if (el.closest && el.closest('#dmAutoreplySheet, #dmConfirmQueueSheet, #dmManualSheet')) return 'dm';
+    if (el.closest && el.closest('#dmMenuOverlay, #dmConfirmQueueSheet, #dmManualSheet')) return 'dm';
     return 'caption';
   }
 
@@ -201,9 +201,9 @@
     // [PerfFix] body 전체 subtree 감시 → DM 시트 영역만 감시.
     // DM 시트 자체가 lazy 마운트라 시작 시 없을 수 있어, 지연 시도(1s) + body fallback 1회만.
     const _attachDmObserver = () => {
-      const target = document.getElementById('dmAutoreplySheet')
-        || document.getElementById('dmInboxMount')
-        || document.getElementById('dmRetentionSection');
+      // [2026-08-16] dmAutoreplySheet·dmRetentionSection 삭제됨 → 통합 화면(dmMenuOverlay) 감시.
+      const target = document.getElementById('dmMenuOverlay')
+        || document.getElementById('dmConfirmQueueSheet');
       if (target) {
         new MutationObserver(_mountDmRows).observe(target, { childList: true, subtree: true });
         return true;

@@ -38,7 +38,7 @@
     settings_hub: () => _call(['openSettingsHub']),
     plan:         () => _call(['openPlan', 'openPlanPopup']),
     // 레거시 라우트 호환 (외부 링크가 직접 호출하는 경우)
-    dm:        () => _call(['openDMAutoreplySettings']),
+    dm:        () => _call(['openDMMenuSettings']),
     kakao:     () => _call(['openKakaoHub']),
     persona:   () => _call(['openPersonaSurveyModal']),
     posts:     () => _call(['openFinishTab']),

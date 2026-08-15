@@ -140,7 +140,6 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'app-dm-settings-cache.js?v=local-151154',
   'app-dm-booking-form.js?v=local-151154',
   'js/dm/ig-thread-link.js?v=local-151154',
-  'app-dm-autoreply.js?v=20260723-dmback',
   'app-dm-confirm-queue.js?v=20260815-devqa-tap',
   'app-comment-reply-queue.js?v=20260723-nestback',
   'app-dm-conversations.js?v=local-151154',

@@ -25,6 +25,8 @@
   const DEFAULT_LABEL = { BOOK_FORM: '예약하기', HOURS: '영업시간', LOCATION: '오시는 길', PRICE: '가격 문의', OTHER: '상세문의' };
 
   let _menu = null;
+  let _ai = null;      // /instagram/dm-reply/settings 전체 (B묶음 토글 = _ai.enabled)
+  let _usage = null;   // /subscription/usage 의 dm_draft — 없으면 게이지 숨김
   const _open = new Set();   // 펼쳐진 항목 key
 
   function _defaultMenu() {
@@ -145,11 +147,6 @@
       #${ID} .dmm-lblin{width:100%;border:.5px solid rgba(0,0,0,.12);border-radius:10px;padding:9px 11px;font-size:13px;font-weight:700}
       #${ID} .dmm-cnt{font-size:10.5px;color:#B0B8C1;text-align:right}
       #${ID} .dmm-resp{width:100%;border:.5px solid rgba(0,0,0,.12);border-radius:10px;padding:9px 11px;font-size:13px;line-height:1.5;resize:none;min-height:62px}
-      /* [2026-08-16] 초록 약속 안내 — 삭제된 DM 오버뷰 화면의 초록 박스 이관 */
-      #${ID} .dmm-green{display:flex;gap:11px;background:#EAF7EF;border:.5px solid #B6E3C6;border-radius:16px;padding:14px 15px}
-      #${ID} .dmm-green .ico{flex:none;color:#16A34A;margin-top:1px}
-      #${ID} .dmm-green b{display:block;font-size:13px;font-weight:800;color:#15803D;margin-bottom:3px}
-      #${ID} .dmm-green p{font-size:12px;line-height:1.5;color:#3F7A54;margin:0}
       #${ID} .dmm-pv{white-space:pre-wrap;font-size:12.5px;line-height:1.55;color:#191F28;background:#F7F8FA;border:.5px solid rgba(0,0,0,.08);border-radius:10px;padding:10px 12px}
       #${ID} .dmm-pv.dmm-pv-empty{color:#B0B8C1}
       #${ID} .dmm-jump{align-self:flex-start;font-size:12.5px;font-weight:700;color:var(--brand-strong,#BC6675);background:none;border:none;padding:4px 0;cursor:pointer;font-family:inherit}
@@ -165,6 +162,23 @@
       #${ID} .dmm-img-full{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;color:#B0B8C1}
       #${ID} .dmm-addbtn{width:100%;padding:13px;border:1px dashed rgba(0,0,0,.18);background:#fff;border-radius:14px;font-size:13px;font-weight:700;color:#4E5968;cursor:pointer;font-family:inherit;margin-top:10px}
       #${ID} .dmm-dim{opacity:.45;pointer-events:none}
+      /* [2026-08-16] 두 묶음 — A:바로 나가요(중립·요금 X) / B:나한테 먼저 와요(로즈=요금 쓰는 쪽) */
+      #${ID} .dmm-grp{border-radius:18px;padding:11px 10px 13px;margin-bottom:16px}
+      #${ID} .dmm-grp.a{background:#F4F6F8;border:.5px solid rgba(0,0,0,.05)}
+      #${ID} .dmm-grp.b{background:var(--brand-bg,#F7EFF0);border:.5px solid rgba(188,102,117,.18)}
+      #${ID} .dmm-ghd{display:flex;align-items:flex-start;gap:10px;padding:3px 5px 12px}
+      #${ID} .dmm-ghd .tx{flex:1;min-width:0}
+      #${ID} .dmm-gh{font-size:14.5px;font-weight:800;color:#191F28;line-height:1.25}
+      #${ID} .dmm-grp.b .dmm-gh{color:var(--brand-strong,#BC6675)}
+      #${ID} .dmm-gs{font-size:11.5px;color:#8B95A1;line-height:1.45;margin-top:3px}
+      #${ID} .dmm-grp .dmm-sec{margin:13px 5px 6px}
+      #${ID} .dmm-okico{flex:none;color:#16A34A;margin-top:2px}
+      #${ID} .dmm-gauge{display:flex;align-items:center;gap:9px;padding:11px 14px 13px;border-top:.5px solid rgba(0,0,0,.06)}
+      #${ID} .dmm-gauge .trk{flex:1;height:5px;border-radius:99px;background:#E8EBEF;overflow:hidden}
+      #${ID} .dmm-gauge .fil{height:100%;border-radius:99px;background:var(--brand,#D58A95);transition:width .3s}
+      #${ID} .dmm-gauge .num{font-size:10.5px;font-weight:700;color:#8B95A1;white-space:nowrap}
+      #${ID} .dmm-gauge.warn .fil{background:var(--brand-strong,#BC6675)}
+      #${ID} .dmm-gauge.warn .num{color:var(--brand-strong,#BC6675)}
       /* 쫀득 토글 — 노브 바운스 + 누를 때 살짝 늘었다 튕김 */
       #${ID} .dmm-tg{width:44px;height:26px;border-radius:99px;background:#E2E6EB;position:relative;flex:none;border:none;padding:0;cursor:pointer;transition:background .18s}
       #${ID} .dmm-tg.on{background:#16B55E}
@@ -262,6 +276,15 @@
     return `<div class="dmm-body">${fields}</div>`;
   }
 
+  // 사용량 게이지 — BE 가 dm_draft 를 아직 안 주면(한도 배선 전) 통째로 숨긴다. 실패도 조용히.
+  function _gaugeHtml() {
+    const u = _usage;
+    if (!u || typeof u.used !== 'number' || typeof u.limit !== 'number' || u.limit <= 0) return '';
+    const pct = Math.min(100, Math.round((u.used / u.limit) * 100));
+    const label = u.used >= u.limit ? '이번 달 한도 다 썼어요' : `이번 달 ${u.used} / ${u.limit}`;
+    return `<div class="dmm-gauge${pct >= 80 ? ' warn' : ''}"><div class="trk"><div class="fil" style="width:${pct}%"></div></div><div class="num">${_esc(label)}</div></div>`;
+  }
+
   function _render() {
     const body = document.getElementById('dmmBody');
     if (!body || !_menu) return;
@@ -281,32 +304,45 @@
         </div>`;
     }).join('');
     const iceOn = (_menu.ice_breakers || []).length > 0;
-    // [2026-08-16] 마스터 토글 — ai-hub 삭제로 여기가 유일한 on/off. _menu.enabled 를 스위치로 노출.
+    const aiOn = !!(_ai && _ai.enabled);
+    const aiDim = aiOn ? '' : ' dmm-dim';
+    // [2026-08-16] 두 묶음. A 토글=_menu.enabled(/shop/dm-menu), B 토글=_ai.enabled(/instagram/dm-reply/settings).
     body.innerHTML = `
-      <div class="dmm-card" style="margin-bottom:14px;">
-        <div class="dmm-master">
-          <div class="t"><b>인스타DM 손님 응대</b><span>끄면 손님 DM 에 버튼·자동 안내가 안 나가요</span></div>
+      <div class="dmm-grp a">
+        <div class="dmm-ghd">
+          <div class="tx">
+            <div class="dmm-gh">바로 나가요</div>
+            <div class="dmm-gs">손님이 버튼을 누르면 · 내가 써둔 답이 그대로 · 요금 안 써요</div>
+          </div>
           ${_tgHtml(!!_menu.enabled, 'master', '')}
         </div>
-      </div>
-      <div class="dmm-note">손님이 DM 보내면 이렇게 응대해요</div>
-      <div class="dmm-sec">① 손님이 DM 보내면 이렇게 인사해요</div>
-      <div class="dmm-card dmm-greet${dim}"><textarea rows="2" data-greet maxlength="300">${_esc(_menu.greeting || '')}</textarea></div>
-      <div class="dmm-sec">② 손님이 누를 버튼 <span style="font-weight:600;color:#B0B8C1;">켠 것만 손님에게 보여요 · 탭하면 그 자리에서 편집돼요</span></div>
-      <div class="dmm-card${dim}">${rows}</div>
-      <button type="button" class="dmm-addbtn${dim}" data-add>+ 메뉴 추가</button>
-      <div class="dmm-sec">③ 손님이 대화창을 처음 열면</div>
-      <div class="dmm-card${dim}">
-        <div class="dmm-master">
-          <div class="t"><b>먼저 버튼 보여주기</b><span>손님이 아직 아무 말 안 해도 켠 버튼을 미리 띄워줘요 (최대 ${ICE_MAX}개)</span></div>
-          ${_tgHtml(iceOn, 'ice', '')}
+        <div class="dmm-sec">손님이 DM 보내면 이렇게 인사해요</div>
+        <div class="dmm-card dmm-greet${dim}"><textarea rows="2" data-greet maxlength="300">${_esc(_menu.greeting || '')}</textarea></div>
+        <div class="dmm-sec">손님이 누를 버튼 <span style="font-weight:600;color:#B0B8C1;">켠 것만 손님에게 보여요 · 탭하면 그 자리에서 편집돼요</span></div>
+        <div class="dmm-card${dim}">${rows}</div>
+        <button type="button" class="dmm-addbtn${dim}" data-add>+ 메뉴 추가</button>
+        <div class="dmm-sec">손님이 대화창을 처음 열면</div>
+        <div class="dmm-card${dim}">
+          <div class="dmm-master">
+            <div class="t"><b>먼저 버튼 보여주기</b><span>손님이 아직 아무 말 안 해도 켠 버튼을 미리 띄워줘요 (최대 ${ICE_MAX}개)</span></div>
+            ${_tgHtml(iceOn, 'ice', '')}
+          </div>
         </div>
       </div>
-      <div class="dmm-green" style="margin-top:14px;">
-        <span class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
-        <div>
-          <b>손님한텐 잇비가 마음대로 답장 안 해요</b>
-          <p>잇비가 답장을 써두면, 원장님이 보고 '보내기'를 눌러야 나갑니다.</p>
+      <div class="dmm-grp b">
+        <div class="dmm-ghd">
+          <div class="tx">
+            <div class="dmm-gh">나한테 먼저 와요</div>
+            <div class="dmm-gs">버튼에 없는 걸 글로 물어보면 · 잇비가 초안을 써요 · 요금 써요</div>
+          </div>
+          ${_tgHtml(aiOn, 'draft', '')}
+        </div>
+        <div class="dmm-card${aiDim}">
+          <div class="dmm-master">
+            <span class="dmm-okico" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            <div class="t"><b>잇비가 마음대로 안 보내요</b><span>써둔 초안을 내가 보고 '보내기'를 눌러야 손님에게 나가요</span></div>
+          </div>
+          ${_gaugeHtml()}
         </div>
       </div>`;
     // 예약하기 펼쳐져 있으면 예약 양식 편집기 마운트(공용 모듈)
@@ -326,6 +362,14 @@
         _menu.enabled = !_menu.enabled;
         _haptic(); _render();
         _syncDmMenuEnabled(_menu.enabled);
+        return;
+      }
+      if (kind === 'draft') {
+        // B묶음 — 잇비 답장 초안 on/off. 서버는 /instagram/dm-reply/settings 의 enabled.
+        if (!_ai) _ai = {};
+        _ai.enabled = !_ai.enabled;
+        _haptic(); _render();
+        _syncAiDraftEnabled(_ai.enabled);
         return;
       }
       if (kind === 'ice') {
@@ -473,6 +517,52 @@
     }
   }
 
+  // ── B묶음 토글 백엔드 반영. ⚠️ POST /settings 는 부분 저장이 아니다 — 빠진 필드는 기본값으로 덮인다.
+  //   반드시 GET 결과 전체를 동봉하고 enabled 만 바꾼다(_syncDmMenuEnabled 와 같은 규칙).
+  let _aiSyncSeq = 0;
+  async function _syncAiDraftEnabled(on) {
+    const seq = ++_aiSyncSeq;
+    const auth = window.authHeader ? window.authHeader() : {};
+    try {
+      const res = await apiFetch(apiUrl('/instagram/dm-reply/settings'), { headers: auth });
+      if (seq !== _aiSyncSeq) return;
+      const cur = await res.json().catch(() => null);
+      if (!cur || typeof cur !== 'object') throw new Error('설정을 불러오지 못했어요');
+      cur.enabled = !!on;
+      const put = await apiFetch(apiUrl('/instagram/dm-reply/settings'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...auth },
+        body: JSON.stringify(cur),
+      });
+      if (seq !== _aiSyncSeq) return;
+      if (!put.ok) throw new Error('HTTP ' + put.status);
+      _ai = cur;
+    } catch (_e) {
+      if (seq !== _aiSyncSeq) return;
+      if (_ai) _ai.enabled = !on;
+      _render();
+      _toast('답장 초안 ' + (on ? '켜기' : '끄기') + ' 실패 — 다시 시도해주세요');
+    }
+  }
+
+  async function _hydrateAi() {
+    try {
+      const res = await apiFetch(apiUrl('/instagram/dm-reply/settings'), { headers: window.authHeader ? window.authHeader() : {} });
+      const d = await res.json().catch(() => null);
+      if (d && typeof d === 'object') { _ai = d; _render(); }
+    } catch (_e) { void _e; }
+  }
+
+  async function _fetchUsage() {
+    try {
+      const res = await apiFetch(apiUrl('/subscription/usage'), { headers: window.authHeader ? window.authHeader() : {} });
+      if (!res.ok) return;
+      const d = await res.json().catch(() => null);
+      const g = d && d.dm_draft;
+      if (g && typeof g.limit === 'number' && typeof g.used === 'number') { _usage = g; _render(); }
+    } catch (_e) { void _e; }
+  }
+
   async function _hydrate() {
     try {
       const res = await apiFetch(apiUrl('/shop/dm-menu'), { headers: window.authHeader ? window.authHeader() : {} });
@@ -528,6 +618,8 @@
     _render();
     _hydrate().catch(() => {});
     _fetchReal().catch(() => {}); // 미리보기용 실제 영업시간/주소/가격표 로드
+    _hydrateAi().catch(() => {});   // B묶음 토글 현재값
+    _fetchUsage().catch(() => {});  // B묶음 사용량 게이지(없으면 숨김)
     requestAnimationFrame(() => el.classList.add('is-open'));
     el.setAttribute('aria-hidden', 'false');
     // [2026-07-22 보스] 뒤로가기 등록 — 안 하면 안드로이드 back/스와이프에서 이 화면 대신 앱이 그대로 꺼진다.
@@ -546,4 +638,9 @@
 
   window.openDMMenuSettings = openDMMenuSettings;
   window.closeDMMenuSettings = closeDMMenuSettings;
+  /* [2026-08-16] app-dm-autoreply.js 폐기 — 톤3칩·운영시간·금지어·고급설정·리텐션·바로답장 전부 삭제하니
+     남는 건 마스터 토글뿐이고 그건 이 화면 B묶음('나한테 먼저 와요')과 같은 필드다.
+     진입점 7곳(드로어·잇비·오늘브리핑·확인큐·대화목록·액션허브·톱니)을 여기로 흡수. */
+  window.openDMAutoreplySettings = openDMMenuSettings;
+  window.closeDMAutoreplySettings = closeDMMenuSettings;
 })();
