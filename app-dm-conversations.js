@@ -24,6 +24,21 @@
       ? window.ChannelMark.mark(c, { size: 18, pos: 'position:absolute;bottom:-1px;right:-1px;' })
       : '';
   }
+  /* [2026-08-15] 말풍선 시각 전용 — 항상 시:분.
+     _timeFmt 는 '대화목록의 마지막 메시지 시각'용이라 어제 이전이면 요일("목")만 준다. 목록에선 맞다.
+     그런데 대화 안 말풍선에까지 그걸 쓰니, 8월 13일 메시지 3개가 전부 "목"이라고만 찍혔다.
+     날짜는 이미 위 날짜 구분선("2026년 8월 13일 목")이 알려주므로 같은 말만 반복하고
+     정작 몇 시에 온 말인지는 알 수가 없었다. */
+  function _msgTime(iso) {
+    if (!iso) return '';
+    try { return new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); } catch (_e) { return ''; }
+  }
+  // 대화 헤더용 — 백엔드 intent 를 원장님 말로. 라벨은 확인큐(_intentKo)와 맞춘다.
+  function _intentKo(i) {
+    return { pricing: '가격 문의', booking: '예약 문의', hours: '영업시간', location: '위치 문의',
+      review: '후기', greeting: '인사', complaint: '문의', reschedule: '예약 변경',
+      no_show: '지각/불참', cancel_booking: '예약 취소', unknown: '문의' }[i] || '문의';
+  }
   function _timeFmt(iso) {
     if (!iso) return '';
     try {
@@ -254,7 +269,7 @@
       <!-- 입력 composer (챗봇 톤) -->
       <div style="padding:8px 12px max(12px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));background:#fff;border-top:1px solid #EFEFEF;">
         <div style="display:flex;gap:8px;margin-bottom:8px;">
-          <button id="dthAiDraft" type="button" style="display:inline-flex;align-items:center;gap:5px;background:#191F28;color:#fff;border:none;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">✨ AI 초안</button>
+          <button id="dthAiDraft" type="button" style="display:inline-flex;align-items:center;gap:5px;background:#191F28;color:#fff;border:none;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;"><svg width="13" height="13" aria-hidden="true" style="flex-shrink:0;"><use href="#ic-sparkles"/></svg><span>AI 초안</span></button>
           <button id="dthRegen" type="button" style="display:none;background:#F2F4F6;color:#4E5968;border:none;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;">다시 생성</button>
         </div>
         <div style="display:flex;align-items:flex-end;gap:8px;">
@@ -424,7 +439,7 @@
         const inner = avatarBox.firstElementChild;
         if (inner) inner.textContent = displayName.charAt(0) || '?';
       }
-      sheet.querySelector('#dthMeta').textContent = ctx ? `누적 ${ctx.total_msgs || 0}건 · ${ctx.last_intent || 'unknown'}` : '';
+      sheet.querySelector('#dthMeta').textContent = ctx ? `누적 ${ctx.total_msgs || 0}건 · ${_intentKo(ctx.last_intent)}` : '';
       _curExcluded = !!(ctx && ctx.excluded_from_analysis);
       _updateExcludeBtn();
 
@@ -516,7 +531,7 @@
     if (!_curSender) return;
     const btn = document.getElementById('dthAiDraft');
     const inp = _inputEl();
-    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.textContent = '✨ 생성 중…'; }
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.innerHTML = '<svg width="13" height="13" aria-hidden="true" style="flex-shrink:0;"><use href="#ic-sparkles"/></svg><span>생성 중…</span>'; }
     try {
       const d = await _postDraft();
       _curLogId = d.log_id || _curLogId;
@@ -530,7 +545,7 @@
     } catch (e) {
       if (window.showToast) window.showToast('초안 생성 실패: ' + ((window._humanError ? window._humanError(e) : e.message) || ''));
     } finally {
-      if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '✨ AI 초안'; }
+      if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = '<svg width="13" height="13" aria-hidden="true" style="flex-shrink:0;"><use href="#ic-sparkles"/></svg><span>AI 초안</span>'; }
     }
   }
 
@@ -613,7 +628,7 @@
             </div>
             <div style="flex:1;min-width:0;">
               <div style="font-size:14px;color:#191F28;line-height:1.5;word-break:break-word;">${_esc(m.text)}</div>
-              ${showTime ? `<div style="font-size:11px;color:#8E8E8E;margin-top:3px;">${_timeFmt(m.ts)}</div>` : ''}
+              ${showTime ? `<div style="font-size:11px;color:#8E8E8E;margin-top:3px;">${_msgTime(m.ts)}</div>` : ''}
             </div>
           </div>`);
       } else {
@@ -636,7 +651,7 @@
             ${showTime ? `
               <div style="display:flex;align-items:center;gap:6px;margin:4px 4px 0 0;">
                 ${sourceLbl ? `<span style="font-size:11px;color:#8E8E8E;font-weight:600;">${sourceLbl}</span>` : ''}
-                <span style="font-size:11px;color:#8E8E8E;">${_timeFmt(m.ts)}</span>
+                <span style="font-size:11px;color:#8E8E8E;">${_msgTime(m.ts)}</span>
               </div>` : ''}
           </div>`);
       }
