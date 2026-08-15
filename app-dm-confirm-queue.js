@@ -368,6 +368,15 @@
   const _CH_LABEL = { all: '전체', instagram: '인스타', kakao: '카톡', naver: '네이버 톡톡' };
 
   // 채널 마크/정규화 — 공유 모듈(js/channel-mark.js) 정본 사용(중복 정의 금지). 폴백 instagram.
+  /* [2026-08-15] 대기 시간 사람 말로 — 예전엔 분을 그대로 찍어서 이틀 묵은 카드가 "2880분 전" 이었다.
+     원장님이 그걸 보고 얼마나 오래됐는지 바로 못 읽는다. 오래 기다린 손님일수록 급한데 말이다. */
+  function _waitKo(min) {
+    var m = Number(min);
+    if (!isFinite(m) || m <= 0) return '방금';
+    if (m < 60) return Math.round(m) + '분 전';
+    if (m < 1440) return Math.floor(m / 60) + '시간 전';
+    return Math.floor(m / 1440) + '일 전';
+  }
   function _normChannel(c) { return (window.ChannelMark && window.ChannelMark.norm) ? window.ChannelMark.norm(c) : 'instagram'; }
   function _channelMark(c) { return (window.ChannelMark && window.ChannelMark.mark) ? window.ChannelMark.mark(c) : ''; }
 
@@ -510,9 +519,12 @@
               <span style="font-size:14px;font-weight:700;color:#191F28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(name)}</span>
               ${_gradeBadge(it.customer_grade)}
             </div>
-            <div style="font-size:11px;color:#8B95A1;margin-top:1px;">${(it.minutes_waiting <= 0 ? '방금' : it.minutes_waiting + '분 전')} · ${_esc(_intentKo(it.intent))}</div>
+            <div style="font-size:11px;color:#8B95A1;margin-top:1px;">${_waitKo(it.minutes_waiting)} · ${_esc(_intentKo(it.intent))}</div>
             ${summary ? `<div style="font-size:11px;color:#8B95A1;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(summary)}</div>` : ''}
           </div>
+          ${(_normChannel(it.channel) === 'instagram' && it.sender_igsid) ? `<button class="dcq-thread" data-sender="${_esc(it.sender_igsid)}" title="이 손님과 나눈 대화 전체 보기" style="flex-shrink:0;align-self:center;background:none;border:none;padding:8px 2px 8px 8px;color:#8B95A1;font-size:11.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:1px;font-family:inherit;white-space:nowrap;">
+            대화 전체<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>` : ''}
         </div>
         ${photoOnlyBlock}
         ${photoAttachedBlock}
@@ -654,6 +666,15 @@
     list.querySelectorAll('.dcq-discard').forEach(b => b.addEventListener('click', () => _doAction(b, 'discard')));
     list.querySelectorAll('.dcq-reset').forEach(b => b.addEventListener('click', () => _doAction(b, 'reset')));
     list.querySelectorAll('.dcq-confirm-deposit').forEach(b => b.addEventListener('click', () => _doAction(b, 'confirm-deposit')));
+    /* [2026-08-15] '대화 전체' — 이 손님과 주고받은 걸 시간순으로. 카드는 '답장 대기 1건'만 보여주므로
+       예전에 뭘 물었는지 알 방법이 없었다. 스레드는 app-dm-conversations.js(extras, lazy) 소관이라
+       loader 스텁(openDMThread)을 통해 부른다 — 스텁이 없으면 미로드 상태에서 조용히 죽는다. */
+    list.querySelectorAll('.dcq-thread').forEach(b => b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const sid = b.dataset.sender || '';
+      if (!sid) return;
+      if (typeof window.openDMThread === 'function') window.openDMThread(sid);
+    }));
   }
 
   async function _doAction(btn, action, editedText) {

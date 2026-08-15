@@ -193,9 +193,9 @@
       list.querySelectorAll('.dcv-row').forEach(row => {
         row.addEventListener('click', (e) => {
           if (e.target.closest('.dcv-toggle-excl')) return;
-          // [2026-06-08] 스레드 은퇴 — 대화 클릭도 '실시간 DM' 카드로
-          if (typeof window.openDMCardForSender === 'function') window.openDMCardForSender(row.dataset.sender);
-          else openThread(row.dataset.sender);
+          // [2026-08-15] 스레드 부활 — 사람별 목록처럼 생긴 화면을 눌렀는데 카드가 뜨면
+          //   기대를 배신한다. 목록은 대화로 들어가는 게 맞다.
+          openThread(row.dataset.sender);
         });
       });
       list.querySelectorAll('.dcv-toggle-excl').forEach(btn => {
@@ -390,11 +390,16 @@
     if (_rg) _rg.style.display = 'none';
     sheet.style.display = 'flex';
     sheet.style.animation = 'dmScreenIn .22s ease-out both';
+    // [2026-08-15 부활] 뒤로가기 등록 — 이게 없으면 안드로이드에서 뒤로가기가 앱을 종료시킨다.
+    //   스레드가 은퇴하기 전에 만들어진 화면이라 등록 규약(_registerSheet)이 아예 없었다.
+    if (typeof window._registerSheet === 'function') window._registerSheet('dmThread', closeThread);
+    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('dmThread');
     await _renderThread();
     _startThreadPoll();
   }
   function closeThread() {
     _stopThreadPoll();
+    if (typeof window._markSheetClosed === 'function') window._markSheetClosed('dmThread');
     const sheet = document.getElementById('dmThreadSheet');
     if (!sheet) return;
     sheet.style.animation = 'dmScreenOut .18s ease-in both';
@@ -646,12 +651,13 @@
     return openList();  // 최후 폴백 (카드 모듈 미로드 시)
   };
   window.closeDMConversations = closeList;
-  // [2026-06-08] 옛 풀 대화창(스레드 뷰) 은퇴 — 모든 진입을 '실시간 DM' 카드 리스트로 통합.
-  //   openThread/_renderThread/composer 등 스레드 함수는 죽은 코드(백로그) — 지금 삭제 X.
+  /* [2026-08-15] 스레드 부활 — 은퇴(2026-06-08)를 되돌린다.
+     은퇴 사유는 "진입을 카드 하나로 통합"이라는 단순화였는데, 그 대가로 **대화 맥락을 볼 방법이
+     사라졌다.** 카드는 '답장 대기 1건'만 보여주므로 이 손님이 예전에 뭘 물었는지 알 수가 없다.
+     주 흐름은 그대로 카드다. 스레드는 카드에서 '대화 전체'로 들어가는 보조 화면으로만 쓴다.
+     발송은 카드와 **같은 엔드포인트**(/dm-confirm-queue/{id}/send·send_edit)라 경로 이중화가 아니다. */
   window.openDMThread = function (sender) {
-    if (typeof window.openDMCardForSender === 'function') return window.openDMCardForSender(sender);
-    if (typeof window.openDMConfirmQueue === 'function') return window.openDMConfirmQueue();
-    return openThread(sender);  // 최후 폴백 (카드 모듈 미로드 시)
+    return openThread(sender);
   };
   window.closeDMThread = closeThread;
 })();

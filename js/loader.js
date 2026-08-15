@@ -95,6 +95,10 @@
   _stub('openAssistant', 'assistant', '잇비 준비 중…');
   /* [3단계] 주변 기능(extras: DM·SNS·임포트·OCR·지원 등) — 사이드바/메뉴 직행 진입만 스텁 */
   _stub('openDMConversations', 'extras', 'DM 준비 중…');
+  /* [2026-08-15] 스레드(대화 전체) 부활 — 확인큐 카드의 '대화 전체' 가 여길 부른다.
+     확인큐(dm 그룹)가 먼저 떠 있는 상태에서 누를 수 있으므로 extras 미로드면 조용히 죽는다.
+     실제 정의처: app-dm-conversations.js 의 window.openDMThread. */
+  _stub('openDMThread', 'extras', '대화 불러오는 중…');
   /* [2026-08-12] `openSupport` 스텁 삭제 — **그런 함수는 어디에도 없다.**
      app-support.js 가 정의하는 건 `openSupportChat` 하나뿐인데, 여기서 유령 이름으로
      스텁을 만들어 두니 진입점들이 그걸 먼저 집었다:

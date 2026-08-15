@@ -428,6 +428,11 @@
      서로 멀리 떨어져 보였고 원장님이 같은 답을 3번 따로 쳤다. 사진으로 묶으면 한눈에 보인다.
      디자인은 그대로 — 카드는 손대지 않고, 이미 있던 게시물 스트립(crq-chip)을 섹션 헤더로 올렸다.
      ⚠️ 불만이 오래된 사진에 달리면 묶은 뒤 아래로 묻힌다 → 불만 낀 묶음을 맨 위로 올린다. */
+  // 묶음 답장 배너에 쓸 짧은 이름 (카드엔 원래 의도 라벨이 없어서 여기서만 쓴다)
+  var _INTENT_KO = {
+    price: '가격', booking: '예약', location: '위치', hours: '영업시간', service: '시술',
+    duration: '소요시간', event: '이벤트', membership: '회원권', eligibility: '시술 가능 여부',
+  };
   function _groupedHtml(items) {
     var order = [], byMedia = {};
     items.forEach(function (it) {
@@ -465,8 +470,23 @@
           '<span style="display:block;font-size:11.5px;color:#B0B8C1;margin-top:1px;">' + (dstr ? _esc(dstr) + ' · ' : '') + '문의 ' + g.length + '건</span>' +
         '</span>' +
         '<span style="color:#B0B8C1;font-size:13px;flex-shrink:0;">›</span></button>';
+      // 같은 종류 문의가 2건 이상이면 한 번에 보낼 수 있게. 불만은 제외 — 사람마다 사정이 달라 개별 대응해야 한다.
+      var byIntent = {};
+      g.forEach(function (it) {
+        if (it._sendPub === false || it.intent === 'complaint') return;
+        (byIntent[it.intent] = byIntent[it.intent] || []).push(it);
+      });
+      var strips = Object.keys(byIntent).filter(function (k) { return byIntent[k].length >= 2; }).map(function (k) {
+        var arr = byIntent[k];
+        return '<button class="crq-batch" data-ids="' + _esc(arr.map(function (x) { return x.id; }).join(',')) + '" ' +
+          'style="width:100%;display:flex;align-items:center;gap:9px;background:#F7EFF0;border:.5px solid #EBD9DD;border-radius:13px;padding:10px 12px;margin-bottom:8px;cursor:pointer;font-family:inherit;text-align:left;">' +
+          '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;color:#BC6675;line-height:1.45;">' +
+            _esc(_INTENT_KO[k] || '같은') + ' 문의 ' + arr.length + '건 — 각자 초안으로 한 번에 보낼까요?</span>' +
+          '<span style="flex-shrink:0;font-size:11.5px;font-weight:700;color:#fff;background:#BC6675;border-radius:99px;padding:6px 11px;">한 번에</span>' +
+          '</button>';
+      }).join('');
       var body = g.map(function (it) { return _cardHtml(it, true); }).join('');
-      return '<div style="margin-bottom:18px;">' + header + body + '</div>';
+      return '<div style="margin-bottom:18px;">' + header + strips + body + '</div>';
     }).join('');
   }
 
@@ -585,6 +605,14 @@
 
     // 이벤트 위임
     el.addEventListener('click', function (e) {
+      // [2026-08-15] 묶음 답장 — crq-chip(게시물 칩)보다 먼저 본다. 헤더 바로 밑에 있어 오탐 방지.
+      var batchEl = e.target.closest ? e.target.closest('.crq-batch') : null;
+      if (batchEl) {
+        _haptic();
+        var _bids = (batchEl.getAttribute('data-ids') || '').split(',').filter(Boolean);
+        _sendBatch(_bids, batchEl);
+        return;
+      }
       // [v785] 게시물 칩 → 미리보기 팝업 (인스타 직행 X)
       var chipEl = e.target.closest ? e.target.closest('.crq-chip') : null;
       if (chipEl) { _haptic(); _openPeek(chipEl.getAttribute('data-id')); return; }
@@ -678,13 +706,14 @@
       }).catch(function () { void 0; });
     } catch (_e) { void _e; }
   }
-  function _removeItem(id) {
+  // silent=true 면 재렌더를 미룬다 — 묶음 발송에서 건마다 다시 그리면 목록이 흔들린다(마지막에 한 번만).
+  function _removeItem(id, silent) {
     _markHidden(id);   // [무시 영속화] 이 기기 즉시 반영 (오프라인·즉답)
     var i = ITEMS.findIndex(function (x) { return x.id === id; });
     var it = i >= 0 ? ITEMS[i] : null;
     if (it && it._real) _pushDismissToServer(it);   // [무시 영속화] 서버에도 → 배지·다른기기 동기화
     if (i >= 0) ITEMS.splice(i, 1);
-    _render();
+    if (!silent) _render();
   }
   // 편집 중인 텍스트영역 값을 아이템 override로 캡처
   function _captureEdit(el, it) {
@@ -698,21 +727,15 @@
     // [2026-07-22 보스] DM 발송 주체 단일화 — 댓글 응대에서는 DM 을 절대 보내지 않는다.
     //   send_dm:false 를 명시하면 백엔드가 공개답글 문구의 "DM 드렸어요" 약속도 nodm_public 로 갈아끼운다
     //   (거짓 약속 방지). 실제 DM 은 손님이 보내온 뒤 DM 자동응답 엔진이 처리한다.
-    var sendPub = it._sendPub !== false, sendDm = false;
-    if (!sendPub) return;   // 보낼 게 없음 → CTA 비활성 (안전망)
+    if (it._sendPub === false) return;   // 보낼 게 없음 → CTA 비활성 (안전망). send_dm:false 는 _postReply 가 박는다.
     var el = document.getElementById(ID);
     if (it._editing && el) { _captureEdit(el, it); it._editing = false; }   // 편집 중 발송 → 편집값 반영
-    var pubText = sendPub ? _displayPublic(it) : '', dmText = '';
     var okMsg = '공개답글 달림';
     if (it._real && it.commentId && window.apiFetch) {
       // 실제 인스타: 켠 채널만 발송 (끈 채널은 텍스트 '' + 플래그 false)
       _removeItem(id);
       _toast('보내는 중…');
-      var auth = window.authHeader ? window.authHeader() : {};
-      window.apiFetch(window.apiUrl('/instagram/comment-reply'), {
-        method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth),
-        body: JSON.stringify({ comment_id: it.commentId, public_text: pubText, dm_text: dmText, send_public: sendPub, send_dm: sendDm, media_id: it.mediaId, intent: it.intent, edited: !!it._override, question: it.text })
-      }).then(function (r) { return r.json().catch(function () { return {}; }); })
+      _postReply(it)
         .then(function (j) { _toast(j && j.ok ? (okMsg + ' (' + it.name + ')') : ('일부 실패 — ' + JSON.stringify((j && (j.public || j.dm)) || j).slice(0, 80))); })
         .catch(function () { _toast('발송 실패 — 다시 시도해 주세요'); });
       return;
@@ -720,6 +743,53 @@
     // 시드(예시): 목업 발송
     _removeItem(id);
     _toast(okMsg + ' (' + it.name + ') · 예시');
+  }
+
+  /* [2026-08-15] 발송을 한 군데로 모은다 — 낱개 발송과 묶음 발송이 각자 fetch 를 들고 있으면
+     한쪽만 고쳐서 어긋난다. 예전에 발송 API 가 전역 재시도에 걸려 **같은 답글이 4번 나간 적**이 있어
+     (33cdd1f) 이 경로는 특히 하나로 유지해야 한다. */
+  function _postReply(it) {
+    var sendPub = it._sendPub !== false;
+    var auth = window.authHeader ? window.authHeader() : {};
+    return window.apiFetch(window.apiUrl('/instagram/comment-reply'), {
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth),
+      body: JSON.stringify({
+        comment_id: it.commentId, public_text: sendPub ? _displayPublic(it) : '', dm_text: '',
+        send_public: sendPub, send_dm: false, media_id: it.mediaId, intent: it.intent,
+        edited: !!it._override, question: it.text,
+      }),
+    }).then(function (r) { return r.json().catch(function () { return {}; }); });
+  }
+
+  /* [2026-08-15] 묶음 답장 — 같은 사진에 같은 종류 문의가 여러 개면 한 번에 보낸다.
+     각자 자기 초안을 보낸다(원장이 하나만 고쳤어도 그 수정본이 그대로 나감). 같은 문구를 복제하지 않는다.
+     안전장치: ① _batchBusy 로 연타 차단 ② 버튼 즉시 비활성 ③ **순차 발송**(병렬로 쏘면 인스타 쪽에서
+     레이트리밋·중복 위험) ④ 재시도 없음 ⑤ 낙관적 제거는 silent 로 모아서 마지막에 한 번만 렌더. */
+  var _batchBusy = false;
+  function _sendBatch(ids, btn) {
+    if (_batchBusy) return;
+    var list = ids.map(function (id) { return ITEMS.find(function (x) { return x.id === id; }); })
+      .filter(function (it) { return it && it._sendPub !== false; });
+    if (!list.length) return;
+    _batchBusy = true;
+    if (btn) { btn.disabled = true; btn.style.opacity = '.6'; btn.textContent = '보내는 중…'; }
+    var el = document.getElementById(ID);
+    list.forEach(function (it) { if (it._editing && el) { _captureEdit(el, it); it._editing = false; } });
+    var real = list.filter(function (it) { return it._real && it.commentId && window.apiFetch; });
+    list.forEach(function (it) { _removeItem(it.id, true); });   // 렌더는 끝나고 한 번만
+    if (!real.length) { _batchBusy = false; _render(); _toast(list.length + '건 답장 보냈어요 · 예시'); return; }
+    var ok = 0, fail = 0;
+    real.reduce(function (chain, it) {
+      return chain.then(function () {
+        return _postReply(it)
+          .then(function (j) { if (j && j.ok) ok += 1; else fail += 1; })
+          .catch(function () { fail += 1; });
+      });
+    }, Promise.resolve()).then(function () {
+      _batchBusy = false;
+      _render();
+      _toast(fail ? (ok + '건 보냈고 ' + fail + '건은 실패했어요') : (ok + '건 답장 보냈어요'));
+    });
   }
 
   // 실제 인스타 댓글 로드 — 연동+권한 있으면 문의 댓글로 큐 교체, 아니면 시드 유지.
