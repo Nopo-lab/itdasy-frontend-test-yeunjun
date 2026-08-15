@@ -40,6 +40,11 @@
         </div>
         <style>@keyframes dcqSpin{to{transform:rotate(360deg)}}
           #dcqTabs::-webkit-scrollbar{display:none}
+          /* [2026-08-15 기기QA] 닫기 22x22 · 설정 27x27 로 16개 기기 전부에서 최소 터치영역(44px) 미달이었다.
+             겉모습은 그대로 두고 ::after 로 히트 영역만 44x44 로 넓힌다(아이콘 크기·간격 불변). */
+          #dcqClose, #dcqSettings{position:relative;}
+          #dcqClose::after, #dcqSettings::after{content:'';position:absolute;top:50%;left:50%;
+            width:44px;height:44px;transform:translate(-50%,-50%);}
           .dcq-tab{font-size:12.5px;padding:6px 11px;border-radius:9px;border:1px solid #E5E8EB;background:#fff;color:#8B95A1;white-space:nowrap;cursor:pointer;font-weight:600;font-family:inherit;flex:none;}
           .dcq-tab.on{background:#191F28;border-color:#191F28;color:#fff;}</style>
         <div id="dcqTabs" style="display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;scrollbar-width:none;">
