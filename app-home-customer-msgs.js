@@ -22,6 +22,10 @@
 
   let _cache = null;      // 마지막 /dm-confirm-queue 아이템 배열
   let _tokenValid = true; // 인스타 토큰 유효(X-Token-Valid). false면 재연결 배너.
+  // [2026-08-15] X-Token-State: 'ok' | 'expired'(연결됐다가 끊김) | 'none'(한 번도 연결 안 함).
+  //   'none' 인데 "연결이 끊겼어요" 를 띄우면 거짓말이다 — 끊긴 적이 없다.
+  //   옛 백엔드는 이 헤더를 안 주므로 기본값 'ok' → 예전 동작(_tokenValid 만 보기)으로 폴백된다.
+  let _tokenState = 'ok';
   let _lastFetch = 0;
   let _inFlight = false;
   let _pollTimer = null;
@@ -154,7 +158,9 @@
     }
     if (!items.length) {
       // 0건 — 토큰 끊겼으면 '재연결' 배너, 아니면 빈 상태 카드 상시 표시
-      if (_tokenValid === false) {
+      //   단 'none'(한 번도 연결 안 함)은 배너를 띄우지 않는다. 끊긴 적이 없으니 거짓말이고,
+      //   홈 위쪽에 이미 "인스타 연결하면 잇비 시작" 권유 카드가 있어 서로 모순된다.
+      if (_tokenValid === false && _tokenState !== 'none') {
         sec.hidden = false;
         row.innerHTML = _reconnectBannerHtml();
         if (cnt) cnt.textContent = '';
@@ -181,6 +187,8 @@
     try {
       const tv = res.headers && res.headers.get ? res.headers.get('X-Token-Valid') : null;
       if (tv != null) _tokenValid = (tv !== '0' && tv.toLowerCase() !== 'false');
+      const ts = res.headers && res.headers.get ? res.headers.get('X-Token-State') : null;
+      if (ts) _tokenState = ts.toLowerCase();
     } catch (_e) { void _e; }
     const d = await res.json().catch(() => []);
     _cache = Array.isArray(d) ? d : (Array.isArray(d.items) ? d.items : []);
