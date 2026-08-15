@@ -14,10 +14,11 @@
 
       이제 인셋은 Capacitor 8 의 System Bars 가 처리한다:
         · capacitor.config.json → plugins.SystemBars.insetsHandling = "css"
-        · 웹뷰에 `--safe-area-inset-{top,bottom,left,right}` CSS 변수를 주입한다
-        · CSS 는 `var(--safe-area-inset-top, env(safe-area-inset-top, 0px))` 로 받는다
-          (안드로이드 구버전 WebView 는 `env(safe-area-inset-*)` 이 제대로 안 와서
-           Capacitor 가 별도 변수를 주입하는 것 — env() 만 쓰면 안드로이드에서 0 이 된다)
+        · 웹뷰에 safe-area-inset-top/bottom/left/right 커스텀 프로퍼티를 주입한다
+          (실제 이름은 하이픈 두 개로 시작한다. XML 주석엔 그 두 글자를 못 써서 풀어 적는다)
+        · CSS 는 var(커스텀 프로퍼티, env(safe-area-inset-top, 0px)) 형태로 받는다
+        · 안드로이드 WebView 는 env(safe-area-inset-*) 로 인셋이 제대로 안 와서
+          Capacitor 가 별도 변수를 주입하는 것이다. env() 만 쓰면 안드로이드에서 0 이 된다
 
       ⚠️ 되돌리지 말 것. 여기에 opt-out 을 다시 넣어도 36 에서는 효과가 없고,
          "인셋 대응이 돼 있다"는 착각만 남는다.
