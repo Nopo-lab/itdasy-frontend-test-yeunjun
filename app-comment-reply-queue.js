@@ -282,12 +282,16 @@
       (badges || '') + _tgHtml(on, kind, id) + '</div>';
   }
 
-  function _cardHtml(it) {
+  // [2026-08-15] inGroup=true 면 게시물 스트립을 안 그린다 —
+  //   사진별로 묶은 뒤엔 섹션 헤더가 같은 정보를 이미 이고 있어서 카드마다 반복하면 중복이다.
+  //   (묶음 밖에서 부를 땐 예전 그대로. ⚠️ items.map(_cardHtml) 로 부르면 index 가 2번째 인자로
+  //    들어와 i>0 이 전부 inGroup 이 되니, 반드시 명시적으로 감싸서 호출할 것.)
+  function _cardHtml(it, inGroup) {
     var pubOn = it._sendPub !== false, dmOn = it._sendDm !== false;
     var dmText = _displayDm(it);
     // [v787] 게시물 인용 스트립 — 카드 안, 탭=미리보기 팝업 (기존 crq-chip 핸들러 재사용)
     var dstr = it.mediaDate ? _peekDate(it.mediaDate) : '';
-    var strip = '<button class="crq-chip" data-id="' + _esc(it.id) + '" style="width:100%;display:flex;align-items:center;gap:10px;background:#F7F8FA;border:none;border-radius:13px;padding:8px;margin-bottom:11px;cursor:pointer;font-family:inherit;text-align:left;">' +
+    var strip = inGroup ? '' : '<button class="crq-chip" data-id="' + _esc(it.id) + '" style="width:100%;display:flex;align-items:center;gap:10px;background:#F7F8FA;border:none;border-radius:13px;padding:8px;margin-bottom:11px;cursor:pointer;font-family:inherit;text-align:left;">' +
       (it.thumb
         ? '<span style="width:52px;height:52px;flex-shrink:0;border-radius:10px;background:#E5E8EB center/cover no-repeat;background-image:url(' + _esc(it.thumb) + ');"></span>'
         : '<span style="width:52px;height:52px;flex-shrink:0;border-radius:10px;background:#E5E8EB;display:inline-flex;align-items:center;justify-content:center;color:#B0B8C1;">' + IC.camera + '</span>') +
@@ -419,6 +423,53 @@
       '<div style="height:44px;border-radius:13px;background:#F7F8FA;"></div></div>';
     return one + one;
   }
+  /* [2026-08-15] 사진별 묶기 — 댓글의 맥락 단위는 '게시물'이다.
+     예전엔 모든 게시물 댓글이 한 줄기로 섞여서, 같은 사진에 가격 질문 3개가 달려도
+     서로 멀리 떨어져 보였고 원장님이 같은 답을 3번 따로 쳤다. 사진으로 묶으면 한눈에 보인다.
+     디자인은 그대로 — 카드는 손대지 않고, 이미 있던 게시물 스트립(crq-chip)을 섹션 헤더로 올렸다.
+     ⚠️ 불만이 오래된 사진에 달리면 묶은 뒤 아래로 묻힌다 → 불만 낀 묶음을 맨 위로 올린다. */
+  function _groupedHtml(items) {
+    var order = [], byMedia = {};
+    items.forEach(function (it) {
+      var k = it.mediaId || ('__nomedia_' + it.id);
+      if (!byMedia[k]) { byMedia[k] = []; order.push(k); }
+      byMedia[k].push(it);
+    });
+    // 묶음 정렬 — ① 불만 낀 묶음 먼저 ② 그 안에서 대표 시각(정렬 토글 방향 그대로)
+    order.sort(function (a, b) {
+      var ga = byMedia[a], gb = byMedia[b];
+      var ca = ga.some(function (x) { return x.intent === 'complaint'; }) ? 1 : 0;
+      var cb = gb.some(function (x) { return x.intent === 'complaint'; }) ? 1 : 0;
+      if (ca !== cb) return cb - ca;
+      var pick = function (g) {
+        return g.reduce(function (acc, x) {
+          var t = _ord(x);
+          return acc === null ? t : (_sort === 'old' ? Math.min(acc, t) : Math.max(acc, t));
+        }, null);
+      };
+      var ta = pick(ga), tb = pick(gb);
+      return _sort === 'old' ? ta - tb : tb - ta;
+    });
+    return order.map(function (k) {
+      var g = byMedia[k];
+      var head = g[0];
+      var dstr = head.mediaDate ? _peekDate(head.mediaDate) : '';
+      var title = (head.media || '게시물');
+      // 헤더 = 기존 스트립과 같은 모양(배경·반경·썸네일 52px). 탭하면 원래처럼 게시물 미리보기.
+      var header = '<button class="crq-chip" data-id="' + _esc(head.id) + '" style="width:100%;display:flex;align-items:center;gap:10px;background:#F7F8FA;border:none;border-radius:13px;padding:8px;margin-bottom:8px;cursor:pointer;font-family:inherit;text-align:left;">' +
+        (head.thumb
+          ? '<span style="width:52px;height:52px;flex-shrink:0;border-radius:10px;background:#E5E8EB center/cover no-repeat;background-image:url(' + _esc(head.thumb) + ');"></span>'
+          : '<span style="width:52px;height:52px;flex-shrink:0;border-radius:10px;background:#E5E8EB;display:inline-flex;align-items:center;justify-content:center;color:#B0B8C1;">' + IC.camera + '</span>') +
+        '<span style="flex:1;min-width:0;">' +
+          '<span style="display:block;font-size:13px;font-weight:600;color:#191F28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + _esc(title) + '</span>' +
+          '<span style="display:block;font-size:11.5px;color:#B0B8C1;margin-top:1px;">' + (dstr ? _esc(dstr) + ' · ' : '') + '문의 ' + g.length + '건</span>' +
+        '</span>' +
+        '<span style="color:#B0B8C1;font-size:13px;flex-shrink:0;">›</span></button>';
+      var body = g.map(function (it) { return _cardHtml(it, true); }).join('');
+      return '<div style="margin-bottom:18px;">' + header + body + '</div>';
+    }).join('');
+  }
+
   function _queueBody() {
     if (_loading) {
       return _banner('#F2F4F6', '#E5E8EB', '#4E5968', '인스타에서 문의 댓글을 모으는 중이에요… (처음엔 10초쯤 걸려요)') +
@@ -432,7 +483,7 @@
         if (ca !== cb) return cb - ca;                                    // 불만 항상 최상단
         return _sort === 'old' ? _ord(a) - _ord(b) : _ord(b) - _ord(a);   // 그 외 시간순
       });
-    var cards = items.length ? items.map(_cardHtml).join('') :
+    var cards = items.length ? _groupedHtml(items) :
       '<div style="text-align:center;color:#C9CDD4;font-size:13px;padding:40px 0;">응대할 문의 댓글이 없어요</div>';
     // [2026-07-21] 운영시간 밖 + 방해금지 → 조용히 모아뒀다는 안내 (발송은 언제든 가능)
     var quietBar = _isQuietNow()
