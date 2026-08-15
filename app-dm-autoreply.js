@@ -124,6 +124,8 @@
     delete out.autonomy_mode;
     out.enabled = Boolean(out.enabled);
     out.prefer_template_first = Boolean(out.prefer_template_first);
+    // [2026-08-15] 손님에게 바로 답장 — bool 강제. 값이 없으면 false(안전한 쪽)로.
+    out.dm_autosend_enabled = Boolean(out.dm_autosend_enabled);
     if (!Array.isArray(out.blocked_keywords)) out.blocked_keywords = [];
     if (!Array.isArray(out.sample_replies)) out.sample_replies = [];
     // [2026-06-09] 예약 양식 + 예약금 타입 방어
@@ -302,6 +304,72 @@
     `;
   }
 
+  /* [2026-08-15] '손님에게 바로 답장' 켜기 전 동의 — confirm() 금지 규칙이라 직접 만든다.
+     자체완결형(외부 CSS 의존 없음) — 이 화면이 어디서 열리든 모양이 깨지면 안 되는 UI라서. */
+  function _askAutosendConsent(onAccept) {
+    const prev = document.getElementById('dmAutosendConsent');
+    if (prev) prev.remove();
+    const ov = document.createElement('div');
+    ov.id = 'dmAutosendConsent';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:12000;display:flex;align-items:flex-end;justify-content:center;'
+      + 'background:rgba(0,0,0,.45);opacity:0;transition:opacity .18s ease;';
+    ov.innerHTML = `
+      <div role="dialog" aria-modal="true" aria-label="손님에게 바로 답장 켜기"
+           style="width:100%;max-width:460px;background:#fff;border-radius:20px 20px 0 0;padding:22px 20px max(20px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+                  transform:translateY(14px);transition:transform .22s cubic-bezier(.32,.72,0,1);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#FEF3C7;color:#B45309;flex-shrink:0;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+          </span>
+          <strong style="font-size:17px;color:#191F28;letter-spacing:-.01em;">이제 제가 손님께 바로 답장해요</strong>
+        </div>
+        <p style="margin:0 0 14px;font-size:13.5px;color:#4E5968;line-height:1.6;">
+          지금은 제가 초안만 써두고 <b>사장님이 확인해서</b> 보내고 있어요.
+          켜시면 <b>사장님 확인 없이 손님께 바로 나갑니다.</b>
+        </p>
+        <div style="background:#F7F8FA;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:700;color:#6B7684;margin-bottom:7px;">이런 건 여전히 사장님께 물어봐요</div>
+          <ul style="margin:0;padding-left:16px;font-size:12.5px;color:#4E5968;line-height:1.75;">
+            <li>예약 확정 · 결제 · 취소</li>
+            <li>불만이나 거친 말이 섞인 대화</li>
+            <li>손님이 마지막 말을 한 지 24시간 지난 대화</li>
+          </ul>
+        </div>
+        <p style="margin:0 0 16px;font-size:12.5px;color:#8B95A1;line-height:1.6;">
+          손님이 여러 줄로 나눠 보내면 <b>말을 멈춘 뒤 한 번만</b> 답해요.
+          언제든 다시 끌 수 있고, 꺼도 초안은 계속 만들어 드려요.
+        </p>
+        <div style="display:flex;gap:8px;">
+          <button type="button" data-consent="no"
+            style="flex:1;padding:13px;border:1px solid #E5E8EB;background:#fff;color:#4E5968;font-weight:600;font-size:14px;border-radius:14px;cursor:pointer;font-family:inherit;">그냥 둘게요</button>
+          <button type="button" data-consent="yes"
+            style="flex:1.4;padding:13px;border:none;background:#191F28;color:#fff;font-weight:700;font-size:14px;border-radius:14px;cursor:pointer;font-family:inherit;">네, 바로 답장할게요</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => {
+      ov.style.opacity = '1';
+      const card = ov.firstElementChild;
+      if (card) card.style.transform = 'translateY(0)';
+    });
+    const close = () => {
+      ov.style.opacity = '0';
+      setTimeout(() => ov.remove(), 180);
+      if (typeof window._markSheetClosed === 'function') window._markSheetClosed('dmAutosendConsent');
+    };
+    // 안드로이드 뒤로가기로도 닫히게 (등록 안 하면 뒤로가기가 앱을 종료시킨다)
+    if (typeof window._registerSheet === 'function') window._registerSheet('dmAutosendConsent', close);
+    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('dmAutosendConsent');
+    ov.addEventListener('click', (e) => {
+      if (e.target === ov) { close(); return; }                 // 배경 탭 = 거절(안전한 쪽)
+      const b = e.target.closest('[data-consent]');
+      if (!b) return;
+      const yes = b.getAttribute('data-consent') === 'yes';
+      close();
+      if (yes) onAccept();
+    });
+  }
+
   function _renderHours(settings) {
     const start = _esc(settings.auto_reply_start || '09:00');
     const end = _esc(settings.auto_reply_end || '22:00');
@@ -309,6 +377,7 @@
     // [죽은토글 실구현 2026-07-27] 백엔드 auto_reply_outside_hours 신설 → 서버값으로 hydrate.
     //   예전엔 localStorage 에만 저장돼 백엔드가 아무 것도 안 하던 죽은 토글이었다. 기본 OFF(안전).
     const outsideOn = !!settings.auto_reply_outside_hours;
+    const autosendOn = !!settings.dm_autosend_enabled;
     return `
       <div class="dm-section">
         <div class="dm-section__title">자동 응답 시간</div>
@@ -329,6 +398,14 @@
             <div class="dm-rows__label">운영시간 외 응답</div>
             <div class="dm-rows__value">자리비움 메시지</div>
             <button type="button" class="dm-toggle dm-toggle--small ${outsideOn ? 'is-on' : ''}" data-act="outside-toggle" aria-pressed="${outsideOn}">
+              <span class="dm-toggle__track"></span><span class="dm-toggle__knob"></span>
+            </button>
+          </div>
+          <!-- [2026-08-15] 손님에게 직접 나가는 기능이라 켤 때 경고+동의를 받는다(_askAutosendConsent). -->
+          <div class="dm-rows__item">
+            <div class="dm-rows__label">손님에게 바로 답장</div>
+            <div class="dm-rows__value">${autosendOn ? '켜짐 — 확인 없이 나가요' : '꺼짐 — 내가 확인 후 발송'}</div>
+            <button type="button" class="dm-toggle dm-toggle--small ${autosendOn ? 'is-on' : ''}" data-act="autosend-toggle" aria-pressed="${autosendOn}">
               <span class="dm-toggle__track"></span><span class="dm-toggle__knob"></span>
             </button>
           </div>
@@ -1127,6 +1204,24 @@
     });
     sheet.querySelector('[data-field="end"]')?.addEventListener('change', (e) => {
       _saveSettings({ auto_reply_end: e.target.value || '22:00' });
+    });
+    /* [2026-08-15] 손님에게 바로 답장 — 켤 때만 경고+동의를 받는다.
+       이 토글은 다른 설정과 성격이 다르다. 켜는 순간부터 **AI 가 손님에게 직접 말을 건다.**
+       원장님이 뭘 켜는지 모른 채 켰다가 손님한테 이상한 답이 나가면 그건 되돌릴 수 없다.
+       (끌 때는 안 묻는다 — 끄는 건 언제나 안전한 방향이다) */
+    sheet.querySelector('[data-act="autosend-toggle"]')?.addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      const next = !btn.classList.contains('is-on');
+      _haptic();
+      const apply = (on) => {
+        btn.classList.toggle('is-on', on);
+        btn.setAttribute('aria-pressed', String(on));
+        const val = btn.closest('.dm-rows__item')?.querySelector('.dm-rows__value');
+        if (val) val.textContent = on ? '켜짐 — 확인 없이 나가요' : '꺼짐 — 내가 확인 후 발송';
+        _saveSettings({ dm_autosend_enabled: on });
+      };
+      if (!next) { apply(false); return; }          // 끄기는 즉시
+      _askAutosendConsent(() => apply(true));       // 켜기는 동의 후
     });
     sheet.querySelector('[data-act="outside-toggle"]')?.addEventListener('click', (e) => {
       const btn = e.currentTarget;
