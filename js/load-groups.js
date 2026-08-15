@@ -139,6 +139,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'app-naver-talk-link.js?v=local-151154',
   'app-dm-settings-cache.js?v=local-151154',
   'app-dm-booking-form.js?v=local-151154',
+  'app-dm-preview.js?v=20260816-dmpreview',
   'js/dm/ig-thread-link.js?v=local-151154',
   'app-dm-confirm-queue.js?v=20260815-devqa-tap',
   'app-comment-reply-queue.js?v=20260723-nestback',

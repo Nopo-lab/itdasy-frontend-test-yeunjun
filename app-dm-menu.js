@@ -130,9 +130,10 @@
       #${ID} .dmm-master .t b{font-size:15px;font-weight:800;color:#191F28}
       #${ID} .dmm-master .t span{display:block;font-size:11.5px;color:#8B95A1;margin-top:2px}
       #${ID} .dmm-greet{padding:13px 14px}
-      #${ID} textarea,#${ID} .dmm-lblin{font-family:inherit;outline:none;color:#191F28;box-sizing:border-box}
+      #${ID} textarea,#${ID} .dmm-lblin,#${ID} .dmm-in{font-family:inherit;outline:none;color:#191F28;box-sizing:border-box;background:#fff}
       #${ID} .dmm-greet textarea{width:100%;border:.5px solid rgba(0,0,0,.12);border-radius:12px;padding:11px 12px;font-size:13.5px;line-height:1.5;resize:none}
-      #${ID} textarea:focus,#${ID} .dmm-lblin:focus{border-color:var(--brand,#D58A95)}
+      #${ID} textarea:focus,#${ID} .dmm-lblin:focus,#${ID} .dmm-in:focus{border-color:var(--brand,#D58A95)}
+      #${ID} ::placeholder{color:#C4C9D0;font-weight:400}
       #${ID} .dmm-it{border-bottom:.5px solid rgba(0,0,0,.06)}
       #${ID} .dmm-it:last-child{border-bottom:0}
       #${ID} .dmm-row{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
@@ -144,7 +145,31 @@
       #${ID} .dmm-caret.open{transform:rotate(180deg)}
       #${ID} .dmm-body{padding:0 14px 14px;display:flex;flex-direction:column;gap:9px}
       #${ID} .dmm-fld{font-size:11px;font-weight:700;color:#8B95A1;margin-bottom:-3px}
-      #${ID} .dmm-lblin{width:100%;border:.5px solid rgba(0,0,0,.12);border-radius:10px;padding:9px 11px;font-size:13px;font-weight:700}
+      #${ID} .dmm-fld.muted{color:#B0B8C1;font-weight:600}
+      #${ID} .sub{font-weight:600;color:#B0B8C1}
+      /* 텍스트 입력 한 벌 — 버튼 글자만 굵게(칩에 그대로 박히는 글자라), 나머지는 보통 굵기 */
+      #${ID} .dmm-lblin,#${ID} .dmm-in{width:100%;border:.5px solid rgba(0,0,0,.12);border-radius:10px;padding:9px 11px;font-size:13px}
+      #${ID} .dmm-lblin{font-weight:700}
+      #${ID} .dmm-in{font-weight:500}
+      /* [2026-08-16] 예약 양식 편집기(app-dm-booking-form.js) 마운트 지점.
+         원래 css/screens/dm-autoreply-v3.css 의 .dm-field__* 를 썼는데 그 파일을 폐기하면서
+         스타일이 통째로 날아갔다(입력칸이 브라우저 기본, '원' 단위가 아래로 떨어짐).
+         되살리지 않고 이 화면의 dmm-* 한 벌로 흡수한다 — 라벨·입력칸 규격이 한 곳에만 있게. */
+      #${ID} .dmm-booking{display:flex;flex-direction:column;gap:9px}
+      #${ID} .dmm-unit{position:relative;display:block}
+      #${ID} .dmm-unit .dmm-in{padding-right:36px}
+      #${ID} .dmm-unit>.u{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12.5px;font-weight:600;color:#8B95A1;pointer-events:none}
+      /* [2026-08-16] 접어두는 하위 묶음(예약금 등) — 지금 안 쓰는 값이 편집 흐름을 끊지 않게 */
+      #${ID} .dmm-more{display:flex;align-items:center;gap:8px;width:100%;padding:11px 12px;background:#F7F8FA;
+        border:.5px solid rgba(0,0,0,.08);border-radius:12px;cursor:pointer;font-family:inherit;text-align:left}
+      #${ID} .dmm-more .mt{flex:1;min-width:0;font-size:12.5px;font-weight:700;color:#4E5968;display:flex;align-items:center;gap:7px}
+      #${ID} .dmm-more .mb{font-size:10.5px;font-weight:700;color:#B0B8C1;background:#EDF0F3;border-radius:99px;padding:2px 7px}
+      #${ID} .dmm-more .mb.on{color:var(--brand-strong,#BC6675);background:var(--brand-bg,#F7EFF0)}
+      #${ID} .dmm-more .mc{flex:none;color:#C9CDD4;display:flex;transition:transform .2s}
+      #${ID} .dmm-more.open .mc{transform:rotate(180deg)}
+      #${ID} .dmm-dep{display:flex;flex-direction:column;gap:9px;padding:2px 0 0}
+      #${ID} .dmm-dep[hidden]{display:none}
+      #${ID} .dmm-hint{font-size:11.5px;line-height:1.5;color:#8B95A1;background:#F7F8FA;border-radius:10px;padding:9px 11px}
       #${ID} .dmm-cnt{font-size:10.5px;color:#B0B8C1;text-align:right}
       #${ID} .dmm-resp{width:100%;border:.5px solid rgba(0,0,0,.12);border-radius:10px;padding:9px 11px;font-size:13px;line-height:1.5;resize:none;min-height:62px}
       #${ID} .dmm-pv{white-space:pre-wrap;font-size:12.5px;line-height:1.55;color:#191F28;background:#F7F8FA;border:.5px solid rgba(0,0,0,.08);border-radius:10px;padding:10px 12px}
@@ -160,6 +185,16 @@
       #${ID} .dmm-img-del{position:absolute;top:3px;right:3px;width:19px;height:19px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
       #${ID} .dmm-img-add{display:inline-flex;align-items:center;font-size:12.5px;font-weight:700;color:var(--brand-strong,#BC6675);background:var(--brand-bg,#F7EFF0);border:.5px solid rgba(0,0,0,.08);border-radius:12px;padding:10px 14px;cursor:pointer}
       #${ID} .dmm-img-full{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;color:#B0B8C1}
+      /* [2026-08-16] 손님 화면 미리보기 진입 — A묶음(버튼 응대)이 실제로 어떻게 보이는지 한 번에 확인.
+         화면 맨 위 한 곳에만 둔다(항목마다 두면 '지금 편집 중인 것'과 '저장된 것'이 헷갈린다). */
+      #${ID} .dmm-pvbtn{width:100%;display:flex;align-items:center;gap:10px;padding:13px 14px;background:#fff;
+        border:.5px solid rgba(0,0,0,.08);border-radius:16px;cursor:pointer;font-family:inherit;text-align:left}
+      #${ID} .dmm-pvbtn:active{transform:scale(.99)}
+      #${ID} .dmm-pvbtn .pi{flex:none;color:#191F28;display:flex}
+      #${ID} .dmm-pvbtn .pt{flex:1;min-width:0}
+      #${ID} .dmm-pvbtn .pt b{display:block;font-size:13.5px;font-weight:800;color:#191F28}
+      #${ID} .dmm-pvbtn .pt span{display:block;font-size:11px;color:#8B95A1;margin-top:2px;line-height:1.4}
+      #${ID} .dmm-pvbtn .pc{flex:none;color:#C9CDD4;display:flex}
       #${ID} .dmm-addbtn{width:100%;padding:13px;border:1px dashed rgba(0,0,0,.18);background:#fff;border-radius:14px;font-size:13px;font-weight:700;color:#4E5968;cursor:pointer;font-family:inherit;margin-top:10px}
       #${ID} .dmm-dim{opacity:.45;pointer-events:none}
       /* [2026-08-16] 두 묶음 — A:바로 나가요(중립·요금 X) / B:나한테 먼저 와요(로즈=요금 쓰는 쪽) */
@@ -228,20 +263,20 @@
     const lblCount = (it.label || '').length;
     let fields = `
       <div class="dmm-fld">버튼 글자 (손님에게 보임)</div>
-      <input class="dmm-lblin" data-lbl="${_esc(it.key)}" maxlength="${LABEL_MAX}" value="${_esc(it.label || '')}" placeholder="예: 예약하기">
+      <input class="dmm-lblin" data-lbl="${_esc(it.key)}" maxlength="${LABEL_MAX}" value="${_esc(it.label || '')}" placeholder="예약하기">
       <div class="dmm-cnt"><span data-cnt="${_esc(it.key)}">${lblCount}</span>/${LABEL_MAX}</div>`;
     let pvBlock = '';  // '이렇게 답장돼요' 미리보기 — 멘트·수정·첨부 다음 맨 마지막에 붙임
     if (kind === 'booking') {
       // 예약 양식 편집기 — 공용 모듈(DMBookingForm)이 마운트(데이터는 자동응답 설정 채널)
       fields += `<div class="dmm-booking" data-booking-mount></div>`;
     } else if (meta.edit === 'none') {
-      fields += `<div class="dmm-fld" style="color:#B0B8C1;">${_esc(meta.editNote || '')}</div>`;
+      fields += `<div class="dmm-fld muted">${_esc(meta.editNote || '')}</div>`;
     } else if (kind === 'resp' && _isFixedData(it.key)) {
       // 영업시간/주소/가격표 — 인사 멘트만 편집. 실제 데이터는 미리보기로 보이고 발송 시 자동으로 붙음.
       const ph = { HOURS: '영업시간 안내드려요 🕐', LOCATION: '오시는 길 안내드려요 📍', PRICE: '가격 안내드려요 💰' }[it.key] || '';
       const pvEmpty = (_real && _real[it.key]) ? '' : ' dmm-pv-empty';
       fields += `<div class="dmm-fld">인사 멘트</div>
-        <textarea class="dmm-resp" data-resp="${_esc(it.key)}" maxlength="500" placeholder="예: ${_esc(ph)}">${_esc(it.resp || '')}</textarea>
+        <textarea class="dmm-resp" data-resp="${_esc(it.key)}" maxlength="500" placeholder="${_esc(ph)}">${_esc(it.resp || '')}</textarea>
         <button type="button" class="dmm-jump" data-jump="${_esc(it.key)}">${_esc(_DATA_LABEL[it.key])} 수정 →</button>`;
       pvBlock = `<div class="dmm-fld">이렇게 답장돼요</div>
         <div class="dmm-pv${pvEmpty}" data-preview="${_esc(it.key)}">${_esc(_previewText(it.key, it.resp))}</div>`;
@@ -250,7 +285,7 @@
         <textarea class="dmm-resp" data-resp="${_esc(it.key)}" maxlength="600" placeholder="손님에게 보낼 답장">${_esc(it.resp || '')}</textarea>`;
     } else if (kind === 'ack') {
       fields += `<div class="dmm-fld">확인 멘트 (보낸 뒤 사장님 큐로)</div>
-        <textarea class="dmm-resp" data-ack="${_esc(it.key)}" maxlength="300" placeholder="예: 문의 확인했어요! 곧 답장드릴게요 🙏">${_esc(it.ack || '')}</textarea>`;
+        <textarea class="dmm-resp" data-ack="${_esc(it.key)}" maxlength="300" placeholder="문의 확인했어요! 곧 답장드릴게요 🙏">${_esc(it.ack || '')}</textarea>`;
     }
     // 사진 첨부 — 모든 항목 공통, 최대 2장. 버튼 탭 시 손님에게 사진을 같이 보냄(가격표·시술설명 등).
     const _imgs = Array.isArray(it.image_urls) ? it.image_urls.slice(0, 2) : [];
@@ -260,7 +295,7 @@
       ? `<span class="dmm-img-full">2장 다 채웠어요</span>`
       : `<label class="dmm-img-add"><input type="file" accept="image/*" data-img-file="${_esc(it.key)}" hidden><span>+ 사진 추가</span></label>`;
     fields += `
-      <div class="dmm-fld">사진 첨부 <span style="color:#B0B8C1;font-weight:600;">(버튼 누르면 손님에게 같이 전송 · 최대 2장)</span></div>
+      <div class="dmm-fld">사진 첨부 <span class="sub">(버튼 누르면 손님에게 같이 전송 · 최대 2장)</span></div>
       <div class="dmm-img">${_thumbs}${_addBtn}</div>`;
     fields += pvBlock;  // '이렇게 답장돼요' 는 항상 맨 마지막(멘트·수정·첨부 본 뒤 결과 확인)
     if (_isCustom(it)) {
@@ -316,9 +351,14 @@
           </div>
           ${_tgHtml(!!_menu.enabled, 'master', '')}
         </div>
+        <button type="button" class="dmm-pvbtn" data-preview-open>
+          <span class="pi" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2.6"/><path d="M11 18.5h2"/></svg></span>
+          <span class="pt"><b>손님 화면으로 미리보기</b><span>저장된 설정 그대로 · 눌러봐도 손님에겐 안 가요</span></span>
+          <span class="pc" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+        </button>
         <div class="dmm-sec">손님이 DM 보내면 이렇게 인사해요</div>
         <div class="dmm-card dmm-greet${dim}"><textarea rows="2" data-greet maxlength="300">${_esc(_menu.greeting || '')}</textarea></div>
-        <div class="dmm-sec">손님이 누를 버튼 <span style="font-weight:600;color:#B0B8C1;">켠 것만 손님에게 보여요 · 탭하면 그 자리에서 편집돼요</span></div>
+        <div class="dmm-sec">손님이 누를 버튼 <span class="sub">켠 것만 손님에게 보여요 · 탭하면 그 자리에서 편집돼요</span></div>
         <div class="dmm-card${dim}">${rows}</div>
         <button type="button" class="dmm-addbtn${dim}" data-add>+ 메뉴 추가</button>
         <div class="dmm-sec">손님이 대화창을 처음 열면</div>
@@ -353,6 +393,12 @@
   }
 
   function _onClick(e) {
+    // 손님 화면 미리보기 — 저장된 값 기준(서버 조립). 편집 중 값이 아니라는 걸 버튼 부제에 적어둠.
+    if (e.target.closest('[data-preview-open]')) {
+      if (typeof window.openDMPreview === 'function') window.openDMPreview();
+      else _toast('미리보기를 불러오는 중이에요');
+      _haptic(); return;
+    }
     const tg = e.target.closest('.dmm-tg');
     if (tg) {
       e.stopPropagation();
@@ -636,6 +682,15 @@
     _haptic();
   }
 
+  // [2026-08-16] 미리보기 '지금 채우기' → 이 화면의 항목만 펼친다.
+  //   openDMMenuSettings() 재호출은 _hydrate() 로 서버값을 다시 덮어써 편집 중인 값이 날아간다. 그래서 별도 진입점.
+  window.DMMenuExpand = function (key) {
+    if (!document.getElementById(ID) || !_menu) { openDMMenuSettings(key); return; }
+    _open.add(key);
+    _render();
+    const row = document.querySelector(`#${ID} [data-exp="${key}"]`);
+    if (row && row.scrollIntoView) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
   window.openDMMenuSettings = openDMMenuSettings;
   window.closeDMMenuSettings = closeDMMenuSettings;
   /* [2026-08-16] app-dm-autoreply.js 폐기 — 톤3칩·운영시간·금지어·고급설정·리텐션·바로답장 전부 삭제하니

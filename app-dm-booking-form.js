@@ -76,37 +76,47 @@
       </div>`;
   }
 
-  // [이전] 예약 양식 편집 본문 (인사멘트·양식·이해카드·예약금 계좌·금액)
+  // [이전] 예약 양식 편집 본문 (인사멘트·양식·이해카드 / 예약금은 접어둠)
   function _renderBooking(settings) {
     const form = _esc(settings.booking_form || '');
     const greeting = _esc(settings.booking_form_greeting || '');
     const acct = _esc(settings.deposit_account || '');
-    const amt = (settings.deposit_amount != null && settings.deposit_amount > 0) ? settings.deposit_amount : '';
+    const amtN = (settings.deposit_amount != null && settings.deposit_amount > 0) ? settings.deposit_amount : '';
+    const amt = _esc(amtN);
     const mapJson = settings.booking_form_map || '';
     const mapCard = form && mapJson ? _renderFormMapCard(mapJson, false) : '';
+    // [2026-08-16] 라벨·입력칸 클래스를 dmm-* 로 통일. 예전 dm-field__* 는 css/screens/dm-autoreply-v3.css
+    //   에 정의돼 있었는데 그 파일이 폐기되면서 스타일이 통째로 날아갔었다(브라우저 기본 폰트로 노출).
+    //   이 모듈은 app-dm-menu 안에서만 마운트되므로 그쪽 스타일 한 벌만 쓴다 — 중복 정의를 만들지 않는다.
+    // [2026-08-16] placeholder 에서 "예:" 접두사 제거 — 회색 글씨면 이미 예시인 게 보인다.
+    //   접두사가 붙으면 원장님이 그 형식을 따라야 하는 줄 알고 자기 말투로 못 쓴다.
+    // [2026-08-16] 예약금은 기본 접힘 — **양식과 같이 안 나간다.** 손님이 양식을 채워 보내
+    //   성함·연락처가 모이면 그때 예약 흐름에서 안내된다(BE: _booking_flow_draft / _build_avail_reply).
+    //   여기 펼쳐두면 "양식 보내면 계좌도 같이 가나?" 로 오해한다.
+    const depSet = !!(acct || amt);
     return `
-      <div class="dm-section">
-        <div class="dm-field" style="margin-bottom:8px;">
-          <label class="dm-field__label">양식 앞 인사 멘트 <span class="dm-section__help">비우면 양식만 발송</span></label>
-          <input type="text" class="dm-field__input" data-field="booking-form-greeting"
-            value="${greeting}" placeholder="예: 안녕하세요! 예약 도와드릴게요 :) 아래 양식으로 보내주세요">
-        </div>
-        <textarea class="dm-ban" data-field="booking-form" rows="5"
-          placeholder="손님이 예약 문의하면 보낼 양식을 적어두세요.&#10;예)&#10;1. 성함 / 연락처&#10;2. 희망 시술&#10;3. 희망 날짜·시간 (1순위)&#10;4. 2순위 날짜·시간">${form}</textarea>
-        <div id="dm-form-map-area" style="margin-top:10px;">${mapCard}</div>
-        <div class="dm-field">
-          <label class="dm-field__label">예약금 계좌 (은행·예금주 포함)</label>
-          <input type="text" class="dm-field__input" data-field="deposit-account"
-            value="${acct}" placeholder="예: 카카오뱅크 3333-00-000000 박수민">
-        </div>
-        <div class="dm-field">
-          <label class="dm-field__label">예약금 금액</label>
-          <div class="dm-field__suffix">
-            <input type="text" inputmode="numeric" class="dm-field__input dm-field__input--unit" data-field="deposit-amount"
-              value="${amt}" placeholder="예: 20000 또는 2만원">
-            <span class="dm-field__unit">원</span>
-          </div>
-        </div>
+      <div class="dmm-fld">양식 앞 인사 멘트 <span class="sub">비우면 양식만 나가요</span></div>
+      <input type="text" class="dmm-in" data-field="booking-form-greeting"
+        value="${greeting}" placeholder="안녕하세요! 예약 도와드릴게요 :)">
+      <div class="dmm-fld">보낼 양식 <span class="sub">쓴 그대로 손님에게 가요</span></div>
+      <textarea class="dmm-resp" data-field="booking-form" rows="5"
+        placeholder="1. 성함 / 연락처&#10;2. 희망 시술&#10;3. 희망 날짜·시간 (1순위)&#10;4. 2순위 날짜·시간">${form}</textarea>
+      <div id="dm-form-map-area">${mapCard}</div>
+      <button type="button" class="dmm-more" data-dep-more aria-expanded="false">
+        <span class="mt">예약금 안내<span class="mb${depSet ? ' on' : ''}">${depSet ? '설정됨' : '아직 없음'}</span></span>
+        <span class="mc" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+      </button>
+      <div class="dmm-dep" data-dep-box hidden>
+        <div class="dmm-hint">양식이랑 같이 나가지 않아요. 손님이 양식을 채워 보내고 성함·연락처까지 모이면 그때 안내돼요.</div>
+        <div class="dmm-fld">예약금 계좌 <span class="sub">은행·예금주까지</span></div>
+        <input type="text" class="dmm-in" data-field="deposit-account"
+          value="${acct}" placeholder="카카오뱅크 3333-00-000000 박수민">
+        <div class="dmm-fld">예약금 금액 <span class="sub">2만원처럼 적어도 돼요</span></div>
+        <label class="dmm-unit">
+          <input type="text" inputmode="numeric" class="dmm-in" data-field="deposit-amount"
+            value="${amt}" placeholder="20000">
+          <span class="u">원</span>
+        </label>
       </div>`;
   }
 
@@ -155,6 +165,18 @@
         }
       });
     }
+    // 예약금 접기/펼치기 — 기본 접힘(양식과 같이 안 나가는 값이라 양식 편집 흐름을 끊지 않게)
+    const depBtn = root.querySelector('[data-dep-more]');
+    const depBox = root.querySelector('[data-dep-box]');
+    if (depBtn && depBox) {
+      depBtn.addEventListener('click', () => {
+        const open = depBox.hasAttribute('hidden');
+        if (open) depBox.removeAttribute('hidden'); else depBox.setAttribute('hidden', '');
+        depBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        depBtn.classList.toggle('open', open);
+        _haptic();
+      });
+    }
     // 예약금 계좌 / 금액
     root.querySelector('[data-field="deposit-account"]')?.addEventListener('blur', (e) => {
       window.DmSettingsCache?.patch({ deposit_account: String(e.target.value || '').trim() });
@@ -167,7 +189,7 @@
         e.target.value = String(n);
         _toast(`${n.toLocaleString('ko-KR')}원으로 저장했어요`);
       } else if (raw) {
-        _toast('예약금 금액을 숫자로 입력해주세요 (예: 2만원)');
+        _toast('예약금 금액을 숫자로 적어주세요');
       }
     });
   }
