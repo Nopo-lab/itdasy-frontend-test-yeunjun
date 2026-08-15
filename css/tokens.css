@@ -114,9 +114,12 @@ select:focus-visible {
    (위 F1 2026-06-09 메모는 폐기: viewport 잠금이 풀리면서 방어가 사라졌었고,
     style-polish.css는 index.html에서 로드 안 됨 + max(16px,1em) 규칙도 이미 없음.)
    !important 이유: 고객메모 textarea 등 JS 인라인 스타일(13px)까지 덮어야 해서.
-   2026-08-11 전수조사 기준 16px 초과 입력칸 0곳 → 글자 축소 부작용 없음. 데스크톱은 기존 크기 유지. */
-@media (max-width: 768px), (pointer: coarse) {
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+   2026-08-11 전수조사 기준 16px 초과 입력칸 0곳 → 글자 축소 부작용 없음. 데스크톱은 기존 크기 유지.
+   [2026-08-12 정정] max-width:768px 조건 삭제 — 좁은 PC 창(마우스)에서도 발동해서
+   샵정보·DM 수정칸 글씨가 "갑자기 커지는" 회귀를 만들었다. 자동 확대는 터치 기기 문제라
+   (pointer: coarse) 만으로 iOS/안드로이드가 전부 잡힌다. PC는 창 폭과 무관하게 원래 크기. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]),
   textarea,
   select,
   [contenteditable="true"] {

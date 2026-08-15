@@ -12,13 +12,17 @@
     .spinner { width:32px; height:32px; border:3px solid #F18091; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite; margin:16px auto; }
     @keyframes spin { to { transform:rotate(360deg); } }
     .error { color:#c62828; }
+    .back-btn { display:none; margin-top:18px; width:100%; padding:13px 0; border:none; border-radius:14px; background:#F18091; color:#fff; font-size:14px; font-weight:700; cursor:pointer; }
+    .back-btn:active { opacity:0.85; }
   </style>
 </head>
 <body>
   <div class="box">
-    <div class="spinner"></div>
+    <div class="spinner" id="spinner"></div>
     <h1 id="title">로그인 완료 중…</h1>
     <p id="msg">잠시만 기다려주세요</p>
+    <!-- [2026-08-12] 실패 시 dead-end 해소 — 돌아가는 길이 없어서 사용자가 갇혔다 -->
+    <button type="button" class="back-btn" id="backBtn" onclick="location.href='index.html'">로그인 화면으로 돌아가기</button>
   </div>
   <script>
     // [보안감사 C-2/C-3 2026-07-27] OAuth 복귀 처리 — 세션고정·토큰탈취 방어.
@@ -37,7 +41,12 @@
       var API = 'https://itdasy-backend-staging-644329093453.asia-northeast3.run.app';
       var params = new URLSearchParams(window.location.search);
       function el(id) { return document.getElementById(id); }
-      function fail(t, m) { el('title').textContent = t; el('title').className = 'error'; el('msg').textContent = m || ''; }
+      function fail(t, m) {
+        el('title').textContent = t; el('title').className = 'error'; el('msg').textContent = m || '';
+        // 실패면 스피너 멈추고 돌아가기 버튼 표시 — "무한 로딩 + 출구 없음" 방지
+        var sp = el('spinner'); if (sp) sp.style.display = 'none';
+        var bb = el('backBtn'); if (bb) bb.style.display = 'block';
+      }
       function store(token) {
         // app-core.js 가 ?api 설정에 따라 staging/prod 중 하나를 읽으므로 둘 다 저장(키 불일치 회귀 방지).
         // 토큰은 방금 백엔드 교환/검증을 거친 정본이라 이중저장이 안전하다.

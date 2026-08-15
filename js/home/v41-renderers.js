@@ -585,7 +585,10 @@
       <div class="hv5-cmsg-head">
         <span class="hv5-cmsg-title">고객 메시지</span>
         <span class="hv5-cmsg-count" id="hv5CmsgCount"></span>
-        <button type="button" class="hv5-cmsg-refresh" id="hv5CmsgRefresh" aria-label="새로고침" title="새로고침">↻</button>
+        <!-- [2026-08-12] ↻ 글자 → lucide SVG — 글자 화살표가 너무 얇아 돌아가는 게 안 보였다 -->
+        <button type="button" class="hv5-cmsg-refresh" id="hv5CmsgRefresh" aria-label="새로고침" title="새로고침">
+          <svg class="hv5-cmsg-refresh-ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+        </button>
         <button type="button" class="hv5-cmsg-more" id="hv5CmsgMore">전체 보기 ›</button>
       </div>
       <div class="hv5-cmsg-row" id="hv5CmsgRow"></div>

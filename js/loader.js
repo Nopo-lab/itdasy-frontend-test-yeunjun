@@ -95,6 +95,11 @@
   _stub('openAssistant', 'assistant', '잇비 준비 중…');
   /* [3단계] 주변 기능(extras: DM·SNS·임포트·OCR·지원 등) — 사이드바/메뉴 직행 진입만 스텁 */
   _stub('openDMConversations', 'extras', 'DM 준비 중…');
+  /* [2026-08-12 PC 갇힘] 연동관리 하위화면 — extras 그룹인데 스텁이 없어서, 유휴 선로딩이
+     끝나기 전에 누르면 아무 반응이 없었다(둘 다 load-groups extras 에 있음: app-kakao-hub /
+     app-naver-talk-link). */
+  _stub('openKakaoHub', 'extras', '준비 중…');
+  _stub('openNaverTalkLink', 'extras', '준비 중…');
   /* [2026-08-15] 스레드(대화 전체) 부활 — 확인큐 카드의 '대화 전체' 가 여길 부른다.
      확인큐(dm 그룹)가 먼저 떠 있는 상태에서 누를 수 있으므로 extras 미로드면 조용히 죽는다.
      실제 정의처: app-dm-conversations.js 의 window.openDMThread. */

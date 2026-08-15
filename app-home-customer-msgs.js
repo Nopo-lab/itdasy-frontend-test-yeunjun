@@ -225,7 +225,10 @@
         e.preventDefault();
         _lastFetch = 0;
         refreshBtn.classList.add('spin');
-        refresh().finally(() => { try { refreshBtn.classList.remove('spin'); } catch (_e2) { void _e2; } });
+        // [2026-08-12] 완료를 말로도 알림 — 아이콘만으론 됐는지 안 됐는지 알 수 없다는 피드백.
+        refresh().then(() => {
+          if (window.showToast) window.showToast('메시지를 새로 불러왔어요 ✓');
+        }).finally(() => { try { refreshBtn.classList.remove('spin'); } catch (_e2) { void _e2; } });
         return;
       }
       // 인스타 재연결 배너
@@ -317,8 +320,11 @@
       .hv5-cmsg-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:0 2px}
       .hv5-cmsg-title{font-size:15px;font-weight:700;color:var(--text)}
       .hv5-cmsg-count{font-size:11px;font-weight:700;color:var(--brand-strong);background:var(--brand-bg);padding:3px 9px;border-radius:999px}
-      .hv5-cmsg-refresh{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text-subtle);font-size:15px;line-height:1;padding:4px 6px}
-      .hv5-cmsg-refresh.spin{animation:hv5cmsgspin .6s linear}
+      /* [2026-08-12] 새로고침 시인성 — 얇은 ↻ 글자 대신 SVG(stroke 2.5) + 버튼 배경.
+         spin 은 1회(.6s)가 아니라 fetch 끝날 때까지 infinite — "되고 있는지" 보이게. */
+      .hv5-cmsg-refresh{margin-left:auto;background:var(--surface-2,#F2F4F6);border:none;cursor:pointer;color:var(--text-muted,#4E5968);width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;padding:0}
+      .hv5-cmsg-refresh:active{transform:scale(.92)}
+      .hv5-cmsg-refresh.spin .hv5-cmsg-refresh-ic{animation:hv5cmsgspin .8s linear infinite}
       @keyframes hv5cmsgspin{to{transform:rotate(360deg)}}
       .hv5-cmsg-more{margin-left:6px;font-size:12px;color:var(--text-subtle);font-weight:600;background:none;border:none;cursor:pointer;padding:4px 2px}
       .hv5-cmsg-row{display:flex;gap:11px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}

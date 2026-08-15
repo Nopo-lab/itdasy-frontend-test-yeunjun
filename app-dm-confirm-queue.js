@@ -548,9 +548,14 @@
         ${(noDraft || am.deposit_sent) ? '' : isSetAddress ? _setAddressBlock() : `<div style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;">
           <div style="width:30px;height:30px;border-radius:50%;background:#F7EFF0;color:#BC6675;flex-shrink:0;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" aria-hidden="true"><use href="#ic-bot"/></svg></div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:11px;color:#8B95A1;font-weight:600;margin-bottom:4px;">${isSendForm ? '보낼 예약 양식 (탭하면 발송)' : '잇비 추천 답장'}</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px;">
+              <div style="font-size:11px;color:#8B95A1;font-weight:600;">${isSendForm ? '보낼 예약 양식 (탭하면 발송)' : '잇비 추천 답장'}</div>
+              ${isSendForm ? '' : `<button type="button" class="dcq-regen" title="새 정보 반영해서 답장 다시 만들기" style="background:none;border:none;padding:2px 4px;font-size:11px;color:#8B95A1;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:3px;">
+                <svg class="dcq-regen-ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>다시 만들기</button>`}
+            </div>
             <div class="dcq-draft" style="background:#F2F4F6;color:#191F28;border-radius:13px;border-top-left-radius:4px;padding:10px 13px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">${_esc(draft)}</div>
-            <textarea class="dcq-edit" rows="3" style="display:none;width:100%;margin-top:6px;padding:10px 13px;border:1px solid #E5E8EB;border-radius:13px;font-size:13.5px;line-height:1.5;background:#fff;color:#191F28;resize:vertical;box-sizing:border-box;font-family:inherit;">${_esc(draft)}</textarea>
+            <!-- [2026-08-12] 수정 모드 = 말풍선과 같은 박스(회색·같은 radius·같은 글자)에서 그대로 고침 — 흰 테두리 박스로 바뀌던 이질감 제거 -->
+            <textarea class="dcq-edit" rows="3" style="display:none;width:100%;padding:10px 13px;border:none;outline:none;border-radius:13px;border-top-left-radius:4px;font-size:13.5px;line-height:1.5;background:#F2F4F6;color:#191F28;resize:vertical;box-sizing:border-box;font-family:inherit;">${_esc(draft)}</textarea>
           </div>
         </div>`}
         <div style="display:flex;gap:6px;margin-top:12px;">
@@ -676,6 +681,29 @@
     }));
     // [2026-07-02] 겹침 경고의 '캘린더 보기' — 탭만 전환(DM 안 닫힘), 확인 후 돌아오면 카드 유지
     list.querySelectorAll('.dcq-cal-jump').forEach(a => a.addEventListener('click', () => _gotoCalendar(a.dataset.ymd || '')));
+    // [2026-08-12] 답장 다시 만들기 — 카드는 그대로 두고 문구만 교체(BE /regenerate).
+    //   새 정보(예: "22인치로요")가 온 뒤 정리 정보는 갱신되는데 추천답장이 옛것에 머무는 문제 해소.
+    list.querySelectorAll('.dcq-regen').forEach(b => b.addEventListener('click', async () => {
+      const card = b.closest('[data-id]'); if (!card) return;
+      b.disabled = true; b.style.opacity = '0.5';
+      const ic = b.querySelector('.dcq-regen-ic');
+      if (ic) ic.style.animation = 'dcqSpin .8s linear infinite';
+      try {
+        const r = await _fetch('POST', `/dm-confirm-queue/${card.dataset.id}/regenerate`, {});
+        const txt = r && r.ai_draft_text;
+        if (!txt) throw new Error((r && r.message) || '재생성 실패');
+        const draft = card.querySelector('.dcq-draft');
+        const ta = card.querySelector('.dcq-edit');
+        if (draft) draft.textContent = txt;
+        if (ta) ta.value = txt;
+        if (window.showToast) window.showToast('답장을 다시 만들었어요 ✓');
+      } catch (e) {
+        if (window.showToast) window.showToast('다시 만들기 실패: ' + e.message);
+      } finally {
+        b.disabled = false; b.style.opacity = '1';
+        if (ic) ic.style.animation = '';
+      }
+    }));
     list.querySelectorAll('.dcq-discard').forEach(b => b.addEventListener('click', () => _doAction(b, 'discard')));
     list.querySelectorAll('.dcq-reset').forEach(b => b.addEventListener('click', () => _doAction(b, 'reset')));
     list.querySelectorAll('.dcq-confirm-deposit').forEach(b => b.addEventListener('click', () => _doAction(b, 'confirm-deposit')));
