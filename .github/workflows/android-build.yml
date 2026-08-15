@@ -36,8 +36,10 @@ jobs:
         run: yes | sdkmanager --licenses > /dev/null 2>&1 || true
 
       - name: Install Android packages
+        # variables.gradle 의 compileSdk 와 반드시 같이 움직인다. 34 만 깔려 있으면
+        # "compile against version 35 or later" 로 빌드가 통째로 실패한다(2026-08-15 실측).
         run: |
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Setup Node + Capacitor
         uses: actions/setup-node@v4

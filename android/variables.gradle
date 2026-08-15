@@ -5,12 +5,16 @@ ext {
     minSdkVersion = 23
     // [출시감사 2026-08-02] compileSdk 만 35 로. androidx.core:core-ktx 가 1.15.0 으로
     //   해석되면서 "compile against version 35 or later" 로 빌드가 아예 실패했다.
-    //   ⚠️ targetSdk 는 34 로 유지 — 35 로 올리면 Android 15 가 edge-to-edge 를 강제해서
-    //   상태바가 헤더를 덮는다(iOS 에서 방금 같은 증상을 잡았다). 올리려면 안드로이드에서
-    //   safe-area 검증을 먼저 해야 한다. Play 신규 제출은 targetSdk 35 를 요구하므로
-    //   출시 전 별도 과제로 남긴다.
     compileSdkVersion = 35
-    targetSdkVersion = 34
+    // [2026-08-15 출시블로커 B1] 34 → 35. Play 신규 제출이 API 35 를 요구해 업로드가 막혀 있었다.
+    //   예상대로 Android 15 edge-to-edge 강제가 터졌고(에뮬 API 35 실측: 상태바 띠 소멸,
+    //   콘텐츠가 시계 뒤로 올라감, 흰 상태바 아이콘 + 밝은 배경 = 시계 안 보임),
+    //   res/values/styles.xml 의 `windowOptOutEdgeToEdgeEnforcement` 로 34 때 동작을 유지했다.
+    //   기준선과 픽셀 단위로 동일함을 스크린샷으로 확인. 자세한 근거는 styles.xml 주석.
+    // 🔴 이 opt-out 은 **targetSdk 35 에서만 먹는다.** Play 는 2026-08-31 부터 신규 제출에
+    //   API 36 을 요구하고, 36 에서는 플래그가 무시된다 → 그 전에 제출하지 못하면
+    //   AGP 8.2.1→8.9+ · Gradle 8.2.1→8.11+ · Capacitor 6→7 업그레이드 + 진짜 인셋 대응 필요.
+    targetSdkVersion = 35
     androidxActivityVersion = '1.8.0'
     androidxAppCompatVersion = '1.6.1'
     androidxCoordinatorLayoutVersion = '1.2.0'
