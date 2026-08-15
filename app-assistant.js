@@ -562,7 +562,7 @@
         </div>`;
     // [2026-08-16] 오늘의 브리핑 — 메시지 앞 중앙 날짜칩 (카톡 날짜칩 스타일)
     const briefChipHtml = m.briefing_day
-      ? `<div style="display:flex;justify-content:center;margin:6px 0 12px;"><span style="padding:5px 12px;border-radius:999px;background:#F2F4F6;color:#8B95A1;font-size:11.5px;font-weight:600;">오늘의 브리핑</span></div>`
+      ? `<div data-asst-briefing style="display:flex;justify-content:center;margin:6px 0 12px;"><span style="padding:5px 12px;border-radius:999px;background:#F2F4F6;color:#8B95A1;font-size:11.5px;font-weight:600;">오늘의 브리핑</span></div>`
       : '';
     return `${briefChipHtml}<div class="asst-msg asst-msg--ai" style="display:flex;gap:10px;margin-bottom:14px;align-items:flex-start;">
       <div style="width:40px;height:40px;border-radius:50%;background:#F7EFF0;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#BC6675;">${_svg('ic-bot', 22)}</div>
@@ -5366,6 +5366,7 @@
   //   매일 교체(어제 것 제거), 서버 히스토리엔 안 쌓임(local_only → _pendingHistorySurvivors 가 보존).
   //   버튼은 briefing_actions 최대 2개 → 기존 data-asst-brief-act(runAction) 경로 재사용.
   let _briefingInjecting = false;
+  let _briefingReadyP = null;   // [2026-08-16] 홈 '전체 보기' 스크롤이 주입 완료를 기다리는 용도
   async function _injectDailyBriefing() {
     if (_briefingInjecting) return;
     if (!(window.ItdasyDailyBriefing && typeof window.ItdasyDailyBriefing.run === 'function')) return;
@@ -5406,7 +5407,7 @@
     // 첫 오픈 시 서버 history 동기화 (백그라운드, 즉시 렌더에 영향 X)
     _loadServerHistory();
     // [2026-08-16] 오늘의 브리핑 주입 (백그라운드 — local_only 라 서버 머지에도 생존)
-    _injectDailyBriefing();
+    _briefingReadyP = _injectDailyBriefing();
     // [2026-04-29 F1] 능동 제안 carousel — chat 입력창 위
     _loadProactiveSuggestions();
     // [연준님 2026-08-15 · A] 계정 상태 기반 초기 추천질문 (LLM 0회, 1분 캐시)
@@ -5549,6 +5550,15 @@
           }
           if (o.startVoice) {
             document.getElementById('asstMicBtn')?.click();
+          }
+          // [2026-08-16] 홈 '전체 보기' — 브리핑 주입 끝나면 오늘의 브리핑 말풍선으로 스크롤
+          if (o.scrollToBriefing) {
+            Promise.resolve(_briefingReadyP).then(() => setTimeout(() => {
+              try {
+                const el = document.querySelector('#asstBody [data-asst-briefing]');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              } catch (_e2) { void _e2; }
+            }, 150));
           }
         } catch (_e) { /* ignore */ }
       }, 120);

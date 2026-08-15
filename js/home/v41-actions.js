@@ -105,6 +105,11 @@
     retryBrief: () => {
       if (window.HomeV41 && typeof window.HomeV41.refresh === 'function') window.HomeV41.refresh();
     },
+    // [2026-08-16] 홈 잇비 카드 '전체 보기' → 채팅 열고 오늘의 브리핑 말풍선으로 스크롤 (홈↔채팅 일관성)
+    openBriefing: () => {
+      const open = (window.AssistantSheet && window.AssistantSheet.open) || window.openAssistant;
+      if (typeof open === 'function') open({ scrollToBriefing: true });
+    },
     // [2026-07-05] 홈 저녁 칩 → 잇비 시트 열고 "마감 리포트" 바로 전송(룰 기반, LLM 0).
     itbiClosingReport: () => {
       const open = (window.AssistantSheet && window.AssistantSheet.open) || window.openAssistant;

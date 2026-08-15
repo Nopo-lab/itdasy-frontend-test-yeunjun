@@ -830,10 +830,11 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 .hv5-itbi-bubble-tap:active { transform: scale(0.97); }
 .hv5-itbi-bubble-go { color: #B0B8C1; font-weight: 500; flex-shrink: 0; }
 
-/* [2026-08-16] 매출 미니 줄 — 한 줄 고정, 넘치면 말줄임 (줄바꿈 금지) */
+/* [2026-08-16] 매출 미니 줄 — 한 줄 고정, 넘치면 말줄임 (줄바꿈 금지)
+   왼쪽 38px = 아바타(28px)+간격(10px) — 말풍선·미니·나머지 줄 왼쪽 기준선 통일 */
 .hv5-itbi-mini {
   display: flex; align-items: center; gap: 8px;
-  width: 100%; margin: 0 0 8px;
+  width: calc(100% - 38px); margin: 0 0 8px 38px;
   padding: 10px 13px;
   background: #F9FAFB; border: 0.5px solid #EDF0F3; border-radius: 12px;
   font-family: inherit; cursor: pointer; text-align: left;
@@ -851,7 +852,7 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 /* [2026-08-16] "나머지 N개는 문제 없어요" 줄 */
 .hv5-itbi-rest {
   display: flex; align-items: center; gap: 7px;
-  width: 100%; margin: 0 0 10px;
+  width: calc(100% - 38px); margin: 0 0 10px 38px;
   padding: 8px 13px;
   background: none; border: 0; border-radius: 10px;
   font-size: 12px; color: #8B95A1; font-family: inherit;
@@ -910,7 +911,7 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 /* [2026-07-05] 저녁 마감 리포트 유도 칩 — 하루 1번, 19시 이후만 렌더 (v41-renderers.js) */
 .hv5-itbi-closing {
   display: flex; align-items: center; gap: 7px;
-  width: 100%; margin: 2px 0 8px;
+  width: calc(100% - 38px); margin: 2px 0 8px 38px;
   padding: 10px 13px;
   background: #FFF5F6; color: #C0596B;
   border: 0.5px solid #F5DDE1; border-radius: 14px;

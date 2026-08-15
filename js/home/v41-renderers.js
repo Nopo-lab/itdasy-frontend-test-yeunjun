@@ -344,7 +344,7 @@
             ${statusHtml}
           </div>
         </div>
-        <button type="button" class="hv5-itbi-all" data-hv-act="openAssistant">전체 보기 ›</button>
+        <button type="button" class="hv5-itbi-all" data-hv-act="openBriefing">전체 보기 ›</button>
       </div>
       <div class="hv5-itbi-msg${isEmpty ? ' is-empty' : ''}">
         <span class="hv5-itbi-msg-avatar"><svg width="16" height="16" aria-hidden="true"><use href="#ic-bot"/></svg></span>
