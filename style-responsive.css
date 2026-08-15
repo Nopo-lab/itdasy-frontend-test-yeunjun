@@ -223,6 +223,18 @@
     top: var(--app-header-h) !important;
     left: var(--side-nav-width) !important;
   }
+  /* [2026-08-15] 되살린 DM 대화목록·타임라인도 PC 오프셋 대상.
+     둘 다 position:fixed; inset:0; z-index:9988 이라 등록 안 하면 사이드바가 왼쪽 232~260px 를 덮는다
+     (연동관리·DM확인큐에서 이미 한 번 당한 그 유형).
+     위 hub 목록(inset 통째 덮기)에 안 넣는 이유 — 이 시트들은 내부가 flex column + 자체 스크롤이라
+     height:auto / overflow-y:auto 를 씌우면 안쪽 스크롤이 깨진다. subscreen-overlay 처럼 top/left 만 민다.
+     z-index 951 = 사이드바(10000) 아래, 확인큐(950) 위 — 카드에서 열고 뒤로가기로 돌아오는 순서 보존. */
+  #dmConversationsSheet,
+  #dmThreadSheet {
+    top: var(--app-header-h) !important;
+    left: var(--side-nav-width) !important;
+    z-index: 951 !important;
+  }
   /* v211 — 고객 시트 PC 한 화면 분할: overflow hidden 으로 좌/우 별도 스크롤. */
   #customerSheet.cv4-pc {
     overflow: hidden !important;
