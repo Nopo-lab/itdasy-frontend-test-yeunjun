@@ -104,7 +104,7 @@
 
 ### 매출
 - **app-revenue.js** (1183) — 매출관리 v5 메인 + period 디스패처. `openRevenue/window.Revenue`, CRUD·빠른추가·도넛.
-- **app-revenue-hub.js**(**35** — [2026-07-27] 옛 UI 550줄 삭제, 지금은 얇은 진입점만. 죽은 코드였음)·**app-revenue-today.js**(243)·**app-revenue-month.js**(630)·**app-revenue-calendar.js**(188)·**app-revenue-report.js**(156) — 허브/오늘·주/월/캘린더칩/리포트.
+- **app-revenue-hub.js**(**35** — [2026-07-27] 옛 UI 550줄 삭제, 지금은 얇은 진입점만. 죽은 코드였음)·**app-revenue-today.js**(243)·**app-revenue-month.js**(630)·**app-revenue-calendar.js**(188) — 허브/오늘·주/월/캘린더칩. (app-revenue-report.js 는 2026-08-12 삭제됨 — 죽은 코드였다)
 - **js/revenue/booking-revenue-overlay.js** (248) — 예약금(deposit)을 매출 요약/브리핑에 합산.
 - **app-report.js** (157) — 주말 자동 리포트.
 
