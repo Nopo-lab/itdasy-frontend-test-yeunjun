@@ -204,7 +204,7 @@
     return { message: msg, actions: actions };
   }
 
-  // [④] 우선순위 랭킹 결과 → 메시지(TOP n) + briefing_actions(항목 버튼 평탄화). 자동 실행 0.
+  // [④] 우선순위 랭킹 결과 → 불릿 메시지 + briefing_actions(항목 버튼 평탄화). 자동 실행 0.
   function _runRanked(ranked, brief, _bk) {
     try { window.ItdasyAssistantContext && window.ItdasyAssistantContext.markRecentAction('오늘 브리핑'); } catch (_e) { void 0; }
     // 매출 한 줄(정보) — 있으면 헤더에.
@@ -222,15 +222,17 @@
         + '\n\n자동 발송·예약·매출 기록은 하지 않았어요. 버튼을 눌러 확인 후 진행할 수 있어요.',
         actions: (ranked.fallbackActions || []) };
     }
-    var lines = ['☀️ 오늘 우선순위 TOP ' + ranked.items.length + '이에요.'];
+    // [2026-08-16] "오늘 우선순위 TOP N" 헤더·"1./이유:" 보고서 포맷 폐기(원영 지적 — 일반 분기와
+    //   문체가 달라 일관성 깨짐). 일반 브리핑과 같은 "☀️ 오늘 브리핑이에요 + • 불릿" 으로 통일.
+    var lines = ['☀️ 오늘 브리핑이에요.'];
     if (revLine) lines.push(revLine.trim());
     lines.push('');
     lines.push(ranked.summaryLine);
     lines.push('');
     var actions = [];
     ranked.items.forEach(function (it, i) {
-      lines.push((i + 1) + '. ' + it.title);
-      lines.push('   이유: ' + it.reason);
+      lines.push('• ' + it.title);
+      lines.push('  ' + it.reason);
       // 항목 버튼 — id 에 순번 prefix(중복 방지). briefing_actions 평탄화(J-4 runAction 라우팅 재사용).
       (it.actions || []).slice(0, 3).forEach(function (a) {
         actions.push({ id: (i + 1) + '_' + a.id, kind: a.kind, label: a.label, safety: a.safety || 'safe', payload: a.payload || {} });

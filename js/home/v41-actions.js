@@ -105,10 +105,14 @@
     retryBrief: () => {
       if (window.HomeV41 && typeof window.HomeV41.refresh === 'function') window.HomeV41.refresh();
     },
-    // [2026-08-16] 홈 잇비 카드 '전체 보기' → 채팅 열고 오늘의 브리핑 말풍선으로 스크롤 (홈↔채팅 일관성)
-    openBriefing: () => {
-      const open = (window.AssistantSheet && window.AssistantSheet.open) || window.openAssistant;
-      if (typeof open === 'function') open({ scrollToBriefing: true });
+    // [2026-08-16] 홈 잇비 카드 '전체 보기' → 분석 카드 인라인 펼침 토글 (화면 이동 X — 원영 지시.
+    //   브리핑 채팅으로 열던 openBriefing 은 이 동작으로 대체·삭제)
+    itbiToggleDetail: () => {
+      const card = document.querySelector('.hv5-itbi-card');
+      if (!card) return;
+      const open = card.classList.toggle('is-detail');
+      const btn = card.querySelector('.hv5-itbi-all');
+      if (btn) btn.textContent = open ? '접기 ‹' : '전체 보기 ›';
     },
     // [2026-07-05] 홈 저녁 칩 → 잇비 시트 열고 "마감 리포트" 바로 전송(룰 기반, LLM 0).
     itbiClosingReport: () => {

@@ -326,6 +326,14 @@
         </button>`;
       }
     } catch (_e) { /* silent */ }
+    // [2026-08-16] '전체 보기' = 분석 카드를 그 자리에서 펼쳐 보기 (인라인 토글, 화면 이동 X — 원영 지시.
+    //   브리핑 채팅으로 보내던 동작은 대체·삭제). ok 카드는 okMsg, 확인 필요 카드는 hl+desc+액션 버튼.
+    const detailHtml = `<div class="hv5-itbi-detail">${list.map(c => `<div class="hv5-itbi-dcard">
+          <div class="hv5-itbi-dcard-cat"><span class="hv5-itbi-dcard-dot" style="background:${esc(c.dot || '#B0B8C1')}"></span>${esc(c.cat || '')}</div>
+          <div class="hv5-itbi-dcard-hl">${esc(c.ok ? (c.okMsg || '문제 없어요') : (c.hl || ''))}</div>
+          ${(!c.ok && c.desc) ? `<div class="hv5-itbi-dcard-desc">${esc(c.desc)}</div>` : ''}
+          ${(!c.ok && c.btn) ? `<button type="button" class="hv5-itbi-dcard-btn" data-hv-act="${esc(c.act || '')}">${esc(c.btn)} ›</button>` : ''}
+        </div>`).join('')}</div>`;
     const statusHtml = st.retry
       ? `<div class="hv5-itbi-status is-warn"><span class="hv5-itbi-status-dot"></span>실시간 분석 · <b>연결 불안정</b></div>`
       : (st.todo > 0
@@ -340,7 +348,7 @@
             ${statusHtml}
           </div>
         </div>
-        <button type="button" class="hv5-itbi-all" data-hv-act="openBriefing">전체 보기 ›</button>
+        <button type="button" class="hv5-itbi-all" data-hv-act="itbiToggleDetail">전체 보기 ›</button>
       </div>
       <div class="hv5-itbi-msg${isEmpty ? ' is-empty' : ''}">
         <span class="hv5-itbi-msg-avatar"><svg width="16" height="16" aria-hidden="true"><use href="#ic-bot"/></svg></span>
@@ -352,6 +360,7 @@
       </div>
       ${rowsHtml}
       ${restHtml}
+      ${detailHtml}
       ${closingHtml}
       <div class="hv5-itbi-input">
         <button type="button" class="hv5-itbi-input-icon" data-itbi-act="photo" aria-label="사진 첨부"><svg width="18" height="18" aria-hidden="true"><use href="#ic-camera"/></svg></button>

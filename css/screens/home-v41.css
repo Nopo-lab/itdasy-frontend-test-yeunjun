@@ -853,6 +853,32 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 .hv5-itbi-rest-check { color: #1D9E75; font-weight: 700; flex-shrink: 0; }
 .hv5-itbi-rest-arr { margin-left: auto; color: #B0B8C1; flex-shrink: 0; }
 
+/* [2026-08-16] '전체 보기' 인라인 펼침 — 분석 카드 상세 (요약 줄과 자리 교대) */
+.hv5-itbi-detail { display: none; }
+.hv5-itbi-card.is-detail .hv5-itbi-detail { display: block; }
+.hv5-itbi-card.is-detail .hv5-itbi-mini,
+.hv5-itbi-card.is-detail .hv5-itbi-rest { display: none; }
+.hv5-itbi-dcard {
+  width: 100%; margin: 0 0 8px; padding: 12px 14px;
+  background: #F9FAFB; border: 0.5px solid #EDF0F3; border-radius: 12px;
+  box-sizing: border-box;
+}
+.hv5-itbi-dcard-cat {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: #8B95A1; font-weight: 500; margin-bottom: 4px;
+}
+.hv5-itbi-dcard-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.hv5-itbi-dcard-hl { font-size: 13.5px; font-weight: 600; color: #191F28; line-height: 1.45; letter-spacing: -0.2px; }
+.hv5-itbi-dcard-desc { font-size: 12px; color: #8B95A1; margin-top: 2px; line-height: 1.5; }
+.hv5-itbi-dcard-btn {
+  margin-top: 9px; padding: 6px 13px;
+  background: #fff; color: #4E5968;
+  border: 0.5px solid #E5E8EB; border-radius: 999px;
+  font-size: 11.5px; font-weight: 500; font-family: inherit; cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.hv5-itbi-dcard-btn:active { transform: scale(0.97); background: #F2F4F6; }
+
 /* 인라인 액션 버튼 */
 .hv5-itbi-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .hv5-itbi-action-btn {
