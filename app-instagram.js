@@ -406,20 +406,15 @@ function renderDetailedPopup(data) {
         html += `<div style="overflow:hidden;">${secs.join(DIV)}</div>`;
     }
 
-    // ── 안내 문구(작업실/글쓰기 진입 CTA 제거 — 분석 결과 저장 위치만 안내) [2026-06-26]
-    html += `
-    <div style="padding:18px 22px 24px;">
-        <div style="display:flex;gap:8px;align-items:flex-start;background:var(--surface-2,#F7F8FA);border-radius:14px;padding:14px 16px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="flex-shrink:0;margin-top:1px;color:var(--text-subtle);"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 11v5M12 8h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            <span style="font-size:12.5px;color:var(--text-muted);line-height:1.65;word-break:keep-all;">원장님 말투 분석 결과는 <b style="font-weight:700;color:var(--text);">내샵관리 › 잇비/자동화 › 내 말투</b>에서 언제든 확인할 수 있어요.</span>
-        </div>
-    </div>`;
+    // [2026-08-16] 하단 안내 문구 삭제 — "내샵관리 › 잇비/자동화 › 내 말투" 메뉴가 실제로 없어서
+    //   없는 경로를 안내하고 있었음(원영 지적). 하단 여백만 유지.
+    html += `<div style="height:24px;"></div>`;
 
     const body = document.getElementById('analyzeResultBody');
     if (!body) return;
     body.innerHTML = html;
     // [2026-06-26] '내 말투로 글 써보기' CTA 제거 — 말투분석 보고서에서 작업실/글쓰기 진입 차단(중복·혼동 방지).
-    //   분석 결과는 내샵관리 › 잇비/자동화 › 내 말투에서 확인. 닫기는 헤더 X(analyze-result-close).
+    //   닫기는 헤더 X(analyze-result-close).
     body.querySelector('[data-ig-tag-toggle]')?.addEventListener('click', function () {
         const chips = body.querySelector('[data-ig-tag-chips]');
         if (!chips) return;
