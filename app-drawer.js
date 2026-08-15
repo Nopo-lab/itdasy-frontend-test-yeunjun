@@ -20,8 +20,8 @@
     customer:     () => _call(['openCustomerHub']),
     revenue:      () => _call(['openRevenue', 'openRevenueHub']),
     // 손님 문의 (2026-08-16 — "통합 허브" 폐지, ai_hub 라우트 → insta_dm 이 대신함)
-    // 인스타DM — app-dm-hub.js(별도 작업)의 openDmHub 반입 전까지 openAiHub 폴백 유지.
-    insta_dm:      () => _call(['openDmHub', 'openAiHub']),
+    // 인스타DM 화면 3개→1개 통합 — app-dm-menu.js '인스타DM 손님 응대' 직결.
+    insta_dm:      () => _call(['openDMMenuSettings']),
     // 인스타 댓글 — app-comment-reply-queue.js 는 lazy(extras). 로드 보장 후 호출
     //   (js/home/v41-actions.js openCommentQueue 와 같은 패턴).
     insta_comment: () => {

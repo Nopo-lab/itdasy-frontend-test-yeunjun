@@ -1,5 +1,7 @@
-/* 빠른 안내 (DM Quick Replies + Ice Breakers) 설정 — [2026-06-20]
+/* 인스타DM 손님 응대 (DM Quick Replies + Ice Breakers) 설정 — [2026-06-20, 2026-08-16 개명]
    진입: window.openDMMenuSettings()
+   [2026-08-16] 인스타DM 화면 3개→1개 통합 — AI 허브(마스터 토글)·DM 오버뷰 파일 삭제,
+   이 화면이 유일한 인스타DM 설정. 마스터 on/off 토글과 서버 동기화(_syncDmMenuEnabled)를 AI 허브에서 이관.
    BE: GET/PUT /shop/dm-menu (services/dm_menu.py). 고정5 key/action 불변, label/resp/ack/enabled + 커스텀(≤13) 편집.
    디자인: 흰바탕·로즈 포인트·검정 CTA, 그라데이션 X, .subscreen-overlay 재사용(PC 사이드바 자동 안전).
 */
@@ -143,8 +145,11 @@
       #${ID} .dmm-lblin{width:100%;border:.5px solid rgba(0,0,0,.12);border-radius:10px;padding:9px 11px;font-size:13px;font-weight:700}
       #${ID} .dmm-cnt{font-size:10.5px;color:#B0B8C1;text-align:right}
       #${ID} .dmm-resp{width:100%;border:.5px solid rgba(0,0,0,.12);border-radius:10px;padding:9px 11px;font-size:13px;line-height:1.5;resize:none;min-height:62px}
-      #${ID} .dmm-onoff{font-size:12px;color:var(--text-subtle,#8B95A1);margin:0 4px 12px}
-      #${ID} .dmm-onoff b{color:var(--text-muted,#4E5968)}
+      /* [2026-08-16] 초록 약속 안내 — 삭제된 DM 오버뷰 화면의 초록 박스 이관 */
+      #${ID} .dmm-green{display:flex;gap:11px;background:#EAF7EF;border:.5px solid #B6E3C6;border-radius:16px;padding:14px 15px}
+      #${ID} .dmm-green .ico{flex:none;color:#16A34A;margin-top:1px}
+      #${ID} .dmm-green b{display:block;font-size:13px;font-weight:800;color:#15803D;margin-bottom:3px}
+      #${ID} .dmm-green p{font-size:12px;line-height:1.5;color:#3F7A54;margin:0}
       #${ID} .dmm-pv{white-space:pre-wrap;font-size:12.5px;line-height:1.55;color:#191F28;background:#F7F8FA;border:.5px solid rgba(0,0,0,.08);border-radius:10px;padding:10px 12px}
       #${ID} .dmm-pv.dmm-pv-empty{color:#B0B8C1}
       #${ID} .dmm-jump{align-self:flex-start;font-size:12.5px;font-weight:700;color:var(--brand-strong,#BC6675);background:none;border:none;padding:4px 0;cursor:pointer;font-family:inherit}
@@ -182,7 +187,7 @@
     el.innerHTML = `
       <header class="ss-topbar">
         <button type="button" class="ss-back" data-dmm-back aria-label="뒤로"><svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>
-        <div class="ss-title">빠른 안내</div>
+        <div class="ss-title">인스타DM 손님 응대</div>
         <button type="button" class="ss-action" data-dmm-save>저장</button>
       </header>
       <div class="ss-body"><div id="dmmBody"></div></div>`;
@@ -276,19 +281,32 @@
         </div>`;
     }).join('');
     const iceOn = (_menu.ice_breakers || []).length > 0;
+    // [2026-08-16] 마스터 토글 — ai-hub 삭제로 여기가 유일한 on/off. _menu.enabled 를 스위치로 노출.
     body.innerHTML = `
-      <div class="dmm-note">손님이 DM을 보내면 이 <b>버튼들이 자동으로</b> 떠요. 손님은 타이핑 없이 탭만 하면 돼요. 인스타에 직접은 못 만드는 기능이라 <b>잇데이가 대신 깔아줘요.</b></div>
-      <div class="dmm-onoff">켜기·끄기는 <b>잇비·자동화</b>에서 해요.</div>
-      <div class="dmm-sec">첫 인사 멘트</div>
+      <div class="dmm-card" style="margin-bottom:14px;">
+        <div class="dmm-master">
+          <div class="t"><b>인스타DM 손님 응대</b><span>끄면 손님 DM 에 버튼·자동 안내가 안 나가요</span></div>
+          ${_tgHtml(!!_menu.enabled, 'master', '')}
+        </div>
+      </div>
+      <div class="dmm-note">손님이 DM 보내면 이렇게 응대해요</div>
+      <div class="dmm-sec">① 손님이 DM 보내면 이렇게 인사해요</div>
       <div class="dmm-card dmm-greet${dim}"><textarea rows="2" data-greet maxlength="300">${_esc(_menu.greeting || '')}</textarea></div>
-      <div class="dmm-sec">메뉴 버튼 (켠 것만 손님에게 보여요 · 탭해서 편집)</div>
+      <div class="dmm-sec">② 손님이 누를 버튼 <span style="font-weight:600;color:#B0B8C1;">켠 것만 손님에게 보여요 · 탭하면 그 자리에서 편집돼요</span></div>
       <div class="dmm-card${dim}">${rows}</div>
       <button type="button" class="dmm-addbtn${dim}" data-add>+ 메뉴 추가</button>
-      <div class="dmm-sec">대화 처음 열 때</div>
+      <div class="dmm-sec">③ 손님이 대화창을 처음 열면</div>
       <div class="dmm-card${dim}">
         <div class="dmm-master">
-          <div class="t"><b>처음 열 때도 메뉴 보여주기</b><span>손님이 DM 창을 처음 열면 켠 메뉴를 미리 보여줘요 (최대 ${ICE_MAX}개)</span></div>
+          <div class="t"><b>먼저 버튼 보여주기</b><span>손님이 아직 아무 말 안 해도 켠 버튼을 미리 띄워줘요 (최대 ${ICE_MAX}개)</span></div>
           ${_tgHtml(iceOn, 'ice', '')}
+        </div>
+      </div>
+      <div class="dmm-green" style="margin-top:14px;">
+        <span class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <div>
+          <b>손님한텐 잇비가 마음대로 답장 안 해요</b>
+          <p>잇비가 답장을 써두면, 원장님이 보고 '보내기'를 눌러야 나갑니다.</p>
         </div>
       </div>`;
     // 예약하기 펼쳐져 있으면 예약 양식 편집기 마운트(공용 모듈)
@@ -303,6 +321,13 @@
     if (tg) {
       e.stopPropagation();
       const kind = tg.getAttribute('data-tg');
+      if (kind === 'master') {
+        // [2026-08-16] 마스터 on/off — 화면 상태 즉시 반영 + 서버엔 enabled 만 동기화(아래 이관 함수).
+        _menu.enabled = !_menu.enabled;
+        _haptic(); _render();
+        _syncDmMenuEnabled(_menu.enabled);
+        return;
+      }
       if (kind === 'ice') {
         // 처음 열 때 메뉴 — ON: 켠 메뉴 앞에서 최대 4개 자동 / OFF: 비움 (BE 필드 추가 X, 상태=비었나로 판정)
         _menu.ice_breakers = (_menu.ice_breakers || []).length > 0 ? [] : _computeIce();
@@ -414,6 +439,37 @@
       _toast('사진 추가됐어요 ✓');
     } catch (err) {
       _toast('사진 업로드 실패: ' + (err && err.message ? err.message : '네트워크 오류'));
+    }
+  }
+
+  // ── 마스터 enabled 백엔드 반영 — 반드시 GET 먼저 → 그 객체에서 enabled 만 바꿔 PUT.
+  //   (편집 중인 로컬 _menu 를 PUT 소스로 쓰면 저장 안 누른 수정까지 서버에 날아감. 동봉 소스 = GET 결과로 고정.)
+  //   [2026-08-16] 삭제된 AI 허브에서 그대로 이관 — _dmMenuSyncSeq 연타 레이스 방지 포함.
+  let _dmMenuSyncSeq = 0; // 토글 연타 시 GET→PUT 레이스 방지 — 최신 토글만 서버 반영
+  async function _syncDmMenuEnabled(on) {
+    const seq = ++_dmMenuSyncSeq;
+    try {
+      const auth = window.authHeader ? window.authHeader() : {};
+      const res = await window.apiFetch(window.apiUrl('/shop/dm-menu'), { headers: auth });
+      if (seq !== _dmMenuSyncSeq) return; // 더 최근 토글이 있었음 — 이 GET 결과 폐기(중복 PUT 방지)
+      const menu = await res.json().catch(() => null);
+      if (!menu || typeof menu !== 'object' || !Array.isArray(menu.items)) {
+        throw new Error('메뉴를 불러오지 못했어요');
+      }
+      menu.enabled = !!on; // enabled 만 변경, items/greeting/ice_breakers 는 GET 결과 그대로 동봉
+      const put = await window.apiFetch(window.apiUrl('/shop/dm-menu'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...auth },
+        body: JSON.stringify(menu),
+      });
+      if (seq !== _dmMenuSyncSeq) return; // PUT 도중 또 토글됨 — 최신 sync 가 정정하므로 이 결과 무시
+      if (!put.ok) throw new Error('HTTP ' + put.status);
+    } catch (_e) {
+      if (seq !== _dmMenuSyncSeq) return; // stale — 최신 토글이 상태 소유, 롤백하지 않음
+      // 실패 → 화면 상태 롤백
+      _menu.enabled = !on;
+      _render();
+      _toast('인스타DM 손님 응대 ' + (on ? '켜기' : '끄기') + ' 실패 — 다시 시도해주세요');
     }
   }
 

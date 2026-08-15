@@ -2328,8 +2328,8 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
       'customer-dm': () => callFirst(['openDMConfirmQueue', 'openDMConversations']),
       'revenue': () => callFirst(['openRevenue', 'openRevenueHub']),
       'service-templates': () => call('openServiceTemplates'),
-      // [2026-08-16] 인스타DM — app-dm-hub.js(별도 작업)의 openDmHub 반입 전까지 openAiHub 폴백 유지.
-      'insta-dm': () => callFirst(['openDmHub', 'openAiHub']),
+      // [2026-08-16] 인스타DM 화면 3개→1개 통합 — app-dm-menu.js '인스타DM 손님 응대' 직결.
+      'insta-dm': () => call('openDMMenuSettings'),
       // 인스타 댓글 — app-comment-reply-queue.js 는 lazy(extras). 로드 보장 후 호출
       //   (js/home/v41-actions.js openCommentQueue 와 같은 패턴).
       'insta-comment': () => {
@@ -2575,10 +2575,7 @@ window._lazyImgly = function _lazyImgly() {
 <!-- [P1-B 2026-06-09] 외부 가격표·홍보물 이미지 OCR → 우리 editable 템플릿 재구성 (/templates/extract-ocr) -->
 <!-- [2026-04-30] 챗봇 영구 메모 + 사장님 프로필 (A1+A4) -->
 <!-- [2026-04-30] 스마트 캡처 — 카톡 자동 임포트 (E3) + 명함 OCR (E4) -->
-<!-- [2026-04-30] AI 자동화 허브 — 사진편집/캡션/해시태그 중심 -->
-<script src="app-ai-hub.js?v=local-151154" defer></script>
-<!-- [2026-08-16] 인스타DM 허브 — 별도 작업에서 반입 예정(현재 404 예상, defer 라 무해). openDmHub 노출 -->
-<script src="app-dm-hub.js?v=local-151154" defer></script>
+<!-- [2026-08-16] AI 허브·DM 오버뷰 파일 삭제 — 인스타DM 화면 3개→1개(app-dm-menu.js) 통합 -->
 <!-- [2026-04-30] 설정 · 연동 허브 — 샵정보/네이버/백업/실패/앱설정 통합 -->
 <script src="app-settings-hub.js?v=local-151154" defer></script>
 <!-- [2026-06-16] 연동관리 허브 — 인스타/네이버 톡톡/카톡 연동 분리 -->

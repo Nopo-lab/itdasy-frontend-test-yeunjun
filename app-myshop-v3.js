@@ -1,6 +1,6 @@
 /* 내샵관리 v3 렌더러 — 모바일 메인 + PC 사이드바·도넛·위젯·피드.
    SWR: 캐시 즉시 → 백그라운드 fetch. 데이터: /today/brief.
-   AI 허브 / 설정 허브 시트는 별도 (app-ai-hub.js / app-settings-hub.js).
+   설정 허브 시트는 별도 (app-settings-hub.js). 인스타DM 설정은 app-dm-menu.js(openDMMenuSettings).
    외부 anchor (#dashboardMetrics, .dashboard-topbar, #tab-ai-suggest) 손대지 않음.
    window.MyShopV3 = { render(containerId), refresh() } */
 (function () {
@@ -106,21 +106,8 @@
       return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     } catch (_e) { return ''; }
   }
-  function _automationOnCount() {
-    // 2026-05-01 ── ai-hub 와 동일 source 로 통일 — 이전엔 다른 키 보고 항상 0.
-    if (typeof window.aihGetOnCount === 'function') {
-      try { return window.aihGetOnCount(); } catch (_e) { /* fallback */ }
-    }
-    // 폴백: ai-hub 가 아직 안 로드됐을 때
-    let on = 1;  // 페르소나 학습됨 = 기본 1
-    try {
-      const v1 = localStorage.getItem('itdasy:aih:dm_enabled');
-      const v2 = localStorage.getItem('itdasy:aih:kakao_enabled');
-      if (v1 === null || v1 === 'true') on += 1;
-      if (v2 === null || v2 === 'true') on += 1;
-    } catch (_e) { /* ignore */ }
-    return on;
-  }
+  // [2026-08-16] _automationOnCount 삭제 — 세던 대상(옛 AI 허브의 로컬 토글)이 백엔드 동기화
+  //   없는 죽은 토글이었고 AI 허브 파일 자체가 폐기됨. '자동화 N/7' 위젯도 함께 제거.
 
   // ─────────── 헤더 (모바일) — v212 제거: 샵카드와 중복 ───────────
   function _renderHeader() {
@@ -143,6 +130,9 @@
             <div class="ms-shop__name">${_esc(shop)}</div>
             <div class="ms-shop__plan">${_esc(_planText())}</div>
           </div>
+          <button type="button" class="ms-shop__edit" data-mv-act="toneReport" aria-label="내 말투 리포트" style="margin-right:6px;">
+            <i class="ph-duotone ph-chart-bar" style="font-size:14px" aria-hidden="true"></i>
+          </button>
           <button type="button" class="ms-shop__edit" data-mv-act="editShop" aria-label="샵 정보 편집">
             <i class="ph-duotone ph-pencil-simple" style="font-size:14px" aria-hidden="true"></i>
           </button>
@@ -398,7 +388,6 @@
     // TODO[v1.5]: 회원권 만료 카운트 — brief.membership_expiring_30d 백엔드 응답 확인 필요
     const atRiskN = brief && Array.isArray(brief.at_risk) ? brief.at_risk.length :
                     (brief && typeof brief.at_risk_count === 'number' ? brief.at_risk_count : 0);
-    const automationOn = _automationOnCount();
     return `
       <div class="ms-widgets">
         <button type="button" class="ms-widget" data-mv-act="booking">
@@ -415,11 +404,6 @@
           <div class="ms-widget__label">이탈 위험</div>
           <div class="ms-widget__value is-amber">${atRiskN}명</div>
           <div class="ms-widget__meta">90일+ 미방문</div>
-        </button>
-        <button type="button" class="ms-widget" data-mv-act="dmHub">
-          <div class="ms-widget__label">인스타DM</div>
-          <div class="ms-widget__value is-ok">${automationOn}/7</div>
-          <div class="ms-widget__meta">DM · 카톡 · 페르소나 외</div>
         </button>
       </div>
     `;
@@ -482,9 +466,8 @@
       revenue:        () => (window.openRevenue || window.openRevenueHub)?.(),
       integrations:   () => window.openIntegrationsHub && window.openIntegrationsHub(),
       /* INVENTORY_HIDDEN */ // inventory:      () => window.openInventoryHub && window.openInventoryHub(),
-      // [2026-08-16] 인스타DM — app-dm-hub.js(별도 작업)가 openDmHub 를 내놓기 전까지
-      //   openAiHub 폴백이 임시 다리. dm-hub 반입 전에는 이 폴백을 지우지 말 것.
-      dmHub:          () => (window.openDmHub || window.openAiHub || (() => {}))(),
+      // [2026-08-16] 인스타DM 화면 3개→1개 통합 — app-dm-menu.js '인스타DM 손님 응대' 직결.
+      dmHub:          () => window.openDMMenuSettings && window.openDMMenuSettings(),
       // 인스타 댓글 — app-comment-reply-queue.js 는 lazy(extras). 로드 보장 후 호출
       //   (js/home/v41-actions.js openCommentQueue 와 같은 패턴).
       comment:        () => {
@@ -503,7 +486,9 @@
       logout:         () => (window.logout || (() => {}))(),
       bell:           () => window.openNotifications && window.openNotifications(),
       editShop:       () => window.openShopSettings && window.openShopSettings(),
-      createShortcut: () => (window.openDmHub || window.openAiHub || (() => {}))(),
+      // [2026-08-16] 내 말투 리포트 — 삭제된 ai-hub '내 말투' 행의 유일한 입구를 샵 카드로 이전.
+      toneReport:     () => window.showDetailedAnalysis && window.showDetailedAnalysis(),
+      createShortcut: () => window.openDMMenuSettings && window.openDMMenuSettings(),
       goHome: () => {
         if (typeof window.showTab === 'function') {
           const btn = document.querySelector('.tab-bar__btn[data-tab="home"]');

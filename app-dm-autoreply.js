@@ -1113,7 +1113,7 @@
       if (typeof window.openDMMenuSettings === 'function') {
         window.openDMMenuSettings('BOOK_FORM');
       } else {
-        _toast('빠른 안내에서 예약 양식을 만들어주세요');
+        _toast('인스타DM 손님 응대에서 예약 양식을 만들어주세요');
       }
     });
     card.querySelector('[data-act="reject"]')?.addEventListener('click', () => _handleReject(card));

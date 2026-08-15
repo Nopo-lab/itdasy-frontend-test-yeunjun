@@ -34,7 +34,7 @@
 | 템플릿·가격표·후기·전후 | `js/photo-editor/template-*`, `js/assistant/core/template-*` | `templates.py`, `services/*_ocr.py` |
 | 임포트·OCR(명함·영수증·가격표) | `app-import*.js`, `app-receipt-scan.js`, `app-smart-capture.js` | `imports.py`, `smart_import.py`, `services/*_ocr.py` |
 | 재고·회원권 | `app-inventory*.js`, `app-membership.js` | `inventory.py`, `memberships.py`, `services.py` |
-| 자동화 규칙·리포트 | `app-ai-hub.js`, `app-report.js`, `app-killer-widgets.js` | `automation.py`, `reports.py`, `campaigns.py` |
+| 자동화 규칙·리포트 | `app-report.js`, `app-killer-widgets.js` (AI 허브 파일은 2026-08-16 삭제 — 인스타DM 설정은 `app-dm-menu.js`) | `automation.py`, `reports.py`, `campaigns.py` |
 | 결제·구독 | `app-billing.js`, `app-plan.js`, **`app-iap.js`** | `subscription.py`, `billing.py`, `iap.py` |
 | 알림·푸시 | `app-notifications.js`, `app-push.js` | `notifications.py`, `push.py`, `push_sender.py` |
 | 심사·컴플라이언스 | `app-content-report.js`, `app-cookie-consent.js`, `app-data-export.js` | `moderation.py`, `data_export.py`, `medical_ad_guard.py` |
@@ -100,7 +100,7 @@
 - **js/home/v41-renderers.js**(618)·**v41-actions.js**(117)·**v41-styles.js**(4)·**app-home-v41-config.js**(29) — 홈 렌더/액션/스타일/설정.
 - **app-home-customer-msgs.js** (346) — 홈 "고객 메시지" 카드줄. `/dm-confirm-queue`(pending) 소스, 탭→DM 포커스.
 - **app-today-brief.js**(353)·**app-today-morning.js**(280)·**app-ai-suggestions.js**(85) — 오늘 집중/모닝브리핑/할일3개.
-- **app-myshop-v3.js**(645)·**app-dashboard.js**(564)·**app-insights.js**(485) — 내샵관리 v3 / 대시보드 / AI 인사이트. [2026-08-16] 메뉴 3섹션 8줄 개편: 운영 관리(예약/고객/매출)·손님 문의(인스타DM=`dmHub`→openDmHub∥openAiHub 폴백, 인스타 댓글=`comment`→openCommentReplyQueue extras 보장로드)·내 정보(연동/내 샵 정보/내 요금제). "통합 허브"·`aiHub` 액트 폐지(app-ai-hub.js 파일·태그는 유지, 진입로만 끊음). index.html aside/drawer-nav + app-drawer.js(`insta_dm`/`insta_comment`/`plan`) + app-side-nav-unifier.js(`insta-dm`/`insta-comment` 매핑) 동일 개편.
+- **app-myshop-v3.js**(645)·**app-dashboard.js**(564)·**app-insights.js**(485) — 내샵관리 v3 / 대시보드 / AI 인사이트. [2026-08-16] 메뉴 3섹션 8줄 개편: 운영 관리(예약/고객/매출)·손님 문의(인스타DM=`dmHub`→openDMMenuSettings 직결, 인스타 댓글=`comment`→openCommentReplyQueue extras 보장로드)·내 정보(연동/내 샵 정보/내 요금제). "통합 허브"·`aiHub` 액트 폐지. [2026-08-16] AI 허브·DM 오버뷰 파일 삭제 — 인스타DM 화면 1개(`app-dm-menu.js`)로 통합, '내 말투' 리포트 진입은 샵 카드 `toneReport` 버튼(showDetailedAnalysis), '자동화 N/7' 위젯 제거. index.html aside/drawer-nav + app-drawer.js(`insta_dm`/`insta_comment`/`plan`) + app-side-nav-unifier.js(`insta-dm`/`insta-comment` 매핑) 동일 개편.
 
 ### 매출
 - **app-revenue.js** (1183) — 매출관리 v5 메인 + period 디스패처. `openRevenue/window.Revenue`, CRUD·빠른추가·도넛.
@@ -136,7 +136,7 @@
 - **app-birthday.js** (164) — 생일/기념일 자동감지. **app-photo-match.js**(162) EXIF 고객매핑. **app-retention-ai.js**(340) 이탈위험 고객. **app-review.js**(199) 리뷰요청. **app-waitlist.js**(149) 대기자.
 
 ### DM·SNS·연동 (FE)
-- **app-instagram.js** (1245) — 인스타 연동 & 말투분석. **[2026-07-30~31]** 연동 주소에서 **JWT 를 빼고 60초 1회용 티켓** 사용(전엔 Cloud Run 로그에 평문 노출) · 네이티브 앱에서 연동이 막히던 버그(PWA 가드가 네이티브 미인식) · `content_publish` 심사중이면 발행 버튼 대신 캡션 복사 안내(`:208`) · shopName 이스케이프. **app-dm-autoreply.js**(1541) AI DM 자동응답 v3. **app-dm-conversations.js**(650) DM 채팅방. **app-dm-confirm-queue.js**(821) 원장 confirm 큐. **app-dm-manual-replies.js**(479) 매뉴얼 멘트. **app-dm-menu.js**(489) 빠른안내(Quick Replies+Ice Breakers). **app-dm-booking-form.js**(185) DM 예약양식. **app-dm-settings-cache.js**(55).
+- **app-instagram.js** (1245) — 인스타 연동 & 말투분석. **[2026-07-30~31]** 연동 주소에서 **JWT 를 빼고 60초 1회용 티켓** 사용(전엔 Cloud Run 로그에 평문 노출) · 네이티브 앱에서 연동이 막히던 버그(PWA 가드가 네이티브 미인식) · `content_publish` 심사중이면 발행 버튼 대신 캡션 복사 안내(`:208`) · shopName 이스케이프. **app-dm-autoreply.js**(1541) AI DM 자동응답 v3. **app-dm-conversations.js**(650) DM 채팅방. **app-dm-confirm-queue.js**(821) 원장 confirm 큐. **app-dm-manual-replies.js**(479) 매뉴얼 멘트. **app-dm-menu.js**(560±) '인스타DM 손님 응대'(구 빠른안내, Quick Replies+Ice Breakers) — [2026-08-16] 마스터 on/off 토글+서버 동기화(_syncDmMenuEnabled) 내장, 인스타DM 유일 설정 화면. **app-dm-booking-form.js**(185) DM 예약양식. **app-dm-settings-cache.js**(55).
 - **app-naver-link.js**(207) 네이버 예약연동. **app-naver-talk-link.js**(219) 네이버 톡톡연동. **app-sns-hashtag.js**(198) 해시태그 매니저. **app-notifications.js**(**368** — [2026-07-27] 홈 인라인 알림 3종 죽은 코드 제거) 인앱 알림. **app-comment-reply-queue.js**(767) 댓글 문의 응대 큐.
 
 ### AI 비서(잇비) — FE
@@ -212,7 +212,7 @@
 - **app-inventory.js**(605)·**app-inventory-hub.js**(594) 재고. **app-growth-story.js**(189) 월간성장. **app-killer-widgets.js**(602) AI 킬러위젯. **app-auto-ba.js**(160)·**app-ba-auto-trigger.js**(169) 전후 자동감지.
 
 ### 허브·결제·설정
-- 허브: **app-ai-hub.js**(366, 자동화)·**app-customer-hub.js**(30)·**app-integrations-hub.js**(126)·**app-inventory-hub.js**(594)·**app-kakao-hub.js**(137, 알림톡 UI 스텁)·**app-settings-hub.js**(321). **js/hubs/prototype-render.js**(187).
+- 허브: **app-customer-hub.js**(30)·**app-integrations-hub.js**(126)·**app-inventory-hub.js**(594)·**app-kakao-hub.js**(137, 알림톡 UI 스텁)·**app-settings-hub.js**(321). **js/hubs/prototype-render.js**(187).
 - 결제: **app-billing.js**(150, PortOne — ⚠️`/billing/config.enabled=false` 라 **웹 결제는 현재 도달 불가**, 버튼이 "결제 준비 중" 으로 비활성)·**app-plan.js**(471, 월6,900원 단일멤버십 + **IAP 구매·복원 + 스토어/웹PG 해지 분기**)·**app-membership.js**(259, 회원권)·**app-iap.js**(225, StoreKit/Play Billing → 백엔드 영수증 교차검증).
   - **[2026-07-31~08-01 돈 P0]** 회원권 결제 시 **잔액이 안 빠지고 매출이 이중으로 잡히던 것**(`cb62ce7`) · `/billing` 재시도 금지로 **이중청구 차단**(`6a1cf3a`) · `membership` 을 유료 플랜으로 인식(`isPaidPlan`·구독 메타) · 가격 6,900원 단일 멤버십으로 문구 통일 + 무료체험 7일 통일.
 - 설정: **app-shop-settings.js**(460)·**app-backup.js**(224)·**app-support.js**(258)·**app-autocomplete.js**(58).
