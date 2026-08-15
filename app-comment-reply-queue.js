@@ -769,6 +769,7 @@
      레이트리밋·중복 위험) ④ 재시도 없음 ⑤ 낙관적 제거는 silent 로 모아서 마지막에 한 번만 렌더. */
   var _batchBusy = false;
   var _disabled = false;   // [2026-08-15] 서버가 '이 기능 꺼짐' 이라고 알려준 상태
+  var _igWaitTries = 0;    // 인스타 상태 도착 대기 재시도 횟수(무한루프 방지)
   function _sendBatch(ids, btn) {
     if (_batchBusy) return;
     var list = ids.map(function (id) { return ITEMS.find(function (x) { return x.id === id; }); })
@@ -799,6 +800,27 @@
   function _loadReal(silent) {
     var ig = window.WorkspaceAdapter && window.WorkspaceAdapter.instagram ? window.WorkspaceAdapter.instagram() : null;
     var connected = ig ? ig.connected : false;
+    /* [2026-08-15 실계정 실측] 인스타 상태가 **아직 안 온** 상태에서 큐를 열면 여기서 시드로 떨어졌다.
+       원장님 화면엔 진짜 댓글 대신 가짜 손님(민지·유나·수)이 진짜처럼 떠 있고, 30초 폴링이 돌아야
+       바뀐다. 실제로 실계정에서 예시 3건이 떠 있는 걸 봤다 — 본인이 단 댓글은 안 보이는데
+       모르는 사람 댓글이 3개 있는 셈이라 "이게 뭐야" 가 된다.
+       상태를 아직 모를 때(ig 자체가 없음)와 진짜로 연동 안 된 때(ig.connected === false)는 다르다.
+       모를 때는 시드로 단정하지 말고 로딩을 띄운 뒤 곧 다시 시도한다. */
+    if (!ig && window.apiFetch) {
+      // ⚠️ 재시도 전에 _loading 을 내려야 한다 — 아래 `if (_loading) return;` 가드에 막혀
+      //    상태가 도착해도 영영 안 불러온다(실측: 10초 내내 로딩만 돌았다).
+      if (!silent) {
+        _loading = true; _render();
+        if (_igWaitTries < 12) {          // 최대 ~15초. 그 뒤엔 아래 정상 분기(연동 안 됨)로 흘린다.
+          _igWaitTries += 1;
+          setTimeout(function () { _loading = false; _loadReal(false); }, 1200);
+          return;
+        }
+        _loading = false;                 // 오래 기다려도 안 오면 '연동 안 됨' 으로 처리
+      } else {
+        return;
+      }
+    }
     if (!connected || !window.apiFetch) { _realMode = false; if (!silent) ITEMS = SEED.slice(); return; }
     if (_loading) return;                 // 이미 불러오는 중이면 폴링 중복 방지
     if (!silent) { _loading = true; _render(); }   // silent(자동갱신)면 스켈레톤 안 띄움
@@ -811,6 +833,7 @@
         var arr = (j && j.items) || [];
         /* [2026-08-15] 원장님이 기능을 껐을 때 — 예전엔 이 분기가 없어서 0건 → **시드(예시) 폴백**으로
            빠졌다. 끄고 들어왔는데 가짜 손님(민지·서연…) 카드가 진짜처럼 떠 있는 셈이다. */
+        _igWaitTries = 0;
         if (j && j.disabled) { ITEMS = []; _realMode = true; _disabled = true; return; }
         _disabled = false;
         if (arr.length) {
