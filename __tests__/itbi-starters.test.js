@@ -117,10 +117,18 @@ describe('초기 추천질문 표시 조건', () => {
     expect(body).not.toMatch(/const show = !_history \|\| _history\.length === 0/);
   });
 
-  test('첫 질문 후 접히도록 렌더 훅에 연결돼 있다', () => {
+  test('첫 질문 후 접히도록 전송 지점에 연결돼 있다', () => {
     const src = read('app-assistant.js');
-    const i = src.indexOf('_renderHistoryImpl();');
-    expect(src.slice(i, i + 400)).toContain('_syncQuickSuggestVisibility()');
+    // 사용자 메시지를 push 하는 곳마다 바로 뒤에서 부른다
+    const pushes = src.match(/_history\.push\(\{ role: 'user', text: q \}\);\s*\n\s*try \{ _syncQuickSuggestVisibility/g) || [];
+    expect(pushes.length).toBeGreaterThan(0);
+  });
+
+  test('렌더 핫패스(_renderHistory RAF)에는 걸지 않는다', () => {
+    // 실측: 여기 걸었더니 메시지 렌더가 통째로 멈췄다(브리핑만 남고 질문·답변이 안 그려짐)
+    const src = read('app-assistant.js');
+    const i = src.indexOf('_lastRenderedSig = _historySig();');
+    expect(src.slice(i, i + 220)).not.toContain('_syncQuickSuggestVisibility');
   });
 
   test('매 프레임 재렌더를 막는 지문 가드가 있다', () => {

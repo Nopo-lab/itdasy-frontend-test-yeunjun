@@ -535,10 +535,6 @@
       _renderRafId = 0;
       _lastRenderedSig = _historySig();
       _renderHistoryImpl();
-      // [연준님 2026-08-16] 원장님이 첫 질문을 하면 초기 추천질문을 접는다.
-      //   예전엔 채팅방 열 때 딱 한 번만 판정해서, 질문한 뒤에도 초기칩이 남아 있었다.
-      //   내부에 지문 가드가 있어 상태가 그대로면 다시 안 그린다.
-      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }
     }, 0);
   }
   // assistant 메시지 한 개 → HTML. 캐시 가능하도록 분리.
@@ -2137,6 +2133,7 @@
       var result = M.handleReviewCard(q, ctx);
       _clearAssistantInput(input);
       _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
       if (!result) {
         _history.push({ role: 'assistant', text: '후기 카드를 넣지 못했어요. 사진을 먼저 선택하거나 다시 시도해 주세요.' });
         _renderHistory();
@@ -2345,6 +2342,7 @@
       if (!M || typeof M.detectBeforeAfterCard !== 'function' || !M.detectBeforeAfterCard(q)) return false;
       _clearAssistantInput(input);
       _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
       _openBeforeAfterCreate(q);   // [BA 동선] 사진 0/1/2장 분기 통일(빈 템플릿 금지)
       return true;
     } catch (e) {
@@ -2473,6 +2471,7 @@
       }
       _clearAssistantInput(input);
       _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
       if (payload.purpose === 'event') {
         // [§1] 일반 템플릿 메뉴가 아니라 이벤트 전용 카드 선택지를 채팅에 표시.
         await _pushEventCardChoices(q);
@@ -4138,6 +4137,7 @@
       if (!mod || typeof mod.detect !== 'function' || !mod.detect(q)) return false;
       _clearAssistantInput(input);
       _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
       _history.push({ role: 'loading', text: '' });
       _renderHistory();
       let res;
@@ -4176,6 +4176,7 @@
       if (!result) return false;
       _clearAssistantInput(input);
       _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
       if (result.kind === 'message') {
         _history.push({ role: 'assistant', text: result.text });
         _renderHistory();
@@ -4226,6 +4227,7 @@
       if (!res || !res.message) return false;
       _clearAssistantInput(input);
       _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
       _history.push({ role: 'assistant', text: res.message, hub_actions: Array.isArray(res.hubActions) ? res.hubActions : [] });
       _renderHistory();
       return true;
@@ -4268,6 +4270,7 @@
         if (!_ph.length) return false;
         _clearAssistantInput(input);
         _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
         _history.push({ role: 'assistant', text: '가격표로 만들 수 있는 시술명과 가격을 찾지 못했어요. 가격이 함께 보이는 이미지를 올려 주세요.' });
         _renderHistory();
         return true;
@@ -4340,6 +4343,7 @@
         if (dm) {
           _clearAssistantInput(input);
           _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
           if (dm.__card) { _armBookingDraftFromResult(dm.__card); _pushBookingResult(dm.__card); }
           else _history.push(Object.assign({ role: 'assistant' }, dm));
           _renderHistory();
@@ -4348,6 +4352,7 @@
       }
       _clearAssistantInput(input);
       _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
       _pushBookingResult(result);
       _armBookingDraftFromResult(result);
       _renderHistory();
@@ -4366,6 +4371,7 @@
       if (!r) return false;   // 양보 → 기존 라우팅이 처리
       _clearAssistantInput(input);
       _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
       if (r.__card) { _armBookingDraftFromResult(r.__card); _pushBookingResult(r.__card); }
       else _history.push(Object.assign({ role: 'assistant' }, r));
       _renderHistory();
@@ -4379,6 +4385,7 @@
       if (!rule) return false;
       _clearAssistantInput(input);
       _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
       _history.push({ role: 'loading', text: '' });
       _renderHistory();
       await _runAsyncIntentRule(rule);
@@ -4799,6 +4806,7 @@
       _sendInFlight = true;
       _clearAssistantInput(input);
       _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
       _renderHistory();
       let res = null;
       try { res = await window.ItbiMemoryIntent.handle(q); }
@@ -4820,6 +4828,7 @@
       _sendInFlight = true;
       _clearAssistantInput(input);
       _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
       _renderHistory();
       let res = null;
       try { res = await window.ItbiSavedCardsIntent.handle(q); }
@@ -4881,6 +4890,7 @@
     try {
       _clearAssistantInput(input);
       _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
       _renderHistory();
       await _ensurePhotoGroup();
       const editorOpen = _isEditorOpen();
@@ -5020,6 +5030,7 @@
     try {
       _clearAssistantInput(input);
       _history.push({ role: 'user', text: q });
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }   // 첫 질문 → 초기칩 접기
       _renderHistory();
       try { if (window.AppLoader && !window.AppLoader.loaded('photo')) await window.AppLoader.ensure('photo'); } catch (_l) { void _l; }
       const p = c.purpose;
@@ -5515,6 +5526,9 @@
     }, 1000);
   }
 
+  // 초기 추천질문(빈 채팅방 칩)의 표시/갱신 단일 진입점.
+  //   호출 지점: 채팅방 open · starters 응답 도착 · 사용자가 질문을 보낸 직후.
+  //   ⚠️ _renderHistory 의 RAF 콜백에 걸지 말 것 — 실측에서 메시지 렌더가 통째로 멈췄다.
   function _syncQuickSuggestVisibility() {
     try {
       const ql = document.getElementById('asstQuickLabel');
