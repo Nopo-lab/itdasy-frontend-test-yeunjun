@@ -818,12 +818,15 @@
       성과 오버레이가 홈 위에 떠 있었으므로 홈 DOM 은 뒤에 그대로 있다. 없으면 토스트로 안내. */
   function _startNewPost(slot) {
     // [v779 보스] '이 스타일로 또 만들기' — 그 게시물의 꾸밈(선·도형·스티커·텍스트·폰트·색·위치)을
-    //   작업 기억으로 붙잡아 기본 스타일로 지정한다. 예전엔 슬롯을 안 넘겨 그 게시물 스타일이
+    //   작업 기억으로 붙잡아 다음 글에 적용한다. 예전엔 슬롯을 안 넘겨 그 게시물 스타일이
     //   통째로 유실되고, 오직 전역 ★기본에만 의존했다(적용 안 되던 원인).
+    // [T2 2026-08-17] setDefault → applyOnce: 예전엔 원장이 명시로 고른 ★기본을 조용히 덮어쳤다(소유권 위반).
+    //   이제 ★는 원장 명시 조작 전용이고, 여긴 '다음 글 1회 적용'만. 발행이 아니므로 publish 카운트도 안 셈.
     try {
       if (slot && window.WorkMemory && window.WorkMemory.captureFromSlot) {
-        var _rec = window.WorkMemory.captureFromSlot(slot, null);
-        if (_rec && _rec.id && window.WorkMemory.setDefault) window.WorkMemory.setDefault(_rec.id);
+        var _rec = window.WorkMemory.captureFromSlot(slot, null, { publish: false });
+        if (_rec && _rec.id && window.WorkMemory.applyOnce) window.WorkMemory.applyOnce(_rec.id);
+        else if (_rec && _rec.id && window.WorkMemory.setDefault) window.WorkMemory.setDefault(_rec.id);   // 구 WM 캐시 폴백
         else if (!_rec) toast('이 글엔 재사용할 꾸밈(글씨·스티커 등)이 없어요');
       }
     } catch (_e) { void _e; }

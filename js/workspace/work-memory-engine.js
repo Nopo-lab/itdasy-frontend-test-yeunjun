@@ -82,10 +82,21 @@
     if (o.orch && o.orch.useRecentStyle && WM.getDefault && WM.toEditState) {
       try {
         var rec = WM.getDefault();
-        if (rec) wm = WM.toEditState(rec, { incoming: (o.orch.wantsText ? [] : (o.incoming || [])), photoCount: o.photoCount, layersOnly: !!o.layersOnly });
+        if (rec) {
+          wm = WM.toEditState(rec, { incoming: (o.orch.wantsText ? [] : (o.incoming || [])), photoCount: o.photoCount, layersOnly: !!o.layersOnly });
+          // [T2'] 잇비 경로도 '편집기에 얹힘' — 의미에 맞게 applied 를 센다.
+          if (wm && WM.markApplied) WM.markApplied(rec.id);
+        }
       } catch (_we) { wm = null; void _we; }
     }
-    if (!wm && WM.defaultEditState) wm = WM.defaultEditState({ incoming: o.incoming || [], photoCount: o.photoCount, layersOnly: !!o.layersOnly });
+    if (!wm && WM.resolveDefault) {
+      // [T2'] resolveDefault = 순수 조회 + rec 반환. 실제 편집기에 얹힐 때만 markApplied —
+      //   헤드리스(decorateLayers→defaultEditState)는 안 세므로 캡션 화면 왕복이 카운트를 못 부풀린다.
+      var r = WM.resolveDefault({ incoming: o.incoming || [], photoCount: o.photoCount, layersOnly: !!o.layersOnly });
+      if (r) { wm = r.state; if (WM.markApplied) WM.markApplied(r.rec.id); }
+    } else if (!wm && WM.defaultEditState) {
+      wm = WM.defaultEditState({ incoming: o.incoming || [], photoCount: o.photoCount, layersOnly: !!o.layersOnly });   // 구 WM 캐시 폴백
+    }
     return wm;
   }
 
