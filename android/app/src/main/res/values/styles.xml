@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
 
     <!--
       [2026-08-15 Capacitor 8 / targetSdk 36] edge-to-edge opt-out 을 **제거했다.**
@@ -32,10 +32,32 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <!--
+      [2026-08-15] 상태바 아이콘을 **어두운 색**으로. edge-to-edge 가 켜지면서 시스템바가 투명해졌는데
+      아이콘이 밝은 색으로 남아 밝은 앱 배경 위에서 안 보였다.
+
+      Android 15 에뮬 실측 (시계 영역 대비):
+        · targetSdk 34 (edge-to-edge 전) : 3.90:1  — 회색 띠 위 흰 글자, 읽힘
+        · Capacitor 8 / targetSdk 36     : 1.00:1  — 글자색과 배경색이 **완전히 동일**, 시계가 안 보임
+      즉 시계·와이파이·배터리가 Android 15+ 사용자 전원에게 안 보이는 상태였다.
+
+      `plugins.SystemBars.style = "LIGHT"` 는 문서상 "밝은 배경에 어두운 아이콘"이라 값 자체는 맞는데
+      실제로 적용되지 않았다(런타임 setStyle 호출 0건, cap sync 후 재빌드해도 1.00:1 그대로).
+      그래서 플러그인에 기대지 않고 **테마에서 직접** 지정한다 — 부팅 시점에 창이 만들어질 때 적용돼
+      웹뷰 로드 타이밍과 무관하다.
+
+      ⚠️ 이 테마에만 넣는다. 액티비티 선언 테마는 NoActionBarLaunch(스플래시, 배경 #1A0C10 어두움)이고
+         BridgeActivity.onCreate 가 setTheme(AppTheme_NoActionBar) 로 바꾼다
+         (node_modules/@capacitor/android/.../BridgeActivity.java:25). 스플래시까지 어두운 아이콘으로 만들면
+         이번엔 스플래시에서 안 보인다 — 어두운 배경엔 밝은 아이콘이 맞다.
+      ⚠️ edge-to-edge opt-out 과는 다른 것이다. 위 주석의 "되돌리지 말 것"에 걸리지 않는다.
+    -->
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
     </style>
 
 
