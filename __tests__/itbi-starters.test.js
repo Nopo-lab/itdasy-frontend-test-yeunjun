@@ -136,3 +136,32 @@ describe('초기 추천질문 표시 조건', () => {
     expect(src).toContain('_quickSuggestSig');
   });
 });
+
+describe('계정 전환 시 잇비 세션 리셋', () => {
+  test('assistant_session_id 가 계정 전환 purge 목록에 있다', () => {
+    // 없으면 로그아웃→다른 계정 로그인 후에도 이전 계정 session_id 가 남는다.
+    // 서버가 user_id 로 걸러 유출은 없지만 그 상태 자체가 틀렸고 실측에서 UI 가 꼬였다.
+    const src = read('app-core.js');
+    const m = src.match(/const _USER_KEY_EXACT = \[([\s\S]*?)\];/);
+    expect(m).toBeTruthy();
+    expect(m[1]).toContain('assistant_session_id');
+  });
+
+  test('잇비도 _resetIfUserChanged 로 메모리 상태를 버린다', () => {
+    // localStorage purge 는 requestIdleCallback 으로 미뤄서 돌기 때문에,
+    // 리로드 없는 계정 전환에서는 클로저 변수(_sessionId/_history)가 그대로 남는다.
+    const src = read('app-assistant.js');
+    const i = src.indexOf('function _resetIfUserChanged()');
+    expect(i).toBeGreaterThan(-1);
+    const body = src.slice(i, i + 700);
+    ['_sessionId = null', '_history = []', '_historyLoadedFromServer = false',
+      '_starters = null', "removeItem('assistant_session_id')"].forEach((frag) => {
+      expect(body).toContain(frag);
+    });
+  });
+
+  test('채팅방 열 때 가장 먼저 계정 변경을 확인한다', () => {
+    const src = read('app-assistant.js');
+    expect(src).toMatch(/_resetIfUserChanged\(\);[\s\S]{0,220}_loadStarters\(\);/);
+  });
+});

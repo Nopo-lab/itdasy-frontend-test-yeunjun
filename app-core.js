@@ -871,7 +871,11 @@ window._clearAllSWRCache = _clearAllSWRCache;
 //   새 토큰을 구분 못 하므로 user_id 기준으로 비교.
 // ──────────────────────────────────────────────
 const _USER_KEY_PREFIXES = ['itdasy_', 'itdasy:', 'pv_cache::', 'persona_'];
-const _USER_KEY_EXACT = ['last_login_email', 'user_oauth_provider', 'last_user_id', 'shop_id'];
+// [연준님 2026-08-16] assistant_session_id 추가 — prefix 어디에도 안 걸려 계정 전환 후에도
+//   이전 계정의 잇비 세션 id 가 그대로 남았다. 서버가 user_id 로 걸러 유출은 없지만,
+//   그 상태 자체가 틀렸고 실측에서 UI 가 꼬였다(대화가 없는데 초기 추천칩이 숨겨짐).
+const _USER_KEY_EXACT = ['last_login_email', 'user_oauth_provider', 'last_user_id', 'shop_id',
+  'assistant_session_id'];
 // [2026-05-07 26차] user 변경 시 보존 키는 "디바이스 단위 UI 설정"만.
 // shop_* / onboarding_done 은 user 데이터 → 제거.
 // 잘못 보존되면 다른 user 로그인 시 옛 매장명/온보딩 상태가 남는다 (출시 블로커).

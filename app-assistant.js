@@ -142,6 +142,27 @@
   try { _sessionId = parseInt(localStorage.getItem('assistant_session_id') || '', 10) || null; }
   catch (_e) { _sessionId = null; }
 
+  // [연준님 2026-08-16] 계정이 바뀌면 잇비 대화 상태를 버린다 (app-plan.js _resetIfUserChanged 와 같은 원칙).
+  //   app-core 의 _purgeUserScopedStorage 가 localStorage 는 지우지만 **requestIdleCallback 으로 미뤄서**
+  //   돌고, 리로드 없는 계정 전환(토큰 만료 후 다른 계정 로그인)에서는 **이 클로저 변수들이 그대로 남는다**.
+  //   그러면 이전 원장의 session_id 로 서버에 물어보게 된다 — 서버가 user_id 로 걸러 유출은 없지만,
+  //   대화가 안 이어지고 UI 가 꼬인다(실측: 대화 0건인데 초기 추천칩이 숨겨짐).
+  let _lastSeenUid = (() => { try { return localStorage.getItem('last_user_id'); } catch (_e) { return null; } })();
+  function _resetIfUserChanged() {
+    let uid = null;
+    try { uid = localStorage.getItem('last_user_id'); } catch (_e) { uid = null; }
+    if (uid === _lastSeenUid) return;
+    _lastSeenUid = uid;                     // 먼저 갱신 — 아래 경로가 다시 들어와도 재귀 안 함
+    _sessionId = null;
+    _history = [];
+    _historyLoadedFromServer = false;
+    _starters = null;
+    _startersAt = 0;
+    _quickSuggestSig = '';
+    _lastRenderedSig = '';
+    try { localStorage.removeItem('assistant_session_id'); } catch (_e) { void _e; }
+  }
+
   // [2026-04-26 백그라운드 픽스] in-flight 메시지 직렬화 / 미확인 답변 알림
   // 사진 업로드·답변 대기 중에 챗봇 닫고 딴 일 해도, 다시 열었을 때 보낸 내역과 답변이 보이도록.
   const PENDING_KEY = 'chat_pending';
@@ -5440,6 +5461,8 @@
     // [2026-08-16] 오늘의 브리핑 주입 (백그라운드 — local_only 라 서버 머지에도 생존)
     _briefingReadyP = _injectDailyBriefing();
     // [2026-04-29 F1] 능동 제안 carousel — chat 입력창 위
+    // [연준님 2026-08-16] 계정이 바뀌었으면 이전 원장 대화 상태부터 버린다(가장 먼저).
+    _resetIfUserChanged();
     _loadProactiveSuggestions();
     // [연준님 2026-08-15 · A] 계정 상태 기반 초기 추천질문 (LLM 0회, 1분 캐시)
     _loadStarters();
