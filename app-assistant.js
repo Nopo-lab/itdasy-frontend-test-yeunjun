@@ -31,6 +31,7 @@
     '단골 누구야?',
   ];
   let _starters = null;          // 서버가 준 초기 추천질문 (null = 아직 못 받음)
+  let _quickSuggestSig = '';     // 초기칩 재렌더 방지(표시상태+목록 지문)
   let _startersAt = 0;
 
   async function _loadStarters() {
@@ -534,6 +535,10 @@
       _renderRafId = 0;
       _lastRenderedSig = _historySig();
       _renderHistoryImpl();
+      // [연준님 2026-08-16] 원장님이 첫 질문을 하면 초기 추천질문을 접는다.
+      //   예전엔 채팅방 열 때 딱 한 번만 판정해서, 질문한 뒤에도 초기칩이 남아 있었다.
+      //   내부에 지문 가드가 있어 상태가 그대로면 다시 안 그린다.
+      try { _syncQuickSuggestVisibility(); } catch (_e) { void _e; }
     }, 0);
   }
   // assistant 메시지 한 개 → HTML. 캐시 가능하도록 분리.
@@ -5515,12 +5520,23 @@
       const ql = document.getElementById('asstQuickLabel');
       const qs = document.getElementById('asstSuggest');
       if (!ql || !qs) return;
-      const show = !_history || _history.length === 0;
-      // [연준님 2026-08-15 · A] 보이기 직전에 최신 목록으로 갈아끼운다(서버값 우선).
-      //   렌더는 _renderSuggest 한 곳으로만 — 두 갈래로 그리면 나중 것이 앞 것을 덮는다.
-      if (show) _renderSuggest();
-      ql.style.display = show ? '' : 'none';
-      qs.style.display = show ? 'flex' : 'none';
+      // [연준님 2026-08-16] 기준을 "메시지 0건" → **"원장님이 아직 아무것도 안 물어봄"** 으로.
+      //   채팅방을 열면 '오늘의 브리핑' 이 자동으로 올라온다(잇비가 스스로 올린 것).
+      //   그걸 대화로 치는 바람에 _history.length > 0 이 되어 **초기 추천질문이 아예 안 떴다**
+      //   (실측: 신규 계정에서 display:none). 원장님 입장에선 "뭘 물어볼지" 안내가 제일 필요한
+      //   순간이 바로 그때다. 사용자가 한 마디라도 하면 그때 숨긴다.
+      const show = !_history || !_history.some(m => m && m.role === 'user');
+      // 상태·목록이 그대로면 다시 그리지 않는다 — _renderHistory 마다 innerHTML 을 새로 쓰면
+      //   칩이 깜빡이고 스크롤이 튄다(매 프레임 호출되는 경로라 반드시 필요).
+      const sig = show + '|' + (_starters || SUGGESTIONS).join('§');
+      if (sig !== _quickSuggestSig) {
+        _quickSuggestSig = sig;
+        // 보이기 직전에 최신 목록으로 갈아끼운다(서버값 우선).
+        //   렌더는 _renderSuggest 한 곳으로만 — 두 갈래로 그리면 나중 것이 앞 것을 덮는다.
+        if (show) _renderSuggest();
+        ql.style.display = show ? '' : 'none';
+        qs.style.display = show ? 'flex' : 'none';
+      }
     } catch (_e) { void _e; }
   }
 

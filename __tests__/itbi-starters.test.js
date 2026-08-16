@@ -105,3 +105,26 @@ describe('초기 추천질문 렌더 경로 단일화', () => {
     expect(src.slice(i, i + 320)).toContain('_starters || SUGGESTIONS');
   });
 });
+
+describe('초기 추천질문 표시 조건', () => {
+  test('"메시지 0건" 이 아니라 "사용자 질문 0건" 으로 판정한다', () => {
+    // 채팅방을 열면 '오늘의 브리핑' 이 자동으로 올라온다. 그걸 대화로 치는 바람에
+    // 신규 계정에서 초기칩이 아예 안 떴다(실측: display:none).
+    const src = read('app-assistant.js');
+    const i = src.indexOf('function _syncQuickSuggestVisibility');
+    const body = src.slice(i, i + 1400);
+    expect(body).toContain("m.role === 'user'");
+    expect(body).not.toMatch(/const show = !_history \|\| _history\.length === 0/);
+  });
+
+  test('첫 질문 후 접히도록 렌더 훅에 연결돼 있다', () => {
+    const src = read('app-assistant.js');
+    const i = src.indexOf('_renderHistoryImpl();');
+    expect(src.slice(i, i + 400)).toContain('_syncQuickSuggestVisibility()');
+  });
+
+  test('매 프레임 재렌더를 막는 지문 가드가 있다', () => {
+    const src = read('app-assistant.js');
+    expect(src).toContain('_quickSuggestSig');
+  });
+});
