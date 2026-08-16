@@ -10,6 +10,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/workspace/blob-url.js?v=local-151154',
   'js/workspace/shop-style.js?v=local-151154',
   'js/workspace/work-memory.js?v=local-151154',
+  'js/workspace/work-memory-engine.js?v=local-151154',
   'js/itd-editor/data/itd-decos.js?v=local-151154',
   // [2026-07-23] 아이콘 스티커 세트 — itd-editor.js 보다 **먼저** 실려야 STK_TABS 가 탭을 만든다.
   'js/itd-editor/data/itd-icon-stickers.js?v=local-151154',

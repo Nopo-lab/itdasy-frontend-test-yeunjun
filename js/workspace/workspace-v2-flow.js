@@ -422,13 +422,10 @@
     // [v779 보스] '이 스타일로 또'로 지정한 작업 기억(선·도형·스티커·글씨 등)도 결과 사진에 자동으로 굽는다.
     //   예전엔 사진편집을 열어야만 보였다. 편집기와 같은 병합 규칙 — role 겹치는 텍스트만 제외(이번 글 문구 보호),
     //   role 없는 꾸밈(선/스티커)은 얹는다. 편집기는 굽기 전 원판(_autoBase)을 열어 이중으로 안 구워진다.
+    // [T1 엔진 2026-08-17] role 중복 제거를 자체 재구현하던 것 → 편집기와 같은 병합 규칙(work-memory-engine)으로.
     try {
-      var _wm = (window.WorkMemory && window.WorkMemory.defaultEditState)
-        ? window.WorkMemory.defaultEditState({ incoming: layers, photoCount: (editablePhotos() || []).length, layersOnly: true }) : null;
-      if (_wm && _wm.layers && _wm.layers.length) {
-        var _have = {}; layers.forEach(function (L) { if (L && L.role) _have[L.role] = 1; });
-        layers = layers.concat(_wm.layers.filter(function (L) { return !(L && L.role && _have[L.role]); }));
-      }
+      layers = (window.WorkMemoryEngine && window.WorkMemoryEngine.decorateLayers)
+        ? window.WorkMemoryEngine.decorateLayers(layers, { photoCount: (editablePhotos() || []).length }) : layers;
     } catch (_wmE) { void _wmE; }
     if (!layers.length) return;
     // 텍스트·자리·크기만으로 지문 — 로고 dataUrl 은 넣지 않는다(길이만 커지고 판별력은 role/좌표로 충분).
@@ -440,11 +437,9 @@
     //   원장 요청: 여러 장 게시할 때 모든 사진에 시술내용이 박히지 않게 — 첫 장만 자동 텍스트,
     //   나머지 장은 원장이 직접(위치/크기는 편집기서). 로고·워터마크·라인·스티커·작업기억 꾸밈은
     //   역할이 시술내용이 아니므로 전 장 그대로 유지된다.
-    var SERVICE_TEXT_ROLES = { title: 1, sub: 1, hashtag: 1 };
+    // [T1 엔진 2026-08-17] 규칙 본체는 work-memory-engine.js — 편집기 경로(_openStoryEditor)와 한 몸.
     function _stripServiceText(ls) {
-      return ls.filter(function (L) {
-        return !(L && SERVICE_TEXT_ROLES[L.role] && (L.type === 'text' || L.type === 'badge' || L.type == null));
-      });
+      return (window.WorkMemoryEngine && window.WorkMemoryEngine.stripServiceText) ? window.WorkMemoryEngine.stripServiceText(ls) : ls;
     }
     var jobs = outs.map(function (o, idx) {
       var _layersForO = (idx === 0) ? layers : _stripServiceText(layers);
@@ -501,16 +496,11 @@
     return curPhoto();
   }
   /* [2026-07-17] 레이아웃(콜라주) editState + ★기본 작업 기억의 꾸밈 합치기.
-     레이아웃은 칸 배치(layoutIdx·photos·layoutOrder)의 주인이고, 기억은 그 위에 얹는 꾸밈의 주인이다.
-     같은 role 을 둘 다 갖고 있으면 레이아웃 것을 남긴다 — 이번 글의 문구가 지난 글 문구로 되돌아가면 안 되므로. */
+     [T1 엔진 2026-08-17] 규칙 본체는 work-memory-engine.js 로 이관 — 이 이름은
+       배선 테스트(work-memory-layout.test.js)가 잠근 호출부 계약이라 위임으로 유지. */
   function _mergeWmLayers(base, wm) {
-    if (!wm || !Array.isArray(wm.layers) || !wm.layers.length) return base;
-    if (!base) return wm;
-    var have = {};
-    (base.layers || []).forEach(function (l) { if (l && l.role) have[l.role] = 1; });
-    var add = wm.layers.filter(function (l) { return !(l && l.role && have[l.role]); });
-    if (!add.length) return base;
-    return Object.assign({}, base, { layers: (base.layers || []).concat(add) });
+    return (window.WorkMemoryEngine && window.WorkMemoryEngine.mergeEditState)
+      ? window.WorkMemoryEngine.mergeEditState(base, wm) : (base || wm || null);
   }
   function _openStoryEditor(o) {
     o = o || {};
@@ -560,9 +550,8 @@
       var _actP = _activeEditPhoto();
       var _pIdx = _actP ? _eps0.map(function (p) { return p && p.id; }).indexOf(_actP.id) : 0;
       if (_pIdx > 0) {
-        layers = layers.filter(function (L) {
-          return !(L && { title: 1, sub: 1, hashtag: 1 }[L.role] && (L.type === 'text' || L.type === 'badge' || L.type == null));
-        });
+        // [T1 엔진 2026-08-17] 발행 미리보기 bake(_autoComposeTemplate)와 같은 규칙을 엔진에서 — 한쪽만 고쳐 어긋나던 구조 제거.
+        layers = (window.WorkMemoryEngine && window.WorkMemoryEngine.stripServiceText) ? window.WorkMemoryEngine.stripServiceText(layers) : layers;
       }
     } catch (_svcE) { void _svcE; }
     // [2026-07-22 오케스트레이션] 잇비 브리핑(파싱)에서 온 텍스트·스티커 레이어. layers(신규편집) + editState.layers(콜라주 복원) 양쪽에 얹어야 함.
@@ -579,20 +568,11 @@
          원장이 스티커·글씨·도형을 ★기본으로 지정해도 새 글에서 아무것도 안 올라오던 원인.
        이제 레이아웃이 있어도 기억을 계산하되 layersOnly=true 로 '꾸밈만' 가져온다
          (칸 배치는 방금 고른 레이아웃이 소유 — 안 그러면 레이아웃이 기억에 덮여 사라진다). */
-    var _wmEd = null;
-    if (!_restore && window.WorkMemory) {
-      var _wmPhotoN = (editablePhotos() || []).length;
-      // [2026-07-22 원장 스타일] "최근 원장 작업으로" 브리핑이면 플래그(ITDASY_WORK_MEMORY)와 무관하게
-      //   ★기본 작업 기억(꾸밈/폰트/위치)을 base 로 적용. orch 가 텍스트를 주면 기억의 텍스트역할은 비워
-      //   중복 방지(incoming:[]) — 시술내용 텍스트는 orch 레이어가 소유.
-      if (d._orch && d._orch.useRecentStyle && window.WorkMemory.getDefault && window.WorkMemory.toEditState) {
-        try {
-          var _rec = window.WorkMemory.getDefault();
-          if (_rec) _wmEd = window.WorkMemory.toEditState(_rec, { incoming: (d._orch.wantsText ? [] : layers), photoCount: _wmPhotoN, layersOnly: !!_wsEd });
-        } catch (_we) { _wmEd = null; }
-      }
-      if (!_wmEd) _wmEd = window.WorkMemory.defaultEditState({ incoming: layers, photoCount: _wmPhotoN, layersOnly: !!_wsEd });
-    }
+    // [T1 엔진 2026-08-17] ★기본/잇비 지정 기억 계산은 work-memory-engine 으로 이관(경로 3곳 중복 제거).
+    //   restore(재편집 이어가기)면 안 얹고, 잇비 "평소 하던 대로"의 플래그 우회 규칙까지 엔진 소유.
+    var _wmEd = (window.WorkMemoryEngine && window.WorkMemoryEngine.forEditor)
+      ? window.WorkMemoryEngine.forEditor({ restore: !!_restore, orch: d._orch, incoming: layers, photoCount: (editablePhotos() || []).length, layersOnly: !!_wsEd })
+      : null;
     // [v590] 진입 시 올린 텍스트 역할 기록 — 저장 시 빠진 역할(사용자가 지움)을 스타일에서 비활성화하는 비교 기준.
     // [audit#3] 텍스트 역할 레이어는 type 필드가 없다(roleText 배치) — 'text'로만 필터하면 항상 빈 배열이라 '지운 레이어 기억' 기능이 죽어 있었음.
     d._editorOpenRoles = layers.filter(function (l) { return l.role && (l.type === 'text' || l.type == null); }).map(function (l) { return l.role; });
