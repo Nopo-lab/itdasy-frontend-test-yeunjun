@@ -405,9 +405,13 @@
       const kind = tg.getAttribute('data-tg');
       if (kind === 'master') {
         // [2026-08-16] 마스터 on/off — 화면 상태 즉시 반영 + 서버엔 enabled 만 동기화(아래 이관 함수).
-        _menu.enabled = !_menu.enabled;
-        _haptic(); _render();
-        _syncDmMenuEnabled(_menu.enabled);
+        // [2026-08-16] 켤 때만 승인을 받는다. 이 토글은 **손님에게 실제로 나가는** 유일한 스위치다
+        //   (버튼 탭 → 써둔 답이 그대로 발송). 끄는 건 안 묻는다 — 끄는 쪽은 언제나 안전하다.
+        const _next = !_menu.enabled;
+        _haptic();
+        const _apply = () => { _menu.enabled = _next; _render(); _syncDmMenuEnabled(_next); };
+        if (!_next) { _apply(); return; }
+        _askQuickReplyConsent(_apply);
         return;
       }
       if (kind === 'draft') {
@@ -566,6 +570,77 @@
   // ── B묶음 토글 백엔드 반영. ⚠️ POST /settings 는 부분 저장이 아니다 — 빠진 필드는 기본값으로 덮인다.
   //   반드시 GET 결과 전체를 동봉하고 enabled 만 바꾼다(_syncDmMenuEnabled 와 같은 규칙).
   let _aiSyncSeq = 0;
+  /* [2026-08-16] '바로 나가요' 켜기 전 승인 — confirm() 금지 규칙이라 직접 만든다.
+     문구는 실제 동작만 적는다(코드 대조 완료):
+       · 버튼 탭 → 써둔 답이 그대로 발송, LLM 안 거침(요금 X)
+       · {영업시간}·{주소}·{가격표} 는 저장된 값으로 치환 — 값이 없으면 그 자리가 빈다
+       · '상세문의' 는 확인 멘트만 보내고 원장 큐로 (자동 답 아님) */
+  function _askQuickReplyConsent(onOk) {
+    const prev = document.getElementById('dmmQrConsent');
+    if (prev) prev.remove();
+    const ov = document.createElement('div');
+    ov.id = 'dmmQrConsent';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:12000;display:flex;align-items:flex-end;justify-content:center;'
+      + 'background:rgba(0,0,0,.45);opacity:0;transition:opacity .18s ease;';
+    ov.innerHTML = `
+      <div role="dialog" aria-modal="true" aria-label="바로 나가요 켜기"
+           style="width:100%;max-width:460px;max-height:86vh;overflow-y:auto;background:#fff;border-radius:20px 20px 0 0;
+                  padding:22px 20px max(20px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+                  transform:translateY(14px);transition:transform .22s cubic-bezier(.32,.72,0,1);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#FEF3C7;color:#B45309;flex-shrink:0;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+          </span>
+          <strong style="font-size:17px;color:#191F28;letter-spacing:-.01em;">손님에게 바로 나가요</strong>
+        </div>
+        <p style="margin:0 0 13px;font-size:13.5px;color:#4E5968;line-height:1.6;">
+          켜시면 손님이 버튼을 누르는 순간 <b>사장님 확인 없이</b> 써두신 답이 그대로 나갑니다.
+        </p>
+        <div style="background:#F7F8FA;border-radius:14px;padding:12px 14px;margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:700;color:#6B7684;margin-bottom:7px;">보내기 전에 확인해 주세요</div>
+          <ul style="margin:0;padding-left:16px;font-size:12.5px;color:#4E5968;line-height:1.75;">
+            <li>영업시간 · 주소 · 가격표는 <b>저장된 값</b>이 자동으로 채워져요</li>
+            <li>아직 안 채운 값이 있으면 그 자리가 <b>비어서 나가요</b></li>
+            <li>‘상세문의’는 확인 멘트만 보내고 사장님께 넘어와요</li>
+          </ul>
+        </div>
+        <button type="button" data-qr="shop"
+          style="width:100%;padding:11px;border:1px solid #E6B9C2;background:#fff;color:#BC6675;font-weight:700;font-size:13px;border-radius:12px;cursor:pointer;font-family:inherit;margin-bottom:14px;">샵 정보 먼저 확인하기</button>
+        <p style="margin:0 0 16px;font-size:12.5px;color:#8B95A1;line-height:1.6;">
+          잇비가 글을 지어내지는 않아요. <b>써두신 문장만</b> 나가고, 언제든 끌 수 있어요.
+        </p>
+        <div style="display:flex;gap:8px;">
+          <button type="button" data-qr="no"
+            style="flex:1;padding:13px;border:1px solid #E5E8EB;background:#fff;color:#4E5968;font-weight:600;font-size:14px;border-radius:14px;cursor:pointer;font-family:inherit;">취소</button>
+          <button type="button" data-qr="yes"
+            style="flex:1.4;padding:13px;border:none;background:#191F28;color:#fff;font-weight:700;font-size:14px;border-radius:14px;cursor:pointer;font-family:inherit;">네, 바로 보낼게요</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => {
+      ov.style.opacity = '1';
+      const card = ov.firstElementChild;
+      if (card) card.style.transform = 'translateY(0)';
+    });
+    const close = () => {
+      ov.style.opacity = '0';
+      setTimeout(() => ov.remove(), 180);
+      if (typeof window._markSheetClosed === 'function') window._markSheetClosed('dmmQrConsent');
+    };
+    // 뒤로가기 등록 — 빠뜨리면 안드로이드에서 뒤로가기가 앱을 종료시킨다
+    if (typeof window._registerSheet === 'function') window._registerSheet('dmmQrConsent', close);
+    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('dmmQrConsent');
+    ov.addEventListener('click', (e) => {
+      if (e.target === ov) { close(); return; }            // 배경 탭 = 취소(안전한 쪽)
+      const b = e.target.closest('[data-qr]');
+      if (!b) return;
+      const v = b.getAttribute('data-qr');
+      if (v === 'shop') { close(); if (typeof window.openShopSettings === 'function') window.openShopSettings(); return; }
+      close();
+      if (v === 'yes') onOk();
+    });
+  }
+
   async function _syncAiDraftEnabled(on) {
     const seq = ++_aiSyncSeq;
     const auth = window.authHeader ? window.authHeader() : {};
