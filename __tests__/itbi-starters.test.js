@@ -89,3 +89,19 @@ describe('서버 후속칩(B) 렌더 배관', () => {
     expect(src).toContain('msg.related = data.related_questions');
   });
 });
+
+describe('초기 추천질문 렌더 경로 단일화', () => {
+  test('renderSuggest 를 부르는 곳은 _renderSuggest 하나뿐이다', () => {
+    // 두 갈래로 그리면 나중 호출이 앞 호출을 덮는다 —
+    // 실측: 서버가 4개를 주는데 _renderSuggest 가 폴백으로 되돌려 화면은 3개 고정이었다.
+    const src = read('app-assistant.js');
+    const calls = src.match(/_assistantSuggestionControls\.renderSuggest\(/g) || [];
+    expect(calls.length).toBe(1);
+  });
+
+  test('_renderSuggest 는 서버값(_starters)을 우선한다', () => {
+    const src = read('app-assistant.js');
+    const i = src.indexOf('function _renderSuggest()');
+    expect(src.slice(i, i + 320)).toContain('_starters || SUGGESTIONS');
+  });
+});

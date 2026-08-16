@@ -3133,10 +3133,13 @@
     c.innerHTML = '<button disabled style="flex:1;padding:11px;border:none;border-radius:10px;background:var(--surface-2);color:var(--text-muted);font-weight:600;font-size:13px;cursor:not-allowed;display:inline-flex;align-items:center;justify-content:center;gap:6px;">✓ 전체 완료</button>';
   }
 
+  // [연준님 2026-08-16] 초기 추천질문을 그리는 **단일 경로**. 예전엔 여기(폴백 고정)와
+  //   _syncQuickSuggestVisibility(서버값) 두 갈래라, 서버값을 그려놔도 이쪽이 나중에 돌면
+  //   폴백으로 되돌려버렸다(실측: 서버는 4개를 주는데 화면은 폴백 3개 고정).
+  //   서버값(_starters)이 있으면 그걸, 없으면 폴백을 쓴다 — 어느 쪽에서 불러도 결과가 같다.
   function _renderSuggest() {
-    if (typeof _assistantSuggestionControls.renderSuggest === 'function') {
-      _assistantSuggestionControls.renderSuggest({ suggestions: SUGGESTIONS });
-    }
+    if (typeof _assistantSuggestionControls.renderSuggest !== 'function') return;
+    _assistantSuggestionControls.renderSuggest({ suggestions: _starters || SUGGESTIONS });
   }
 
   // [2026-04-29 F1] 능동 제안 carousel — today/brief 의 proactive_suggestions 상단 노출
@@ -5513,11 +5516,9 @@
       const qs = document.getElementById('asstSuggest');
       if (!ql || !qs) return;
       const show = !_history || _history.length === 0;
-      // [연준님 2026-08-15 · A] 보이기 직전에 서버가 준 계정상태 기반 문구로 갈아끼운다.
-      //   (서버 응답 전이면 SUGGESTIONS 폴백이 이미 그려져 있다)
-      if (show && _starters && _assistantSuggestionControls) {
-        _assistantSuggestionControls.renderSuggest({ suggestions: _starters });
-      }
+      // [연준님 2026-08-15 · A] 보이기 직전에 최신 목록으로 갈아끼운다(서버값 우선).
+      //   렌더는 _renderSuggest 한 곳으로만 — 두 갈래로 그리면 나중 것이 앞 것을 덮는다.
+      if (show) _renderSuggest();
       ql.style.display = show ? '' : 'none';
       qs.style.display = show ? 'flex' : 'none';
     } catch (_e) { void _e; }
