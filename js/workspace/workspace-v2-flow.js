@@ -413,6 +413,14 @@
     if (!ids.length) return false;
     return (d.photos || []).some(function (p) { return p && p.storyEdited && ids.indexOf(p.id) >= 0; });
   }
+  /* [T3 2026-08-17] 기억 선택 ctx — 사진 수·시술명·전/후 역할 여부. 전후는 사진 수(2장)만으론
+     못 가려서 role 지정을 본다. 선택 규칙 본체는 work-memory-engine.js select() — flow 는 ctx 만 만든다. */
+  function _wmSelectCtx() {
+    var eps = editablePhotos() || [];
+    var hasB = false, hasA = false;
+    eps.forEach(function (p) { if (p && p.role === 'before') hasB = true; else if (p && p.role === 'after') hasA = true; });
+    return { photoCount: eps.length, service: (d && d.service) || '', hasBeforeAfter: hasB && hasA };
+  }
   function _autoComposeTemplate() {
     if (!(window.ItdEditor && window.ItdEditor.compose)) return;
     var outs = (d && d.templateOutputs) || [];
@@ -425,7 +433,7 @@
     // [T1 엔진 2026-08-17] role 중복 제거를 자체 재구현하던 것 → 편집기와 같은 병합 규칙(work-memory-engine)으로.
     try {
       layers = (window.WorkMemoryEngine && window.WorkMemoryEngine.decorateLayers)
-        ? window.WorkMemoryEngine.decorateLayers(layers, { photoCount: (editablePhotos() || []).length }) : layers;
+        ? window.WorkMemoryEngine.decorateLayers(layers, _wmSelectCtx()) : layers;
     } catch (_wmE) { void _wmE; }
     if (!layers.length) return;
     // 텍스트·자리·크기만으로 지문 — 로고 dataUrl 은 넣지 않는다(길이만 커지고 판별력은 role/좌표로 충분).
@@ -570,8 +578,9 @@
          (칸 배치는 방금 고른 레이아웃이 소유 — 안 그러면 레이아웃이 기억에 덮여 사라진다). */
     // [T1 엔진 2026-08-17] ★기본/잇비 지정 기억 계산은 work-memory-engine 으로 이관(경로 3곳 중복 제거).
     //   restore(재편집 이어가기)면 안 얹고, 잇비 "평소 하던 대로"의 플래그 우회 규칙까지 엔진 소유.
+    // [T3] once('이 스타일로 또') > auto(상황 스코어) > ★(auto OFF) — ctx 는 _wmSelectCtx 가 만든다.
     var _wmEd = (window.WorkMemoryEngine && window.WorkMemoryEngine.forEditor)
-      ? window.WorkMemoryEngine.forEditor({ restore: !!_restore, orch: d._orch, incoming: layers, photoCount: (editablePhotos() || []).length, layersOnly: !!_wsEd })
+      ? window.WorkMemoryEngine.forEditor(Object.assign({ restore: !!_restore, orch: d._orch, incoming: layers, layersOnly: !!_wsEd }, _wmSelectCtx()))
       : null;
     // [v590] 진입 시 올린 텍스트 역할 기록 — 저장 시 빠진 역할(사용자가 지움)을 스타일에서 비활성화하는 비교 기준.
     // [audit#3] 텍스트 역할 레이어는 type 필드가 없다(roleText 배치) — 'text'로만 필터하면 항상 빈 배열이라 '지운 레이어 기억' 기능이 죽어 있었음.

@@ -278,9 +278,13 @@ describe("[T2] applyOnce — '이 스타일로 또'가 ★를 덮어쓰지 않�
     expect(peek.layers.some((l) => l.emoji === '🌙')).toBe(true);          // 미리보기도 b (피크)
     const ed1 = E.forEditor({ restore: false, incoming: [], photoCount: 1, layersOnly: true });
     expect(ed1.layers.some((l) => l.emoji === '🌙')).toBe(true);           // 편집기 = b (소비)
+    expect(E._lastSelect.via).toBe('once');
+    // [T3 갱신] 소비 후엔 '강제'가 풀리고 자동 선택으로 돌아간다(★ 복귀가 아니라 상황 스코어).
+    //   어느 기억이 뽑히는지는 스코어 소관 — 여기선 once 가 더는 강제되지 않음만 잠근다.
     const ed2 = E.forEditor({ restore: false, incoming: [], photoCount: 1, layersOnly: true });
-    expect(ed2.layers.some((l) => l.emoji === '✨')).toBe(true);           // 다음 글 = ★(a) 복귀
-    expect(ed2.layers.some((l) => l.emoji === '🌙')).toBe(false);
+    expect(ed2).toBeTruthy();
+    expect(E._lastSelect.via).toBe('auto');                                // once 아님 = 1회 강제 종료
+    expect(WM.getDefaultId()).toBe(a.id);                                  // ★는 끝까지 a
   });
 });
 

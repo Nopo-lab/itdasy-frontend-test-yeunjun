@@ -227,6 +227,15 @@
     try { return (window.ShopStyle && window.ShopStyle.getActiveId && window.ShopStyle.getActiveId()) || null; }
     catch (_e) { return null; }
   }
+  // [T3] 게시물 성격 — 분류기는 엔진 소유(소프트 의존, 같은 로드그룹). 엔진이 없으면 unknown(보수적).
+  function _kindOf(state, service) {
+    try {
+      var E = window.WorkMemoryEngine;
+      if (!(E && E.classifyKind)) return 'unknown';
+      var texts = (state.layers || []).map(function (l) { return l && l.text; }).filter(Boolean);
+      return E.classifyKind(texts, service);
+    } catch (_e) { return 'unknown'; }
+  }
   function _shrinkLayer(l) {
     var c = Object.assign({}, l);
     if (c.type !== 'image' || typeof c.src !== 'string') return c;
@@ -293,6 +302,7 @@
         name: _makeName(state, (d && d.service) || (slot && slot.service), arr.map(function (r) { return r.name; })),
         createdAt: _now(), thumb: null,
         shopStyleId: _activeShopStyleId(),
+        kind: _kindOf(state, (d && d.service) || (slot && slot.service) || ''),   // [T3] select 의 kindFit 근거
         applyCount: 0, lastAppliedAt: 0,
         publishCount: 1, lastPublishedAt: _now()   // 캡처 = 저장/발행된 글에서 왔다 — publish:false 여도 사실
       }, state);
@@ -311,14 +321,29 @@
     } catch (_e) { return null; }
   }
 
-  // 슬롯 사진들 중 실제 꾸밈이 있는 editState 를 고른다(대표 우선).
+  // 슬롯 사진들 중 실제 꾸밈이 있는 editState 를 고른다 — 가장 공들인 장 우선.
+  //   [T3·G3 2026-08-17] 예전엔 '첫 번째로 layers 있는 사진'이라(주석만 "대표 우선") 1번 장을
+  //   대충 두고 2번 장을 공들인 경우 그 꾸밈이 통째로 버려졌다. 점수로 고르고 동점이면 앞 순서(기존 동작).
+  function _photoScore(p, st) {
+    var L = st.layers, s = 0;
+    if (L.some(function (l) { return l && (l.type === 'text' || l.type === 'badge'); })) s += 2;
+    if (L.some(function (l) { return l && l.type === 'sticker'; })) s += 1;
+    if (L.some(function (l) { return l && l.type === 'image'; })) s += 1;
+    if (L.length >= 2) s += 2;
+    if (p && p.role === 'hero') s += 2;
+    if (p && p.storyEdited) s += 2;
+    return s;
+  }
   function _pickState(slot) {
     var ps = (slot && slot.photos) || [];
+    var best = null, bestScore = -1;
     for (var i = 0; i < ps.length; i++) {
       var st = ps[i] && ps[i].editState;
-      if (st && st.v && Array.isArray(st.layers) && st.layers.length) return st;
+      if (!(st && st.v && Array.isArray(st.layers) && st.layers.length)) continue;
+      var s = _photoScore(ps[i], st);
+      if (s > bestScore) { bestScore = s; best = st; }
     }
-    return null;
+    return best;
   }
 
   // 설정 화면용 작은 썸네일 — 발행 결과 이미지를 96px 로 줄여 저장(장당 ~3KB).
@@ -462,6 +487,9 @@
   //   페이지 세션 메모리에만 둔다(성과 화면 → 새 글 플로우가 같은 페이지에서 이어지므로 충분).
   var _onceId = null;
   function applyOnce(id) { if (get(id)) { _onceId = id; return true; } return false; }
+  // [T3] 엔진(_resolveRec)이 쓰는 접근자 — 미리보기는 피크만, 편집기는 소비.
+  function peekOnce() { return _onceId ? get(_onceId) : null; }
+  function takeOnce() { var r = peekOnce(); _onceId = null; return r; }   // 스테일 id 도 함께 해제(고착 방지)
 
   // 편집기/헤드리스 공용 선택. consumeOnce 는 편집기 경로만 true —
   //   헤드리스(캡션 미리보기)가 1회 지정을 소비해 버리면 정작 편집기가 열릴 때 ★로 되돌아가
@@ -491,7 +519,7 @@
     KEYS: { list: K_LIST, def: K_DEFAULT, auto: K_AUTO },
     list: list, get: get,
     getDefault: getDefault, getDefaultId: getDefaultId, setDefault: setDefault, clearDefault: clearDefault,
-    autoOn: autoOn, setAutoOn: setAutoOn, applyOnce: applyOnce,
+    autoOn: autoOn, setAutoOn: setAutoOn, applyOnce: applyOnce, peekOnce: peekOnce, takeOnce: takeOnce,
     rename: rename, remove: remove,
     describe: describe, formatWhen: formatWhen,
     captureFromSlot: captureFromSlot, captureAndNotify: captureAndNotify, showCaptureCard: showCaptureCard,

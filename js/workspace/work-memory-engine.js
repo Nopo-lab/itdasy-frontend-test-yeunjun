@@ -1,5 +1,5 @@
 /*
- * work-memory-engine.js — 작업 기억 병합 엔진 v1  [T1 2026-08-17]
+ * work-memory-engine.js — 작업 기억 병합·선택 엔진  [T1 병합 2026-08-17 · T3 선택 2026-08-17]
  *
  * 왜 이 파일이 생겼나: 기억을 화면에 얹는 병합 규칙이 세 경로에 흩어져 있었다 —
  *   ① 편집기 열기(_openStoryEditor)  ② 캡션 결과 헤드리스 굽기(_autoComposeTemplate)
@@ -8,14 +8,18 @@
  *   ①·②에 각각 복제돼 있었다. 한쪽만 고치면 편집기와 실제 발행 이미지가 어긋나는
  *   구조(반복 실사고 패턴) → 병합 규칙은 여기 한 곳에만 둔다.
  *
- * 규칙: workspace-v2-flow.js 에는 병합 로직을 한 줄도 두지 않는다. flow 는 호출만.
- *   (단 '어느 editState 가 이기나'의 우선순위 선택(_finalEs)은 restore/fresh 같은
- *    세션 상태를 읽는 orchestration 이라 flow 소유로 남긴다.)
+ * [T3] 선택(select)도 여기 소유 — "★ 하나를 통째로"에서 "지금 상황에 맞는 기억"으로.
+ *   우선순위: once('이 스타일로 또' 1회 지정) > auto(select 스코어) > ★(auto OFF 일 때).
+ *   세 경로가 같은 _resolveRec 를 쓰므로 미리보기·편집기·잇비가 같은 기억을 고른다.
+ *   reason 은 장식 문구가 아니라 축별 숫자 분해(parts) — 합계가 total 과 항상 일치해야 하고
+ *   테스트가 재계산으로 검증한다. 마지막 선택은 _lastSelect 에 남는다(QA·잇비 역추적용).
  *
- * T1 = 순수 이관(동작 변화 0). 선택 알고리즘(select)·붙잡기(capture) 이관은 T2~T3.
+ * 규칙: workspace-v2-flow.js 에는 병합·선택 로직을 한 줄도 두지 않는다. flow 는 ctx 만 만들어 호출.
  */
 (function () {
   'use strict';
+
+  // ── 병합 [T1] ─────────────────────────────────────────────────
 
   // 시술내용 텍스트 역할 — 여러 장 게시 시 **첫 장에만** 굽는 대상(2026-07-24 원장 요청:
   //   "여러 장 게시할 때 모든 사진에 시술내용이 박히지 않게"). 로고·워터마크·선·스티커·
@@ -50,53 +54,153 @@
     return (base || []).concat(wm.layers.filter(function (L) { return !(L && L.role && have[L.role]); }));
   }
 
-  /* [v779 보스] 캡션 결과 화면 헤드리스 굽기용 — ★기본 기억의 꾸밈을 결과 사진에도 굽는다
-     (예전엔 사진편집을 열어야만 보였다). flow _autoComposeTemplate :426 자리에서 이관.
-     layersOnly 는 항상 true — 헤드리스는 결과물(출력 배열)이 칸 배치를 이미 정한 상태다.
-     실패해도 절대 안 던진다(호출부는 발행/미리보기 경로) → 원본 layers 그대로 반환. */
+  // ── 성격 분류 [T3] ────────────────────────────────────────────
+  // 게시물 성격(service/promotion/notice/unknown) — LLM 안 씀, 결정적 규칙만. 확신 없으면 unknown.
+  //   ⚠️ 한글 왼쪽 경계 (?<![가-힣]) — '대할인' 같은 단어 일부 오탐 방지(과거 '붙고객님' 실사고 규칙).
+  //   단 lookbehind 는 구형 iOS Safari(<16.4)에서 **파싱 단계**에서 죽으므로 리터럴 금지 —
+  //   new RegExp + try/catch 로 파스-안전하게, 미지원이면 경계 없는 폴백(보수적으로 넓게 잡힘).
+  function _re(pat, fallback) { try { return new RegExp(pat); } catch (_e) { void _e; return fallback; } }
+  var PROMO_RE = _re('(?<![가-힣])(이벤트|할인|특가|프로모션|쿠폰|증정|첫\\s*방문|오픈\\s*기념|한정|선착순)',
+    /(이벤트|할인|특가|프로모션|쿠폰|증정|첫\s*방문|오픈\s*기념|한정|선착순)/);
+  var PCT_RE = /[0-9]{1,3}\s*%/;
+  var NOTICE_RE = _re('(?<![가-힣])(공지|안내|휴무|휴진|휴가|영업시간)',
+    /(공지|안내|휴무|휴진|휴가|영업시간)/);
+  function classifyKind(texts, service) {
+    try {
+      var t = (texts || []).filter(Boolean).join(' ');
+      if (PROMO_RE.test(t) || PCT_RE.test(t)) return 'promotion';   // 시술명이 같이 있어도 이벤트 우선
+      if (NOTICE_RE.test(t)) return 'notice';
+      if (service && String(service).trim()) return 'service';
+      return 'unknown';
+    } catch (_e) { void _e; return 'unknown'; }
+  }
+
+  // ── 스코어 [T3] ───────────────────────────────────────────────
+  // 축은 이 6개로 고정 — "데이터가 있으니 넣자" 식 팽창 금지(합의). 범위는 테스트가 잠근다.
+  //   photoFit 40 이 최우선 신호: 최근+자주+브랜드(20+10+5=35)를 합쳐도 못 뒤집는다.
+  //   promotion→service 감점 -30 은 최근+자주(30)를 이긴다 — 어제 이벤트가 오늘 시술에 안 튀어나오게(F).
+  function _touch(m) { return (m && (m.lastPublishedAt || m.lastAppliedAt || m.lastUsedAt || m.createdAt)) || 0; }
+  function scoreMemory(m, ctx) {
+    m = m || {}; ctx = ctx || {};
+    var pc = (m.photoCount != null) ? m.photoCount : 1;   // list() 가 마이그레이션하므로 항상 있음(직접 호출 방어만)
+    var parts = {
+      photoFit: (ctx.photoCount != null && pc === ctx.photoCount) ? 40 : 0,
+      baFit: (ctx.hasBeforeAfter === true && m.layoutIdx === 7) ? 25 : 0,
+      kindFit: 0,
+      recency: 0,
+      publishWeight: Math.min(m.publishCount || 0, 5) * 2,
+      brandFit: (ctx.shopStyleId && m.shopStyleId && ctx.shopStyleId === m.shopStyleId) ? 5 : 0
+    };
+    var mk = m.kind || 'unknown';
+    if (ctx.kind && ctx.kind !== 'unknown' && mk !== 'unknown') {
+      if (mk === ctx.kind) parts.kindFit = 15;
+      else if (mk === 'promotion' && ctx.kind === 'service') parts.kindFit = -30;
+    }
+    var t = _touch(m);
+    if (t) {
+      var days = Math.floor((Date.now() - t) / 86400000);
+      parts.recency = Math.max(0, Math.min(20, 20 - days * 2));   // 오늘 20 → 하루 -2 → 10일이면 0. 미래값은 20 상한.
+    }
+    var total = parts.photoFit + parts.baFit + parts.kindFit + parts.recency + parts.publishWeight + parts.brandFit;
+    return { parts: parts, total: total };
+  }
+
+  function _activeSSID() {
+    try { return (window.ShopStyle && window.ShopStyle.getActiveId && window.ShopStyle.getActiveId()) || null; }
+    catch (_e) { void _e; return null; }
+  }
+
+  /* 후보 전원 스코어 → 승자. 후보 0개는 { memory:null, candidates:[] } — 절대 안 던진다.
+     동점 tie-break 은 결정론: total ↓ → 최근 손댄 시각 ↓ → id 사전순 ↑.
+     (랜덤·삽입순 의존이면 같은 입력으로 오늘과 내일 결과가 달라진다.) */
+  function select(ctx) {
+    ctx = ctx || {};
+    var WM = window.WorkMemory;
+    var mems = (WM && WM.list) ? WM.list() : [];
+    var sctx = {
+      photoCount: ctx.photoCount,
+      hasBeforeAfter: ctx.hasBeforeAfter,
+      kind: ctx.kind || classifyKind(ctx.texts, ctx.service),
+      shopStyleId: (ctx.shopStyleId !== undefined) ? ctx.shopStyleId : _activeSSID()
+    };
+    var scored = mems.map(function (m) { return { m: m, s: scoreMemory(m, sctx) }; });
+    scored.sort(function (a, b) {
+      if (b.s.total !== a.s.total) return b.s.total - a.s.total;
+      var dt = _touch(b.m) - _touch(a.m);
+      if (dt) return dt;
+      return a.m.id < b.m.id ? -1 : (a.m.id > b.m.id ? 1 : 0);
+    });
+    var win = scored[0] || null;
+    return {
+      memory: win ? win.m : null,
+      reason: win ? { parts: win.s.parts, total: win.s.total } : { via: 'none' },
+      candidates: scored.map(function (x) { return { id: x.m.id, total: x.s.total }; })
+    };
+  }
+
+  // ── 선택 해석 [T3] — 세 경로 공용 ─────────────────────────────
+  function _setLast(info) { try { window.WorkMemoryEngine._lastSelect = info; } catch (_e) { void _e; } }
+  /* once('이 스타일로 또') > auto(select) > ★(auto OFF 일 때만).
+     consumeOnce: 편집기 경로만 true — 헤드리스(미리보기)가 1회 지정을 소비하면
+       정작 편집기가 열릴 때 다른 기억으로 바뀌어 미리보기≠편집기가 된다.
+     ignoreFlag: 잇비 "평소 하던 대로"는 원장의 명시 발화라 롤백 플래그보다 우선. */
+  function _resolveRec(o, mode) {
+    var WM = window.WorkMemory;
+    if (!WM) return null;
+    try {
+      if (!mode.ignoreFlag && !(WM.flagOn && WM.flagOn())) return null;
+      var once = mode.consumeOnce ? (WM.takeOnce ? WM.takeOnce() : null) : (WM.peekOnce ? WM.peekOnce() : null);
+      if (once) { _setLast({ via: 'once', memoryId: once.id }); return { rec: once }; }
+      var auto = WM.autoOn ? WM.autoOn() : true;
+      if (auto) {
+        var s = select({
+          photoCount: o.photoCount, hasBeforeAfter: o.hasBeforeAfter, service: o.service,
+          texts: (o.incoming || []).map(function (l) { return l && l.text; })
+        });
+        _setLast({ via: s.memory ? 'auto' : 'none', memoryId: s.memory ? s.memory.id : null, reason: s.reason, candidates: s.candidates });
+        return s.memory ? { rec: s.memory } : null;
+      }
+      var fav = WM.getDefault && WM.getDefault();
+      _setLast({ via: fav ? 'favorite' : 'none', memoryId: fav ? fav.id : null });
+      return fav ? { rec: fav } : null;
+    } catch (_e) { void _e; return null; }
+  }
+
+  // ── 세 경로 진입점 ────────────────────────────────────────────
+
+  /* [v779 보스] 캡션 결과 화면 헤드리스 굽기용 — 선택된 기억의 꾸밈을 결과 사진에도 굽는다
+     (예전엔 사진편집을 열어야만 보였다). layersOnly 항상 true — 결과물이 칸 배치를 이미 정한 상태.
+     [T2'] 순수 조회: once 는 피크만, 카운트 안 올림. 실패해도 절대 안 던진다 → 원본 layers 그대로. */
   function decorateLayers(layers, opts) {
     try {
       var WM = window.WorkMemory;
-      var wm = (WM && WM.defaultEditState)
-        ? WM.defaultEditState({ incoming: layers, photoCount: opts && opts.photoCount, layersOnly: true }) : null;
+      if (!WM || !WM.toEditState) return layers;
+      var pick = _resolveRec(opts || {}, { ignoreFlag: false, consumeOnce: false });
+      var wm = pick ? WM.toEditState(pick.rec, { incoming: layers, photoCount: opts && opts.photoCount, layersOnly: true }) : null;
       return mergeLayers(layers, wm);
     } catch (_e) { void _e; return layers; }
   }
 
-  /* 편집기 열 때 얹을 기억 editState 계산 — flow _openStoryEditor :582 자리에서 이관.
-     o = { restore, orch, incoming, photoCount, layersOnly }
+  /* 편집기 열 때 얹을 기억 editState — flow _openStoryEditor 에서 호출.
+     o = { restore, orch, incoming, photoCount, layersOnly, service, hasBeforeAfter }
 
-     [버그수정 2026-07-17의 교훈] 예전 주입 조건은 `!_restore && !_wsEd` 였다 — 레이아웃이
-       켜지면 늘 죽어서, ★기본을 지정해도 새 글에 아무것도 안 올라왔다. 지금은
-       restore(재편집 이어가기)일 때만 건너뛰고, 레이아웃과는 layersOnly 로 공존한다
-       (칸 배치는 방금 고른 레이아웃이 소유 — 안 그러면 레이아웃이 기억에 덮여 사라진다).
-
-     [2026-07-22 원장 스타일] 잇비 "평소 하던 대로/최근 원장 작업으로"(orch.useRecentStyle)는
-       플래그(ITDASY_WORK_MEMORY)와 무관하게 ★기본을 적용한다. orch 가 텍스트를 주면
-       기억의 텍스트 role 은 비워 중복 방지(incoming:[]) — 시술내용 텍스트는 orch 레이어 소유. */
+     [버그수정 2026-07-17의 교훈] 예전 주입 조건은 `!_restore && !_wsEd` 라 레이아웃이 켜지면 늘 죽었다.
+       지금은 restore(재편집 이어가기)일 때만 건너뛰고, 레이아웃과는 layersOnly 로 공존한다.
+     [2026-07-22 원장 스타일] 잇비 "평소 하던 대로"(orch.useRecentStyle)는 플래그와 무관하게 적용.
+       orch 가 텍스트를 주면 기억의 텍스트 role 은 비워 중복 방지(incoming:[]).
+     [T2'] 실제 얹힐 때만 markApplied — 헤드리스가 카운트를 못 부풀린다. */
   function forEditor(o) {
     o = o || {};
     var WM = window.WorkMemory;
-    if (o.restore || !WM) return null;
+    if (o.restore || !WM || !WM.toEditState) return null;
+    var orch = !!(o.orch && o.orch.useRecentStyle);
+    var incoming = (orch && o.orch.wantsText) ? [] : (o.incoming || []);
+    var pick = _resolveRec(o, { ignoreFlag: orch, consumeOnce: true });
+    if (!pick) return null;
     var wm = null;
-    if (o.orch && o.orch.useRecentStyle && WM.getDefault && WM.toEditState) {
-      try {
-        var rec = WM.getDefault();
-        if (rec) {
-          wm = WM.toEditState(rec, { incoming: (o.orch.wantsText ? [] : (o.incoming || [])), photoCount: o.photoCount, layersOnly: !!o.layersOnly });
-          // [T2'] 잇비 경로도 '편집기에 얹힘' — 의미에 맞게 applied 를 센다.
-          if (wm && WM.markApplied) WM.markApplied(rec.id);
-        }
-      } catch (_we) { wm = null; void _we; }
-    }
-    if (!wm && WM.resolveDefault) {
-      // [T2'] resolveDefault = 순수 조회 + rec 반환. 실제 편집기에 얹힐 때만 markApplied —
-      //   헤드리스(decorateLayers→defaultEditState)는 안 세므로 캡션 화면 왕복이 카운트를 못 부풀린다.
-      var r = WM.resolveDefault({ incoming: o.incoming || [], photoCount: o.photoCount, layersOnly: !!o.layersOnly });
-      if (r) { wm = r.state; if (WM.markApplied) WM.markApplied(r.rec.id); }
-    } else if (!wm && WM.defaultEditState) {
-      wm = WM.defaultEditState({ incoming: o.incoming || [], photoCount: o.photoCount, layersOnly: !!o.layersOnly });   // 구 WM 캐시 폴백
-    }
+    try { wm = WM.toEditState(pick.rec, { incoming: incoming, photoCount: o.photoCount, layersOnly: !!o.layersOnly }); }
+    catch (_e) { wm = null; void _e; }
+    if (wm && WM.markApplied) WM.markApplied(pick.rec.id);
     return wm;
   }
 
@@ -104,7 +208,11 @@
     stripServiceText: stripServiceText,
     mergeEditState: mergeEditState,
     mergeLayers: mergeLayers,
+    classifyKind: classifyKind,
+    scoreMemory: scoreMemory,
+    select: select,
     decorateLayers: decorateLayers,
-    forEditor: forEditor
+    forEditor: forEditor,
+    _lastSelect: null   // QA·잇비 역추적 — 마지막 선택의 via/후보 점수
   };
 })();
