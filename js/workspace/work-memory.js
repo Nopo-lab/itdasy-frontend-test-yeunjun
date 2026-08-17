@@ -230,21 +230,22 @@
      캐시 미적재/자산 유실이면 그 레이어만 뺀다(깨진 이미지 방지 — 로고 srcRef 와 같은 규칙). */
   var ASSET_PREFIX = 'img:';
   var _assetCache = null;      // null = 미적재
-  var _assetWarmed = false;
+  var _assetWarmState = 0;     // 0=대기 1=진행 중 2=완료
   function _assetHash(s) {     // djb2 — 콘텐츠 기반 결정적 id(같은 스티커 = 같은 자산)
     var h = 5381;
     for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
     return (h >>> 0).toString(36) + '-' + s.length.toString(36);
   }
   function _assetWarm() {
-    if (_assetWarmed || !window.loadAssetsFromDB) return;
-    _assetWarmed = true;
+    if (_assetWarmState === 1 || !window.loadAssetsFromDB) return;
+    _assetWarmState = 1;
     try {
       window.loadAssetsFromDB().then(function (rows) {
         _assetCache = _assetCache || {};
         (rows || []).forEach(function (r) { if (r && r.id && r.dataUrl) _assetCache[r.id] = r.dataUrl; });
-      }).catch(function () { _assetWarmed = false; });   // 실패 시 다음 요청 때 재시도
-    } catch (_e) { _assetWarmed = false; void _e; }
+        _assetWarmState = 2;
+      }).catch(function () { _assetWarmState = 0; });   // 실패 시 다음 요청 때 재시도
+    } catch (_e) { _assetWarmState = 0; void _e; }
   }
   function _assetPut(id, dataUrl) {
     _assetCache = _assetCache || {}; _assetCache[id] = dataUrl;   // 같은 세션은 캐시로 즉시 사용 가능
@@ -252,7 +253,10 @@
   }
   function _assetGet(id) {
     if (_assetCache && _assetCache[id]) return _assetCache[id];
-    _assetWarm();   // 미적재면 다음 기회를 위한 웜업만 — 동기 경로라 이번엔 못 쓴다
+    // 웜업 완료 후의 miss = 그 뒤 IDB 에 추가된 자산일 수 있다(다른 탭/기기 동기화) → 재웜업 허용.
+    //   미해소가 지속돼도 굽기 재시도당 getAll 1회 수준(자산 수 적음)이라 부담 없음.
+    if (_assetWarmState === 2) _assetWarmState = 0;
+    _assetWarm();   // 동기 경로라 이번엔 못 쓰고 다음 기회를 위한 적재만
     return null;
   }
   _assetWarm();     // photo 그룹 로드 직후 적재 시작 — 편집기 열릴 때쯤엔 준비됨
@@ -533,12 +537,18 @@
     return _bump(id, function (r) { return { lastPublishedAt: _now(), publishCount: (r.publishCount || 0) + 1 }; });
   }
 
+  // [T7 preflight] 직전 toEditState 에서 자산(assetRef) 미해소로 뺀 레이어 수 —
+  //   발행물 굽기(헤드리스)는 이 값이 0이 아닐 때 이번 굽기를 보류한다('조용히 일부 빠진 발행' 금지).
+  var _lastAssetMiss = 0;
+  function assetMissCount() { return _lastAssetMiss; }
+
   // 기억 → 편집기 editState. '어떻게 생겼나'만 주고 '이 사진 전용'은 안 준다.
   //   opts.incoming    = 이번 글의 우리샵 자동배치 레이어(role→text) — 같은 role 은 이번 글 문구로 갈아끼움.
   //                      (지난 글 문구가 그대로 되살아나면 안 됨. 위치·크기·폰트만 기억하는 게 요점.)
   //   opts.photoCount  = 지금 사진 수. 기억의 레이아웃과 안 맞으면 레이아웃은 안 건드림
   //                      (예: '전후 2칸' 기억을 사진 1장에 씌우면 빈 칸이 생김).
   function toEditState(rec, opts) {
+    _lastAssetMiss = 0;   // [T7] 이번 변환의 자산 미해소 카운트 리셋
     if (!rec || !Array.isArray(rec.layers) || !rec.layers.length) return null;
     opts = opts || {};
     var incoming = opts.incoming || [];
@@ -559,9 +569,10 @@
         var url = _shopLogoUrl(); if (!url) return null;
         var c = Object.assign({}, l, { src: url }); delete c.srcRef; return c;
       }
-      // [T6] 스티커 등 큰 이미지는 IDB 자산 참조 → 캐시에서 복원. 미적재/유실이면 그 레이어만 뺀다.
+      // [T6] 스티커 등 큰 이미지는 IDB 자산 참조 → 캐시에서 복원. 미적재/유실이면 그 레이어만 뺀다
+      //   (편집기 = 원장이 눈으로 보는 단계라 허용). [T7] 발행물 굽기는 assetMissCount 로 보류 판정.
       if (l.assetRef) {
-        var au = _assetGet(l.assetRef); if (!au) return null;
+        var au = _assetGet(l.assetRef); if (!au) { _lastAssetMiss++; return null; }
         var ac = Object.assign({}, l, { src: au }); delete ac.assetRef; return ac;
       }
       return Object.assign({}, l);
@@ -621,7 +632,7 @@
     list: list, get: get,
     getDefault: getDefault, getDefaultId: getDefaultId, setDefault: setDefault, clearDefault: clearDefault,
     autoOn: autoOn, setAutoOn: setAutoOn, applyOnce: applyOnce, peekOnce: peekOnce, takeOnce: takeOnce,
-    textbook: textbook, dismissText: dismissText,
+    textbook: textbook, dismissText: dismissText, assetMissCount: assetMissCount,
     rename: rename, remove: remove,
     describe: describe, formatWhen: formatWhen,
     captureFromSlot: captureFromSlot, captureAndNotify: captureAndNotify, showCaptureCard: showCaptureCard,

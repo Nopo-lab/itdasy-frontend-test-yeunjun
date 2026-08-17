@@ -236,6 +236,10 @@
       if (!WM || !WM.toEditState) return layers;
       var pick = _resolveRec(opts || {}, { ignoreFlag: false, consumeOnce: false });
       var wm = pick ? _toSafeState(WM, pick.rec, { incoming: layers, photoCount: opts && opts.photoCount, layersOnly: true }) : null;   // [T5] 텍스트 안전 정책 공용
+      /* [T7 preflight] 자산 미해소(IDB 웜업 전/유실) 상태로 발행물을 구우면 '조용히 일부 빠진' 이미지가
+         나간다 → 이번 굽기는 통째 보류(base 그대로). 웜업 뒤 재굽기(autoSig 재계산 경로)에서 온전히 반영.
+         편집기(forEditor)는 원장이 눈으로 보는 단계라 레이어 제외 fallback 을 유지한다(합의 경계). */
+      if (wm && WM.assetMissCount && WM.assetMissCount() > 0) return layers;
       return mergeLayers(layers, wm);
     } catch (_e) { void _e; return layers; }
   }

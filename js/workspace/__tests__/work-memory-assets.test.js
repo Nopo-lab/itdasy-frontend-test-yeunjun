@@ -120,6 +120,64 @@ describe('[안전] 자산 유실·스토어 부재', () => {
   });
 });
 
+describe('[T7 preflight] 발행물 굽기 — 자산 미해소면 통째 보류(조용히 일부 빠진 발행 금지)', () => {
+  function seedGhost() {
+    const NOW = Date.now();
+    global.localStorage._m['itdasy:work_memory:list'] = JSON.stringify([{
+      id: 'm1', schema: 2, sig: 'x', name: 'x', createdAt: NOW, thumb: null,
+      ratio: '4:5', layoutIdx: 0, photoCount: 1, layoutOrder: [], collageBg: null, collageGap: null, fitMode: null,
+      layers: [{ type: 'image', assetRef: 'img:ghost', x: 0.5, y: 0.5, w: 0.2 }, { type: 'sticker', emoji: '✨', x: 0.2, y: 0.2, size: 0.1 }],
+      shopStyleId: null, kind: 'unknown', applyCount: 0, lastAppliedAt: 0, publishCount: 1, lastPublishedAt: NOW,
+    }]);
+    global.localStorage._m['itdasy:work_memory:default'] = JSON.stringify('m1');
+  }
+  test('헤드리스(decorateLayers)는 미해소 시 base 그대로 — 스티커만 얹고 굽는 부분 발행이 없다', () => {
+    const { E } = loadAll();
+    seedGhost();
+    const base = [{ role: 'title', text: '이번 글', type: 'text' }];
+    const out = E.decorateLayers(base, { photoCount: 1 });
+    expect(out).toBe(base);                                    // 보류 = 아무것도 안 얹음(부분 굽기 금지)
+  });
+  test('자산이 해소되면(웜업 완료 상당) 같은 호출이 정상 반영된다 — 보류는 일시적', async () => {
+    const { WM, E, store } = loadAll();
+    seedGhost();
+    await window.saveAssetToDB({ id: 'img:ghost', dataUrl: bigSrc(9000), createdAt: Date.now() });
+    // 웜업 재시도 경로: 미적재 상태에서 한 번 실패 → warm → 다음 호출은 캐시 적중
+    E.decorateLayers([], { photoCount: 1 });
+    await tick(); await tick();
+    const out = E.decorateLayers([], { photoCount: 1 });
+    expect(out.some((l) => l.type === 'image' && l.src)).toBe(true);
+    expect(out.some((l) => l.emoji === '✨')).toBe(true);
+    void WM; void store;
+  });
+  test('편집기(forEditor)는 기존 fallback 유지 — 원장이 보는 단계라 그 레이어만 제외(합의 경계)', () => {
+    const { E } = loadAll();
+    seedGhost();
+    const st = E.forEditor({ restore: false, incoming: [], photoCount: 1, layersOnly: true });
+    expect(st).toBeTruthy();
+    expect(st.layers.some((l) => l.emoji === '✨')).toBe(true);
+    expect(st.layers.some((l) => l.type === 'image')).toBe(false);
+  });
+});
+
+describe('[T7] 발행 이벤트 경계 — 중복·실패 계약', () => {
+  test('같은 슬롯으로 captureAndNotify 상당(captureFromSlot) 2연발 → 레코드 중복 생성 없음(sig dedup)', () => {
+    const { WM } = loadAll();
+    const s = slotWith([img(bigSrc(9000)), { type: 'sticker', emoji: '✨', x: 0.2, y: 0.2, size: 0.1 }]);
+    const r1 = WM.captureFromSlot(s, {});
+    const r2 = WM.captureFromSlot(s, {});   // 중복 콜백 상당
+    expect(r2.id).toBe(r1.id);
+    expect(WM.list()).toHaveLength(1);
+  });
+  test('flow 소스 계약 — captureAndNotify 는 저장/발행 성공 경로에만 있고 실패 분기엔 없다', () => {
+    const flowSrc = fs.readFileSync(path.join(__dirname, '..', 'workspace-v2-flow.js'), 'utf8');
+    // 호출 3곳(save 성공 done·수동 발행 표시·실발행 완료)이 전부 — 그 외 추가 호출이 생기면 이 수가 어긋난다.
+    expect(flowSrc.match(/WorkMemory\.captureAndNotify\(/g)).toHaveLength(3);
+    // 발행 실패 토스트/에러 분기에서 capture 를 부르지 않는다(실패를 '발행 완료'로 기억하는 사고 방지).
+    expect(flowSrc).not.toMatch(/저장에 실패했어요[\s\S]{0,200}captureAndNotify/);
+  });
+});
+
 describe('갤러리 DB v4 — 소스 계약(실 업그레이드는 브라우저 실측)', () => {
   const dbSrc = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'app-gallery-db.js'), 'utf8');
   test('버전 4 + assets store 신설 + 기존 store(slots·gallery) 로직 보존', () => {
