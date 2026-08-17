@@ -17,8 +17,12 @@
     const el = document.getElementById('asstSuggest');
     if (!el) return;
     const suggestions = (deps && deps.suggestions) || [];
+    // [연준님 2026-08-16] 탭 영역만 넓힌다 — **보이는 칩 크기는 그대로.**
+    //   실측: 칩 높이 33px 로 iOS HIG 권장 44px 미달. 디자인을 키우면 채팅 하단이 답답해지므로
+    //   ::after 로 위아래 6px 씩만 투명 확장해 45px 를 만든다(가로는 안 늘려서 옆 칩과 안 겹친다).
+    //   가로 스크롤 컨테이너 안이라 세로 확장은 스크롤·터치와 충돌하지 않는다.
     el.innerHTML = suggestions.map(s => `
-      <button data-suggest="${_esc(s)}" style="flex-shrink:0;padding:8px 16px;border:1px solid rgba(0,0,0,.07);border-radius:999px;font-size:12px;color:#191F28;background:#fff;cursor:pointer;white-space:nowrap;">${_esc(s)}</button>
+      <button data-suggest="${_esc(s)}" class="asst-chip-tap" style="position:relative;flex-shrink:0;padding:8px 16px;border:1px solid rgba(0,0,0,.07);border-radius:999px;font-size:12px;color:#191F28;background:#fff;cursor:pointer;white-space:nowrap;">${_esc(s)}</button>
     `).join('');
   }
 

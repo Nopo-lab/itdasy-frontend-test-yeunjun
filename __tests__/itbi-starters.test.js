@@ -165,3 +165,24 @@ describe('계정 전환 시 잇비 세션 리셋', () => {
     expect(src).toMatch(/_resetIfUserChanged\(\);[\s\S]{0,220}_loadStarters\(\);/);
   });
 });
+
+describe('추천칩 터치 영역(모바일)', () => {
+  test('보이는 크기는 그대로 두고 hit area 만 확장한다', () => {
+    // 실측 33px 로 iOS HIG 44px 미달. 디자인을 키우지 않고 ::after 로 위아래만 넓힌다.
+    const js = read('js/assistant/suggestion-controls.js');
+    expect(js).toContain('asst-chip-tap');
+    expect(js).toContain('position:relative');
+    const css = read('style-components.css');
+    const i = css.indexOf('.asst-chip-tap::after');
+    expect(i).toBeGreaterThan(-1);
+    const rule = css.slice(i, i + 200);
+    expect(rule).toContain('position: absolute');
+    // 가로는 0 — 옆 칩과 hit area 가 겹치면 오탭이 난다
+    expect(rule).toMatch(/inset:\s*-\d+px\s+0/);
+  });
+
+  test('style.css 의 @import ?v= 를 손으로 올렸다(자동범프 제외 대상)', () => {
+    const s = read('style.css');
+    expect(s).toMatch(/style-components\.css\?v=20260816-chip-taparea/);
+  });
+});

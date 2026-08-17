@@ -572,3 +572,13 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
   flex-shrink: 0;
 }
 .ms-menu__item:hover .ms-menu__chev { color: var(--text-muted); }
+
+/* [연준님 2026-08-16] 잇비 추천칩 — 보이는 크기는 그대로, **탭 영역만** 넓힌다.
+   실측 높이 33px 로 iOS HIG 권장 44px 미달이었다. 디자인을 키우면 채팅 하단이 답답해지므로
+   위아래로 6px 씩만 투명하게 확장(=45px). 가로는 안 늘려서 옆 칩과 hit area 가 안 겹친다.
+   가로 스크롤 컨테이너(#asstSuggest overflow-x:auto) 안이라 세로 확장은 스크롤과 충돌하지 않는다. */
+.asst-chip-tap::after {
+  content: "";
+  position: absolute;
+  inset: -6px 0;
+}
