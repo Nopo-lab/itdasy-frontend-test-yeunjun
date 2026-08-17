@@ -8,13 +8,18 @@
 const _GDB_NAME    = 'itdasy-gallery';
 const _GDB_STORE   = 'slots';
 const _GALLERY_STORE = 'gallery';
+// [T6 2026-08-17] v4 — assets: 작업기억 스티커/이미지 참조화. 8KB 초과 dataURL 을 기억이
+//   조용히 버리던 버그(G2) 수정용 — 바이트는 여기 한 벌, 기억엔 assetRef 만.
+const _ASSET_STORE = 'assets';
 let _gdb = null;
 
 function openGalleryDB() {
   return new Promise((resolve, reject) => {
     if (_gdb) return resolve(_gdb);
     // [T-002 2026-05-29] v3 — gallery 항목에 customer_id 연결 (사진↔고객 이력).
-    const req = indexedDB.open(_GDB_NAME, 3);
+    // [T6 2026-08-17] v4 — assets store 추가. 기존 v3 마이그레이션 로직은 그대로 보존
+    //   (onupgradeneeded 는 구버전→4 직행도 처리해야 하므로 아래 분기 전부 유지).
+    const req = indexedDB.open(_GDB_NAME, 4);
     req.onupgradeneeded = e => {
       const db = e.target.result;
       const tx = e.target.transaction;
@@ -33,8 +38,39 @@ function openGalleryDB() {
       if (!gs.indexNames.contains('customer_id')) {
         gs.createIndex('customer_id', 'customer_id', { unique: false });
       }
+      // v3→v4: assets 신설 — 기존 store 는 건드리지 않는다(데이터 보존).
+      if (!db.objectStoreNames.contains(_ASSET_STORE)) {
+        db.createObjectStore(_ASSET_STORE, { keyPath: 'id' });
+      }
     };
     req.onsuccess = e => { _gdb = e.target.result; resolve(_gdb); };
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+// ── [T6] 자산 CRUD — { id: 'img:<hash>', dataUrl, createdAt } ──────────────
+async function saveAssetToDB(asset) {
+  const db = await openGalleryDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(_ASSET_STORE, 'readwrite');
+    tx.objectStore(_ASSET_STORE).put(asset);
+    tx.oncomplete = () => resolve(asset.id);
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+async function getAssetFromDB(id) {
+  const db = await openGalleryDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(_ASSET_STORE, 'readonly').objectStore(_ASSET_STORE).get(id);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror   = () => reject(req.error);
+  });
+}
+async function loadAssetsFromDB() {
+  const db = await openGalleryDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(_ASSET_STORE, 'readonly').objectStore(_ASSET_STORE).getAll();
+    req.onsuccess = () => resolve(req.result || []);
     req.onerror   = () => reject(req.error);
   });
 }
@@ -162,6 +198,9 @@ async function clearGalleryDB() {
   } catch (_) { return false; }
 }
 window.clearGalleryDB = clearGalleryDB;
+window.saveAssetToDB = saveAssetToDB;
+window.getAssetFromDB = getAssetFromDB;
+window.loadAssetsFromDB = loadAssetsFromDB;
 window.saveToGallery = saveToGallery;
 window.loadGalleryItems = loadGalleryItems;
 window.loadGalleryItemsByCustomer = loadGalleryItemsByCustomer;

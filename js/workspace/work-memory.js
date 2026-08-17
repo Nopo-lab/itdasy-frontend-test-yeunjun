@@ -222,6 +222,41 @@
       return (ss && ss.logo && ss.logo.dataUrl) || null;
     } catch (_e) { return null; }
   }
+  /* ── [T6] 에셋 참조화 — 8KB 초과 이미지(내 스티커 등)를 IDB 한 벌 + 참조로 ─────
+     G2 수정: 예전엔 참조할 곳이 없다고 조용히 버려서(return null) 원장은 스티커가
+     기억된 줄 아는데 다음 글엔 없었다. 이제 바이트는 itdasy-gallery v4 'assets' 에
+     콘텐츠 해시 한 벌(기억 10개가 공유), 기억엔 assetRef 만.
+     toEditState 는 동기라 IDB 를 직접 못 읽는다 → 로드 시 웜업한 메모리 캐시에서 꺼내고,
+     캐시 미적재/자산 유실이면 그 레이어만 뺀다(깨진 이미지 방지 — 로고 srcRef 와 같은 규칙). */
+  var ASSET_PREFIX = 'img:';
+  var _assetCache = null;      // null = 미적재
+  var _assetWarmed = false;
+  function _assetHash(s) {     // djb2 — 콘텐츠 기반 결정적 id(같은 스티커 = 같은 자산)
+    var h = 5381;
+    for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(36) + '-' + s.length.toString(36);
+  }
+  function _assetWarm() {
+    if (_assetWarmed || !window.loadAssetsFromDB) return;
+    _assetWarmed = true;
+    try {
+      window.loadAssetsFromDB().then(function (rows) {
+        _assetCache = _assetCache || {};
+        (rows || []).forEach(function (r) { if (r && r.id && r.dataUrl) _assetCache[r.id] = r.dataUrl; });
+      }).catch(function () { _assetWarmed = false; });   // 실패 시 다음 요청 때 재시도
+    } catch (_e) { _assetWarmed = false; void _e; }
+  }
+  function _assetPut(id, dataUrl) {
+    _assetCache = _assetCache || {}; _assetCache[id] = dataUrl;   // 같은 세션은 캐시로 즉시 사용 가능
+    try { if (window.saveAssetToDB) window.saveAssetToDB({ id: id, dataUrl: dataUrl, createdAt: _now() }); } catch (_e) { void _e; }
+  }
+  function _assetGet(id) {
+    if (_assetCache && _assetCache[id]) return _assetCache[id];
+    _assetWarm();   // 미적재면 다음 기회를 위한 웜업만 — 동기 경로라 이번엔 못 쓴다
+    return null;
+  }
+  _assetWarm();     // photo 그룹 로드 직후 적재 시작 — 편집기 열릴 때쯤엔 준비됨
+
   // [T2] 캡처 당시 활성 우리샵 스타일 — T3 brandFit 스코어 근거.
   function _activeShopStyleId() {
     try { return (window.ShopStyle && window.ShopStyle.getActiveId && window.ShopStyle.getActiveId()) || null; }
@@ -231,7 +266,15 @@
      왜 레코드별이 아니라 전역인가: "같은 문구를 서로 다른 게시물 3회" 는 게시물 단위의
      전역 사실이다. 레코드별로 세면 기억 3개에 1회씩 흩어져 영영 승격이 안 된다.
      identity = 정규화 문구(엔진 normalizeText) — index·memoryId 무관이라 순서변경·재적용에 안정.
-     { "<norm>": { n: 서로 다른 게시물 관측 수, st: 'obs'|'static'|'dismissed', at } } */
+     { "<norm>": { n: 서로 다른 게시물 관측 수, st: 'obs'|'static'|'dismissed', at } }
+
+     [정책 계약 — T5 최종 확정 2026-08-17] dismissed 는 "이 문구를 **자동으로** 다시 얹지 않는다"의
+     **전역·영구** 거부다(보스/GPT 합의):
+       · 다른 기억·다른 서비스·다른 우리샵 스타일에서 같은 문구가 와도 막는다 — 문구 자체가 identity.
+       · 자동 해제 없음 — 원장이 같은 문구를 손으로 다시 써서 발행해도 veto 는 남는다
+         ("다시 썼다" ≠ "삭제 결정을 취소했다"). 해제 UI 는 출시 후 설정 화면 몫.
+       · 이게 과하지 않은 이유: veto 가 막는 건 '기억에서 온 자동 얹기'뿐이고,
+         원장이 손으로 쓰는 문구는 sanitize 대상이 아니라서 언제든 그냥 쓰면 된다. */
   var K_TEXTBOOK = 'itdasy:work_memory:textbook';
   var TB_MAX = 200;   // 상한 — 넘으면 관측(obs) 중 오래된 것부터 정리(static/dismissed 정책은 보존)
   function textbook() { var v = _read(K_TEXTBOOK, null); return (v && typeof v === 'object') ? v : {}; }
@@ -287,7 +330,14 @@
     if (!/^data:/.test(c.src)) return c;                       // 에셋 경로 등 → 그대로(짧음)
     var logo = _shopLogoUrl();
     if (logo && c.src === logo) { delete c.src; c.srcRef = LOGO_REF; return c; }   // 우리샵 로고 → 참조로
-    if (c.src.length > INLINE_MAX) return null;                // 참조할 데 없는 큰 일회성 이미지 → 기억 안 함
+    if (c.src.length > INLINE_MAX) {
+      // [T6·G2] 예전엔 여기서 null(조용히 버림) — 원장은 스티커가 기억된 줄 알았다.
+      //   이제 IDB 자산 한 벌 + 참조. IDB 저장이 실패해도 세션 캐시로 이번 세션은 동작.
+      var ref = ASSET_PREFIX + _assetHash(c.src);
+      _assetPut(ref, c.src);
+      delete c.src; c.assetRef = ref;
+      return c;
+    }
     return c;
   }
   // editState 에서 '이 사진 전용' 값 제거 → 재사용 가능한 것만.
@@ -508,6 +558,11 @@
       if (l.srcRef === LOGO_REF) {
         var url = _shopLogoUrl(); if (!url) return null;
         var c = Object.assign({}, l, { src: url }); delete c.srcRef; return c;
+      }
+      // [T6] 스티커 등 큰 이미지는 IDB 자산 참조 → 캐시에서 복원. 미적재/유실이면 그 레이어만 뺀다.
+      if (l.assetRef) {
+        var au = _assetGet(l.assetRef); if (!au) return null;
+        var ac = Object.assign({}, l, { src: au }); delete ac.assetRef; return ac;
       }
       return Object.assign({}, l);
     }).filter(Boolean);

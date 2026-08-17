@@ -203,6 +203,44 @@ describe('dismissed veto — P0 (GPT 필수 시퀀스)', () => {
   });
 });
 
+describe('veto 범위 — 전역·영구 제품 정책 계약 (T5 최종 확정)', () => {
+  /* 정책: dismissed = "이 문구를 자동으로 다시 얹지 않는다"의 전역·영구 거부.
+     "B 상황에서 의도적으로 다시 쓰고 싶다"는 손으로 쓰면 된다 — veto 는 자동 얹기만 막는다. */
+  test('1. 다른 memory·다른 서비스·다른 스타일에서 재등장해도 veto 유지(문구 identity)', () => {
+    const { WM, E } = loadAll();
+    WM.dismissText(E.normalizeText('시술후 관리법'));
+    // 전혀 다른 기억(id·shopStyleId·배치 모두 다름)에 같은 문구
+    const NOW = Date.now();
+    global.localStorage._m['itdasy:work_memory:list'] = JSON.stringify([{
+      id: 'other-mem', schema: 2, sig: 'other', name: 'B', createdAt: NOW, thumb: null,
+      ratio: '4:5', layoutIdx: 7, photoCount: 2, layoutOrder: [], collageBg: null, collageGap: null, fitMode: null,
+      layers: [{ type: 'sticker', emoji: '🌙', x: 0.8, y: 0.8, size: 0.1 }, noRole('시술후 관리법')],
+      shopStyleId: 'ss-B', kind: 'service', applyCount: 0, lastAppliedAt: 0, publishCount: 1, lastPublishedAt: NOW,
+    }]);
+    global.localStorage._m['itdasy:work_memory:default'] = JSON.stringify('other-mem');
+    const st = E.forEditor({ restore: false, incoming: [], photoCount: 2, layersOnly: true, service: '속눈썹', shopStyleId: 'ss-B' });
+    expect(texts(st)).toHaveLength(0);                        // 다른 맥락이어도 자동 얹기는 차단
+    expect(st.layers.some((l) => l.emoji === '🌙')).toBe(true);
+  });
+  test('2-a. 손으로 다시 써서 발행해도(관측 n 증가) dismissed 그대로 — 자동 해제 없음(의도된 영구 정책)', () => {
+    const { WM, E } = loadAll();
+    const k = E.normalizeText('시술후 관리법');
+    WM.dismissText(k);
+    publishWith(WM, ['시술후 관리법']); publishWith(WM, ['시술후 관리법']); publishWith(WM, ['시술후 관리법']);
+    expect(WM.textbook()[k].st).toBe('dismissed');            // n 이 쌓여도 상태는 불변
+    seedMemory(WM, [{ type: 'sticker', emoji: '✨', x: 0.2, y: 0.2, size: 0.1 }, noRole('시술후 관리법')]);
+    expect(texts(apply(E))).toHaveLength(0);
+  });
+  test('2-b. veto 는 자동 얹기만 막는다 — 이번 글(원장 입력) 레이어는 절대 안 건드림', () => {
+    const { WM, E } = loadAll();
+    WM.dismissText(E.normalizeText('예약문의 DM'));
+    seedMemory(WM, [{ type: 'sticker', emoji: '✨', x: 0.2, y: 0.2, size: 0.1 }]);
+    const base = [{ type: 'text', text: '예약문의 DM', x: 0.5, y: 0.6, size: 0.05 }];   // 원장이 직접 쓴 상당
+    const out = E.decorateLayers(base, { photoCount: 1 });
+    expect(out.some((l) => l.text === '예약문의 DM')).toBe(true);   // base 는 sanitize 대상 아님
+  });
+});
+
 describe('3경로 동일 + 디버깅 가능성', () => {
   test('편집기/헤드리스가 같은 sanitize 결과', () => {
     const { WM, E } = loadAll();
