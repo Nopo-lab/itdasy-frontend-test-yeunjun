@@ -186,3 +186,31 @@ describe('추천칩 터치 영역(모바일)', () => {
     expect(s).toMatch(/style-components\.css\?v=20260816-chip-taparea/);
   });
 });
+
+describe('화면 열기 버튼 — 채팅방 뒤로 열리지 않는다', () => {
+  test('_nav 가 화면을 열기 전에 채팅방을 닫는다', () => {
+    // 실사용 신고: "빈시간 보기 / 예약 화면 열기" 를 누르면 채팅방 뒤로 열려서
+    // 채팅방을 손으로 꺼야 보였다 — 원장님한텐 버튼이 안 먹은 것처럼 느껴진다.
+    const src = read('js/assistant/core/action-hub.js');
+    const i = src.indexOf('function _nav(fn)');
+    expect(i).toBeGreaterThan(-1);
+    const body = src.slice(i, i + 420);
+    expect(body).toContain('closeAssistant');
+    // 닫기가 fn 실행보다 먼저여야 한다
+    expect(body.indexOf('closeAssistant')).toBeLessThan(body.indexOf('fn()'));
+  });
+
+  test('화면 이동 kind 가 전부 _nav 를 거친다(개별 누락 방지)', () => {
+    const src = read('js/assistant/core/action-hub.js');
+    const NAV_KINDS = ['open_calendar', 'open_customer', 'open_revenue', 'open_workshop',
+      'open_instagram', 'open_dm_queue', 'open_comment_queue', 'open_dm_settings',
+      'show_empty_slots', 'show_unlinked_photos', 'open_photo_editor', 'open_template_panel'];
+    const missing = NAV_KINDS.filter((k) => {
+      const i = src.indexOf(`case '${k}'`);
+      if (i < 0) return true;
+      // 해당 case 블록 안에 _nav( 가 있어야 한다
+      return !src.slice(i, i + 900).includes('_nav(');
+    });
+    expect(missing).toEqual([]);
+  });
+});

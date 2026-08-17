@@ -91,7 +91,18 @@
     return '<div class="asst-chips asst-chips--hub" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;">' + btns + '</div>';
   }
 
-  function _nav(fn) { try { if (typeof fn === 'function') { fn(); return true; } } catch (_e) { void 0; } return false; }
+  // [연준님 2026-08-17] 화면을 여는 버튼은 **반드시 잇비 채팅방을 먼저 닫는다.**
+  //   실사용 신고: "빈시간 보기 / 예약 화면 열기" 를 누르면 그 화면이 채팅방 **뒤**로 열려서
+  //   채팅방을 손으로 꺼야 보였다. 원장님 입장에선 버튼이 안 먹은 것처럼 느껴진다.
+  //   전수조사 결과 _nav 를 쓰는 10곳 중 닫는 건 4곳뿐이었다(고객·DM큐·댓글·DM설정).
+  //   나머지(예약·매출·작업실·인스타·사진편집기·템플릿·빈시간)는 전부 뒤로 열렸다.
+  //   → 개별 case 에서 각자 닫게 두면 새 kind 를 추가할 때마다 또 빠뜨린다. 여기 한 곳에서 닫는다.
+  //   (이미 닫는 4곳은 중복 호출이 되지만 closeAssistant 는 멱등이라 무해하다)
+  function _nav(fn) {
+    try { if (typeof window.closeAssistant === 'function') window.closeAssistant(); } catch (_e) { void 0; }
+    try { if (typeof fn === 'function') { fn(); return true; } } catch (_e) { void 0; }
+    return false;
+  }
   function _copy(text) {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(String(text || '')); return true; }
