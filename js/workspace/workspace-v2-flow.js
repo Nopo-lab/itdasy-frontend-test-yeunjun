@@ -413,6 +413,42 @@
     if (!ids.length) return false;
     return (d.photos || []).some(function (p) { return p && p.storyEdited && ids.indexOf(p.id) >= 0; });
   }
+  /* [T4 2026-08-17] 자동 적용 배너 — "평소처럼 만들었어요 · N장" + 되돌리기.
+     설정처럼 보이지 않게(합의 UX): 인라인 카드(wm-cap 재사용), 팝업 아님, 5초 뒤 스스로 사라짐.
+     되돌리기 = ItdEditor.undoWmApply(token) — **그 적용의 레이어만** 외과적으로 제거, 사용자 작업 보존.
+     5초는 실제 노출 시점 기준(Date.now 가드) — 백그라운드 탭에서 hide 타이머가 밀려 배너가 남아도
+     늦은 클릭은 무시한다. 놓친 뒤의 회수 경로는 편집기 ↩(wmApply 가 op 1개로 스택에 있음). */
+  function _showWmBanner(photoN) {
+    try {
+      var ap = window.WorkMemoryEngine && window.WorkMemoryEngine._lastApply;
+      if (!ap || !ap.token) return;
+      _hideWmBanner();
+      var elB = document.createElement('div');
+      elB.id = 'wmApplyBanner'; elB.className = 'wm-cap wm-cap--editor';
+      elB.innerHTML =
+        '<div class="wm-cap__c"><div class="wm-cap__k"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-layers"/></svg>평소처럼 만들었어요' + (photoN > 1 ? ' · ' + photoN + '장' : '') + '</div>' +
+        '<div class="wm-cap__m">마음에 안 들면 바로 빼드려요</div></div>' +
+        '<button type="button" class="wm-cap__undo" data-haptic="light">되돌리기</button>';
+      var shownAt = Date.now(), tok = ap.token;
+      elB.querySelector('.wm-cap__undo').addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (Date.now() - shownAt > 5000) { _hideWmBanner(); return; }   // 노출 5초 경과 → 무시(편집기 ↩ 로만)
+        var n = (window.ItdEditor && window.ItdEditor.undoWmApply) ? window.ItdEditor.undoWmApply(tok) : 0;
+        _hideWmBanner();
+        if (n) toast('빼뒀어요 — 되돌리려면 위 ↩');
+      });
+      document.body.appendChild(elB);
+      void elB.offsetWidth; elB.classList.add('is-on');
+      d._wmBannerT = setTimeout(_hideWmBanner, 5000);
+    } catch (_e) { void _e; }
+  }
+  function _hideWmBanner() {
+    try {
+      if (d && d._wmBannerT) { clearTimeout(d._wmBannerT); d._wmBannerT = null; }
+      var o = document.getElementById('wmApplyBanner');
+      if (o) { o.classList.remove('is-on'); setTimeout(function () { if (o.parentNode) o.parentNode.removeChild(o); }, 260); }
+    } catch (_e) { void _e; }
+  }
   /* [T3 2026-08-17] 기억 선택 ctx — 사진 수·시술명·전/후 역할 여부. 전후는 사진 수(2장)만으론
      못 가려서 role 지정을 본다. 선택 규칙 본체는 work-memory-engine.js select() — flow 는 ctx 만 만든다. */
   function _wmSelectCtx() {
@@ -606,6 +642,7 @@
       // [2026-07-17] 콜라주(레이아웃)엔 기억의 '꾸밈'만 합쳐 얹는다 — 칸 배치는 레이아웃 것 그대로.
       editState: _finalEs,
       onDone: function (dataUrl, meta) {
+        _hideWmBanner();   // [T4] 편집기가 닫히면 배너·타이머 정리(다음 세션에 낡은 배너 금지)
         var p = p0 || _activeEditPhoto();   // [#5] 열 때 잡은 '보던 장'에 저장(편집 중 바뀌지 않게 고정)
         if (p) { p.editedDataUrl = dataUrl; p.storyEdited = true; if (meta && meta.editState) p.editState = meta.editState; }   // [#11] 편집 상태 보존 → 재편집 이어가기
         if (_wsEd) { d.templateOutput = dataUrl; d.previewUrl = null; }   // [ws-hyper] 편집한 레이아웃 합성본을 대표 이미지로 → 미리보기/발행/저장에 반영
@@ -652,8 +689,15 @@
         }
         toast('사진을 꾸몄어요');
       },
-      onCancel: function () { d._editorNext = null; }   // 편집기 취소 시 라우팅 플래그 정리(다음 편집이 엉뚱히 미리보기로 안 가게)
+      onCancel: function () { _hideWmBanner(); d._editorNext = null; }   // 편집기 취소 시 배너+라우팅 플래그 정리
     });
+    // [T4] 자동 적용 배너 — 이번 오픈에 wm 레이어가 실제로 실렸을 때만(사진 editState 가 이긴 경우 제외).
+    try {
+      if (window.WorkMemoryEngine && window.WorkMemoryEngine._lastApply &&
+          _finalEs && _finalEs.layers && _finalEs.layers.some(function (l) { return l && l._src === 'wm'; })) {
+        _showWmBanner((editablePhotos() || []).length);
+      }
+    } catch (_be) { void _be; }
   }
   // [통합 편집기] 업로드 직후도 '옛 crop 화면'이 아니라 같은 ItdEditor 를 연다 → 완료하면 캡션 화면으로.
   //   새 업로드 사진은 editState=null 이라 자동으로 깨끗하게 열림(옛 편집 안 꺼냄).

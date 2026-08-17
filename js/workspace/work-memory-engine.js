@@ -189,9 +189,11 @@
      [2026-07-22 원장 스타일] 잇비 "평소 하던 대로"(orch.useRecentStyle)는 플래그와 무관하게 적용.
        orch 가 텍스트를 주면 기억의 텍스트 role 은 비워 중복 방지(incoming:[]).
      [T2'] 실제 얹힐 때만 markApplied — 헤드리스가 카운트를 못 부풀린다. */
+  var _applySeq = 1;
   function forEditor(o) {
     o = o || {};
     var WM = window.WorkMemory;
+    try { window.WorkMemoryEngine._lastApply = null; } catch (_e0) { void _e0; }   // [T4] 스테일 방지 — 이번 오픈에 적용 안 됐으면 null
     if (o.restore || !WM || !WM.toEditState) return null;
     var orch = !!(o.orch && o.orch.useRecentStyle);
     var incoming = (orch && o.orch.wantsText) ? [] : (o.incoming || []);
@@ -201,6 +203,14 @@
     try { wm = WM.toEditState(pick.rec, { incoming: incoming, photoCount: o.photoCount, layersOnly: !!o.layersOnly }); }
     catch (_e) { wm = null; void _e; }
     if (wm && WM.markApplied) WM.markApplied(pick.rec.id);
+    // [T4] 얹는 레이어에 출처+적용 토큰 — 배너 '되돌리기'/편집기 undoWmApply 가 이 identity 로만 지운다.
+    //   사용자 레이어·우리샵 레이어는 안 건드리는 게 목표(오염 금지 — 합의 조건 3).
+    //   토큰은 적용마다 새로 — 오래된 배너가 최신 적용을 못 되돌린다(조건 6).
+    if (wm && wm.layers && wm.layers.length) {
+      var tok = 'wm' + (_applySeq++);
+      wm.layers = wm.layers.map(function (l) { return Object.assign({}, l, { _src: 'wm', _wmTok: tok }); });
+      try { window.WorkMemoryEngine._lastApply = { token: tok, memoryId: pick.rec.id, count: wm.layers.length }; } catch (_e2) { void _e2; }
+    }
     return wm;
   }
 
@@ -213,6 +223,7 @@
     select: select,
     decorateLayers: decorateLayers,
     forEditor: forEditor,
-    _lastSelect: null   // QA·잇비 역추적 — 마지막 선택의 via/후보 점수
+    _lastSelect: null,   // QA·잇비 역추적 — 마지막 선택의 via/후보 점수
+    _lastApply: null     // [T4] 마지막 편집기 적용 { token, memoryId, count } — 배너·되돌리기 identity
   };
 })();

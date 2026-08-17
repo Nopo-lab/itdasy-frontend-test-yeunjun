@@ -173,8 +173,11 @@ describe('[J] 3경로 동일 — 헤드리스 / 편집기 / 잇비가 같은 꾸
     const headless = WM.defaultEditState(opts);
     const editor = E.forEditor({ restore: false, incoming: opts.incoming, photoCount: 1, layersOnly: true });
     const orch = E.forEditor({ restore: false, orch: { useRecentStyle: true }, incoming: opts.incoming, photoCount: 1, layersOnly: true });
-    expect(JSON.stringify(editor.layers)).toBe(JSON.stringify(headless.layers));
-    expect(JSON.stringify(orch.layers)).toBe(JSON.stringify(headless.layers));
+    // [T4 갱신] 편집기 경로엔 되돌리기용 런타임 태그(_src/_wmTok)가 붙는다 — 계약은 '같은 꾸밈'이지
+    //   런타임 메타가 아니므로 태그를 벗기고 비교한다(태그 자체는 work-memory-apply-undo.test.js 가 잠금).
+    const strip = (ls) => ls.map(({ _src, _wmTok, ...rest }) => rest);
+    expect(JSON.stringify(strip(editor.layers))).toBe(JSON.stringify(headless.layers));
+    expect(JSON.stringify(strip(orch.layers))).toBe(JSON.stringify(headless.layers));
   });
 });
 
