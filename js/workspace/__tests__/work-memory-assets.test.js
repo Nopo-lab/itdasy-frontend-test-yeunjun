@@ -180,6 +180,17 @@ describe('[T7] 발행 이벤트 경계 — 중복·실패 계약', () => {
 
 describe('갤러리 DB v4 — 소스 계약(실 업그레이드는 브라우저 실측)', () => {
   const dbSrc = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'app-gallery-db.js'), 'utf8');
+  test('[T7 실측] 멀티탭 데드락 방지 — 연결이 versionchange 에 양보한다', () => {
+    // 다른 탭의 계정 전환 purge(deleteDatabase)가 이 연결에 blocked 되면 발행·저장·갤러리가
+    // 통째로 영구 hang(실발행 E2E 에서 실제 발생). 연결은 versionchange 시 즉시 닫혀야 한다.
+    expect(dbSrc).toMatch(/_gdb\.onversionchange/);
+    expect(dbSrc).toMatch(/onversionchange[\s\S]{0,80}_gdb\.close\(\)/);
+  });
+  test('[T7 실측] 발행 가드의 로컬 슬롯 조회는 3초 타임아웃 — IDB 가 잠겨도 발행이 영구 hang 안 됨', () => {
+    const flowSrc = fs.readFileSync(path.join(__dirname, '..', 'workspace-v2-flow.js'), 'utf8');
+    expect(flowSrc).toMatch(/_local = Promise\.race\(\[/);
+    expect(flowSrc).toMatch(/setTimeout\(function \(\) \{ res\(null\); \}, 3000\)/);
+  });
   test('버전 4 + assets store 신설 + 기존 store(slots·gallery) 로직 보존', () => {
     expect(dbSrc).toMatch(/indexedDB\.open\(_GDB_NAME, 4\)/);
     expect(dbSrc).toMatch(/_ASSET_STORE/);

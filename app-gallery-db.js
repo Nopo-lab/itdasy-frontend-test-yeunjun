@@ -43,7 +43,15 @@ function openGalleryDB() {
         db.createObjectStore(_ASSET_STORE, { keyPath: 'id' });
       }
     };
-    req.onsuccess = e => { _gdb = e.target.result; resolve(_gdb); };
+    req.onsuccess = e => {
+      _gdb = e.target.result;
+      // [T7 실측 2026-08-17] 멀티탭 데드락 방지 — 다른 탭이 계정 전환 purge(deleteDatabase)나
+      //   버전 업그레이드를 걸면, 이 연결이 안 닫히는 한 그 요청이 영구 blocked 되고 그 뒤에
+      //   줄선 모든 open(발행 가드·자산 웜업·갤러리)이 같이 얼어붙는다(실측: 발행 버튼 영구 '올리는 중…').
+      //   versionchange 를 받으면 즉시 양보하고, 다음 사용 때 openGalleryDB 가 재연결한다.
+      _gdb.onversionchange = () => { try { _gdb.close(); } catch (_) { void 0; } _gdb = null; };
+      resolve(_gdb);
+    };
     req.onerror   = () => reject(req.error);
   });
 }

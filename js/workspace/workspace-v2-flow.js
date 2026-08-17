@@ -4394,10 +4394,17 @@
 	      var _slotId = (d.slot && d.slot.id) || null;
 	      var _local = Promise.resolve(null);
 	      if (!d._publishedAt && _slotId && typeof window.loadSlotsFromDB === 'function') {
-	        _local = Promise.resolve(window.loadSlotsFromDB()).then(function (all) {
-	          var hit = (all || []).filter(function (x) { return x && String(x.id) === String(_slotId); })[0];
-	          return hit && hit.publish ? hit.publish : null;
-	        }).catch(function () { return null; });
+	        /* [T7 실측 2026-08-17] IDB 가 잠겨 있으면(다른 탭이 계정 전환 purge 를 걸어 delete 가
+	           blocked 되는 멀티탭 케이스 — 실발행 E2E 에서 실제로 발생) 이 조회가 영원히 안 끝나
+	           발행 버튼이 '올리는 중…' 채로 영구 먹통이 됐다. 3초 안에 못 읽으면 로컬 근거 없이 진행 —
+	           ①세션(_publishedAt) ②슬롯(d.slot.publish) 근거는 그대로 살아 있고 서버 idempotency 가 최후 방어선. */
+	        _local = Promise.race([
+	          Promise.resolve(window.loadSlotsFromDB()).then(function (all) {
+	            var hit = (all || []).filter(function (x) { return x && String(x.id) === String(_slotId); })[0];
+	            return hit && hit.publish ? hit.publish : null;
+	          }),
+	          new Promise(function (res) { setTimeout(function () { res(null); }, 3000); })
+	        ]).catch(function () { return null; });
 	      }
 	      var _kind = kind;
 	      _local.then(function (_remote) {
