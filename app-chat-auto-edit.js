@@ -183,7 +183,7 @@
     var ig = (bk.instagram_handle || '').trim().replace(/^@+/, '');
     var label = bk.watermark_text && bk.watermark_text.trim()
       ? bk.watermark_text.trim()
-      : (name && ig ? name + ' · @' + ig : (name || (ig ? '@' + ig : '')));
+      : (name && ig ? name + ' · ' + window.igHandle(ig) : (name || window.igHandle(ig)));
     if (!label) return;
     ctx.save();
     var fs = Math.max(12, Math.round(w * 0.022));

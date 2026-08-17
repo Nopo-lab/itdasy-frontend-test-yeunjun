@@ -99,6 +99,10 @@
   //   → 개별 case 에서 각자 닫게 두면 새 kind 를 추가할 때마다 또 빠뜨린다. 여기 한 곳에서 닫는다.
   //   (이미 닫는 4곳은 중복 호출이 되지만 closeAssistant 는 멱등이라 무해하다)
   function _nav(fn) {
+    // [연준님 2026-08-17 · C] 여기서 연 화면을 닫으면 잇비 채팅으로 돌아온다.
+    //   실제 복귀는 app-core.js 의 시트 라우터(_markSheetOpen/_markSheetClosed)가 한다 —
+    //   화면이 11개라 각자 붙이면 또 빠뜨리기 때문. 여기선 "다음 시트 하나" 만 표시한다.
+    try { if (typeof window.__itbiArmReturn === 'function') window.__itbiArmReturn(); } catch (_e) { void 0; }
     try { if (typeof window.closeAssistant === 'function') window.closeAssistant(); } catch (_e) { void 0; }
     try { if (typeof fn === 'function') { fn(); return true; } } catch (_e) { void 0; }
     return false;
@@ -201,11 +205,9 @@
         _nav(function () { window.openCalendarView && window.openCalendarView(); });
         return { navigated: true, message: '예약 화면을 열었어요.' };
       case 'open_customer':
-        // [Phase3-B #4] 잇비 채팅 아래 append 금지 — 잇비 닫고 해당 고객 상세 시트를 위로 연다.
-        //   닫을 때 잇비로 복귀하도록 source 표시(closeCustomerDashboard 가 처리).
+        // [Phase3-B #4] 잇비 채팅 아래 append 금지 — 잇비 닫고 해당 고객 시트를 위로 연다.
+        //   [2026-08-17 · C] 복귀는 _nav 가 건 표시를 시트 라우터가 처리한다(개별 플래그 제거).
         _nav(function () {
-          try { window.__ITDASY_CUSTOMER_RETURN__ = 'itbi_chat'; } catch (_e0) { void 0; }
-          if (typeof window.closeAssistant === 'function') { try { window.closeAssistant(); } catch (_e1) { void 0; } }
           if (p.customer_id != null && typeof window.openCustomerDashboard === 'function') window.openCustomerDashboard(p.customer_id);
           else if (window.openCustomers) window.openCustomers();
         });

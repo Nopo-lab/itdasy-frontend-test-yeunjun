@@ -508,7 +508,7 @@ function updateHeaderProfile(handle, tone, picUrl) {
 
   // 인스타 프레임 핸들 + 아바타 갱신 (미리보기용)
   const fh = document.getElementById('frameHandle');
-  if (fh && handle) fh.textContent = '@' + handle.replace('@','');
+  if (fh && handle) fh.textContent = window.igHandle(handle);
   const fi = document.getElementById('frameAvatarInner');
   if (fi) {
     const fLetter = (shopName || '사장님')[0]?.toUpperCase() || '✨';
@@ -3074,6 +3074,22 @@ async function loadStatsCard() {
   };
 })();
 
+/**
+ * 인스타 핸들 표시 정본 — `@` 는 **정확히 하나**. 값이 없으면 빈 문자열.
+ *
+ * [연준님 2026-08-17 · B] 실측: 잇비가 "연동돼 있어요 — @@disabled_offitial".
+ * 저장할 때 `@` 를 붙이는데 보여줄 때 또 붙여서 생긴다. 화면 곳곳에서
+ * `'@' + handle` 을 직접 쓰고 있었고 절반만 `.replace(/^@/,'')` 로 막고 있었다.
+ * 표시 문자열을 만들 땐 이걸 써라 — 직접 붙이지 마라.
+ *   igHandle('x') · igHandle('@x') · igHandle('@@x') → '@x'   ·   igHandle('') → ''
+ */
+window.igHandle = function (v) {
+  var b = String(v == null ? '' : v).trim().replace(/^@+/, '');
+  if (b.indexOf('instagram.com/') >= 0) b = b.split('instagram.com/')[1] || '';
+  b = b.split('?')[0].split('/')[0].replace(/[^A-Za-z0-9._]/g, '').slice(0, 60);
+  return b ? '@' + b : '';
+};
+
 // Module에서 접근 가능하도록 window에 노출
 window.API = API;
 window.apiUrl = apiUrl;
@@ -3532,9 +3548,23 @@ window.refreshLastSyncBadges = function () {
     }
   });
 
+  // ── [연준님 2026-08-17 · C] 잇비에서 연 화면은 닫을 때 잇비 채팅으로 돌아간다 ──
+  //   실측: 잇비 → "고객 화면 열기" → 뒤로가기 → **홈**. 원장님은 하던 대화를 잃는다.
+  //   화면이 11개라 각자 고치면 또 빠뜨린다 — 시트 라우터인 여기 한 곳에서 처리한다.
+  //   `_nav()` 가 arm 을 걸면 **그 다음 열리는 시트 하나**만 표시를 받고, 그 시트가
+  //   닫힐 때 복귀한다. 중첩(목록 위 상세)은 arm 이 이미 풀려서 표시를 못 받으므로
+  //   상세는 목록으로, 목록이 닫힐 때 잇비로 — 순서가 자연스럽게 지켜진다.
+  //   history 는 건드리지 않는다. 기존 pushState/go(-n) 로직 뒤에 복귀만 붙인다.
+  let _itbiReturnFor = null;
+  window.__itbiArmReturn = function () { window.__ITBI_RETURN_ARM__ = true; };
+
   // 시트 open 시 호출 — history.pushState
   window._markSheetOpen = function (name) {
     try {
+      if (window.__ITBI_RETURN_ARM__) {
+        window.__ITBI_RETURN_ARM__ = false;
+        _itbiReturnFor = name;
+      }
       const hash = '#' + name;
       // 이미 같은 hash 면 push 안 함 (중복 방지)
       let didPush = false;
@@ -3576,6 +3606,16 @@ window.refreshLastSyncBadges = function () {
         // push 는 안 했는데 hash 가 내 것 → 흔적만 지운다.
         // (사용자 back 으로 닫히는 중이면 여기 안 온다 — 부모 hash 를 지워버리면 안 되므로)
         history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+      // 잇비에서 연 화면이 닫혔다 → 채팅으로 복귀. (뒤로가기·✕·바깥탭 전부 여기를 지난다)
+      //   부모를 닫으며 자식까지 정리되는 경우도 names 에 들어 있으니 같이 본다.
+      if (_itbiReturnFor && names.indexOf(_itbiReturnFor) !== -1) {
+        _itbiReturnFor = null;
+        const _sheet = document.getElementById('assistantSheet');
+        const _alreadyOpen = _sheet && _sheet.style.display !== 'none' && _sheet.style.display !== '';
+        if (!_alreadyOpen && typeof window.openAssistant === 'function') {
+          try { window.openAssistant(); } catch (_e2) { void _e2; }
+        }
       }
     } catch (_e) { void _e; }
   };

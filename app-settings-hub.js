@@ -83,7 +83,7 @@
         <div class="sv2-acc">
           ${avatar}
           <div class="sv2-acc__info">
-            <div class="sv2-acc__handle">${handle ? `@${_esc(handle)}` : '인스타 미연동'}</div>
+            <div class="sv2-acc__handle">${handle ? _esc(window.igHandle(handle)) : '인스타 미연동'}</div>
             <div class="sv2-acc__email">${emailText}</div>
           </div>
           ${badge}

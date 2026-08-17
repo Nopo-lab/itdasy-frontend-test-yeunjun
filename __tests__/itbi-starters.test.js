@@ -194,7 +194,8 @@ describe('화면 열기 버튼 — 채팅방 뒤로 열리지 않는다', () => 
     const src = read('js/assistant/core/action-hub.js');
     const i = src.indexOf('function _nav(fn)');
     expect(i).toBeGreaterThan(-1);
-    const body = src.slice(i, i + 420);
+    // 고정 길이로 자르면 주석 한 줄만 늘어도 본문이 창 밖으로 밀린다 — 닫는 중괄호까지 잡는다.
+    const body = src.slice(i, src.indexOf('\n  }', i) + 4);
     expect(body).toContain('closeAssistant');
     // 닫기가 fn 실행보다 먼저여야 한다
     expect(body.indexOf('closeAssistant')).toBeLessThan(body.indexOf('fn()'));

@@ -189,7 +189,7 @@
 
   async function _renderStory(imageSrc, caption) {
     const brand = _brandKit();
-    const watermark = brand.watermark_text || brand.shop_name || (brand.instagram_handle ? '@' + brand.instagram_handle : '@itdasy');
+    const watermark = brand.watermark_text || brand.shop_name || window.igHandle(brand.instagram_handle) || '@itdasy';
     // app-story-template.js 의 renderStory 가 등록되어 있으면 그걸 우선 사용
     if (typeof window._renderStoryTemplate === 'function') {
       return window._renderStoryTemplate({ imageSrc, caption, tagLine: '오늘의 시술', watermark });

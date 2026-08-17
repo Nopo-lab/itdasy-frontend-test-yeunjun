@@ -387,12 +387,8 @@
     try { if (typeof window._markSheetClosed === 'function') window._markSheetClosed('customerDash'); } catch (_e) { void _e; }
     // [T-101] "이 손님" 컨텍스트 해제.
     try { window.__ITDASY_CURRENT_CUSTOMER__ = null; } catch (_e) { void 0; }
-    // [Phase3-B #4] 잇비 대화에서 열었으면 닫을 때 잇비로 복귀(다른 경로는 밑의 화면 그대로 노출).
-    let _ret = null;
-    try { _ret = window.__ITDASY_CUSTOMER_RETURN__; window.__ITDASY_CUSTOMER_RETURN__ = null; } catch (_e) { void 0; }
-    if (_ret === 'itbi_chat' && typeof window.openAssistant === 'function') {
-      try { window.openAssistant(); } catch (_e) { void 0; }
-    }
+    // [2026-08-17 · C] 잇비 복귀는 시트 라우터(app-core _markSheetClosed)가 처리한다.
+    //   여기서 따로 열지 않는다 — 목록 위에서 상세만 닫을 땐 목록으로 돌아가야 하므로.
   };
 
   function _customerEditHtml(c, isNew) {

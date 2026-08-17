@@ -62,7 +62,7 @@
     var ig = _cleanHandle(s.instagram_handle);
     if (name && ig) return name + ' · @' + ig;
     if (name) return name;
-    return ig ? '@' + ig : '';
+    return window.igHandle(ig);
   }
 
   function get() { return _read(); }

@@ -317,7 +317,7 @@
       if (book) lines.push('📅 예약 → ' + book);
       if (phone) lines.push('☎ ' + (book ? '' : '예약·문의 ') + phone);
       if (price) lines.push('💰 ' + price);
-      if (handle) lines.push('@' + handle.replace(/^@/, ''));
+      if (handle) lines.push(window.igHandle(handle));
       return lines.length ? '\n\n' + lines.join('\n') : '';
     } catch (_e) { void _e; }
     return '';

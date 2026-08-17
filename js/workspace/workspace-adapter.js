@@ -107,8 +107,8 @@
 	    return {
 	      connected: connected, tokenValid: tokenValid,
 	      canPublish: canPublish,
-	      handle: handle ? ('@' + handle) : '', profilePic: pic,
-	      displayName: handle ? ('@' + handle) : ''
+	      handle: window.igHandle(handle), profilePic: pic,
+	      displayName: window.igHandle(handle)
 	    };
 	  }
 	  function _eyeMasks(masks, img, b) {
