@@ -58,6 +58,14 @@
       }
       try {
         const res = await apiFetch('/assistant/brief', { headers });
+        /* [2026-08-17 보스] 401/403 은 네트워크 문제가 아니다 — "연결이 불안정해요" 오진 금지.
+           만료 토큰으로 부팅하면 재시도 3회가 전부 401 로 소모돼 실패 카드가 떴고, 세션 게이트가
+           로그인을 받아도 홈을 다시 안 그려 카드가 고정됐다(재렌더 훅은 app-core 로그인 성공부에 추가).
+           여기선 즉시 중단하고 AUTH 를 돌려줘 에러 카드를 안 띄운다. */
+        if (res.status === 401 || res.status === 403) {
+          console.warn('[brief] 인증 실패(' + res.status + ') — 세션 게이트에 맡기고 중단');
+          return 'AUTH';
+        }
         if (!res.ok) {
           console.warn('[brief] API 응답 실패:', res.status, '(attempt ' + attempt + ')');
           continue;
@@ -315,6 +323,19 @@
     try { window.HomeCustomerMsgs && window.HomeCustomerMsgs.refresh(); } catch (_e) { void _e; }
   }
 
+  /* [2026-08-17 보스] "Instagram 다시 연결"(#metaReconnectRow)은 Meta 검수자 전용 —
+     일반 사용자 홈에 App Review 안내가 상시 노출되던 것 숨김. 검수자는 데모 계정으로
+     로그인하므로 자동 노출되고, 화면녹화(보스 계정)는 ?metareview=1 로 강제 노출. */
+  function _syncMetaReviewRow() {
+    try {
+      const row = document.getElementById('metaReconnectRow');
+      if (!row) return;
+      const demo = (localStorage.getItem('last_login_email') || '').toLowerCase() === 'review@itdasy.com';
+      const forced = /[?&]metareview=1/.test(location.search);
+      row.style.display = (demo || forced) ? '' : 'none';
+    } catch (_e) { /* ignore */ }
+  }
+
   function _showConnectionError(container) {
     container.innerHTML = `
       <div style="text-align:center;padding:60px 20px;color:var(--text-muted)">
@@ -331,6 +352,7 @@
     const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
     if (!container) return;
     _lastContainerId = container.id || _lastContainerId;
+    _syncMetaReviewRow();   // [2026-08-17] 홈 그릴 때마다 검수자 전용 행 노출 여부 동기화
 
     // SWR: 캐시 즉시 (DM 큐 카운트는 캐시에 없으니 0 으로 시작)
     const swr = _readSWR();
@@ -348,15 +370,19 @@
     if (_inFlight) return;
     _inFlight = true;
     try {
-      const [brief, slots, dmQueueCount, commentQueueCount] = await Promise.all([
+      const [briefRaw, slots, dmQueueCount, commentQueueCount] = await Promise.all([
         _fetchBrief().catch(() => null),
         _fetchSlots().catch(() => []),
         _fetchDMQueueCount().catch(() => 0),
         _fetchCommentQueueCount().catch(() => 0),
       ]);
+      // [2026-08-17 보스] 세션 만료(AUTH) — 에러 카드 금지. 게이트가 로그인 화면을 띄우고,
+      //   재로그인 훅(app-core)이 refresh() 로 다시 그린다. 캐시 있으면 그걸로 유지.
+      if (briefRaw === 'AUTH' && !(swr && swr.d)) return;
+      const brief = briefRaw === 'AUTH' ? null : briefRaw;
       // [2026-07-08] brief 실패 구분 — 실패인데 {}로 그리면 분석 카드가 전부
       //   "없어요/모두 정상" 가짜 초록불이 됨. 플래그 세워 재시도 카드로 렌더.
-      const briefFailed = !brief && !(swr && swr.d);
+      const briefFailed = !brief && !(swr && swr.d) && briefRaw !== 'AUTH';
       const merged = brief || (swr && swr.d) || {};
       // [A12] 모든 API 실패 시 에러 안내
       if (briefFailed && (!slots || !slots.length)) {

@@ -1808,6 +1808,9 @@ async function login() {
     checkCbt1Reset();
     checkOnboarding().catch(() => {});
     document.getElementById('lockOverlay').classList.add('hidden');
+    // [2026-08-17 보스] 재로그인 후 홈 강제 재렌더 — 만료 토큰으로 부팅해 홈 브리프가 401 로
+    //   실패 카드를 띄운 뒤엔, 로그인해도 재렌더 훅이 없어 카드가 고정됐다("맨날 연결 불안정" 신고).
+    if (window.HomeV41 && window.HomeV41.refresh) { try { window.HomeV41.refresh(); } catch (_e) { /* ignore */ } }
     // [UX-LOAD] 로그인 후 로딩 화면 표시 → preload + 최소시간 + 인사 후 쫀득 해제
     var _lo = document.getElementById('appLoadingOverlay');
     if (_lo) { _lo.style.display = 'flex'; window._loadShownAt = Date.now(); }
@@ -2038,6 +2041,7 @@ async function signup() {
     _setAuthGateLocked(false);
     checkOnboarding().catch(() => {});
     document.getElementById('lockOverlay').classList.add('hidden');
+    if (window.HomeV41 && window.HomeV41.refresh) { try { window.HomeV41.refresh(); } catch (_e) { /* ignore */ } }   // [2026-08-17] 가입 직후 홈 재렌더
     checkInstaStatus(true);
   } catch (e) {
     errEl.textContent = _friendlyErr(e, '가입 실패');
@@ -2402,6 +2406,7 @@ window.addEventListener('load', async function() {
         if (_lo2) { _lo2.style.display = 'flex'; window._loadShownAt = Date.now(); }
         _setAuthGateLocked(false);
         checkOnboarding().catch(() => {});
+        if (window.HomeV41 && window.HomeV41.refresh) { try { window.HomeV41.refresh(); } catch (_e) { /* ignore */ } }   // [2026-08-17] 생체 로그인 후 홈 재렌더
         checkInstaStatus(true);
         await _finishLoginLoad(true);
       }

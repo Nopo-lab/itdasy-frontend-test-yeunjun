@@ -1649,8 +1649,10 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
     <div id="homeV41Root"><!-- HomeV41 자동 마운트 --></div>
 
     <!-- [Meta Review v378] 연결 후에도 재연결 경로 노출 — 검수자가 Meta 로그인 플로우를 쉽게 찾도록.
-         기존 connect-instagram static-action 핸들러 재사용(신규 JS 없음). 게시/발행 기능 아님. -->
-    <div id="metaReconnectRow" style="text-align:center; padding:12px 0 2px;">
+         기존 connect-instagram static-action 핸들러 재사용(신규 JS 없음). 게시/발행 기능 아님.
+         [2026-08-17 보스] 일반 사용자에겐 숨김 — 검수 데모 계정(review@itdasy.com) 또는
+         화면녹화용 ?metareview=1 일 때만 노출(app-home-v41 _syncMetaReviewRow 가 토글). -->
+    <div id="metaReconnectRow" style="display:none; text-align:center; padding:12px 0 2px;">
       <button type="button" data-static-action="connect-instagram" data-haptic="light"
         style="background:transparent; border:1px solid var(--border-strong); border-radius:12px; padding:9px 18px; font-size:13px; font-weight:600; color:var(--text-subtle); cursor:pointer;">Instagram 다시 연결</button>
       <div style="margin-top:6px; font-size:11px; color:var(--text-subtle); line-height:1.5;">
