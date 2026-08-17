@@ -227,6 +227,51 @@
     try { return (window.ShopStyle && window.ShopStyle.getActiveId && window.ShopStyle.getActiveId()) || null; }
     catch (_e) { return null; }
   }
+  /* ── [T5] 텍스트북 — role 없는 문구의 전역 관측·정책 ──────────────────────
+     왜 레코드별이 아니라 전역인가: "같은 문구를 서로 다른 게시물 3회" 는 게시물 단위의
+     전역 사실이다. 레코드별로 세면 기억 3개에 1회씩 흩어져 영영 승격이 안 된다.
+     identity = 정규화 문구(엔진 normalizeText) — index·memoryId 무관이라 순서변경·재적용에 안정.
+     { "<norm>": { n: 서로 다른 게시물 관측 수, st: 'obs'|'static'|'dismissed', at } } */
+  var K_TEXTBOOK = 'itdasy:work_memory:textbook';
+  var TB_MAX = 200;   // 상한 — 넘으면 관측(obs) 중 오래된 것부터 정리(static/dismissed 정책은 보존)
+  function textbook() { var v = _read(K_TEXTBOOK, null); return (v && typeof v === 'object') ? v : {}; }
+  function dismissText(norm) {
+    if (!norm) return false;
+    var tb = textbook();
+    tb[norm] = Object.assign({ n: 0 }, tb[norm], { st: 'dismissed', at: _now() });
+    _writeRaw(K_TEXTBOOK, tb);
+    return true;
+  }
+  // 발행 캡처 1회 = 게시물 1개 관측. unknown 만 센다(dynamic 은 예외 없이 제거 대상, static 패턴은 이미 유지).
+  //   같은 게시물 안의 중복 문구 = 1회. 3회 누적 시 obs → static 승격. dismissed 는 절대 안 건드림(veto).
+  function _noteTexts(state) {
+    try {
+      var E = window.WorkMemoryEngine;
+      if (!(E && E.classifyText && E.normalizeText)) return;   // 엔진 없으면 관측 스킵(보수적)
+      var seen = {}, tb = textbook(), changed = false;
+      (state.layers || []).forEach(function (l) {
+        if (!l || l.role || !(l.type === 'text' || l.type === 'badge') || !l.text) return;
+        if (E.classifyText(l.text) !== 'unknown') return;
+        var norm = E.normalizeText(l.text);
+        if (!norm || seen[norm]) return;
+        seen[norm] = 1;
+        var ent = tb[norm] || { n: 0, st: 'obs' };
+        ent.n = (ent.n || 0) + 1; ent.at = _now();
+        if (ent.st === 'obs' && ent.n >= 3) ent.st = 'static';
+        tb[norm] = ent; changed = true;
+      });
+      if (changed) { _tbPrune(tb); _writeRaw(K_TEXTBOOK, tb); }
+    } catch (_e) { void _e; }
+  }
+  function _tbPrune(tb) {
+    var keys = Object.keys(tb);
+    if (keys.length <= TB_MAX) return;
+    keys.filter(function (k) { return tb[k] && tb[k].st === 'obs'; })
+      .sort(function (a, b) { return (tb[a].at || 0) - (tb[b].at || 0); })
+      .slice(0, keys.length - TB_MAX)
+      .forEach(function (k) { delete tb[k]; });
+  }
+
   // [T3] 게시물 성격 — 분류기는 엔진 소유(소프트 의존, 같은 로드그룹). 엔진이 없으면 unknown(보수적).
   function _kindOf(state, service) {
     try {
@@ -285,6 +330,7 @@
       if (!state) return null;   // 원장이 만든 꾸밈이 없음 → 기억할 게 없음
 
       var countPublish = !(opts && opts.publish === false);
+      if (countPublish) _noteTexts(state);   // [T5] 게시물 1회 관측(3회 승격 재료) — 발행/저장일 때만
       var arr = list(), sig = _sig(state);
       for (var i = 0; i < arr.length; i++) {
         if (arr[i].sig === sig) {   // 같은 작업 재사용 → 발행 카운트만
@@ -520,6 +566,7 @@
     list: list, get: get,
     getDefault: getDefault, getDefaultId: getDefaultId, setDefault: setDefault, clearDefault: clearDefault,
     autoOn: autoOn, setAutoOn: setAutoOn, applyOnce: applyOnce, peekOnce: peekOnce, takeOnce: takeOnce,
+    textbook: textbook, dismissText: dismissText,
     rename: rename, remove: remove,
     describe: describe, formatWhen: formatWhen,
     captureFromSlot: captureFromSlot, captureAndNotify: captureAndNotify, showCaptureCard: showCaptureCard,

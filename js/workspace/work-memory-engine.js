@@ -75,6 +75,65 @@
     } catch (_e) { void _e; return 'unknown'; }
   }
 
+  // ── 텍스트 안전성 [T5] ────────────────────────────────────────
+  /* role 없는 텍스트가 지난 글 문구 그대로 다음 글에 실리는 게 T5 이전의 구멍이었다
+     ("8월 이벤트"·손님 이름이 새 글에 남는 사고 + confirmed 게이트 우회 지점).
+     규칙: dynamic(날짜·프로모션·금액) → 항상 제거 / static(상시 안내 패턴 또는 3회 승격) → 유지 /
+           unknown → 이번 글만(제거). 원장이 지운 문구(dismissed)는 패턴이 static 이어도 제거(명시 > 패턴).
+     identity = normalizeText 결과(전역 textbook) — layer index·memoryId 가 아니라 문구 자체라
+       순서변경·재적용·reopen·다른 기억에 같은 문구가 와도 veto 가 따라간다. */
+  var NORM_RE = /[\s.,!?~·…'"“”‘’]+/g;   // 공백+흔한 문장부호 무시 — 계약은 text-safety 테스트가 잠금
+  function normalizeText(t) {
+    return String(t == null ? '' : t).toLowerCase().replace(NORM_RE, '');
+  }
+  // dynamic 판정(확신 있는 것만) — PROMO_RE·PCT_RE 는 성격 분류(classifyKind)와 공유.
+  var TXT_DATE_RE = _re('(?<![가-힣])([0-9]{1,2}\\s*월|[0-9]{1,2}\\s*/\\s*[0-9]{1,2}|[0-9]{1,2}\\s*일(?![가-힣])|오늘|내일|이번\\s*주|이번\\s*달|까지|마감)',
+    /([0-9]{1,2}\s*월|[0-9]{1,2}\s*\/\s*[0-9]{1,2}|[0-9]{1,2}\s*일(?![가-힣])|오늘|내일|이번\s*주|이번\s*달|까지|마감)/);
+  var TXT_MONEY_RE = /[0-9][0-9,]*\s*(원|만원)/;
+  // static 패턴(상시 안내) — 좁게. '안내' 같은 넓은 단어는 일반 문구를 오승격시켜 제외.
+  var TXT_STATIC_RE = _re('(?<![가-힣])(예약|문의|상담|영업시간|주차|오시는\\s*길)|[dD][mM]|디엠',
+    /(예약|문의|상담|영업시간|주차|오시는\s*길)|[dD][mM]|디엠/);
+  function classifyText(t) {
+    try {
+      var s = String(t == null ? '' : t);
+      if (PROMO_RE.test(s) || PCT_RE.test(s) || TXT_DATE_RE.test(s) || TXT_MONEY_RE.test(s)) return 'dynamic';   // dynamic 이 static 보다 우선("예약 마감")
+      if (TXT_STATIC_RE.test(s)) return 'static';
+      return 'unknown';   // 애매하면 unknown — static 간주 금지
+    } catch (_e) { void _e; return 'unknown'; }
+  }
+  // role 없는 text/badge 만 정책 적용. 스티커·선·로고·role 텍스트는 그대로 통과.
+  //   결정 전 과정을 _lastSanitize 에 남긴다 — "왜 이 문구가 살았/죽었지?" 역추적용(QA·잇비).
+  function sanitizeLayers(layers) {
+    var WM = window.WorkMemory;
+    var tb = {};
+    try { tb = (WM && WM.textbook) ? WM.textbook() : {}; } catch (_e0) { void _e0; }
+    var kept = [], dropped = [];
+    var out = (layers || []).filter(function (l) {
+      if (!l || l.role || !(l.type === 'text' || l.type === 'badge') || !l.text) return true;
+      var raw = l.text, norm = normalizeText(raw), cls = classifyText(raw);
+      var ent = tb[norm], keep, why;
+      if (cls === 'dynamic') { keep = false; why = 'dynamic'; }                       // 날짜·이름·할인은 예외 없음
+      else if (ent && ent.st === 'dismissed') { keep = false; why = 'dismissed'; }    // 원장 명시 > 패턴
+      else if (cls === 'static') { keep = true; why = 'static-pattern'; }
+      else if (ent && ent.st === 'static') { keep = true; why = 'static-promoted'; }  // 3회 승격
+      else { keep = false; why = 'unknown'; }                                          // 무응답 = 이번 글만
+      (keep ? kept : dropped).push({ raw: raw, norm: norm, cls: cls, why: why });
+      return keep;
+    });
+    try { window.WorkMemoryEngine._lastSanitize = { kept: kept, dropped: dropped }; } catch (_e1) { void _e1; }
+    return out;
+  }
+  // toEditState + 텍스트 안전 정책 — 세 경로(편집기/헤드리스/잇비)가 전부 이 문을 지난다.
+  function _toSafeState(WM, rec, opts) {
+    var st = null;
+    try { st = WM.toEditState(rec, opts); } catch (_e) { st = null; void _e; }
+    if (!st) return null;
+    var ls = sanitizeLayers(st.layers);
+    if (!ls.length) return null;
+    st.layers = ls;
+    return st;
+  }
+
   // ── 스코어 [T3] ───────────────────────────────────────────────
   // 축은 이 6개로 고정 — "데이터가 있으니 넣자" 식 팽창 금지(합의). 범위는 테스트가 잠근다.
   //   photoFit 40 이 최우선 신호: 최근+자주+브랜드(20+10+5=35)를 합쳐도 못 뒤집는다.
@@ -176,7 +235,7 @@
       var WM = window.WorkMemory;
       if (!WM || !WM.toEditState) return layers;
       var pick = _resolveRec(opts || {}, { ignoreFlag: false, consumeOnce: false });
-      var wm = pick ? WM.toEditState(pick.rec, { incoming: layers, photoCount: opts && opts.photoCount, layersOnly: true }) : null;
+      var wm = pick ? _toSafeState(WM, pick.rec, { incoming: layers, photoCount: opts && opts.photoCount, layersOnly: true }) : null;   // [T5] 텍스트 안전 정책 공용
       return mergeLayers(layers, wm);
     } catch (_e) { void _e; return layers; }
   }
@@ -199,9 +258,7 @@
     var incoming = (orch && o.orch.wantsText) ? [] : (o.incoming || []);
     var pick = _resolveRec(o, { ignoreFlag: orch, consumeOnce: true });
     if (!pick) return null;
-    var wm = null;
-    try { wm = WM.toEditState(pick.rec, { incoming: incoming, photoCount: o.photoCount, layersOnly: !!o.layersOnly }); }
-    catch (_e) { wm = null; void _e; }
+    var wm = _toSafeState(WM, pick.rec, { incoming: incoming, photoCount: o.photoCount, layersOnly: !!o.layersOnly });   // [T5] 텍스트 안전 정책 공용
     if (wm && WM.markApplied) WM.markApplied(pick.rec.id);
     // [T4] 얹는 레이어에 출처+적용 토큰 — 배너 '되돌리기'/편집기 undoWmApply 가 이 identity 로만 지운다.
     //   사용자 레이어·우리샵 레이어는 안 건드리는 게 목표(오염 금지 — 합의 조건 3).
@@ -209,7 +266,10 @@
     if (wm && wm.layers && wm.layers.length) {
       var tok = 'wm' + (_applySeq++);
       wm.layers = wm.layers.map(function (l) { return Object.assign({}, l, { _src: 'wm', _wmTok: tok }); });
-      try { window.WorkMemoryEngine._lastApply = { token: tok, memoryId: pick.rec.id, count: wm.layers.length }; } catch (_e2) { void _e2; }
+      // [T5] 얹은 role 없는 문구 목록 — 저장 완료 시 '지워진 문구'(dismissed) 판정의 기준선.
+      var wmTexts = wm.layers.filter(function (l) { return l && !l.role && (l.type === 'text' || l.type === 'badge') && l.text; })
+        .map(function (l) { return normalizeText(l.text); });
+      try { window.WorkMemoryEngine._lastApply = { token: tok, memoryId: pick.rec.id, count: wm.layers.length, texts: wmTexts, undone: false }; } catch (_e2) { void _e2; }
     }
     return wm;
   }
@@ -219,11 +279,15 @@
     mergeEditState: mergeEditState,
     mergeLayers: mergeLayers,
     classifyKind: classifyKind,
+    normalizeText: normalizeText,
+    classifyText: classifyText,
+    sanitizeLayers: sanitizeLayers,
     scoreMemory: scoreMemory,
     select: select,
     decorateLayers: decorateLayers,
     forEditor: forEditor,
     _lastSelect: null,   // QA·잇비 역추적 — 마지막 선택의 via/후보 점수
-    _lastApply: null     // [T4] 마지막 편집기 적용 { token, memoryId, count } — 배너·되돌리기 identity
+    _lastApply: null,    // [T4] 마지막 편집기 적용 { token, memoryId, count, texts, undone } — 배너·되돌리기·dismissed identity
+    _lastSanitize: null  // [T5] 마지막 텍스트 정책 { kept:[{raw,norm,cls,why}], dropped:[...] } — 승격/제거 역추적
   };
 })();

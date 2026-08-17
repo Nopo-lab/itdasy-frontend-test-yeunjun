@@ -434,6 +434,7 @@
         e.stopPropagation();
         if (Date.now() - shownAt > 5000) { _hideWmBanner(); return; }   // 노출 5초 경과 → 무시(편집기 ↩ 로만)
         var n = (window.ItdEditor && window.ItdEditor.undoWmApply) ? window.ItdEditor.undoWmApply(tok) : 0;
+        if (n) { try { ap.undone = true; } catch (_ue) { void _ue; } }   // [T5] 통째 빼기 표식 — dismissed(문구별 veto) 오판 방지
         _hideWmBanner();
         if (n) toast('빼뒀어요 — 되돌리려면 위 ↩');
       });
@@ -643,6 +644,23 @@
       editState: _finalEs,
       onDone: function (dataUrl, meta) {
         _hideWmBanner();   // [T4] 편집기가 닫히면 배너·타이머 정리(다음 세션에 낡은 배너 금지)
+        /* [T5] dismissed veto 기록 — 원장이 '기억에서 온 role 없는 문구'를 지운 채 **저장 완료**했으면
+           그 문구를 다시는 자동으로 안 얹는다(3회 조건을 재충족해도). 취소로 닫힌 세션은 판정 안 함.
+           통째 빼기 판정은 meta.wmKept(남은 wm 레이어 수, 스티커·선 포함) —
+           0 = 자동화 거부(배너 되돌리기/↩)라 문구 판단 아님 / 1+ = 자동화는 수용, 그 문구만 싫다.
+           (텍스트 개수 비교로 하면 wm 문구가 1개뿐일 때 지워도 '전부 사라짐'이 되어 veto 가 영영 안 걸린다 —
+            브라우저 실측으로 잡은 결함.) */
+        try {
+          var ap = window.WorkMemoryEngine && window.WorkMemoryEngine._lastApply;
+          if (ap && ap.texts && ap.texts.length && !ap.undone && meta && meta.editState && window.WorkMemory && window.WorkMemory.dismissText) {
+            var _fin = {};
+            (meta.editState.layers || []).forEach(function (l) {
+              if (l && !l.role && (l.type === 'text' || l.type === 'badge') && l.text) _fin[window.WorkMemoryEngine.normalizeText(l.text)] = 1;
+            });
+            var gone = ap.texts.filter(function (t) { return !_fin[t]; });
+            if (gone.length && meta.wmKept > 0) gone.forEach(function (t) { window.WorkMemory.dismissText(t); });
+          }
+        } catch (_tde) { void _tde; }
         var p = p0 || _activeEditPhoto();   // [#5] 열 때 잡은 '보던 장'에 저장(편집 중 바뀌지 않게 고정)
         if (p) { p.editedDataUrl = dataUrl; p.storyEdited = true; if (meta && meta.editState) p.editState = meta.editState; }   // [#11] 편집 상태 보존 → 재편집 이어가기
         if (_wsEd) { d.templateOutput = dataUrl; d.previewUrl = null; }   // [ws-hyper] 편집한 레이아웃 합성본을 대표 이미지로 → 미리보기/발행/저장에 반영

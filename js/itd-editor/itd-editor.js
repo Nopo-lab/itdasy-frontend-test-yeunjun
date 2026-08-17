@@ -1930,6 +1930,9 @@
       exportComposite(function (url) {
         if (S !== _sess || _sess._cancelled) { _sess._saving = false; return; }   // [audit] 저장 중 back/취소로 닫혔거나 재진입 → onDone 이중발화 안 함
         var meta = { layers: metaLayers(), editState: _exportState() };   // [학습] close() 전에 좌표 계산(닫으면 stage rect=0 → NaN). editState=재편집 이어가기(#4/#8/#11/#16)
+        // [T5] 저장 시점에 남은 작업기억 레이어 수 — flow 의 dismissed(문구 veto) 판정 기준선.
+        //   0 = 통째 빼기(자동화 거부, 문구 판단 아님) / 1+ = 자동화는 수용했는데 특정 문구만 지움.
+        meta.wmKept = (S.layers || []).filter(function (L) { return L && L._src === 'wm'; }).length;
         meta.perPhoto = _collectPerPhoto();   // [#5/#6] 사진별 레이어(단일모드) — 플로우가 각 장을 자기 레이어로 합성
         // [캐러셀] 콜라주(다중 셀)가 아니면서 편집기에서 새로 추가한 사진 → 플로우가 여러 장 게시(캐러셀) 후보로 반영.
         //   콜라주면 이미 한 장으로 합성되므로 별도 추가 안 함.
