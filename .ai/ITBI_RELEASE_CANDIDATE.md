@@ -12,8 +12,15 @@ Desktop E2E         PASS
 375px layout        PASS
 390 / 412px layout  PASS
 Browser real click  PASS
-Real device touch   NOT VERIFIED
+375px real click    NOT VERIFIED
+Real device touch   PENDING          ← 원장님/연준님 실기기 1회
 ```
+
+⚠️ **세 줄은 서로 다른 것이다. 합치지 마라.**
+- `375px layout` = 375px 폭에서 **레이아웃 실측**(overflow·요소 폭·겹침) — PASS
+- `375px real click` = 375px 폭에서 **실제 클릭** — **0건. 안 해봤다**
+  (이번 실클릭은 pane 462px 폭에서 한 것이다)
+- `real device touch` = 실제 iPhone/Android 손가락 터치 — **아직**
 
 브라우저 pane 스크린샷이 한 프레임 늦는 현상은 **버그로 보지 않는다** —
 실제 DOM 상태(`display` · `getBoundingClientRect` · `innerText`)로 대조해 정상임을 확인했다.
@@ -28,9 +35,9 @@ Real device touch   NOT VERIFIED
 | 375px layout | **PASS** |
 | 390 / 412px layout | **PASS** |
 | Browser real click | **PASS** (pane 462px 폭에서 실클릭 · 2026-08-17) |
-| 375px real click | **미검증** — 375px 은 레이아웃 실측으로만 확인 (실클릭 0건) |
+| 375px real click | **NOT VERIFIED** — 375px 은 레이아웃 실측만. 실클릭 0건 |
 | touch hit area | **IMPROVED → 45px** (시각 33px 유지) |
-| real device touch | **NOT VERIFIED** |
+| real device touch | **PENDING** — 아래 5항목, 결과 받으면 여기 채운다 |
 | **A** 방문 진실원 단일화 (화면 = 잇비 = 브리핑) | **PASS** |
 | **B** 인스타 핸들 `@` 정규화 | **PASS** |
 | **C** 연 화면 닫으면 채팅 복귀 (중첩 포함) | **PASS** |
@@ -143,7 +150,32 @@ hub 버튼 잘림         없음
 | 4 | 긴 고객명 | 줄바꿈 되고 화면 밖으로 안 나감 |
 | 5 | 칩 빠르게 연속 탭 | 오탭·중복 전송 없음 |
 
-**이상 없으면 →**
+### 결과 기입란 (실기기에서 확인 후 채운다)
+
+```text
+Real device:
+1 ____
+2 ____
+3 ____
+4 ____
+5 ____
+```
+
+**5개 모두 PASS →**
 `ITBI Assistant / Chat UX / Entity / Data Truth / Navigation = RELEASE READY` **로 확정.**
 
 문제가 있으면 **그 항목만** 다시 연다 — 전체 재검증 불필요. 위 표의 나머지는 고정돼 있다.
+
+---
+
+## ⚠️ 이 검증은 Claude 가 대신할 수 없다
+
+실기기 터치는 **사람 손가락**이 필요하다. Claude 쪽 수단으로는 전부 대체가 안 된다:
+
+| 수단 | 왜 안 되나 |
+|---|---|
+| 브라우저 pane | 실제 브라우저지만 **마우스 클릭**이다. 터치 이벤트·손가락 크기·오탭이 안 잡힌다 |
+| iOS 시뮬레이터 | 시뮬레이터는 실기기가 아니다. 4·5번(줄바꿈·연속 탭 오탭)이 실제와 다르게 나온다 |
+| 뷰포트 리사이즈 | 레이아웃만 본다. 이미 `375px layout = PASS` 로 기록한 그것이다 |
+
+그래서 5번 항목은 **원장님/연준님이 직접** 눌러봐야 한다.
