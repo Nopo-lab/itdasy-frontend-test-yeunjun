@@ -1,21 +1,27 @@
 # 잇비(ITBI) Assistant — Release Candidate 상태
 
 **최종 상태: ITBI Assistant / Chat UX / Entity / Data Truth / Navigation**
-**— 실기기 터치만 남기고 전부 PASS. 코드 동결.**
+**— 실기기 3~5 만 남기고 전부 PASS. 코드 동결.**
 
-라이브 기준: BE `6b9419c` · FE `4413739`+
-테스트: backend **1989** passed · frontend **1383** passed
-최종 갱신: 2026-08-17 (A/B/C 라운드 반영)
+라이브 기준: BE `43423c6`+ · FE `43423c6`+
+테스트: backend **2010** passed · frontend **1385** passed · nav 하네스 **19/19**
+최종 갱신: 2026-08-18 (내비 경합·스택 유령·고객명 오인식 수정 반영)
 
 ```
-Desktop E2E         PASS
-375px layout        PASS
-390 / 412px layout  PASS
-Browser real click  PASS
-375px real click    NOT VERIFIED     ← pane hidden 으로 입력 주입 불가
-375px DOM E2E       PASS             ← 모바일 에뮬레이션에서 상태 전이 반복 검증
-Real device touch   PENDING          ← 원장님/연준님 실기기 1회
+Customer name parsing      PASS
+Navigation bug             FIXED
+Navigation DOM E2E         PASS
+Sheet stack leak           PASS
+Desktop E2E                PASS
+375 / 390 / 412 layout     PASS
+375px real click           NOT VERIFIED
+
+Real device:
+1/2 = DOM PASS, device NOT VERIFIED
+3/4/5 = NOT VERIFIED
 ```
+
+**실기기 확인 전에는 "완전 출시 완료" 라고 하지 않는다.**
 
 ⚠️ **세 줄은 서로 다른 것이다. 합치지 마라.**
 - `375px layout` = 375px 폭에서 **레이아웃 실측**(overflow·요소 폭·겹침) — PASS
@@ -152,6 +158,25 @@ hub 버튼 잘림         없음
 
 ---
 
+## ⏭️ 다음 UX 개선 라운드로 보류 (이번 릴리스에 넣지 않음)
+
+**`"고객 정보 어디서 봐?"` → 고객관리 화면 열기 버튼**
+
+지금은 잇비가 **말로만** 안내한다("'고객' 탭을 누르시면…"). 버튼을 주는 게 더 낫지만,
+그러려면 새 intent + action contract + routing 을 추가해야 한다 — 출시 직전에
+추천/intent/hub action 범위를 다시 넓히는 일이라 **이번 릴리스에서는 보류**한다.
+
+    "고객 정보 어디서 봐?"  →  현재 답변 그대로. 새 action 추가 ❌
+
+다음 라운드 설계안:
+
+    intent = CUSTOMER_NAVIGATION  →  hub_action = 고객관리 열기
+
+⚠️ 설계 시 주의 — `"고객관리 화면을 열어줘"` 같은 **명시적 명령**과 혼동하지 않게
+분리해야 한다. 이번엔 현행 동작을 그대로 둔다.
+
+---
+
 ## 🔒 동결 — 실기기 확인 전까지 손대지 않는다
 
 기존 동결 항목:
@@ -164,10 +189,22 @@ hub 버튼 잘림         없음
 - ❌ handle formatter 재작성
 - ❌ 추천질문 구조 변경
 
-**유지해야 하는 가드 2개** — 지우면 같은 사고가 그대로 재발한다:
-- `test_visit_truth_single_source_2026_08_17.py` — 다른 화면에서 `Customer.visit_count` 를
-  다시 **읽으면** 테스트가 깨진다 (쓰기는 폴백용이라 허용)
-- `__tests__/itbi-return-and-handle.test.js` — 화면에서 `'@' + handle` 을 직접 붙이면 잡힌다
+**유지해야 하는 가드 4개** — 지우면 같은 사고가 그대로 재발한다.
+넷 다 일부러 되돌려서 **실제로 잡는 것**을 확인했다:
+
+| 가드 | 무엇을 막나 | 되돌렸을 때 |
+|---|---|---|
+| `test_visit_truth_single_source_2026_08_17.py` | `Customer.visit_count` 재읽기 (쓰기는 폴백용이라 허용) | 줄번호까지 지목하며 실패 |
+| `__tests__/itbi-return-and-handle.test.js` | 화면에서 `'@' + handle` 직접 결합 | 파일 단위로 실패 |
+| `test_itbi_last_visit_p0_2026_08_17.py` 의 조합 테스트 | **노이즈 블랙리스트 방식으로 회귀** | 1,944개 중 1,692개 누출로 실패 |
+| `scripts/itbi-nav-return-qa.js` | history 경합 · 시트 스택 유령 | A1 부터 즉시 실패 |
+
+내비 하네스는 소스 검사로는 못 잡는다(코드는 멀쩡해 보였다) — 375px 에서 상태 전이를
+실제로 돌려야 드러난다. 데스크톱 폭에선 타이밍이 맞아 통과해 버린다.
+
+```bash
+python3 -m http.server 8099 && node scripts/itbi-nav-return-qa.js
+```
 
 ---
 
@@ -175,13 +212,27 @@ hub 버튼 잘림         없음
 
 실제 iPhone 또는 Android 에서 **아래 5개만** 보면 된다.
 
-| # | 확인 | 기대 |
-|---|---|---|
-| 1 | 잇비 채팅 → `고객 화면 열기` → 뒤로 | 잇비 채팅으로 복귀 (홈 ❌) |
-| 2 | 목록 → 고객 상세 → 뒤로 | 목록으로 복귀 (잇비로 튀면 ❌) |
-| 3 | 초기칩 탭 → 답변 → 후속칩 탭 | 둘 다 정상 전송 |
-| 4 | 긴 고객명 | 줄바꿈 되고 화면 밖으로 안 나감 |
-| 5 | 칩 빠르게 연속 탭 | 오탭·중복 전송 없음 |
+| # | 확인 | 기대 | 현재 |
+|---|---|---|---|
+| 1 | 잇비 → `고객 화면 열기` → 뒤로 | 잇비로 복귀 (홈 ❌) | DOM 3/3 PASS · 기기 미검증 |
+| 2 | 목록 → 상세 → 뒤로 → 목록 → 다시 뒤로 | 목록 → 잇비 순 (잇비로 먼저 튀면 ❌) | DOM PASS · 기기 미검증 |
+| 3 | 초기칩 탭 → 답변 → 후속칩 탭 | ↓ 아래 상세 | **미검증** |
+| 4 | 긴 고객명 | 줄바꿈, 화면 밖 안 나감 | **미검증** |
+| 5 | 칩 빠르게 2~3회 탭 + 가로 스크롤 | ↓ 아래 상세 | **미검증** |
+
+**1·2 는 DOM 으로 이미 수정·반복 검증했다. 실제 폰에서는 3~5 에 집중하면 된다.**
+3·5 의 목적은 **실제 터치가 제대로 전달되는지**다.
+
+**3번에서 볼 것**
+- 실제 탭이 메시지를 **1회만** 전송하는가
+- 답변이 생성되는가
+- 후속칩이 갱신되는가
+
+**5번에서 볼 것**
+- 연속 탭에도 중복 메시지 **0**
+- 옆 칩 오탭 **0**
+- 가로 스크롤 중 의도하지 않은 클릭 **0**
+- 시각 33px + hit area 45px 가 실제 폰에서 **편하게 눌리는지**
 
 ### 결과 기입란 (실기기에서 확인 후 채운다)
 
