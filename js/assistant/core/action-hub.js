@@ -104,7 +104,17 @@
     //   화면이 11개라 각자 붙이면 또 빠뜨리기 때문. 여기선 "다음 시트 하나" 만 표시한다.
     try { if (typeof window.__itbiArmReturn === 'function') window.__itbiArmReturn(); } catch (_e) { void 0; }
     try { if (typeof window.closeAssistant === 'function') window.closeAssistant(); } catch (_e) { void 0; }
-    try { if (typeof fn === 'function') { fn(); return true; } } catch (_e) { void 0; }
+    if (typeof fn !== 'function') return false;
+    // [2026-08-18] 닫기가 건 history.go(-1) 이 착지한 뒤에 연다.
+    //   바로 열면 늦게 온 popstate 가 새 화면의 hash 를 지워서 뒤로가기가 죽는다
+    //   (375px 실측 3회 중 2회). app-core 의 __afterHistorySettles 참조.
+    if (typeof window.__afterHistorySettles === 'function') {
+      window.__afterHistorySettles(function () {
+        try { fn(); } catch (_e) { void 0; }
+      });
+      return true;
+    }
+    try { fn(); return true; } catch (_e) { void 0; }
     return false;
   }
   function _copy(text) {

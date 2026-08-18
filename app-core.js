@@ -3558,6 +3558,30 @@ window.refreshLastSyncBadges = function () {
   let _itbiReturnFor = null;
   window.__itbiArmReturn = function () { window.__ITBI_RETURN_ARM__ = true; };
 
+  // [연준님 2026-08-18] **닫기가 건 history.go(-n) 이 착지한 뒤에** 다음 화면을 연다.
+  //
+  //   실측(375px 모바일, 3회 중 2회 재현): 잇비 → "고객 화면 열기" 를 누르면
+  //   목록은 열리는데 주소의 `#customers` 가 **사라지고**, 그 뒤 뒤로가기가 아예 안 먹었다
+  //   (잇비로도 못 돌아가고 목록이 그대로 남는다).
+  //
+  //   원인 — `history.go(-n)` 은 **비동기**다. `_nav()` 가 잇비를 닫자마자 다음 줄에서
+  //   화면을 열면, 목록이 `pushState('#customers')` 를 한 *뒤에* 잇비의 popstate 가
+  //   도착해서 그걸 되돌려 버린다. 스택엔 'customers' 가 남아 있는데 hash 는 비어 있으니
+  //   popstate 매칭이 실패하고 뒤로가기가 죽는다.
+  //   462px 데스크톱에선 우연히 타이밍이 맞아 통과했다 — 느린 기기일수록 잘 터진다.
+  //
+  //   `_progBack` 은 "아직 안 착지한 프로그램적 back" 개수다. 그게 0 이 될 때까지만
+  //   기다렸다 연다(최대 300ms 폴백 — 영영 안 오는 경우에도 화면은 반드시 열린다).
+  window.__afterHistorySettles = function (fn) {
+    if (typeof fn !== 'function') return;
+    if (_progBack <= 0) { fn(); return; }
+    const t0 = Date.now();
+    (function poll() {
+      if (_progBack <= 0 || Date.now() - t0 > 300) { try { fn(); } catch (_e) { void _e; } return; }
+      setTimeout(poll, 16);
+    })();
+  };
+
   // 시트 open 시 호출 — history.pushState
   window._markSheetOpen = function (name) {
     try {

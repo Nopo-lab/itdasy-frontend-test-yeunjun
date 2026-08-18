@@ -103,6 +103,22 @@ describe('C · 잇비에서 연 화면을 닫으면 채팅으로 돌아온다', 
     expect(close).toMatch(/_alreadyOpen/);
   });
 
+  test('닫기의 history.go 가 착지한 뒤에 다음 화면을 연다 (경합 방지)', () => {
+    // 실측(375px, 3회 중 2회): 바로 열면 늦게 온 popstate 가 새 화면의 hash 를 지워
+    // 뒤로가기가 통째로 죽었다. 목록은 떠 있는데 back 을 눌러도 아무 일이 없다.
+    const nav = R('js/assistant/core/action-hub.js');
+    const body = nav.slice(nav.indexOf('function _nav(fn)'),
+                           nav.indexOf('\n  }', nav.indexOf('function _nav(fn)')) + 4);
+    expect(body).toMatch(/__afterHistorySettles/);
+    // 닫기 → 대기 → 열기 순서여야 한다
+    expect(body.indexOf('closeAssistant')).toBeLessThan(body.indexOf('__afterHistorySettles'));
+
+    const core = R('app-core.js');
+    const fn = core.match(/window\.__afterHistorySettles = function[\s\S]*?\n  \};/)[0];
+    expect(fn).toMatch(/_progBack/);        // 미착지 back 개수를 본다
+    expect(fn).toMatch(/300/);              // 영영 안 와도 화면은 열린다(폴백)
+  });
+
   test('history 를 직접 조작하지 않는다 (앱 라우터 경로 그대로)', () => {
     const close = R('app-core.js').match(/window\._markSheetClosed = function[\s\S]*?\n  \};/)[0];
     const after = close.slice(close.indexOf('_itbiReturnFor && names.indexOf'));
