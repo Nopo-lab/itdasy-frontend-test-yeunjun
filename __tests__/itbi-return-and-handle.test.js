@@ -119,6 +119,17 @@ describe('C · 잇비에서 연 화면을 닫으면 채팅으로 돌아온다', 
     expect(fn).toMatch(/300/);              // 영영 안 와도 화면은 열린다(폴백)
   });
 
+  test('같은 시트를 다시 열어도 스택에 중복 쌓이지 않는다 (유령 항목 방지)', () => {
+    // 실측 누수: 뒤로가기로 잇비 복귀 → openAssistant() 가 _markSheetOpen 재호출 →
+    // hash 는 이미 #assistant 라 pushState 는 건너뛰는데 stack.push 만 일어났다.
+    // 유령이 남으면 다음 뒤로가기가 그걸 pop 하려다 아무 일도 안 한다.
+    const open = R('app-core.js').match(/window\._markSheetOpen = function[\s\S]*?\n  \};/)[0];
+    expect(open).toMatch(/stack\[stack\.length - 1\] === name/);
+    // 중복 가드는 pushState 보다 **먼저** 와야 한다
+    expect(open.indexOf('stack[stack.length - 1] === name'))
+      .toBeLessThan(open.indexOf('history.pushState'));
+  });
+
   test('history 를 직접 조작하지 않는다 (앱 라우터 경로 그대로)', () => {
     const close = R('app-core.js').match(/window\._markSheetClosed = function[\s\S]*?\n  \};/)[0];
     const after = close.slice(close.indexOf('_itbiReturnFor && names.indexOf'));

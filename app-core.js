@@ -3590,6 +3590,13 @@ window.refreshLastSyncBadges = function () {
         _itbiReturnFor = name;
       }
       const hash = '#' + name;
+      // [연준님 2026-08-18] 스택 맨 위가 같은 시트면 **아무것도 하지 않는다**(멱등).
+      //   실측 누수: 뒤로가기로 잇비에 복귀할 때 openAssistant() 가 여기를 다시 부르는데,
+      //   그때 hash 는 이미 '#assistant' 로 복원돼 있어 pushState 는 건너뛰면서
+      //   stack.push 만 일어났다 → 닫아도 유령 'assistant' 가 스택에 남는다.
+      //   유령이 남으면 다음 뒤로가기가 그걸 pop 하려다 아무 일도 안 한다("뒤로가기 한 번 먹통").
+      //   app-customer-dashboard 는 이 방어를 자기 쪽에서 직접 하고 있었다 — 라우터로 옮긴다.
+      if (stack.length && stack[stack.length - 1] === name) return;
       // 이미 같은 hash 면 push 안 함 (중복 방지)
       let didPush = false;
       if (window.location.hash !== hash) {
