@@ -12,7 +12,8 @@ Desktop E2E         PASS
 375px layout        PASS
 390 / 412px layout  PASS
 Browser real click  PASS
-375px real click    NOT VERIFIED
+375px real click    NOT VERIFIED     ← pane hidden 으로 입력 주입 불가
+375px DOM E2E       PASS             ← 모바일 에뮬레이션에서 상태 전이 반복 검증
 Real device touch   PENDING          ← 원장님/연준님 실기기 1회
 ```
 
@@ -37,6 +38,7 @@ Real device touch   PENDING          ← 원장님/연준님 실기기 1회
 | Browser real click | **PASS** (pane 462px 폭에서 실클릭 · 2026-08-17) |
 | 375px real click | **NOT VERIFIED** — 375px 은 레이아웃 실측만. 실클릭 0건 |
 | touch hit area | **IMPROVED → 45px** (시각 33px 유지) |
+| 375px DOM E2E (1·2번 반복) | **PASS** — 3회 연속, 스택 누수 0 |
 | real device touch | **PENDING** — 아래 5항목, 결과 받으면 여기 채운다 |
 | **A** 방문 진실원 단일화 (화면 = 잇비 = 브리핑) | **PASS** |
 | **B** 인스타 핸들 `@` 정규화 | **PASS** |
@@ -116,6 +118,37 @@ hub 버튼 잘림         없음
 → `_markSheetClosed` 로 모았다. 실클릭 4단계 확인:
 잇비 → 고객 화면(앞으로 열림) → back → 잇비(대화·스크롤 유지) →
 목록에서 상세 → back → **목록**(잇비로 안 튐) → back → 잇비.
+
+---
+
+## 2026-08-18 — 375px 검증에서 새로 나온 결함 3건 (전부 수정)
+
+동결 상태였지만 **375px 에서 돌려보니 실기기 1·2번을 FAIL 시킬 버그가 나왔다.**
+어제 462px 데스크톱 실클릭이 통과한 건 우연히 타이밍이 맞았기 때문이다.
+
+**① 화면 열면 뒤로가기가 죽는다 (3회 중 2회 재현)**
+잇비 → "고객 화면 열기" → 목록은 열리는데 주소의 `#customers` 가 사라지고,
+그 뒤 뒤로가기가 아예 안 먹는다(잇비로도 못 가고 목록이 그대로).
+원인: `history.go(-n)` 은 **비동기**다. `_nav()` 가 잇비를 닫자마자 다음 줄에서
+화면을 열면, 목록이 `pushState` 한 *뒤에* 잇비의 popstate 가 도착해 그걸 되돌린다.
+→ `__afterHistorySettles`: 미착지 back(`_progBack`)이 0 이 될 때까지 대기(300ms 폴백).
+
+**② 시트 스택에 유령 항목이 남는다**
+잇비를 닫아도 `_sheetBackStack` 에 `'assistant'` 가 남는다. 뒤로가기로 복귀할 때
+`openAssistant()` 가 `_markSheetOpen` 을 다시 부르는데, hash 는 이미 복원돼 있어
+`pushState` 는 건너뛰고 `stack.push` 만 일어나기 때문. 유령이 남으면 다음 뒤로가기가
+그걸 pop 하려다 아무 일도 안 한다 — 예전 기록의 "back 눌러도 화면이 안 바뀌던" 그 증상.
+→ `_markSheetOpen` 을 멱등 처리(스택 top 이 같은 이름이면 no-op).
+
+**③ 안내 질문을 고객 이름으로 오인 (보스 신고)**
+"고객 정보는 어디서 볼 수 있어?" → **"'어디서' 고객이 없다"**.
+`'어디서'`·`'정보는'`·`'보고싶어'`·`'어디로'`·`'고객관리'` 를 전부 사람 이름으로 집었다.
+원인은 `_NOISE` **블랙리스트**. 한국어 의문사·조사·동사는 끝이 없어 단어 추가로는 못 막는다
+(`'언제야'` 로 한 번 물렸을 때도 단어만 늘렸는데 또 샜다 — 같은 자리 두 번째).
+→ 판정을 뒤집었다. **호칭이 이름에 붙어 있을 때만**("홍길동님") 없는 고객으로 단정하고,
+없으면 `{}` 를 돌려 LLM 이 답한다. 라이브 재검증 오인식 **0건**.
+
+수정 후 375px 반복 검증: 1번 3/3 PASS · 2번(중첩) PASS · 스택 누수 0.
 
 ---
 
