@@ -305,3 +305,43 @@ describe('[T8-F 범위] 기존 계약 불변', () => {
     expect(src).toMatch(/commitAsync|queueMicrotask|setTimeout/);
   });
 });
+
+describe('[T8-G] 🔴 실제 플로우가 관찰에 context 를 붙인다 (실사용 실측에서 발견)', () => {
+  /* 실제 WorkspaceFlow 로 편집기를 열었더니 WMSignals.begin 이 context {} 를 받았다.
+     flow 가 Editor.open 에 wmContext 를 아예 안 넘기고 있었다 — 그러면 contextKey 가
+     전부 '||' 한 바구니가 되어 시술·사진수·성격이 뭉개지고, C 의 context 별 집계도
+     E 의 exact/service/kind 계층도 통째로 죽는다. 유닛테스트는 ctx 를 직접 넣어서 못 봤다. */
+  test('flow 가 Editor.open 에 wmContext 를 넘기고, 선택(sctx)과 같은 축을 쓴다', () => {
+    const flow = fs.readFileSync(path.join(__dirname, '..', 'workspace-v2-flow.js'), 'utf8');
+    expect(flow).toMatch(/wmContext:/);
+    const blk = flow.slice(flow.indexOf('wmContext:'), flow.indexOf('wmContext:') + 700);
+    expect(blk).toMatch(/_wmSelectCtx\(\)/);          // 선택과 같은 출처
+    expect(blk).toMatch(/classifyKind/);              // kind 도 같은 방식으로
+  });
+  test('context 가 비면 서로 다른 상황이 한 바구니로 뭉개진다 — 그래서 위가 필요하다', async () => {
+    const b = memBackend(); const { S, P, L } = load(5, b);
+    const F = (a, bf) => ({ event: 'font_changed', layerKey: 'title', before: bf, after: a });
+    // 상황을 안 붙이면 젤네일/펌이 같은 레코드로 합쳐진다
+    for (const svc of [{}, {}]) {
+      S.begin({ memoryId: 'm', context: svc, baseline: ownBase('nanum') });
+      S.note('font_changed', F('jua', 'nanum'));
+      L.hold({}); await L.commit('published', 'e' + Math.random());
+    }
+    const keys = new Set((await P.list()).map((p) => p.contextKey));
+    expect(keys.size).toBe(1);
+    expect([...keys][0]).toBe('||');                  // 전부 한 바구니 — 이게 실제로 벌어지던 일
+  });
+  test('context 를 붙이면 상황별로 분리된다', async () => {
+    const b = memBackend(); const { S, P, L } = load(5, b);
+    const CTXS = [{ service: '젤네일', photoCount: 1, kind: 'service' }, { service: '펌', photoCount: 2, kind: 'service' }];
+    for (const c of CTXS) {
+      S.begin({ memoryId: 'm', context: c, baseline: ownBase('nanum') });
+      S.note('font_changed', { event: 'font_changed', layerKey: 'title', before: 'nanum', after: 'jua' });
+      L.hold({}); await L.commit('published', 'f' + c.service);
+    }
+    const keys = new Set((await P.list()).map((p) => p.contextKey));
+    expect(keys.size).toBe(2);
+    expect(keys.has('젤네일|1|service')).toBe(true);
+    expect(keys.has('펌|2|service')).toBe(true);
+  });
+});

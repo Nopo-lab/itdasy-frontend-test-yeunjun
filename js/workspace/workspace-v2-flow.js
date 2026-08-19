@@ -642,6 +642,19 @@
       // [#17] 이어서 편집 · [ws-hyper] 레이아웃 매칭 시 콜라주 상태 주입(슬롯 재조정) · [T-115 P2] 없으면 ★기본 작업 기억
       // [2026-07-17] 콜라주(레이아웃)엔 기억의 '꾸밈'만 합쳐 얹는다 — 칸 배치는 레이아웃 것 그대로.
       editState: _finalEs,
+      /* [T8-G] 🔴 관찰에 붙일 상황(context). 안 넘기면 WMSignals.begin 이 {} 를 받아
+         contextKey 가 전부 '||' 한 바구니가 된다 — 시술·사진수·성격이 다 뭉개져서
+         T8-C 의 context 별 집계도, T8-E 의 exact/service/kind 계층도 통째로 죽는다.
+         (실제 플로우 실측으로 잡음 — 유닛테스트는 ctx 를 직접 넣어서 못 봤다.)
+         **선택(sctx)과 같은 identity 를 써야** 학습한 자리에서 다시 꺼내 쓸 수 있다. */
+      wmContext: (function () {
+        var c = _wmSelectCtx();
+        try {
+          c.kind = (window.WorkMemoryEngine && window.WorkMemoryEngine.classifyKind)
+            ? window.WorkMemoryEngine.classifyKind(null, c.service) : 'unknown';
+        } catch (_ke) { void _ke; c.kind = 'unknown'; }
+        return c;
+      })(),
       onDone: function (dataUrl, meta) {
         _hideWmBanner();   // [T4] 편집기가 닫히면 배너·타이머 정리(다음 세션에 낡은 배너 금지)
         /* [T8-F] 관찰 세션을 닫아 **보관만** 한다 — 여기서 학습하지 않는다.
