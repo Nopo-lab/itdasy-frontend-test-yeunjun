@@ -68,7 +68,11 @@
 
   // 레코드 id — tenant 를 키에 포함해 **다른 계정이 같은 observationId 를 써도 안 덮어쓴다**.
   function _sigId(t, obsId) { return 'sig:' + t + ':' + obsId; }
-  function _prefId(t, feature, ctxKey) { return 'pref:' + t + ':' + feature + ':' + (ctxKey || '*'); }
+  // [T8-C] identity = tenant + feature + **value** + contextKey.
+  //   value 가 빠지면 같은 feature 의 서로 다른 값이 한 레코드를 덮어써서 positive/negative 가 섞인다.
+  function _prefId(t, feature, value, ctxKey) {
+    return 'pref:' + t + ':' + feature + ':' + (value == null ? '*' : value) + ':' + (ctxKey || '*');
+  }
   function _verId(t, n) { return 'ver:' + t + ':' + n; }
   function _ctxKey(ctx) {
     ctx = ctx || {};
@@ -127,26 +131,27 @@
   async function putPreference(p) {
     if (!_gate() || !p || !p.feature) return null;
     var t = _tenant();
-    return _safePut(S_PREF, {
-      id: _prefId(t, p.feature, _ctxKey(p.context)),
+    var val = _safe(p.value);
+    var ctxKey = p.contextKey != null ? p.contextKey : _ctxKey(p.context);
+    // T8-C 가 계산한 통계 필드는 그대로 통과시킨다(저장소는 격리·검증만 책임).
+    var rec = Object.assign({}, p, {
+      id: _prefId(t, p.feature, val, ctxKey),
       tenantId: t,
       feature: String(p.feature),
-      value: _safe(p.value),
+      value: val,
       context: p.context || {},
-      samples: p.samples || 0,
-      positive: p.positive || 0,
-      negative: p.negative || 0,
-      confidence: p.confidence || 0,
+      contextKey: ctxKey,
       lastObservedAt: p.lastObservedAt || Date.now(),
       version: p.version || 1
     });
+    return _safePut(S_PREF, rec);
   }
   async function listPreferences() { return _allMine(S_PREF); }
   async function getPreference(feature, context) {
     if (!_gate()) return null;
     var be = _be(); if (!be) return null;
     try {
-      var r = await be.get(S_PREF, _prefId(_tenant(), feature, _ctxKey(context)));
+      var r = await be.get(S_PREF, _prefId(_tenant(), feature, arguments[2], _ctxKey(context)));
       return (r && r.tenantId === _tenant()) ? r : null;      // read 게이트
     } catch (_e) { void _e; return null; }
   }
