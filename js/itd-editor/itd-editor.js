@@ -1060,9 +1060,13 @@
     refs.aln.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-aln') === L.align); });
     refs.size.value = L.scale;
   }
-  function applyFont(key) { var L = activeText(); if (!L) return; var f = FONTS.filter(function (x) { return x.key === key; })[0]; L.font = f; L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight; }
-  function applyColor(c) { var L = activeText(); if (!L) return; L.color = c; L.tx.style.color = c; }
-  function applyAlign(a) { var L = activeText(); if (!L) return; L.align = a; L.tx.style.textAlign = a; }
+  /* [T8-A 2026-08-19] 원장 조작 관찰 — undo 스택(_pushOp)과 완전히 분리된 경로다.
+     _pushOp 에 속성변경을 넣으면 ↩ 동작이 바뀌어 T4 계약이 깨지므로 여기서만 기록한다.
+     system 스코프(자동적용·복원·undo) 안에서는 WMSignals 가 알아서 무시한다. */
+  function _sig(ev, p) { try { if (window.WMSignals) window.WMSignals.note(ev, p); } catch (_e) { void _e; } }
+  function applyFont(key) { var L = activeText(); if (!L) return; var f = FONTS.filter(function (x) { return x.key === key; })[0]; _sig('font_changed', { layerKey: L.role || L.type, before: L.font && L.font.key, after: key }); L.font = f; L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight; }
+  function applyColor(c) { var L = activeText(); if (!L) return; _sig('color_changed', { layerKey: L.role || L.type, before: L.color, after: c }); L.color = c; L.tx.style.color = c; }
+  function applyAlign(a) { var L = activeText(); if (!L) return; _sig('alignment_changed', { layerKey: L.role || L.type, before: L.align, after: a }); L.align = a; L.tx.style.textAlign = a; }
   function applyScale(v) { var L = S.active; if (!L) return; L.scale = parseFloat(v); applyXf(L); }
   function activeText() { return S.active && S.active.type === 'text' ? S.active : null; }
 
@@ -2043,6 +2047,11 @@
     return { width: w, height: h, left: r.left, top: r.top };
   }
   function _restoreLayers(specs) {
+    // [T8-A] 시스템 복원 — 이 안의 변경은 원장 취향 signal 이 아니다(try/finally 로 반드시 해제).
+    if (window.WMSignals && window.WMSignals.system) { return window.WMSignals.system(function () { return _restoreLayersInner(specs); }); }
+    return _restoreLayersInner(specs);
+  }
+  function _restoreLayersInner(specs) {
     var R = _stageWH(); if (!R.width) return;
     (specs || []).forEach(function (spec) {
       try {
@@ -2073,6 +2082,14 @@
       onDone: opts.onDone, onCancel: opts.onCancel };
     var _ed = (opts.editState && opts.editState.v) ? opts.editState : null;   // [#4/#8/#11/#16] 재편집 이어가기
     if (_ed) { try { _restoreState(_ed); } catch (_re) { _ed = null; } }   // 복원 실패 시 일반 열기로 폴백(앱 안전)
+    // [T8-A] 관찰 세션 시작 — 이 편집기 오픈 = 게시물 1개 작업 = observation 1개(batch).
+    //   baseline 은 자동적용 직후 상태(diff 기준). 학습 계산은 여기서 안 한다(critical path 보호).
+    try {
+      if (window.WMSignals) {
+        var _ap = window.WorkMemoryEngine && window.WorkMemoryEngine._lastApply;
+        window.WMSignals.begin({ memoryId: _ap && _ap.memoryId, context: opts.wmContext || {}, baseline: (_ed && _ed.layers) || [] });
+      }
+    } catch (_t8) { void _t8; }
     S._initPhotoN = (S.photos || []).length;   // [캐러셀] 진입 시 사진 수 — 편집 중 추가된 사진만 플로우로 되돌리기 위한 기준
     if (refs.featLocTx) refs.featLocTx.textContent = S.shopName || '우리샵';   // [③] 위치 칩에 실제 샵 이름
     refs.layers.innerHTML = ''; refs.frame.className = 'itded__frame';
