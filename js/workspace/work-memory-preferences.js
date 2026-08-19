@@ -47,9 +47,14 @@
   var FALLBACK_PENALTY = 0.6;  // exact 가 아닌 근거는 confidence 를 낮춰서 쓴다
   // [T8-D] 반감기·floor·포화 상수는 work-memory-decay.js 소유
 
+  /* [T8-H] key 는 엔진이 소유한다 — 여기서 따로 만들면 축이 추가될 때 조용히 드리프트한다
+     (before/after 축이 붙었을 때 실제로 갈릴 뻔했다). 엔진이 없을 때만 같은 규칙으로 폴백. */
   function _ctxKey(c) {
+    var E = window.WorkMemoryEngine;
+    if (E && E.contextKey) return E.contextKey(c);
     c = c || {};
-    return [c.service || '', c.photoCount == null ? '' : c.photoCount, c.kind || ''].join('|');
+    return [c.service || '', c.photoCount == null ? '' : c.photoCount, c.kind || '',
+      c.hasBeforeAfter ? 'ba' : ''].join('|');
   }
   function _cap(n) { return Math.min(MAX_COUNT, Math.max(0, n || 0)); }
 

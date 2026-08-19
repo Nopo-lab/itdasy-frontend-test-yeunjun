@@ -72,9 +72,14 @@
     return out;
   }
 
+  /* [T8-H] key 는 엔진이 소유한다 — 여기서 따로 만들면 축이 추가될 때 조용히 드리프트한다
+     (before/after 축이 붙었을 때 실제로 갈릴 뻔했다). 엔진이 없을 때만 같은 규칙으로 폴백. */
   function _ctxKey(c) {
+    var E = window.WorkMemoryEngine;
+    if (E && E.contextKey) return E.contextKey(c);
     c = c || {};
-    return [c.service || '', c.photoCount == null ? '' : c.photoCount, c.kind || ''].join('|');
+    return [c.service || '', c.photoCount == null ? '' : c.photoCount, c.kind || '',
+      c.hasBeforeAfter ? 'ba' : ''].join('|');
   }
   function _isConflict(p) {
     // 우세하지 않다 = 결론이 안 났다. positive 가 0 이면 애초에 고른 적이 없는 것.

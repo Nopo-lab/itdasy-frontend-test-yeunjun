@@ -316,7 +316,8 @@ describe('[T8-G] 🔴 실제 플로우가 관찰에 context 를 붙인다 (실�
     expect(flow).toMatch(/wmContext:/);
     const blk = flow.slice(flow.indexOf('wmContext:'), flow.indexOf('wmContext:') + 700);
     expect(blk).toMatch(/_wmSelectCtx\(\)/);          // 선택과 같은 출처
-    expect(blk).toMatch(/classifyKind/);              // kind 도 같은 방식으로
+    // [T8-H] kind 를 손으로 붙이던 걸 canonicalContext 단일 진입점으로 옮겼다
+    expect(blk).toMatch(/canonicalContext/);
   });
   test('context 가 비면 서로 다른 상황이 한 바구니로 뭉개진다 — 그래서 위가 필요하다', async () => {
     const b = memBackend(); const { S, P, L } = load(5, b);
@@ -327,9 +328,13 @@ describe('[T8-G] 🔴 실제 플로우가 관찰에 context 를 붙인다 (실�
       S.note('font_changed', F('jua', 'nanum'));
       L.hold({}); await L.commit('published', 'e' + Math.random());
     }
+  /* ⚠️ migration note (2026-08-20, T8-H): contextKey 가 3부분('service|photoCount|kind')에서
+     4부분('...|ba')로 바뀌었다. before/after 는 사진 수가 같아도 다른 상황이라 축이 필요했다.
+     키를 손으로 조립하던 곳이 여기저기 있어서 실제로 드리프트 위험이 있었고,
+     그래서 이제 **엔진의 contextKey() 하나만** 키를 만든다. 아래 단언은 그 형식에 맞춘 것이다. */
     const keys = new Set((await P.list()).map((p) => p.contextKey));
     expect(keys.size).toBe(1);
-    expect([...keys][0]).toBe('||');                  // 전부 한 바구니 — 이게 실제로 벌어지던 일
+    expect([...keys][0]).toBe('|||');                 // 전부 한 바구니 — 이게 실제로 벌어지던 일
   });
   test('context 를 붙이면 상황별로 분리된다', async () => {
     const b = memBackend(); const { S, P, L } = load(5, b);
@@ -341,7 +346,7 @@ describe('[T8-G] 🔴 실제 플로우가 관찰에 context 를 붙인다 (실�
     }
     const keys = new Set((await P.list()).map((p) => p.contextKey));
     expect(keys.size).toBe(2);
-    expect(keys.has('젤네일|1|service')).toBe(true);
-    expect(keys.has('펌|2|service')).toBe(true);
+    expect(keys.has('젤네일|1|service|')).toBe(true);
+    expect(keys.has('펌|2|service|')).toBe(true);
   });
 });

@@ -648,12 +648,11 @@
          (실제 플로우 실측으로 잡음 — 유닛테스트는 ctx 를 직접 넣어서 못 봤다.)
          **선택(sctx)과 같은 identity 를 써야** 학습한 자리에서 다시 꺼내 쓸 수 있다. */
       wmContext: (function () {
-        var c = _wmSelectCtx();
+        // [T8-H] 선택과 **같은** canonical builder. 여기서 손으로 조립하면 또 어긋난다.
         try {
-          c.kind = (window.WorkMemoryEngine && window.WorkMemoryEngine.classifyKind)
-            ? window.WorkMemoryEngine.classifyKind(null, c.service) : 'unknown';
-        } catch (_ke) { void _ke; c.kind = 'unknown'; }
-        return c;
+          return (window.WorkMemoryEngine && window.WorkMemoryEngine.canonicalContext)
+            ? window.WorkMemoryEngine.canonicalContext(_wmSelectCtx()) : _wmSelectCtx();
+        } catch (_ke) { void _ke; return _wmSelectCtx(); }
       })(),
       onDone: function (dataUrl, meta) {
         _hideWmBanner();   // [T4] 편집기가 닫히면 배너·타이머 정리(다음 세션에 낡은 배너 금지)

@@ -190,16 +190,9 @@
     ctx = ctx || {};
     var WM = window.WorkMemory;
     var mems = (WM && WM.list) ? WM.list() : [];
-    var sctx = {
-      photoCount: ctx.photoCount,
-      hasBeforeAfter: ctx.hasBeforeAfter,
-      kind: ctx.kind || classifyKind(ctx.texts, ctx.service),
-      shopStyleId: (ctx.shopStyleId !== undefined) ? ctx.shopStyleId : _activeSSID(),
-      /* [T8-E] service 는 기존 6축이 안 쓰지만 personalization 의 context identity 다.
-         빼고 넘기면 "젤네일 1장" 취향이 절대 exact 로 안 잡히고 늘 kind 폴백으로 떨어진다
-         (브라우저 실측에서 잡음). 6축 계산에는 영향 없다 — scoreMemory 가 안 읽는다. */
-      service: ctx.service
-    };
+    // [T8-H] 학습과 **같은** builder 를 통과시킨다 — 여기서 축을 하나라도 빠뜨리면
+    //   "학습한 자리에서 다시 못 꺼내는" 조용한 실패가 된다(실제로 두 번 겪음).
+    var sctx = canonicalContext(ctx);
     // [T8-E 성능] 스냅샷은 select 당 **한 번만** 읽고 후보 전체가 재사용한다.
     var snap = (window.WMPersona && window.WMPersona.snapshot()) || null;
     var scored = mems.map(function (m) { return { m: m, s: scoreMemory(m, sctx, snap) }; });
@@ -210,6 +203,10 @@
       return a.m.id < b.m.id ? -1 : (a.m.id > b.m.id ? 1 : 0);
     });
     var win = scored[0] || null;
+    /* QA·회귀용 — select 가 **실제로 쓴** context key. 학습 쪽 key 와 대조해 parity 를 잠근다.
+       _lastSelect 는 _resolveRec 이 via/memoryId 로 덮어쓰므로 별도 필드로 둔다
+       (처음엔 _lastSelect 에 실었다가 실측에서 undefined 로 나와 잡았다). */
+    try { window.WorkMemoryEngine._lastContextKey = contextKey(sctx); } catch (_ck) { void _ck; }
     return {
       memory: win ? win.m : null,
       // [T8-E] 숫자는 parts 에, 설명은 reason.personalization 에 — parts 합 === total 을 안 깨려고.
@@ -219,6 +216,39 @@
   }
 
   // ── 선택 해석 [T3] — 세 경로 공용 ─────────────────────────────
+  /* [T8-H] 상황(context)의 **단일 진입점**. 선택(select)과 학습(learn)이 반드시 이걸 통과한다.
+     왜 구조로 강제하나: 두 곳에서 각자 조립하면 언젠가 어긋나고, 실제로 두 번 어긋났다 —
+     ① select 의 sctx 가 service 를 빠뜨림(증상 없음, personalization 만 조용히 폴백)
+     ② flow 가 wmContext 를 아예 안 넘겨 학습 context 가 {} (전 상황이 한 바구니로 뭉갬).
+     둘 다 기존 6축은 그 값을 안 써서 **아무 증상이 없었다.** 그래서 테스트 한 줄이 아니라
+     "출처를 하나로" 가 답이다.
+     화이트리스트다 — 고객명·전화번호·캡션·토큰·이미지 URL 은 절대 통과 못 한다. */
+  var SERVICE_MAX = 64;
+  function _canonService(v) {
+    if (v == null) return 'unknown';
+    var s = String(v).replace(/\s*,\s*/g, ', ').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (!s) return 'unknown';                       // 못 알아내면 **추론하지 않는다**
+    return s.slice(0, SERVICE_MAX);
+  }
+  function canonicalContext(raw) {
+    raw = raw || {};
+    var n = Number(raw.photoCount);
+    return {
+      photoCount: isFinite(n) && n > 0 ? Math.floor(n) : 0,
+      service: _canonService(raw.service),
+      hasBeforeAfter: raw.hasBeforeAfter === true,
+      kind: raw.kind || classifyKind(raw.texts, raw.service),
+      shopStyleId: (raw.shopStyleId !== undefined) ? raw.shopStyleId : _activeSSID()
+    };
+  }
+  /* preference identity 의 열쇠. prefs·persona 가 각자 만들면 드리프트가 생기므로 여기서만 만든다.
+     before/after 는 사진 수가 같아도 다른 상황이라 축에 포함한다. */
+  function contextKey(c) {
+    c = c || {};
+    return [c.service || '', c.photoCount == null ? '' : c.photoCount, c.kind || '',
+      c.hasBeforeAfter ? 'ba' : ''].join('|');
+  }
+
   function _setLast(info) { try { window.WorkMemoryEngine._lastSelect = info; } catch (_e) { void _e; } }
   /* once('이 스타일로 또') > auto(select) > ★(auto OFF 일 때만).
      consumeOnce: 편집기 경로만 true — 헤드리스(미리보기)가 1회 지정을 소비하면
@@ -304,6 +334,8 @@
     mergeEditState: mergeEditState,
     mergeLayers: mergeLayers,
     classifyKind: classifyKind,
+    canonicalContext: canonicalContext,
+    contextKey: contextKey,
     normalizeText: normalizeText,
     classifyText: classifyText,
     sanitizeLayers: sanitizeLayers,
@@ -311,7 +343,8 @@
     select: select,
     decorateLayers: decorateLayers,
     forEditor: forEditor,
-    _lastSelect: null,   // QA·잇비 역추적 — 마지막 선택의 via/후보 점수
+    _lastSelect: null,       // QA·잇비 역추적 — 마지막 선택의 via/후보 점수
+    _lastContextKey: null,   // [T8-H] 마지막 select 가 쓴 context key — 학습 key 와의 parity 검증용
     _lastApply: null,    // [T4] 마지막 편집기 적용 { token, memoryId, count, texts, undone } — 배너·되돌리기·dismissed identity
     _lastSanitize: null  // [T5] 마지막 텍스트 정책 { kept:[{raw,norm,cls,why}], dropped:[...] } — 승격/제거 역추적
   };

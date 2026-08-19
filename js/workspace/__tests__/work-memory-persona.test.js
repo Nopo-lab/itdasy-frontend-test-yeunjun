@@ -68,7 +68,10 @@ function seed(_WM, list) { global.localStorage.setItem('itdasy:work_memory:list'
 function pref(feature, value, ctx, over) {
   return Object.assign({
     id: 'p:' + feature + ':' + value, feature, value,
-    contextKey: [ctx.service || '', ctx.photoCount == null ? '' : ctx.photoCount, ctx.kind || ''].join('|'),
+    /* [T8-H migration] 예전엔 3부분 키를 테스트가 직접 조립했다. before/after 축이 붙으면서
+       엔진과 어긋나 exact 매칭이 조용히 service 폴백으로 떨어졌다(이 파일이 잡아냈다).
+       이제 **엔진의 contextKey 를 그대로 쓴다** — 손으로 만들면 또 어긋난다. */
+    contextKey: global.window.WorkMemoryEngine.contextKey(ctx),
     context: ctx, positive: 20, negative: 0, sampleCount: 10, publishCount: 10,
     memoryIds: ['a', 'b', 'c'], contextKeys: ['x', 'y', 'z'], obsIds: [], evidence: [],
     consistency: 1, recency: 1, confidence: 0.6, saturation: 0.6,
