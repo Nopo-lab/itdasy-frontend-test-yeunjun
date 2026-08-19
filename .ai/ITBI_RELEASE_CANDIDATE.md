@@ -19,7 +19,7 @@ Desktop E2E                          PASS
 A initial starters                   PASS
 B deterministic followups            PASS 18/18
 C proactive suggestions              PASS
-D LLM related_questions              VALIDATOR PASS / RUNTIME RE-SAMPLING PENDING
+D LLM related_questions              48 valid / 27 target, INCOMPLETE
 KST business-day boundary            PASS
 naive/aware revenue 500              FIXED
 navigation-like 오인식                0
@@ -216,7 +216,29 @@ D validator / deterministic contract   PASS
 판정은 정적 후속칩과 **같은 contract** 다(검증 체계를 둘로 만들지 않는다):
 즉답 intent 가 있으면 통과 · 없으면 우리 도메인 명사 있고 범위 밖 지시어 없어야 통과.
 
-**남은 부분** — 9 시나리오 × 3 run 실제 재수집. Vertex 쿼터 소진으로 미실행.
+**런타임 재수집 진행분 (2026-08-19)**
+
+```
+완료            16 / 27 콜        (run1 9/9 · run2 7/9)
+노출된 추천질문  48개 (unique 42)
+범위 밖 누출     0
+```
+
+지난 FAIL 이던 `"다른 샵 회원권 사례 보여줘"` 계열이 48개 중 **0회**였다.
+프롬프트 제약이 생성 단계에서 먹고 있다는 증거다. 회원권 시나리오 실측:
+
+    run1  회원권 잔액 남은 고객은 누구야? / 회원권 충전 기록은 어떻게 해? / 회원권 사용 내역은 어디서 봐?
+    run2  회원권 잔액 남은 손님 알려줘 / 회원권 충전은 어떻게 해? / 회원권 차감은 어떻게 해?
+
+**남은 11콜** — run2 인스타·일반 + run3 전체 9. Vertex 쿼터 소진으로 두 번 중단됐다.
+`scripts/itbi_llm_related_runtime_qa.py` 가 이어하기를 지원하므로 남은 것만 돈다.
+
+⚠️ **48개가 전부 정상이어도 D 를 PASS 로 올리지 않는다** — 27콜 목표를 못 채웠다.
+
+🔑 **27/27 을 채워 PASS 가 되더라도, 그건 "프롬프트가 완벽해서" 가 아니다.**
+LLM 은 확률적이라 언젠가 또 쓸모없는 질문을 만든다. PASS 의 근거는
+**validator 가 최종 노출을 0 으로 보장하기 때문**이다. 프롬프트는 생성 품질을 높이는
+1차 방어, validator 가 최종 안전망 — 이 구조를 지우면 PASS 근거가 사라진다.
 
 판정 기준을 미리 못박는다:
 
