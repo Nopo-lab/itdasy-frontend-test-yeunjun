@@ -17,13 +17,14 @@ Desktop E2E                          PASS
 375px real click                     NOT VERIFIED
 
 ── 추천질문 QA (2026-08-18) ──
-Static / deterministic followups     PASS 18/18
+A initial starters                   PASS
+B deterministic followups            PASS 18/18
+C proactive suggestions              PASS  (빈 chat_input 2종 → 정보 배너로 분리)
+D LLM related_questions              (재검증 중)
 KST business-day boundary            PASS
 naive/aware revenue 500              FIXED
-Home proactive suggestions (C)       PASS 6/6  (즉답 2 · LLM 위임 4)
 navigation-like 오인식                0
-LLM related_questions                NOT VERIFIED
-Real-account verification            NOT VERIFIED
+Real-account verification            PASS  (QA 계정 자체 생성 · 비번 미수령)
 Real-device 3/4/5                    NOT VERIFIED
 ```
 
