@@ -192,7 +192,10 @@ describe('갤러리 DB v4 — 소스 계약(실 업그레이드는 브라우저 
     expect(flowSrc).toMatch(/setTimeout\(function \(\) \{ res\(null\); \}, 3000\)/);
   });
   test('버전 4 + assets store 신설 + 기존 store(slots·gallery) 로직 보존', () => {
-    expect(dbSrc).toMatch(/indexedDB\.open\(_GDB_NAME, 4\)/);
+    /* [migration note 2026-08-19 · T8-B] 버전 리터럴 4 → **>=4** 로 완화.
+       T8-B 가 학습 store 3종을 위해 v5 로 올렸다. T6 계약의 본질은 "assets store 가 있고
+       v3 마이그레이션이 보존된다"이지 "버전이 영원히 4"가 아니다 — 아래 보존 검증은 그대로 둔다. */
+    expect(dbSrc).toMatch(/indexedDB\.open\(_GDB_NAME, ([4-9]|\d{2,})\)/);
     expect(dbSrc).toMatch(/_ASSET_STORE/);
     expect(dbSrc).toMatch(/createObjectStore\(_ASSET_STORE/);
     expect(dbSrc).toMatch(/contains\(_GDB_STORE\)/);           // v3 마이그레이션 로직 그대로

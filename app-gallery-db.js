@@ -11,6 +11,10 @@ const _GALLERY_STORE = 'gallery';
 // [T6 2026-08-17] v4 — assets: 작업기억 스티커/이미지 참조화. 8KB 초과 dataURL 을 기억이
 //   조용히 버리던 버그(G2) 수정용 — 바이트는 여기 한 벌, 기억엔 assetRef 만.
 const _ASSET_STORE = 'assets';
+// [T8-B 2026-08-19] v5 — 개인화 학습 저장소. 기존 3 store 는 손대지 않는다(T1~T7 무변경).
+//   격리는 DB 삭제(_purgeUserScopedDB)에만 의존하지 않고 레코드마다 tenantId + read/write 검증
+//   (work-memory-store.js). 여기선 순수 CRUD 만 제공한다.
+const _LEARN_STORES = ['preferences', 'learning_signals', 'preference_versions'];
 let _gdb = null;
 
 function openGalleryDB() {
@@ -19,7 +23,7 @@ function openGalleryDB() {
     // [T-002 2026-05-29] v3 — gallery 항목에 customer_id 연결 (사진↔고객 이력).
     // [T6 2026-08-17] v4 — assets store 추가. 기존 v3 마이그레이션 로직은 그대로 보존
     //   (onupgradeneeded 는 구버전→4 직행도 처리해야 하므로 아래 분기 전부 유지).
-    const req = indexedDB.open(_GDB_NAME, 4);
+    const req = indexedDB.open(_GDB_NAME, 5);
     req.onupgradeneeded = e => {
       const db = e.target.result;
       const tx = e.target.transaction;
@@ -42,6 +46,13 @@ function openGalleryDB() {
       if (!db.objectStoreNames.contains(_ASSET_STORE)) {
         db.createObjectStore(_ASSET_STORE, { keyPath: 'id' });
       }
+      // v4→v5 [T8-B]: 학습 store 3종 신설. 기존 store 는 그대로 — 마이그레이션 실패해도 v4 데이터 손실 0.
+      _LEARN_STORES.forEach((name) => {
+        if (!db.objectStoreNames.contains(name)) {
+          const st = db.createObjectStore(name, { keyPath: 'id' });
+          st.createIndex('tenantId', 'tenantId', { unique: false });
+        }
+      });
     };
     req.onsuccess = e => {
       _gdb = e.target.result;
@@ -206,6 +217,45 @@ async function clearGalleryDB() {
   } catch (_) { return false; }
 }
 window.clearGalleryDB = clearGalleryDB;
+// ── [T8-B] 학습 store 범용 CRUD — 격리/검증은 work-memory-store.js 가 한다 ──
+async function wmLearnPut(store, rec) {
+  const db = await openGalleryDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).put(rec);
+    tx.oncomplete = () => resolve(rec.id);
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+async function wmLearnGet(store, id) {
+  const db = await openGalleryDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(store, 'readonly').objectStore(store).get(id);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror   = () => reject(req.error);
+  });
+}
+async function wmLearnAll(store) {
+  const db = await openGalleryDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(store, 'readonly').objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror   = () => reject(req.error);
+  });
+}
+async function wmLearnDel(store, id) {
+  const db = await openGalleryDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).delete(id);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+window.wmLearnPut = wmLearnPut;
+window.wmLearnGet = wmLearnGet;
+window.wmLearnAll = wmLearnAll;
+window.wmLearnDel = wmLearnDel;
 window.saveAssetToDB = saveAssetToDB;
 window.getAssetFromDB = getAssetFromDB;
 window.loadAssetsFromDB = loadAssetsFromDB;
