@@ -41,7 +41,7 @@
   var GLOBAL_MIN_MEMORIES = 3; // global 승격 최소 서로 다른 memory 수
   var GLOBAL_MIN_CONTEXTS = 3; // + 서로 다른 context 수
   var FALLBACK_PENALTY = 0.6;  // exact 가 아닌 근거는 confidence 를 낮춰서 쓴다
-  var HALF_LIFE_DAYS = 45;     // recency 반감기
+  // [T8-D] 반감기·floor·포화 상수는 work-memory-decay.js 소유
 
   function _ctxKey(c) {
     c = c || {};
@@ -86,24 +86,28 @@
     };
   }
 
-  function _recency(lastAt) {
-    if (!lastAt) return 0;
-    var days = Math.max(0, (Date.now() - lastAt) / 86400000);
-    return Math.pow(0.5, days / HALF_LIFE_DAYS);   // 반감기 감쇠
-  }
-
-  /* confidence — sample 만으로 오르지 않는다.
-     ① 표본이 쌓일수록(포화형) ② 일관될수록 ③ 최근일수록 ④ 발행으로 확인될수록 높다.
-     상충(negative 가 섞임)이면 consistency 가 떨어져 confidence 도 같이 떨어진다. */
-  function _confidence(p) {
-    var pos = p.positive, neg = p.negative, tot = pos + neg;
-    var consistency = tot > 0 ? pos / tot : 0;
-    var volume = 1 - Math.pow(0.6, p.sampleCount);            // 1회=0.4 → 5회=0.92 (포화)
-    var recency = _recency(p.lastObservedAt);
-    var published = p.sampleCount > 0 ? Math.min(1, p.publishCount / p.sampleCount) : 0;
-    var c = volume * (0.30 + 0.45 * consistency + 0.15 * recency + 0.10 * published);
-    if (p.sampleCount < 2) c *= 0.5;                          // 1회로 취향 확정 금지
-    return { consistency: consistency, recency: recency, confidence: Math.max(0, Math.min(1, c)) };
+  /* [T8-D] confidence 계산을 WMDecay 로 위임한다.
+     C 의 `1 - 0.6^n` 은 20회에 1.000 으로 과포화돼 20회와 200회를 구분 못 했다
+     (= 자동화 강도로 쓸 수 없음). D 는 evidence 에 시간 감쇠를 적용한 뒤 포화형으로 계산한다.
+     decay 가 없으면(모듈 미로드) C 방식으로 안전하게 폴백 — 앱은 계속 동작. */
+  function _confidence(p, now) {
+    var D = window.WMDecay;
+    if (!D) {
+      var tot0 = p.positive + p.negative;
+      var cons0 = tot0 > 0 ? p.positive / tot0 : 0;
+      var vol0 = 1 - Math.pow(0.6, p.sampleCount);
+      var c0 = vol0 * (0.30 + 0.45 * cons0 + 0.25 * (p.sampleCount > 0 ? Math.min(1, p.publishCount / p.sampleCount) : 0));
+      if (p.sampleCount < 2) c0 *= 0.5;
+      return { consistency: cons0, recency: 0, confidence: Math.max(0, Math.min(1, c0)),
+        decayedPositive: p.positive, decayedNegative: p.negative, saturation: vol0 };
+    }
+    var eff = D.effective(p.evidence || [], now);
+    var pubRate = p.sampleCount > 0 ? Math.min(1, p.publishCount / p.sampleCount) : 0;
+    var r = D.confidence({ eff: eff, publishRate: pubRate, now: now, lastObservedAt: p.lastObservedAt });
+    return {
+      consistency: r.consistency, recency: r.recencyWeight, confidence: r.confidence,
+      decayedPositive: eff.pos, decayedNegative: eff.neg, saturation: r.saturation
+    };
   }
 
   async function _load(feature, value, ctxKey) {
@@ -137,8 +141,10 @@
     p.lastObservedAt = o.endedAt || Date.now();
     p.evidence = p.evidence.concat({ obs: o.observationId, kind: kind, outcome: o.outcome || null, at: p.lastObservedAt }).slice(-MAX_EVIDENCE);
 
-    var c = _confidence(p);
+    var c = _confidence(p, Date.now());   // [T8-D] 기록 시점 스냅샷 (읽을 때 list() 가 다시 계산)
     p.consistency = c.consistency; p.recency = c.recency; p.confidence = c.confidence;
+    // [T8-D] explainability — 왜 이 confidence 인지 역추적용
+    p.decayedPositive = c.decayedPositive; p.decayedNegative = c.decayedNegative; p.saturation = c.saturation;
     p.version = (p.version || 1) + 1;
     await window.WMStore.putPreference(p);
   }
@@ -156,7 +162,20 @@
     return true;
   }
 
-  async function list() { return window.WMStore.listPreferences(); }
+  /* [T8-D] decay 는 **읽는 시점**의 함수다.
+     저장된 confidence 는 기록 당시 스냅샷이라 시간이 지나면 낡는다 —
+     읽을 때마다 현재 시각으로 다시 계산해서 "오래된 선호는 지금 약하다" 가 실제로 성립하게 한다.
+     원본 evidence 는 그대로 두고(재계산 가능), 파생값만 갱신한다. DB 재기록은 하지 않는다. */
+  async function list(now) {
+    var t = (typeof now === 'number' && isFinite(now)) ? now : Date.now();
+    var all = await window.WMStore.listPreferences();
+    return all.map(function (p) {
+      var c = _confidence(p, t);
+      p.confidence = c.confidence; p.consistency = c.consistency; p.recency = c.recency;
+      p.decayedPositive = c.decayedPositive; p.decayedNegative = c.decayedNegative; p.saturation = c.saturation;
+      return p;
+    });
+  }
 
   /* global 후보 — 특정 memory 하나에서 반복된 것만으로는 절대 승격되지 않는다.
      서로 다른 memory **와** context 양쪽에서 같은 값이 반복돼야 "이 원장의 전역 취향" 으로 본다. */
@@ -189,13 +208,19 @@
   async function resolve(feature, context) {
     var ctxKey = _ctxKey(context);
     var all = await list();
-    var exact = all.filter(function (p) {
-      return p.feature === feature && p.contextKey === ctxKey && p.positive > p.negative;
-    }).sort(function (a, b) { return (b.positive - b.negative) - (a.positive - a.negative); })[0];
+    var here = all.filter(function (p) { return p.feature === feature && p.contextKey === ctxKey; });
+    var exact = here.filter(function (p) { return p.positive > p.negative; })
+      .sort(function (a, b) { return (b.positive - b.negative) - (a.positive - a.negative); })[0];
     if (exact) {
       return { feature: feature, value: exact.value, via: 'exact',
         confidence: exact.confidence, rawConfidence: exact.confidence, pref: exact };
     }
+    /* [T8-D] 🔴 여기서 골라본 적이 있는데 우세값이 없다 = **취향이 갈린 것**이지 '경험 없음'이 아니다.
+       global fallback 은 "이 상황을 겪어본 적 없을 때"의 대타인데, 갈린 context 에 그걸 쓰면
+       원장이 실제로 반반 갈렸다는 명확한 증거를 다른 상황의 취향으로 덮어쓴다.
+       실측(T8-D 4패턴): jua 8 / gamja 8 인 context 에서 confidence 는 0.013 인데
+       resolve() 가 global 로 jua(0.375) 를 반환했다 → 여기선 아무것도 제안하지 않는 게 맞다. */
+    if (here.some(function (p) { return p.positive > 0; })) return null;
     var g = await getGlobal(feature);
     if (!g) return null;
     return { feature: feature, value: g.value, via: 'global',

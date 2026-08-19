@@ -12,6 +12,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/workspace/work-memory.js?v=local-151154',
   'js/workspace/work-memory-engine.js?v=local-151154',
   'js/workspace/work-memory-signals.js?v=local-151154',
+  'js/workspace/work-memory-decay.js?v=local-151154',
   'js/workspace/work-memory-store.js?v=local-151154',
   'js/workspace/work-memory-preferences.js?v=local-151154',
   'js/itd-editor/data/itd-decos.js?v=local-151154',
