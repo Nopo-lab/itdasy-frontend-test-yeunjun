@@ -208,6 +208,10 @@
       #${ID} .dmm-gs{font-size:11.5px;color:#8B95A1;line-height:1.45;margin-top:3px}
       #${ID} .dmm-grp .dmm-sec{margin:13px 5px 6px}
       #${ID} .dmm-okico{flex:none;color:#16A34A;margin-top:2px}
+      /* [2026-08-20 P0-2] 자동발송 ON 일 때의 주의 아이콘 — 초록(안심)과 반대로 호박(주의) */
+      #${ID} .dmm-warnico{flex:none;color:#B45309;margin-top:2px}
+      /* 자동발송 안내줄 — 위 토글줄과 같은 카드 안에서 구분되게 얇은 선만 */
+      #${ID} .dmm-asnote{border-top:.5px solid rgba(0,0,0,.06);padding-top:13px}
       #${ID} .dmm-gauge{display:flex;align-items:center;gap:9px;padding:11px 14px 13px;border-top:.5px solid rgba(0,0,0,.06)}
       #${ID} .dmm-gauge .trk{flex:1;height:5px;border-radius:99px;background:#E8EBEF;overflow:hidden}
       #${ID} .dmm-gauge .fil{height:100%;border-radius:99px;background:var(--brand,#D58A95);transition:width .3s}
@@ -341,6 +345,9 @@
     const iceOn = (_menu.ice_breakers || []).length > 0;
     const aiOn = !!(_ai && _ai.enabled);
     const aiDim = aiOn ? '' : ' dmm-dim';
+    // [2026-08-20 P0-2] 자동발송은 **초안(B묶음)이 켜져 있을 때만** 의미가 있다 —
+    //   초안이 없으면 보낼 게 없다(서버도 `autoreply_disabled` 로 막는다). 화면도 같은 규칙.
+    const autoSendOn = aiOn && !!(_ai && _ai.dm_autosend_enabled);
     // [2026-08-16] 두 묶음. A 토글=_menu.enabled(/shop/dm-menu), B 토글=_ai.enabled(/instagram/dm-reply/settings).
     body.innerHTML = `
       <div class="dmm-grp a">
@@ -379,8 +386,18 @@
         </div>
         <div class="dmm-card${aiDim}">
           <div class="dmm-master">
-            <span class="dmm-okico" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
-            <div class="t"><b>잇비가 마음대로 안 보내요</b><span>써둔 초안을 내가 보고 '보내기'를 눌러야 손님에게 나가요</span></div>
+            <div class="t"><b>잇비가 직접 답장해요</b><span>${autoSendOn
+              ? '손님이 말을 멈추면 잇비가 바로 답장해요 · 위험한 문의는 빼고'
+              : '켜면 내 확인 없이 손님에게 바로 나가요'}</span></div>
+            ${_tgHtml(autoSendOn, 'autosend', '')}
+          </div>
+          <div class="dmm-master dmm-asnote">
+            <span class="${autoSendOn ? 'dmm-warnico' : 'dmm-okico'}" aria-hidden="true">${autoSendOn
+              ? '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>'
+              : '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'}</span>
+            <div class="t">${autoSendOn
+              ? '<b>환불 · 민원 · 거친 말은 안 나가요</b><span>그런 문의는 사장님 확인 목록으로 넘어와요</span>'
+              : '<b>잇비가 마음대로 안 보내요</b><span>써둔 초안을 내가 보고 \'보내기\'를 눌러야 손님에게 나가요</span>'}</div>
           </div>
           ${_gaugeHtml()}
         </div>
@@ -420,6 +437,27 @@
         _ai.enabled = !_ai.enabled;
         _haptic(); _render();
         _syncAiDraftEnabled(_ai.enabled);
+        return;
+      }
+      if (kind === 'autosend') {
+        // [2026-08-20 P0-2] 잇비가 손님에게 직접 답장 보내기 on/off.
+        //   서버는 /instagram/dm-reply/settings 의 dm_autosend_enabled.
+        //   🔴 켤 때만 동의를 받는다 — 이 토글은 **AI 가 지은 글**이 사장님 확인 없이
+        //     나가게 만드는 유일한 스위치다(B묶음 토글은 '초안을 만들까' 까지다).
+        //     끄는 건 안 묻는다: 끄는 쪽은 언제나 안전하다.
+        //   🔴 서버가 최종 권한자다. 이 토글은 의사 표시일 뿐이고 실제 발송 여부는
+        //     매번 dm_autosend.should_autosend() 가 정한다(위험 문의·창밖·kill switch).
+        if (!_ai) _ai = {};
+        if (!_ai.enabled) {
+          // 초안이 꺼져 있으면 보낼 게 없다. 서버도 막지만 여기서 이유를 알려준다.
+          _toast('먼저 위의 답장 초안을 켜주세요');
+          return;
+        }
+        const _next = !_ai.dm_autosend_enabled;
+        _haptic();
+        const _apply = () => { _ai.dm_autosend_enabled = _next; _render(); _syncAutosendEnabled(_next); };
+        if (!_next) { _apply(); return; }
+        _askAutosendConsent(_apply);
         return;
       }
       if (kind === 'ice') {
@@ -639,6 +677,127 @@
       close();
       if (v === 'yes') onOk();
     });
+  }
+
+  /* [2026-08-20 P0-2] 손님에게 AI 가 직접 답장 보내기 — 켤 때 동의 받기.
+     `_askQuickReplyConsent` 와 나란히 두고 같은 시트 관용구를 쓴다(뒤로가기 등록 포함).
+
+     🔴 왜 켤 때만 묻나: 끄는 쪽은 언제나 안전하다. 물어봐서 얻는 게 없고 손만 더 간다.
+     🔴 여기서 약속한 것과 서버 동작이 어긋나면 안 된다. 아래 문구 3개는 각각 코드 근거가 있다:
+        · "위험한 문의는 안 나가요"    → services/dm_safety.py (욕설·시비) + dm_autoreply _RISK_KEYWORDS(환불·법적·부작용)
+        · "손님이 말을 멈춘 뒤에"      → services/dm_batching.py (묶음) + dm_autosend.should_autosend
+        · "언제든 끌 수 있어요"        → should_autosend 가 **발송 시점에 토글을 다시 읽는다**
+                                        (test_dm_autosend_toggle_2026_08_20.py 가 이걸 잠근다)
+     문구를 고칠 땐 근거 코드를 먼저 확인할 것. 화면이 실제 동작보다 세게 약속하면 그게 사고다. */
+  function _askAutosendConsent(onOk) {
+    const prev = document.getElementById('dmmAutoSendConsent');
+    if (prev) prev.remove();
+    const ov = document.createElement('div');
+    ov.id = 'dmmAutoSendConsent';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:12000;display:flex;align-items:flex-end;justify-content:center;'
+      + 'background:rgba(0,0,0,.45);opacity:0;transition:opacity .18s ease;';
+    ov.innerHTML = `
+      <div role="dialog" aria-modal="true" aria-label="AI 자동발송 켜기"
+           style="width:100%;max-width:460px;max-height:86vh;overflow-y:auto;background:#fff;border-radius:20px 20px 0 0;
+                  padding:22px 20px max(20px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+                  transform:translateY(14px);transition:transform .22s cubic-bezier(.32,.72,0,1);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#FEF3C7;color:#B45309;flex-shrink:0;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+          </span>
+          <strong style="font-size:17px;color:#191F28;letter-spacing:-.01em;">잇비가 직접 답장해요</strong>
+        </div>
+        <p style="margin:0 0 13px;font-size:13.5px;color:#4E5968;line-height:1.6;">
+          켜시면 잇비가 쓴 답장이 <b>사장님 확인 없이</b> 손님에게 바로 나갑니다.
+          사장님 말투와 저장된 샵 정보로 답해요.
+        </p>
+        <div style="background:#F0FDF4;border-radius:14px;padding:12px 14px;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:700;color:#15803D;margin-bottom:7px;">이런 건 자동으로 안 나가요</div>
+          <ul style="margin:0;padding-left:16px;font-size:12.5px;color:#166534;line-height:1.75;">
+            <li>환불 · 민원 · 법적 · 부작용 얘기</li>
+            <li>화난 말투 · 거친 말이 섞인 문의</li>
+            <li>사장님이 직접 판단해야 하는 문의</li>
+          </ul>
+          <div style="font-size:11.5px;color:#15803D;margin-top:7px;">→ 이 경우는 사장님 확인 목록으로 넘어와요</div>
+        </div>
+        <div style="background:#F7F8FA;border-radius:14px;padding:12px 14px;margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:700;color:#6B7684;margin-bottom:7px;">알고 계셔야 할 것</div>
+          <ul style="margin:0;padding-left:16px;font-size:12.5px;color:#4E5968;line-height:1.75;">
+            <li>손님이 말을 멈춘 뒤 <b>한 번만</b> 답장해요</li>
+            <li>영업시간 · 주소 · 가격표는 <b>저장된 값</b>으로 답해요</li>
+            <li>아직 안 채운 값은 <b>지어내지 않고</b> 확인하겠다고 답해요</li>
+          </ul>
+        </div>
+        <button type="button" data-as="shop"
+          style="width:100%;padding:11px;border:1px solid #E6B9C2;background:#fff;color:#BC6675;font-weight:700;font-size:13px;border-radius:12px;cursor:pointer;font-family:inherit;margin-bottom:14px;">샵 정보 먼저 확인하기</button>
+        <p style="margin:0 0 16px;font-size:12.5px;color:#8B95A1;line-height:1.6;">
+          <b>언제든 끌 수 있어요.</b> 끄면 그 순간부터 안 나가고, 이미 써둔 답장은 확인 목록에 남아요.
+        </p>
+        <div style="display:flex;gap:8px;">
+          <button type="button" data-as="no"
+            style="flex:1;padding:13px;border:1px solid #E5E8EB;background:#fff;color:#4E5968;font-weight:600;font-size:14px;border-radius:14px;cursor:pointer;font-family:inherit;">취소</button>
+          <button type="button" data-as="yes"
+            style="flex:1.4;padding:13px;border:none;background:#191F28;color:#fff;font-weight:700;font-size:14px;border-radius:14px;cursor:pointer;font-family:inherit;">네, 맡길게요</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => {
+      ov.style.opacity = '1';
+      const card = ov.firstElementChild;
+      if (card) card.style.transform = 'translateY(0)';
+    });
+    const close = () => {
+      ov.style.opacity = '0';
+      setTimeout(() => ov.remove(), 180);
+      if (typeof window._markSheetClosed === 'function') window._markSheetClosed('dmmAutoSendConsent');
+    };
+    // 뒤로가기 등록 — 빠뜨리면 안드로이드에서 뒤로가기가 앱을 종료시킨다
+    if (typeof window._registerSheet === 'function') window._registerSheet('dmmAutoSendConsent', close);
+    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('dmmAutoSendConsent');
+    ov.addEventListener('click', (e) => {
+      if (e.target === ov) { close(); return; }            // 배경 탭 = 취소(안전한 쪽)
+      const b = e.target.closest('[data-as]');
+      if (!b) return;
+      const v = b.getAttribute('data-as');
+      if (v === 'shop') { close(); if (typeof window.openShopSettings === 'function') window.openShopSettings(); return; }
+      close();
+      if (v === 'yes') onOk();
+    });
+  }
+
+  /* [2026-08-20 P0-2] 자동발송 토글 서버 동기화.
+
+     🔴 반드시 GET → 수정 → POST (read-modify-write). 이 엔드포인트는 **full-replace** 다 —
+       `{dm_autosend_enabled:true}` 만 보내면 pydantic 기본값이 원장님 톤·운영시간·예약금·
+       예약양식을 통째로 덮어쓴다. (백엔드 계약을
+       test_dm_autosend_toggle_2026_08_20.py::test_partial_body_would_wipe_settings... 가 고정)
+     seq 가드는 `_syncAiDraftEnabled` 와 같은 이유 — 빠르게 두 번 누르면 늦게 온 응답이
+     이긴다. 마지막 의도만 반영한다. */
+  async function _syncAutosendEnabled(on) {
+    const seq = ++_aiSyncSeq;
+    const auth = window.authHeader ? window.authHeader() : {};
+    try {
+      const res = await apiFetch(apiUrl('/instagram/dm-reply/settings'), { headers: auth });
+      if (seq !== _aiSyncSeq) return;
+      const cur = await res.json().catch(() => null);
+      if (!cur || typeof cur !== 'object') throw new Error('설정을 불러오지 못했어요');
+      cur.dm_autosend_enabled = !!on;
+      const put = await apiFetch(apiUrl('/instagram/dm-reply/settings'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...auth },
+        body: JSON.stringify(cur),
+      });
+      if (seq !== _aiSyncSeq) return;
+      if (!put.ok) throw new Error('HTTP ' + put.status);
+      _ai = cur;
+      _toast(on ? '이제 잇비가 직접 답장해요' : '자동발송을 껐어요');
+    } catch (_e) {
+      if (seq !== _aiSyncSeq) return;
+      // 서버가 못 받았으면 화면도 되돌린다 — 켜진 것처럼 보이는데 안 나가는 게 최악이다
+      if (_ai) _ai.dm_autosend_enabled = !on;
+      _render();
+      _toast('자동발송 ' + (on ? '켜기' : '끄기') + ' 실패 — 다시 시도해주세요');
+    }
   }
 
   async function _syncAiDraftEnabled(on) {
