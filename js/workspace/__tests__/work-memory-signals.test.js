@@ -240,7 +240,18 @@ describe('[T8-A 12·13] 기존 계약 불변 — T1~T7 미개입', () => {
       expect(edSrc).not.toMatch(new RegExp("_pushOp\\(\\{\\s*op:\\s*'" + k));
     });
   });
-  test('T3: scoreMemory 는 T8-A 에서 건드리지 않는다(personalization 축 아직 없음)', () => {
-    expect(engSrc).not.toMatch(/personalization/);
+  /* ⚠️ migration note (2026-08-20, T8-E): 원래 단언은
+       "scoreMemory 에 personalization 축이 아직 없다" 였다. T8-A 의 범위가
+     "T3 미개입" 이었기 때문이고, 그때는 옳았다.
+     T8-E 에서 bounded 가산 축으로 **의도적으로** 연결했으므로 그 단언은 수명을 다했다.
+     의미를 지우지 않고 **이 단계가 실제로 지키려던 것**으로 바꾼다:
+       T8-A 가 기존 6축의 가중치·범위를 바꾸지 않았는가.
+     E 의 계약(상한 15·역전 금지·설명가능)은 work-memory-persona.test.js 가 잠근다. */
+  test('T3: 기존 6축 가중치·범위는 그대로다', () => {
+    expect(engSrc).toMatch(/photoFit:.*\? 40 : 0/);
+    expect(engSrc).toMatch(/baFit:.*\? 25 : 0/);
+    expect(engSrc).toMatch(/parts\.kindFit = 15/);
+    expect(engSrc).toMatch(/parts\.kindFit = -30/);
+    expect(engSrc).toMatch(/Math\.min\(20, 20 - days \* 2\)/);
   });
 });

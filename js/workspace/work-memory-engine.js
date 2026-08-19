@@ -139,7 +139,17 @@
   //   photoFit 40 이 최우선 신호: 최근+자주+브랜드(20+10+5=35)를 합쳐도 못 뒤집는다.
   //   promotion→service 감점 -30 은 최근+자주(30)를 이긴다 — 어제 이벤트가 오늘 시술에 안 튀어나오게(F).
   function _touch(m) { return (m && (m.lastPublishedAt || m.lastAppliedAt || m.lastUsedAt || m.createdAt)) || 0; }
-  function scoreMemory(m, ctx) {
+  /* [T8-E] personalization — 순수 가산 축. 기존 6축은 손대지 않는다.
+     snapshot 은 select() 가 한 번 읽어 넘긴다(후보마다 IDB 를 열지 않기 위해).
+     snap 을 안 넘기면 여기서 한 번 조회 — 직접 호출 경로 방어. */
+  function _persona(m, ctx, snap) {
+    var P = window.WMPersona;
+    if (!P) return null;                                        // 미로드 → 기존 T3 그대로
+    var sn = (snap !== undefined) ? snap : P.snapshot();
+    if (!sn) return null;
+    try { return P.score(m, ctx, sn); } catch (_e) { void _e; return null; }
+  }
+  function scoreMemory(m, ctx, snap) {
     m = m || {}; ctx = ctx || {};
     var pc = (m.photoCount != null) ? m.photoCount : 1;   // list() 가 마이그레이션하므로 항상 있음(직접 호출 방어만)
     var parts = {
@@ -160,8 +170,12 @@
       var days = Math.floor((Date.now() - t) / 86400000);
       parts.recency = Math.max(0, Math.min(20, 20 - days * 2));   // 오늘 20 → 하루 -2 → 10일이면 0. 미래값은 20 상한.
     }
-    var total = parts.photoFit + parts.baFit + parts.kindFit + parts.recency + parts.publishWeight + parts.brandFit;
-    return { parts: parts, total: total };
+    // [T8-E] 마지막에 더한다 — 앞의 6축 계산에 개입하지 않는다는 걸 구조로 보이려고.
+    var pr = _persona(m, ctx, snap);
+    parts.personalization = pr ? pr.bonus : 0;
+    var total = parts.photoFit + parts.baFit + parts.kindFit + parts.recency + parts.publishWeight
+      + parts.brandFit + parts.personalization;
+    return { parts: parts, total: total, persona: pr };
   }
 
   function _activeSSID() {
@@ -180,9 +194,15 @@
       photoCount: ctx.photoCount,
       hasBeforeAfter: ctx.hasBeforeAfter,
       kind: ctx.kind || classifyKind(ctx.texts, ctx.service),
-      shopStyleId: (ctx.shopStyleId !== undefined) ? ctx.shopStyleId : _activeSSID()
+      shopStyleId: (ctx.shopStyleId !== undefined) ? ctx.shopStyleId : _activeSSID(),
+      /* [T8-E] service 는 기존 6축이 안 쓰지만 personalization 의 context identity 다.
+         빼고 넘기면 "젤네일 1장" 취향이 절대 exact 로 안 잡히고 늘 kind 폴백으로 떨어진다
+         (브라우저 실측에서 잡음). 6축 계산에는 영향 없다 — scoreMemory 가 안 읽는다. */
+      service: ctx.service
     };
-    var scored = mems.map(function (m) { return { m: m, s: scoreMemory(m, sctx) }; });
+    // [T8-E 성능] 스냅샷은 select 당 **한 번만** 읽고 후보 전체가 재사용한다.
+    var snap = (window.WMPersona && window.WMPersona.snapshot()) || null;
+    var scored = mems.map(function (m) { return { m: m, s: scoreMemory(m, sctx, snap) }; });
     scored.sort(function (a, b) {
       if (b.s.total !== a.s.total) return b.s.total - a.s.total;
       var dt = _touch(b.m) - _touch(a.m);
@@ -192,7 +212,8 @@
     var win = scored[0] || null;
     return {
       memory: win ? win.m : null,
-      reason: win ? { parts: win.s.parts, total: win.s.total } : { via: 'none' },
+      // [T8-E] 숫자는 parts 에, 설명은 reason.personalization 에 — parts 합 === total 을 안 깨려고.
+      reason: win ? { parts: win.s.parts, total: win.s.total, personalization: win.s.persona || null } : { via: 'none' },
       candidates: scored.map(function (x) { return { id: x.m.id, total: x.s.total }; })
     };
   }

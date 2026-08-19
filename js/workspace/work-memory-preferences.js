@@ -70,7 +70,11 @@
       if (!l || (l.type !== 'text' && l.type !== 'badge')) return;
       BASE_FEATURES.forEach(function (pair) {
         var srcKey = pair[0], feat = pair[1];
-        if (l[srcKey] != null && final[feat] === undefined && kept[feat] === undefined) kept[feat] = l[srcKey];
+        /* [T8-E] font 는 편집기에서 객체({key,...})로 들고 다닌다. 그대로 넣으면 preference
+           value 가 객체가 돼 identity 가 깨진다(signals 는 key 문자열을 보낸다). 여기서 맞춘다. */
+        var raw = l[srcKey];
+        if (raw != null && typeof raw === 'object') raw = raw.key;
+        if (raw != null && raw !== '' && final[feat] === undefined && kept[feat] === undefined) kept[feat] = raw;
       });
     });
     return { final: final, replaced: replaced, kept: kept };
@@ -159,6 +163,8 @@
     for (var f in d.final) if (Object.prototype.hasOwnProperty.call(d.final, f)) await _bump(f, d.final[f], o, 'chosen');
     for (var g in d.replaced) if (Object.prototype.hasOwnProperty.call(d.replaced, g)) await _bump(g, d.replaced[g], o, 'replaced');
     for (var h in d.kept) if (Object.prototype.hasOwnProperty.call(d.kept, h)) await _bump(h, d.kept[h], o, undone ? 'undo' : 'kept');
+    // [T8-E] 취향이 갱신됐으니 select 가 보는 스냅샷은 낡았다 — 다음 유휴에 다시 만든다.
+    try { if (window.WMPersona) window.WMPersona.invalidate(); } catch (_e) { void _e; }
     return true;
   }
 

@@ -220,9 +220,21 @@ describe('[T8-D 10·12] 통합 — WMPrefs 가 decay 를 쓰고 계약이 유지
 });
 
 describe('[T8-D 14] 범위 제한', () => {
-  test('scoreMemory 에 personalization 축이 아직 없다', () => {
+  /* ⚠️ migration note (2026-08-20, T8-E): 원래 이 테스트는
+       "scoreMemory 에 personalization 축이 아직 없다" 였다.
+     D 의 범위가 "preference model 안정성만, T3 미개입" 이었기 때문이다.
+     T8-E 에서 bounded 가산 축으로 **의도적으로** 연결했으므로 그 단언은 수명을 다했다.
+     의미를 없애지 않고 **D 가 실제로 지키려던 것**으로 바꾼다:
+       기존 6축의 가중치·범위가 personalization 때문에 바뀌지 않았는가.
+     상한·역전 금지 등 E 의 계약은 work-memory-persona.test.js 가 잠근다. */
+  test('기존 6축 가중치·범위는 그대로다 (개인화는 순수 가산)', () => {
     const eng = fs.readFileSync(path.join(__dirname, '..', 'work-memory-engine.js'), 'utf8');
-    expect(eng).not.toMatch(/personalization/);
+    expect(eng).toMatch(/photoFit:.*\? 40 : 0/);
+    expect(eng).toMatch(/baFit:.*\? 25 : 0/);
+    expect(eng).toMatch(/parts\.kindFit = 15/);
+    expect(eng).toMatch(/parts\.kindFit = -30/);
+    expect(eng).toMatch(/Math\.min\(m\.publishCount \|\| 0, 5\) \* 2/);
+    expect(eng).toMatch(/Math\.min\(20, 20 - days \* 2\)/);
   });
 });
 

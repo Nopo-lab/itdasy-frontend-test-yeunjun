@@ -318,8 +318,19 @@ describe('[T8-C 8] explainability', () => {
 });
 
 describe('[T8-C 범위] T3 미개입', () => {
-  test('scoreMemory 에 personalization 축이 아직 없다', () => {
+  /* ⚠️ migration note (2026-08-20, T8-E): 원래 단언은
+       "scoreMemory 에 personalization 축이 아직 없다" 였다. T8-C 의 범위가
+     "T3 미개입" 이었기 때문이고, 그때는 옳았다.
+     T8-E 에서 bounded 가산 축으로 **의도적으로** 연결했으므로 그 단언은 수명을 다했다.
+     의미를 지우지 않고 **이 단계가 실제로 지키려던 것**으로 바꾼다:
+       T8-C 가 기존 6축의 가중치·범위를 바꾸지 않았는가.
+     E 의 계약(상한 15·역전 금지·설명가능)은 work-memory-persona.test.js 가 잠근다. */
+  test('scoreMemory 의 기존 6축 가중치·범위는 그대로다', () => {
     const eng = fs.readFileSync(path.join(__dirname, '..', 'work-memory-engine.js'), 'utf8');
-    expect(eng).not.toMatch(/personalization/);
+    expect(eng).toMatch(/photoFit:.*\? 40 : 0/);
+    expect(eng).toMatch(/baFit:.*\? 25 : 0/);
+    expect(eng).toMatch(/parts\.kindFit = 15/);
+    expect(eng).toMatch(/parts\.kindFit = -30/);
+    expect(eng).toMatch(/Math\.min\(20, 20 - days \* 2\)/);
   });
 });
