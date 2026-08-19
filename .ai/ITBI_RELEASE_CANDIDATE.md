@@ -1,11 +1,10 @@
 # 잇비(ITBI) Assistant — Release Candidate 상태
 
-**최종 상태: ITBI Assistant / Chat UX / Entity / Data Truth / Navigation**
-**— 실기기 3~5 만 남기고 전부 PASS. 코드 동결.**
+**ITBI Assistant / Chat UX / Entity / Data Truth / Navigation — 코드 동결.**
+**남은 것 3개: D 런타임 재수집(쿼터 대기) · 실기기 3~5 · 실 Meta 계정 E2E.**
 
-라이브 기준: BE `43423c6`+ · FE `43423c6`+
-테스트: backend **2010** passed · frontend **1385** passed · nav 하네스 **19/19**
-최종 갱신: 2026-08-18 (내비 경합·스택 유령·고객명 오인식 수정 반영)
+테스트: backend **2157** passed · frontend **1388** passed · nav 하네스 **19/19**
+최종 갱신: 2026-08-18 (추천질문 A/B/C/D 감사 · KST 경계 · 추천 validator)
 
 ```
 Customer name parsing                PASS
@@ -19,16 +18,23 @@ Desktop E2E                          PASS
 ── 추천질문 QA (2026-08-18) ──
 A initial starters                   PASS
 B deterministic followups            PASS 18/18
-C proactive suggestions              PASS  (빈 chat_input 2종 → 정보 배너로 분리)
-D LLM related_questions              (재검증 중)
+C proactive suggestions              PASS
+D LLM related_questions              VALIDATOR PASS / RUNTIME RE-SAMPLING PENDING
 KST business-day boundary            PASS
 naive/aware revenue 500              FIXED
 navigation-like 오인식                0
-Real-account verification            PASS  (QA 계정 자체 생성 · 비번 미수령)
-Real-device 3/4/5                    NOT VERIFIED
+
+QA account / controlled env          PASS
+Real Meta production-account E2E     NOT VERIFIED
+Real device 3/4/5                    NOT VERIFIED
 ```
 
-**추천질문 전체 PASS 라고 쓰지 않는다** — 정적/결정론적 부분만 끝났다.
+**`Recommendation QA = FINAL PASS` 는 아직 쓰지 않는다.**
+
+⚠️ **두 줄을 섞어 읽지 마라.**
+- `QA account / controlled env` = 내가 `/auth/register` 로 만든 QA 계정 + 통제 DB 검증. **PASS**
+  (비밀번호·JWT 를 사람에게서 받지 않았다)
+- `Real Meta production-account E2E` = 실제 Instagram/Meta 연동 계정으로 돌린 E2E. **안 했다**
 
 **실기기 확인 전에는 "완전 출시 완료" 라고 하지 않는다.**
 
@@ -183,6 +189,67 @@ hub 버튼 잘림         없음
 
 ⚠️ 설계 시 주의 — `"고객관리 화면을 열어줘"` 같은 **명시적 명령**과 혼동하지 않게
 분리해야 한다. 이번엔 현행 동작을 그대로 둔다.
+
+---
+
+## D — LLM related_questions (2026-08-18)
+
+**닫힌 부분**
+
+```
+D validator / deterministic contract   PASS
+금지 fixture 9종                        PASS
+정상 fixture 10종                       PASS
+과잉 차단                               0
+출력 지점 4곳 validator 적용            PASS
+추가 LLM 비용                           0   (로컬 판정, LLM 재호출 없음)
+```
+
+실측 FAIL 1건이 계기다 — LLM 이 `"다른 샵 회원권 사례 보여줘"` 를 추천칩으로 만들었다.
+위험한 답은 아니지만, 원장님은 추천칩을 보면 *"누르면 잇데이가 실제로 뭘 해주겠구나"* 라고
+기대한다. 근거 데이터가 없으면 그 추천 자체가 거짓말이다.
+
+**프롬프트만 믿지 않는다.** LLM 은 확률적이라 다음엔 다른 쓸모없는 질문을 만든다.
+
+    LLM 생성  →  local validator  →  invalid 제거  →  노출
+
+판정은 정적 후속칩과 **같은 contract** 다(검증 체계를 둘로 만들지 않는다):
+즉답 intent 가 있으면 통과 · 없으면 우리 도메인 명사 있고 범위 밖 지시어 없어야 통과.
+
+**남은 부분** — 9 시나리오 × 3 run 실제 재수집. Vertex 쿼터 소진으로 미실행.
+
+판정 기준을 미리 못박는다:
+
+| LLM 생성 | validator | 최종 노출 | 판정 |
+|---|---|---|---|
+| 이상 | reject | 0 | **PASS** |
+| 이상 | accept | 노출됨 | **FAIL** |
+
+즉 "앞으로 이상한 추천이 절대 안 나온다" 를 보장하는 게 아니라,
+**나와도 사용자에게 노출되지 않는다** 를 보장한다.
+
+---
+
+## ⚠️ 2026-08-18 사고 — QA 재시도가 공용 쿼터를 태웠다
+
+`final_d_audit.py` 예전 버전이 `429 → 40초 대기 → retry ×3` 이었다.
+Vertex 쿼터가 **이미 소진된 상태**에서 백그라운드로 계속 재시도하며
+QA 계정 한도를 **25 → 139/300** 까지 태웠다.
+
+    vertex_429 6 · fallback_ok 3 · fallback_fail 3 · vertex_skipped 29
+
+Vertex 쿼터는 **프로젝트 공용**이다 — 그 시간 동안 운영 쪽 LLM 호출도 느려졌거나
+실패했을 수 있다. 쿼터가 소진된 상태의 재시도는 검증 가치가 0 이고 남의 쿼터만 태운다.
+
+**하네스 정책을 뒤집었다** (`scripts/itbi_llm_related_runtime_qa.py`):
+
+- preflight — `/ai-health` 의 `vertex_429`·`fallback_fail` 이 0 이 아니면 **시작조차 안 함**
+- 429 → `QUOTA_UNAVAILABLE` 즉시 ABORT. **재시도 없음.** 사람 승인 없이 다시 안 돔
+- `MAX_CALLS` 상한 — 루프 버그 폭주 방지
+- run 별 분리 저장 — 이전 run 과 섞지 않음
+- 토큰은 `ITBI_QA_TOKEN` 환경변수로만 (운영 계정 토큰 금지)
+
+지금 돌리면 preflight 가 **LLM 호출 0회로 ABORT** 한다(실측 확인).
 
 ---
 
