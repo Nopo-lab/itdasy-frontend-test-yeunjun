@@ -644,6 +644,15 @@
       editState: _finalEs,
       onDone: function (dataUrl, meta) {
         _hideWmBanner();   // [T4] 편집기가 닫히면 배너·타이머 정리(다음 세션에 낡은 배너 금지)
+        /* [T8-F] 관찰 세션을 닫아 **보관만** 한다 — 여기서 학습하지 않는다.
+           발행할지 저장할지 그냥 닫을지가 증거 강도를 좌우하는데 그건 아직 모른다.
+           undo(통째 되돌리기) 여부는 _lastApply.undone 이 들고 있다(T4·T5 와 같은 출처). */
+        try {
+          if (window.WMLearn) {
+            var _apL = window.WorkMemoryEngine && window.WorkMemoryEngine._lastApply;
+            window.WMLearn.hold({ undone: !!(_apL && _apL.undone) });
+          }
+        } catch (_t8f) { void _t8f; }
         /* [T5] dismissed veto 기록 — 원장이 '기억에서 온 role 없는 문구'를 지운 채 **저장 완료**했으면
            그 문구를 다시는 자동으로 안 얹는다(3회 조건을 재충족해도). 취소로 닫힌 세션은 판정 안 함.
            통째 빼기 판정은 meta.wmKept(남은 wm 레이어 수, 스티커·선 포함) —
@@ -707,7 +716,11 @@
         }
         toast('사진을 꾸몄어요');
       },
-      onCancel: function () { _hideWmBanner(); d._editorNext = null; }   // 편집기 취소 시 배너+라우팅 플래그 정리
+      onCancel: function () {
+        _hideWmBanner(); d._editorNext = null;   // 편집기 취소 시 배너+라우팅 플래그 정리
+        // [T8-F] 취소 = 결론. 원장이 **실제로 바꾼 것**만 약하게 남고 자동적용 유지분은 증거가 아니다.
+        try { if (window.WMLearn) { window.WMLearn.hold({}); window.WMLearn.commitAsync('cancelled'); } } catch (_t8c) { void _t8c; }
+      }
     });
     // [T4] 자동 적용 배너 — 이번 오픈에 wm 레이어가 실제로 실렸을 때만(사진 editState 가 이긴 경우 제외).
     try {
@@ -4288,6 +4301,8 @@
     var done = function () {
       toast(d.customerName ? (d.customerName + ' 고객 기록에 저장했어요.') : '작업실에 저장했어요.');
       try { if (window.WorkMemory) window.WorkMemory.captureAndNotify(slot, d); } catch (_wm) { void _wm; }   // [T-115] 원장 작업 기억
+      // [T8-F] 작업실 저장 = 원장이 결과를 받아들였다. 다만 '발행' 보다 약한 증거다.
+      try { if (window.WMLearn) window.WMLearn.commitAsync('saved', 'save:' + slot.id); } catch (_t8s) { void _t8s; }
       close();
       if (window.WorkspaceV2 && window.WorkspaceV2.refresh) window.WorkspaceV2.refresh();
     };
@@ -4329,6 +4344,8 @@
     var _pubSlot = buildSlot();
     if (window.WorkspaceAdapter && window.WorkspaceAdapter.saveItem) { try { window.WorkspaceAdapter.saveItem(_pubSlot); } catch (_e) { void _e; } }
     try { if (window.WorkMemory) window.WorkMemory.captureAndNotify(_pubSlot, d); } catch (_wm) { void _wm; }   // [T-115] 원장 작업 기억
+    // [T8-F] '올렸어요' 수동 표시도 발행이다. key 로 같은 슬롯의 중복 결론을 막는다.
+    try { if (window.WMLearn) window.WMLearn.commitAsync('published', 'pub:' + _pubSlot.id); } catch (_t8p) { void _t8p; }
     _closePublishSheet();
     toast('게시물이 저장되었습니다');
     // [v548] 게시 완료 시 작업이 끝났음을 명확히 — 플로우 닫고 작업실 홈으로(카드 게시완료 badge 갱신).
@@ -4544,6 +4561,9 @@
           var _pubSlot = buildSlot();
           if (window.WorkspaceAdapter.saveItem) { try { window.WorkspaceAdapter.saveItem(_pubSlot); } catch (_e) { void _e; } }
           try { if (window.WorkMemory) window.WorkMemory.captureAndNotify(_pubSlot, d); } catch (_wm) { void _wm; }   // [T-115] 원장 작업 기억
+          /* [T8-F] 실제 인스타 발행 성공 = 가장 강한 positive. 응답을 기다리지 않는다(commitAsync)
+             — 학습 계산·IDB 쓰기로 발행 완료 UI 가 늦어지면 안 된다. 실패해도 발행은 성공 그대로. */
+          try { if (window.WMLearn) window.WMLearn.commitAsync('published', 'pub:' + _pubSlot.id); } catch (_t8i) { void _t8i; }
           _pubFinish(function () {
             // [P1#1] 완료 애니메이션(~1.5s) 도중에도 세션이 바뀔 수 있다 — 그때 setScreen 하면
             //   원장이 보고 있던 새 글 화면을 강제로 낚아챈다.

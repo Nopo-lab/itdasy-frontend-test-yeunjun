@@ -30,7 +30,13 @@
   var CONF_MAX = 0.95;       // 확신 상한 — 100% 확신은 없다
 
   // 증거 종류별 기본 무게(T8-C WEIGHTS 와 같은 의미).
-  var KIND_W = { kept: 3, chosen: 2, replaced: 2, undo: 3 };
+  /* ⚠️ 증거 종류를 새로 만들면 **여기에 반드시 등록**해야 한다. 빠지면 effective() 가 조용히
+     건너뛰어 pos=0 → confidence=0 이 된다(T8-F 에서 keptAuto 를 빠뜨려 실제로 겪음).
+     positive 는 개수가 아니라 무게다 — WMPrefs.WEIGHTS 와 의미를 맞춘다. */
+  /* ⚠️ chosen 과 replaced 는 **같은 무게여야 한다.** 다르면 "고르고 또 교체당하기를 반반"
+     한 값이 순증에서 0 으로 상쇄되지 않아 상충(conflict) 판정이 통째로 깨진다.
+     T8-F 에서 chosen 만 4 로 올렸다가 10:10 이 confidence 0.57 로 나오는 걸 회귀가 잡았다. */
+  var KIND_W = { kept: 3, keptAuto: 1, chosen: 2, replaced: 2, undo: 3 };
   var NEGATIVE = { replaced: 1, undo: 1 };
 
   function _num(v) { return (typeof v === 'number' && isFinite(v)) ? v : null; }

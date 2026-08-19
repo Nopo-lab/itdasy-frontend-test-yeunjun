@@ -30,8 +30,12 @@
   /* 증거 강도. 한 번의 행동이 취향을 확정하지 못하도록 값을 작게 두고, 반복으로 쌓이게 한다.
      숫자는 골든이 상대관계만 잠근다(publishedKept > changedThenPublished > cancelled 등). */
   var WEIGHTS = {
-    publishedKept: 3,          // 자동 적용을 그대로 두고 발행 — 가장 강한 positive
-    changedThenPublished: 2,   // 직접 골라서 발행 — 강한 positive
+    publishedKept: 3,          // 원장 레이어를 그대로 두고 발행 — 강한 positive
+    /* [T8-F] **우리가 얹은 값**(_src:'wm')을 안 건드리고 발행한 건 "동의"지 "선택"이 아니다.
+       같은 3점을 주면 자동적용 → 유지 → 강화 → 더 자주 자동적용 의 자기강화 루프가 돈다.
+       실제로 이 한 줄이 preference runaway 를 막는 지점이라 약하게(1) 센다. */
+    publishedKeptAuto: 1,
+    changedThenPublished: 2,   // 직접 골라서 발행 — 강한 positive (replaced 와 대칭이어야 상충이 상쇄된다)
     changedNotPublished: 1,    // 편집만 하고 취소/이탈 — 약한 증거
     replaced: 2,               // 그 값이 교체당함 — negative
     undo: 3                    // 자동 적용 직후 되돌림 — 가장 강한 negative
@@ -64,8 +68,9 @@
     Object.keys(firstBefore).forEach(function (f) {
       if (firstBefore[f] !== final[f]) replaced[f] = firstBefore[f];
     });
-    // 원장이 손대지 않은 축은 baseline(자동 적용) 값이 그대로 유지된 것
-    var kept = {};
+    // 원장이 손대지 않은 축은 baseline 값이 그대로 유지된 것.
+    // [T8-F] 그 baseline 이 **우리가 얹은 것**인지(_src:'wm') 원장 것인지 구분해서 돌려준다 — 증거 강도가 다르다.
+    var kept = {}, keptAuto = {};
     (o.baseline || []).forEach(function (l) {
       if (!l || (l.type !== 'text' && l.type !== 'badge')) return;
       BASE_FEATURES.forEach(function (pair) {
@@ -74,10 +79,13 @@
            value 가 객체가 돼 identity 가 깨진다(signals 는 key 문자열을 보낸다). 여기서 맞춘다. */
         var raw = l[srcKey];
         if (raw != null && typeof raw === 'object') raw = raw.key;
-        if (raw != null && raw !== '' && final[feat] === undefined && kept[feat] === undefined) kept[feat] = raw;
+        if (raw != null && raw !== '' && final[feat] === undefined && kept[feat] === undefined) {
+          kept[feat] = raw;
+          if (l._src === 'wm') keptAuto[feat] = 1;
+        }
       });
     });
-    return { final: final, replaced: replaced, kept: kept };
+    return { final: final, replaced: replaced, kept: kept, keptAuto: keptAuto };
   }
 
   function _blank(feature, value, ctxKey, context) {
@@ -124,16 +132,18 @@
   async function _bump(feature, value, o, kind) {
     var ctxKey = _ctxKey(o.context);
     var p = (await _load(feature, value, ctxKey)) || _blank(feature, value, ctxKey, o.context);
-    if (p.obsIds.indexOf(o.observationId) >= 0) return;        // 멱등 — 같은 게시물은 한 번만
+    if (p.obsIds.indexOf(o.observationId) >= 0) return true;   // 멱등 — 같은 게시물은 한 번만(이미 반영됨)
     p.obsIds = p.obsIds.concat(o.observationId).slice(-MAX_EVIDENCE);
 
     var published = o.outcome === 'published';
     var w;
     if (kind === 'kept') w = published ? WEIGHTS.publishedKept : WEIGHTS.changedNotPublished;
+    else if (kind === 'keptAuto') w = published ? WEIGHTS.publishedKeptAuto : WEIGHTS.changedNotPublished;
     else if (kind === 'chosen') w = published ? WEIGHTS.changedThenPublished : WEIGHTS.changedNotPublished;
     else if (kind === 'replaced') w = WEIGHTS.replaced;
     else w = WEIGHTS.undo;
 
+    if (kind === 'keptAuto') p.autoKeptCount = _cap((p.autoKeptCount || 0) + 1);   // [T8-F] runaway 감사용
     if (kind === 'replaced' || kind === 'undo') p.negative = _cap(p.negative + w);
     else p.positive = _cap(p.positive + w);
     if (kind === 'undo') p.undoCount = _cap(p.undoCount + 1);
@@ -150,7 +160,10 @@
     // [T8-D] explainability — 왜 이 confidence 인지 역추적용
     p.decayedPositive = c.decayedPositive; p.decayedNegative = c.decayedNegative; p.saturation = c.saturation;
     p.version = (p.version || 1) + 1;
-    await window.WMStore.putPreference(p);
+    /* [T8-F] 기록 성공 여부를 돌려준다. 예전엔 무시해서, 저장소가 통째로 죽어도(쿼터 초과 등)
+       learn() 이 true 를 반환했다 → 호출자가 "학습 완료" 로 원장(ledger)에 적어버리고
+       그 observation 은 **영영 재시도되지 않는다**. 조용한 데이터 손실이라 반환값을 살렸다. */
+    return !!(await window.WMStore.putPreference(p));
   }
 
   /* observation → preference 반영.
@@ -160,12 +173,23 @@
     if (o.context && o.context.kind === 'promotion') return false;
     var d = _distill(o);
     var undone = !!o.undone;
-    for (var f in d.final) if (Object.prototype.hasOwnProperty.call(d.final, f)) await _bump(f, d.final[f], o, 'chosen');
-    for (var g in d.replaced) if (Object.prototype.hasOwnProperty.call(d.replaced, g)) await _bump(g, d.replaced[g], o, 'replaced');
-    for (var h in d.kept) if (Object.prototype.hasOwnProperty.call(d.kept, h)) await _bump(h, d.kept[h], o, undone ? 'undo' : 'kept');
+    var tried = 0, wrote = 0;
+    for (var f in d.final) if (Object.prototype.hasOwnProperty.call(d.final, f)) { tried++; if (await _bump(f, d.final[f], o, 'chosen')) wrote++; }
+    for (var g in d.replaced) if (Object.prototype.hasOwnProperty.call(d.replaced, g)) { tried++; if (await _bump(g, d.replaced[g], o, 'replaced')) wrote++; }
+    /* [T8-F] 🔴 baseline 유지분은 **발행했을 때만** 증거다.
+       "열어서 자동적용을 보고 그냥 닫았다"는 취향의 증거가 아니다 — 그걸 세면
+       자동적용만 반복해도 preference 가 오르는 자기강화 루프가 생긴다.
+       단, undo(거부)는 발행 여부와 무관하게 센다 — 거부는 발행보다 확실한 신호다. */
+    var counts = undone || o.outcome === 'published';
+    if (counts) {
+      for (var h in d.kept) {
+        if (!Object.prototype.hasOwnProperty.call(d.kept, h)) continue;
+        tried++; if (await _bump(h, d.kept[h], o, undone ? 'undo' : (d.keptAuto[h] ? 'keptAuto' : 'kept'))) wrote++;
+      }
+    }
     // [T8-E] 취향이 갱신됐으니 select 가 보는 스냅샷은 낡았다 — 다음 유휴에 다시 만든다.
     try { if (window.WMPersona) window.WMPersona.invalidate(); } catch (_e) { void _e; }
-    return true;
+    return tried > 0 && wrote > 0;
   }
 
   /* [T8-D] decay 는 **읽는 시점**의 함수다.
