@@ -8,18 +8,26 @@
 최종 갱신: 2026-08-18 (내비 경합·스택 유령·고객명 오인식 수정 반영)
 
 ```
-Customer name parsing      PASS
-Navigation bug             FIXED
-Navigation DOM E2E         PASS
-Sheet stack leak           PASS
-Desktop E2E                PASS
-375 / 390 / 412 layout     PASS
-375px real click           NOT VERIFIED
+Customer name parsing                PASS
+Navigation bug                       FIXED
+Navigation DOM E2E                   PASS
+Sheet stack leak                     PASS
+Desktop E2E                          PASS
+375 / 390 / 412 layout               PASS
+375px real click                     NOT VERIFIED
 
-Real device:
-1/2 = DOM PASS, device NOT VERIFIED
-3/4/5 = NOT VERIFIED
+── 추천질문 QA (2026-08-18) ──
+Static / deterministic followups     PASS 18/18
+KST business-day boundary            PASS
+naive/aware revenue 500              FIXED
+Home proactive suggestions (C)       PASS 6/6  (즉답 2 · LLM 위임 4)
+navigation-like 오인식                0
+LLM related_questions                NOT VERIFIED
+Real-account verification            NOT VERIFIED
+Real-device 3/4/5                    NOT VERIFIED
 ```
+
+**추천질문 전체 PASS 라고 쓰지 않는다** — 정적/결정론적 부분만 끝났다.
 
 **실기기 확인 전에는 "완전 출시 완료" 라고 하지 않는다.**
 
