@@ -109,10 +109,23 @@
     }
     if (!suggestions || !suggestions.length) { _hideBox(box); return; }
     box.style.display = 'flex';
+    // [연준님 2026-08-18 · 추천질문 전수감사] `chat_input` 이 빈 제안은 **정보 배너**다.
+    //   예전엔 `s.chat_input || s.text` 로 폴백해서, 누르면 배너 문구 자체가
+    //   입력창에 채워졌다 — "⏰ 30분 뒤 안원영 시작 — 준비 OK?" 를 그대로 잇비에게
+    //   보내게 된다. 원장님이 무심코 엔터를 치면 뜻 모를 질문에 LLM 이 답하고 돈이 나간다.
+    //   물어볼 게 있는 제안(chat_input 존재)만 버튼으로, 나머지는 누를 수 없는 배너로.
+    const _BTN = 'flex:0 0 auto;max-width:260px;padding:10px 14px;border-radius:14px;'
+      + 'font-size:12px;font-weight:600;text-align:left;line-height:1.35;white-space:normal;';
     box.innerHTML = suggestions.map(s => {
       const text = _esc((window.dedupeNim ? window.dedupeNim(s.text || '') : (s.text || '')));
-      const chat = _esc(s.chat_input || s.text || '');
-      return `<button data-proactive-chat="${chat}" style="flex:0 0 auto;max-width:260px;padding:10px 14px;border:1px solid #F0DADF;border-radius:14px;background:linear-gradient(135deg,#F7EFF0,#FCE7EC);color:#BC6675;cursor:pointer;font-size:12px;font-weight:600;text-align:left;line-height:1.35;white-space:normal;">${text}</button>`;
+      const chat = String(s.chat_input || '').trim();
+      if (!chat) {
+        // 정보 배너 — 버튼이 아니고 포커스도 안 받는다(눌러도 되는 것처럼 보이면 안 된다)
+        return `<div role="note" style="${_BTN}border:1px dashed #E5E8EB;background:#FAFAFB;`
+          + `color:#8B95A1;cursor:default;">${text}</div>`;
+      }
+      return `<button data-proactive-chat="${_esc(chat)}" style="${_BTN}border:1px solid #F0DADF;`
+        + `background:linear-gradient(135deg,#F7EFF0,#FCE7EC);color:#BC6675;cursor:pointer;">${text}</button>`;
     }).join('');
   }
 

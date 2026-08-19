@@ -144,3 +144,29 @@ describe('C · 잇비에서 연 화면을 닫으면 채팅으로 돌아온다', 
     }
   });
 });
+
+// ── C. 홈 능동제안 — 누를 수 있는 것과 정보 배너를 구분한다 ──────────────
+describe('C · 빈 chat_input 은 버튼이 아니라 정보 배너', () => {
+  const src = R('js/assistant/suggestion-controls.js');
+  const render = src.match(/function renderProactiveCarousel[\s\S]*?\n  \}/)[0];
+
+  test('chat_input 이 없으면 text 로 폴백하지 않는다', () => {
+    // 실측: `s.chat_input || s.text` 라서 누르면 "⏰ 30분 뒤 시작 — 준비 OK?" 가
+    // 입력창에 채워졌다. 무심코 엔터 치면 그 문구가 잇비에게 전송된다.
+    // 주석은 뺀다 — 왜 고쳤는지 적으려면 옛 패턴을 인용해야 한다.
+    const code = render.split('\n').filter((ln) => !/^\s*\/\//.test(ln)).join('\n');
+    expect(code).not.toMatch(/chat_input\s*\|\|\s*s\.text/);
+  });
+
+  test('빈 chat_input 은 button 이 아니라 비대화형 요소로 렌더', () => {
+    expect(render).toMatch(/if\s*\(!chat\)/);
+    const blank = render.slice(render.indexOf('if (!chat)'), render.indexOf('return `<button'));
+    expect(blank).toMatch(/<div/);
+    expect(blank).toMatch(/cursor:default/);
+    expect(blank).not.toMatch(/data-proactive-chat/);   // 클릭 핸들러가 안 잡게
+  });
+
+  test('물어볼 게 있는 제안만 버튼', () => {
+    expect(render).toMatch(/data-proactive-chat="\$\{_esc\(chat\)\}"/);
+  });
+});
