@@ -199,18 +199,27 @@
     } catch (_e) { void _e; _snap = null; }
     return _snap;
   }
+  /* 🔴 스냅샷이 비면 **다시 만들 사람이 있어야 한다.**
+     처음엔 invalidate() 가 버리기만 했고 재생성은 페이지 load 때 1회뿐이었다.
+     그래서 원장이 앱을 켜둔 채 게시물을 만들면 — 첫 학습 직후 스냅샷이 버려지고
+     그 세션 내내 personalization 이 0 이었다. 학습은 쌓이는데 추천엔 영영 반영 안 됨.
+     실계정 8회 실측에서 잡았다(confidence 0.071→0.43 인데 bonus 8회 내내 0).
+     이제 비는 순간마다 유휴 재생성을 예약한다 — 어떤 경로로 비었든 회복된다. */
   function snapshot() {
-    if (!_snap) return null;
-    if (_snap.tenantId !== _tenant()) return null;             // 계정 바뀌면 즉시 무효
+    if (!_snap) { _warmIdle(); return null; }
+    if (_snap.tenantId !== _tenant()) { _snap = null; _warmIdle(); return null; }   // 계정 바뀌면 즉시 무효
     return _snap;
   }
-  function invalidate() { _snap = null; }
+  function invalidate() { _snap = null; _warmIdle(); }
 
   /* 첫 스냅샷은 **유휴 시점에** 만든다. select() 는 이걸 기다리지 않는다 —
      아직 안 만들어졌으면 개인화 0 으로 기존 T3 처럼 동작하고, 다음 열기부터 반영된다.
      편집기 여는 순간의 지연을 1ms 도 늘리지 않는 게 이 축의 전제다. */
+  var _warming = false;
   function _warmIdle() {
-    var go = function () { try { warm(); } catch (_e) { void _e; } };
+    if (_warming) return;                                      // 예약이 쌓이지 않게 — select 마다 불린다
+    _warming = true;
+    var go = function () { _warming = false; try { warm(); } catch (_e) { void _e; } };
     if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 4000 });
     else setTimeout(go, 1500);
   }

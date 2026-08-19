@@ -435,3 +435,55 @@ describe('[T8-E] 🔴 select() 경유에서도 context 가 온전히 전달된�
     expect(other).toBeGreaterThan(0);
   });
 });
+
+describe('[T8-H] 🔴 스냅샷이 비면 스스로 다시 만든다 (실계정 8회 실측에서 발견)', () => {
+  /* 원래 invalidate() 는 버리기만 했고 재생성은 페이지 load 때 1회뿐이었다.
+     원장이 앱을 켜둔 채 게시물을 만들면 첫 학습 직후 스냅샷이 버려지고 그 세션 내내
+     personalization 이 0 이 된다 — 학습은 쌓이는데 추천엔 영영 반영 안 됨.
+     실계정 실측: confidence 0.071→0.43 으로 올랐는데 bonus 는 8회 내내 0 이었다. */
+  test('invalidate() 는 버리기만 하지 않고 재생성을 예약한다', () => {
+    const { P } = loadAll();
+    let scheduled = 0;
+    const realTimeout = global.setTimeout;
+    global.setTimeout = (fn, ms) => { scheduled++; return realTimeout(fn, ms); };
+    global.requestIdleCallback = undefined;
+    P.invalidate();
+    global.setTimeout = realTimeout;
+    expect(scheduled).toBeGreaterThan(0);
+  });
+  test('snapshot() 이 비어 있으면 재생성을 예약한다 — 어떤 경로로 비었든 회복', () => {
+    const { P } = loadAll();
+    P._setSnapshotForTest(null, null);
+    let scheduled = 0;
+    const realTimeout = global.setTimeout;
+    global.setTimeout = (fn, ms) => { scheduled++; return realTimeout(fn, ms); };
+    global.requestIdleCallback = undefined;
+    expect(P.snapshot()).toBeNull();
+    global.setTimeout = realTimeout;
+    expect(scheduled).toBeGreaterThan(0);
+  });
+  test('예약이 쌓이지 않는다 — select 마다 불려도 한 번만', () => {
+    const { P } = loadAll();
+    P._setSnapshotForTest(null, null);
+    let scheduled = 0;
+    const realTimeout = global.setTimeout;
+    global.setTimeout = (fn, ms) => { scheduled++; return realTimeout(fn, ms); };
+    global.requestIdleCallback = undefined;
+    for (let i = 0; i < 20; i++) P.snapshot();
+    global.setTimeout = realTimeout;
+    expect(scheduled).toBe(1);
+  });
+  test('계정이 바뀌면 무효화하고 새 계정용으로 재생성을 예약한다', () => {
+    const { P } = loadAll({ userId: 5 });
+    snap(P, [pref('font', 'jua', NAIL)], 5);
+    expect(P.snapshot()).not.toBeNull();
+    global.localStorage.setItem('last_user_id', '77');
+    let scheduled = 0;
+    const realTimeout = global.setTimeout;
+    global.setTimeout = (fn, ms) => { scheduled++; return realTimeout(fn, ms); };
+    global.requestIdleCallback = undefined;
+    expect(P.snapshot()).toBeNull();
+    global.setTimeout = realTimeout;
+    expect(scheduled).toBeGreaterThan(0);
+  });
+});
