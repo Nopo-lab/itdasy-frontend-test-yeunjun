@@ -1667,7 +1667,31 @@
   function drawUp() { dpos = null; }
 
   /* ── 합성 내보내기 (사진 줌·콜라주·레이어 회전 반영) ── */
-  function loadImg(url) { return new Promise(function (res) { var im = new Image(); im.crossOrigin = 'anonymous'; im.onload = function () { res(im); }; im.onerror = function () { res(null); }; im.src = url; }); }
+  /* [신뢰성 2026-08-21] 이미지가 load 도 error 도 안 주면 예전엔 **영영 pending** 이었다.
+     그러면 exportComposite 콜백이 안 불리고 S._saving 이 true 로 굳어 완료 버튼이 영구 잠긴다
+     — 원장이 편집물을 저장도 발행도 못 하고 앱을 껐다 켜야 했다(브라우저 실측으로 재현).
+     느린 회선·CDN 지연·큰 스티커 자산(T6 assetRef)에서 충분히 발생한다.
+     load / error / timeout 셋 중 하나로 **반드시** 정착하고, 늦게 온 이벤트는 무시한다. */
+  /* 매직넘버를 함수 안에 박지 않는다 — 회선 상황에 따라 조정할 수 있어야 한다.
+     너무 짧으면 멀쩡한 저장이 깨지고, 너무 길면 그동안 원장이 갇힌다. */
+  var IMG_LOAD_TIMEOUT_MS = 8000;    // 이미지 1장이 응답을 안 줄 때 포기하는 시점
+  var SAVE_WATCHDOG_MS = 20000;      // export 가 끝내 응답 없을 때 저장 상태를 강제로 푸는 최후 안전망
+
+  function loadImg(url) {
+    return new Promise(function (res) {
+      var im = new Image(), done = false, tid = null;
+      var settle = function (v) {
+        if (done) return;                      // 이중 정착 금지 — 타임아웃 직후 온 load 가 결과를 못 뒤집는다
+        done = true; if (tid) clearTimeout(tid); tid = null;
+        res(v);
+      };
+      im.crossOrigin = 'anonymous';
+      im.onload = function () { settle(im); };
+      im.onerror = function () { settle(null); };
+      tid = setTimeout(function () { settle(null); }, IMG_LOAD_TIMEOUT_MS);
+      try { im.src = url; } catch (_e) { void _e; settle(null); }
+    });
+  }
   function coverRect(im, w, h) { var sc = Math.max(w / im.width, h / im.height); return { dw: im.width * sc, dh: im.height * sc }; }
   function containRect(im, w, h) { var sc = Math.min(w / im.width, h / im.height); return { dw: im.width * sc, dh: im.height * sc }; }
   function fitRect(im, w, h) { return (S.fitMode === 'contain') ? containRect(im, w, h) : coverRect(im, w, h); }
@@ -1691,6 +1715,10 @@
     else { rrPath(c, -ow / 2 + sw / 2, -oh / 2 + sw / 2, ow - sw, oh - sw, Math.max(0, rad - sw / 2)); c.stroke(); }
   }
   function exportComposite(cb) {
+    // 콜백은 **정확히 한 번**. 성공·실패·예외 어느 경로로 와도 한 번만 부른다.
+    var _cbDone = false;
+    var _photoDrawn = 0;   // 실제로 그려진 사진 수 — 0 이면 저장 실패로 본다(아래 참조)
+    var _fire = function (url) { if (_cbDone) return; _cbDone = true; try { cb(url); } catch (_e) { void _e; } };
     var r = refs.stage.getBoundingClientRect();
     var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     var cv = document.createElement('canvas'); cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
@@ -1705,7 +1733,7 @@
       var _xf = function (cx) { cx.translate(S.pz.tx, S.pz.ty); cx.translate(r.width / 2, r.height / 2);
         cx.scale(S.pz.scale * sCs, S.pz.scale * sCs); cx.rotate(sDeg * Math.PI / 180); cx.translate(-r.width / 2, -r.height / 2); };
       baseDone = Promise.all([loadImg(S.photoUrl), _sFg ? loadImg(_sFg) : Promise.resolve(null)]).then(function (res) {
-        var img = res[0], mk = res[1]; if (!img) return; var cr = fitRect(img, r.width, r.height);
+        var img = res[0], mk = res[1]; if (!img) return; _photoDrawn++; var cr = fitRect(img, r.width, r.height);
         var dx = (r.width - cr.dw) / 2, dy = (r.height - cr.dh) / 2;
         if (mk) {
           /* [#11 2026-07-18] 누끼 사진 = 배경 원래색 유지. ① 오프스크린에 '보정한 사진'을 같은 변형으로 그리고
@@ -1736,6 +1764,7 @@
         var imgs = both[0], mks = both[1];
         imgs.forEach(function (img, k) {
           if (!img) return;
+          _photoDrawn++;
           var cc = cellsSpec[k];
           var x = cc[0] * r.width + gap / 2, y = cc[1] * r.height + gap / 2, w = cc[2] * r.width - gap, h = cc[3] * r.height - gap;
           var cr = fitRect(img, w, h);
@@ -1824,7 +1853,15 @@
         }
         c.restore();
       });
-      try { cb(cv.toDataURL('image/jpeg', 0.92)); } catch (e) { void e; cb(null); }
+      /* [신뢰성] 사진이 **하나도** 안 실렸으면 성공으로 치지 않는다.
+         예전엔 이미지가 전부 타임아웃돼도 글씨만 있는 합성본을 만들어 저장했고,
+         원장이 그걸 그대로 발행할 수 있었다(브라우저 실측). 일부만 실패한 콜라주는
+         기존대로 나머지를 살린다 — 여기서 막는 건 '사진이 통째로 없는' 경우뿐이다. */
+      if (!_photoDrawn) { _fire(null); return; }
+      try { _fire(cv.toDataURL('image/jpeg', 0.92)); } catch (e) { void e; _fire(null); }
+    }).catch(function (_e) {
+      // 체인 어디서 터져도 콜백이 증발하면 안 된다 — 증발 = 저장 영구 잠김.
+      void _e; _fire(null);
     });
   }
 
@@ -1967,8 +2004,28 @@
       if (S._saving) return;   // [audit] 완료 더블탭 방지(저장 중 재클릭 무시)
       S._saving = true;
       var cb = S.onDone, _sess = S; refs.done.textContent = '저장 중…'; refs.done.disabled = true;
+      /* [신뢰성 2026-08-21] 저장 실패는 **데드락이 아니어야 한다.**
+         예전엔 export 콜백이 안 오면 _saving 이 true 로 굳어 재클릭이 전부 막혔다.
+         이제 성공·실패·예외·타임아웃 어느 경로로 끝나도 여기서 상태를 되돌린다.
+         워치독은 최후 안전망 — export 가 끝내 응답이 없어도 원장을 풀어준다. */
+      var _restored = false;
+      var _restoreSaveUi = function () {
+        if (_restored) return; _restored = true;
+        if (_wd) { clearTimeout(_wd); _wd = null; }
+        _sess._saving = false;
+        try { refs.done.textContent = '완료'; refs.done.disabled = false; } catch (_e) { void _e; }
+      };
+      var _wd = setTimeout(function () {
+        _restoreSaveUi();                       // 편집기는 열어 둔 채 재시도 가능하게
+        try { toastIt('저장이 오래 걸려요 — 다시 눌러 주세요'); } catch (_e) { void _e; }
+      }, SAVE_WATCHDOG_MS);
       exportComposite(function (url) {
-        if (S !== _sess || _sess._cancelled) { _sess._saving = false; return; }   // [audit] 저장 중 back/취소로 닫혔거나 재진입 → onDone 이중발화 안 함
+        if (S !== _sess || _sess._cancelled) { _restoreSaveUi(); return; }   // [audit] 저장 중 back/취소로 닫혔거나 재진입 → onDone 이중발화 안 함
+        if (!url) {                             // 합성 실패 — 닫지 않는다. 작업물을 잃지 않게.
+          _restoreSaveUi();
+          try { toastIt('저장에 실패했어요 — 다시 눌러 주세요'); } catch (_e) { void _e; }
+          return;
+        }
         var meta = { layers: metaLayers(), editState: _exportState() };   // [학습] close() 전에 좌표 계산(닫으면 stage rect=0 → NaN). editState=재편집 이어가기(#4/#8/#11/#16)
         // [T5] 저장 시점에 남은 작업기억 레이어 수 — flow 의 dismissed(문구 veto) 판정 기준선.
         //   0 = 통째 빼기(자동화 거부, 문구 판단 아님) / 1+ = 자동화는 수용했는데 특정 문구만 지움.
@@ -1977,8 +2034,14 @@
         // [캐러셀] 콜라주(다중 셀)가 아니면서 편집기에서 새로 추가한 사진 → 플로우가 여러 장 게시(캐러셀) 후보로 반영.
         //   콜라주면 이미 한 장으로 합성되므로 별도 추가 안 함.
         meta.newPhotos = (isSingleL(S.layout) && S.photos && S.photos.length > (S._initPhotoN || 0)) ? S.photos.slice(S._initPhotoN || 0) : [];
-        S._saving = false;
-        close(); refs.done.textContent = '완료'; refs.done.disabled = false;
+        /* [Phase 1 계측] 자유 텍스트가 피사체를 덮는 **현재 비율**만 잰다(baseline).
+           `_applySafeZone` 은 role 있는 자동 레이어만 비켜주므로, 원장이 직접 놓은 텍스트는
+           지금 아무도 안 지킨다 — 그 크기를 알아야 Phase 2 의 가치를 판단할 수 있다.
+           ⚠️ 재기만 하고 배치는 바꾸지 않는다. 실패해도 저장을 막지 않는다. */
+        try { if (window.WMMetrics) window.WMMetrics.observePublish(meta.layers, S.photoUrl); }
+        catch (_mx) { void _mx; }
+        _restoreSaveUi();
+        close();
         if (cb) cb(url, meta);   // StoryEditor 계약 호환(meta.layers)
       });
     });
@@ -2126,6 +2189,19 @@
         window.WMSignals.begin({ memoryId: _ap && _ap.memoryId, context: opts.wmContext || {}, baseline: (_ed && _ed.layers) || [] });
       }
     } catch (_t8) { void _t8; }
+    /* [Phase 1 2026-08-21] 사진 문맥 **관측만**. 결과를 쓰는 코드는 아직 없다 — 일부러 없다.
+       왜: 2026-08-21 Phase 0 실측에서 실사용 원장 edit_state 가 0건(테스트 계정 1개뿐)이라
+       "무엇을 자동 배치할지" 를 정할 근거가 아직 없다. 지금 필요한 건 **원장이 실제로 어떻게
+       편집하는지** 와 **이 계산이 실기기에서 몇 ms 인지**(목표 p90<400ms)뿐이다.
+       critical path 를 막지 않게 다음 프레임으로 미루고, 실패는 통째로 무시한다. */
+    try {
+      if (window.PhotoContext && S.photoUrl) {
+        var _pcUrl = S.photoUrl;
+        (window.requestIdleCallback || window.setTimeout)(function () {
+          try { window.PhotoContext.of(_pcUrl); } catch (_p1) { void _p1; }
+        }, 1);
+      }
+    } catch (_pc) { void _pc; }
     S._initPhotoN = (S.photos || []).length;   // [캐러셀] 진입 시 사진 수 — 편집 중 추가된 사진만 플로우로 되돌리기 위한 기준
     if (refs.featLocTx) refs.featLocTx.textContent = S.shopName || '우리샵';   // [③] 위치 칩에 실제 샵 이름
     refs.layers.innerHTML = ''; refs.frame.className = 'itded__frame';

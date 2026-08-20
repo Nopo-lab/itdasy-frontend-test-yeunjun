@@ -8,6 +8,12 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'app-gallery-workshop.js?v=local-151154',
   'js/workspace/workspace-state.js?v=local-151154',
   'js/workspace/blob-url.js?v=local-151154',
+  // [Phase 1 2026-08-21] 사진 문맥 — 관측 전용(아무 동작도 안 바꾼다). shadow 통과 전까지 소비처 없음.
+  'js/photo/photo-context.js?v=local-pctx1',
+  // [Phase 1] 계측 — WMSignals 를 감싸 읽기만 한다(T8 파일 무수정). 되돌리기=이 줄 삭제.
+  'js/workspace/wm-metrics.js?v=local-pctx2',
+  // [Phase 2 준비] shadow 비교기 — **호출부 없음**(계산기만). 게이트 통과 후 배선.
+  'js/workspace/edit-plan-shadow.js?v=local-pctx1',
   'js/workspace/shop-style.js?v=local-151154',
   'js/workspace/work-memory.js?v=local-151154',
   'js/workspace/work-memory-engine.js?v=local-t8hp',
@@ -22,7 +28,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   // [2026-07-23] 아이콘 스티커 세트 — itd-editor.js 보다 **먼저** 실려야 STK_TABS 가 탭을 만든다.
   'js/itd-editor/data/itd-icon-stickers.js?v=local-151154',
   'js/itd-editor/safe-zone.js?v=local-151154',
-  'js/itd-editor/itd-editor.js?v=local-t8hv2',
+  'js/itd-editor/itd-editor.js?v=local-editfix2',
   'js/workspace/workspace-adapter.js?v=local-151154',
   'js/workspace/workspace-sync.js?v=local-151154',
   'js/workspace/workspace-crop.js?v=local-151154',
