@@ -215,14 +215,37 @@
   /* 첫 스냅샷은 **유휴 시점에** 만든다. select() 는 이걸 기다리지 않는다 —
      아직 안 만들어졌으면 개인화 0 으로 기존 T3 처럼 동작하고, 다음 열기부터 반영된다.
      편집기 여는 순간의 지연을 1ms 도 늘리지 않는 게 이 축의 전제다. */
-  var _warming = false;
+  /* 🔴 requestIdleCallback 은 **최적화 수단**이지 정합성 보장 수단이 아니다.
+     백그라운드 탭에서는 {timeout} 을 줘도 아예 안 돈다(실측: 5초까지 한 번도 안 옴).
+     게다가 예전 _warming 래치는 예약된 콜백이 유실되면 true 로 남아 **이후 모든 warm 을
+     영구 차단**했다 — 한 번 놓치면 그 세션 내내 개인화가 0 이다.
+     원장은 앱을 켜둔 채 계속 작업한다. 같은 세션에서 방금 배운 취향이 반영돼야 한다.
+     → setTimeout 을 정합성 보장선으로 두고, rIC 은 "더 빨리 되면 좋고" 로만 쓴다.
+       래치 대신 **예약 시각**을 들고 있어 콜백이 유실돼도 다음 요청이 다시 예약한다. */
+  var WARM_FALLBACK_MS = 800;     // 같은 세션의 다음 작업 전에 반영되도록 — 편집기 오픈은 이걸 안 기다린다
+  var _warmAt = 0;                // 마지막 예약 시각(0 = 예약 없음)
   function _warmIdle() {
-    if (_warming) return;                                      // 예약이 쌓이지 않게 — select 마다 불린다
-    _warming = true;
-    var go = function () { _warming = false; try { warm(); } catch (_e) { void _e; } };
-    if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 4000 });
-    else setTimeout(go, 1500);
+    var now = Date.now();
+    // 짧은 시간 안의 중복 요청만 합친다. 유실되면 이 창이 지나고 다시 예약된다(영구 차단 없음).
+    if (_warmAt && (now - _warmAt) < WARM_FALLBACK_MS * 2) return;
+    _warmAt = now;
+    var go = function () { _warmAt = 0; try { warm(); } catch (_e) { void _e; } };
+    var fired = false;
+    var once = function () { if (fired) return; fired = true; go(); };
+    setTimeout(once, WARM_FALLBACK_MS);                        // ← 보장선
+    // rIC 은 best-effort 가속. 안 돌아도 위 setTimeout 이 책임진다.
+    try { if (typeof requestIdleCallback === 'function') requestIdleCallback(once, { timeout: WARM_FALLBACK_MS }); }
+    catch (_e) { void _e; }
   }
+  /* 탭이 백그라운드였다 돌아오면 곧바로 최신화 — 백그라운드에서 타이머가 조여도
+     원장이 화면을 다시 보는 순간엔 맞는 취향으로 시작하게 한다. */
+  try {
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && !_snap) { _warmAt = 0; _warmIdle(); }
+      });
+    }
+  } catch (_e) { void _e; }
   try {
     if (typeof document !== 'undefined' && typeof setTimeout === 'function') {
       if (document.readyState === 'complete') _warmIdle();

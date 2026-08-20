@@ -134,6 +134,57 @@ describe('[Phase 1] WMMetrics — 격리와 무침습', () => {
   });
 });
 
+describe('[R8] 작은 표본을 성과로 오독할 수 없게 — sampleCount + status', () => {
+  test('모든 비율 지표가 값·표본수·상태를 함께 낸다', () => {
+    // 합성값 0.5(표본 2건)가 "겹침률 50%" 로 읽힐 뻔한 사고의 재발 방지
+    expect(metricsSrc).toMatch(/status:\s*n === 0 \? 'NO_DATA' : \(enough \? 'OK' : 'INSUFFICIENT'\)/);
+    expect(metricsSrc).toMatch(/value:\s*enough \? value : null/);
+  });
+
+  test('표본이 기준 미만이면 값 자체를 null 로 막는다 (숫자를 감춰서 오독 차단)', () => {
+    expect(metricsSrc).toMatch(/var MIN_RATE = \d+/);
+    expect(metricsSrc).toMatch(/var MIN_PCTL = \d+/);
+  });
+
+  test('baselineSubjectOverlapRate 는 _rateM 을 거친다 (날 숫자 금지)', () => {
+    expect(metricsSrc).toMatch(/baselineSubjectOverlapRate:\s*_rateM\(/);
+  });
+
+  test('source 로 합성/테스트계정/실사용을 구분한다', () => {
+    expect(metricsSrc).toMatch(/function _source\(\)/);
+    expect(metricsSrc).toMatch(/'synthetic'/);
+    expect(metricsSrc).toMatch(/'test_account'/);
+    expect(metricsSrc).toMatch(/'production'/);
+  });
+});
+
+describe('[R9] 기기 텔레메트리 — 최소 수집', () => {
+  test('UA 전문을 저장하지 않는다 (지문화 방지)', () => {
+    // userAgent 를 읽되 저장하는 건 os/cls/tier 라벨뿐이어야 한다
+    expect(metricsSrc).toMatch(/return \{ os: os, cls: cls, tier: tier, cores: cores \|\| null, mem: mem \|\| null \};/);
+    expect(metricsSrc).not.toMatch(/ua:\s*ua/);
+    expect(metricsSrc).not.toMatch(/userAgent:\s*/);
+  });
+
+  test('계산 지연과 캐시 지연을 분리한다 (섞으면 p90 이 왜곡된다)', () => {
+    expect(metricsSrc).toMatch(/latCompute:\s*\[\]/);
+    expect(metricsSrc).toMatch(/latCache:\s*\[\]/);
+    expect(metricsSrc).toMatch(/computeLatency:/);
+  });
+
+  test('연속 작업(5장·10장)을 버스트 구간으로 잰다', () => {
+    expect(metricsSrc).toMatch(/burst:\s*\{ first: \[\], mid: \[\], deep: \[\] \}/);
+    expect(metricsSrc).toMatch(/BURST_GAP_MS/);
+  });
+
+  test('기기 정보가 편집 결과에 영향을 주지 않는다 (관측 전용)', () => {
+    // _device() 결과를 쓰는 곳은 저장·리포트뿐 — 분기 로직에 쓰이면 안 된다
+    const uses = metricsSrc.match(/_device\(\)/g) || [];
+    expect(uses.length).toBeLessThanOrEqual(3);
+    expect(metricsSrc).not.toMatch(/if\s*\([^)]*_device\(\)/);
+  });
+});
+
 describe('[Phase 1] 위치 학습 confound 방어 (Phase 0 center 75% 교훈)', () => {
   const prefSrc = fs.readFileSync(path.join(ROOT, 'js/workspace/work-memory-preferences.js'), 'utf8');
 

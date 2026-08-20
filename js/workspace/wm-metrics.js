@@ -55,9 +55,45 @@
       // 피사체 겹침 baseline (§6) — **자유 텍스트만**. 현재 safe-zone 이 안 지키는 구간이다.
       overlap: { measured: 0, overlapped: 0, subjectUnknown: 0, safeAreaAvail: 0 },
       // PhotoContext
-      pctx: { computed: 0, l0hit: 0, l1hit: 0, failed: 0, subjectKnown: 0, kindKnown: 0, lat: [], conf: [] },
+      //   [R9] 지연은 **계산과 캐시를 나눠서** 잰다. 섞으면 캐시 적중률이 높을수록 p90 이
+      //   좋아 보여서, 정작 알고 싶은 "처음 볼 때 얼마나 걸리나"가 가려진다.
+      pctx: {
+        computed: 0, l0hit: 0, l1hit: 0, failed: 0, subjectKnown: 0, kindKnown: 0,
+        latCompute: [], latCache: [], conf: [],
+        // [R9] 연속 작업 부하 — 원장은 사진을 한 장씩 올리지 않는다(5장·10장 묶음).
+        //   버스트 안에서 몇 번째냐에 따라 지연이 어떻게 변하는지가 실제 체감이다.
+        burst: { first: [], mid: [], deep: [] }   // 1번째 / 2~5번째 / 6번째 이상
+      },
+      device: null,     // [R9] 최초 1회만 기록 — 이 저장소 자체가 기기당 하나다
       updatedAt: 0
     };
+  }
+
+  /* [R9] 기기 분류 — **UA 전문을 저장하지 않는다.**
+     알고 싶은 건 "이 숫자가 어떤 급의 기기에서 나왔나"뿐이고, UA 전문은 지문(fingerprint)이
+     되어 개인 식별에 쓰일 수 있다. 그래서 거친 라벨 3개로만 줄인다.
+     tier 는 코어 수·메모리 기반 추정이다 — 정확한 기종이 아니라 **저가/중급/고급 구간**만 본다.
+     (iOS Safari 는 deviceMemory 를 안 준다 → 코어 수만으로 판정, 모르면 'unknown') */
+  function _device() {
+    try {
+      var ua = navigator.userAgent || '';
+      var os = /iPhone|iPad|iPod/i.test(ua) ? 'ios'
+        : /Android/i.test(ua) ? 'android'
+          : /Macintosh/i.test(ua) ? 'mac'
+            : /Windows/i.test(ua) ? 'windows' : 'other';
+      var tablet = /iPad/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua));
+      var phone = !tablet && (/iPhone|iPod/i.test(ua) || /Android/i.test(ua));
+      var cls = tablet ? 'tablet' : (phone ? 'phone' : 'desktop');
+      var cores = navigator.hardwareConcurrency || 0;
+      var mem = navigator.deviceMemory || 0;
+      var tier = 'unknown';
+      if (cores || mem) {
+        if ((mem && mem <= 3) || (cores && cores <= 4)) tier = 'low';
+        else if ((mem && mem <= 6) || (cores && cores <= 6)) tier = 'mid';
+        else tier = 'high';
+      }
+      return { os: os, cls: cls, tier: tier, cores: cores || null, mem: mem || null };
+    } catch (_e) { void _e; return null; }
   }
 
   function _load() {
@@ -156,13 +192,31 @@
   // ── PhotoContext 결과 관측 ───────────────────────────────
   /* PhotoContext.stats() 는 **세션 메모리**라 새로고침이면 사라진다.
      장기 p50/p90(§27·§31)을 보려면 여기 누적해야 한다. */
+  /* [R9] 버스트 추적 — 마지막 계산으로부터 이 간격 안에 또 오면 "연속 작업"으로 본다.
+     원장이 5~10장을 한 번에 올릴 때의 체감이 여기서 드러난다(메모리 압박·GC·스로틀). */
+  var BURST_GAP_MS = 3000;
+  var _burstN = 0, _burstLast = 0;
+
   function observePhotoContext(ctx, how, ms) {
+    var isCompute = (how !== 'l0' && how !== 'l1' && how !== 'fail');
+    var slot = null;
+    if (isCompute) {
+      var now = Date.now();
+      _burstN = (now - _burstLast <= BURST_GAP_MS) ? _burstN + 1 : 1;
+      _burstLast = now;
+      slot = _burstN === 1 ? 'first' : (_burstN <= 5 ? 'mid' : 'deep');
+    }
     _mut(function (o) {
+      if (!o.device) o.device = _device();          // 최초 1회만
       if (how === 'l0') o.pctx.l0hit++;
       else if (how === 'l1') o.pctx.l1hit++;
       else if (how === 'fail') { o.pctx.failed++; return; }
       else o.pctx.computed++;
-      if (typeof ms === 'number' && isFinite(ms)) _pushCapped(o.pctx.lat, Math.round(ms), MAX_LAT);
+      if (typeof ms === 'number' && isFinite(ms)) {
+        var v = Math.round(ms);
+        _pushCapped(isCompute ? o.pctx.latCompute : o.pctx.latCache, v, MAX_LAT);
+        if (slot && o.pctx.burst && o.pctx.burst[slot]) _pushCapped(o.pctx.burst[slot], v, MAX_LAT);
+      }
       if (ctx) {
         if (ctx.subjectZone) o.pctx.subjectKnown++;
         if (ctx.kind && ctx.kind !== 'unknown') o.pctx.kindKnown++;
@@ -219,40 +273,98 @@
     var s = a.slice().sort(function (x, y) { return x - y; });
     return s[Math.min(s.length - 1, Math.floor(s.length * q))];
   }
-  function _rate(n, d) { return d ? Math.round(n / d * 1000) / 1000 : null; }
+
+  /* 🔴 [R8] 모든 지표는 **값과 표본수를 함께** 낸다.
+     왜: 2026-08-21 에 합성 데이터 2건에서 나온 overlap 0.5 가 보고서에 숫자로 실렸고,
+     "현재 겹침률 50%" 로 읽힐 뻔했다. 표본 2건은 아무것도 말해주지 않는다.
+     이제 표본이 기준 미만이면 **값 자체를 null 로 막고** status 로 이유를 말한다 —
+     읽는 사람이 sampleCount 를 눈여겨보지 않아도 오독할 수 없게 구조로 강제한다. */
+  var MIN_RATE = 20;     // 비율 지표 최소 표본 (0/1 한 건이 100%/0% 로 튀는 구간을 넘김)
+  var MIN_PCTL = 10;     // 퍼센타일 최소 표본 (p90 을 말하려면 최소 이 정도는 필요)
+
+  function _metric(value, n, min) {
+    var enough = n >= min;
+    return {
+      value: enough ? value : null,
+      sampleCount: n,
+      status: n === 0 ? 'NO_DATA' : (enough ? 'OK' : 'INSUFFICIENT'),
+      minSample: min
+    };
+  }
+  function _rateM(num, den, min) {
+    return _metric(den ? Math.round(num / den * 1000) / 1000 : null, den, min == null ? MIN_RATE : min);
+  }
+  function _pctM(arr, q) { return _metric(_pct(arr, q), (arr || []).length, MIN_PCTL); }
+  function _countM(n) { return { value: n, sampleCount: n, status: n === 0 ? 'NO_DATA' : 'OK' }; }
+
+  /* [§19·§20] 이 저장소가 실사용 데이터인지 판정.
+     개발/테스트 계정의 숫자를 production 지표에 섞으면 Phase 2 판단이 통째로 오염된다.
+     origin 이 github.io(배포본)이고 알려진 테스트 계정이 아닐 때만 production 으로 본다. */
+  var TEST_USER_IDS = ['5'];            // Phase 0 에서 확인된 개발 계정(u5)
+  function _source() {
+    try {
+      var host = (location && location.hostname) || '';
+      var local = /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(host) || host === '';
+      var t = _tenant();
+      if (local) return 'synthetic';
+      if (t && TEST_USER_IDS.indexOf(String(t)) >= 0) return 'test_account';
+      return 'production';
+    } catch (_e) { void _e; return 'unknown'; }
+  }
 
   function report() {
     var o = _load();
-    if (!o) return { error: '로그인 필요(tenant 스코프 계측)' };
+    if (!o) return { error: '로그인 필요(tenant 스코프 계측)', source: _source() };
     var p = o.pctx;
     var tot = p.computed + p.l0hit + p.l1hit;
     var outTot = Object.keys(o.outcome).reduce(function (s, k) { return s + o.outcome[k]; }, 0);
+    var evTot = Object.keys(o.ev).reduce(function (s, k) { return s + o.ev[k]; }, 0);
     return {
       schema: SCHEMA,
-      sessions: o.sessions,
+      /* 🔑 이 두 줄을 먼저 읽어라. source 가 production 이 아니면 아래 숫자는
+         제품 지표가 아니다. Phase 1 보고서에서 합성값 0.5 가 실제 겹침률처럼 읽힐 뻔했다. */
+      source: _source(),
+      device: o.device || _device(),
+      sessions: _countM(o.sessions),
+
       photoContext: {
         total: tot,
-        p50ms: _pct(p.lat, 0.5), p90ms: _pct(p.lat, 0.9), p95ms: _pct(p.lat, 0.95),
-        cacheHitRate: _rate(p.l0hit + p.l1hit, tot),
-        subjectKnownRate: _rate(p.subjectKnown, tot),
-        kindKnownRate: _rate(p.kindKnown, tot),
-        confidenceP50: _pct(p.conf, 0.5),
-        failed: p.failed
+        // [R9] 계산과 캐시를 나눠서 — 섞으면 캐시가 잘 맞을수록 p90 이 좋아 보인다
+        computeLatency: { p50: _pctM(p.latCompute, 0.5), p90: _pctM(p.latCompute, 0.9), p95: _pctM(p.latCompute, 0.95) },
+        cacheLatency: { p50: _pctM(p.latCache, 0.5), p90: _pctM(p.latCache, 0.9) },
+        // [R9] 연속 작업 — 원장은 5~10장을 한 번에 올린다
+        burst: {
+          first: { p90: _pctM(p.burst && p.burst.first, 0.9) },
+          within5: { p90: _pctM(p.burst && p.burst.mid, 0.9) },
+          beyond5: { p90: _pctM(p.burst && p.burst.deep, 0.9) }
+        },
+        cacheHitRate: _rateM(p.l0hit + p.l1hit, tot),
+        subjectKnownRate: _rateM(p.subjectKnown, tot),
+        kindKnownRate: _rateM(p.kindKnown, tot),
+        confidenceP50: _pctM(p.conf, 0.5),
+        failed: _countM(p.failed)
       },
+
       behavior: {
         events: o.ev,
-        positionChanged: o.ev.position_changed || 0,
-        correctionCount: Object.keys(o.ev).reduce(function (s, k) { return s + o.ev[k]; }, 0),
+        positionChangedCount: _countM(o.ev.position_changed || 0),
+        correctionCount: _countM(evTot),
         outcome: o.outcome,
-        publishUnchangedRate: _rate(o.outcome.published_unchanged || 0, outTot),
-        abandonedRate: _rate(o.outcome.abandoned || 0, outTot),
-        previewOnlyRate: _rate(o.outcome.preview_only || 0, outTot)
+        publishedUnchangedCount: _countM(o.outcome.published_unchanged || 0),
+        editedThenPublishedCount: _countM(o.outcome.edited_then_published || 0),
+        previewOnlyCount: _countM(o.outcome.preview_only || 0),
+        abandonedCount: _countM(o.outcome.abandoned || 0),
+        publishUnchangedRate: _rateM(o.outcome.published_unchanged || 0, outTot),
+        abandonedRate: _rateM(o.outcome.abandoned || 0, outTot),
+        previewOnlyRate: _rateM(o.outcome.preview_only || 0, outTot)
       },
+
       safety: {
         layerOrigin: o.layerOrigin,
-        baselineSubjectOverlapRate: _rate(o.overlap.overlapped, o.overlap.safeAreaAvail),
-        subjectUnknownRate: _rate(o.overlap.subjectUnknown, o.overlap.measured),
-        measured: o.overlap.measured
+        /* 🔴 Phase 2 가치 판단의 핵심 수치. 표본이 적으면 **값 자체가 null** 로 나온다 —
+           "겹침률 50%" 같은 오독을 숫자를 감춰서 막는다. */
+        baselineSubjectOverlapRate: _rateM(o.overlap.overlapped, o.overlap.safeAreaAvail),
+        subjectUnknownRate: _rateM(o.overlap.subjectUnknown, o.overlap.measured)
       },
       updatedAt: o.updatedAt
     };

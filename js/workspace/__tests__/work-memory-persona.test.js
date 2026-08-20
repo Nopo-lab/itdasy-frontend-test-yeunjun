@@ -487,3 +487,75 @@ describe('[T8-H] 🔴 스냅샷이 비면 스스로 다시 만든다 (실계정 
     expect(scheduled).toBeGreaterThan(0);
   });
 });
+
+describe('[Gate1-5] 🔴 스냅샷 재생성이 스케줄러 하나에 종속되면 안 된다', () => {
+  /* 브라우저 실측(2026-08-21, 백그라운드 탭):
+       invalidate() → snapshot null → 0/100/500/1000/2500/5000ms 전부 null
+       warm() 을 직접 부르면 즉시 6건 복구 → **데이터는 멀쩡, 스케줄러만 실패**
+     원인 둘:
+       ① requestIdleCallback 이 {timeout} 을 줘도 백그라운드에서 안 돈다.
+       ② _warming 래치 — 예약된 콜백이 끝내 안 돌면 플래그가 true 로 남아
+          이후 모든 warm 시도가 영구 차단된다(한 번 놓치면 세션 내내 개인화 0).
+     requestIdleCallback 은 **최적화 수단**이지 정합성 보장 수단이 아니다.
+     원장은 앱을 켜둔 채 계속 작업한다 — 같은 세션에서 최신 취향이 반영돼야 한다. */
+  const withScheduler = (opts) => {
+    const { P } = loadAll();
+    let ricCbs = [], toCbs = [];
+    global.requestIdleCallback = opts.ric ? ((cb) => { ricCbs.push(cb); return 1; }) : undefined;
+    const realTO = global.setTimeout;
+    global.setTimeout = (fn, ms) => { toCbs.push({ fn, ms }); return realTO(() => {}, 0); };
+    return { P, ricCbs, toCbs, restore: () => { global.setTimeout = realTO; } };
+  };
+  test('🔴 requestIdleCallback 이 절대 안 돌아도 setTimeout 백업이 예약된다', () => {
+    const s = withScheduler({ ric: true });
+    s.P.invalidate();
+    s.restore();
+    expect(s.toCbs.length).toBeGreaterThan(0);   // rIC 만 믿지 않는다
+  });
+  test('🔴 콜백이 유실돼도 다음 시도가 산다 — 예전 _warming 래치는 영구 차단이었다', () => {
+    const s = withScheduler({ ric: true });
+    const realNow = Date.now;
+    let t = 1000000;
+    Date.now = () => t;
+    s.P.invalidate();
+    const first = s.toCbs.length + s.ricCbs.length;
+    expect(first).toBeGreaterThan(0);
+    // 예약된 콜백을 **하나도 실행하지 않은 채** 시간만 흐른다(백그라운드에서 유실된 상황)
+    t += 5000;
+    s.P._setSnapshotForTest(null, null);
+    s.P.snapshot();
+    Date.now = realNow;
+    s.restore();
+    expect(s.toCbs.length + s.ricCbs.length).toBeGreaterThan(first);   // 다시 예약된다
+  });
+  test('예약이 무한히 쌓이지도 않는다 — 짧은 시간 내 중복 요청은 합쳐진다', () => {
+    const s = withScheduler({ ric: false });
+    s.P._setSnapshotForTest(null, null);
+    for (let i = 0; i < 30; i++) s.P.snapshot();
+    s.restore();
+    expect(s.toCbs.length).toBeLessThanOrEqual(3);
+  });
+  test('rIC 이 없는 환경(구형/백그라운드)에서도 예약된다', () => {
+    const s = withScheduler({ ric: false });
+    s.P.invalidate();
+    s.restore();
+    expect(s.toCbs.length).toBeGreaterThan(0);
+  });
+  test('warm 백업 지연은 상수로 분리돼 있다', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'work-memory-persona.js'), 'utf8');
+    expect(src).toMatch(/var WARM_FALLBACK_MS\s*=\s*\d+/);
+    const v = +src.match(/var WARM_FALLBACK_MS\s*=\s*(\d+)/)[1];
+    expect(v).toBeLessThanOrEqual(2000);         // 같은 세션에서 다음 작업 전에 반영돼야 한다
+  });
+  test('탭이 다시 보이면 재시도한다(visibilitychange 백업)', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'work-memory-persona.js'), 'utf8');
+    expect(src).toMatch(/visibilitychange/);
+  });
+  test('select 는 여전히 기다리지 않는다 — 스냅샷 없으면 그냥 0', () => {
+    const { E, P } = loadAll();
+    P._setSnapshotForTest(null, null);
+    seed(null, [m2('m')]);
+    const r = E.select(NAIL);
+    expect(r.reason.parts.personalization).toBe(0);   // 편집기 오픈을 막지 않는다
+  });
+});

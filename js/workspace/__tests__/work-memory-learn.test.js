@@ -351,3 +351,68 @@ describe('[T8-G] 🔴 실제 플로우가 관찰에 context 를 붙인다 (실�
     expect(keys.has('펌|2|service|')).toBe(true);
   });
 });
+
+describe('[Gate1-4] 🔴 자기강화 — outcome 별로 분리해서 잠근다', () => {
+  /* ⚠️ 앞선 QA 에서 "자동적용만 반복했는데 pos 가 올랐다"고 실패 처리했는데 **테스트가 틀렸다.**
+     `auto apply → 그대로 실제 publish` 는 T8-F 계약상 keptAuto **약한 positive** 가 맞다.
+     진짜 runaway 검증은 outcome 을 나눠서 봐야 한다:
+       A. cancel      → 변화 0
+       B. save only   → strong positive 0
+       C. publish     → keptAuto 약한 positive만, 반복해도 confidence 폭증 없음 */
+  const B = () => {
+    const db = { preferences: new Map(), learning_signals: new Map(), preference_versions: new Map() };
+    return { async put(s, r) { db[s].set(r.id, JSON.parse(JSON.stringify(r))); return r.id; },
+      async get(s, i) { const v = db[s].get(i); return v ? JSON.parse(JSON.stringify(v)) : null; },
+      async all(s) { return [...db[s].values()].map((v) => JSON.parse(JSON.stringify(v))); },
+      async del(s, i) { db[s].delete(i); } };
+  };
+  const autoRun = async (L, S, n, outcome) => {
+    for (let i = 0; i < n; i++) {
+      S.begin({ memoryId: 'm', context: NAIL, baseline: autoBase('jua') });
+      L.hold({});
+      await L.commit(outcome, outcome + i);
+    }
+  };
+  test('A. auto apply → cancel: preference 변화 0', async () => {
+    const b = B(); const { S, P, L } = load(5, b);
+    await autoRun(L, S, 8, 'cancelled');
+    expect((await P.list()).length).toBe(0);
+  });
+  test('B. auto apply → save only: strong positive 없음', async () => {
+    const b = B(); const { S, P, L } = load(5, b);
+    await autoRun(L, S, 8, 'saved');
+    const font = (await P.list()).find((p) => p.feature === 'font' && p.value === 'jua');
+    expect(font == null || font.positive === 0).toBe(true);   // 발행 전엔 baseline 유지분을 안 센다
+  });
+  test('C. auto apply → publish: keptAuto 약한 positive만', async () => {
+    const b = B(); const { S, P, L } = load(5, b);
+    await autoRun(L, S, 8, 'published');
+    const font = (await P.list()).find((p) => p.feature === 'font' && p.value === 'jua');
+    expect(font.sampleCount).toBe(8);
+    expect(font.autoKeptCount).toBe(8);
+    expect(font.positive).toBe(8);                            // 회당 +1(publishedKeptAuto), +3 아님
+    expect(font.positive / font.sampleCount).toBe(1);
+  });
+  test('🔴 C 를 반복해도 confidence 가 폭증하지 않는다 — 자동화가 자기를 과신하지 않게', async () => {
+    const b = B(); const { S, P, L } = load(5, b);
+    const at = async (n) => { await autoRun(L, S, n, 'published');
+      return (await P.list()).find((p) => p.feature === 'font' && p.value === 'jua').confidence; };
+    const c8 = await at(8);
+    const c30 = await at(22);                                 // 누적 30회
+    expect(c8).toBeLessThan(0.5);
+    expect(c30).toBeLessThan(0.75);                           // 30회 자동유지로도 '확신'에 못 간다
+    expect(c30).toBeGreaterThan(c8);                          // 그래도 학습은 된다
+  });
+  test('🔴 원장이 직접 고른 값이 자동유지보다 훨씬 빨리 확신에 도달한다', async () => {
+    const mk = async (mode) => {
+      const b = B(); const { S, P, L } = load(5, b);
+      for (let i = 0; i < 8; i++) {
+        S.begin({ memoryId: 'm', context: NAIL, baseline: autoBase(mode === 'chosen' ? 'nanum' : 'jua') });
+        if (mode === 'chosen') S.note('font_changed', { layerKey: 'title', before: 'nanum', after: 'jua' });
+        L.hold({}); await L.commit('published', mode + i);
+      }
+      return (await P.list()).find((p) => p.feature === 'font' && p.value === 'jua').confidence;
+    };
+    expect(await mk('chosen')).toBeGreaterThan(await mk('auto'));
+  });
+});
