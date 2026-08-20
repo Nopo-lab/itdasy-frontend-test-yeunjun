@@ -79,20 +79,24 @@
       var ua = navigator.userAgent || '';
       var os = /iPhone|iPad|iPod/i.test(ua) ? 'ios'
         : /Android/i.test(ua) ? 'android'
-          : /Macintosh/i.test(ua) ? 'mac'
+          : /Macintosh/i.test(ua) ? 'macos'
             : /Windows/i.test(ua) ? 'windows' : 'other';
       var tablet = /iPad/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua));
       var phone = !tablet && (/iPhone|iPod/i.test(ua) || /Android/i.test(ua));
-      var cls = tablet ? 'tablet' : (phone ? 'phone' : 'desktop');
-      var cores = navigator.hardwareConcurrency || 0;
-      var mem = navigator.deviceMemory || 0;
+      var cls = tablet ? 'tablet' : (phone ? 'phone' : (os === 'macos' || os === 'windows' ? 'desktop' : 'other'));
+      /* ⚠️ cores·memory 는 브라우저마다 신뢰도가 다르다.
+         iOS Safari 는 deviceMemory 를 아예 안 주고, 일부 브라우저는 지문 방지를 위해
+         고정값을 돌려준다. 그래서 **둘 다 없으면 tier 는 'unknown'** 이다 —
+         모르는 걸 'mid' 로 채우면 저가 안드로이드가 중급으로 둔갑한다(Gate 2 오판). */
+      var cores = navigator.hardwareConcurrency || null;
+      var mem = navigator.deviceMemory || null;
       var tier = 'unknown';
       if (cores || mem) {
         if ((mem && mem <= 3) || (cores && cores <= 4)) tier = 'low';
         else if ((mem && mem <= 6) || (cores && cores <= 6)) tier = 'mid';
         else tier = 'high';
       }
-      return { os: os, cls: cls, tier: tier, cores: cores || null, mem: mem || null };
+      return { os: os, class: cls, tier: tier, cores: cores, memoryGb: mem };
     } catch (_e) { void _e; return null; }
   }
 
@@ -282,13 +286,17 @@
   var MIN_RATE = 20;     // 비율 지표 최소 표본 (0/1 한 건이 100%/0% 로 튀는 구간을 넘김)
   var MIN_PCTL = 10;     // 퍼센타일 최소 표본 (p90 을 말하려면 최소 이 정도는 필요)
 
+  /* source 를 **지표마다** 넣는다. 중복이지만 의도적이다 —
+     보고서엔 지표 한 조각만 잘라 붙이는 일이 많고, 그때 "이게 합성인가 실사용인가"가
+     같이 따라와야 오독이 안 난다. 최상위 source 하나만 두면 잘린 조각은 출처를 잃는다. */
   function _metric(value, n, min) {
     var enough = n >= min;
     return {
       value: enough ? value : null,
       sampleCount: n,
       status: n === 0 ? 'NO_DATA' : (enough ? 'OK' : 'INSUFFICIENT'),
-      minSample: min
+      minSample: min,
+      source: _source()
     };
   }
   function _rateM(num, den, min) {
@@ -329,9 +337,10 @@
 
       photoContext: {
         total: tot,
-        // [R9] 계산과 캐시를 나눠서 — 섞으면 캐시가 잘 맞을수록 p90 이 좋아 보인다
-        computeLatency: { p50: _pctM(p.latCompute, 0.5), p90: _pctM(p.latCompute, 0.9), p95: _pctM(p.latCompute, 0.95) },
-        cacheLatency: { p50: _pctM(p.latCache, 0.5), p90: _pctM(p.latCache, 0.9) },
+        /* [R9] 계산(cold)과 캐시(warm)를 나눠서 — 섞으면 캐시가 잘 맞을수록 p90 이 좋아 보여서
+           정작 알고 싶은 "처음 보는 사진이 얼마나 걸리나"가 가려진다. 목표 p90<400ms 는 cold 기준. */
+        coldCompute: { p50: _pctM(p.latCompute, 0.5), p90: _pctM(p.latCompute, 0.9), p95: _pctM(p.latCompute, 0.95) },
+        warmCache: { p50: _pctM(p.latCache, 0.5), p90: _pctM(p.latCache, 0.9) },
         // [R9] 연속 작업 — 원장은 5~10장을 한 번에 올린다
         burst: {
           first: { p90: _pctM(p.burst && p.burst.first, 0.9) },

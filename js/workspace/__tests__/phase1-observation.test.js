@@ -134,6 +134,69 @@ describe('[Phase 1] WMMetrics — 격리와 무침습', () => {
   });
 });
 
+describe('[§16] PhotoContext 는 편집 결과에 절대 영향을 주지 않는다', () => {
+  /* Phase 1 의 정의 자체다. 여기가 깨지면 Phase 1 은 더 이상 관측 계층이 아니다.
+     소비처가 생기는 순간(Phase 2) 이 테스트를 **의도적으로** 고치게 만드는 게 목적이다 —
+     모르는 사이에 배치에 영향이 흘러드는 걸 막는다. */
+  const SCAN_DIRS = ['js', '.'];
+  function scanFiles() {
+    const out = [];
+    const walk = (d, depth) => {
+      let ents;
+      try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch (_e) { return; }
+      for (const e of ents) {
+        const p = path.join(d, e.name);
+        if (e.isDirectory()) {
+          if (['node_modules', '.git', '__tests__', '.claude', 'audit_tests'].includes(e.name)) continue;
+          if (depth > 0) walk(p, depth - 1);
+          continue;
+        }
+        if (e.name.endsWith('.js') && e.name !== 'photo-context.js') out.push(p);
+      }
+    };
+    walk(path.join(ROOT, 'js'), 6);
+    for (const f of fs.readdirSync(ROOT)) {
+      if (f.endsWith('.js') && f.startsWith('app-')) out.push(path.join(ROOT, f));
+    }
+    return out;
+  }
+
+  const callers = scanFiles().filter((f) => /PhotoContext\s*\.\s*(of|peek)\s*\(/.test(fs.readFileSync(f, 'utf8')));
+
+  /* 허용 소비처는 **관측 모듈뿐**이다.
+     - itd-editor : open 훅. 결과를 받지도 않는다(계산만 시키고 버린다).
+     - wm-metrics : 겹침 baseline 측정. 결과를 쓰지만 **쓰는 곳이 지표**다.
+     이 목록에 편집 결정 모듈이 들어오는 순간 Phase 1 계약이 깨진 것이다. */
+  const ALLOWED_CONSUMERS = ['js/itd-editor/itd-editor.js', 'js/workspace/wm-metrics.js'];
+
+  test('PhotoContext 호출부는 관측 모듈뿐이다', () => {
+    const rel = callers.map((f) => path.relative(ROOT, f)).sort();
+    expect(rel).toEqual(ALLOWED_CONSUMERS.slice().sort());
+  });
+
+  test('편집기는 결과를 받지 않는다 (계산만 시키고 버린다)', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'js/itd-editor/itd-editor.js'), 'utf8');
+    // .then 으로 결과를 받아 쓰면 그 순간 편집에 흘러들 수 있다
+    expect(src).not.toMatch(/PhotoContext\s*\.\s*of\s*\([^)]*\)\s*\.\s*then/);
+  });
+
+  test('관측 모듈의 소비 결과는 지표에만 쓰인다', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'js/workspace/wm-metrics.js'), 'utf8');
+    const body = (src.match(/PhotoContext\.of\([\s\S]{0,900}?\}\)\.catch/) || [''])[0];
+    expect(body).toMatch(/_mut\(/);                       // 지표 갱신
+    // 레이어·좌표·폰트를 건드리는 흔적이 있으면 안 된다
+    expect(body).not.toMatch(/\.layers\s*=|\.x\s*=|\.y\s*=|\.font\s*=|setLayer|applyLayer/);
+  });
+
+  test('편집 결정 모듈들은 PhotoContext 를 아예 모른다', () => {
+    ['js/workspace/work-memory-engine.js', 'js/workspace/work-memory-personalize.js',
+      'js/itd-editor/safe-zone.js', 'js/workspace/flow/layout.js'].forEach((rel) => {
+      const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+      expect(src).not.toMatch(/PhotoContext/);
+    });
+  });
+});
+
 describe('[R8] 작은 표본을 성과로 오독할 수 없게 — sampleCount + status', () => {
   test('모든 비율 지표가 값·표본수·상태를 함께 낸다', () => {
     // 합성값 0.5(표본 2건)가 "겹침률 50%" 로 읽힐 뻔한 사고의 재발 방지
@@ -161,7 +224,7 @@ describe('[R8] 작은 표본을 성과로 오독할 수 없게 — sampleCount +
 describe('[R9] 기기 텔레메트리 — 최소 수집', () => {
   test('UA 전문을 저장하지 않는다 (지문화 방지)', () => {
     // userAgent 를 읽되 저장하는 건 os/cls/tier 라벨뿐이어야 한다
-    expect(metricsSrc).toMatch(/return \{ os: os, cls: cls, tier: tier, cores: cores \|\| null, mem: mem \|\| null \};/);
+    expect(metricsSrc).toMatch(/return \{ os: os, class: cls, tier: tier, cores: cores, memoryGb: mem \};/);
     expect(metricsSrc).not.toMatch(/ua:\s*ua/);
     expect(metricsSrc).not.toMatch(/userAgent:\s*/);
   });
@@ -169,7 +232,14 @@ describe('[R9] 기기 텔레메트리 — 최소 수집', () => {
   test('계산 지연과 캐시 지연을 분리한다 (섞으면 p90 이 왜곡된다)', () => {
     expect(metricsSrc).toMatch(/latCompute:\s*\[\]/);
     expect(metricsSrc).toMatch(/latCache:\s*\[\]/);
-    expect(metricsSrc).toMatch(/computeLatency:/);
+    expect(metricsSrc).toMatch(/coldCompute:/);
+    expect(metricsSrc).toMatch(/warmCache:/);
+  });
+
+  test('cores·memory 를 못 믿으면 tier 는 unknown (모르는 걸 mid 로 채우지 않는다)', () => {
+    // iOS Safari 는 deviceMemory 를 안 준다. 'mid' 로 채우면 저가 안드로이드가 중급으로 둔갑한다
+    expect(metricsSrc).toMatch(/var tier = 'unknown';/);
+    expect(metricsSrc).toMatch(/if \(cores \|\| mem\) \{/);
   });
 
   test('연속 작업(5장·10장)을 버스트 구간으로 잰다', () => {

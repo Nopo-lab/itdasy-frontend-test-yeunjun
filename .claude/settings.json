@@ -8,6 +8,14 @@
             "command": "cat \"$CLAUDE_PROJECT_DIR/.ai/APP_MAP.md\" 2>/dev/null"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/worktree-guard.js\" 2>/dev/null"
+          }
+        ]
       }
     ],
     "PostToolUse": [
