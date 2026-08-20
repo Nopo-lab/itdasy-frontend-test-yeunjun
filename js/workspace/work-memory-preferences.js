@@ -23,7 +23,19 @@
   'use strict';
 
   // 학습 대상 feature — 스타일만. 텍스트 내용·레이아웃은 각각 T5·레이아웃 소관.
-  var FEATURES = { font_changed: 'font', color_changed: 'color', alignment_changed: 'align' };
+  var FEATURES = { font_changed: 'font', color_changed: 'color', alignment_changed: 'align',
+    sticker_changed: 'emoji' };
+  /* [T8-H+] continuous 축 — 신호 하나가 축 여러 개로 갈릴 수 있다(position → x·y).
+     🔴 좌표를 value 로 쓰면 안 된다. identity 가 feature+**value**+context 라
+     0.12 / 0.13 / 0.11 이 각각 별개 레코드가 되어 영원히 sampleCount 1 이 된다.
+     → feature+context 당 **한 레코드**에 표본만 모으고 대표값은 robust(중앙값)로 뽑는다. */
+  var CONT_EVENTS = {
+    size_changed: [['size', null]],
+    position_changed: [['x', 'x'], ['y', 'y']],
+    shape_geometry_changed: [['w', 'w'], ['h', 'h']]
+  };
+  var CONT_VALUE = '~';          // continuous 레코드의 고정 value — 표본은 samples 에 쌓인다
+  var MAX_SAMPLES = 30;
   // baseline(자동 적용 결과)에서 읽는 스타일 축 — "그대로 두고 publish" 를 positive 로 잡기 위함.
   var BASE_FEATURES = [['font', 'font'], ['color', 'color'], ['align', 'align']];
 
@@ -93,6 +105,22 @@
     return { final: final, replaced: replaced, kept: kept, keptAuto: keptAuto };
   }
 
+  function _num(v) { return (typeof v === 'number' && isFinite(v)) ? v : null; }
+  /* 신호에서 continuous 표본을 뽑는다. after 가 객체면 축별로 갈라 담는다.
+     숫자가 아니면 버린다 — 좌표 자리에 문자열이 오면 대표값 계산이 통째로 망가진다. */
+  function _contSamples(sig) {
+    var spec = CONT_EVENTS[sig && sig.event];
+    if (!spec) return [];
+    var out = [];
+    spec.forEach(function (pair) {
+      var feat = pair[0], key = pair[1];
+      var raw = (key == null) ? sig.after : (sig.after && sig.after[key]);
+      var v = _num(raw);
+      if (v !== null) out.push({ feature: feat, value: v });
+    });
+    return out;
+  }
+
   function _blank(feature, value, ctxKey, context) {
     return {
       feature: feature, value: value, contextKey: ctxKey, context: context || {},
@@ -134,7 +162,7 @@
     })[0] || null;
   }
 
-  async function _bump(feature, value, o, kind) {
+  async function _bump(feature, value, o, kind, sample) {
     var ctxKey = _ctxKey(o.context);
     var p = (await _load(feature, value, ctxKey)) || _blank(feature, value, ctxKey, o.context);
     if (p.obsIds.indexOf(o.observationId) >= 0) return true;   // 멱등 — 같은 게시물은 한 번만(이미 반영됨)
@@ -157,6 +185,9 @@
     if (published) p.publishCount = _cap(p.publishCount + 1);
     if (o.memoryId && p.memoryIds.indexOf(o.memoryId) < 0) p.memoryIds = p.memoryIds.concat(o.memoryId).slice(-MAX_EVIDENCE);
     if (p.contextKeys.indexOf(ctxKey) < 0) p.contextKeys = p.contextKeys.concat(ctxKey).slice(-MAX_EVIDENCE);
+    if (sample != null) {
+      p.samples = (p.samples || []).concat(sample).slice(-MAX_SAMPLES);   // 최근 표본만 — 무한 증가 방지
+    }
     p.lastObservedAt = o.endedAt || Date.now();
     p.evidence = p.evidence.concat({ obs: o.observationId, kind: kind, outcome: o.outcome || null, at: p.lastObservedAt }).slice(-MAX_EVIDENCE);
 
@@ -179,6 +210,17 @@
     var d = _distill(o);
     var undone = !!o.undone;
     var tried = 0, wrote = 0;
+    /* [T8-H+] continuous 축은 **최종 값만** 표본으로 센다.
+       "교체당한 좌표"를 negative 로 세지 않는다 — 원장은 0.5 를 싫어한 게 아니라 그냥 옮긴 것이다.
+       한 게시물에서 여러 번 옮겼어도 마지막 값 하나만(계약 2: 게시물 1개 = 증거 1개). */
+    var contFinal = {};
+    (o.signals || []).forEach(function (sg) {
+      _contSamples(sg).forEach(function (c) { contFinal[c.feature] = c.value; });
+    });
+    for (var cf in contFinal) {
+      if (!Object.prototype.hasOwnProperty.call(contFinal, cf)) continue;
+      tried++; if (await _bump(cf, CONT_VALUE, o, 'chosen', contFinal[cf])) wrote++;
+    }
     for (var f in d.final) if (Object.prototype.hasOwnProperty.call(d.final, f)) { tried++; if (await _bump(f, d.final[f], o, 'chosen')) wrote++; }
     for (var g in d.replaced) if (Object.prototype.hasOwnProperty.call(d.replaced, g)) { tried++; if (await _bump(g, d.replaced[g], o, 'replaced')) wrote++; }
     /* [T8-F] 🔴 baseline 유지분은 **발행했을 때만** 증거다.
@@ -272,6 +314,7 @@
 
   window.WMPrefs = {
     WEIGHTS: WEIGHTS, MAX_COUNT: MAX_COUNT, FEATURES: FEATURES,
+    CONT_EVENTS: CONT_EVENTS, CONT_VALUE: CONT_VALUE, MAX_SAMPLES: MAX_SAMPLES,
     GLOBAL_MIN_MEMORIES: GLOBAL_MIN_MEMORIES, GLOBAL_MIN_CONTEXTS: GLOBAL_MIN_CONTEXTS,
     learn: learn, list: list, resolve: resolve, getGlobal: getGlobal, explain: explain,
     _distill: _distill, _confidence: _confidence

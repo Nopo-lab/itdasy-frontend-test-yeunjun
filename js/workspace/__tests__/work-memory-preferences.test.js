@@ -334,3 +334,78 @@ describe('[T8-C 범위] T3 미개입', () => {
     expect(eng).toMatch(/Math\.min\(20, 20 - days \* 2\)/);
   });
 });
+
+describe('[T8-H+] continuous 학습 — 좌표·크기는 값마다 레코드를 만들지 않는다', () => {
+  /* 🔴 identity = feature+**value**+context 인데 좌표를 그대로 value 로 쓰면
+     0.12 / 0.13 / 0.11 이 각각 별개 레코드가 되어 영원히 sampleCount 1 이다.
+     continuous 는 feature+context 당 **한 레코드**에 표본을 모으고, 대표값은 robust 로 뽑는다. */
+  const B = () => {
+    const db = { preferences: new Map(), learning_signals: new Map(), preference_versions: new Map() };
+    return { async put(s, r) { db[s].set(r.id, JSON.parse(JSON.stringify(r))); return r.id; },
+      async get(s, i) { const v = db[s].get(i); return v ? JSON.parse(JSON.stringify(v)) : null; },
+      async all(s) { return [...db[s].values()].map((v) => JSON.parse(JSON.stringify(v))); },
+      async del(s, i) { db[s].delete(i); } };
+  };
+  const CTX = { service: '젤네일', photoCount: 1, kind: 'service' };
+  const learn = (P, n, sigs) => P.learn({ observationId: 'c' + n, memoryId: 'm', context: CTX,
+    outcome: 'published', signals: sigs, baseline: [], startedAt: 0, endedAt: Date.now() });
+
+  test('size 를 4번 다르게 바꿔도 레코드는 1개, 표본은 4개', async () => {
+    const b = B(); const { P } = load(5, b);
+    const vals = [0.12, 0.13, 0.11, 0.12];
+    for (let i = 0; i < vals.length; i++) {
+      await learn(P, i, [{ event: 'size_changed', layerKey: 'title', before: 0.18, after: vals[i] }]);
+    }
+    const recs = (await P.list()).filter((p) => p.feature === 'size');
+    expect(recs.length).toBe(1);
+    expect(recs[0].sampleCount).toBe(4);
+    expect(recs[0].samples).toEqual(vals);
+    expect(recs[0].confidence).toBeGreaterThan(0);
+  });
+  test('position_changed 는 x / y 두 축으로 갈린다', async () => {
+    const b = B(); const { P } = load(5, b);
+    await learn(P, 1, [{ event: 'position_changed', layerKey: 'title', before: { x: 0.5, y: 0.5 }, after: { x: 0.62, y: 0.18 } }]);
+    const all = await P.list();
+    const x = all.find((p) => p.feature === 'x'), y = all.find((p) => p.feature === 'y');
+    expect(x.samples).toEqual([0.62]);
+    expect(y.samples).toEqual([0.18]);
+  });
+  test('shape_geometry_changed 는 w / h 로 갈린다', async () => {
+    const b = B(); const { P } = load(5, b);
+    await learn(P, 1, [{ event: 'shape_geometry_changed', layerKey: 'rect', before: { w: 0.3, h: 0.1 }, after: { w: 0.5, h: 0.2 } }]);
+    const all = await P.list();
+    expect(all.find((p) => p.feature === 'w').samples).toEqual([0.5]);
+    expect(all.find((p) => p.feature === 'h').samples).toEqual([0.2]);
+  });
+  test('🔴 continuous 는 "교체당한 값"을 negative 로 세지 않는다', async () => {
+    const b = B(); const { P } = load(5, b);
+    await learn(P, 1, [{ event: 'size_changed', layerKey: 'title', before: 0.18, after: 0.12 }]);
+    const recs = await P.list();
+    expect(recs.filter((p) => p.feature === 'size').length).toBe(1);   // 0.18 짜리 negative 레코드 없음
+    expect(recs[0].negative).toBe(0);
+  });
+  test('표본은 무한히 안 쌓인다', async () => {
+    const b = B(); const { P } = load(5, b);
+    for (let i = 0; i < 60; i++) {
+      await learn(P, i, [{ event: 'size_changed', layerKey: 'title', before: 0.18, after: 0.1 + i * 0.001 }]);
+    }
+    const r = (await P.list()).find((p) => p.feature === 'size');
+    expect(r.samples.length).toBeLessThanOrEqual(P.MAX_SAMPLES);
+    expect(r.samples[r.samples.length - 1]).toBeCloseTo(0.159, 3);    // 최근 값이 남는다
+  });
+  test('숫자가 아닌 값은 무시한다', async () => {
+    const b = B(); const { P } = load(5, b);
+    await learn(P, 1, [{ event: 'size_changed', layerKey: 'title', before: 0.1, after: 'abc' }]);
+    expect((await P.list()).filter((p) => p.feature === 'size').length).toBe(0);
+  });
+  test('context 가 다르면 표본이 안 섞인다', async () => {
+    const b = B(); const { P } = load(5, b);
+    await learn(P, 1, [{ event: 'size_changed', layerKey: 'title', before: 0.2, after: 0.12 }]);
+    await P.learn({ observationId: 'c2', memoryId: 'm', context: { service: '펌', photoCount: 3, kind: 'service' },
+      outcome: 'published', signals: [{ event: 'size_changed', layerKey: 'title', before: 0.2, after: 0.30 }],
+      baseline: [], startedAt: 0, endedAt: Date.now() });
+    const recs = (await P.list()).filter((p) => p.feature === 'size');
+    expect(recs.length).toBe(2);
+    expect(recs.map((r) => r.samples[0]).sort()).toEqual([0.12, 0.30]);
+  });
+});

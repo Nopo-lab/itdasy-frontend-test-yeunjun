@@ -255,3 +255,49 @@ describe('[T8-A 12·13] 기존 계약 불변 — T1~T7 미개입', () => {
     expect(engSrc).toMatch(/Math\.min\(20, 20 - days \* 2\)/);
   });
 });
+
+describe('[T8-H+ 12·13] continuous 신호 — 조작이 끝날 때 딱 한 번', () => {
+  /* 드래그는 pointermove 가 수십~수백 번 뜬다. 매번 신호를 남기면 IDB·배터리가 죽는다.
+     그래서 관측은 **종료 지점 한 곳**(cleanupLayerPointer)에서만 한다.
+     _pushOp(undo 스택)은 건드리지 않는다 — 되돌리기 계약은 T4 소유다. */
+  const src = fs.readFileSync(path.join(__dirname, '..', '..', 'itd-editor', 'itd-editor.js'), 'utf8');
+  test('종료 지점(cleanupLayerPointer)에서만 continuous 신호를 낸다', () => {
+    const i = src.indexOf('function cleanupLayerPointer');
+    expect(i).toBeGreaterThan(-1);
+    const blk = src.slice(i, i + 2200);
+    expect(blk).toMatch(/position_changed/);
+    expect(blk).toMatch(/size_changed/);
+    expect(blk).toMatch(/shape_geometry_changed/);
+  });
+  test('🔴 pointermove 안에서는 신호를 내지 않는다', () => {
+    const mv = src.slice(src.indexOf("document.addEventListener('pointermove'"), src.indexOf('function cleanupLayerPointer'));
+    expect(mv).not.toMatch(/position_changed|size_changed|shape_geometry_changed/);
+  });
+  test('_pushOp 계약은 안 건드린다 — 새 op 종류를 추가하지 않았다', () => {
+    const ops = [...src.matchAll(/_pushOp\(\{\s*op:\s*'([a-zA-Z]+)'/g)].map((m) => m[1]);
+    const allowed = ['add', 'del', 'move', 'resize', 'wrap', 'photo', 'cellcrop', 'wmApply', 'wmRemove'];
+    ops.forEach((o) => expect(allowed).toContain(o));
+  });
+  test('세 신호가 SUPPORTED 에 들어 있다 — 없으면 note() 가 조용히 버린다', () => {
+    const S = load(5);
+    ['position_changed', 'size_changed', 'shape_geometry_changed'].forEach((e) => {
+      expect(S.SUPPORTED).toContain(e);
+    });
+  });
+  test('continuous 신호도 owner scope 에서만 기록된다', () => {
+    const S = load(5);
+    S.begin({ memoryId: 'm', context: { service: 'a', photoCount: 1, kind: 'service' }, baseline: [] });
+    S.system(function () { S.note('position_changed', { layerKey: 'title', before: 0.5, after: 0.7 }); });
+    expect(S._pending().signals.length).toBe(0);
+    S.note('position_changed', { layerKey: 'title', before: 0.5, after: 0.7 });
+    expect(S._pending().signals.length).toBe(1);
+  });
+  test('좌표·크기 값은 숫자로만 남는다(원문·큰 값 유입 금지)', () => {
+    const S = load(5);
+    S.begin({ memoryId: 'm', context: { service: 'a', photoCount: 1, kind: 'service' }, baseline: [] });
+    S.note('size_changed', { layerKey: 'title', before: 0.08, after: 0.12 });
+    const sig = S._pending().signals[0];
+    expect(typeof sig.after).toBe('number');
+    expect(sig.after).toBe(0.12);
+  });
+});

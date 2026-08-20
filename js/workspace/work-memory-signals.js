@@ -30,6 +30,8 @@
     'memory_applied', 'layer_added', 'layer_removed', 'layer_modified',
     'text_changed', 'font_changed', 'color_changed', 'size_changed',
     'position_changed', 'alignment_changed', 'sticker_changed',
+    // [T8-H+] 도형/텍스트 폭·높이 등 기하 변경. 좌표(position)·크기(size)와 축이 달라 따로 둔다.
+    'shape_geometry_changed',
     'undo_wm', 'manual_override'
   ];
   // 스타일 값만 통과시키는 화이트리스트 — dataURL·문구 원문·개인정보가 새지 않게.

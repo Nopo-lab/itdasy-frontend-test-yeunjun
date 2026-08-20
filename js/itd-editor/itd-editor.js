@@ -801,21 +801,36 @@
   function cleanupLayerPointer(e) {
     // [#1 드래그 회귀] 어느 경로로 끝나든 모든 레이어의 포인터 추적을 지운다(안 지우면 stale 포인터로 다음 드래그가 핀치로 오인됨).
     (S && S.layers || []).forEach(function (L) { if (L._pts) delete L._pts[e.pointerId]; });
-    if (lpinch && (!lpinch.L._pts || Object.keys(lpinch.L._pts).length < 2)) lpinch = null;
+    /* [T8-H+] 핀치 확대/축소가 **끝났을 때** 크기 취향 1건. lpinch 가 null 되기 전에 읽어야 한다.
+       pointermove 마다 남기면 한 번 조작에 수백 건이 쌓여 IDB·배터리가 죽는다. */
+    if (lpinch && (!lpinch.L._pts || Object.keys(lpinch.L._pts).length < 2)) {
+      var _pl = lpinch.L;
+      if (_pl && lpinch.s0 != null && _pl.scale !== lpinch.s0) {
+        _sig('size_changed', { layerKey: _pl.role || _pl.type, before: lpinch.s0, after: _pl.scale });
+      }
+      lpinch = null;
+    }
     if (drag) {
       // [#9] 레이어를 실제로 옮겼으면 되돌리기(↩) 스택에 — 실수로 옮긴 글씨/스티커/도형을 원위치로.
       if (drag.moved && (drag.L.x !== drag.ox || drag.L.y !== drag.oy)) {
         _pushOp({ op: 'move', L: drag.L, before: { x: drag.ox, y: drag.oy }, after: { x: drag.L.x, y: drag.L.y } });
+        // [T8-H+] 이동이 끝났을 때 위치 취향 1건. _pushOp 계약(op 종류)은 안 건드린다.
+        _sig('position_changed', { layerKey: drag.L.role || drag.L.type,
+          before: { x: drag.ox, y: drag.oy }, after: { x: drag.L.x, y: drag.L.y } });
       }
       drag.L.el.style.cursor = 'grab'; drag = null;
     }
     // [#10] 도형 늘리기(크기 변경)도 되돌리기(↩) 스택에.
     if (rsd && rsd.shape && rsd.before && (rsd.L.w !== rsd.before.w || rsd.L.h !== rsd.before.h)) {
       _pushOp({ op: 'resize', L: rsd.L, before: rsd.before, after: { w: rsd.L.w, h: rsd.L.h, x: rsd.L.x, y: rsd.L.y } });
+      _sig('shape_geometry_changed', { layerKey: rsd.L.role || rsd.L.type,
+        before: { w: rsd.before.w, h: rsd.before.h }, after: { w: rsd.L.w, h: rsd.L.h } });
     }
     // [2026-07-26 원영] 텍스트 가로 늘리기도 되돌리기(↩) 스택에.
     if (wd && wd.L.wrapW !== wd.before.wrapW) {
       _pushOp({ op: 'wrap', L: wd.L, before: wd.before, after: { wrapW: wd.L.wrapW } });
+      _sig('shape_geometry_changed', { layerKey: wd.L.role || wd.L.type,
+        before: { w: wd.before.wrapW }, after: { w: wd.L.wrapW } });
     }
     rotd = null; rsd = null; wd = null;
   }

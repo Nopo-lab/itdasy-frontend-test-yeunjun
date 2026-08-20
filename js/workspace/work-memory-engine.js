@@ -314,6 +314,23 @@
     var pick = _resolveRec(o, { ignoreFlag: orch, consumeOnce: true });
     if (!pick) return null;
     var wm = _toSafeState(WM, pick.rec, { incoming: incoming, photoCount: o.photoCount, layersOnly: !!o.layersOnly });   // [T5] 텍스트 안전 정책 공용
+    /* [T8-H+] 고른 기억의 **feature 를 원장 취향으로 보정**한다 — _src 태깅 직전이 유일한 자리.
+       여기서 하면 결과가 _restoreLayers(= WMSignals.system 래핑)를 지나 자가강화가 자동 차단되고,
+       대상이 wm 레이어뿐이라 T4 undo 가 patch 까지 통째로 되돌린다.
+       실패하면 보정 없이 기억 그대로 — 개인화는 optional enhancement 다. */
+    try { window.WorkMemoryEngine._lastPersonalize = null; } catch (_e3) { void _e3; }
+    if (wm && wm.layers && wm.layers.length && window.WMPersonalize) {
+      try {
+        var snapP = (window.WMPersona && window.WMPersona.snapshot()) || null;
+        if (snapP) {
+          var pz = window.WMPersonalize.resolveFeaturePatch(pick.rec, wm, o, snapP);
+          if (pz && Array.isArray(pz.layers) && pz.layers.length) {
+            wm.layers = pz.layers;
+            try { window.WorkMemoryEngine._lastPersonalize = pz; } catch (_e4) { void _e4; }
+          }
+        }
+      } catch (_pz) { void _pz; }
+    }
     if (wm && WM.markApplied) WM.markApplied(pick.rec.id);
     // [T4] 얹는 레이어에 출처+적용 토큰 — 배너 '되돌리기'/편집기 undoWmApply 가 이 identity 로만 지운다.
     //   사용자 레이어·우리샵 레이어는 안 건드리는 게 목표(오염 금지 — 합의 조건 3).
@@ -345,6 +362,7 @@
     forEditor: forEditor,
     _lastSelect: null,       // QA·잇비 역추적 — 마지막 선택의 via/후보 점수
     _lastContextKey: null,   // [T8-H] 마지막 select 가 쓴 context key — 학습 key 와의 parity 검증용
+    _lastPersonalize: null,  // [T8-H+] 마지막 feature 보정 { layers, applied, skipped, reasons } — QA 역추적
     _lastApply: null,    // [T4] 마지막 편집기 적용 { token, memoryId, count, texts, undone } — 배너·되돌리기·dismissed identity
     _lastSanitize: null  // [T5] 마지막 텍스트 정책 { kept:[{raw,norm,cls,why}], dropped:[...] } — 승격/제거 역추적
   };
