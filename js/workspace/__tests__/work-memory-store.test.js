@@ -236,10 +236,13 @@ describe('[T8-B 개인정보] 저장 단계에서도 원문/바이트 미복제'
   });
 });
 
-describe('[T8-B 마이그레이션] v5 소스 계약 (실 업그레이드는 브라우저 실측)', () => {
+describe('[T8-B 마이그레이션] v6 소스 계약 (실 업그레이드는 브라우저 실측)', () => {
   const dbSrc = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'app-gallery-db.js'), 'utf8');
-  test('버전 5 + 신규 store 3종, 기존 store 로직 보존', () => {
-    expect(dbSrc).toMatch(/indexedDB\.open\(_GDB_NAME, 5\)/);
+  // [Phase 1 2026-08-21] v5 → v6. 사진 문맥 캐시(photo_contexts) 추가.
+  //   이 테스트가 버전을 고정하는 이유: store 추가는 되돌리기 어려운 변경이라
+  //   "모르는 사이에 올라가는 것"을 막아야 한다. 올릴 땐 여기도 같이 올린다.
+  test('버전 6 + 신규 store 3종, 기존 store 로직 보존', () => {
+    expect(dbSrc).toMatch(/indexedDB\.open\(_GDB_NAME, 6\)/);
     // 구현은 _LEARN_STORES 루프로 생성한다 — 목록에 3종이 있고 루프가 createObjectStore 를 부르는지 확인
     ['preferences', 'learning_signals', 'preference_versions'].forEach((s) => {
       expect(dbSrc).toMatch(new RegExp("_LEARN_STORES[\\s\\S]{0,200}'" + s + "'"));
@@ -250,6 +253,9 @@ describe('[T8-B 마이그레이션] v5 소스 계약 (실 업그레이드는 브
     expect(dbSrc).toMatch(/contains\(_GALLERY_STORE\)/);
     expect(dbSrc).toMatch(/contains\(_ASSET_STORE\)/);
     expect(dbSrc).toMatch(/customer_id/);
+    // v5→v6: photo_contexts 는 **추가만** — 기존 store 생성 분기를 건드리지 않는다(위 assert 로 보장)
+    expect(dbSrc).toMatch(/_PCTX_STORE\s*=\s*'photo_contexts'/);
+    expect(dbSrc).toMatch(/contains\(_PCTX_STORE\)[\s\S]{0,120}createObjectStore\(_PCTX_STORE/);
   });
   test('T7 멀티탭 데드락 수정(onversionchange) 유지', () => {
     expect(dbSrc).toMatch(/_gdb\.onversionchange/);

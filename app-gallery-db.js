@@ -15,6 +15,11 @@ const _ASSET_STORE = 'assets';
 //   격리는 DB 삭제(_purgeUserScopedDB)에만 의존하지 않고 레코드마다 tenantId + read/write 검증
 //   (work-memory-store.js). 여기선 순수 CRUD 만 제공한다.
 const _LEARN_STORES = ['preferences', 'learning_signals', 'preference_versions'];
+// [Phase 1 2026-08-21] v6 — 사진 문맥 캐시(js/photo/photo-context.js). 같은 사진을 편집기 재진입·
+//   undo·발행 재시도마다 다시 분석하지 않으려는 것이 전부다. 레코드는 **숫자·라벨만**
+//   (원본 바이트·EXIF·임베딩 없음). tenantId 인덱스를 안 만드는 이유: photoHash 는 픽셀 파생이라
+//   계정 식별성이 없고, 계정 전환 시 DB 통째 purge 경로가 이미 있다.
+const _PCTX_STORE = 'photo_contexts';
 let _gdb = null;
 
 function openGalleryDB() {
@@ -23,7 +28,7 @@ function openGalleryDB() {
     // [T-002 2026-05-29] v3 — gallery 항목에 customer_id 연결 (사진↔고객 이력).
     // [T6 2026-08-17] v4 — assets store 추가. 기존 v3 마이그레이션 로직은 그대로 보존
     //   (onupgradeneeded 는 구버전→4 직행도 처리해야 하므로 아래 분기 전부 유지).
-    const req = indexedDB.open(_GDB_NAME, 5);
+    const req = indexedDB.open(_GDB_NAME, 6);
     req.onupgradeneeded = e => {
       const db = e.target.result;
       const tx = e.target.transaction;
@@ -53,6 +58,10 @@ function openGalleryDB() {
           st.createIndex('tenantId', 'tenantId', { unique: false });
         }
       });
+      // v5→v6 [Phase 1]: 사진 문맥 캐시. 기존 store 무변경 — 실패해도 v5 데이터 손실 0.
+      if (!db.objectStoreNames.contains(_PCTX_STORE)) {
+        db.createObjectStore(_PCTX_STORE, { keyPath: 'id' });
+      }
     };
     req.onsuccess = e => {
       _gdb = e.target.result;
