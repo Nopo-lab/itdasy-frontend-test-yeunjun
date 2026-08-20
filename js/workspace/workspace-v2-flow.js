@@ -452,11 +452,22 @@
   }
   /* [T3 2026-08-17] 기억 선택 ctx — 사진 수·시술명·전/후 역할 여부. 전후는 사진 수(2장)만으론
      못 가려서 role 지정을 본다. 선택 규칙 본체는 work-memory-engine.js select() — flow 는 ctx 만 만든다. */
-  function _wmSelectCtx() {
+  /* [T8-H+ V2] texts 는 **게시물 성격(kind) 판정용**이다. 안 넘기면 classifyKind 가
+     service/unknown 밖에 못 내서 프로모션·가격표·안내가 전부 시술과 같은 바구니로 학습된다
+     (실계정 실험 준비 중 발견 — 분류기는 멀쩡한데 입력이 안 가고 있었다).
+     캡션 원문이 아니라 **화면에 얹은 문구**만 넘긴다 — 짧고, 성격을 직접 드러내고, PII 가 적다.
+     canonicalContext 는 이걸 kind 계산에만 쓰고 결과에는 안 남긴다(화이트리스트). */
+  function _wmSelectCtx(texts) {
     var eps = editablePhotos() || [];
     var hasB = false, hasA = false;
     eps.forEach(function (p) { if (p && p.role === 'before') hasB = true; else if (p && p.role === 'after') hasA = true; });
-    return { photoCount: eps.length, service: (d && d.service) || '', hasBeforeAfter: hasB && hasA };
+    return { photoCount: eps.length, service: (d && d.service) || '', hasBeforeAfter: hasB && hasA,
+      texts: Array.isArray(texts) ? texts.filter(Boolean).slice(0, 8) : undefined };
+  }
+  // 편집기에 얹히는 레이어에서 문구만 추려낸다(선택·학습이 **같은 입력**을 보게).
+  function _wmTexts(ls) {
+    return (ls || []).map(function (l) { return l && l.text; })
+      .filter(function (t) { return typeof t === 'string' && t.trim(); }).slice(0, 8);
   }
   function _autoComposeTemplate() {
     if (!(window.ItdEditor && window.ItdEditor.compose)) return;
@@ -470,7 +481,7 @@
     // [T1 엔진 2026-08-17] role 중복 제거를 자체 재구현하던 것 → 편집기와 같은 병합 규칙(work-memory-engine)으로.
     try {
       layers = (window.WorkMemoryEngine && window.WorkMemoryEngine.decorateLayers)
-        ? window.WorkMemoryEngine.decorateLayers(layers, _wmSelectCtx()) : layers;
+        ? window.WorkMemoryEngine.decorateLayers(layers, _wmSelectCtx(_wmTexts(layers))) : layers;
     } catch (_wmE) { void _wmE; }
     if (!layers.length) return;
     // 텍스트·자리·크기만으로 지문 — 로고 dataUrl 은 넣지 않는다(길이만 커지고 판별력은 role/좌표로 충분).
@@ -617,7 +628,7 @@
     //   restore(재편집 이어가기)면 안 얹고, 잇비 "평소 하던 대로"의 플래그 우회 규칙까지 엔진 소유.
     // [T3] once('이 스타일로 또') > auto(상황 스코어) > ★(auto OFF) — ctx 는 _wmSelectCtx 가 만든다.
     var _wmEd = (window.WorkMemoryEngine && window.WorkMemoryEngine.forEditor)
-      ? window.WorkMemoryEngine.forEditor(Object.assign({ restore: !!_restore, orch: d._orch, incoming: layers, layersOnly: !!_wsEd }, _wmSelectCtx()))
+      ? window.WorkMemoryEngine.forEditor(Object.assign({ restore: !!_restore, orch: d._orch, incoming: layers, layersOnly: !!_wsEd }, _wmSelectCtx(_wmTexts(layers))))
       : null;
     // [v590] 진입 시 올린 텍스트 역할 기록 — 저장 시 빠진 역할(사용자가 지움)을 스타일에서 비활성화하는 비교 기준.
     // [audit#3] 텍스트 역할 레이어는 type 필드가 없다(roleText 배치) — 'text'로만 필터하면 항상 빈 배열이라 '지운 레이어 기억' 기능이 죽어 있었음.
@@ -651,8 +662,8 @@
         // [T8-H] 선택과 **같은** canonical builder. 여기서 손으로 조립하면 또 어긋난다.
         try {
           return (window.WorkMemoryEngine && window.WorkMemoryEngine.canonicalContext)
-            ? window.WorkMemoryEngine.canonicalContext(_wmSelectCtx()) : _wmSelectCtx();
-        } catch (_ke) { void _ke; return _wmSelectCtx(); }
+            ? window.WorkMemoryEngine.canonicalContext(_wmSelectCtx(_wmTexts(layers))) : _wmSelectCtx(_wmTexts(layers));
+        } catch (_ke) { void _ke; return _wmSelectCtx(_wmTexts(layers)); }
       })(),
       onDone: function (dataUrl, meta) {
         _hideWmBanner();   // [T4] 편집기가 닫히면 배너·타이머 정리(다음 세션에 낡은 배너 금지)

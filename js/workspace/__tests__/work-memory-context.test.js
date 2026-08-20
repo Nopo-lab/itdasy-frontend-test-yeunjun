@@ -209,3 +209,41 @@ describe('[T8-H 23] raw data 안전 — 학습 저장소에 들어가면 안 되
     expect(E.canonicalContext({ service: 'ㄱ'.repeat(500) }).service.length).toBeLessThanOrEqual(64);
   });
 });
+
+describe('[T8-H+ V2] 🔴 게시물 종류(kind)가 실사용 경로에서 갈리는가', () => {
+  /* classifyKind 는 promotion/notice 를 잘 분류하는데, flow 의 _wmSelectCtx() 가 texts 를
+     안 넘겨서 **실사용 경로에서는 kind 가 service/unknown 둘뿐**이었다.
+     프로모션·가격표·안내가 전부 시술과 같은 바구니로 학습된다 — 실계정 실험 준비 중 발견.
+     select 와 learn 이 같은 texts 를 봐야 parity 도 유지된다. */
+  test('flow 의 _wmSelectCtx 가 texts 를 담는다', () => {
+    const flow = fs.readFileSync(path.join(__dirname, '..', 'workspace-v2-flow.js'), 'utf8');
+    const m = flow.match(/function _wmSelectCtx\([\s\S]{0,600}?\n {2}\}/);
+    expect(m).toBeTruthy();
+    expect(m[0]).toMatch(/texts/);
+  });
+  test('선택·학습 두 호출 모두 같은 texts 를 넘긴다', () => {
+    const flow = fs.readFileSync(path.join(__dirname, '..', 'workspace-v2-flow.js'), 'utf8');
+    const calls = flow.match(/_wmSelectCtx\([^)]*\)/g) || [];
+    const withArg = calls.filter((c) => c !== '_wmSelectCtx()');
+    expect(withArg.length).toBeGreaterThanOrEqual(3);   // decorate · forEditor · wmContext
+  });
+  test('kind 가 실제로 4갈래로 나뉜다', () => {
+    const { E } = load();
+    expect(E.canonicalContext({ service: '젤네일', photoCount: 1 }).kind).toBe('service');
+    expect(E.canonicalContext({ photoCount: 1, texts: ['새해 이벤트 50% 할인'] }).kind).toBe('promotion');
+    expect(E.canonicalContext({ photoCount: 1, texts: ['영업시간 안내'] }).kind).toBe('notice');
+    expect(E.canonicalContext({ photoCount: 1 }).kind).toBe('unknown');
+  });
+  test('🔴 이벤트 문구가 있으면 시술명이 있어도 promotion 이 이긴다 — 일회성이 취향을 오염시키면 안 된다', () => {
+    const { E } = load();
+    const c = E.canonicalContext({ service: '젤네일', photoCount: 1, texts: ['젤네일 이벤트 30% 할인'] });
+    expect(c.kind).toBe('promotion');
+    expect(E.contextKey(c)).not.toBe(E.contextKey(E.canonicalContext({ service: '젤네일', photoCount: 1 })));
+  });
+  test('texts 는 context 결과에 남지 않는다(kind 판정용으로만 쓰고 버린다)', () => {
+    const { E } = load();
+    const c = E.canonicalContext({ service: '젤네일', photoCount: 1, texts: ['고객 김민지님 010-1234-5678'] });
+    expect(c.texts).toBeUndefined();
+    expect(JSON.stringify(c)).not.toMatch(/김민지|1234/);
+  });
+});

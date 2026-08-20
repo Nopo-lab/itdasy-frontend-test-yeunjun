@@ -315,7 +315,8 @@ describe('[T8-G] 🔴 실제 플로우가 관찰에 context 를 붙인다 (실�
     const flow = fs.readFileSync(path.join(__dirname, '..', 'workspace-v2-flow.js'), 'utf8');
     expect(flow).toMatch(/wmContext:/);
     const blk = flow.slice(flow.indexOf('wmContext:'), flow.indexOf('wmContext:') + 700);
-    expect(blk).toMatch(/_wmSelectCtx\(\)/);          // 선택과 같은 출처
+    // [T8-H+ V2] texts 인자가 붙었다 — 선택과 학습이 **같은 입력**을 봐야 kind 도 같이 갈린다
+    expect(blk).toMatch(/_wmSelectCtx\(/);           // 선택과 같은 출처
     // [T8-H] kind 를 손으로 붙이던 걸 canonicalContext 단일 진입점으로 옮겼다
     expect(blk).toMatch(/canonicalContext/);
   });
