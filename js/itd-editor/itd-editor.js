@@ -600,6 +600,7 @@
     var isShape = L.type === 'shape' && L.w != null && L.h != null;
     rsd = { L: L, cx: cx, cy: cy, d0: Math.max(8, Math.hypot(e.clientX - cx, e.clientY - cy)), s0: (L.scale || 1),
       shape: isShape, sx: e.clientX, sy: e.clientY, w0: L.w, h0: L.h, x0: L.x, y0: L.y, before: isShape ? { w: L.w, h: L.h, x: L.x, y: L.y } : null };
+    try { rsd._serSnap = _serLayer(L); } catch (_rs) { void _rs; rsd._serSnap = null; }   // [T8-H+ V2] 정규화 기준
     try { e.target.setPointerCapture(e.pointerId); } catch (_) { void _; }
   }
   // [2026-07-26 원영] 텍스트 가로 늘리기 — 폭을 정하면 pre-wrap 고정폭(그 폭에서 자동 줄바꿈),
@@ -617,6 +618,7 @@
   function onWDown(e, L) {
     e.preventDefault(); e.stopPropagation(); selectLayer(L);
     wd = { L: L, sx: e.clientX, sy: e.clientY, w0: L.wrapW || (L.tx ? L.tx.offsetWidth : 100), before: { wrapW: L.wrapW || null } };
+    try { wd._serSnap = _serLayer(L); } catch (_ws) { void _ws; wd._serSnap = null; }   // [T8-H+ V2] 정규화 기준
     try { e.target.setPointerCapture(e.pointerId); } catch (_) { void _; }
   }
   function selectLayer(L) {
@@ -745,11 +747,16 @@
       drag = null;
       var q1 = L._pts[ids[0]], q2 = L._pts[ids[1]];
       lpinch = { L: L, ids: [ids[0], ids[1]], d0: Math.max(8, Math.hypot(q1.x - q2.x, q1.y - q2.y)), a0: Math.atan2(q2.y - q1.y, q2.x - q1.x), s0: L.scale || 1, r0: L.rot || 0 };
+      try { lpinch._serSnap = _serLayer(L); } catch (_ps) { void _ps; lpinch._serSnap = null; }   // [T8-H+ V2] 정규화 기준 스냅샷
       return;
     }
     if (L.type === 'text' && L._tapEdit && Date.now() - L._tapEdit < 350) { editText(L); return; }
     L._tapEdit = Date.now();
     drag = { L: L, pid: e.pointerId, sx: e.clientX, sy: e.clientY, ox: L.x, oy: L.y, moved: false };   // [#9] ox/oy=이동 전 위치(되돌리기용)
+    /* [T8-H+ V2] 관측용 스냅샷 — **_serLayer 와 같은 정규화 기준**으로 찍는다.
+       런타임 L.x 는 스테이지 픽셀이고 저장 스키마의 x 는 0~1 이다. 픽셀을 그대로 학습하면
+       personalize 가 "선호 x=137" 을 0~1 좌표에 적용해 화면 밖으로 날려버린다. */
+    try { drag._serSnap = _serLayer(L); } catch (_ss) { void _ss; drag._serSnap = null; }
     L.el.style.cursor = 'grabbing';
   }
   document.addEventListener('pointermove', function (e) {
@@ -806,7 +813,12 @@
     if (lpinch && (!lpinch.L._pts || Object.keys(lpinch.L._pts).length < 2)) {
       var _pl = lpinch.L;
       if (_pl && lpinch.s0 != null && _pl.scale !== lpinch.s0) {
-        _sig('size_changed', { layerKey: _pl.role || _pl.type, before: lpinch.s0, after: _pl.scale });
+        // scale(배율)이 아니라 정규화 size 로 — 저장 스키마와 같은 축이어야 적용이 맞는다.
+        var _pa = null; try { _pa = _serLayer(_pl); } catch (_pe) { void _pe; }
+        if (lpinch._serSnap && _pa && _pa.size != null) {
+          _sig('size_changed', { layerKey: _pl.role || _pl.type,
+            before: lpinch._serSnap.size, after: _pa.size });
+        }
       }
       lpinch = null;
     }
@@ -815,22 +827,31 @@
       if (drag.moved && (drag.L.x !== drag.ox || drag.L.y !== drag.oy)) {
         _pushOp({ op: 'move', L: drag.L, before: { x: drag.ox, y: drag.oy }, after: { x: drag.L.x, y: drag.L.y } });
         // [T8-H+] 이동이 끝났을 때 위치 취향 1건. _pushOp 계약(op 종류)은 안 건드린다.
-        _sig('position_changed', { layerKey: drag.L.role || drag.L.type,
-          before: { x: drag.ox, y: drag.oy }, after: { x: drag.L.x, y: drag.L.y } });
+        var _sa = null; try { _sa = _serLayer(drag.L); } catch (_se) { void _se; }
+        if (drag._serSnap && _sa) {
+          _sig('position_changed', { layerKey: drag.L.role || drag.L.type,
+            before: { x: drag._serSnap.x, y: drag._serSnap.y }, after: { x: _sa.x, y: _sa.y } });
+        }
       }
       drag.L.el.style.cursor = 'grab'; drag = null;
     }
     // [#10] 도형 늘리기(크기 변경)도 되돌리기(↩) 스택에.
     if (rsd && rsd.shape && rsd.before && (rsd.L.w !== rsd.before.w || rsd.L.h !== rsd.before.h)) {
       _pushOp({ op: 'resize', L: rsd.L, before: rsd.before, after: { w: rsd.L.w, h: rsd.L.h, x: rsd.L.x, y: rsd.L.y } });
-      _sig('shape_geometry_changed', { layerKey: rsd.L.role || rsd.L.type,
-        before: { w: rsd.before.w, h: rsd.before.h }, after: { w: rsd.L.w, h: rsd.L.h } });
+      var _ra = null; try { _ra = _serLayer(rsd.L); } catch (_re2) { void _re2; }
+      if (rsd._serSnap && _ra) {
+        _sig('shape_geometry_changed', { layerKey: rsd.L.role || rsd.L.type,
+          before: { w: rsd._serSnap.w, h: rsd._serSnap.h }, after: { w: _ra.w, h: _ra.h } });
+      }
     }
     // [2026-07-26 원영] 텍스트 가로 늘리기도 되돌리기(↩) 스택에.
     if (wd && wd.L.wrapW !== wd.before.wrapW) {
       _pushOp({ op: 'wrap', L: wd.L, before: wd.before, after: { wrapW: wd.L.wrapW } });
-      _sig('shape_geometry_changed', { layerKey: wd.L.role || wd.L.type,
-        before: { w: wd.before.wrapW }, after: { w: wd.L.wrapW } });
+      var _wa = null; try { _wa = _serLayer(wd.L); } catch (_we) { void _we; }
+      if (wd._serSnap && _wa) {
+        _sig('shape_geometry_changed', { layerKey: wd.L.role || wd.L.type,
+          before: { w: wd._serSnap.w }, after: { w: _wa.w } });
+      }
     }
     rotd = null; rsd = null; wd = null;
   }

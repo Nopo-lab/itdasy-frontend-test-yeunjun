@@ -50,9 +50,26 @@
 
   /* 스타일 값만 남긴다. dataURL·긴 문자열·객체는 통째로 버리고,
      텍스트 변경은 '바뀌었다'는 사실만(원문은 T5 소관이자 개인정보 위험). */
+  /* [T8-H+ V2] 좌표·크기는 값이 {x,y} / {w,h} 객체다. 예전엔 객체를 전부 null 로 버려서
+     신호는 남는데 **값이 없어** 학습이 0 이었다(실계정 실험에서 발견 — 조용한 실패라 못 봤다).
+     허용은 최소한으로: 아래 키만, 숫자만, 얕게. 중첩·배열·문자열 필드는 그대로 차단한다. */
+  var GEO_KEYS = { x: 1, y: 1, w: 1, h: 1, size: 1 };
+  function _safeGeo(o) {
+    if (Array.isArray(o)) return null;
+    var out = null;
+    for (var k in o) {
+      if (!Object.prototype.hasOwnProperty.call(o, k)) continue;
+      if (!GEO_KEYS[k]) continue;                      // 허용 키 밖은 조용히 버린다
+      var v = o[k];
+      if (typeof v !== 'number' || !isFinite(v)) continue;
+      (out = out || {})[k] = v;
+    }
+    return out;
+  }
   function _safeVal(v) {
     if (v == null) return null;
     if (typeof v === 'number' || typeof v === 'boolean') return v;
+    if (typeof v === 'object') return _safeGeo(v);
     if (typeof v !== 'string') return null;
     if (/^data:/.test(v)) return null;                 // 이미지 바이트 금지
     if (v.length > MAX_VAL) return null;               // 문구·긴 값 금지

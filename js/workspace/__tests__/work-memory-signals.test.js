@@ -301,3 +301,70 @@ describe('[T8-H+ 12·13] continuous 신호 — 조작이 끝날 때 딱 한 번'
     expect(sig.after).toBe(0.12);
   });
 });
+
+describe('[T8-H+ V2] 🔴 continuous 값이 통째로 버려지던 문제 (실계정 실험 V1 에서 발견)', () => {
+  /* position/geometry 는 값이 {x,y} 객체인데 _safeVal 이 객체를 전부 null 로 버렸다.
+     신호는 남는데 **값이 없어서** 학습이 0 이었다 — 조용한 실패라 골든도 못 봤다.
+     좌표 몇 개짜리 얕은 숫자 객체만 허용한다. 중첩·문자열·긴 값은 여전히 차단. */
+  test('숫자만 든 얕은 좌표 객체는 통과한다', () => {
+    const S = load(5);
+    S.begin({ memoryId: 'm', context: { service: 'a', photoCount: 1, kind: 'service' }, baseline: [] });
+    S.note('position_changed', { layerKey: 'title', before: { x: 0.5, y: 0.5 }, after: { x: 0.62, y: 0.18 } });
+    const sig = S._pending().signals[0];
+    expect(sig.after).toEqual({ x: 0.62, y: 0.18 });
+    expect(sig.before).toEqual({ x: 0.5, y: 0.5 });
+  });
+  test('shape geometry {w,h} 도 통과', () => {
+    const S = load(5);
+    S.begin({ memoryId: 'm', context: { service: 'a', photoCount: 1, kind: 'service' }, baseline: [] });
+    S.note('shape_geometry_changed', { layerKey: 'rect', before: { w: 0.3, h: 0.1 }, after: { w: 0.5, h: 0.2 } });
+    expect(S._pending().signals[0].after).toEqual({ w: 0.5, h: 0.2 });
+  });
+  test('🔴 허용 키 밖의 필드는 잘라낸다 — 임의 객체 유입 금지', () => {
+    const S = load(5);
+    S.begin({ memoryId: 'm', context: { service: 'a', photoCount: 1, kind: 'service' }, baseline: [] });
+    S.note('position_changed', { layerKey: 'title', after: { x: 0.5, y: 0.5, caption: '고객 김민지', token: 'abc' } });
+    const a = S._pending().signals[0].after;
+    expect(a).toEqual({ x: 0.5, y: 0.5 });
+    expect(a.caption).toBeUndefined();
+    expect(a.token).toBeUndefined();
+  });
+  test('숫자가 아닌 좌표·중첩 객체·배열은 버린다', () => {
+    const S = load(5);
+    S.begin({ memoryId: 'm', context: { service: 'a', photoCount: 1, kind: 'service' }, baseline: [] });
+    S.note('position_changed', { layerKey: 't', after: { x: 'abc', y: { deep: 1 } } });
+    S.note('position_changed', { layerKey: 't', after: [1, 2, 3] });
+    S.note('position_changed', { layerKey: 't', after: { x: Infinity } });
+    S._pending().signals.forEach((s) => expect(s.after).toBeUndefined());
+  });
+  test('문자열 값의 기존 방어는 그대로 — data URI·긴 값 차단', () => {
+    const S = load(5);
+    S.begin({ memoryId: 'm', context: { service: 'a', photoCount: 1, kind: 'service' }, baseline: [] });
+    S.note('font_changed', { layerKey: 't', after: 'data:image/png;base64,AAAA' });
+    S.note('font_changed', { layerKey: 't', after: 'x'.repeat(200) });
+    S._pending().signals.forEach((s) => expect(s.after).toBeUndefined());
+  });
+});
+
+describe('[T8-H+ V2] 🔴 좌표 단위 — 픽셀이 아니라 저장 스키마와 같은 정규화 값', () => {
+  /* 편집기 런타임의 L.x 는 **스테이지 픽셀**이고, _serLayer 가 저장하는 x 는 **0~1 정규화**다.
+     observer 가 픽셀을 보내면 personalize 가 "선호 x=137" 을 0~1 좌표에 적용하게 된다 —
+     화면 밖으로 날아간다. 관측도 적용도 _serLayer 와 같은 기준을 써야 한다. */
+  const src = fs.readFileSync(path.join(__dirname, '..', '..', 'itd-editor', 'itd-editor.js'), 'utf8');
+  test('continuous 신호는 _serLayer 스냅샷에서 값을 뽑는다(픽셀 직접 사용 금지)', () => {
+    const i = src.indexOf('function cleanupLayerPointer');
+    const blk = src.slice(i, i + 2600);
+    expect(blk).toMatch(/_serLayer|_serSnap/);
+    /* _sig(...) 로 나가는 좌표만 검사한다. _pushOp 의 after:{x:drag.L.x} 는 **픽셀이 맞다** —
+       T4 되돌리기는 런타임 좌표를 그대로 복원해야 하므로 건드리면 안 된다. */
+    const sigCalls = blk.match(/_sig\('(position_changed|size_changed|shape_geometry_changed)'[\s\S]{0,240}?\}\);/g) || [];
+    expect(sigCalls.length).toBeGreaterThan(0);
+    sigCalls.forEach((c) => {
+      expect(c).toMatch(/_serSnap|_sa\.|_pa\.|_ra\.|_wa\./);   // 정규화 스냅샷에서만 값을 뽑는다
+      expect(c).not.toMatch(/drag\.L\.x|drag\.ox|rsd\.L\.w|wd\.L\.wrapW|_pl\.scale/);
+    });
+  });
+  test('드래그 시작 시 정규화 스냅샷을 남긴다', () => {
+    expect(src).toMatch(/drag = \{[^}]*_serSnap|_serSnap[\s\S]{0,200}drag = \{/);
+  });
+});
