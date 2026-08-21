@@ -23,6 +23,8 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/photo/safety-shadow.js?v=local-p51',
   // [Phase 5.2] Gate 자동판정 — 판정만, 자동화 0.
   'js/photo/safety-gate.js?v=local-p52',
+  // 지표 읽기 — URL `?safetyReport=1` 로만 표시. 네트워크 0·자동전송 0.
+  'js/photo/safety-readout.js?v=local-p53',
   'js/workspace/shop-style.js?v=local-151154',
   'js/workspace/work-memory.js?v=local-151154',
   'js/workspace/work-memory-engine.js?v=local-t8hp',
