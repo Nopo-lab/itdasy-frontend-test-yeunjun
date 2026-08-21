@@ -401,7 +401,16 @@
     const isReschedManual = !!am.reschedule_manual;  // [2026-06-28] 변경인데 대상 예약 0/2건+ → 원장 직접 확인
     const isNoshow = !!am.noshow_manual;  // [2026-06-28] 지각·당일 불참 통보 — 자동답장 X, 원장 알림만
     const isCancelManual = !!am.cancel_manual;  // [2026-06-28] 취소인데 대상 예약 0/2건+ → 원장 직접 확인
-    const noDraft = isRisk || isReschedManual || isNoshow || isCancelManual;  // 초안·전송 버튼 숨기고 직접 처리 안내만
+    // [2026-08-21] `isReschedManual` 을 뺐다 — 백엔드가 이제 **초안을 채워서 보낸다**.
+    //   전엔 백엔드가 `ai_draft_text=""` 를 보냈고 여기서도 숨겨서, 원장님이 카드를 열면
+    //   보낼 문장도 없고 버튼도 없었다(실측 dm_message_logs id=2724).
+    //   백엔드만 고치면 화면엔 안 나온다 — 이 줄이 그 지점이다.
+    //
+    //   나머지(risk·noshow·cancel)는 그대로 숨긴다. 그쪽은 여전히 초안이 없고
+    //   원장님이 직접 판단할 사안이다.
+    //
+    //   ⚠️ 초안이 실제로 비어 있으면(옛 카드) 아래 `_rawDraft` 조건이 버튼을 막는다.
+    const noDraft = isRisk || isNoshow || isCancelManual;  // 초안·전송 버튼 숨기고 직접 처리 안내만
     const pic = (it.profile_pic || '').trim();
     const avImg = pic
       ? `<img src="${_esc(pic)}" referrerpolicy="no-referrer" alt="" onerror="this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;">`
@@ -559,7 +568,7 @@
           </div>
         </div>`}
         <div style="display:flex;gap:6px;margin-top:12px;">
-          ${(!noDraft && (!isFormAuto || _rawDraft)) ? `<button class="dcq-send" data-act="${isSendForm ? 'send-form' : 'send'}" style="flex:1;padding:11px;border:none;${_mainBtnStyle(it)}color:#fff;font-weight:700;font-size:13px;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
+          ${(!noDraft && _rawDraft && (!isFormAuto || _rawDraft)) ? `<button class="dcq-send" data-act="${isSendForm ? 'send-form' : 'send'}" style="flex:1;padding:11px;border:none;${_mainBtnStyle(it)}color:#fff;font-weight:700;font-size:13px;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7Z"/></svg>${_esc(_mainBtnLabel(it))}</button>` : ''}
           ${(noDraft || isSendForm || isSetAddress || am.deposit_sent || (isFormAuto && !_rawDraft)) ? '' : `<button class="dcq-edit-btn" data-act="edit" style="padding:11px 14px;border:1px solid #E5E8EB;background:#fff;color:#191F28;font-weight:600;font-size:13px;border-radius:13px;cursor:pointer;">수정</button>`}
           <button class="dcq-discard" data-act="discard" title="카드 무시 (정보 보존)" style="padding:11px 14px;border:1px solid #E5E8EB;background:#fff;color:#8B95A1;font-weight:600;font-size:13px;border-radius:13px;cursor:pointer;">무시</button>
