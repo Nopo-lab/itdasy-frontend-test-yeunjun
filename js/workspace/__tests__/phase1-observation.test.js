@@ -386,7 +386,68 @@ describe('[Phase 2] ShopStyleCandidate — 인스타 관찰은 "후보"지 "선�
         const p = path.join(d, e.name);
         if (e.isDirectory()) { if (!['node_modules', '.git', '__tests__', '.claude'].includes(e.name)) walk(p); continue; }
         if (!e.name.endsWith('.js') || e.name === 'shop-style-candidate.js') continue;
+        // [Phase 3] shop-baseline 은 **읽어서 고르기만** 하는 resolver — 적용이 아니다.
+        //   그 자신도 소비처가 0 인지 Phase 3 테스트가 따로 감시한다.
+        if (e.name === 'shop-baseline.js') continue;
         if (/ShopStyleCandidate\s*\./.test(fs.readFileSync(p, 'utf8'))) hits.push(path.relative(ROOT, p));
+      }
+    };
+    walk(path.join(ROOT, 'js'));
+    expect(hits).toEqual([]);
+  });
+});
+
+describe('[Phase 3] 증거 계층 — 기본값을 사용자 의도로 오독하지 않는다', () => {
+  const baseSrc = fs.readFileSync(path.join(ROOT, 'js/photo/shop-baseline.js'), 'utf8');
+  const priorSrc = fs.readFileSync(path.join(ROOT, 'js/photo/category-prior.js'), 'utf8');
+
+  test('BrandKit 은 **저장 여부**를 직접 확인한다 (get() 은 기본값을 채워 준다)', () => {
+    /* QA 실측 버그: 아무 설정도 안 한 원장의 기본색(#D58A95)이 explicit confidence 1.0 으로
+       인스타 실측 증거를 눌렀다. Phase 0 의 'center 75%'(스폰 기본값을 선호로 오독)와 같은 종류. */
+    expect(baseSrc).toMatch(/localStorage\.getItem\(BK_KEY\)/);
+    expect(baseSrc).toMatch(/if \(!raw\) return null;/);
+    expect(baseSrc).toMatch(/saved\.brand_color != null/);
+  });
+
+  test('전역 이름은 window.BrandKit 이다 (ItdasyBrandKit 아님)', () => {
+    expect(baseSrc).toMatch(/window\.BrandKit && window\.BrandKit\.get/);
+    expect(baseSrc).not.toMatch(/window\.ItdasyBrandKit/);
+    const bk = fs.readFileSync(path.join(ROOT, 'app-brand-kit.js'), 'utf8');
+    expect(bk).toMatch(/window\.BrandKit = \{/);
+  });
+
+  test('instagram_observed 는 감쇠된다 — 표본이 커도 편집기 증거를 못 이긴다', () => {
+    expect(baseSrc).toMatch(/IG_DECAY = 0\.6/);
+    // 편집기 증거가 있으면 인스타를 보지 않는다(계층으로 자름, 빈도 평균 금지)
+    expect(baseSrc).toMatch(/pColor\) out\.axes\.color = _axis\(pColor\.value, 'editor_observed'/);
+  });
+
+  test('cold start weighting 은 임계값 하드코딩이 아니라 연속 감쇠다', () => {
+    expect(baseSrc).toMatch(/function priorWeight/);
+    expect(baseSrc).toMatch(/1 \/ \(1 \+ n \/ 5\)/);
+  });
+
+  test('CategoryPrior 는 다른 사용자 데이터 집계가 아니라 코드 seed 다', () => {
+    expect(priorSrc).toMatch(/evidenceStrength:\s*'seed'/);
+    expect(priorSrc).not.toMatch(/apiFetch|fetch\(/);        // 외부에서 받아오지 않는다
+    expect(priorSrc).toMatch(/MAX_PRIOR_CONF = 0\.5/);       // editor_observed(1.0)를 못 이긴다
+  });
+
+  test('업종 7종은 service-categories SSOT 와 같다', () => {
+    const sc = fs.readFileSync(path.join(ROOT, 'js/service-categories.js'), 'utf8');
+    const order = /var ORDER = \[([^\]]+)\]/.exec(sc)[1].match(/'(\w+)'/g).map(s => s.replace(/'/g, ''));
+    order.forEach((c) => expect(priorSrc).toMatch(new RegExp('\\b' + c + ':')));
+  });
+
+  test('아직 아무도 소비하지 않는다', () => {
+    const hits = [];
+    const walk = (d) => {
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const p = path.join(d, e.name);
+        if (e.isDirectory()) { if (!['node_modules', '.git', '__tests__', '.claude'].includes(e.name)) walk(p); continue; }
+        if (!e.name.endsWith('.js') || ['shop-baseline.js', 'category-prior.js'].includes(e.name)) continue;
+        const s = fs.readFileSync(p, 'utf8');
+        if (/ShopBaseline\s*\.|CategoryPrior\s*\./.test(s)) hits.push(path.relative(ROOT, p));
       }
     };
     walk(path.join(ROOT, 'js'));
