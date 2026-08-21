@@ -186,7 +186,7 @@ describe('[§16] PhotoContext 는 편집 결과에 절대 영향을 주지 않�
 
   test('관측 모듈의 소비 결과는 지표에만 쓰인다', () => {
     const src = fs.readFileSync(path.join(ROOT, 'js/workspace/wm-metrics.js'), 'utf8');
-    const body = (src.match(/PhotoContext\.of\([\s\S]{0,900}?\}\)\.catch/) || [''])[0];
+    const body = (src.match(/PhotoContext\.of\([\s\S]{0,2400}?\}\)\.catch/) || [''])[0];
     expect(body).toMatch(/_mut\(/);                       // 지표 갱신
     // 레이어·좌표·폰트를 건드리는 흔적이 있으면 안 된다
     expect(body).not.toMatch(/\.layers\s*=|\.x\s*=|\.y\s*=|\.font\s*=|setLayer|applyLayer/);
@@ -213,8 +213,14 @@ describe('[R8] 작은 표본을 성과로 오독할 수 없게 — sampleCount +
     expect(metricsSrc).toMatch(/var MIN_PCTL = \d+/);
   });
 
-  test('baselineSubjectOverlapRate 는 _rateM 을 거친다 (날 숫자 금지)', () => {
-    expect(metricsSrc).toMatch(/baselineSubjectOverlapRate:\s*_rateM\(/);
+  test('Safety 비율 지표는 전부 _rateM 을 거친다 (날 숫자 금지)', () => {
+    // [Phase 5.1] m1 의 baselineSubjectOverlapRate 는 size×1.6 추정이라 폐기됐다.
+    //   실측 기반 지표로 교체 — 이름이 바뀌어도 "날 숫자 금지" 계약은 그대로다.
+    ['subjectKnownRate', 'lowConfidenceRate', 'rotationExcludedRate',
+      'reliableUnsafeRate', 'candidateAvailableRate'].forEach((k) => {
+      expect(metricsSrc).toMatch(new RegExp(k + ':\\s*_rateM\\('));
+    });
+    expect(metricsSrc).not.toMatch(/baselineSubjectOverlapRate/);   // 옛 추정 지표는 사라져야
   });
 
   test('source 로 합성/테스트계정/실사용을 구분한다', () => {
@@ -535,10 +541,70 @@ describe('[Phase 5] Safety Shadow — 계산만, 적용 0', () => {
         const p = path.join(d, e.name);
         if (e.isDirectory()) { if (!['node_modules', '.git', '__tests__', '.claude'].includes(e.name)) walk(p); continue; }
         if (!e.name.endsWith('.js') || e.name === 'safety-shadow.js') continue;
+        // [Phase 5.1] wm-metrics 는 **관측 배선**이다 — 지표만 남기고 applied:false 를 유지한다.
+        //   그 사실 자체는 아래 'applied 는 항상 false' 와 editor 배선 테스트가 잠근다.
+        if (e.name === 'wm-metrics.js') continue;
         if (/SafetyShadow\s*\./.test(fs.readFileSync(p, 'utf8'))) hits.push(path.relative(ROOT, p));
       }
     };
     walk(path.join(ROOT, 'js'));
     expect(hits).toEqual([]);
+  });
+});
+
+describe('[Phase 5.1] production 배선 — 관측만, 저장 지연 0', () => {
+  const metricsSrc2 = fs.readFileSync(path.join(ROOT, 'js/workspace/wm-metrics.js'), 'utf8');
+  const edSrc2 = fs.readFileSync(path.join(ROOT, 'js/itd-editor/itd-editor.js'), 'utf8');
+
+  test('편집기가 실제 geometry 를 넘긴다 (close 전)', () => {
+    expect(edSrc2).toMatch(/observePublish\(meta\.layers, S\.photoUrl, metaGeometry\(\)\)/);
+    // close() 보다 먼저 불려야 rect 가 살아 있다
+    const i = edSrc2.indexOf('observePublish(meta.layers');
+    const j = edSrc2.indexOf('close();', i);
+    expect(i).toBeGreaterThan(0);
+    expect(j).toBeGreaterThan(i);
+  });
+
+  test('geoms 가 없으면 추정으로 폴백하지 않는다 (실측/추정 혼입 금지)', () => {
+    expect(metricsSrc2).toMatch(/if \(!photoUrl \|\| !geoms \|\| !geoms\.length \|\| !window\.SafetyShadow\) return;/);
+    expect(metricsSrc2).not.toMatch(/\*\s*1\.6/);          // 옛 추정식 완전 제거
+  });
+
+  test('발행 경로를 막지 않는다 — 유휴로 미룬다 (§15)', () => {
+    expect(metricsSrc2).toMatch(/requestIdleCallback/);
+    expect(metricsSrc2).toMatch(/timeout: 2000/);
+  });
+
+  test('네트워크·AI 호출이 0 이다', () => {
+    const sh = fs.readFileSync(path.join(ROOT, 'js/photo/safety-shadow.js'), 'utf8');
+    [metricsSrc2, sh].forEach((src) => {
+      expect(src).not.toMatch(/apiFetch|fetch\(|XMLHttpRequest|sendBeacon/);
+    });
+  });
+
+  test('회전 버킷으로 R13 을 닫을 수 있다', () => {
+    expect(metricsSrc2).toMatch(/rotBucket/);
+    ['0-10', '10-30', '30-60', '60\\+'].forEach((b) => expect(metricsSrc2).toMatch(new RegExp("'" + b + "'")));
+    expect(metricsSrc2).toMatch(/rotationBuckets:\s*sf\.rotBucket/);
+  });
+
+  test('스키마 범프로 옛 추정값이 자동 폐기된다', () => {
+    expect(metricsSrc2).toMatch(/var SCHEMA = 'm2'/);
+    expect(metricsSrc2).toMatch(/o\.schema !== SCHEMA\) return _blank\(\)/);
+  });
+});
+
+describe('[Phase 5.1] 백그라운드 탭에서도 관측이 유실되지 않는다', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'js/workspace/wm-metrics.js'), 'utf8');
+
+  test('setTimeout 이 정합성 보장선이고 rIC 은 최적화일 뿐이다', () => {
+    /* 🔴 requestIdleCallback 은 백그라운드 탭에서 {timeout} 을 줘도 안 돈다.
+       QA 에서 실제로 observations:0 이 나왔다(탭 hidden).
+       원장은 발행하고 바로 다른 앱으로 넘어간다 — 그 순간이 정확히 이 조건이다.
+       work-memory-persona.js 가 같은 이유로 같은 패턴을 쓴다. */
+    expect(src).toMatch(/setTimeout\(run, 60\)/);
+    expect(src).toMatch(/if \(window\.requestIdleCallback\)/);
+    // 둘 중 먼저 온 쪽만 1회 실행돼야 이중 집계가 안 난다
+    expect(src).toMatch(/if \(_ran\) return; _ran = true;/);
   });
 });

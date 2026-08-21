@@ -11,7 +11,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   // [Phase 1 2026-08-21] 사진 문맥 — 관측 전용(아무 동작도 안 바꾼다). shadow 통과 전까지 소비처 없음.
   'js/photo/photo-context.js?v=local-pctx1',
   // [Phase 1] 계측 — WMSignals 를 감싸 읽기만 한다(T8 파일 무수정). 되돌리기=이 줄 삭제.
-  'js/workspace/wm-metrics.js?v=local-pctx2',
+  'js/workspace/wm-metrics.js?v=local-p51b',
   // [Phase 2 준비] shadow 비교기 — **호출부 없음**(계산기만). 게이트 통과 후 배선.
   'js/workspace/edit-plan-shadow.js?v=local-pctx1',
   // [Phase 2] 인스타 과거 게시물 → 시각 스타일 **후보**. 소비처 없음(Replay/Shadow 검증 전).
@@ -20,7 +20,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/photo/category-prior.js?v=local-p3a',
   'js/photo/shop-baseline.js?v=local-p3b',
   // [Phase 5] Safety Shadow — 계산만. 화면 반영 0(테스트가 소비처 0 감시).
-  'js/photo/safety-shadow.js?v=local-p5a',
+  'js/photo/safety-shadow.js?v=local-p51',
   'js/workspace/shop-style.js?v=local-151154',
   'js/workspace/work-memory.js?v=local-151154',
   'js/workspace/work-memory-engine.js?v=local-t8hp',

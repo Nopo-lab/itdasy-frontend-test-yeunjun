@@ -2034,11 +2034,9 @@
         // [캐러셀] 콜라주(다중 셀)가 아니면서 편집기에서 새로 추가한 사진 → 플로우가 여러 장 게시(캐러셀) 후보로 반영.
         //   콜라주면 이미 한 장으로 합성되므로 별도 추가 안 함.
         meta.newPhotos = (isSingleL(S.layout) && S.photos && S.photos.length > (S._initPhotoN || 0)) ? S.photos.slice(S._initPhotoN || 0) : [];
-        /* [Phase 1 계측] 자유 텍스트가 피사체를 덮는 **현재 비율**만 잰다(baseline).
-           `_applySafeZone` 은 role 있는 자동 레이어만 비켜주므로, 원장이 직접 놓은 텍스트는
-           지금 아무도 안 지킨다 — 그 크기를 알아야 Phase 2 의 가치를 판단할 수 있다.
-           ⚠️ 재기만 하고 배치는 바꾸지 않는다. 실패해도 저장을 막지 않는다. */
-        try { if (window.WMMetrics) window.WMMetrics.observePublish(meta.layers, S.photoUrl); }
+        // [Phase 5.1] Safety baseline 관측. metaGeometry() 는 close() 전에만 유효(닫히면 rect=0).
+        //   재기만 하고 배치는 안 바꾼다. 무거운 계산은 observePublish 안에서 유휴로 미룬다.
+        try { if (window.WMMetrics) window.WMMetrics.observePublish(meta.layers, S.photoUrl, metaGeometry()); }
         catch (_mx) { void _mx; }
         _restoreSaveUi();
         close();

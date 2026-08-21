@@ -26,7 +26,10 @@
 
   var K = 'itdasy:pctx_metrics::';
   var MAX_LAT = 200;            // 지연 표본 상한(퍼센타일 계산용)
-  var SCHEMA = 'm1';
+  /* [Phase 5.1] m1 → m2. 옛 `overlap` 블록은 `size×1.6` **추정**으로 잰 값이라
+   실제 rect 로 잰 값과 같은 리포트에 섞으면 안 된다(실측: 추정이 1.36배 과대).
+   스키마가 바뀌면 _load 가 _blank() 를 주므로 옛 값은 자동 폐기된다 — 의도된 동작이다. */
+var SCHEMA = 'm2';
 
   /* 🔴 tenant 키는 **`last_user_id`** 다 — T8 전체(signals·store·learn)가 이 키를 쓴다.
      처음에 `itdasy:tenant` 로 썼다가 QA 에서 잡혔다: 키가 다르면 계측이 학습과 **다른 사용자
@@ -52,8 +55,27 @@
       outcome: {},
       // 레이어 출처 구분 (§7) — 발행 시점 스냅샷 기준
       layerOrigin: { system: 0, user: 0, restored: 0, unknown: 0 },
-      // 피사체 겹침 baseline (§6) — **자유 텍스트만**. 현재 safe-zone 이 안 지키는 구간이다.
-      overlap: { measured: 0, overlapped: 0, subjectUnknown: 0, safeAreaAvail: 0 },
+      /* [Phase 5.1] 실제 렌더 rect 기반 Safety baseline. 옛 추정 블록을 대체한다.
+         "몇 건 중 몇 건이 겹쳤나" 만이 아니라 **왜 판정에서 빠졌는지**(미상·저신뢰·회전)까지
+         남긴다 — 그걸 모르면 낮은 겹침률이 '안전해서'인지 '못 재서'인지 구분이 안 된다. */
+      safety: {
+        observations: 0,          // Shadow A 를 돌린 발행/저장 횟수
+        eligibleText: 0,          // 자유 텍스트(origin:'user') 총합
+        subjectKnown: 0,          // 피사체를 안 관측 수
+        subjectUnknown: 0,
+        lowConfidence: 0,
+        reliableUnsafe: 0,        // 회전 제외 후 실제 위험
+        alreadySafe: 0,
+        candidateAvailable: 0,
+        noValidCandidate: 0,
+        noMeaningfulGain: 0,
+        rotatedExcluded: 0,       // R13 — 회전이라 주 판정에서 뺀 레이어 수
+        rotBucket: { '0': 0, '0-10': 0, '10-30': 0, '30-60': 0, '60+': 0 },
+        curCovered: [],           // 현재 겹침 분포(중앙값·p90 계산용)
+        candCovered: [],
+        delta: [],
+        obsLat: []                // 관측 자체의 지연(§17) — PhotoContext 지연과 분리
+      },
       // PhotoContext
       //   [R9] 지연은 **계산과 캐시를 나눠서** 잰다. 섞으면 캐시 적중률이 높을수록 p90 이
       //   좋아 보여서, 정작 알고 싶은 "처음 볼 때 얼마나 걸리나"가 가려진다.
@@ -230,15 +252,11 @@
   }
 
   // ── 발행/저장 시점 관측 (§6 baseline overlap · §7 layer origin) ──
-  function _rectsOverlap(a, b) {
-    return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
-  }
-
   /* layers = itd-editor metaLayers() 산출(정규화 중심좌표). photoUrl = 대표 사진.
      여기서 재는 것은 딱 하나다: **원장이 자유롭게 놓은 텍스트가 피사체를 덮는가.**
      `role` 있는 자동 레이어는 `_applySafeZone` 이 이미 비켜준다 — 안 지켜지는 건 자유 텍스트다.
      ⚠️ 이 값을 근거로 이번 Phase 에 배치를 바꾸지 않는다. baseline 을 아는 것이 목적이다. */
-  function observePublish(layers, photoUrl) {
+  function observePublish(layers, photoUrl, geoms) {
     try {
       if (!Array.isArray(layers) || !window.PhotoContext) return;
       var free = [], sys = 0, usr = 0, rst = 0, unk = 0;
@@ -253,21 +271,65 @@
         o.layerOrigin.system += sys; o.layerOrigin.user += usr;
         o.layerOrigin.restored += rst; o.layerOrigin.unknown += unk;
       });
-      if (!photoUrl || !free.length) return;
-      window.PhotoContext.of(photoUrl).then(function (ctx) {
-        _mut(function (o) {
-          o.overlap.measured++;
-          if (!ctx || !ctx.subjectRegion) { o.overlap.subjectUnknown++; return; }
-          o.overlap.safeAreaAvail++;
-          var sr = ctx.subjectRegion;
-          var hit = free.some(function (L) {
-            // metaLayers 는 중심좌표 + 폭만 준다. 높이는 폭 대비 보수적으로 추정(과대추정 금지).
-            var w = L.w || 0.3, h = Math.min(0.25, (L.size || 0.06) * 1.6);
-            return _rectsOverlap({ x: L.x - w / 2, y: L.y - h / 2, w: w, h: h }, sr);
+      /* [Phase 5.1] 겹침 판정은 **실제 렌더 rect(geoms)** 로만 한다.
+         geoms 가 없으면(구 호출부·편집기 밖) 아무것도 재지 않는다 —
+         옛 `size×1.6` 추정으로 폴백하면 두 종류 숫자가 한 통에 섞여서
+         "이 겹침률이 실측인가 추정인가"를 영영 구분 못 하게 된다. */
+      if (!photoUrl || !geoms || !geoms.length || !window.SafetyShadow) return;
+
+      /* 발행 경로를 절대 느리게 하지 않는다(§15) — 저장이 끝난 뒤에 잰다.
+
+         🔴 `requestIdleCallback` 은 **최적화 수단이지 정합성 보장 수단이 아니다.**
+            백그라운드 탭에서는 `{timeout}` 을 줘도 아예 안 돈다 — 이 앱에서 이미 겪은 문제고
+            `work-memory-persona.js` 가 같은 이유로 setTimeout 을 정합성 선으로 쓴다.
+            여기서 rIC 만 믿었다가 QA 에서 `observations: 0` 이 나왔다(탭이 hidden 이었다).
+            원장은 발행하고 바로 다른 앱으로 넘어간다 — 그 순간이 정확히 이 조건이다.
+         → **setTimeout 을 보장선으로**, rIC 은 "더 빨리 되면 좋고" 로만. 둘 중 먼저 온 쪽 1회. */
+      var _ran = false;
+      var run = function () {
+        if (_ran) return; _ran = true;
+        var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+        window.PhotoContext.of(photoUrl).then(function (ctx) {
+          var log = window.SafetyShadow.analyze(geoms, ctx || {});
+          var det = window.SafetyShadow.detect(geoms, ctx || {});
+          var ms = ((window.performance && performance.now) ? performance.now() : Date.now()) - t0;
+          _mut(function (o) {
+            var s = o.safety;
+            s.observations++;
+            s.eligibleText += log.freeTextCount;
+            _pushCapped(s.obsLat, Math.round(ms), MAX_LAT);
+
+            if (!log.photoContextKnown) { s.subjectUnknown++; }
+            else {
+              s.subjectKnown++;
+              if (!log.verdictReliable) s.lowConfidence++;
+            }
+            // 회전 분포 — R13(회전 실사용 빈도 미측정)을 닫기 위한 유일한 경로
+            (det.layers || []).forEach(function (L) {
+              var a = Math.abs(L.rot || 0);
+              var b = a < 0.5 ? '0' : (a < 10 ? '0-10' : (a < 30 ? '10-30' : (a < 60 ? '30-60' : '60+')));
+              s.rotBucket[b] = (s.rotBucket[b] || 0) + 1;
+              if (!L.geometryReliable) s.rotatedExcluded++;
+            });
+
+            switch (log.reason) {
+              case 'already_safe': s.alreadySafe++; break;
+              case 'no_valid_candidate': s.noValidCandidate++; break;
+              case 'no_meaningful_gain': s.noMeaningfulGain++; break;
+              case 'candidate_found': s.candidateAvailable++; break;
+              default: break;    // subject_unknown / low_confidence 는 위에서 셌다
+            }
+            if (log.currentUnsafe) s.reliableUnsafe++;
+            if (log.currentWorstCovered != null) _pushCapped(s.curCovered, log.currentWorstCovered, MAX_LAT);
+            if (log.candidateCovered != null) _pushCapped(s.candCovered, log.candidateCovered, MAX_LAT);
+            if (log.overlapDelta != null) _pushCapped(s.delta, log.overlapDelta, MAX_LAT);
           });
-          if (hit) o.overlap.overlapped++;
-        });
-      }).catch(function () { /* 계측 실패는 무시 — 발행 경로를 절대 막지 않는다 */ });
+        }).catch(function () { /* 계측 실패는 무시 — 발행 경로를 절대 막지 않는다 */ });
+      };
+      setTimeout(run, 60);                                   // 보장선 — 백그라운드에서도 돈다
+      if (window.requestIdleCallback) {                      // 있으면 더 일찍
+        try { window.requestIdleCallback(run, { timeout: 2000 }); } catch (_r) { void _r; }
+      }
     } catch (_e) { void _e; }
   }
 
@@ -327,6 +389,7 @@
     var tot = p.computed + p.l0hit + p.l1hit;
     var outTot = Object.keys(o.outcome).reduce(function (s, k) { return s + o.outcome[k]; }, 0);
     var evTot = Object.keys(o.ev).reduce(function (s, k) { return s + o.ev[k]; }, 0);
+    var sf = o.safety || {};
     return {
       schema: SCHEMA,
       /* 🔑 이 두 줄을 먼저 읽어라. source 가 production 이 아니면 아래 숫자는
@@ -368,12 +431,32 @@
         previewOnlyRate: _rateM(o.outcome.preview_only || 0, outTot)
       },
 
+      /* [Phase 5.1] 실제 렌더 rect 로 잰 Safety baseline.
+         🔴 "왜 판정에서 빠졌는지"(미상·저신뢰·회전)를 같이 낸다 — 그게 없으면
+            낮은 겹침률이 '안전해서'인지 '못 재서'인지 구분이 안 된다. */
       safety: {
         layerOrigin: o.layerOrigin,
-        /* 🔴 Phase 2 가치 판단의 핵심 수치. 표본이 적으면 **값 자체가 null** 로 나온다 —
-           "겹침률 50%" 같은 오독을 숫자를 감춰서 막는다. */
-        baselineSubjectOverlapRate: _rateM(o.overlap.overlapped, o.overlap.safeAreaAvail),
-        subjectUnknownRate: _rateM(o.overlap.subjectUnknown, o.overlap.measured)
+        observations: _countM(sf.observations),
+        eligibleTextLayers: _countM(sf.eligibleText),
+        // 노출 — 얼마나 잴 수 있었나
+        subjectKnownRate: _rateM(sf.subjectKnown, sf.observations),
+        subjectUnknownRate: _rateM(sf.subjectUnknown, sf.observations),
+        lowConfidenceRate: _rateM(sf.lowConfidence, sf.observations),
+        rotationExcludedRate: _rateM(sf.rotatedExcluded, sf.eligibleText),
+        rotationBuckets: sf.rotBucket,          // R13 — 회전 실사용 빈도
+        // 위험 — 실제로 가리고 있나
+        reliableUnsafeRate: _rateM(sf.reliableUnsafe, sf.subjectKnown),
+        alreadySafeRate: _rateM(sf.alreadySafe, sf.subjectKnown),
+        medianCurrentCovered: _pctM(sf.curCovered, 0.5),
+        p90CurrentCovered: _pctM(sf.curCovered, 0.9),
+        // 후보 — 대안을 계산할 수 있나 (※ "AI가 좋아졌다"는 뜻이 아니다)
+        candidateAvailableRate: _rateM(sf.candidateAvailable, sf.reliableUnsafe),
+        noValidCandidate: _countM(sf.noValidCandidate),
+        noMeaningfulGain: _countM(sf.noMeaningfulGain),
+        medianCandidateCovered: _pctM(sf.candCovered, 0.5),
+        medianOverlapDelta: _pctM(sf.delta, 0.5),
+        // 관측 자체의 비용(§17) — PhotoContext 지연과 분리
+        observationLatency: { p50: _pctM(sf.obsLat, 0.5), p90: _pctM(sf.obsLat, 0.9) }
       },
       updatedAt: o.updatedAt
     };
