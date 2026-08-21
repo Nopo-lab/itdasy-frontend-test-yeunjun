@@ -167,7 +167,11 @@ describe('[§16] PhotoContext 는 편집 결과에 절대 영향을 주지 않�
      - itd-editor : open 훅. 결과를 받지도 않는다(계산만 시키고 버린다).
      - wm-metrics : 겹침 baseline 측정. 결과를 쓰지만 **쓰는 곳이 지표**다.
      이 목록에 편집 결정 모듈이 들어오는 순간 Phase 1 계약이 깨진 것이다. */
-  const ALLOWED_CONSUMERS = ['js/itd-editor/itd-editor.js', 'js/workspace/wm-metrics.js'];
+  const ALLOWED_CONSUMERS = [
+    'js/itd-editor/itd-editor.js',        // open 훅 — 결과를 받지도 않는다
+    'js/workspace/wm-metrics.js',         // 겹침 baseline — 쓰는 곳이 지표
+    'js/photo/shop-style-candidate.js'    // [Phase 2] 인스타 후보 생성 — 쓰는 곳이 candidate(미적용)
+  ];
 
   test('PhotoContext 호출부는 관측 모듈뿐이다', () => {
     const rel = callers.map((f) => path.relative(ROOT, f)).sort();
@@ -324,6 +328,62 @@ describe('[Phase 2 준비] EditPlanShadow — 자기채점 금지', () => {
         if (/EditPlanShadow\./.test(fs.readFileSync(p, 'utf8'))) hits.push(p);
       });
     })(jsDir);
+    expect(hits).toEqual([]);
+  });
+});
+
+describe('[Phase 2] ShopStyleCandidate — 인스타 관찰은 "후보"지 "선호"가 아니다', () => {
+  const sscSrc = fs.readFileSync(path.join(ROOT, 'js/photo/shop-style-candidate.js'), 'utf8');
+
+  test('증거 출처를 instagram_observed 로 명시하고 weak 로 표시한다', () => {
+    // 결과물 관찰은 원장이 그 값을 **골랐다는 증거가 아니다**(필터앱·조명일 수 있다).
+    // editor_observed 로 승격하는 순간 T8 학습이 오염된다.
+    expect(sscSrc).toMatch(/source:\s*'instagram_observed'/);
+    expect(sscSrc).toMatch(/evidenceStrength:\s*'weak'/);
+  });
+
+  test('T8 학습 API 를 호출하지 않는다 (후보가 선호로 새지 않게)', () => {
+    expect(sscSrc).not.toMatch(/window\.WMPrefs|WMPrefs\s*\./);
+    expect(sscSrc).not.toMatch(/window\.WMLearn|WMLearn\s*\./);
+    expect(sscSrc).not.toMatch(/window\.WMSignals|WMSignals\s*\./);
+  });
+
+  test('두 번째 픽셀 분석기를 만들지 않는다 — PhotoContext 재사용', () => {
+    expect(sscSrc).toMatch(/window\.PhotoContext\.of\(/);
+    expect(sscSrc).not.toMatch(/\.getImageData\(/);   // 자체 분석 금지(주석 언급은 무관)
+  });
+
+  test('표본 미달이면 visual 을 통째로 null 로 막는다', () => {
+    expect(sscSrc).toMatch(/status:\s*n === 0 \? 'NO_DATA' : \(enough \? 'OK' : 'INSUFFICIENT'\)/);
+    expect(sscSrc).toMatch(/if \(enough\) \{/);
+  });
+
+  test('피사체 위치를 대표값 하나로 뭉개지 않고 분포로 준다', () => {
+    // Phase 0 에서 'center 75%' 를 선호로 오독할 뻔했다 — 읽는 쪽이 분포를 보게 한다
+    expect(sscSrc).toMatch(/hist:\s*h/);
+    expect(sscSrc).not.toMatch(/topZone|dominantZone/);
+  });
+
+  test('색은 평균이 아니라 빈도순 (핑크+민트 평균 = 없는 회색)', () => {
+    expect(sscSrc).toMatch(/function _topColors/);
+    expect(sscSrc).toMatch(/freq\[b\] - freq\[a\]/);
+  });
+
+  test('tenant 스코프 저장 — 키는 last_user_id', () => {
+    expect(sscSrc).toMatch(/getItem\('last_user_id'\)/);
+  });
+
+  test('아직 아무도 소비하지 않는다 (Replay/Shadow 검증 전)', () => {
+    const hits = [];
+    const walk = (d) => {
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const p = path.join(d, e.name);
+        if (e.isDirectory()) { if (!['node_modules', '.git', '__tests__', '.claude'].includes(e.name)) walk(p); continue; }
+        if (!e.name.endsWith('.js') || e.name === 'shop-style-candidate.js') continue;
+        if (/ShopStyleCandidate\s*\./.test(fs.readFileSync(p, 'utf8'))) hits.push(path.relative(ROOT, p));
+      }
+    };
+    walk(path.join(ROOT, 'js'));
     expect(hits).toEqual([]);
   });
 });

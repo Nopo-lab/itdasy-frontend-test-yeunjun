@@ -14,6 +14,8 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/workspace/wm-metrics.js?v=local-pctx2',
   // [Phase 2 준비] shadow 비교기 — **호출부 없음**(계산기만). 게이트 통과 후 배선.
   'js/workspace/edit-plan-shadow.js?v=local-pctx1',
+  // [Phase 2] 인스타 과거 게시물 → 시각 스타일 **후보**. 소비처 없음(Replay/Shadow 검증 전).
+  'js/photo/shop-style-candidate.js?v=local-p2a',
   'js/workspace/shop-style.js?v=local-151154',
   'js/workspace/work-memory.js?v=local-151154',
   'js/workspace/work-memory-engine.js?v=local-t8hp',
