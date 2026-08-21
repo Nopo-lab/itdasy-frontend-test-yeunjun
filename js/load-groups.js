@@ -27,6 +27,8 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/photo/safety-readout.js?v=local-p53',
   // [Phase 5.4] OBB 사전검증 — 순수함수. **어디에도 연결 안 됨**(테스트가 감시).
   'js/photo/obb-geometry.js?v=local-p54',
+  // [Phase 5.5] 증거 모니터 — 판정·안내만. 새 저장소 없음(기존 리포트 조합).
+  'js/photo/evidence-monitor.js?v=local-p55',
   'js/workspace/shop-style.js?v=local-151154',
   'js/workspace/work-memory.js?v=local-151154',
   'js/workspace/work-memory-engine.js?v=local-t8hp',

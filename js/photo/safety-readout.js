@@ -29,11 +29,20 @@
       // Gate 판정기는 스테이징에만 있다 — 없으면 원시 지표만 낸다
       out.gate = (window.SafetyGate && out.report) ? window.SafetyGate.judge(out.report) : null;
     } catch (_e) { void _e; out.gate = null; }
+    /* [Phase 5.5] 게이트별 상태 + **얼마나 더 필요한지**.
+       "관측 30건" 만 보면 다 된 것 같지만, 게이트마다 분모가 달라서
+       위험 사례가 분모인 게이트는 훨씬 많은 관측을 요구한다. 그걸 숫자로 보여준다. */
+    try { out.evidence = window.EvidenceMonitor ? window.EvidenceMonitor.status() : null; }
+    catch (_e) { void _e; out.evidence = null; }
     return out;
   }
 
   /* 한 줄 요약 — 표본이 적을 때 숫자만 보면 오독하므로 **상태를 말로** 붙인다. */
   function _summary(d) {
+    // 병목·필요량까지 말해주는 요약이 있으면 그걸 우선한다
+    if (d.evidence && window.EvidenceMonitor) {
+      try { return window.EvidenceMonitor.summary(); } catch (_e) { void _e; }
+    }
     var r = d.report;
     if (!r) return '지표 없음 (계측 모듈 미로드)';
     var s = r.safety || {};
