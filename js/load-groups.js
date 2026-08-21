@@ -19,6 +19,8 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   // [Phase 3] 업종 seed + 증거계층 resolver. 소비처 없음(Replay/Shadow 검증 전).
   'js/photo/category-prior.js?v=local-p3a',
   'js/photo/shop-baseline.js?v=local-p3b',
+  // [Phase 5] Safety Shadow — 계산만. 화면 반영 0(테스트가 소비처 0 감시).
+  'js/photo/safety-shadow.js?v=local-p5a',
   'js/workspace/shop-style.js?v=local-151154',
   'js/workspace/work-memory.js?v=local-151154',
   'js/workspace/work-memory-engine.js?v=local-t8hp',

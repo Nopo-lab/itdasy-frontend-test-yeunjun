@@ -454,3 +454,91 @@ describe('[Phase 3] 증거 계층 — 기본값을 사용자 의도로 오독하
     expect(hits).toEqual([]);
   });
 });
+
+describe('[Phase 5] Safety Shadow — 계산만, 적용 0', () => {
+  const shSrc = fs.readFileSync(path.join(ROOT, 'js/photo/safety-shadow.js'), 'utf8');
+  const edSrc = fs.readFileSync(path.join(ROOT, 'js/itd-editor/itd-editor.js'), 'utf8');
+
+  function load() {
+    const win = {};
+    new Function('window', shSrc)(win);
+    return win.SafetyShadow;
+  }
+  const PCTX = { subjectRegion: { x: 0.30, y: 0.30, w: 0.40, h: 0.40 }, confidence: 0.9 };
+  const G = (o) => Object.assign({ idx: 0, type: 'text', role: null, origin: 'user', rot: 0 }, o);
+
+  test('applied 는 항상 false (Phase 5 계약)', () => {
+    const S = load();
+    expect(S.analyze([G({ x: .35, y: .40, w: .30, h: .10 })], PCTX).applied).toBe(false);
+    expect(shSrc).toMatch(/applied: false/);
+  });
+
+  test('wouldImprove 를 만들지 않는다', () => {
+    const S = load();
+    expect(Object.keys(S)).not.toContain('wouldImprove');
+    expect(JSON.stringify(S.analyze([G({ x: .35, y: .40, w: .30, h: .10 })], PCTX))).not.toMatch(/wouldImprove/);
+  });
+
+  test('실제 렌더 높이를 쓴다 — size×1.6 근사 금지', () => {
+    // 실측: 근사값이 실제 높이를 1.36배 과대추정했다(0.09 vs 0.066)
+    expect(shSrc).not.toMatch(/\*\s*1\.6/);
+    expect(edSrc).toMatch(/function metaGeometry/);
+    expect(edSrc).toMatch(/h: b\.height \/ R\.height/);
+  });
+
+  test('회전 레이어는 rect 를 못 믿으므로 주 판정에서 뺀다', () => {
+    // 실측 AABB 과대율: 15°→2.21배, 45°→3.42배
+    const S = load();
+    const d = S.detect([G({ x: .35, y: .40, w: .30, h: .10, rot: 45 })], PCTX);
+    expect(d.layers[0].geometryReliable).toBe(false);
+    expect(d.anyUnsafe).toBe(false);              // 주 판정 오염 없음
+    expect(d.anyUnsafeRotatedOnly).toBe(true);    // 별도 집계는 남는다
+    expect(d.rotatedCount).toBe(1);
+  });
+
+  test('지금도 안전하면 후보를 만들지 않는다 (§21 — 필요할 때만 개입)', () => {
+    const S = load();
+    const r = S.analyze([G({ x: .03, y: .03, w: .25, h: .08 })], PCTX);
+    expect(r.reason).toBe('already_safe');
+    expect(r.candidateAvailable).toBe(false);
+  });
+
+  test('피사체 미상·저신뢰는 단정하지 않는다 (§10)', () => {
+    const S = load();
+    expect(S.analyze([G({ x: .35, y: .40, w: .30, h: .10 })], { subjectRegion: null, confidence: .9 }).reason)
+      .toBe('subject_unknown');
+    expect(S.analyze([G({ x: .35, y: .40, w: .30, h: .10 })], { subjectRegion: PCTX.subjectRegion, confidence: .2 }).reason)
+      .toBe('low_confidence');
+  });
+
+  test('role 있는 자동 레이어는 대상이 아니다 (자유 텍스트가 1순위)', () => {
+    const S = load();
+    const d = S.detect([G({ role: 'title', origin: 'restored', x: .35, y: .40, w: .30, h: .10 })], PCTX);
+    expect(d.freeTextCount).toBe(0);
+  });
+
+  test('겹침 지표를 하나로 합치지 않는다 (§8)', () => {
+    const S = load();
+    const m = S.detect([G({ x: .35, y: .40, w: .30, h: .10 })], PCTX).layers[0].metrics;
+    ['layerCoveredRatio', 'subjectCoveredRatio', 'iou', 'distance'].forEach((k) => expect(m).toHaveProperty(k));
+  });
+
+  test('후보가 의미 있게 낫지 않으면 채택 안 한다 (§20)', () => {
+    expect(shSrc).toMatch(/delta < TH\.improveDelta/);
+    expect(shSrc).toMatch(/no_meaningful_gain/);
+  });
+
+  test('아직 아무도 소비하지 않는다', () => {
+    const hits = [];
+    const walk = (d) => {
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const p = path.join(d, e.name);
+        if (e.isDirectory()) { if (!['node_modules', '.git', '__tests__', '.claude'].includes(e.name)) walk(p); continue; }
+        if (!e.name.endsWith('.js') || e.name === 'safety-shadow.js') continue;
+        if (/SafetyShadow\s*\./.test(fs.readFileSync(p, 'utf8'))) hits.push(path.relative(ROOT, p));
+      }
+    };
+    walk(path.join(ROOT, 'js'));
+    expect(hits).toEqual([]);
+  });
+});

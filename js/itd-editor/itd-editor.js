@@ -2067,6 +2067,41 @@
     }).filter(Boolean);
   }
 
+  /* [Phase 5 Safety] 겹침 판정용 **실제 렌더 geometry**. metaLayers 와 분리한 이유가 있다.
+     metaLayers 는 학습(WorkMemory)으로 흘러가는 계약이라 필드를 늘리면 그쪽 레코드가 커지고
+     의미도 섞인다. 여기는 **관측 전용**이고 아무 데도 저장되지 않는다.
+
+     🔑 핵심은 `h` 다. metaLayers 는 폭(`w`)과 **폰트 크기**(`size`)만 준다 — 박스 높이가 없다.
+        그래서 기존 겹침 계산이 `size × 1.6` 으로 추정할 수밖에 없었고, 그 근사값으로는
+        자동 판단을 할 수 없다(과대·과소 어느 쪽으로 틀렸는지도 모른다).
+        `getBoundingClientRect()` 는 지금 이 순간 화면에 그려진 **실제 박스**를 준다.
+
+     🔑 회전(`rot`): 회전된 요소의 getBoundingClientRect 는 **회전 후 AABB** 다 —
+        실제 글자 박스(OBB)보다 크다. 겹침 판정에서 이건 **과대검출**이므로 안전한 방향이다
+        (놓칠 위험 < 과하게 잡을 위험). OBB 가 필요할 만큼 회전이 흔한지는 실데이터로 재야 한다.
+        (같은 사실을 _serLayer 도 알고 있다 — 회전 도형은 AABB 가 틀려서 L.w/L.h 를 직접 쓴다) */
+  function metaGeometry() {
+    var R = refs.stage.getBoundingClientRect();
+    if (!R.width || !R.height) return [];
+    return S.layers.map(function (L, i) {
+      if (!L || !L.el) return null;
+      var b = L.el.getBoundingClientRect();
+      if (!b.width || !b.height) return null;
+      return {
+        idx: i,
+        type: L.type,
+        role: L.role || null,
+        origin: L._src === 'wm' ? 'system' : (L.role ? 'restored' : 'user'),
+        // 좌상단 기준 정규화 — PhotoContext.subjectRegion 과 **같은 좌표계**
+        x: (b.left - R.left) / R.width,
+        y: (b.top - R.top) / R.height,
+        w: b.width / R.width,
+        h: b.height / R.height,          // ← 추정이 아니라 실제 렌더 높이
+        rot: L.rot || 0
+      };
+    }).filter(Boolean);
+  }
+
   // [#4/#8/#11/#16] 재편집 이어가기 — 편집기 '전체 상태'를 직렬화/복원.
   //   metaLayers 는 '우리샵 학습'용이라 도형·스티커를 버린다. 재편집은 전부 보존해야 하므로 별도 직렬화.
   function _serLayer(L) {
