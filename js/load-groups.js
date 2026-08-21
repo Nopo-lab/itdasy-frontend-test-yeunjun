@@ -21,6 +21,8 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/photo/shop-baseline.js?v=local-p3b',
   // [Phase 5] Safety Shadow — 계산만. 화면 반영 0(테스트가 소비처 0 감시).
   'js/photo/safety-shadow.js?v=local-p51',
+  // [Phase 5.2] Gate 자동판정 — 판정만, 자동화 0.
+  'js/photo/safety-gate.js?v=local-p52',
   'js/workspace/shop-style.js?v=local-151154',
   'js/workspace/work-memory.js?v=local-151154',
   'js/workspace/work-memory-engine.js?v=local-t8hp',

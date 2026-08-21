@@ -608,3 +608,53 @@ describe('[Phase 5.1] 백그라운드 탭에서도 관측이 유실되지 않는
     expect(src).toMatch(/if \(_ran\) return; _ran = true;/);
   });
 });
+
+describe('[Phase 5.2] Gate 자동판정 — 표본 부족을 FAIL 로 오판하지 않는다', () => {
+  const gateSrc = fs.readFileSync(path.join(ROOT, 'js/photo/safety-gate.js'), 'utf8');
+  function load() { const w = {}; new Function('window', gateSrc)(w); return w.SafetyGate; }
+  const M = (v, n) => ({ value: v, sampleCount: n, status: v == null ? 'NO_DATA' : 'OK' });
+  const mk = (src, obs, o) => ({ source: src, safety: Object.assign({
+    observations: M(obs, obs), subjectKnownRate: M(0.8, obs), rotationExcludedRate: M(0.1, obs),
+    reliableUnsafeRate: M(0.4, obs), candidateAvailableRate: M(0.7, obs), medianOverlapDelta: M(0.5, obs) }, o) });
+
+  test('표본 부족은 INSUFFICIENT 이지 FAIL 이 아니다', () => {
+    const r = load().judge(mk('production', 5, {}));
+    expect(r.verdict).toBe('INSUFFICIENT');
+    expect(r.blockers.join()).toMatch(/insufficient_observations:5\/20/);
+  });
+
+  test('production 이 아니면 통과시키지 않는다', () => {
+    const r = load().judge(mk('test_account', 50, {}));
+    expect(r.verdict).toBe('INSUFFICIENT');
+    expect(r.blockers.join()).toMatch(/source_not_production:test_account/);
+  });
+
+  test('🔴 위험이 거의 없으면 STOP 이다 — 문제가 없는데 자동화를 켜지 않는다', () => {
+    // QA 에서 잡힌 버그: Gate C 가 "값만 있으면 통과" 라 위험률 1% 에도 GO 가 나왔다
+    const r = load().judge(mk('production', 25, { reliableUnsafeRate: M(0.01, 25) }));
+    expect(r.verdict).toBe('STOP');
+    expect(r.nextAction).toBe('safety_not_valuable_pivot_to_personalization');
+  });
+
+  test('회전 과다면 OBB 를 다음 과제로 지목한다 (R13)', () => {
+    const r = load().judge(mk('production', 25, { rotationExcludedRate: M(0.45, 25) }));
+    expect(r.verdict).toBe('PIVOT');
+    expect(r.nextAction).toBe('implement_obb_geometry');
+  });
+
+  test('대안을 못 찾으면 safe-area 전략 개선을 지목한다', () => {
+    const r = load().judge(mk('production', 25, { candidateAvailableRate: M(0.2, 25) }));
+    expect(r.nextAction).toBe('improve_safe_area_strategy');
+  });
+
+  test('전부 양호하면 GO — 단 rollout 은 별도 승인', () => {
+    const r = load().judge(mk('production', 25, {}));
+    expect(r.verdict).toBe('GO');
+    expect(r.nextAction).toBe('prepare_controlled_rollout');
+    expect(gateSrc).toMatch(/rollout \*\*후보\*\*일 뿐, 적용은 별도 승인/);
+  });
+
+  test('판정기는 아무것도 적용하지 않는다', () => {
+    expect(gateSrc).not.toMatch(/applied\s*=\s*true|\.apply\(|setLayer|applyLayer/);
+  });
+});
