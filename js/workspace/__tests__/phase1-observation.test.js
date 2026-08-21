@@ -369,6 +369,12 @@ describe('[Phase 2] ShopStyleCandidate — 인스타 관찰은 "후보"지 "선�
     expect(sscSrc).toMatch(/freq\[b\] - freq\[a\]/);
   });
 
+  test('백엔드가 주는 필드명 `thumb` 을 쓴다 (실계정에서 12장이 전부 걸러졌던 버그)', () => {
+    // _parse_media_items 가 {id, thumb, permalink, media_type} 로 정규화한다.
+    // 원시 Graph 필드만 보면 실계정에서 조용히 0장이 된다 — 합성 테스트로는 못 잡는다.
+    expect(sscSrc).toMatch(/m\.thumb \|\| m\.thumbnail_url \|\| m\.media_url/);
+  });
+
   test('tenant 스코프 저장 — 키는 last_user_id', () => {
     expect(sscSrc).toMatch(/getItem\('last_user_id'\)/);
   });

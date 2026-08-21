@@ -91,8 +91,15 @@
       return Promise.resolve(null);
     }
     return Promise.resolve(A.recentMedia(false)).then(function (media) {
-      var items = (media || []).filter(function (m) { return m && (m.thumbnail_url || m.media_url); })
-        .slice(0, MAX_ANALYZE);
+      /* 🔴 필드명은 **`thumb`** 이다. 백엔드 `_parse_media_items` 가 Graph 응답을
+         `{id, thumb, permalink, media_type}` 로 정규화해서 준다(이미지=media_url,
+         동영상=thumbnail_url 을 한 필드로 합침).
+         처음에 원시 Graph 필드(`thumbnail_url`/`media_url`)를 가정했다가 실계정에서
+         **12장이 전부 걸러져 attempted:0** 이 나왔다 — 합성 테스트로는 절대 못 잡는 종류다.
+         원시 필드도 같이 받아두되(직접 호출 대비) 정본은 `thumb`. */
+      var items = (media || []).filter(function (m) {
+        return m && (m.thumb || m.thumbnail_url || m.media_url);
+      }).slice(0, MAX_ANALYZE);
       if (!items.length) return _finish([], 0);
 
       /* 순차 처리 — 12장을 동시에 디코딩하면 저사양 기기에서 메모리가 튄다.
@@ -101,7 +108,7 @@
       var chain = Promise.resolve();
       items.forEach(function (m) {
         chain = chain.then(function () {
-          return window.PhotoContext.of(m.thumbnail_url || m.media_url)
+          return window.PhotoContext.of(m.thumb || m.thumbnail_url || m.media_url)
             .then(function (c) { if (c) ctxs.push(c); })
             /* IG CDN 이 CORS 를 안 주면 canvas 가 오염돼 getImageData 가 던진다.
                그건 우리가 고칠 수 있는 게 아니다 — 그 장만 건너뛴다. */
