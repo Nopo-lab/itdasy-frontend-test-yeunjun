@@ -4,20 +4,42 @@
     {
       "name": "itdasy-static",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8093"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8093"
+      ],
       "port": 8093
     },
     {
       "name": "itdasy-5500",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "5500"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5500"
+      ],
       "port": 5500
     },
     {
       "name": "itdasy-8097",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8097"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8097"
+      ],
       "port": 8097
+    },
+    {
+      "name": "itdasy-ci-8114",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8114"
+      ],
+      "port": 8114
     }
   ]
 }
