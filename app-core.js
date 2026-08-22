@@ -68,8 +68,10 @@ window._fireDataChanged = window._fireDataChanged || function (detail) {
   }, 50);
 };
 
-// [UX-LOAD] 로딩 오버레이 — 최소 노출시간(태그라인 전환 3.8s 다 보이게) + 쫀득 페이드아웃 공통값
-var _LOAD_MIN_MS = 4000;
+// [UX-LOAD] 로딩 오버레이 — 쫀득 페이드아웃 공통값.
+// [2026-08-23 렉 픽스] 최소 노출 4s(태그라인 연출용 floor) 폐지 — "응답 오면 게이지 완주 후 즉시" 원칙.
+//   데이터가 준비됐는데 4초를 억지로 잡아두는 게 로그인 체감 렉의 주범이었다. 0.4s 는 페이드 완주용.
+var _LOAD_MIN_MS = 400;
 function _loaderFadeOut(lo) {
   lo.style.opacity = '0';
   lo.style.transform = 'scale(1.04)';
@@ -115,7 +117,8 @@ async function _finishLoginLoad(withGreeting) {
       if (w) w.style.opacity = '0';
       if (tag) tag.style.opacity = '0';
       if (g) { g.style.opacity = '1'; g.style.transform = 'translateY(0)'; }
-      await new Promise(function (r) { setTimeout(r, 1300); });
+      // [2026-08-23 렉 픽스] 인사 노출 1.3s → 0.8s — 연출은 유지하되 대기 최소화
+      await new Promise(function (r) { setTimeout(r, 800); });
     }
   }
   var lo = document.getElementById('appLoadingOverlay');
@@ -1684,30 +1687,33 @@ async function logout(opts) {
   }, 8000);
   void _logoutWatchdog;
 
-  // [H2 2026-07-16] 토큰을 지우기 전에 미동기화분을 서버로 올린다.
-  //   기존 순서는 setToken(null) → ... → clearGalleryDB/clearLocal 이라, 아직 push 안 된 편집과
-  //   아직 못 보낸 삭제(tombstone)가 그대로 삭제됐다:
-  //     · 편집 직후(1.2s debounce 안에) 로그아웃 → 그 편집은 서버에도 없고 로컬에서도 사라짐(영구 손실)
-  //     · 오프라인 삭제 후 로그아웃 → tombstone 소멸 → 서버 DELETE 가 영영 안 나가 다음 로그인에 부활
-  //   settleSlot() = pushAll(dirty 업로드) + flushTombstones(삭제 전송). 토큰이 살아있는 지금만 가능.
-  //   [주의] 네트워크가 죽었으면 로그아웃이 막히면 안 되므로 타임아웃으로 끊고 진행한다.
+  // [2026-08-23 렉 픽스] 정리 단계 병렬화 — 순차 대기(최악 4+3+3+3=13s)를 2단계 병렬(최악 4+3=7s)로.
+  //   전부 best-effort: 실패·타임아웃이어도 로컬 로그아웃은 계속 진행한다.
+  //   순서 제약만 지킨다:
+  //     · settleSlot(미동기화분 업로드, H2 2026-07-16: 편집 유실·tombstone 소멸 방지)은 토큰 필요
+  //       + sync DB 를 읽으므로 → clearLocal(sync 메타DB 삭제)보다 먼저 끝나야 함.
+  //     · /auth/logout(보안감사 H-4: 서버측 min_valid_iat 범프)은 토큰을 지우기 전 + settleSlot 뒤
+  //       (동시에 쏘면 settleSlot 의 업로드가 무효화된 토큰으로 거부될 수 있음).
+  //     · clearGalleryDB(갤러리 IDB)는 워크스페이스 sync 와 독립 → 1단계에서 같이 돈다.
+  const _cap = (p, ms) => Promise.race([
+    Promise.resolve(p).catch(() => {}),
+    new Promise((res) => setTimeout(res, ms)),
+  ]);
+  // 1단계: 미동기화분 올리기 ∥ 갤러리DB 삭제
   try {
-    if (window.WorkspaceSync && typeof window.WorkspaceSync.settleSlot === 'function') {
-      await Promise.race([
-        Promise.resolve(window.WorkspaceSync.settleSlot()).catch(() => {}),
-        new Promise((res) => setTimeout(res, 4000)),
-      ]);
-    }
+    await Promise.all([
+      (window.WorkspaceSync && typeof window.WorkspaceSync.settleSlot === 'function')
+        ? _cap(window.WorkspaceSync.settleSlot(), 4000) : Promise.resolve(),
+      (typeof clearGalleryDB === 'function')
+        ? _cap(clearGalleryDB(), 3000) : Promise.resolve(),
+    ]);
   } catch (_e) { void _e; }
-
-  // [보안감사 H-4 2026-07-27] 서버측 세션 무효화 — 토큰을 지우기 전에 호출.
-  //   로컬 토큰만 지우면 탈취된 JWT 는 24h 만료까지 살아있고 /auth/refresh 로 무한 갱신됨.
-  //   /auth/logout 이 users.min_valid_iat 를 올려 그 이전 발급 토큰을 전부 거부시킨다.
-  //   네트워크 실패해도 로컬 로그아웃은 진행돼야 하므로 best-effort(타임아웃 포함) 로 감싼다.
+  // 2단계: 서버 세션 무효화 ∥ sync 메타DB 삭제
   try {
-    await Promise.race([
-      apiFetch('/auth/logout', { method: 'POST', headers: authHeader() }).catch(() => {}),
-      new Promise((res) => setTimeout(res, 3000)),
+    await Promise.all([
+      _cap(apiFetch('/auth/logout', { method: 'POST', headers: authHeader() }), 3000),
+      (window.WorkspaceSync && typeof window.WorkspaceSync.clearLocal === 'function')
+        ? _cap(window.WorkspaceSync.clearLocal(), 3000) : Promise.resolve(),
     ]);
   } catch (_e) { void _e; }
 
@@ -1728,29 +1734,7 @@ async function logout(opts) {
     try { localStorage.removeItem(k); } catch (_e) { void _e; }
   });
 
-  // [2026-04-26] 갤러리 IndexedDB 도 같이 비움 — 다음 사용자한테 새는 거 차단 (Meta 심사 블로커)
-  // [2026-08-22] 3s 타임아웃 — deleteDatabase 가 이벤트 없이 pending 으로 남으면(웹뷰/다탭)
-  //   로그아웃 전체가 멈춰서 리로드에 못 갔다. best-effort 이므로 끊고 진행.
-  try {
-    if (typeof clearGalleryDB === 'function') {
-      await Promise.race([
-        Promise.resolve(clearGalleryDB()).catch(() => {}),
-        new Promise((res) => setTimeout(res, 3000)),
-      ]);
-    }
-  } catch (e) { /* IDB clear best-effort */ }
-
-  // [2026-07-06] slot-sync 메타 DB(itdasy-sync: migratedAt·lastPulledAt·tombstones)도 삭제 —
-  //   안 지우면 다음 계정에서 migrate skip·delta 누락으로 계정 격리 붕괴 + slot 유실.
-  try {
-    if (window.WorkspaceSync && typeof window.WorkspaceSync.clearLocal === 'function') {
-      // [2026-08-22] 위와 같은 이유로 3s 타임아웃
-      await Promise.race([
-        Promise.resolve(window.WorkspaceSync.clearLocal()).catch(() => {}),
-        new Promise((res) => setTimeout(res, 3000)),
-      ]);
-    }
-  } catch (e) { /* sync meta clear best-effort */ }
+  // (갤러리 IDB · sync 메타DB 삭제는 위 병렬 1·2단계로 이동 — Meta 심사 블로커·계정 격리 사유는 유지)
 
   // 2. 서비스 워커 캐시 강제 삭제
   if ('caches' in window) {
