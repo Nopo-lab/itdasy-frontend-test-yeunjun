@@ -1676,6 +1676,14 @@ async function logout(opts) {
   // [2026-05-08 28차 [J]] skipConfirm — disconnectInstagram 등 다른 흐름에서 이중 컨펌 방지
   if (!opts.skipConfirm && !(await nativeConfirm("확인", "로그아웃 하시겠습니까? 세션과 캐시가 모두 초기화됩니다."))) return;
 
+  // [2026-08-22 로그아웃 멈춤 픽스] 워치독 — 아래 정리 단계 어디서든 걸리면 8초 뒤 무조건 리로드.
+  //   실측 증상: 토큰은 지워졌는데(중간 단계까진 감) 마지막 location.replace 에 도달을 못 해
+  //   화면이 그대로 → 수동 새로고침해야 로그아웃 화면이 떴다. 아래 IDB 삭제 2곳 타임아웃과 세트.
+  const _logoutWatchdog = setTimeout(function () {
+    try { location.replace('index.html?_logout=' + Date.now()); } catch (_e) { void _e; }
+  }, 8000);
+  void _logoutWatchdog;
+
   // [H2 2026-07-16] 토큰을 지우기 전에 미동기화분을 서버로 올린다.
   //   기존 순서는 setToken(null) → ... → clearGalleryDB/clearLocal 이라, 아직 push 안 된 편집과
   //   아직 못 보낸 삭제(tombstone)가 그대로 삭제됐다:
@@ -1721,9 +1729,14 @@ async function logout(opts) {
   });
 
   // [2026-04-26] 갤러리 IndexedDB 도 같이 비움 — 다음 사용자한테 새는 거 차단 (Meta 심사 블로커)
+  // [2026-08-22] 3s 타임아웃 — deleteDatabase 가 이벤트 없이 pending 으로 남으면(웹뷰/다탭)
+  //   로그아웃 전체가 멈춰서 리로드에 못 갔다. best-effort 이므로 끊고 진행.
   try {
     if (typeof clearGalleryDB === 'function') {
-      await clearGalleryDB();
+      await Promise.race([
+        Promise.resolve(clearGalleryDB()).catch(() => {}),
+        new Promise((res) => setTimeout(res, 3000)),
+      ]);
     }
   } catch (e) { /* IDB clear best-effort */ }
 
@@ -1731,7 +1744,11 @@ async function logout(opts) {
   //   안 지우면 다음 계정에서 migrate skip·delta 누락으로 계정 격리 붕괴 + slot 유실.
   try {
     if (window.WorkspaceSync && typeof window.WorkspaceSync.clearLocal === 'function') {
-      await window.WorkspaceSync.clearLocal();
+      // [2026-08-22] 위와 같은 이유로 3s 타임아웃
+      await Promise.race([
+        Promise.resolve(window.WorkspaceSync.clearLocal()).catch(() => {}),
+        new Promise((res) => setTimeout(res, 3000)),
+      ]);
     }
   } catch (e) { /* sync meta clear best-effort */ }
 
