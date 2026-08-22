@@ -1433,7 +1433,16 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
     try {
       const _isOAuthBack = new URLSearchParams(location.search).get('connected') === 'success';
       const _cached = localStorage.getItem('itdasy:ig_connected_cache') === '1';
-      if (_isOAuthBack || _cached) {
+      // [2026-08-22] 로그인 토큰이 있으면 캐시가 없어도(로그아웃이 지움) 일단 메인홈으로 시작 —
+      //   실제 연동 여부는 checkInstaStatus 가 확정. 재로그인 직후 "연동하세요" 오탐 방지.
+      let _hasTok = false;
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.indexOf('itdasy_token') === 0 && localStorage.getItem(k)) { _hasTok = true; break; }
+        }
+      } catch (_e) { /* ignore */ }
+      if (_isOAuthBack || _cached || _hasTok) {
         document.documentElement.classList.add('ig-connected-cache');
       }
     } catch (err) { console.warn('[home] cached instagram state failed', err); }

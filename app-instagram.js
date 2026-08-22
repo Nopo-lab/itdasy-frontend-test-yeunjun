@@ -70,11 +70,38 @@ function _hydrateAnalysisCacheFromStatus(persona) {
 }
 
 // ===== 인스타그램 연동 =====
-async function checkInstaStatus(fromLogin = false) {
-  if (!getToken()) return;
+// [2026-08-22] 상태확인이 실패해도 조용히 죽지 않게 — 4초 간격 최대 2회 재시도.
+//   콜드스타트(Cloud Run 5~15초)에 첫 호출이 실패하면 로그아웃→재로그인 직후
+//   "인스타 연동하세요" 오탐 화면이 영구 고착되던 버그의 수리.
+//   _igStatusSeq = 세대 가드: 재시도 대기 중 새 호출이 시작되면 낡은 재시도는 폐기.
+let _igStatusSeq = 0;
+function _igStatusGiveUp() {
+  // 재시도 전부 실패 — 캐시가 '연동됨'이면 그대로 두고(오탐 방지), 아니면 연동 안내로 폴백.
   try {
-    const res = await apiFetch('/instagram/status', { headers: authHeader() });
-    if (!res.ok) return;
+    if (localStorage.getItem('itdasy:ig_connected_cache') === '1') return;
+    const pre = document.getElementById('homePreConnect');
+    const post = document.getElementById('homePostConnect');
+    if (pre) pre.style.display = 'flex';
+    if (post) post.style.display = 'none';
+  } catch (_e) { /* ignore */ }
+}
+async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
+  if (!getToken()) return;
+  if (_attempt === 0) _seq = ++_igStatusSeq;
+  else if (_seq !== _igStatusSeq) return; // 그 사이 새 호출 시작됨 — 낡은 재시도 폐기
+  const _retry = () => {
+    if (_attempt >= 2) { _igStatusGiveUp(); return; }
+    setTimeout(() => { try { checkInstaStatus(fromLogin, _attempt + 1, _seq); } catch (_e) { /* ignore */ } }, 4000);
+  };
+  let res;
+  try {
+    res = await apiFetch('/instagram/status', { headers: authHeader() });
+  } catch (_e) { _retry(); return; }
+  if (!res.ok) {
+    if (res.status === 401) return; // 인증 만료 — 재시도해도 소용없음
+    _retry(); return;
+  }
+  try {
     const data = await res.json();
 
     // [2026-06-25] 재로그인 환영(showWelcome) 제거 — 인사는 app-core 의 _finishLoginLoad 가
