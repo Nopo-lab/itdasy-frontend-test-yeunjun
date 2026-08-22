@@ -181,7 +181,6 @@
       .cf-amt-input { flex:1; min-width:0; border:none; outline:none; background:transparent;
         font-size:26px; font-weight:500; color:#191F28; text-align:right; letter-spacing:-0.5px;
         font-family:inherit; padding:0; }
-      .cf-amt-input::placeholder { color:#D1D6DB; }
       .cf-unit { font-size:14px; color:#8B95A1; }
       .cf-chips { display:flex; justify-content:flex-end; gap:6px; margin-top:10px; flex-wrap:wrap; }
       .cf-chip { padding:7px 14px; border:0.5px solid #E5E8EB; border-radius:999px; background:#fff;

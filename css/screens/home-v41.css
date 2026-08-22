@@ -905,12 +905,10 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 }
 .hv5-itbi-input-icon:active { background: rgba(0,0,0,0.04); }
 .hv5-itbi-input-field {
-  flex: 1; min-width: 0; font-size: 12px; color: #191F28;
+  flex: 1; min-width: 0; font-size: 14px; color: #191F28;
   background: transparent; border: 0; outline: 0;
   padding: 0; font-family: inherit;
 }
-.hv5-itbi-input-field::placeholder { color: #B0B8C1; font-size: 12px; }
-.hv5-itbi-input-placeholder { font-size: 12px; }
 /* [2026-08-16] 마이크↔전송 스왑 버튼 — 빈 상태=검정 마이크, 입력 중=로즈 전송 */
 .hv5-itbi-swap {
   width: 34px; height: 34px; border-radius: 50%;

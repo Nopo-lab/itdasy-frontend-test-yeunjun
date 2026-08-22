@@ -15,6 +15,7 @@
   --text-muted:    #4E5968;
   --text-subtle:   #6B7684; /* [2026-06-10] 4.2:1→5.9:1 대비 상향 (AA) */
   --border:        rgba(0,0,0,.07);
+  --placeholder-color: #A6AEB8; /* [2026-08-22] 빈칸 예시글 통일 — 아래 전역 ::placeholder 규칙과 세트 */
   --border-strong: rgba(0,0,0,.14);
   --ok:     #16B55E;
   --warn:   #F59E0B;
@@ -147,4 +148,14 @@ select:focus-visible {
 }
 .skip-nav:focus {
   top: 16px;
+}
+
+/* [2026-08-22] 빈칸 예시글(placeholder) 전역 통일 — 색 1토큰 · 크기는 필드와 동일 · weight 400.
+   화면별 ::placeholder 색 재정의는 제거했음(사진편집기 다크 UI · style-dark.css 제외). */
+input::placeholder,
+textarea::placeholder {
+  color: var(--placeholder-color);
+  font-weight: 400;
+  font-size: inherit;
+  opacity: 1;
 }

@@ -110,7 +110,7 @@
         <div class="dmm-hint">양식이랑 같이 나가지 않아요. 손님이 양식을 채워 보내고 성함·연락처까지 모이면 그때 안내돼요.</div>
         <div class="dmm-fld">예약금 계좌 <span class="sub">은행·예금주까지</span></div>
         <input type="text" class="dmm-in" data-field="deposit-account"
-          value="${acct}" placeholder="카카오뱅크 3333-00-000000 박수민">
+          value="${acct}" placeholder="카카오뱅크 3333-00-000000 김원장">
         <div class="dmm-fld">예약금 금액 <span class="sub">2만원처럼 적어도 돼요</span></div>
         <label class="dmm-unit">
           <input type="text" inputmode="numeric" class="dmm-in" data-field="deposit-amount"

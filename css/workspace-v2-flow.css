@@ -544,7 +544,6 @@ body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
 /* [v751 발행 블록] 인라인 스타일 → 클래스. 계정 태그는 기본 접힘(쓸 일 드묾) */
 .wsv2flow .cap-usertags { margin-top: 10px; }
 .wsv2flow .cap-usertags input { width: 100%; height: 44px; border: 1px solid var(--border); border-radius: 12px; padding: 0 13px; font-size: 13.5px; font-weight: 500; font-family: inherit; background: var(--surface); color: var(--text); }
-.wsv2flow .cap-usertags input::placeholder { color: var(--text-subtle); }
 .wsv2flow .cap-tagnote { font-size: 12px; font-weight: 500; color: var(--text-subtle); margin-top: 5px; }
 .wsv2flow .cap-pubnote { font-size: 12px; font-weight: 500; color: var(--text-subtle); text-align: center; margin-top: 7px; }
 .wsv2flow .cap-tagtoggle { display: block; margin: 10px auto 0; border: none; background: none; color: var(--text-subtle); font-size: 12px; font-weight: 500; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
@@ -826,7 +825,6 @@ body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
 /* [직접 입력] 그 자리 인라인 입력창 — 확인 = 검정 버튼 */
 .wsv2flow .capwiz__custom { display: flex; gap: 8px; margin-top: 10px; }
 .wsv2flow .capwiz__custin { flex: 1; min-width: 0; height: 40px; border: 1.5px solid #17191C; border-radius: 12px; padding: 0 12px; font-size: 13.5px; font-family: inherit; background: #fff; color: #17191C; outline: none; }
-.wsv2flow .capwiz__custin::placeholder { color: #8B95A1; }
 .wsv2flow .capwiz__custok { flex: none; height: 40px; padding: 0 16px; border: none; border-radius: 12px; background: #17191C; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
 .wsv2flow .capwiz__custok:active { transform: scale(.96); }
 /* 섹션 라벨(시술/특이사항) + 힌트 */
@@ -878,7 +876,6 @@ body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
 .wsv2flow .cap-svctag--add { background: #fff; color: #8B95A1; border: 1px dashed #C9CED4; }
 /* [v778 보스] 시술 추가 인라인 입력 — 팝업 대신 칩 자리에 바로 타이핑. 칩과 같은 알약 모양. */
 .wsv2flow .cap-svctag--addin { background: #fff; color: #17191C; border: 1px solid var(--brand-strong); outline: none; width: 128px; max-width: 52vw; font-weight: 600; }
-.wsv2flow .cap-svctag--addin::placeholder { color: #B0B7BF; font-weight: 500; }
 /* [칩삭제 2026-07-15] 칩 안 × — 시술·최근 시술 그 자리에서 삭제 */
 .wsv2flow .cap-svctag .cap-svctag__x { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; margin: 0 -4px 0 6px; border-radius: 50%; background: rgba(139,149,161,.16); color: #8B95A1; font-size: 11px; font-weight: 800; line-height: 1; }
 .wsv2flow .cap-svctag.on .cap-svctag__x { background: rgba(255,255,255,.24); color: #fff; }

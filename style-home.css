@@ -398,7 +398,6 @@ body.itdasy-locked > :not(#lockOverlay, #signupOverlay, script, style, svg) {
   text-align: center; padding: 8px 0;
   font-family: Pretendard, sans-serif; letter-spacing: -0.03em;
 }
-.ob-underline-input::placeholder { color: var(--text3); font-weight: 400; font-size: 18px; }
 
 /* 완료 화면 */
 .ob-complete-name {

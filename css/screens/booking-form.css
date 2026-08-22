@@ -350,7 +350,6 @@
   scroll-margin-bottom:110px;
 }
 .bf-memo:focus { border-color:#191F28; }
-.bf-memo::placeholder { color:#C5CBD2; }
 .bf-memo-counter { font-size:11px; color:#8B95A1; text-align:right; margin-top:4px; }
 
 /* 충돌 경고 */

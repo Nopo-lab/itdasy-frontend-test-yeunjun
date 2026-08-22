@@ -345,10 +345,6 @@
   color: var(--text);
   font-family: inherit;
 }
-.rv-qa__input::placeholder {
-  color: var(--text-subtle);
-  font-weight: 500;
-}
 .rv-qa__method {
   padding: 7px 10px;
   font-size: 11.5px;
@@ -516,6 +512,7 @@
    10 · PC 메인 (1100px+ 에서만 노출) — ms-side 옆
    ============================================================ */
 .rv-pc {
+  display: none; /* 기본 숨김 — §11 노출 제어(1100px+)와 병합 (stylelint no-duplicate-selectors) */
   flex: 1;
   padding: 24px 28px;
   overflow-y: auto;
@@ -655,10 +652,6 @@
   min-width: 0;
   font-family: inherit;
 }
-.rv-pc-qa__input::placeholder {
-  color: var(--text-subtle);
-  font-weight: 500;
-}
 .rv-pc-qa__input--amount { flex: 0 0 130px; }
 .rv-pc-qa__methods {
   display: flex;
@@ -690,8 +683,7 @@
 /* ============================================================
    11 · PC 노출 제어 (1100px+ 에서만)
    ============================================================ */
-.rv-pc { display: none; }
-@media (min-width: 1100px) {
+@media (width >= 1100px) {
   .rv-pc { display: block; }
 }
 

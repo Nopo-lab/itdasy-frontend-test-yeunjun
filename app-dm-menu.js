@@ -133,7 +133,6 @@
       #${ID} textarea,#${ID} .dmm-lblin,#${ID} .dmm-in{font-family:inherit;outline:none;color:#191F28;box-sizing:border-box;background:#fff}
       #${ID} .dmm-greet textarea{width:100%;border:.5px solid rgba(0,0,0,.12);border-radius:12px;padding:11px 12px;font-size:13.5px;line-height:1.5;resize:none}
       #${ID} textarea:focus,#${ID} .dmm-lblin:focus,#${ID} .dmm-in:focus{border-color:var(--brand,#D58A95)}
-      #${ID} ::placeholder{color:#C4C9D0;font-weight:400}
       #${ID} .dmm-it{border-bottom:.5px solid rgba(0,0,0,.06)}
       #${ID} .dmm-it:last-child{border-bottom:0}
       #${ID} .dmm-row{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
