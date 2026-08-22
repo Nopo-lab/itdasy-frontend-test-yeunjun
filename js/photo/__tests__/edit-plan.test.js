@@ -56,7 +56,10 @@ describe('[STAGE C] 타이포 — 빈 축만 채우고, 바꾼 뒤 다시 잰다
   });
 
   test('플래그가 꺼져 있으면 아무것도 하지 않는다', () => {
-    expect(ed).toMatch(/EditPlan\.flagOn\(\)\)\) return;/);
+    /* [STAGE G] 게이트가 둘로 늘었다(QA 스위치 + rollout). 표현이 아니라 **의도**를 잠근다:
+       둘 다 꺼져 있으면 아무것도 안 한다. */
+    expect(ed).toMatch(/if \(!_fOn && !_aOn\) return;/);
+    expect(ed).toMatch(/EditPlan\.flagOn && window\.EditPlan\.flagOn\(\)/);
     expect(ep).toMatch(/window\.ITDASY_EDIT_PLAN === true/);
   });
 });

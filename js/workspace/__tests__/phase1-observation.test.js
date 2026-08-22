@@ -49,9 +49,13 @@ function loadIntoWindow(srcList) {
 }
 
 describe('[Phase 1] PhotoContext — 관측 전용 계약', () => {
-  test('공개 API 는 of/peek/stats 뿐 — 배치를 바꾸는 함수가 없다', () => {
+  test('공개 API 는 읽기 전용 — 배치를 바꾸는 함수가 없다', () => {
+    /* [STAGE C] `regionLum` 추가. 이것도 **조회**다 — 이미 계산해둔 8×8 휘도 격자에서
+       한 구역의 평균·편차를 읽어줄 뿐, 아무것도 옮기거나 칠하지 않는다.
+       (가독성 판정에 필요한데, 이게 없으면 글자 놓을 자리 배경을 알려고 사진을 다시 열어야 한다) */
     const win = loadIntoWindow([pctxSrc]);
-    expect(Object.keys(win.PhotoContext).sort()).toEqual(['SCHEMA', 'of', 'peek', 'stats']);
+    expect(Object.keys(win.PhotoContext).sort())
+      .toEqual(['SCHEMA', 'mapStageRect', 'of', 'peek', 'regionLum', 'stats']);
     // apply/place/layout 같은 '적용' 동사가 공개면 Phase 1 계약 위반
     expect(Object.keys(win.PhotoContext).join(',')).not.toMatch(/apply|place|layout|anchor/i);
   });
@@ -187,7 +191,8 @@ describe('[§16] PhotoContext 는 편집 결과에 절대 영향을 주지 않�
     expect(ep).toMatch(/window\.ITDASY_EDIT_PLAN === true/);
     expect(ep).toMatch(/editplan=0/);            // 긴급 차단 경로
     // 편집기는 플래그를 먼저 확인하고서야 움직인다
-    expect(ed).toMatch(/EditPlan\.flagOn\(\) \) return;|EditPlan\.flagOn\(\)\)\) return;/);
+    /* [STAGE G] 게이트가 둘로 늘었다(QA 스위치 + rollout). 표현이 아니라 **의도**를 잠근다. */
+    expect(ed).toMatch(/if \(!_fOn && !_aOn\) return;/);
   });
 
   test('원장이 만진 레이어·역할 레이어는 건드리지 않는다', () => {

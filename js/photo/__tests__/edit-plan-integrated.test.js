@@ -41,7 +41,25 @@ describe('통합 출력 형태', () => {
   test('되돌리기 어려운 축은 기본 OFF', () => {
     expect(EP.SCOPE.crop).toBe(false);
     expect(EP.SCOPE.adjust).toBe(false);
-    expect(EP.SCOPE.sticker).toBe(false);
+  });
+
+  /* 🔴 [STAGE G] 실사고. `SCOPE.size` 가 **선언만 되고 검사되지 않아** 끄는 스위치가
+     안 끄는 상태였다. 더 나쁜 건 `plan.typography.size`·`plan.textAnchor` 를 **읽는 코드는
+     다 있는데 값을 넣는 코드가 없어서**, 27샵으로 교정한 sizeRatio 와 전후비교 배치 힌트가
+     한 번도 안 쓰이고 있었다는 것이다. 문법도 맞고 테스트도 통과했다 — 그냥 null 이었다. */
+  test('선언된 SCOPE 키는 전부 실제로 검사된다 (끄는 스위치가 꺼야 한다)', () => {
+    // 소비처가 두 곳이다 — readability 는 편집기가 본다. 한쪽만 보면 오탐이 난다.
+    const both = planSrc + '\n' + edSrc;
+    Object.keys(EP.SCOPE).forEach((k) => {
+      expect(both).toMatch(new RegExp('SCOPE\\.' + k + '\\b'));
+    });
+  });
+
+  test('읽기만 하고 안 채우는 축이 없다', () => {
+    ['plan.typography.size', 'plan.textAnchor'].forEach((f) => {
+      const assign = new RegExp(f.replace(/\./g, '\\.') + ' = _axis\\(');
+      expect(planSrc).toMatch(assign);
+    });
   });
 
   test('자동 초안 스위치는 EditPlan 자체와 **따로** 있다', () => {

@@ -98,7 +98,10 @@
         if (raw != null && typeof raw === 'object') raw = raw.key;
         if (raw != null && raw !== '' && final[feat] === undefined && kept[feat] === undefined) {
           kept[feat] = raw;
-          if (l._src === 'wm') keptAuto[feat] = 1;
+          /* [STAGE F] `plan`(자동 초안)도 **우리가 얹은 값**이다 — `wm` 과 같은 취급.
+             여기서 빠뜨리면 `publishedKept`(3점, 강한 positive)로 세어져서
+             우리 추측이 원장의 강한 취향으로 둔갑한다. 정확히 반대로 가야 한다. */
+          if (l._src === 'wm' || l._src === 'plan') keptAuto[feat] = 1;
         }
       });
     });

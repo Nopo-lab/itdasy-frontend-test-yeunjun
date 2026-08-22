@@ -115,6 +115,20 @@
     return _cur.observationId;
   }
 
+  /* [STAGE F] 세션 **도중에** baseline 을 덧붙인다.
+     자동 초안(EditPlan)은 begin() 이후 비동기로 값을 얹는다 — 그 값이 baseline 에 없으면
+     `_distill` 이 "원장이 그대로 뒀다"를 못 본다. 그러면 우리 값은 **틀렸을 때만**
+     negative 가 쌓이고 맞았을 때는 아무것도 안 쌓여서, 90% 맞아도 '싫어하는 값'으로 수렴한다.
+     그 비대칭이 이 한 줄이 없어서 생긴다.
+
+     ⚠️ 이건 신호가 아니라 **기준선**이다. `note()` 와 달리 system 스코프에서도 받는다
+        (우리가 얹은 값을 기록하는 게 목적이므로). 강도는 `publishedKeptAuto`(1) 로 약하다. */
+  function baseline(layers) {
+    if (!_cur || !Array.isArray(layers) || !layers.length) return false;
+    layers.forEach(function (l) { if (l) _cur.baseline.push(l); });
+    return true;
+  }
+
   // owner 조작만 기록. system 스코프·세션 밖·미지원 이벤트는 조용히 무시.
   function note(event, payload) {
     if (!_cur) return false;
@@ -141,7 +155,7 @@
   window.WMSignals = {
     SUPPORTED: SUPPORTED,
     system: system, isSystem: isSystem,
-    begin: begin, note: note, outcome: outcome, end: end,
+    begin: begin, note: note, outcome: outcome, end: end, baseline: baseline,
     tenantId: _tenantId, _pending: pending
   };
 })();

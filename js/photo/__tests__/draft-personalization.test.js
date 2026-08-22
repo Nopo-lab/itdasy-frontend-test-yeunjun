@@ -204,6 +204,48 @@ describe('저장소·비용', () => {
   });
 });
 
+describe('🔴 상충과 데이터없음을 구분한다 (브라우저에서 잡은 결함)', () => {
+  /* WMPrefs.resolve() 는 둘 다 null 을 준다. 구분 못 하면 상충이 '경험 부족'으로 떨어지고
+     업종 seed 가 그대로 적용된다 — 원장이 반반 갈렸다는 증거를 덮는 것이다.
+     실측: A/B/A/B 6회 뒤 center +6/-6 · left +6/-6 인데 개입 강도가 1 이었다. */
+  function mk(resolveFn, explainFn) {
+    const win = { WMPrefs: { resolve: resolveFn, explain: explainFn } };
+    new Function('window', src)(win);
+    return win.DraftPersonalization;
+  }
+
+  test('기록이 있는데 resolve 가 null 이면 상충 → 개입 0', async () => {
+    const DPx = mk(() => Promise.resolve(null),
+      (f) => Promise.resolve(f === 'font' ? { feature: 'font', positive: 6, negative: 6 } : null));
+    const p = await DPx.resolve({});
+    expect(p.evidence.axes.font).toBe('conflict');
+    expect(p.intervention.typography).toBe(0);
+    expect(p.source).toBe('wm_prefs');
+  });
+
+  test('기록 자체가 없으면 데이터없음 → 개입 1 (기존 동작 유지)', async () => {
+    const DPx = mk(() => Promise.resolve(null), () => Promise.resolve(null));
+    const p = await DPx.resolve({});
+    expect(p.evidence.axes.font).toBe('none');
+    expect(p.intervention.typography).toBe(1);
+    expect(p.source).toBe('default');
+  });
+
+  test('positive 가 0 인 기록은 상충이 아니다 — 억지로 막지 않는다', async () => {
+    const DPx = mk(() => Promise.resolve(null),
+      () => Promise.resolve({ feature: 'font', positive: 0, negative: 3 }));
+    const p = await DPx.resolve({});
+    expect(p.intervention.typography).toBe(1);
+  });
+
+  test('explain 이 없는 옛 WMPrefs 에서도 죽지 않는다', async () => {
+    const win = { WMPrefs: { resolve: () => Promise.resolve(null) } };
+    new Function('window', src)(win);
+    const p = await win.DraftPersonalization.resolve({});
+    expect(p.source).toBe('default');
+  });
+});
+
 describe('WMPrefs 없을 때 (로그아웃·모듈 미로드)', () => {
   test('DEFAULT 로 떨어진다 — 기능이 죽지 않는다', async () => {
     const win = {};

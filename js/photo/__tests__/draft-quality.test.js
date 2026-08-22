@@ -126,6 +126,64 @@ describe('🔴 되돌릴 수 없는 축을 "수용됐다"로 읽지 않는다', 
   });
 });
 
+describe('[STAGE G] 축별 판정 — 대기와 나쁨을 절대 안 섞는다', () => {
+  test('🔴 표본 0 은 NO_DATA — "되돌림 0%" 로 읽히면 안 된다', () => {
+    const r = load().report();
+    expect(r.verdicts.color).toBe('NO_DATA');
+    expect(r.axes.color.value).toBeNull();
+    expect(r.measurable).toEqual([]);              // 잰 축이 하나도 없다
+  });
+
+  test('표본 부족은 INSUFFICIENT — 판정이 아니라 대기다', () => {
+    const Q = load();
+    for (let i = 0; i < 7; i++) { Q.begin({}); Q.applied({ color: 1 }); Q.published({ published: true }); }
+    const r = Q.report();
+    expect(r.verdicts.color).toBe('INSUFFICIENT');
+    expect(r.awaitingData).toContain('color');
+    expect(r.measurable).not.toContain('color');
+    expect(r.needed.color).toBe(13);               // 20 - 7. "곧 되겠지" 라고 안 한다
+  });
+
+  test('되돌림이 적으면 GOOD', () => {
+    const Q = load();
+    for (let i = 0; i < 25; i++) {
+      Q.begin({}); Q.applied({ color: 1 });
+      if (i < 3) Q.corrected('color');             // 12%
+      Q.published({ published: true });
+    }
+    const r = Q.report();
+    expect(r.verdicts.color).toBe('GOOD');
+    expect(r.measurable).toContain('color');
+    expect(r.needed.color).toBe(0);
+  });
+
+  test('되돌림이 잦으면 NEEDS_CORRECTION — 세 번에 한 번이면 도움이 아니다', () => {
+    const Q = load();
+    for (let i = 0; i < 25; i++) {
+      Q.begin({}); Q.applied({ color: 1 });
+      if (i < 10) Q.corrected('color');            // 40%
+      Q.published({ published: true });
+    }
+    expect(Q.report().verdicts.color).toBe('NEEDS_CORRECTION');
+  });
+
+  test('되돌릴 UI 없는 축은 아무리 모여도 NO_SIGNAL — 더 모아도 못 잰다', () => {
+    const Q = load();
+    for (let i = 0; i < 100; i++) { Q.begin({}); Q.applied({ stroke: 1 }); Q.published({ published: true }); }
+    const r = Q.report();
+    expect(r.verdicts.stroke).toBe('NO_SIGNAL');
+    expect(r.unmeasurable).toContain('stroke');
+    expect(r.needed.stroke).toBeNull();            // 목표 건수를 제시하지 않는다
+    expect(r.measurable).not.toContain('stroke');  // 성공으로도 실패로도 안 센다
+  });
+
+  test('기존 상태 어휘를 재사용한다 — 새 체계를 만들지 않았다', () => {
+    const known = ['NO_DATA', 'INSUFFICIENT', 'NO_SIGNAL', 'GOOD', 'NEEDS_CORRECTION'];
+    const r = load().report();
+    Object.values(r.verdicts).forEach((v) => expect(known).toContain(v));
+  });
+});
+
 describe('개인정보·비용', () => {
   test('네트워크 전송 0', () => {
     expect(src).not.toMatch(/fetch\(|apiFetch|XMLHttpRequest|sendBeacon/);
@@ -139,8 +197,47 @@ describe('개인정보·비용', () => {
 });
 
 describe('[STAGE D] 단계적 노출 — 원장 단위로 고정', () => {
-  test('기본은 0% — 아무에게도 안 켜진다', () => {
-    expect(planSrc).toMatch(/var ROLLOUT_PCT = 0;/);
+  test('[STAGE G] 10% 노출 — 로직이 아니라 노출 비율만 올렸다', () => {
+    expect(planSrc).toMatch(/var ROLLOUT_PCT = 10;/);
+    // 자동화 강도를 함께 올리지 않았다는 걸 같이 잠근다
+    expect(planSrc).toMatch(/SCOPE = \{[\s\S]{0,600}crop: false/);
+    expect(planSrc).toMatch(/adjust: false/);
+    /* sticker·caption 스위치는 **제거**했다 — 구현이 없어서 켜도 아무 일이 안 일어나는
+       죽은 스위치였다. 끄는 시늉만 하는 스위치는 없느니만 못하다(누가 켜고 기대하게 된다). */
+    expect(planSrc).not.toMatch(/sticker:|caption: false/);
+  });
+
+  test('OFF 버킷은 완전한 기존 동작 — 계산조차 안 한다', () => {
+    const EP = loadPlan({ last_user_id: 'zz-off-bucket' });
+    const info = EP.rolloutInfo();
+    if (info.bucket >= 10) expect(info.on).toBe(false);
+    else expect(info.on).toBe(true);
+  });
+
+  /* 🔴 브라우저에서 잡은 결함. rollout 을 10% 로 켰는데 편집기가 `flagOn()`(QA 스위치)만
+     보고 있어서 **아무 일도 안 일어났다**. 관측 세션 0 으로 드러났다.
+     "켰다고 말했는데 실제로는 안 켜진" 상태라 배포했으면 못 알아챘을 것이다. */
+  test('편집기가 rollout 게이트를 실제로 본다', () => {
+    const fs2 = require('fs');
+    const ed = fs2.readFileSync(path.join(ROOT, 'js/itd-editor/itd-editor.js'), 'utf8');
+    expect(ed).toMatch(/window\.EditPlan\.autoDraftOn && window\.EditPlan\.autoDraftOn\(\)/);
+    expect(ed).toMatch(/if \(!_fOn && !_aOn\) return;/);
+    // 옛 단일 게이트가 되살아나면 안 된다
+    expect(ed).not.toMatch(/if \(!\(window\.EditPlan && window\.EditPlan\.flagOn && window\.EditPlan\.flagOn\(\)\)\) return;/);
+  });
+
+  test('긴급 차단이 있다 — 전역 변수로 즉시 0 으로 내린다', () => {
+    expect(planSrc).toMatch(/window\.ITDASY_DRAFT_ROLLOUT === 'number'/);
+  });
+
+  test('10% 는 실제로 10% 다 — 500명 중 25~80명', () => {
+    let on = 0;
+    for (let i = 0; i < 500; i++) {
+      const EP = loadPlan({ last_user_id: 'shop-' + i });
+      if (EP.rolloutInfo().on) on++;
+    }
+    expect(on).toBeGreaterThan(25);
+    expect(on).toBeLessThan(80);
   });
 
   test('같은 원장은 늘 같은 결과 (세션마다 흔들리면 기능 없느니만 못하다)', () => {

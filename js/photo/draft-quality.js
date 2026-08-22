@@ -93,6 +93,24 @@
     _cur = null;
   }
 
+  /* [STAGE G] 축별 판정. **기존 어휘를 그대로 쓴다** — NO_DATA · INSUFFICIENT · NO_SIGNAL · OK
+     는 이미 safety-gate·wm-metrics 가 쓰는 말이다. 여기서 새 체계를 만들면 같은 상태를
+     두 이름으로 부르게 된다.
+     판정에만 두 개를 더한다: 잰 결과가 좋은지 나쁜지는 기존 어휘로 표현할 수 없다.
+       GOOD              되돌림이 적다 — 이 축은 계속 켜도 된다
+       NEEDS_CORRECTION  되돌림이 잦다 — 이 축의 규칙을 고치거나 꺼야 한다
+
+     🔴 경계값은 **결론을 내리는 선**이지 튜닝 손잡이가 아니다.
+        되돌림 30% = 세 번에 한 번은 원장이 다시 손댄다는 뜻이다. 그 정도면 도움이 아니다. */
+  var BAD_RATE = 0.30;
+
+  function _verdict(m) {
+    if (m.status === 'NO_SIGNAL') return 'NO_SIGNAL';
+    if (!m.sampleCount) return 'NO_DATA';
+    if (m.status === 'INSUFFICIENT') return 'INSUFFICIENT';
+    return m.value >= BAD_RATE ? 'NEEDS_CORRECTION' : 'GOOD';
+  }
+
   function _rate(num, den) {
     if (!den || den < MIN_SAMPLE) {
       return { value: null, sampleCount: den || 0, status: 'INSUFFICIENT', minSample: MIN_SAMPLE };
@@ -130,12 +148,34 @@
        숫자만 보면 '수용률'로 읽고 자동화를 더 세게 켜게 된다(T8 publishedKeptAuto 와 같은 함정). */
     out.keptEvidence = 'weak';
     out.note = '되돌림률이 낮아도 "좋았다"는 아니다 — 원장이 바빴을 수도 있다.';
+
+    /* [STAGE G] 축별 판정 + 무엇이 남았는지. 데이터가 들어오면 **자동으로** 갱신된다 —
+       여기서 사람이 다시 계산할 일이 없어야 폐루프가 닫힌 것이다. */
+    out.verdicts = {};
+    AXES.forEach(function (a) { out.verdicts[a] = _verdict(out.axes[a]); });
+    out.overallVerdict = _verdict(out.overall);
+
+    /* 축당 몇 건이 더 필요한가 — 역산해서 알려준다.
+       "곧 되겠지" 라고 말하지 않기 위해서다(evidence-monitor 와 같은 규율). */
+    out.needed = {};
+    AXES.forEach(function (a) {
+      var m = out.axes[a];
+      if (m.status === 'NO_SIGNAL') { out.needed[a] = null; return; }   // 더 모아도 못 잰다
+      var have = m.sampleCount || 0;
+      out.needed[a] = have >= MIN_SAMPLE ? 0 : (MIN_SAMPLE - have);
+    });
+
+    /* 🔴 "측정 대기" 와 "품질 나쁨" 을 절대 섞지 않는다.
+       표본이 0 인데 "되돌림 0%" 라고 읽으면 성공으로 오독한다 — 이 프로젝트에서 이미 난 사고다. */
+    out.measurable = AXES.filter(function (a) { return out.verdicts[a] === 'GOOD' || out.verdicts[a] === 'NEEDS_CORRECTION'; });
+    out.awaitingData = AXES.filter(function (a) { return out.verdicts[a] === 'NO_DATA' || out.verdicts[a] === 'INSUFFICIENT'; });
+    out.unmeasurable = AXES.filter(function (a) { return out.verdicts[a] === 'NO_SIGNAL'; });
     return out;
   }
 
   function reset() { _m = _blank(); _cur = null; }
 
-  window.DraftQuality = { SCHEMA: SCHEMA, MIN_SAMPLE: MIN_SAMPLE, AXES: AXES,
+  window.DraftQuality = { SCHEMA: SCHEMA, MIN_SAMPLE: MIN_SAMPLE, BAD_RATE: BAD_RATE, AXES: AXES,
     begin: begin, applied: applied, corrected: corrected, published: published,
     report: report, reset: reset };
 })();

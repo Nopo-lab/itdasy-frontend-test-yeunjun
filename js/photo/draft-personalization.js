@@ -116,9 +116,24 @@
   function resolve(ctx) {
     var P = window.WMPrefs;
     if (!P || !P.resolve) return Promise.resolve(_clone(DEFAULT));
+    /* 🔴 `WMPrefs.resolve()` 는 **상충**과 **데이터 없음**에 똑같이 null 을 준다.
+       그 둘을 구분 못 하면 상충이 "경험 부족"으로 떨어지고, 그러면 업종 seed 가
+       그대로 적용된다 — 원장이 반반 갈렸다는 명확한 증거를 덮는 것이다.
+       브라우저 실측으로 잡았다: A/B/A/B 6회 뒤 center +6/-6 · left +6/-6 인데
+       개입 강도가 그대로 1 이었다.
+
+       구분법: `explain()` 은 resolve 가 null 을 줘도 **그 자리의 기록**을 돌려준다.
+       기록이 있는데(positive>0) resolve 가 null 이면 = 갈린 것이다. */
     var ask = function (feature) {
-      return Promise.resolve(P.resolve(feature, ctx || {}))
-        .then(function (r) { return r || null; })
+      var ctx2 = ctx || {};
+      return Promise.resolve(P.resolve(feature, ctx2))
+        .then(function (r) {
+          if (r) return r;
+          if (!P.explain) return null;
+          return Promise.resolve(P.explain(feature, ctx2))
+            .then(function (e) { return (e && (e.positive || 0) > 0) ? { conflict: true } : null; })
+            .catch(function () { return null; });
+        })
         .catch(function () { return null; });
     };
     return Promise.all([ask('font'), ask('align'), ask('size'), ask('y')])

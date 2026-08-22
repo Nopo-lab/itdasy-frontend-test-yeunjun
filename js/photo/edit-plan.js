@@ -39,11 +39,11 @@
     size: true,         // 글자 크기 — 업종 실측 sizeRatio 가 있다
     readability: true,  // 🔑 실제 배경 대비를 재서 안 보이면 최소한만 고친다
     personalize: true,  // [STAGE E] 원장별 개입 강도 조정 — **줄이는 쪽으로만** 동작한다
-    anchor: false,      // 취향 앵커 — Safety 가 필요할 때만 움직인다
-    sticker: false,     // 근거 약함
+    /* 배치 **선호**만 계산한다(어디가 좋은지). 실제 이동은 Safety 가 필요할 때만 한다 —
+       이 값 하나로 글자를 옮기지 않는다. 그래서 켜도 안전하다. */
+    anchor: true,
     crop: false,        // 원본 훼손 — 되돌리기 가장 어렵다
-    adjust: false,      // 사진 보정 — 되돌리기 어려워 보수적으로
-    caption: false      // 캡션은 별도 파이프라인 소유
+    adjust: false       // 사진 보정 — 되돌리기 어려워 보수적으로
   };
 
   /* 자동 초안(사진 선택 → 편집기 열림 시 자동 적용) 전용 스위치.
@@ -65,7 +65,15 @@
 
      ⚠️ 로그인 전(테넌트 없음)에는 **항상 꺼짐**이다. 익명 버킷을 만들면
         로그인 시점에 결과가 바뀌어서 위의 고정 원칙이 깨진다. */
-  var ROLLOUT_PCT = 0;          // 0=아무에게도 안 켬. 게이트 통과 후 10 → 50 → 100.
+  /* [STAGE G 2026-08-22] **10% 활성화.**
+     이건 "자동화를 더 세게 켠다" 가 아니다 — STAGE C~E 는 이미 검증이 끝났고,
+     지금 필요한 건 **실사용 계측 데이터**뿐이다. 그게 없으면 축별 품질을 영원히 못 잰다
+     (지금 전 축이 NO_DATA 다). 노출 비율만 올리고 로직은 하나도 안 바꾼다.
+
+     ⚠️ 다음 단계(50 → 100)는 축별 판정이 GOOD 으로 나온 뒤다.
+        되돌림률이 안 나온 상태에서 비율만 올리는 건 근거 없는 확대다.
+     ⚠️ 긴급 차단: `window.ITDASY_DRAFT_ROLLOUT = 0` 또는 URL `?autodraft=0`. */
+  var ROLLOUT_PCT = 10;
 
   function _tenant() {
     try { return localStorage.getItem('last_user_id') || null; } catch (_e) { void _e; return null; }
@@ -203,7 +211,31 @@
       if (ax.font) plan.typography.font = _axis(ax.font.value, ax.font.source, ax.font.confidence);
       if (ax.color) plan.typography.color = _axis(ax.color.value, ax.color.source, ax.color.confidence);
       if (ax.align) plan.typography.align = _axis(ax.align.value, ax.align.source, ax.align.confidence);
-        plan.why.typography = base ? base.sources : null;
+      plan.why.typography = base ? base.sources : null;
+    }
+
+    var prior = (window.CategoryPrior && o.category) ? window.CategoryPrior.get(o.category) : null;
+
+    /* 글자 크기 — 업종 실측 `sizeRatio`(스테이지 높이 대비). 원장 피드 27샵으로 교정한 값이다.
+       원장 자신의 증거가 있으면 ShopBaseline 이 먼저 넣어준다. */
+    if (SCOPE.size) {
+      if (ax.size) {
+        plan.typography.size = _axis(ax.size.value, ax.size.source, ax.size.confidence);
+      } else if (prior && prior.typography && prior.typography.sizeRatio) {
+        plan.typography.size = _axis(prior.typography.sizeRatio, 'category_prior', prior.confidence);
+      }
+    }
+
+    /* 배치 구역 — 사진 자체의 사실(ContentIntent)이 업종 추정을 이긴다.
+       ⚠️ 이건 **선호**지 결정이 아니다. Safety 가 거부하면 그냥 무시된다. */
+    if (SCOPE.anchor) {
+      if (intent && intent.layout && intent.layout.textZone) {
+        plan.textAnchor = _axis(intent.layout.textZone[0], 'photo_observed', intent.confidence);
+      } else if (ax.textZone && ax.textZone.value && ax.textZone.value.length) {
+        plan.textAnchor = _axis(ax.textZone.value[0], ax.textZone.source, ax.textZone.confidence);
+      } else if (prior && prior.textZone && prior.textZone.length) {
+        plan.textAnchor = _axis(prior.textZone[0], 'category_prior', prior.confidence);
+      }
     }
 
     // ── 1순위: Safety — 자유 텍스트가 피사체를 가리면 안전한 자리로

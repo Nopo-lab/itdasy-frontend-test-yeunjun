@@ -1129,6 +1129,34 @@
     return n;
   }
 
+  /* [STAGE F] 초안이 얹은 값을 **관찰 기준선**에 등록한다.
+     이게 없으면 학습이 한쪽으로만 쌓인다: 우리 값이 틀렸을 때는 원장이 바꾸면서
+     `replaced`(negative 2) 가 남는데, 맞았을 때는 아무 기록도 안 남는다.
+     그러면 우리 값이 90% 맞아도 negative 만 누적돼 결국 '싫어하는 값'이 된다.
+
+     🔑 `_src:'plan'` 을 달아 보낸다 — T8 이 이걸 보고 `publishedKeptAuto`(1점, 약함)로 센다.
+        빼먹으면 `publishedKept`(3점, 강함)가 되어 **우리 추측이 원장의 강한 취향으로 둔갑**한다.
+        그게 이 프로젝트가 가장 피하려는 자기강화다.
+     🔑 발행했을 때만 센다(T8 규칙). 열어보고 그냥 닫은 건 증거가 아니다. */
+  function _planBaseline() {
+    try {
+      if (!S || !window.WMSignals || !window.WMSignals.baseline) return;
+      var rows = [];
+      (S.layers || []).forEach(function (L) {
+        if (!L || !L._planAxes) return;
+        if (L.type !== 'text' && L.type !== 'badge') return;
+        var row = { type: 'text', _src: 'plan' };
+        var any = false;
+        // 되돌릴 수 있는 축만 — 외곽선·그림자는 끄는 UI 가 없어 유지가 동의를 뜻하지 않는다
+        if (L._planAxes.font && L.font && L.font.key) { row.font = L.font.key; any = true; }
+        if (L._planAxes.color && L.color) { row.color = L.color; any = true; }
+        if (L._planAxes.align && L.align) { row.align = L.align; any = true; }
+        if (any) rows.push(row);
+      });
+      if (rows.length) window.WMSignals.baseline(rows);
+    } catch (_e) { void _e; }
+  }
+
   /* 이번 세션에서 초안이 건드린 축을 모은다 — 레이어별이 아니라 **세션 단위**로 센다.
      같은 축을 레이어 5개에 적용했다고 5번 세면 지표가 레이어 수에 휘둘린다. */
   function _axesTouched() {
@@ -1205,7 +1233,15 @@
      한 번만 돈다. 되돌리기는 원장이 그냥 다시 옮기면 된다(우리는 그걸 학습 신호로 받는다). */
   function _applyPlanSafety() {
     if (!S || S._planApplied || S._userMoved) return;
-    if (!(window.EditPlan && window.EditPlan.flagOn && window.EditPlan.flagOn())) return;
+    /* 🔴 스위치가 둘이다. 여기서 하나만 보면 rollout 을 켜도 **아무 일도 안 일어난다**
+       (실제로 그 상태였다 — 브라우저에서 10% 를 켜보고 sessions:0 으로 잡았다).
+         flagOn()      QA 강제 스위치(`?editplan=1` · ITDASY_EDIT_PLAN)
+         autoDraftOn() 실사용 게이트 — URL·전역·**rollout 버킷**
+       둘 중 하나면 돈다: QA 는 버킷과 무관하게 보고, 실사용자는 버킷으로 갈린다. */
+    if (!window.EditPlan) return;
+    var _fOn = window.EditPlan.flagOn && window.EditPlan.flagOn();
+    var _aOn = window.EditPlan.autoDraftOn && window.EditPlan.autoDraftOn();
+    if (!_fOn && !_aOn) return;
     if (!window.PhotoContext || !window.SafetyShadow) return;
     var url = S.photoUrl; if (!url) return;
     if (S.layout && (S.layout.kind || 'single') !== 'single') return;   // 콜라주는 칸이 배치를 소유
@@ -1245,6 +1281,9 @@
       return _planSafetyPass(geoms, url, alive).then(function () {
         if (!alive()) return 0;
         return _planReadabilityPass(url, alive);
+      }).then(function (n) {
+        if (alive()) _planBaseline();   // 얹기가 다 끝난 뒤 한 번
+        return n;
       });
     }).catch(function () { /* 초안 실패는 조용히 — 편집기는 정상 동작 */ });
   }
