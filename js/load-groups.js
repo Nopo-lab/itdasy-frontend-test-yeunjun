@@ -24,6 +24,8 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/photo/text-readability.js?v=local-c3',
   // [STAGE D] 자동 초안 품질 — 원장이 되돌렸는지로 잰다. 저장소·네트워크 0.
   'js/photo/draft-quality.js?v=local-d1',
+  // [STAGE E] 원장별 개입 강도 — WMPrefs 를 EditPlan 언어로 번역만. 저장소·이벤트 신설 0.
+  'js/photo/draft-personalization.js?v=local-e1',
   'js/photo/shop-baseline.js?v=local-p3b',
   // [Phase 5] Safety Shadow — 계산만. 화면 반영 0(테스트가 소비처 0 감시).
   'js/photo/safety-shadow.js?v=local-p51',
@@ -36,7 +38,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   // [Phase 5.5] 증거 모니터 — 판정·안내만. 새 저장소 없음(기존 리포트 조합).
   'js/photo/evidence-monitor.js?v=local-p55',
   // [STAGE C] 실제 편집안 — 기본 OFF(?editplan=1). 편집기가 소비한다.
-  'js/photo/edit-plan.js?v=local-d1',
+  'js/photo/edit-plan.js?v=local-e1',
   'js/workspace/shop-style.js?v=local-151154',
   'js/workspace/work-memory.js?v=local-151154',
   'js/workspace/work-memory-engine.js?v=local-t8hp',

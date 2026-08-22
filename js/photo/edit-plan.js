@@ -38,6 +38,7 @@
     typography: true,   // 폰트·색·정렬 (증거 있을 때만)
     size: true,         // 글자 크기 — 업종 실측 sizeRatio 가 있다
     readability: true,  // 🔑 실제 배경 대비를 재서 안 보이면 최소한만 고친다
+    personalize: true,  // [STAGE E] 원장별 개입 강도 조정 — **줄이는 쪽으로만** 동작한다
     anchor: false,      // 취향 앵커 — Safety 가 필요할 때만 움직인다
     sticker: false,     // 근거 약함
     crop: false,        // 원본 훼손 — 되돌리기 가장 어렵다
@@ -159,11 +160,17 @@
           photoCount: ctxOpts.photoCount, kind: ctxOpts.kind })
         : Promise.resolve(null);
       var intent = (SCOPE.intent && window.ContentIntent) ? window.ContentIntent.classify(pctx) : null;
-      return Promise.resolve(baseP).then(function (base) { return _build(pctx, base, ctxOpts, intent); });
+      /* [STAGE E] 개인화는 **조회만** 한다. 실패하면 DEFAULT 라 STAGE C 와 결과가 같다. */
+      var persP = (SCOPE.personalize && window.DraftPersonalization)
+        ? window.DraftPersonalization.resolve({ service: ctxOpts.service, photoCount: ctxOpts.photoCount, kind: ctxOpts.kind })
+        : Promise.resolve(null);
+      return Promise.all([Promise.resolve(baseP), persP]).then(function (rr) {
+        return _build(pctx, rr[0], ctxOpts, intent, rr[1]);
+      });
     }).catch(function () { return null; });
   }
 
-  function _build(pctx, base, o, intent) {
+  function _build(pctx, base, o, intent, person) {
     var ax = (base && base.axes) || {};
     var plan = {
       schema: SCHEMA,
@@ -178,6 +185,7 @@
       /* 각 축은 근거가 있을 때만 채운다. **null = 건드리지 않음**.
          "AI 니까 뭐라도 채워야 한다" 가 이 제품에서 가장 위험한 태도다. */
       typography: { font: null, color: null, align: null, size: null, stroke: null, shadow: null },
+      personalization: null, // [STAGE E] 개인화가 실제로 뭘 했는지 — null = 아무것도 안 함
       textAnchor: null,      // 선호 배치 구역 — Safety 가 거부하면 무시된다
       safetyMoves: [],       // [{idx, from, to, anchor, gain}] — 피사체 회피 이동
       readability: [],       // [{idx, before, after, color?, stroke?, shadow?}] — 렌더 후에 채워진다
@@ -219,6 +227,43 @@
     }
 
     plan.why.intent = intent ? intent.why : null;
+
+    /* ── [STAGE E] 개인화 — 여기까지 정해진 계획을 **줄이는 방향으로만** 손본다.
+       순서가 중요하다: 안전(Safety)·가독성 축은 이 위에서 이미 확정됐고 여기서 안 건드린다.
+       안 보이는 글자는 취향 문제가 아니다. */
+    if (SCOPE.personalize && person && person.source !== 'default') {
+      plan.personalization = { source: person.source, intervention: person.intervention,
+        evidence: person.evidence };
+
+      /* 1) 개입 금지 — 원장 취향이 갈린 축은 우리가 고르지 않는다.
+         `intervention.typography === 0` 은 "이 원장은 타이포를 자기 방식대로 한다" 는 뜻이다. */
+      if (!person.intervention.typography) {
+        plan.typography.font = null; plan.typography.align = null; plan.typography.size = null;
+        plan.why.personalizeVeto = 'typography';
+      }
+      if (!person.intervention.placement) {
+        plan.textAnchor = null;
+        plan.why.personalizeVeto = (plan.why.personalizeVeto ? plan.why.personalizeVeto + '+' : '') + 'placement';
+      }
+
+      /* 2) 값 보정 — 원장의 실측 취향이 업종 seed 보다 세면 그걸 쓴다.
+         🔑 **editor_observed 를 이미 쓰고 있으면 덮지 않는다.** ShopBaseline 이 같은 출처에서
+            더 앞선 계층으로 이미 넣어둔 값이다 — 여기서 또 쓰면 같은 증거를 두 번 세는 꼴이다. */
+      if (person.intervention.typography) {
+        var pt = person.typography;
+        if (pt.size && (!plan.typography.size || plan.typography.size.source === 'category_prior')) {
+          if (pt.confidenceBeats !== false) {
+            plan.typography.size = _axis(pt.size.value, 'editor_observed', pt.size.confidence);
+          }
+        }
+        if (pt.align && plan.typography.align && plan.typography.align.source === 'category_prior') {
+          plan.typography.align = _axis(pt.align.value, 'editor_observed', pt.align.confidence);
+        }
+        if (pt.font && !plan.typography.font) {
+          plan.typography.font = _axis(pt.font.value, 'editor_observed', pt.font.confidence);
+        }
+      }
+    }
 
     /* 전체 확신도 — 채워진 축들의 **평균**이다. 최댓값을 쓰면 축 하나가 센 걸로
        나머지 약한 축까지 믿게 된다. 아무 축도 안 찼으면 0 이다. */
