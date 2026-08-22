@@ -1074,6 +1074,44 @@
       });
     });
   }
+  /* [STAGE C] 타이포 초안 — **비어 있는 축만** 채운다.
+     원장이 고른 폰트·색을 덮으면 그 순간 신뢰를 잃는다. 그래서 값이 있으면 손대지 않는다.
+
+     🔑 순서가 중요하다: 타이포를 바꾸면 **글자 박스 크기가 바뀐다.**
+        그래서 반드시 (1) 타이포 적용 → (2) 렌더 → (3) 실제 rect 재측정 → (4) Safety 판정
+        순서로 간다. 타이포 전에 잰 rect 로 Safety 를 결정하면 틀린 자리로 옮긴다.
+
+     🔑 `applyFont/Color/Align` 을 쓰지 않는다 — 그것들은 **활성 레이어**에만 동작하고
+        `WMSignals` 로 학습 신호까지 쏜다. 우리가 얹은 값이 "원장이 고른 값" 으로 학습되면
+        자기강화가 된다. 여기서는 DOM 스타일만 직접 바꾸고 `_src:'plan'` 을 남긴다. */
+  function _applyPlanTypography(plan) {
+    if (!plan || !plan.typography || !S) return 0;
+    var t = plan.typography, n = 0;
+    S.layers.forEach(function (L) {
+      if (!L || !L.tx) return;
+      if (L.type !== 'text' && L.type !== 'badge') return;
+      if (L.role) return;                       // 역할 레이어는 템플릿 소유
+      if (L._src === 'wm') return;              // 작업기억이 얹은 건 그쪽 소관
+      // 폰트 — 지원 키만. 모르는 키가 오면 기존 폰트를 유지한다(외부 문자열 직접 주입 금지)
+      if (t.font && t.font.value && !L._planFont) {
+        var f = fontByKey(t.font.value);
+        if (f && (!L.font || !L.font.key)) {
+          L.font = f; L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight;
+          L._planFont = true; L._src = L._src || 'plan'; n++;
+        }
+      }
+      if (t.color && t.color.value && (L.color == null || L.color === '')) {
+        L.color = t.color.value; L.tx.style.color = t.color.value;
+        L._src = L._src || 'plan'; n++;
+      }
+      if (t.align && t.align.value && (L.align == null || L.align === '')) {
+        L.align = t.align.value; L.tx.style.textAlign = t.align.value;
+        L._src = L._src || 'plan'; n++;
+      }
+    });
+    return n;
+  }
+
   /* [STAGE C] 원장이 **직접 놓은 텍스트**가 피사체를 가리면 안전한 자리로 옮긴다.
      `_applySafeZone`(바로 위)은 **역할 레이어만** 지킨다 — 자유 텍스트는 지금 아무도 안 지킨다.
      그게 이 프로젝트에서 처음 발견한 실제 문제였고, 이게 그 첫 수정이다.
@@ -1092,9 +1130,27 @@
     if (S.layout && (S.layout.kind || 'single') !== 'single') return;   // 콜라주는 칸이 배치를 소유
     S._planApplied = true;
 
-    var geoms = metaGeometry();
-    if (!geoms.length) return;
-    window.PhotoContext.of(url).then(function (pctx) {
+    /* 🔑 순서: 타이포 먼저 → 렌더 → **그 다음에** geometry 측정 → Safety.
+       타이포가 글자 박스 크기를 바꾸므로, 바꾸기 전 rect 로 Safety 를 정하면 틀린 자리로 옮긴다. */
+    var planCtx = {
+      photoUrl: url,
+      category: (S.planCategory || null),
+      photoCount: (S.photos || []).length
+    };
+    window.EditPlan.compute(planCtx).then(function (plan) {
+      if (!plan || !S || S._userMoved) return;
+      var typoN = _applyPlanTypography(plan);
+      if (typoN) { try { S._planTypo = typoN; } catch (_e) { void _e; } }
+      // 타이포 반영 뒤의 **실제** rect 로 다시 잰다
+      var geoms = metaGeometry();
+      if (!geoms.length) return;
+      return _planSafetyPass(geoms, url);
+    }).catch(function () { /* 초안 실패는 조용히 — 편집기는 정상 동작 */ });
+  }
+
+  /* Safety 패스 — 타이포 반영 **후의** geometry 로만 판정한다. */
+  function _planSafetyPass(geoms, url) {
+    return window.PhotoContext.of(url).then(function (pctx) {
       if (!pctx || !pctx.subjectRegion || !S || S._userMoved) return;
       var R = refs.stage.getBoundingClientRect(); if (!R.width || !R.height) return;
       var det = window.SafetyShadow.detect(geoms, pctx);
@@ -1119,13 +1175,12 @@
         L.x += (best.rect.x - (b.left - R.left) / R.width) * R.width;
         L.y += (best.rect.y - (b.top - R.top) / R.height) * R.height;
         applyXf(L);
+        L._src = L._src || 'plan';   // 얹은 값 표시(자기강화 차단)
         moved++;
       });
-      if (moved) {
-        try { S._planMoved = moved; } catch (_e) { void _e; }
-        /* 우리가 옮긴 건 **원장의 선택이 아니다** — 학습이 이걸 취향으로 삼으면 자기강화가 된다.
-           WMSignals.system 안에서 처리해 관찰에서 제외한다(T8 이 쓰는 방식 그대로). */
-      }
+      /* 우리가 옮긴 건 **원장의 선택이 아니다** — 학습이 이걸 취향으로 삼으면 자기강화가 된다.
+         `_src:'plan'` 태깅으로 구분하고, T8 의 `publishedKeptAuto`(약한 증거) 규칙에 맡긴다. */
+      if (moved) { try { S._planMoved = moved; } catch (_e) { void _e; } }
     }).catch(function () { /* 실패하면 그냥 안 움직인다 */ });
   }
 
