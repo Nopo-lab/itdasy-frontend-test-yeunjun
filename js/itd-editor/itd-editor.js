@@ -816,6 +816,7 @@
         // scale(배율)이 아니라 정규화 size 로 — 저장 스키마와 같은 축이어야 적용이 맞는다.
         var _pa = null; try { _pa = _serLayer(_pl); } catch (_pe) { void _pe; }
         if (lpinch._serSnap && _pa && _pa.size != null) {
+          _dqFix(_pl, 'size');
           _sig('size_changed', { layerKey: _pl.role || _pl.type,
             before: lpinch._serSnap.size, after: _pa.size });
         }
@@ -829,6 +830,7 @@
         // [T8-H+] 이동이 끝났을 때 위치 취향 1건. _pushOp 계약(op 종류)은 안 건드린다.
         var _sa = null; try { _sa = _serLayer(drag.L); } catch (_se) { void _se; }
         if (drag._serSnap && _sa) {
+          _dqFix(drag.L, 'position');
           _sig('position_changed', { layerKey: drag.L.role || drag.L.type,
             before: { x: drag._serSnap.x, y: drag._serSnap.y }, after: { x: _sa.x, y: _sa.y } });
         }
@@ -1102,16 +1104,16 @@
         var f = fontByKey(t.font.value);        // 지원 키만. 모르는 키면 기존 폰트 유지
         if (f) {
           L.font = f; L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight;
-          L._planFont = true; L._src = L._src || 'plan'; n++;
+          L._planFont = true; L._src = L._src || 'plan'; _planAxis(L, 'font'); n++;
         }
       }
       if (t.color && t.color.value && !own.color) {
         L.color = t.color.value; L.tx.style.color = t.color.value;
-        L._src = L._src || 'plan'; n++;
+        L._src = L._src || 'plan'; _planAxis(L, 'color'); n++;
       }
       if (t.align && t.align.value && !own.align) {
         L.align = t.align.value; L.tx.style.textAlign = t.align.value;
-        L._src = L._src || 'plan'; n++;
+        L._src = L._src || 'plan'; _planAxis(L, 'align'); n++;
       }
       /* 크기 — 업종 실측 비율(스테이지 높이 대비). **이미 비슷하면 안 건드린다**:
          자동 초안이 매번 몇 px 씩 흔들면 원장 눈엔 그냥 버그다. */
@@ -1120,11 +1122,21 @@
         var cur = L.fontSize || 0;
         if (cur && Math.abs(want - cur) / cur > 0.15) {
           L.fontSize = want; L.tx.style.fontSize = want + 'px';
-          L._src = L._src || 'plan'; n++;
+          L._src = L._src || 'plan'; _planAxis(L, 'size'); n++;
         }
       }
     });
     return n;
+  }
+
+  /* 이번 세션에서 초안이 건드린 축을 모은다 — 레이어별이 아니라 **세션 단위**로 센다.
+     같은 축을 레이어 5개에 적용했다고 5번 세면 지표가 레이어 수에 휘둘린다. */
+  function _axesTouched() {
+    var out = {};
+    (S && S.layers || []).forEach(function (L) {
+      if (L && L._planAxes) Object.keys(L._planAxes).forEach(function (k) { out[k] = 1; });
+    });
+    return out;
   }
 
   /* [STAGE C] 가독성 — **자리가 정해진 뒤에** 그 자리 배경으로 판정한다.
@@ -1166,14 +1178,17 @@
           hasStroke: !!L.stroke, hasShadow: !!L.shadow
         });
         if (!fix) return;                       // 이미 잘 보인다 — 아무것도 안 한다
-        if (fix.color && !isRole && !own.color) { L.color = fix.color; L.tx.style.color = fix.color; }
-        if (fix.stroke && !L.stroke) { L.stroke = true; L.tx.style.webkitTextStroke = '1px rgba(0,0,0,.5)'; }
-        if (fix.shadow && !L.shadow) { L.shadow = true; L.tx.style.textShadow = '0 2px 8px rgba(0,0,0,.35)'; }
+        if (fix.color && !isRole && !own.color) { L.color = fix.color; L.tx.style.color = fix.color; _planAxis(L, 'color'); }
+        if (fix.stroke && !L.stroke) { L.stroke = true; L.tx.style.webkitTextStroke = '1px rgba(0,0,0,.5)'; _planAxis(L, 'stroke'); }
+        if (fix.shadow && !L.shadow) { L.shadow = true; L.tx.style.textShadow = '0 2px 8px rgba(0,0,0,.35)'; _planAxis(L, 'shadow'); }
         L._src = L._src || 'plan';
         L._planRead = fix;                      // 왜 바꿨는지 남긴다(디버그·되돌리기)
         fixed++;
       });
-      if (fixed) { try { S._planRead = fixed; } catch (_e) { void _e; } }
+      if (fixed) {
+        try { S._planRead = fixed; } catch (_e) { void _e; }
+        try { if (window.DraftQuality) window.DraftQuality.applied(_axesTouched()); } catch (_e2) { void _e2; }
+      }
       return fixed;
     }).catch(function () { return 0; });
   }
@@ -1203,6 +1218,14 @@
        (이 레포에서 이미 나온 패턴이다 — 비동기 결과는 자기 세대인지 확인하고 쓴다) */
     var mySession = S;
     var alive = function () { return S === mySession && !S._userMoved; };
+    /* [STAGE D] 품질 관측 세션 시작 — 초안이 아무것도 안 해도 연다.
+       분모(초안이 돈 세션 수)를 알아야 되돌림률이 의미를 갖는다. */
+    try {
+      if (window.DraftQuality) {
+        var _ci = (window.ContentIntent && window.ContentIntent.peek) ? window.ContentIntent.peek(url) : null;
+        window.DraftQuality.begin({ intent: _ci && _ci.kind });
+      }
+    } catch (_dq) { void _dq; }
 
     /* 🔑 순서: 타이포 먼저 → 렌더 → **그 다음에** geometry 측정 → Safety.
        타이포가 글자 박스 크기를 바꾸므로, 바꾸기 전 rect 로 Safety 를 정하면 틀린 자리로 옮긴다. */
@@ -1254,11 +1277,15 @@
         L.y += (best.rect.y - (b.top - R.top) / R.height) * R.height;
         applyXf(L);
         L._src = L._src || 'plan';   // 얹은 값 표시(자기강화 차단)
+        _planAxis(L, 'position');
         moved++;
       });
       /* 우리가 옮긴 건 **원장의 선택이 아니다** — 학습이 이걸 취향으로 삼으면 자기강화가 된다.
          `_src:'plan'` 태깅으로 구분하고, T8 의 `publishedKeptAuto`(약한 증거) 규칙에 맡긴다. */
-      if (moved) { try { S._planMoved = moved; } catch (_e) { void _e; } }
+      if (moved) {
+        try { S._planMoved = moved; } catch (_e) { void _e; }
+        try { if (window.DraftQuality) window.DraftQuality.applied(_axesTouched()); } catch (_e2) { void _e2; }
+      }
     }).catch(function () { /* 실패하면 그냥 안 움직인다 */ });
   }
 
@@ -1292,7 +1319,20 @@
   /* [STAGE C] `_own` = **원장이 직접 고른 축**. 자동 초안은 여기 표시된 축을 절대 안 덮는다.
      값으로 추측하면 틀린다 — 새 텍스트는 흰색·가운데정렬로 **미리 채워져** 나오는데
      그건 편집기 기본값이지 취향이 아니다. 그래서 고르는 순간에 도장을 찍는다. */
-  function _own(L, k) { if (L) { (L._own || (L._own = {}))[k] = 1; } }
+  function _own(L, k) {
+    if (!L) return;
+    (L._own || (L._own = {}))[k] = 1;
+    _dqFix(L, k);
+  }
+  // 초안이 건드린 축 표시 — 되돌림 판정의 짝
+  function _planAxis(L, k) { if (L) { (L._planAxes || (L._planAxes = {}))[k] = 1; } }
+  /* [STAGE D] **우리가 건드린 축을** 원장이 다시 바꿨다 = 초안이 틀렸다는 신호.
+     안 건드린 축을 바꾼 건 그냥 원장 작업이다 — 섞으면 지표가 무의미해진다.
+     호출부를 짧게 유지하려고 헬퍼로 뺐다(신호 지점 코드가 길어지면 남의 테스트가 깨진다). */
+  function _dqFix(L, k) {
+    try { if (L && L._planAxes && L._planAxes[k] && window.DraftQuality) window.DraftQuality.corrected(k, L.role || L.type); }
+    catch (_e) { void _e; }
+  }
   function applyFont(key) { var L = activeText(); if (!L) return; var f = FONTS.filter(function (x) { return x.key === key; })[0]; _sig('font_changed', { layerKey: L.role || L.type, before: L.font && L.font.key, after: key }); L.font = f; L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight; _own(L, 'font'); }
   function applyColor(c) { var L = activeText(); if (!L) return; _sig('color_changed', { layerKey: L.role || L.type, before: L.color, after: c }); L.color = c; L.tx.style.color = c; _own(L, 'color'); }
   function applyAlign(a) { var L = activeText(); if (!L) return; _sig('alignment_changed', { layerKey: L.role || L.type, before: L.align, after: a }); L.align = a; L.tx.style.textAlign = a; _own(L, 'align'); }
@@ -2229,6 +2269,7 @@
         meta.newPhotos = (isSingleL(S.layout) && S.photos && S.photos.length > (S._initPhotoN || 0)) ? S.photos.slice(S._initPhotoN || 0) : [];
         // [Phase 5.1] Safety baseline 관측. metaGeometry() 는 close() 전에만 유효(닫히면 rect=0).
         //   재기만 하고 배치는 안 바꾼다. 무거운 계산은 observePublish 안에서 유휴로 미룬다.
+        try { if (window.DraftQuality) window.DraftQuality.published({ published: true }); } catch (_dqe) { void _dqe; }
         try { if (window.WMMetrics) window.WMMetrics.observePublish(meta.layers, S.photoUrl, metaGeometry()); }
         catch (_mx) { void _mx; }
         _restoreSaveUi();
@@ -2487,7 +2528,15 @@
     if (S && S._popHandler) { try { window.removeEventListener('popstate', S._popHandler); } catch (_e) { void _e; } S._popHandler = null; }
     if (!fromPop && S && S._histPushed) { S._histPushed = false; window.__seSwallowPop = true; setTimeout(function () { window.__seSwallowPop = false; }, 0); try { history.back(); } catch (_e2) { void _e2; } }
   }
-  function close() { if (!root || !root.classList.contains('is-open')) return; _closeEyedrop(); _teardownBack(false); root.classList.remove('is-open'); }
+  function close() {
+    if (!root || !root.classList.contains('is-open')) return;
+    /* [STAGE D] 품질 세션 종료. 발행 경로는 이미 published:true 로 닫았으므로
+       여기서 또 닫아도 무해하다(`_cur` 이 null 이면 그냥 넘어간다).
+       취소·그냥 닫기도 **세어야** 한다 — 발행만 세면 분모가 발행 성공 쪽으로 쏠린다. */
+    try { if (window.DraftQuality) window.DraftQuality.published({ published: false, undone: !!(S && S._cancelled) }); }
+    catch (_dqc) { void _dqc; }
+    _closeEyedrop(); _teardownBack(false); root.classList.remove('is-open');
+  }
 
   // [#2 단일화] 헤드리스 합성 — 캡션 미리보기를 '편집기와 동일한 렌더러'로 그린다(미리보기=편집기).
   //   화면 밖 고정크기로 렌더 → 폰트/줄바꿈/겹침방지까지 편집기와 100% 동일. 편집 중이면 스킵(상태 충돌 방지).

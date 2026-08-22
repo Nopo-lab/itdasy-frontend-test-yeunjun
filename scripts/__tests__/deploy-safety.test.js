@@ -119,3 +119,28 @@ describe('[워크트리] 공유 위험을 세션 시작에 알린다', () => {
     expect(cmds.join(' ')).toMatch(/worktree-guard\.js/);
   });
 });
+
+/* 🔴 2026-08-22 실사고. `js/photo/draft-quality.js` 를 만들고 manifest 에 등록했다고
+   생각했는데 안 돼 있었다 — 등록 스크립트의 문자열이 안 맞아 **조용히 실패**했다.
+   증상이 고약하다: 파일은 저장소에 멀쩡히 있고 테스트도 통과한다. 그냥 **안 불릴 뿐**이다.
+   smoke-check 는 반대 방향(manifest 에 있는데 파일이 없음)만 본다. 이쪽도 막는다.
+
+   ⚠️ 이건 '모든 파일을 등록하라' 가 아니다. 일부러 안 부르는 파일이 있다(테스트 픽스처 등).
+      그래서 **소비처가 있는데 등록이 없는 경우**만 잡는다. */
+describe('[회귀] 만들어놓고 안 부르는 모듈', () => {
+  const fs2 = require('fs');
+  const path2 = require('path');
+  const R2 = path.resolve(__dirname, '../..');
+  const manifest = fs2.readFileSync(path2.join(R2, 'js/load-groups.js'), 'utf8');
+  const html = fs2.readFileSync(path2.join(R2, 'index.html'), 'utf8');
+
+  test('js/photo/*.js 는 전부 manifest 나 index.html 이 부른다', () => {
+    const dir = path2.join(R2, 'js/photo');
+    const files = fs2.readdirSync(dir).filter((f) => f.endsWith('.js'));
+    const missing = files.filter((f) => {
+      const ref = 'js/photo/' + f;
+      return !manifest.includes(ref) && !html.includes(ref);
+    });
+    expect(missing).toEqual([]);
+  });
+});

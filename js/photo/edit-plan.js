@@ -52,8 +52,49 @@
     try {
       if (/[?&]autodraft=1/.test(location.search)) return true;
       if (/[?&]autodraft=0/.test(location.search)) return false;
-      return window.ITDASY_AUTO_EDIT_PLAN === true;
+      if (window.ITDASY_AUTO_EDIT_PLAN === true) return true;
+      return _inRollout();
     } catch (_e) { void _e; return false; }
+  }
+
+  /* [STAGE D] 단계적 노출 — 10% → 50% → 100%.
+     **원장 단위로 고정**한다. 세션마다 켜졌다 꺼졌다 하면 "어제는 됐는데 오늘은 안 되네" 가
+     되는데, 그건 기능이 없는 것보다 나쁘다(무엇을 믿을지 모르게 된다).
+     그래서 테넌트 id 를 해시해서 버킷을 고정한다 — 같은 원장은 늘 같은 결과다.
+
+     ⚠️ 로그인 전(테넌트 없음)에는 **항상 꺼짐**이다. 익명 버킷을 만들면
+        로그인 시점에 결과가 바뀌어서 위의 고정 원칙이 깨진다. */
+  var ROLLOUT_PCT = 0;          // 0=아무에게도 안 켬. 게이트 통과 후 10 → 50 → 100.
+
+  function _tenant() {
+    try { return localStorage.getItem('last_user_id') || null; } catch (_e) { void _e; return null; }
+  }
+
+  // FNV-1a — 짧고 고르게 퍼진다. 암호용이 아니라 버킷용이다.
+  function _bucket(id) {
+    var h = 2166136261, i;
+    for (i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = (h * 16777619) >>> 0; }
+    return h % 100;
+  }
+
+  function _inRollout() {
+    var pct = (typeof window.ITDASY_DRAFT_ROLLOUT === 'number')
+      ? window.ITDASY_DRAFT_ROLLOUT : ROLLOUT_PCT;
+    if (!pct) return false;
+    if (pct >= 100) return true;
+    var t = _tenant();
+    if (!t) return false;                       // 로그인 전엔 안 켠다
+    return _bucket(String(t)) < pct;
+  }
+
+  function rolloutInfo() {
+    var t = _tenant();
+    return {
+      pct: (typeof window.ITDASY_DRAFT_ROLLOUT === 'number') ? window.ITDASY_DRAFT_ROLLOUT : ROLLOUT_PCT,
+      hasTenant: !!t,
+      bucket: t ? _bucket(String(t)) : null,
+      on: _inRollout()
+    };
   }
 
   /* 플래그 — 기존 T8 `_flagOn()` 과 같은 패턴(URL 로 강제 on/off + 전역 스위치).
@@ -234,5 +275,5 @@
   }
 
   window.EditPlan = { SCHEMA: SCHEMA, SCOPE: SCOPE, flagOn: flagOn, autoDraftOn: autoDraftOn,
-    compute: compute, applyToLayers: applyToLayers };
+    rolloutInfo: rolloutInfo, compute: compute, applyToLayers: applyToLayers };
 })();
