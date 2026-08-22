@@ -465,6 +465,88 @@ describe('[Phase 3] 증거 계층 — 기본값을 사용자 의도로 오독하
     order.forEach((c) => expect(priorSrc).toMatch(new RegExp('\\b' + c + ':')));
   });
 
+  /* [2026-08-22] 실측 캡처 27샵으로 seed 를 고쳤다.
+     여기서 잠그는 건 **값 자체가 아니라 정직성**이다 —
+     표본이 없는 업종을 실측인 척하면 그게 Phase 0 의 center-75% 와 같은 실수가 된다. */
+  describe('실측 교정 — 표본 없는 업종을 실측인 척하지 않는다', () => {
+    const load = () => {
+      const win = {};
+      new Function('window', priorSrc)(win);
+      return win.CategoryPrior;
+    };
+
+    test('실측한 6업종만 visual 을 갖는다 — skin 은 데이터가 없어 null', () => {
+      const CP = load();
+      const measured = ['nail', 'lash', 'tattoo', 'hair', 'extension', 'waxing'];
+      measured.forEach((c) => {
+        const p = CP.get(c);
+        expect(p.visual).not.toBeNull();
+        expect(p.sample.shops).toBeGreaterThan(0);
+      });
+      // 캡처 데이터셋에 피부가 없었다. 없으면 없다고 해야 한다.
+      const skin = CP.get('skin');
+      expect(skin.visual).toBeNull();
+      expect(skin.sample.shops).toBe(0);
+    });
+
+    test('표본 수는 실제 분석한 샵 수와 같다 (합계 27샵)', () => {
+      const CP = load();
+      const shops = { nail: 1, tattoo: 5, extension: 7, lash: 4, waxing: 4, hair: 6, skin: 0 };
+      let total = 0;
+      Object.keys(shops).forEach((c) => {
+        const p = CP.get(c);
+        expect(p.sample.shops).toBe(shops[c]);
+        expect(p.sample.posts).toBe(shops[c] * 6);   // 캡처는 샵당 6게시물
+        total += p.sample.shops;
+      });
+      expect(total).toBe(27);
+    });
+
+    test('표본이 빈약하면 caution 을 단다 — 네일은 샵 1개뿐이었다', () => {
+      const CP = load();
+      expect(CP.get('nail').sample.caution).toBeTruthy();
+      expect(CP.get('skin').sample.caution).toBeTruthy();
+      expect(CP.get('hair').sample.caution).toBeUndefined();   // 6샵 — 충분
+    });
+
+    test('visual 은 0~1 범위, warmth 만 음수 가능 (색온도는 양방향)', () => {
+      const CP = load();
+      CP.categories.forEach((c) => {
+        const v = CP.get(c).visual;
+        if (!v) return;
+        ['brightness', 'saturation', 'contrast'].forEach((k) => {
+          expect(v[k]).toBeGreaterThanOrEqual(0);
+          expect(v[k]).toBeLessThanOrEqual(1);
+        });
+        expect(Math.abs(v.warmth)).toBeLessThanOrEqual(1);
+      });
+    });
+
+    test('실측을 반영해도 seed 계약은 그대로 — editor_observed 를 못 이긴다', () => {
+      const CP = load();
+      CP.categories.forEach((c) => {
+        const p = CP.get(c);
+        expect(p.evidenceStrength).toBe('seed');       // 실측해도 '학습' 이 아니다
+        expect(p.source).toBe('category_prior');
+        expect(p.confidence).toBeLessThanOrEqual(0.5);
+      });
+    });
+
+    test('피사체 힌트는 실측대로 center — 근거 없는 2·3순위를 넣지 않는다', () => {
+      const CP = load();
+      // 실측 27샵 전부 center 가 1위였다(75~100%).
+      CP.categories.forEach((c) => {
+        expect(CP.get(c).subjectZoneHint[0]).toBe('center');
+      });
+    });
+
+    test('OCR 없이 텍스트 위치를 자동 추출했다고 주장하지 않는다', () => {
+      // 엣지 밀집도 추정은 육안 관찰과 어긋났다(붙임머리 upper-center vs 실제 lower-left).
+      // 그 한계를 파일에 남겨야 다음 사람이 같은 함정에 안 빠진다.
+      expect(priorSrc).toMatch(/OCR\/Vision 필요|자동 추출이 불가능/);
+    });
+  });
+
   test('아직 아무도 소비하지 않는다', () => {
     const hits = [];
     const walk = (d) => {
