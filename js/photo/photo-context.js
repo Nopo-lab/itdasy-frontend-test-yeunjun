@@ -27,7 +27,19 @@
   'use strict';
   if (window.PhotoContext) return;
 
-  var SCHEMA = 'pctx-v2';   // v2: skinFrac·seam 추가 (ContentIntent 용)
+  /* sRGB → 선형 변환표(WCAG 2.x). 픽셀마다 pow() 를 부르지 않으려고 256칸을 미리 만든다.
+     감마 인코딩된 Y 로 대비를 어림하면 **중간톤에서 실제와 어긋난다** — 가독성은
+     "대충 맞다"로 넘길 축이 아니라서(안 보이면 게시물이 망한다) 표준대로 간다. */
+  var SRGB_LIN = (function () {
+    var t = new Float32Array(256);
+    for (var i = 0; i < 256; i++) {
+      var c = i / 255;
+      t[i] = c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    }
+    return t;
+  })();
+
+  var SCHEMA = 'pctx-v3';   // v2: skinFrac·seam(ContentIntent) · v3: lumGrid(가독성 판정)
   var SAMPLE = 48;              // 다운샘플 한 변(px). safe-zone 은 36, kind 분류는 96 을 쓴다 —
                                 //   그 중간값. 색·밝기 통계는 이 해상도로 충분하고 8ms 안쪽이다.
   var L0_MAX = 24;              // 세션 캐시 상한(사진 24장 = 슬롯 몇 개 분)
@@ -146,6 +158,25 @@
       return base > 1 ? Math.round(best / base * 1000) / 1000 : 0;
     }
 
+    /* 8×8 휘도 격자 — **글자를 어디 놓든 그 자리 배경 밝기를 알 수 있게** 한다.
+       흰 글자를 흰 배경에 놓는 사고를 막는 게 목적이다. 전체 평균으론 못 막는다:
+       사진 전체는 어두운데 글자 놓을 자리만 밝은 경우가 실제로 흔하다(창문·조명·시술포).
+       64개 숫자라 캐시에 얹어도 부담이 없고, 이걸 위해 사진을 다시 열지 않아도 된다. */
+    var GRID = 8, grid = new Array(GRID * GRID), gsum = new Float64Array(GRID * GRID), gcnt = new Uint32Array(GRID * GRID);
+    for (var gy = 0; gy < nh; gy++) {
+      var gr = Math.min(GRID - 1, Math.floor(gy / nh * GRID));
+      for (var gx = 0; gx < nw; gx++) {
+        var gc = Math.min(GRID - 1, Math.floor(gx / nw * GRID));
+        var gi2 = (gy * nw + gx) * 4;
+        // WCAG 상대휘도 — 대비비를 표준대로 계산하려면 **선형** 값이어야 한다
+        gsum[gr * GRID + gc] += 0.2126 * SRGB_LIN[d[gi2]] + 0.7152 * SRGB_LIN[d[gi2 + 1]] + 0.0722 * SRGB_LIN[d[gi2 + 2]];
+        gcnt[gr * GRID + gc]++;
+      }
+    }
+    for (var gk = 0; gk < GRID * GRID; gk++) {
+      grid[gk] = gcnt[gk] ? Math.round(gsum[gk] / gcnt[gk] * 10000) / 10000 : 0;
+    }
+
     var meanY = sumY / n;
     var top = Object.keys(bins).sort(function (a, b2) { return bins[b2] - bins[a]; }).slice(0, 3);
     var skinFrac = skin / n;
@@ -165,6 +196,7 @@
       skinFrac: Math.round(skinFrac * 1000) / 1000,      // region 이 null 이어도 원값은 필요하다
       seamV: _seam(true),                                 // 좌우 분할(전·후 비교)
       seamH: _seam(false),                                // 상하 분할(텍스트 밴드)
+      lumGrid: grid, lumGridSize: GRID,                   // 8×8 **WCAG 상대휘도** — 가독성 판정용
       dominantColors: top.map(function (k) {
         var v = parseInt(k, 10);
         return '#' + [(v >> 8) & 15, (v >> 4) & 15, v & 15]
@@ -298,5 +330,59 @@
     };
   }
 
-  window.PhotoContext = { of: of, peek: peek, stats: stats, SCHEMA: SCHEMA };
+  /* 정규화 rect(0~1) 아래의 **평균 상대휘도·편차**를 격자에서 읽는다.
+     편차를 같이 내는 이유: 배경이 얼룩덜룩하면 어떤 색을 골라도 일부는 안 보인다.
+     그때는 색만 바꾸지 말고 외곽선·그림자로 가야 한다. */
+  function regionLum(pctx, rect) {
+    if (!pctx || !pctx.lumGrid || !rect) return null;
+    var G = pctx.lumGridSize || 8, g = pctx.lumGrid;
+    var x0 = Math.max(0, Math.min(G - 1, Math.floor(rect.x * G)));
+    var y0 = Math.max(0, Math.min(G - 1, Math.floor(rect.y * G)));
+    var x1 = Math.max(x0, Math.min(G - 1, Math.ceil((rect.x + rect.w) * G) - 1));
+    var y1 = Math.max(y0, Math.min(G - 1, Math.ceil((rect.y + rect.h) * G) - 1));
+    var vals = [];
+    for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) vals.push(g[y * G + x]);
+    if (!vals.length) return null;
+    var mean = vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+    var v = vals.reduce(function (a, b) { return a + (b - mean) * (b - mean); }, 0) / vals.length;
+    return {
+      mean: Math.round(mean * 1000) / 1000,
+      sd: Math.round(Math.sqrt(v) * 1000) / 1000,
+      min: Math.round(Math.min.apply(null, vals) * 1000) / 1000,
+      max: Math.round(Math.max.apply(null, vals) * 1000) / 1000,
+      cells: vals.length
+    };
+  }
+
+  /* 스테이지 좌표 → **사진 좌표** 변환. 이게 없으면 휘도 격자를 엉뚱한 자리에서 읽는다.
+     휘도 격자는 사진 전체 기준인데 글자 rect 는 화면(스테이지) 기준이다.
+     게시물 비율(1:1·4:5·9:16)이 사진 비율과 다르면 `cover` 가 사진을 잘라서 둘이 어긋난다.
+
+     🔴 실제로 틀렸다(브라우저 실측으로 잡음): 같은 밝은 사진인데 4:5 에선 글자에 외곽선이
+        붙고 1:1 에선 안 붙었다. 흰 카드 사진에 흰 글자가 그대로 남기도 했다.
+        유닛테스트로는 못 잡는다 — 비율이 같은 합성 데이터만 넣고 있었기 때문이다.
+
+     contain 이면 사진 밖(레터박스)이 나올 수 있다 → 그 부분은 사진이 아니므로 **null** 을 준다
+     (배경색 위 가독성은 사진 통계로 답할 수 없다. 모르면 모른다고 한다). */
+  function mapStageRect(pctx, rect, stageAspect, fitMode) {
+    if (!pctx || !rect || !stageAspect) return null;
+    var pa = pctx.aspect;                       // 사진 가로/세로
+    if (!pa) return null;
+    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
+    if (fitMode === 'contain') {
+      // 사진이 스테이지 안에 들어가고 남는 쪽은 배경 — 사진 좌표로 되돌린 뒤 범위를 벗어나면 포기
+      if (pa > stageAspect) { var vh = stageAspect / pa; y = (y - (1 - vh) / 2) / vh; h = h / vh; }
+      else { var vw = pa / stageAspect; x = (x - (1 - vw) / 2) / vw; w = w / vw; }
+      if (x + w < 0 || x > 1 || y + h < 0 || y > 1) return null;   // 전부 레터박스 위
+    } else {
+      // cover(기본) — 넘치는 쪽이 잘린다. 보이는 구간만 사진 좌표로 환산
+      if (pa > stageAspect) { var vw2 = stageAspect / pa; x = (1 - vw2) / 2 + x * vw2; w = w * vw2; }
+      else { var vh2 = pa / stageAspect; y = (1 - vh2) / 2 + y * vh2; h = h * vh2; }
+    }
+    return { x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)),
+      w: Math.max(0, Math.min(1, w)), h: Math.max(0, Math.min(1, h)) };
+  }
+
+  window.PhotoContext = { of: of, peek: peek, stats: stats,
+    regionLum: regionLum, mapStageRect: mapStageRect, SCHEMA: SCHEMA };
 })();

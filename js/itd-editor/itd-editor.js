@@ -1087,29 +1087,95 @@
   function _applyPlanTypography(plan) {
     if (!plan || !plan.typography || !S) return 0;
     var t = plan.typography, n = 0;
+    var R = _stageWH();
     S.layers.forEach(function (L) {
       if (!L || !L.tx) return;
       if (L.type !== 'text' && L.type !== 'badge') return;
       if (L.role) return;                       // 역할 레이어는 템플릿 소유
       if (L._src === 'wm') return;              // 작업기억이 얹은 건 그쪽 소관
-      // 폰트 — 지원 키만. 모르는 키가 오면 기존 폰트를 유지한다(외부 문자열 직접 주입 금지)
-      if (t.font && t.font.value && !L._planFont) {
-        var f = fontByKey(t.font.value);
-        if (f && (!L.font || !L.font.key)) {
+      var own = L._own || {};
+
+      /* 🔑 "값이 비었나" 가 아니라 **"원장이 골랐나"** 로 판단한다.
+         새 텍스트는 흰색·가운데정렬·40px 로 미리 채워져 나오는데 그건 편집기 기본값이다.
+         값으로 판단하면 이 축들은 영영 안 채워진다 — 실제로 그 상태였다. */
+      if (t.font && t.font.value && !own.font && !L._planFont) {
+        var f = fontByKey(t.font.value);        // 지원 키만. 모르는 키면 기존 폰트 유지
+        if (f) {
           L.font = f; L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight;
           L._planFont = true; L._src = L._src || 'plan'; n++;
         }
       }
-      if (t.color && t.color.value && (L.color == null || L.color === '')) {
+      if (t.color && t.color.value && !own.color) {
         L.color = t.color.value; L.tx.style.color = t.color.value;
         L._src = L._src || 'plan'; n++;
       }
-      if (t.align && t.align.value && (L.align == null || L.align === '')) {
+      if (t.align && t.align.value && !own.align) {
         L.align = t.align.value; L.tx.style.textAlign = t.align.value;
         L._src = L._src || 'plan'; n++;
       }
+      /* 크기 — 업종 실측 비율(스테이지 높이 대비). **이미 비슷하면 안 건드린다**:
+         자동 초안이 매번 몇 px 씩 흔들면 원장 눈엔 그냥 버그다. */
+      if (t.size && t.size.value && !own.size && R.height) {
+        var want = Math.max(12, Math.round(t.size.value * R.height));
+        var cur = L.fontSize || 0;
+        if (cur && Math.abs(want - cur) / cur > 0.15) {
+          L.fontSize = want; L.tx.style.fontSize = want + 'px';
+          L._src = L._src || 'plan'; n++;
+        }
+      }
     });
     return n;
+  }
+
+  /* [STAGE C] 가독성 — **자리가 정해진 뒤에** 그 자리 배경으로 판정한다.
+     Safety 가 글자를 옮기면 배경이 바뀐다. 옮기기 전에 재면 틀린 배경으로 판정한다.
+     그래서 이 패스는 반드시 Safety **다음**이다.
+
+     고치는 순서는 색 → 외곽선 → 그림자. 원장 디자인을 덜 건드리는 쪽부터다. */
+  function _planReadabilityPass(url, alive) {
+    if (!(window.TextReadability && window.PhotoContext)) return Promise.resolve(0);
+    if (!window.EditPlan || !window.EditPlan.SCOPE.readability) return Promise.resolve(0);
+    return window.PhotoContext.of(url).then(function (pctx) {
+      if (!pctx || !pctx.lumGrid || (alive && !alive())) return 0;
+      var R = refs.stage.getBoundingClientRect(); if (!R.width || !R.height) return 0;
+      var fixed = 0;
+      S.layers.forEach(function (L) {
+        if (!L || !L.tx || (L.type !== 'text' && L.type !== 'badge')) return;
+        if (L._src === 'wm') return;
+        /* 🔑 역할(role) 레이어도 **여기서는** 본다. 타이포와 다른 점이다.
+           브라우저에서 실제로 열어보고 알았다: 자동 초안이 올리는 시술 텍스트는 전부 role 이라
+           role 을 건너뛰면 실사용 경로에서 이 기능이 **한 번도 안 돈다**.
+           단, 색은 템플릿(ShopStyle)이 정한 원장의 선택이므로 **절대 안 바꾼다** —
+           외곽선·그림자로만 띄운다. 안 보이는 문구를 그대로 두는 것보다 낫고,
+           원장이 고른 색을 바꾸는 것보다 덜 침범한다. */
+        var isRole = !!L.role;
+        var own = L._own || {};
+        var b = L.el.getBoundingClientRect();
+        if (!b.width || !b.height) return;
+        var rect = { x: (b.left - R.left) / R.width, y: (b.top - R.top) / R.height,
+          w: b.width / R.width, h: b.height / R.height };
+        /* 🔑 스테이지 좌표를 **사진 좌표로 옮긴다.** 게시물 비율이 사진 비율과 다르면
+           cover 가 사진을 잘라서, 안 옮기면 엉뚱한 자리의 밝기를 읽는다.
+           (실측: 같은 사진이 4:5 에선 외곽선이 붙고 1:1 에선 안 붙었다) */
+        var pRect = window.PhotoContext.mapStageRect(pctx, rect, R.width / R.height, S.fitMode);
+        if (!pRect) return;                     // contain 레터박스 위 — 사진이 아니라 판정 불가
+        var bg = window.PhotoContext.regionLum(pctx, pRect);
+        if (!bg) return;
+        var fix = window.TextReadability.resolve({
+          color: L.color, colorIsDefault: !isRole && !own.color, bg: bg,
+          hasStroke: !!L.stroke, hasShadow: !!L.shadow
+        });
+        if (!fix) return;                       // 이미 잘 보인다 — 아무것도 안 한다
+        if (fix.color && !isRole && !own.color) { L.color = fix.color; L.tx.style.color = fix.color; }
+        if (fix.stroke && !L.stroke) { L.stroke = true; L.tx.style.webkitTextStroke = '1px rgba(0,0,0,.5)'; }
+        if (fix.shadow && !L.shadow) { L.shadow = true; L.tx.style.textShadow = '0 2px 8px rgba(0,0,0,.35)'; }
+        L._src = L._src || 'plan';
+        L._planRead = fix;                      // 왜 바꿨는지 남긴다(디버그·되돌리기)
+        fixed++;
+      });
+      if (fixed) { try { S._planRead = fixed; } catch (_e) { void _e; } }
+      return fixed;
+    }).catch(function () { return 0; });
   }
 
   /* [STAGE C] 원장이 **직접 놓은 텍스트**가 피사체를 가리면 안전한 자리로 옮긴다.
@@ -1130,6 +1196,14 @@
     if (S.layout && (S.layout.kind || 'single') !== 'single') return;   // 콜라주는 칸이 배치를 소유
     S._planApplied = true;
 
+    /* 🔴 세션 토큰 — 편집기를 닫고 **바로 다시 열면** 이전 세션의 비동기 체인이
+       아직 날아다닌다. 그 체인은 모듈 전역 `S` 를 보므로, 가드를 `!S` 로만 두면
+       **새 세션 레이어를 이전 세션의 판단으로 건드린다.**
+       브라우저 실측으로 잡았다: 닫고 바로 여니 외곽선이 붙었다가 사라졌다.
+       (이 레포에서 이미 나온 패턴이다 — 비동기 결과는 자기 세대인지 확인하고 쓴다) */
+    var mySession = S;
+    var alive = function () { return S === mySession && !S._userMoved; };
+
     /* 🔑 순서: 타이포 먼저 → 렌더 → **그 다음에** geometry 측정 → Safety.
        타이포가 글자 박스 크기를 바꾸므로, 바꾸기 전 rect 로 Safety 를 정하면 틀린 자리로 옮긴다. */
     var planCtx = {
@@ -1138,20 +1212,24 @@
       photoCount: (S.photos || []).length
     };
     window.EditPlan.compute(planCtx).then(function (plan) {
-      if (!plan || !S || S._userMoved) return;
+      if (!plan || !alive()) return;
       var typoN = _applyPlanTypography(plan);
       if (typoN) { try { S._planTypo = typoN; } catch (_e) { void _e; } }
       // 타이포 반영 뒤의 **실제** rect 로 다시 잰다
       var geoms = metaGeometry();
       if (!geoms.length) return;
-      return _planSafetyPass(geoms, url);
+      // Safety 로 자리가 정해진 **다음에** 가독성을 본다 — 옮기면 배경이 바뀐다
+      return _planSafetyPass(geoms, url, alive).then(function () {
+        if (!alive()) return 0;
+        return _planReadabilityPass(url, alive);
+      });
     }).catch(function () { /* 초안 실패는 조용히 — 편집기는 정상 동작 */ });
   }
 
   /* Safety 패스 — 타이포 반영 **후의** geometry 로만 판정한다. */
-  function _planSafetyPass(geoms, url) {
+  function _planSafetyPass(geoms, url, alive) {
     return window.PhotoContext.of(url).then(function (pctx) {
-      if (!pctx || !pctx.subjectRegion || !S || S._userMoved) return;
+      if (!pctx || !pctx.subjectRegion || (alive && !alive())) return;
       var R = refs.stage.getBoundingClientRect(); if (!R.width || !R.height) return;
       var det = window.SafetyShadow.detect(geoms, pctx);
       if (!det.verdictReliable) return;
@@ -1211,9 +1289,13 @@
      _pushOp 에 속성변경을 넣으면 ↩ 동작이 바뀌어 T4 계약이 깨지므로 여기서만 기록한다.
      system 스코프(자동적용·복원·undo) 안에서는 WMSignals 가 알아서 무시한다. */
   function _sig(ev, p) { try { if (window.WMSignals) window.WMSignals.note(ev, p); } catch (_e) { void _e; } }
-  function applyFont(key) { var L = activeText(); if (!L) return; var f = FONTS.filter(function (x) { return x.key === key; })[0]; _sig('font_changed', { layerKey: L.role || L.type, before: L.font && L.font.key, after: key }); L.font = f; L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight; }
-  function applyColor(c) { var L = activeText(); if (!L) return; _sig('color_changed', { layerKey: L.role || L.type, before: L.color, after: c }); L.color = c; L.tx.style.color = c; }
-  function applyAlign(a) { var L = activeText(); if (!L) return; _sig('alignment_changed', { layerKey: L.role || L.type, before: L.align, after: a }); L.align = a; L.tx.style.textAlign = a; }
+  /* [STAGE C] `_own` = **원장이 직접 고른 축**. 자동 초안은 여기 표시된 축을 절대 안 덮는다.
+     값으로 추측하면 틀린다 — 새 텍스트는 흰색·가운데정렬로 **미리 채워져** 나오는데
+     그건 편집기 기본값이지 취향이 아니다. 그래서 고르는 순간에 도장을 찍는다. */
+  function _own(L, k) { if (L) { (L._own || (L._own = {}))[k] = 1; } }
+  function applyFont(key) { var L = activeText(); if (!L) return; var f = FONTS.filter(function (x) { return x.key === key; })[0]; _sig('font_changed', { layerKey: L.role || L.type, before: L.font && L.font.key, after: key }); L.font = f; L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight; _own(L, 'font'); }
+  function applyColor(c) { var L = activeText(); if (!L) return; _sig('color_changed', { layerKey: L.role || L.type, before: L.color, after: c }); L.color = c; L.tx.style.color = c; _own(L, 'color'); }
+  function applyAlign(a) { var L = activeText(); if (!L) return; _sig('alignment_changed', { layerKey: L.role || L.type, before: L.align, after: a }); L.align = a; L.tx.style.textAlign = a; _own(L, 'align'); }
   function applyScale(v) { var L = S.active; if (!L) return; L.scale = parseFloat(v); applyXf(L); }
   function activeText() { return S.active && S.active.type === 'text' ? S.active : null; }
 
@@ -2302,6 +2384,11 @@
         // [T4] 작업 기억 출처 태그 — '이번엔 빼기'(undoWmApply)가 이 레이어만 골라 지운다.
         //   _serLayer 화이트리스트엔 없어 저장/사진전환 직렬화엔 안 실린다(런타임 전용).
         if (L2 && spec._src === 'wm') { L2._src = 'wm'; L2._wmTok = spec._wmTok || null; }
+        /* [STAGE C] 복원된 레이어는 **전부 원장 소유**로 본다.
+           클릭 기록(`_own`)은 런타임 값이라 저장에 안 실린다. 그렇다고 "표시가 없으니
+           기본값이겠지" 라고 보면, 이어서 편집하는 원장의 작업물을 자동 초안이 덮는다.
+           되돌리기 어려운 쪽으로 틀리지 않게 **안 건드리는 쪽**을 택한다. */
+        if (L2 && !L2._src) { L2._own = { font: 1, color: 1, align: 1, size: 1 }; L2._restored = true; }
       } catch (_e) { void _e; }
     });
     S.active = null; S.layers.forEach(function (x) { x.el.classList.remove('is-active'); });

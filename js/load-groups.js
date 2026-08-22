@@ -9,7 +9,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/workspace/workspace-state.js?v=local-151154',
   'js/workspace/blob-url.js?v=local-151154',
   // [Phase 1 2026-08-21] 사진 문맥 — 관측 전용(아무 동작도 안 바꾼다). shadow 통과 전까지 소비처 없음.
-  'js/photo/photo-context.js?v=local-pctx1',
+  'js/photo/photo-context.js?v=local-c3',
   // [Phase 1] 계측 — WMSignals 를 감싸 읽기만 한다(T8 파일 무수정). 되돌리기=이 줄 삭제.
   'js/workspace/wm-metrics.js?v=local-p51b',
   // [Phase 2 준비] shadow 비교기 — **호출부 없음**(계산기만). 게이트 통과 후 배선.
@@ -19,7 +19,9 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   // [Phase 3] 업종 seed + 증거계층 resolver. 소비처 없음(Replay/Shadow 검증 전).
   'js/photo/category-prior.js?v=local-p3a',
   // [STAGE C] 게시물 종류(인물/전후비교/후기캡처) — 실측 27샵으로 임계값 정함. EditPlan(기본 OFF)만 소비.
-  'js/photo/content-intent.js?v=local-c1',
+  'js/photo/content-intent.js?v=local-c3',
+  // [STAGE C] 글자가 배경에 묻히는지 WCAG 대비비로 확인 → 색·외곽선·그림자 최소 수정.
+  'js/photo/text-readability.js?v=local-c3',
   'js/photo/shop-baseline.js?v=local-p3b',
   // [Phase 5] Safety Shadow — 계산만. 화면 반영 0(테스트가 소비처 0 감시).
   'js/photo/safety-shadow.js?v=local-p51',
@@ -32,7 +34,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   // [Phase 5.5] 증거 모니터 — 판정·안내만. 새 저장소 없음(기존 리포트 조합).
   'js/photo/evidence-monitor.js?v=local-p55',
   // [STAGE C] 실제 편집안 — 기본 OFF(?editplan=1). 편집기가 소비한다.
-  'js/photo/edit-plan.js?v=local-sc1',
+  'js/photo/edit-plan.js?v=local-c3',
   'js/workspace/shop-style.js?v=local-151154',
   'js/workspace/work-memory.js?v=local-151154',
   'js/workspace/work-memory-engine.js?v=local-t8hp',
@@ -47,7 +49,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   // [2026-07-23] 아이콘 스티커 세트 — itd-editor.js 보다 **먼저** 실려야 STK_TABS 가 탭을 만든다.
   'js/itd-editor/data/itd-icon-stickers.js?v=local-151154',
   'js/itd-editor/safe-zone.js?v=local-151154',
-  'js/itd-editor/itd-editor.js?v=local-editfix2',
+  'js/itd-editor/itd-editor.js?v=local-c4',
   'js/workspace/workspace-adapter.js?v=local-151154',
   'js/workspace/workspace-sync.js?v=local-151154',
   'js/workspace/workspace-crop.js?v=local-151154',
@@ -67,7 +69,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/workspace/flow/ba-autorole.js?v=local-151154',
   'js/workspace/flow/steps.js?v=local-151154',
   'app-feed-planner.js?v=local-151154',
-  'js/workspace/workspace-v2-flow.js?v=local-t8hv2b',
+  'js/workspace/workspace-v2-flow.js?v=local-c3',
   'js/workspace/workspace-tpl-edit.js?v=local-151154',
   'app-gallery-assign.js?v=local-151154',
   'app-gallery-slot-editor.js?v=local-151154',

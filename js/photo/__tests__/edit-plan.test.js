@@ -17,10 +17,19 @@ describe('[STAGE C] 타이포 — 빈 축만 채우고, 바꾼 뒤 다시 잰다
     expect(i3).toBeGreaterThan(i2);
   });
 
-  test('원장이 고른 값을 덮지 않는다 — 빈 축만', () => {
-    expect(ed).toMatch(/if \(f && \(!L\.font \|\| !L\.font\.key\)\)/);
-    expect(ed).toMatch(/L\.color == null \|\| L\.color === ''/);
-    expect(ed).toMatch(/L\.align == null \|\| L\.align === ''/);
+  /* 🔴 이 테스트는 **틀린 동작을 잠그고 있었다**(2026-08-22 교체).
+     "값이 비었으면 채운다" 로 잠가놨는데, 편집기는 새 텍스트에 흰색·가운데정렬·40px 를
+     **미리 채워서** 만든다. 그래서 이 축들은 영영 안 채워졌다 — 통과하는데 동작은 안 하는
+     상태였다. BrandKit 에서 이미 같은 실수를 했다(get() 이 저장 안 해도 기본색을 돌려줬다).
+     → 이제 값이 아니라 **원장이 골랐는지**(`_own`)를 본다. 도장은 고르는 순간 찍힌다. */
+  test('원장이 고른 값을 덮지 않는다 — 판단 기준은 값이 아니라 _own', () => {
+    expect(ed).toMatch(/function _own\(L, k\)/);
+    expect(ed).toMatch(/var own = L\._own \|\| \{\};/);
+    ['font', 'color', 'align', 'size'].forEach((k) => {
+      expect(ed).toMatch(new RegExp('!own\\.' + k));
+    });
+    // 값이 비었는지로 판단하던 옛 검사가 되살아나면 안 된다
+    expect(ed).not.toMatch(/L\.color == null \|\| L\.color === ''/);
   });
 
   test('지원하지 않는 폰트 키는 무시한다 (외부 문자열 직접 주입 금지)', () => {

@@ -117,13 +117,35 @@
     };
   }
 
+  /* 사진 URL → 판정 캐시. **동기 조회**가 필요해서 둔다:
+     '이 사진엔 글자를 더 얹지 말자' 는 결정이 **레이어를 만들기 전에** 끝나 있어야 하는데,
+     그 시점은 동기 코드다. 그래서 사진을 고르는 순간 미리 데워두고(`warm`),
+     편집기가 열릴 때는 `peek` 로 즉시 답한다.
+     ⚠️ 안 데워졌으면 **null 을 준다** — 기다리지 않는다. 못 물어봤으면 기존 동작이 정답이다. */
+  var _cache = Object.create(null), _keys = [];
+  function _remember(url, r) {
+    if (!url) return r;
+    if (!_cache[url]) { _keys.push(url); if (_keys.length > 40) delete _cache[_keys.shift()]; }
+    _cache[url] = r;
+    return r;
+  }
+  function peek(photoUrl) { return (photoUrl && _cache[photoUrl]) || null; }
+  function warm(photoUrl) {
+    if (!photoUrl) return Promise.resolve(null);
+    if (_cache[photoUrl]) return Promise.resolve(_cache[photoUrl]);
+    return of(photoUrl).then(function (r) { return _remember(photoUrl, r); });
+  }
+
   function of(photoUrl) {
     var pc = window.PhotoContext;
     if (!pc || !photoUrl) return Promise.resolve(_out('unknown', 0, { reason: 'no_context' }));
-    return pc.of(photoUrl).then(classify).catch(function () {
+    return pc.of(photoUrl).then(function (pctx) {
+      return _remember(photoUrl, classify(pctx));
+    }).catch(function () {
       return _out('unknown', 0, { reason: 'error' });
     });
   }
 
-  window.ContentIntent = { SCHEMA: SCHEMA, TH: TH, LAYOUT: LAYOUT, of: of, classify: classify };
+  window.ContentIntent = { SCHEMA: SCHEMA, TH: TH, LAYOUT: LAYOUT,
+    of: of, classify: classify, warm: warm, peek: peek };
 })();

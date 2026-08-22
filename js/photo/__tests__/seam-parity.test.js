@@ -60,7 +60,9 @@ describe('[STAGE C] seam — JS 가 실측(파이썬)과 같은 수를 낸다', 
     expect(seam(false)).toBeLessThan(1.6);
   });
 
-  test('스키마가 v2 다 — seam 이 없던 옛 캐시는 버려져야 한다', () => {
-    expect(src).toMatch(/SCHEMA = 'pctx-v2'/);
+  test('필드가 늘 때마다 스키마를 올린다 — 반쪽짜리 옛 캐시가 더 위험하다', () => {
+    // v2=seam · v3=lumGrid. 필드를 추가하면서 스키마를 안 올리면 옛 캐시가 살아남아
+    // 새 필드만 undefined 인 객체가 돈다. 그건 '없음'보다 잡기 어렵다.
+    expect(src).toMatch(/SCHEMA = 'pctx-v3'/);
   });
 });

@@ -33,14 +33,28 @@
   /* 자동 적용 범위 — 켤 때마다 하나씩 연다.
      처음부터 전부 켜면 뭐가 좋아지고 뭐가 나빠졌는지 못 가른다. */
   var SCOPE = {
-    intent: true,      // 게시물 종류 판정 (텍스트 카드엔 글자를 더 얹지 않는다)
-    safety: true,      // 피사체를 가리는 자유 텍스트를 안전한 자리로
-    typography: true,  // 폰트·크기·색 (증거 있을 때만)
-    anchor: false,     // 앵커 — Safety 가 필요할 때만 움직인다. 취향 앵커는 아직 OFF
-    sticker: false,    // 근거 약함
-    adjust: false,     // 사진 보정 — 되돌리기 어려워 보수적으로
-    caption: false     // 캡션은 별도 파이프라인 소유
+    intent: true,       // 게시물 종류 판정 (텍스트 카드엔 글자를 더 얹지 않는다)
+    safety: true,       // 피사체를 가리는 자유 텍스트를 안전한 자리로
+    typography: true,   // 폰트·색·정렬 (증거 있을 때만)
+    size: true,         // 글자 크기 — 업종 실측 sizeRatio 가 있다
+    readability: true,  // 🔑 실제 배경 대비를 재서 안 보이면 최소한만 고친다
+    anchor: false,      // 취향 앵커 — Safety 가 필요할 때만 움직인다
+    sticker: false,     // 근거 약함
+    crop: false,        // 원본 훼손 — 되돌리기 가장 어렵다
+    adjust: false,      // 사진 보정 — 되돌리기 어려워 보수적으로
+    caption: false      // 캡션은 별도 파이프라인 소유
   };
+
+  /* 자동 초안(사진 선택 → 편집기 열림 시 자동 적용) 전용 스위치.
+     `flagOn()`(=EditPlan 자체)과 **따로** 둔다: 계산은 켜되 자동 적용은 꺼둔 상태로
+     먼저 관측하고 싶기 때문이다. 둘 다 켜져야 자동 초안이 돈다. */
+  function autoDraftOn() {
+    try {
+      if (/[?&]autodraft=1/.test(location.search)) return true;
+      if (/[?&]autodraft=0/.test(location.search)) return false;
+      return window.ITDASY_AUTO_EDIT_PLAN === true;
+    } catch (_e) { void _e; return false; }
+  }
 
   /* 플래그 — 기존 T8 `_flagOn()` 과 같은 패턴(URL 로 강제 on/off + 전역 스위치).
      **기본 OFF.** 근거가 쌓이기 전에는 아무에게도 적용되지 않는다.
@@ -120,12 +134,18 @@
       intent: intent ? intent.kind : null,
       intentConfidence: intent ? intent.confidence : 0,
       canAddText: intent && intent.layout ? intent.layout.canAddText !== false : true,
-      // 각 축은 근거가 있을 때만 채운다. null = "건드리지 않음"
-      typography: { font: null, color: null, align: null, size: null },
+      /* 각 축은 근거가 있을 때만 채운다. **null = 건드리지 않음**.
+         "AI 니까 뭐라도 채워야 한다" 가 이 제품에서 가장 위험한 태도다. */
+      typography: { font: null, color: null, align: null, size: null, stroke: null, shadow: null },
+      textAnchor: null,      // 선호 배치 구역 — Safety 가 거부하면 무시된다
       safetyMoves: [],       // [{idx, from, to, anchor, gain}] — 피사체 회피 이동
-      adjust: null,
-      sticker: null,
+      readability: [],       // [{idx, before, after, color?, stroke?, shadow?}] — 렌더 후에 채워진다
+      crop: null,            // SCOPE.crop=false — 형태만 유지
+      imageAdjustments: null,
+      stickers: null,
       caption: null,
+      confidence: 0,         // 이 초안 전체를 얼마나 믿는가(축들의 최댓값이 아니라 **가중 평균**)
+      source: null,          // 가장 센 근거의 출처 — 왜 이렇게 됐는지 되짚을 때 쓴다
       why: {}                // 내부 디버그 — 사용자에게 노출하지 않는다
     };
 
@@ -158,8 +178,21 @@
     }
 
     plan.why.intent = intent ? intent.why : null;
-    plan.hasAnything = !!(plan.safetyMoves.length ||
-      plan.typography.font || plan.typography.color || plan.typography.align || plan.adjust);
+
+    /* 전체 확신도 — 채워진 축들의 **평균**이다. 최댓값을 쓰면 축 하나가 센 걸로
+       나머지 약한 축까지 믿게 된다. 아무 축도 안 찼으면 0 이다. */
+    var filled = [plan.typography.font, plan.typography.color, plan.typography.align,
+      plan.typography.size, plan.textAnchor].filter(Boolean);
+    if (filled.length) {
+      plan.confidence = Math.round(filled.reduce(function (a, x) { return a + x.confidence; }, 0)
+        / filled.length * 100) / 100;
+      // 가장 센 근거의 출처 — 되짚을 때 "어디서 온 값인가" 를 한 줄로 알 수 있어야 한다
+      plan.source = filled.slice().sort(function (a, b) { return b.confidence - a.confidence; })[0].source;
+    }
+
+    plan.hasAnything = !!(plan.safetyMoves.length || plan.textAnchor ||
+      plan.typography.font || plan.typography.color || plan.typography.align ||
+      plan.typography.size || plan.imageAdjustments);
     return plan;
   }
 
@@ -200,6 +233,6 @@
     });
   }
 
-  window.EditPlan = { SCHEMA: SCHEMA, SCOPE: SCOPE, flagOn: flagOn,
+  window.EditPlan = { SCHEMA: SCHEMA, SCOPE: SCOPE, flagOn: flagOn, autoDraftOn: autoDraftOn,
     compute: compute, applyToLayers: applyToLayers };
 })();

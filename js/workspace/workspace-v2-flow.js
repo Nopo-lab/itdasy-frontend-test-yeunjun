@@ -643,9 +643,27 @@
         _finalEs.layers = _esL.concat(_orchLayers);
       } catch (_me) { void _me; }
     }
-    /* [STAGE C] 자동 초안은 **편집기 안에서** 적용된다(`_applyPlanSafety`).
-       여기서 미리 계산하지 않는 이유: 레이어가 렌더되기 전이라 실제 rect 가 없다.
-       rect 없이 계산한 배치는 추정이고, 추정으로 원장 화면을 바꾸지 않는다. */
+    /* [STAGE C] 자동 초안의 **배치·타이포**는 편집기 안에서 적용된다(`_applyPlanSafety`) —
+       레이어가 렌더되기 전이라 여기엔 실제 rect 가 없고, 추정으로 원장 화면을 바꾸지 않는다.
+
+       다만 '이 사진에 글자를 더 얹을까' 는 **레이어를 만들기 전에** 정해져야 해서 여기서 묻는다.
+       후기 캡처처럼 이미 글자가 꽉 찬 사진에 시술 텍스트를 또 올리면 도움이 아니라 훼손이다.
+       ⚠️ 판정이 아직 안 데워졌으면 **기다리지 않는다** — 편집기 여는 걸 늦추느니 기존 동작이 낫다. */
+    try {
+      if (window.EditPlan && window.EditPlan.autoDraftOn && window.EditPlan.autoDraftOn() &&
+          window.ContentIntent && !_restore) {
+        var _ci = window.ContentIntent.peek(photo);
+        if (_ci && _ci.layout && _ci.layout.canAddText === false) {
+          var _before = layers.length;
+          layers = layers.filter(function (L) { return !(L && L.type === 'text' && L.role); });
+          if (layers.length !== _before) { d._planSkippedText = _before - layers.length; }
+        }
+        // 다음 번(다른 장·재오픈)을 위해 데워둔다
+        window.ContentIntent.warm(photo);
+      } else if (window.ContentIntent && window.ContentIntent.warm) {
+        window.ContentIntent.warm(photo);   // 플래그와 무관하게 캐시만 채워둔다(비용 0 — 이미 뜬 통계)
+      }
+    } catch (_pe) { void _pe; }
     Editor.open({
       photoUrl: photo,
       photos: (_wsEd && _wsEd.mode === 'collage') ? _wsEd.photos : (editablePhotos() || []).map(function (p) { return p.editedDataUrl || _cleanBase(p) || photoUrl(p); }),   // [itd][#5] 콜라주 셀은 편집본 우선 · [ws-hyper] 레이아웃 매칭 시 슬롯 순서대로
