@@ -18,6 +18,8 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/photo/shop-style-candidate.js?v=local-p2b',
   // [Phase 3] 업종 seed + 증거계층 resolver. 소비처 없음(Replay/Shadow 검증 전).
   'js/photo/category-prior.js?v=local-p3a',
+  // [STAGE C] 게시물 종류(인물/전후비교/후기캡처) — 실측 27샵으로 임계값 정함. EditPlan(기본 OFF)만 소비.
+  'js/photo/content-intent.js?v=local-c1',
   'js/photo/shop-baseline.js?v=local-p3b',
   // [Phase 5] Safety Shadow — 계산만. 화면 반영 0(테스트가 소비처 0 감시).
   'js/photo/safety-shadow.js?v=local-p51',

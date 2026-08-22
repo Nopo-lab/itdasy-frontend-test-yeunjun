@@ -33,6 +33,7 @@
   /* 자동 적용 범위 — 켤 때마다 하나씩 연다.
      처음부터 전부 켜면 뭐가 좋아지고 뭐가 나빠졌는지 못 가른다. */
   var SCOPE = {
+    intent: true,      // 게시물 종류 판정 (텍스트 카드엔 글자를 더 얹지 않는다)
     safety: true,      // 피사체를 가리는 자유 텍스트를 안전한 자리로
     typography: true,  // 폰트·크기·색 (증거 있을 때만)
     anchor: false,     // 앵커 — Safety 가 필요할 때만 움직인다. 취향 앵커는 아직 OFF
@@ -62,7 +63,7 @@
 
   /* 안전한 앵커를 고른다 — SafetyShadow 의 후보 계산을 그대로 쓴다(중복 구현 금지).
      반환은 `{rect, anchor}` 또는 null(안전한 자리가 없거나 지금도 안전함). */
-  function _safeAnchorFor(geom, pctx) {
+  function _safeAnchorFor(geom, pctx, intent) {
     if (!window.SafetyShadow || !geom || !pctx || !pctx.subjectRegion) return null;
     var det = window.SafetyShadow.detect([geom], pctx);
     if (!det.verdictReliable) return null;              // 저신뢰면 손대지 않는다
@@ -70,6 +71,14 @@
     if (!mine || !mine.geometryReliable || !mine.unsafe) return null;   // 지금 안전하면 개입 안 함
 
     var cands = window.SafetyShadow.candidates(geom, pctx).filter(function (c) { return c.valid; });
+    /* 전·후 비교 사진은 중앙 세로 경계가 **정보**다. 거기를 글자로 덮으면 비교가 안 보인다.
+       (실측 왁싱 피드에서 17%가 전·후 비교였고, 라벨은 전부 경계를 피해 하단에 있었다) */
+    if (intent && intent.layout && intent.layout.avoidCenterSeam) {
+      var keep = cands.filter(function (c) {
+        return (c.rect.x + c.rect.w) < 0.45 || c.rect.x > 0.55;   // 중앙 띠를 안 건드림
+      });
+      if (keep.length) cands = keep;      // 전부 걸리면 원래 후보를 쓴다(아무것도 못 하는 것보단 낫다)
+    }
     if (!cands.length) return null;
     var best = cands.sort(function (a, b) {
       var d = a.metrics.layerCoveredRatio - b.metrics.layerCoveredRatio;
@@ -94,17 +103,23 @@
         ? window.ShopBaseline.resolve({ category: ctxOpts.category, service: ctxOpts.service,
           photoCount: ctxOpts.photoCount, kind: ctxOpts.kind })
         : Promise.resolve(null);
-      return Promise.resolve(baseP).then(function (base) { return _build(pctx, base, ctxOpts); });
+      var intent = (SCOPE.intent && window.ContentIntent) ? window.ContentIntent.classify(pctx) : null;
+      return Promise.resolve(baseP).then(function (base) { return _build(pctx, base, ctxOpts, intent); });
     }).catch(function () { return null; });
   }
 
-  function _build(pctx, base, o) {
+  function _build(pctx, base, o, intent) {
     var ax = (base && base.axes) || {};
     var plan = {
       schema: SCHEMA,
       photoKnown: !!(pctx && pctx.subjectRegion),
       subjectZone: pctx ? pctx.subjectZone : null,
       confidence: pctx ? pctx.confidence : 0,
+      /* 게시물 종류 — 상위(작업실)가 이걸 보고 "글자를 더 권할지"를 정한다.
+         canAddText=false 는 **하지 말라는 신호**지 실패가 아니다. */
+      intent: intent ? intent.kind : null,
+      intentConfidence: intent ? intent.confidence : 0,
+      canAddText: intent && intent.layout ? intent.layout.canAddText !== false : true,
       // 각 축은 근거가 있을 때만 채운다. null = "건드리지 않음"
       typography: { font: null, color: null, align: null, size: null },
       safetyMoves: [],       // [{idx, from, to, anchor, gain}] — 피사체 회피 이동
@@ -119,7 +134,7 @@
       if (ax.font) plan.typography.font = _axis(ax.font.value, ax.font.source, ax.font.confidence);
       if (ax.color) plan.typography.color = _axis(ax.color.value, ax.color.source, ax.color.confidence);
       if (ax.align) plan.typography.align = _axis(ax.align.value, ax.align.source, ax.align.confidence);
-      plan.why.typography = base ? base.sources : null;
+        plan.why.typography = base ? base.sources : null;
     }
 
     // ── 1순위: Safety — 자유 텍스트가 피사체를 가리면 안전한 자리로
@@ -127,11 +142,12 @@
       o.geoms.forEach(function (g) {
         if (!g || g.origin !== 'user') return;                 // 원장이 직접 놓은 것만 대상
         if (g.type !== 'text' && g.type !== 'badge') return;
-        var mv = _safeAnchorFor(g, pctx);
+        var mv = _safeAnchorFor(g, pctx, intent);
         if (mv) plan.safetyMoves.push({ idx: g.idx, anchor: mv.anchor, rect: mv.rect,
           from: mv.from, to: mv.to, gain: Math.round(mv.gain * 1000) / 1000 });
       });
-      plan.why.safety = { subjectZone: pctx.subjectZone, confidence: pctx.confidence };
+      plan.why.safety = { subjectZone: pctx.subjectZone, confidence: pctx.confidence,
+        avoidCenterSeam: !!(intent && intent.layout && intent.layout.avoidCenterSeam) };
     }
 
     /* ── 3~6순위는 아직 닫아둔다.
@@ -141,6 +157,7 @@
       plan.adjust = _axis(ax.tone.value, ax.tone.source, ax.tone.confidence);
     }
 
+    plan.why.intent = intent ? intent.why : null;
     plan.hasAnything = !!(plan.safetyMoves.length ||
       plan.typography.font || plan.typography.color || plan.typography.align || plan.adjust);
     return plan;

@@ -27,7 +27,7 @@
   'use strict';
   if (window.PhotoContext) return;
 
-  var SCHEMA = 'pctx-v1';
+  var SCHEMA = 'pctx-v2';   // v2: skinFrac·seam 추가 (ContentIntent 용)
   var SAMPLE = 48;              // 다운샘플 한 변(px). safe-zone 은 36, kind 분류는 96 을 쓴다 —
                                 //   그 중간값. 색·밝기 통계는 이 해상도로 충분하고 8ms 안쪽이다.
   var L0_MAX = 24;              // 세션 캐시 상한(사진 24장 = 슬롯 몇 개 분)
@@ -119,6 +119,33 @@
     }
     var lapVar = lapN ? (lapSum2 / lapN) - Math.pow(lapSum / lapN, 2) : 0;
 
+    /* 이음매(seam) — 정중앙에서 밝기가 **얼마나 급하게 끊기나**.
+       전·후 비교 사진은 두 장을 붙인 거라 중앙에 인위적 경계가 생긴다.
+       절대값은 못 쓴다(복잡한 사진은 어디를 재도 크다) → **평균 인접차 대비 배수**로 낸다. */
+    function _seam(vertical) {
+      var mid = vertical ? (nw >> 1) : (nh >> 1), best = 0, off, i2, len, sum;
+      for (off = -1; off <= 1; off++) {
+        var c2 = mid + off;
+        if (c2 < 1 || c2 >= (vertical ? nw : nh)) continue;
+        sum = 0; len = vertical ? nh : nw;
+        for (i2 = 0; i2 < len; i2++) {
+          sum += vertical
+            ? Math.abs(lum[i2 * nw + c2] - lum[i2 * nw + c2 - 1])
+            : Math.abs(lum[c2 * nw + i2] - lum[(c2 - 1) * nw + i2]);
+        }
+        if (sum / len > best) best = sum / len;
+      }
+      // 기준선 — 같은 방향 전체 평균 인접차
+      var tot = 0, cnt = 0, a, b2;
+      if (vertical) {
+        for (a = 0; a < nh; a++) for (b2 = 1; b2 < nw; b2++) { tot += Math.abs(lum[a * nw + b2] - lum[a * nw + b2 - 1]); cnt++; }
+      } else {
+        for (a = 1; a < nh; a++) for (b2 = 0; b2 < nw; b2++) { tot += Math.abs(lum[a * nw + b2] - lum[(a - 1) * nw + b2]); cnt++; }
+      }
+      var base = cnt ? tot / cnt : 0;
+      return base > 1 ? Math.round(best / base * 1000) / 1000 : 0;
+    }
+
     var meanY = sumY / n;
     var top = Object.keys(bins).sort(function (a, b2) { return bins[b2] - bins[a]; }).slice(0, 3);
     var skinFrac = skin / n;
@@ -135,6 +162,9 @@
       saturation: Math.round(sumSat / n * 1000) / 1000,
       warmth: Math.round((sumR - sumB) / n / 255 * 1000) / 1000,
       whiteRatio: Math.round(white / n * 1000) / 1000,
+      skinFrac: Math.round(skinFrac * 1000) / 1000,      // region 이 null 이어도 원값은 필요하다
+      seamV: _seam(true),                                 // 좌우 분할(전·후 비교)
+      seamH: _seam(false),                                // 상하 분할(텍스트 밴드)
       dominantColors: top.map(function (k) {
         var v = parseInt(k, 10);
         return '#' + [(v >> 8) & 15, (v >> 4) & 15, v & 15]
