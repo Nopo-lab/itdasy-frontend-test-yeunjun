@@ -178,10 +178,30 @@ describe('[§16] PhotoContext 는 편집 결과에 절대 영향을 주지 않�
     expect(rel).toEqual(ALLOWED_CONSUMERS.slice().sort());
   });
 
-  test('편집기는 결과를 받지 않는다 (계산만 시키고 버린다)', () => {
-    const src = fs.readFileSync(path.join(ROOT, 'js/itd-editor/itd-editor.js'), 'utf8');
-    // .then 으로 결과를 받아 쓰면 그 순간 편집에 흘러들 수 있다
-    expect(src).not.toMatch(/PhotoContext\s*\.\s*of\s*\([^)]*\)\s*\.\s*then/);
+  /* [STAGE C 계약 변경] 편집기가 이제 PhotoContext 결과를 **쓴다** — 피사체를 피해 텍스트를 옮긴다.
+     "안 쓴다" 계약은 끝났고, 대신 **"플래그 뒤에서만·보수적으로만 쓴다"** 를 잠근다. */
+  test('편집 반영은 플래그 뒤에서만 — 기본 OFF', () => {
+    const ep = fs.readFileSync(path.join(ROOT, 'js/photo/edit-plan.js'), 'utf8');
+    const ed = fs.readFileSync(path.join(ROOT, 'js/itd-editor/itd-editor.js'), 'utf8');
+    // 전역 스위치가 명시적으로 true 일 때만 켜진다(=기본 OFF)
+    expect(ep).toMatch(/window\.ITDASY_EDIT_PLAN === true/);
+    expect(ep).toMatch(/editplan=0/);            // 긴급 차단 경로
+    // 편집기는 플래그를 먼저 확인하고서야 움직인다
+    expect(ed).toMatch(/EditPlan\.flagOn\(\) \) return;|EditPlan\.flagOn\(\)\)\) return;/);
+  });
+
+  test('원장이 만진 레이어·역할 레이어는 건드리지 않는다', () => {
+    const ed = fs.readFileSync(path.join(ROOT, 'js/itd-editor/itd-editor.js'), 'utf8');
+    expect(ed).toMatch(/_planApplied \|\| S\._userMoved\) return;/);   // 손댔으면 아예 안 돔
+    const ep = fs.readFileSync(path.join(ROOT, 'js/photo/edit-plan.js'), 'utf8');
+    expect(ep).toMatch(/if \(L\.role\) return L;/);                     // 역할 레이어 제외
+    expect(ep).toMatch(/touched\[i\]\) return L;/);                     // 만진 것 제외
+  });
+
+  test('저신뢰·회전 레이어는 여전히 손대지 않는다', () => {
+    const ed = fs.readFileSync(path.join(ROOT, 'js/itd-editor/itd-editor.js'), 'utf8');
+    expect(ed).toMatch(/if \(!det\.verdictReliable\) return;/);
+    expect(ed).toMatch(/!info\.geometryReliable\) return;/);
   });
 
   test('관측 모듈의 소비 결과는 지표에만 쓰인다', () => {
@@ -451,7 +471,8 @@ describe('[Phase 3] 증거 계층 — 기본값을 사용자 의도로 오독하
       for (const e of fs.readdirSync(d, { withFileTypes: true })) {
         const p = path.join(d, e.name);
         if (e.isDirectory()) { if (!['node_modules', '.git', '__tests__', '.claude'].includes(e.name)) walk(p); continue; }
-        if (!e.name.endsWith('.js') || ['shop-baseline.js', 'category-prior.js'].includes(e.name)) continue;
+        // [STAGE C] edit-plan 이 ShopBaseline 을 소비한다 — 그게 이 계층을 만든 목적이다.
+        if (!e.name.endsWith('.js') || ['shop-baseline.js', 'category-prior.js', 'edit-plan.js'].includes(e.name)) continue;
         const s = fs.readFileSync(p, 'utf8');
         if (/ShopBaseline\s*\.|CategoryPrior\s*\./.test(s)) hits.push(path.relative(ROOT, p));
       }
@@ -541,9 +562,9 @@ describe('[Phase 5] Safety Shadow — 계산만, 적용 0', () => {
         const p = path.join(d, e.name);
         if (e.isDirectory()) { if (!['node_modules', '.git', '__tests__', '.claude'].includes(e.name)) walk(p); continue; }
         if (!e.name.endsWith('.js') || e.name === 'safety-shadow.js') continue;
-        // [Phase 5.1] wm-metrics 는 **관측 배선**이다 — 지표만 남기고 applied:false 를 유지한다.
-        //   그 사실 자체는 아래 'applied 는 항상 false' 와 editor 배선 테스트가 잠근다.
-        if (e.name === 'wm-metrics.js') continue;
+        // [Phase 5.1] wm-metrics = 관측 배선 · [STAGE C] edit-plan/itd-editor = **의도된 소비처**.
+        //   그쪽 안전조건(플래그 OFF·userMoved·역할·저신뢰·회전)은 위 §16 테스트가 잠근다.
+        if (['wm-metrics.js', 'edit-plan.js', 'itd-editor.js'].includes(e.name)) continue;
         if (/SafetyShadow\s*\./.test(fs.readFileSync(p, 'utf8'))) hits.push(path.relative(ROOT, p));
       }
     };

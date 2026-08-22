@@ -29,6 +29,8 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/photo/obb-geometry.js?v=local-p54',
   // [Phase 5.5] 증거 모니터 — 판정·안내만. 새 저장소 없음(기존 리포트 조합).
   'js/photo/evidence-monitor.js?v=local-p55',
+  // [STAGE C] 실제 편집안 — 기본 OFF(?editplan=1). 편집기가 소비한다.
+  'js/photo/edit-plan.js?v=local-sc1',
   'js/workspace/shop-style.js?v=local-151154',
   'js/workspace/work-memory.js?v=local-151154',
   'js/workspace/work-memory-engine.js?v=local-t8hp',

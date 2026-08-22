@@ -1041,6 +1041,7 @@
     _deOverlapIncoming();   // [#2] 텍스트 길이 무관 — 자동배치 글자/선이 서로 안 겹치게 세로로 벌림
     S.active = null; S.layers.forEach(function (x) { x.el.classList.remove('is-active'); });
     _applySafeZone();   // [P2-1] 얼굴/피사체 위 자동 텍스트 비켜놓기(비동기, 폴백 안전)
+    _applyPlanSafety();   // [STAGE C] 원장이 직접 놓은 텍스트도 피사체를 피하게(기본 OFF)
   }
   // [P2-1] 자동배치 텍스트가 얼굴/피사체를 덮으면 비켜 배치. 비동기(마스크/휴리스틱) → 계산 후 한 번 이동.
   //   보수적: 세로로 겹치는 자동 역할 레이어만, 빈 쪽(아래/위)으로 밀고 스테이지 안으로 클램프. 실패/저신뢰=폴백.
@@ -1073,6 +1074,61 @@
       });
     });
   }
+  /* [STAGE C] 원장이 **직접 놓은 텍스트**가 피사체를 가리면 안전한 자리로 옮긴다.
+     `_applySafeZone`(바로 위)은 **역할 레이어만** 지킨다 — 자유 텍스트는 지금 아무도 안 지킨다.
+     그게 이 프로젝트에서 처음 발견한 실제 문제였고, 이게 그 첫 수정이다.
+
+     보수적으로만 움직인다:
+       · **기본 OFF**(`?editplan=1`). 켜져도 아래 조건을 전부 넘어야 움직인다.
+       · 원장이 이미 손댔으면(`S._userMoved`) 아예 안 돈다
+       · 지금 안전하면 개입 안 함 · 대안이 의미 있게 낫지 않으면 그대로
+       · 피사체 신뢰도 낮으면 손대지 않음 · 회전 레이어 제외(AABB 를 못 믿는다)
+     한 번만 돈다. 되돌리기는 원장이 그냥 다시 옮기면 된다(우리는 그걸 학습 신호로 받는다). */
+  function _applyPlanSafety() {
+    if (!S || S._planApplied || S._userMoved) return;
+    if (!(window.EditPlan && window.EditPlan.flagOn && window.EditPlan.flagOn())) return;
+    if (!window.PhotoContext || !window.SafetyShadow) return;
+    var url = S.photoUrl; if (!url) return;
+    if (S.layout && (S.layout.kind || 'single') !== 'single') return;   // 콜라주는 칸이 배치를 소유
+    S._planApplied = true;
+
+    var geoms = metaGeometry();
+    if (!geoms.length) return;
+    window.PhotoContext.of(url).then(function (pctx) {
+      if (!pctx || !pctx.subjectRegion || !S || S._userMoved) return;
+      var R = refs.stage.getBoundingClientRect(); if (!R.width || !R.height) return;
+      var det = window.SafetyShadow.detect(geoms, pctx);
+      if (!det.verdictReliable) return;
+      var moved = 0;
+      det.layers.forEach(function (info) {
+        if (!info.unsafe || !info.geometryReliable) return;
+        var g = geoms.filter(function (x) { return x.idx === info.idx; })[0];
+        var L = S.layers[info.idx];
+        if (!g || !L || !L.el) return;
+        var cs = window.SafetyShadow.candidates(g, pctx).filter(function (c) { return c.valid; });
+        if (!cs.length) return;
+        var best = cs.sort(function (a, b) {
+          var d = a.metrics.layerCoveredRatio - b.metrics.layerCoveredRatio;
+          if (Math.abs(d) > 0.001) return d;
+          return b.metrics.distance - a.metrics.distance;
+        })[0];
+        if (info.metrics.layerCoveredRatio - best.metrics.layerCoveredRatio < window.SafetyShadow.TH.improveDelta) return;
+        /* 현재 rect 에서 목표 rect 까지의 **차이만큼만** 민다.
+           절대좌표로 덮어쓰면 L.x/L.y 의 기준(translate 원점)과 어긋난다. */
+        var b = L.el.getBoundingClientRect();
+        L.x += (best.rect.x - (b.left - R.left) / R.width) * R.width;
+        L.y += (best.rect.y - (b.top - R.top) / R.height) * R.height;
+        applyXf(L);
+        moved++;
+      });
+      if (moved) {
+        try { S._planMoved = moved; } catch (_e) { void _e; }
+        /* 우리가 옮긴 건 **원장의 선택이 아니다** — 학습이 이걸 취향으로 삼으면 자기강화가 된다.
+           WMSignals.system 안에서 처리해 관찰에서 제외한다(T8 이 쓰는 방식 그대로). */
+      }
+    }).catch(function () { /* 실패하면 그냥 안 움직인다 */ });
+  }
+
   // [#2] 자동배치 역할 레이어(시술명/내용/선)가 겹치면 세로로 벌리고, 화면 밖이면 그룹을 위로 당겨 유지.
   function _deOverlapIncoming() {
     var R = refs.stage.getBoundingClientRect(); if (!R.height) return;

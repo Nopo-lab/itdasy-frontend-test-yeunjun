@@ -643,6 +643,9 @@
         _finalEs.layers = _esL.concat(_orchLayers);
       } catch (_me) { void _me; }
     }
+    /* [STAGE C] 자동 초안은 **편집기 안에서** 적용된다(`_applyPlanSafety`).
+       여기서 미리 계산하지 않는 이유: 레이어가 렌더되기 전이라 실제 rect 가 없다.
+       rect 없이 계산한 배치는 추정이고, 추정으로 원장 화면을 바꾸지 않는다. */
     Editor.open({
       photoUrl: photo,
       photos: (_wsEd && _wsEd.mode === 'collage') ? _wsEd.photos : (editablePhotos() || []).map(function (p) { return p.editedDataUrl || _cleanBase(p) || photoUrl(p); }),   // [itd][#5] 콜라주 셀은 편집본 우선 · [ws-hyper] 레이아웃 매칭 시 슬롯 순서대로
