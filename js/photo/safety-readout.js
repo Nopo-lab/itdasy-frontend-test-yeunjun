@@ -34,7 +34,34 @@
        위험 사례가 분모인 게이트는 훨씬 많은 관측을 요구한다. 그걸 숫자로 보여준다. */
     try { out.evidence = window.EvidenceMonitor ? window.EvidenceMonitor.status() : null; }
     catch (_e) { void _e; out.evidence = null; }
+
+    /* [실검증 2026-08-23] 자동 초안 현황 — 내일 원장들이 쓰기 시작하면 여기만 보면 된다.
+       코드를 고치지 않고도 "실제로 켜졌나 · 데이터가 들어오나 · 판정이 넘어갔나" 를 본다.
+       ⚠️ 새 대시보드를 만들지 않고 이 화면에 얹는다. 지표가 두 군데면 서로 어긋난다. */
+    try {
+      out.draft = window.DraftQuality ? window.DraftQuality.report() : null;
+      out.draftStatus = (window.DraftQuality && window.DraftQuality.status)
+        ? window.DraftQuality.status() : null;
+    } catch (_e) { void _e; out.draft = null; }
+    try {
+      out.rollout = (window.EditPlan && window.EditPlan.rolloutInfo) ? window.EditPlan.rolloutInfo() : null;
+    } catch (_e) { void _e; out.rollout = null; }
     return out;
+  }
+
+  /* 축별 현황 한 줄씩 — 내일 이걸 그대로 읽어서 판단한다.
+     🔴 "되돌림 0%" 를 성공으로 오독하지 않도록 **상태 이름을 먼저** 쓴다. */
+  function axisLines(d) {
+    var q = (d || _collect()).draft;
+    if (!q) return ['자동 초안 지표 없음(모듈 미로드)'];
+    var lines = [];
+    (window.DraftQuality.AXES || []).forEach(function (a) {
+      var m = q.axes[a], v = q.verdicts[a], need = q.needed[a];
+      var tail = (v === 'NO_SIGNAL') ? '되돌릴 UI 없음 — 측정 불가'
+        : (need > 0 ? (need + '건 더 필요') : (m.value != null ? '되돌림 ' + Math.round(m.value * 100) + '%' : ''));
+      lines.push(a + ': ' + v + ' (개입 ' + (m.sampleCount || 0) + '건) ' + tail);
+    });
+    return lines;
   }
 
   /* 한 줄 요약 — 표본이 적을 때 숫자만 보면 오독하므로 **상태를 말로** 붙인다. */
@@ -112,5 +139,22 @@
     }
   } catch (_e) { void _e; }
 
-  window.SafetyReadout = { show: show, collect: _collect, summary: function () { return _summary(_collect()); } };
+  /* 내일 콘솔에서 한 줄로: `SafetyReadout.draft()` */
+  function draft() {
+    var d = _collect();
+    var head = d.rollout
+      ? ('rollout ' + d.rollout.pct + '% · 이 계정 bucket ' + d.rollout.bucket + ' → ' + (d.rollout.on ? 'ON' : 'OFF'))
+      : 'rollout 정보 없음';
+    var cnt = d.draftStatus
+      ? ('계측 ' + (d.draftStatus.counting ? '켜짐' : '꺼짐(QA/OFF 버킷)') +
+         ' · 저장 ' + (d.draftStatus.persisted ? 'OK' : '불가(로그인 필요)') +
+         (d.draftStatus.writeFailures ? ' · 🔴저장실패 ' + d.draftStatus.writeFailures : ''))
+      : '';
+    var lines = [head, cnt].concat(axisLines(d));
+    try { lines.forEach(function (l) { if (l) console.log(l); }); } catch (_e) { void _e; }
+    return lines.filter(Boolean).join('\n');
+  }
+
+  window.SafetyReadout = { show: show, collect: _collect, draft: draft, axisLines: axisLines,
+    summary: function () { return _summary(_collect()); } };
 })();

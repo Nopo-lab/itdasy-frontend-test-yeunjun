@@ -23,7 +23,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   // [STAGE C] 글자가 배경에 묻히는지 WCAG 대비비로 확인 → 색·외곽선·그림자 최소 수정.
   'js/photo/text-readability.js?v=local-c3',
   // [STAGE D] 자동 초안 품질 — 원장이 되돌렸는지로 잰다. 저장소·네트워크 0.
-  'js/photo/draft-quality.js?v=local-f1',
+  'js/photo/draft-quality.js?v=local-live1',
   // [STAGE E] 원장별 개입 강도 — WMPrefs 를 EditPlan 언어로 번역만. 저장소·이벤트 신설 0.
   'js/photo/draft-personalization.js?v=local-f3',
   'js/photo/shop-baseline.js?v=local-p3b',
@@ -32,13 +32,13 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   // [Phase 5.2] Gate 자동판정 — 판정만, 자동화 0.
   'js/photo/safety-gate.js?v=local-p52',
   // 지표 읽기 — URL `?safetyReport=1` 로만 표시. 네트워크 0·자동전송 0.
-  'js/photo/safety-readout.js?v=local-p53',
+  'js/photo/safety-readout.js?v=local-live1',
   // [Phase 5.4] OBB 사전검증 — 순수함수. **어디에도 연결 안 됨**(테스트가 감시).
   'js/photo/obb-geometry.js?v=local-p54',
   // [Phase 5.5] 증거 모니터 — 판정·안내만. 새 저장소 없음(기존 리포트 조합).
   'js/photo/evidence-monitor.js?v=local-p55',
   // [STAGE C] 실제 편집안 — 기본 OFF(?editplan=1). 편집기가 소비한다.
-  'js/photo/edit-plan.js?v=local-f4',
+  'js/photo/edit-plan.js?v=local-live2',
   'js/workspace/shop-style.js?v=local-151154',
   'js/workspace/work-memory.js?v=local-151154',
   'js/workspace/work-memory-engine.js?v=local-t8hp',

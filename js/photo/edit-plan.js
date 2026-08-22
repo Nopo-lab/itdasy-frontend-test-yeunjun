@@ -254,8 +254,11 @@
     /* ── 3~6순위는 아직 닫아둔다.
        근거(Replay·Shadow)가 없는 상태에서 앵커·스티커·보정까지 건드리면
        "AI 가 내 사진을 망쳤다" 가 된다. SCOPE 로 하나씩 연다. */
+    /* 🔴 이름이 갈려 있었다: 출력 형태는 `imageAdjustments` 인데 대입은 `plan.adjust` 로 했다.
+       SCOPE.adjust 가 false 라 지금은 둘 다 안 도는데, 켜는 순간 `hasAnything` 이 못 본다.
+       (읽는 필드에 대입부가 없는지 자동 감사로 잡았다 — 사람 눈으론 못 본다) */
     if (SCOPE.adjust && ax.tone) {
-      plan.adjust = _axis(ax.tone.value, ax.tone.source, ax.tone.confidence);
+      plan.imageAdjustments = _axis(ax.tone.value, ax.tone.source, ax.tone.confidence);
     }
 
     plan.why.intent = intent ? intent.why : null;

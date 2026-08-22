@@ -12,9 +12,29 @@ const src = fs.readFileSync(path.join(ROOT, 'js/photo/draft-quality.js'), 'utf8'
 const planSrc = fs.readFileSync(path.join(ROOT, 'js/photo/edit-plan.js'), 'utf8');
 const edSrc = fs.readFileSync(path.join(ROOT, 'js/itd-editor/itd-editor.js'), 'utf8');
 
-function load() {
-  const win = {};
-  new Function('window', src)(win);
+/* 🔑 실사용 세션을 **실제 게이트로** 만든다. `begin()` 은 rollout 버킷으로 켜진 세션만 센다.
+   빈 window 를 주면 게이트가 막아서 아무것도 안 세는데, 그건 테스트가 아니라 우연이다. */
+function makeWin(opts) {
+  opts = opts || {};
+  const store = opts.store || {};
+  const win = {
+    location: { search: opts.search || '' },
+    localStorage: {
+      getItem: (k) => (k in store ? store[k] : null),
+      setItem: (k, v) => { if (opts.failWrite) throw new Error('quota'); store[k] = String(v); },
+      removeItem: (k) => { delete store[k]; }
+    },
+    EditPlan: { rolloutInfo: () => ({ on: opts.rolloutOn !== false, pct: 10, bucket: 3 }) }
+  };
+  if (opts.forceGlobal) win.ITDASY_DRAFT_ROLLOUT = 100;
+  win.__store = store;
+  return win;
+}
+
+function load(opts) {
+  const win = makeWin(Object.assign({ store: { last_user_id: 'tenant-A' } }, opts || {}));
+  new Function('window', 'location', 'localStorage', src)(win, win.location, win.localStorage);
+  win.DraftQuality.__win = win;
   return win.DraftQuality;
 }
 function loadPlan(store) {
@@ -188,11 +208,120 @@ describe('개인정보·비용', () => {
   test('네트워크 전송 0', () => {
     expect(src).not.toMatch(/fetch\(|apiFetch|XMLHttpRequest|sendBeacon/);
   });
-  test('저장소를 새로 만들지 않는다 — 세션 메모리뿐', () => {
-    expect(src).not.toMatch(/localStorage|indexedDB|wmLearnPut/);
+  /* 🔴 처음엔 세션 메모리에만 쌓았다 — **새로고침 한 번에 0** 이었다.
+     그러면 원장이 하루 종일 써도 축당 20건에 영원히 도달하지 못한다.
+     "측정 준비됨" 이라고 말할 수 없는 상태였고 실사용 직전 감사에서 잡았다. */
+  test('숫자 카운터만 담는다 — 사진·글자·개인정보 없음', () => {
+    expect(src).not.toMatch(/indexedDB|wmLearnPut|\.text\b|textContent|photoUrl|dataUrl/);
+  });
+
+  test('서버로 보내지 않는다', () => {
+    expect(src).not.toMatch(/fetch\(|apiFetch|sendBeacon|XMLHttpRequest/);
   });
   test('글자 내용을 담지 않는다', () => {
     expect(src).not.toMatch(/\.text\b|textContent/);
+  });
+});
+
+describe('🔴 영속화 — 새로고침해도 안 사라진다 (내일 실검증의 전제)', () => {
+  test('카운터가 저장되고 다시 읽힌다', () => {
+    const store = { last_user_id: 'tenant-A' };
+    const Q1 = load({ store });
+    for (let i = 0; i < 8; i++) {
+      Q1.begin({}); Q1.applied({ color: 1 }); Q1.corrected('color'); Q1.published({ published: true });
+    }
+    expect(Q1.report().axes.color.sampleCount).toBe(8);
+
+    // 새로고침 = 모듈 재로드. 같은 저장소를 준다.
+    const Q2 = load({ store });
+    expect(Q2.report().axes.color.sampleCount).toBe(8);      // 0 이 아니다
+    expect(Q2.report().axes.color.value).toBeNull();          // 여전히 표본 부족
+  });
+
+  test('20건이 여러 세션에 걸쳐 쌓여 판정으로 넘어간다', () => {
+    const store = { last_user_id: 'tenant-A' };
+    for (let s2 = 0; s2 < 4; s2++) {                          // 4번 나눠 접속
+      const Q = load({ store });
+      for (let i = 0; i < 5; i++) {
+        Q.begin({}); Q.applied({ color: 1 });
+        if (s2 === 0 && i === 0) Q.corrected('color');        // 20건 중 1건만 되돌림
+        Q.published({ published: true });
+      }
+    }
+    const r = load({ store }).report();
+    expect(r.axes.color.sampleCount).toBe(20);
+    expect(r.verdicts.color).toBe('GOOD');                    // 사람이 계산하지 않아도 넘어간다
+    expect(r.needed.color).toBe(0);
+  });
+
+  test('테넌트별로 따로 쌓인다 — A 의 숫자가 B 에 안 샌다', () => {
+    const store = { last_user_id: 'tenant-A' };
+    const QA = load({ store });
+    for (let i = 0; i < 6; i++) { QA.begin({}); QA.applied({ font: 1 }); QA.published({ published: true }); }
+
+    store.last_user_id = 'tenant-B';                          // 계정 전환
+    const QB = load({ store });
+    expect(QB.report().axes.font.sampleCount).toBe(0);
+
+    store.last_user_id = 'tenant-A';                          // 다시 A
+    expect(load({ store }).report().axes.font.sampleCount).toBe(6);
+  });
+
+  test('로그인 전에는 안 센다 — 귀속 못 할 숫자는 만들지 않는다', () => {
+    const Q = load({ store: {} });                            // last_user_id 없음
+    Q.begin({}); Q.applied({ color: 1 }); Q.published({ published: true });
+    const r = Q.report();
+    expect(r.sessions).toBe(0);
+    expect(r.persisted).toBe(false);
+  });
+
+  test('🔴 저장 실패를 조용히 성공으로 넘기지 않는다', () => {
+    const Q = load({ store: { last_user_id: 'tenant-A' }, failWrite: true });
+    Q.begin({}); Q.applied({ color: 1 }); Q.published({ published: true });
+    const r = Q.report();
+    expect(r.writeFailures).toBeGreaterThan(0);               // 실패 사실이 드러난다
+  });
+
+  test('reset 은 저장본까지 지운다 — 반쯤 지워진 상태가 제일 나쁘다', () => {
+    const store = { last_user_id: 'tenant-A' };
+    const Q = load({ store });
+    Q.begin({}); Q.applied({ color: 1 }); Q.published({ published: true });
+    Q.reset();
+    expect(load({ store }).report().axes.color.sampleCount).toBe(0);
+  });
+});
+
+describe('🔴 QA 데이터가 실사용 지표를 오염시키지 않는다', () => {
+  test('?editplan=1 로 강제한 세션은 안 센다', () => {
+    const Q = load({ search: '?editplan=1' });
+    Q.begin({}); Q.applied({ color: 1 }); Q.published({ published: true });
+    expect(Q.report().sessions).toBe(0);
+  });
+
+  test('전역 override 중인 세션은 안 센다', () => {
+    const Q = load({ forceGlobal: true });
+    Q.begin({}); Q.applied({ color: 1 }); Q.published({ published: true });
+    expect(Q.report().sessions).toBe(0);
+  });
+
+  test('rollout 버킷이 OFF 면 안 센다 — OFF 원장이 분모에 섞이면 안 된다', () => {
+    const Q = load({ rolloutOn: false });
+    Q.begin({}); Q.applied({ color: 1 }); Q.published({ published: true });
+    expect(Q.report().sessions).toBe(0);
+  });
+
+  test('rollout 버킷으로 켜진 세션만 센다', () => {
+    const Q = load({});
+    Q.begin({}); Q.applied({ color: 1 }); Q.published({ published: true });
+    expect(Q.report().sessions).toBe(1);
+  });
+
+  test('내일 한 줄로 확인할 수 있다 — status()', () => {
+    const on = load({}).status();
+    expect(on.counting).toBe(true);
+    expect(on.persisted).toBe(true);
+    const off = load({ search: '?editplan=1' }).status();
+    expect(off.counting).toBe(false);
   });
 });
 
