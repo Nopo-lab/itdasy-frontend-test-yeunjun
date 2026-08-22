@@ -347,6 +347,44 @@
     container.querySelector('[data-home-reload]')?.addEventListener('click', () => location.reload());
   }
 
+  // [2026-08-22 UX-COLD] 스켈레톤 — 콜드스타트(캐시 0 + BE 기동 5~15s)에 홈이 백지로 떠서
+  //   오류처럼 보이던 구간을 유튜브식 회색 shimmer 로 채운다. 데이터 오면 _hydrateHome 이 통째로 교체.
+  //   스타일은 마크업 안에 스코프드 <style> — 교체 시 같이 사라져 잔여물 없음. 라이트모드 기준.
+  function _showSkeleton(container) {
+    if (container.querySelector('.hv5') || container.querySelector('.hv5-skel')) return;  // 이미 뭔가 떠 있으면 유지
+    container.innerHTML = `
+      <div class="hv5-skel" aria-hidden="true">
+        <style>
+          .hv5-skel{max-width:1280px;margin:0 auto;padding-top:6px}
+          .hv5-skel .b{position:relative;overflow:hidden;display:block;background:#EEF0F3;border-radius:16px}
+          .hv5-skel .b::after{content:'';position:absolute;inset:0;transform:translateX(-100%);
+            background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);
+            animation:hvskShim 1.4s ease-in-out infinite}
+          @keyframes hvskShim{100%{transform:translateX(100%)}}
+          @media (prefers-reduced-motion: reduce){.hv5-skel .b::after{animation:none}}
+          .hv5-skel .hdr{display:flex;align-items:center;gap:14px;padding:0 4px 18px}
+          .hv5-skel .av{width:48px;height:48px;border-radius:50%;flex-shrink:0}
+          .hv5-skel .hm{flex:1;min-width:0}
+          .hv5-skel .l1{width:92px;height:11px;border-radius:6px}
+          .hv5-skel .l2{width:150px;height:17px;border-radius:8px;margin-top:7px}
+          .hv5-skel .bell{width:40px;height:40px;border-radius:50%;flex-shrink:0}
+          .hv5-skel .card{margin-bottom:14px}
+          @media (max-width:540px){
+            .hv5-skel .av{width:40px;height:40px}
+            .hv5-skel .hdr{gap:10px;padding-bottom:14px}
+          }
+        </style>
+        <div class="hdr">
+          <span class="b av"></span>
+          <div class="hm"><span class="b l1"></span><span class="b l2"></span></div>
+          <span class="b bell"></span>
+        </div>
+        <span class="b card" style="height:148px"></span>
+        <span class="b card" style="height:208px"></span>
+        <span class="b card" style="height:120px"></span>
+      </div>`;
+  }
+
   async function _doRender(containerId, opts) {
     const force = !!(opts && opts.force);
     const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
@@ -369,6 +407,8 @@
 
     if (_inFlight) return;
     _inFlight = true;
+    // [2026-08-22 UX-COLD] 캐시로 그린 게 없으면(진짜 첫 진입) fetch 기다리는 동안 스켈레톤.
+    _showSkeleton(container);
     try {
       const [briefRaw, slots, dmQueueCount, commentQueueCount] = await Promise.all([
         _fetchBrief().catch(() => null),

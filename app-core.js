@@ -138,6 +138,11 @@ const API = (window.location.hostname === 'localhost' || window.location.hostnam
   ? (_API_STAGING_OVERRIDE ? PROD_API : 'http://localhost:8000')
   : PROD_API;
 
+// [2026-08-22 UX-COLD] 콜드스타트 깨우기 선빵 — 부팅 즉시 /health 1발 (fire-and-forget).
+//   Cloud Run 인스턴스 0→1 기동(5~15s)이 스플래시/로그인 화면 보는 시간과 병렬로 시작돼
+//   홈 첫 데이터 체감 대기가 그만큼 줄어든다. 인증 불필요·무료 엔드포인트. 실패해도 무해.
+try { fetch(API + '/health', { cache: 'no-store' }).catch(function () { }); } catch (_eWarm) { /* ignore */ }
+
 // [보안감사 H-3 2026-07-27] 토큰 저장소 보안 모드 — 기본 OFF, "빌드에 보안저장 플러그인이 실제로 포함됐을 때" 자동 ON.
 //   ▶ 웹(비네이티브): 원본 localStorage 경로 100% 불변. 감지·await 자체가 안 돎(부팅비용 0).
 //   ▶ 플러그인 없는 네이티브(현재 모든 설치본): 원본 localStorage 경로 100% 불변(감지 실패 → OFF 유지).
