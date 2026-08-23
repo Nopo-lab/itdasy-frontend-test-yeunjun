@@ -127,6 +127,39 @@ describe('비용 — 같은 사진을 두 번 부르지 않는다', () => {
   });
 });
 
+describe('🔑 실제 Gemini 응답으로 검증한다 (mock 아님)', () => {
+  /* 2026-08-23 실호출 6장의 **진짜 응답**이다. 합성 데이터로는 두 가지를 못 잡았다:
+     · 응답이 thinking 토큰에 잘려 파서가 전부 실패하던 것
+     · 모델이 'top-left'·'normal' 이라고 답하는데 우리 스키마가 좁아 버리던 것
+     그래서 실제 응답을 골든으로 박아둔다 — 집계기가 진짜 모양을 견디는지 본다. */
+  const REAL = require('./fixtures/real-gemini-responses.json');
+
+  test('실제 응답 6건이 집계기를 통과한다', () => {
+    const p = IG._aggregate(REAL);
+    expect(p.postsAnalyzed).toBe(6);
+    expect(p.blockCount).toBeGreaterThan(20);
+    expect(p.enough).toBe(true);
+  });
+
+  test('안정적인 축은 값이 나온다 (실측: align·fontClass·size 100% 반환)', () => {
+    const p = IG._aggregate(REAL);
+    expect(p.align).not.toBeNull();
+    expect(p.fontClass).not.toBeNull();
+    expect(p.sizeRatio).not.toBeNull();
+  });
+
+  test('불안정한 축은 비워둔다 — 억지로 채우지 않는다', () => {
+    const p = IG._aggregate(REAL);
+    // 실제 응답에서 position 은 동의율이 낮았다(58% 반환 + 값이 갈림) → null 이 맞다
+    expect(p.position === null || p.position.agree >= IG.MIN_AGREE).toBe(true);
+    expect(p.color === null || p.color.agree >= IG.MIN_AGREE).toBe(true);
+  });
+
+  test('정확한 폰트명은 실제 응답에서도 UNKNOWN', () => {
+    expect(IG._aggregate(REAL).fontExact).toBe('UNKNOWN');
+  });
+});
+
 describe('🔴 우선순위 — editor_observed 가 항상 이긴다', () => {
   test('편집기 증거가 있으면 인스타 관찰을 안 쓴다', () => {
     expect(baseSrc).toMatch(/out\.axes\.align = pAlign \? _axis\(pAlign\.value, 'editor_observed'/);
