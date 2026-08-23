@@ -347,7 +347,84 @@ describe('🔴 쿼터가 마르면 즉시 멈춘다 (실측 2026-08-23)', () => 
     expect(prof.counts.genuine).toBe(2);   // 이미 받은 2장으로 만들 수 있는 만큼만
   });
 
-  test('실패한 분석은 캐시하지 않는다 — 캐시하면 쿼터가 풀려도 영영 빈 결과를 쓴다', () => {
-    expect(src).toMatch(/if \(r\.engine === 'gemini'\) _cachePut/);
+  test('실패한 분석은 결과에도 캐시에도 안 들어간다 — 캐시하면 쿼터가 풀려도 영영 빈 결과를 쓴다', () => {
+    expect(src).toMatch(/if \(r\.status === 'FAILED' \|\| r\.engine !== 'gemini'\) return;/);
+  });
+
+  test('🔑 429 는 성공으로 삼키지 않는다 — 상태로 구분한다', () => {
+    expect(src).toMatch(/r\.status === 429/);
+    expect(src).toMatch(/status: 'RATE_LIMITED'/);
+    expect(src).toMatch(/status: 'FAILED'/);
+  });
+
+  test('🔑 부분 반입 — 이미 성공한 장은 다시 안 부르고, 남은 장 수를 남긴다', () => {
+    expect(src).toMatch(/prof\.pendingRetry =/);
+    // 성공분만 캐시되므로 다음 동기화의 해시 조회가 그 장을 건너뛴다
+    expect(src).toMatch(/_cachePut\(key, \{ version: SCHEMA, result: r/);
+  });
+});
+
+describe('🔴 부분 반입 (§11) — 12장 중 7장 성공 후 429', () => {
+  /* 요구: 성공 7장은 저장하고, 나머지 5장은 저장하지 않으며,
+     다음 동기화에서 **실패한 5장만** 다시 시도할 수 있어야 한다. */
+  function harness(failFrom) {
+    const win = {};
+    new Function('window', src)(win);
+    const cache = {};
+    win.wmLearnGet = (store, k) => Promise.resolve(cache[k] || null);
+    win.wmLearnPut = (store, v) => { cache[v.id] = v; };
+    let calls = 0;
+    const realFetch = global.fetch;
+    global.fetch = () => Promise.resolve({ ok: true, blob: () => Promise.resolve(new Blob(['x'])) });
+    win.apiFetch = () => {
+      calls += 1;
+      if (calls > failFrom) {
+        return Promise.resolve({ ok: false, status: 429, json: () => Promise.resolve({}) });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({
+        text_blocks: [blk()], engine: 'gemini', confidence: 0.9, status: 'OK',
+        is_ui_screenshot: false, composition: 'text_overlay' }) });
+    };
+    return { win, cache, restore: () => { global.fetch = realFetch; }, calls: () => calls };
+  }
+
+  test('7장 성공 → 프로필은 만들되 실패분은 저장 안 함', async () => {
+    const h = harness(7);
+    // 🔑 사진마다 다른 바이트여야 해시가 갈린다 — 같으면 캐시가 한 장으로 뭉갠다
+    let n = 0;
+    global.fetch = () => Promise.resolve({ ok: true, blob: () => Promise.resolve(new Blob([String(n++).repeat(9)])) });
+    const media = Array.from({ length: 12 }, (_, i) => ({ id: String(i), thumb: 'https://x/' + i }));
+    const prof = await h.win.InstagramTextStyle.build(media);
+    h.restore();
+    expect(h.calls()).toBe(8);                       // 8번째에서 429 → 멈춘다(12번 안 부른다)
+    expect(prof.counts.genuine).toBe(7);
+    expect(prof.quotaExhausted).toBe(true);
+    expect(Object.keys(h.cache).length).toBe(7);     // 성공분만 캐시
+    expect(prof.pendingRetry).toBe(5);               // 남은 5장
+  });
+
+  test('다음 동기화 — 성공한 7장은 다시 안 부르고 나머지만 시도한다', async () => {
+    const h = harness(7);
+    let n = 0;
+    global.fetch = () => Promise.resolve({ ok: true, blob: () => Promise.resolve(new Blob([String(n++).repeat(9)])) });
+    const media = Array.from({ length: 12 }, (_, i) => ({ id: String(i), thumb: 'https://x/' + i }));
+    await h.win.InstagramTextStyle.build(media);
+    const first = h.calls();
+
+    // 2회차 — 캐시는 그대로 두고 쿼터는 풀렸다고 본다
+    const h2 = { ...h };
+    let m = 0;
+    global.fetch = () => Promise.resolve({ ok: true, blob: () => Promise.resolve(new Blob([String(m++).repeat(9)])) });
+    let calls2 = 0;
+    h.win.apiFetch = () => { calls2 += 1; return Promise.resolve({ ok: true, status: 200,
+      json: () => Promise.resolve({ text_blocks: [blk()], engine: 'gemini', confidence: 0.9,
+        status: 'OK', is_ui_screenshot: false, composition: 'text_overlay' }) }); };
+    const prof2 = await h.win.InstagramTextStyle.build(media);
+    h.restore();
+    expect(first).toBe(8);
+    expect(calls2).toBe(5);                          // 실패했던 5장만 다시 부른다
+    expect(prof2.cacheHits).toBe(7);
+    expect(prof2.counts.genuine).toBe(12);
+    void h2;
   });
 });

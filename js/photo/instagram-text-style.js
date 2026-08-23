@@ -72,13 +72,21 @@
   }
 
   /* 서버 호출 — 실패는 조용히 null. 인스타 연동 전체가 이것 때문에 깨지면 안 된다. */
+  /* 서버 호출. 🔴 실패를 **성공처럼 돌려주지 않는다** — 무엇 때문에 실패했는지가 결과를 가른다.
+       429            쿼터 소진 → 지금 멈추고, 다음 동기화에서 **이 장만** 다시 한다
+       그 외 실패      그 장만 버린다(캐시 금지). 편집기는 아무 영향 없다. */
   function _analyze(blob) {
     try {
       if (!window.apiFetch) return Promise.resolve(null);
       var fd = new FormData();
       fd.append('file', blob, 'p.jpg');
       return window.apiFetch('/instagram-style/analyze', { method: 'POST', body: fd })
-        .then(function (r) { return (r && r.ok) ? r.json() : null; })
+        .then(function (r) {
+          if (!r) return null;
+          if (r.status === 429) return { status: 'RATE_LIMITED', engine: 'error', confidence: 0, text_blocks: [] };
+          if (!r.ok) return { status: 'FAILED', engine: 'error', confidence: 0, text_blocks: [] };
+          return r.json().catch(function () { return null; });
+        })
         .catch(function () { return null; });
     } catch (_e) { void _e; return Promise.resolve(null); }
   }
@@ -317,10 +325,15 @@
               calls++;
               return _analyze(blob).then(function (r) {
                 if (!r) return;
-                if ((r.warnings || []).indexOf('quota_exhausted') >= 0) { quotaOut = true; return; }
+                if (r.status === 'RATE_LIMITED' || (r.warnings || []).indexOf('quota_exhausted') >= 0) {
+                  quotaOut = true; return;      // 남은 장은 안 부른다. 이미 받은 것만 쓴다.
+                }
+                if (r.status === 'FAILED' || r.engine !== 'gemini') return;   // 실패는 결과에도 캐시에도 안 넣는다
                 results.push(r);
-                // 실패한 분석은 캐시하지 않는다 — 캐시해버리면 쿼터가 풀려도 영영 빈 결과를 쓴다
-                if (r.engine === 'gemini') _cachePut(key, { version: SCHEMA, result: r, at: Date.now() });
+                /* 🔑 **성공한 것만** 캐시한다. 실패를 캐시하면 쿼터가 풀려도 영영 빈 결과를 쓰고,
+                   다음 동기화에서 재시도할 기회 자체가 사라진다. 성공분은 해시로 남으니
+                   다음 번엔 그 장을 다시 분석하지 않는다(§11 부분 재시도). */
+                _cachePut(key, { version: SCHEMA, result: r, at: Date.now() });
               });
             });
           });
@@ -329,8 +342,11 @@
     }, Promise.resolve());
 
     return chain.then(function () {
-      if (!results.length) return null;
+      if (!results.length) return null;      // 한 장도 못 받았다 — 지어내지 않는다
       var prof = _aggregate(results);
+      /* 다음 동기화에서 **몇 장이 남았는지**. 이미 성공한 장은 해시 캐시가 막으므로
+         재시도는 실패분에만 간다(§11). */
+      prof.pendingRetry = Math.max(0, picked.length - results.length - cacheHits);
       prof.visionCalls = calls;
       prof.cacheHits = cacheHits;
       prof.quotaExhausted = quotaOut;      // 프로필이 빈약한 이유가 '표본 없음'인지 '쿼터'인지 구분된다
