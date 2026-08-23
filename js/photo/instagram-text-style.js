@@ -105,9 +105,21 @@
   }
 
   /* 분석 결과 여러 장 → 습관 하나 */
+  /* 🔴 실호출 실측(4장): `is_ui_screenshot` 은 **2/4 밖에 못 맞혔다**(놓침 1·오탐 1).
+     그런데 `composition` 은 **4/4 정확**했다 — 인스타 피드 화면 캡처는 둘 다 `collage`,
+     실제 게시물은 둘 다 `text_overlay` 였다.
+     그래서 둘 중 하나라도 걸리면 제외한다.
+
+     이건 UI 판정을 우회하는 꼼수가 아니다: **collage 는 여러 게시물이 한 장에 섞인 것**이라
+     거기서 뽑은 글자 배치는 '이 원장이 한 게시물에 글자를 어떻게 놓는가'가 아니다.
+     UI 캡처든 아니든 학습에서 빼는 게 맞다. */
+  function _isNotSinglePost(r) {
+    return !!(r.is_ui_screenshot || r.composition === 'collage');
+  }
+
   function _aggregate(results) {
     var used = results.filter(function (r) {
-      return r && !r.is_ui_screenshot && Array.isArray(r.text_blocks);
+      return r && !_isNotSinglePost(r) && Array.isArray(r.text_blocks);
     });
     var blocks = [];
     used.forEach(function (r) {
@@ -122,6 +134,7 @@
       schema: SCHEMA,
       source: 'instagram_observed',
       postsAnalyzed: used.length,
+      /* 이름은 유지하되 뜻은 '한 게시물이 아니라서 뺀 수' 다(UI 캡처 + 콜라주). */
       uiScreenshotsSkipped: results.length - used.length,
       blockCount: blocks.length,
       /* 글자를 넣는 편인가 — 이것부터가 습관이다. 글자를 안 넣는 원장에게
@@ -207,6 +220,7 @@
   window.InstagramTextStyle = {
     SCHEMA: SCHEMA, MAX_CALLS: MAX_CALLS, MIN_POSTS: MIN_POSTS, MIN_AGREE: MIN_AGREE,
     build: build, get: get, clear: clear,
-    _aggregate: _aggregate, _mode: _mode, _median: _median, _hash: _hash
+    _aggregate: _aggregate, _mode: _mode, _median: _median, _hash: _hash,
+    _isNotSinglePost: _isNotSinglePost
   };
 })();

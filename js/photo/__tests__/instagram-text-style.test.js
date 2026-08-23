@@ -160,6 +160,49 @@ describe('🔑 실제 Gemini 응답으로 검증한다 (mock 아님)', () => {
   });
 });
 
+describe('🔴 한 게시물이 아닌 이미지는 학습에서 뺀다 (실호출 실측 기반)', () => {
+  /* 실호출 4장 실측: `is_ui_screenshot` 은 **2/4** 밖에 못 맞혔다(놓침 1·오탐 1).
+     반면 `composition` 은 **4/4** 정확했다 — 피드 화면 캡처는 둘 다 collage.
+     collage 는 여러 게시물이 섞인 것이라, UI 캡처든 아니든 학습에서 빼는 게 맞다. */
+  const E2E = require('./fixtures/real-gemini-http-e2e.json').map((e) => e.result);
+
+  test('UI 플래그가 켜지면 뺀다', () => {
+    expect(IG._isNotSinglePost({ is_ui_screenshot: true, composition: 'text_overlay' })).toBe(true);
+  });
+
+  test('🔑 collage 면 뺀다 — UI 플래그가 꺼져 있어도', () => {
+    expect(IG._isNotSinglePost({ is_ui_screenshot: false, composition: 'collage' })).toBe(true);
+  });
+
+  test('실제 게시물은 남긴다', () => {
+    expect(IG._isNotSinglePost({ is_ui_screenshot: false, composition: 'text_overlay' })).toBe(false);
+  });
+
+  /* 🔑 실호출 **2회차(총 8건)** 실측 — 프롬프트를 보강해도 `is_ui_screenshot` 은 두 번 다 2/4 였다.
+     틀린 위치만 옮겨 다녔다. 즉 문구 문제가 아니라 **이 플래그 자체가 불안정하다.**
+     그래서 정확도가 아니라 **비대칭 비용**으로 설계한다:
+       피드 캡처를 학습에 넣으면 → 남의 게시물 스타일이 섞여 **학습이 오염된다** (치명적)
+       진짜 게시물을 뺐으면    → 표본 하나를 잃을 뿐이다               (감수 가능)
+     union(플래그 OR collage) 은 실측 8건에서 **UI 캡처 4/4 를 전부 걸렀다.** */
+  const RUNS = [
+    ['1회차', require('./fixtures/real-gemini-http-e2e.json')],
+    ['2회차(프롬프트 보강 후)', require('./fixtures/real-gemini-http-e2e-v2.json')]
+  ];
+
+  test.each(RUNS)('%s — UI 캡처는 하나도 학습에 안 들어간다', (_label, run) => {
+    const uiCaps = run.filter((e) => e.meta.kind === 'ui');
+    expect(uiCaps.length).toBe(2);
+    uiCaps.forEach((e) => expect(IG._isNotSinglePost(e.result)).toBe(true));
+  });
+
+  test.each(RUNS)('%s — 플래그 하나만 믿으면 UI 캡처가 새어 들어간다 (union 이 필요한 이유)', (_label, run) => {
+    const leaked = run.filter((e) => e.meta.kind === 'ui' && !e.result.is_ui_screenshot);
+    expect(leaked.length).toBeGreaterThan(0);        // 두 회차 모두 1건씩 샜다
+    leaked.forEach((e) => expect(e.result.composition).toBe('collage'));
+  });
+
+});
+
 describe('🔴 우선순위 — editor_observed 가 항상 이긴다', () => {
   test('편집기 증거가 있으면 인스타 관찰을 안 쓴다', () => {
     expect(baseSrc).toMatch(/out\.axes\.align = pAlign \? _axis\(pAlign\.value, 'editor_observed'/);

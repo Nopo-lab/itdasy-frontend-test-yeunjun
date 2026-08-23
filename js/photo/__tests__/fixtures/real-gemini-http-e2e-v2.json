@@ -1,0 +1,582 @@
+[
+  {
+    "meta": {
+      "i": 0,
+      "label": "UI캡처(헤어 피드화면)",
+      "kind": "ui",
+      "kb": 81
+    },
+    "result": {
+      "text_blocks": [
+        {
+          "text": "상큼함 한 스푼♥",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.306,
+            "w": 0.25,
+            "h": 0.027
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.027,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "젤리처럼 탱글한 헤어스타일",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.336,
+            "w": 0.29,
+            "h": 0.027
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.027,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "| 여성 히피펌(젤리펌)",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.366,
+            "w": 0.25,
+            "h": 0.027
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.027,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "머리만 바꿨는데 과즙미 UP",
+          "bbox": {
+            "x": 0.38,
+            "y": 0.306,
+            "w": 0.29,
+            "h": 0.027
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.027,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "찰랑일 때 더 예쁜 스타일",
+          "bbox": {
+            "x": 0.38,
+            "y": 0.336,
+            "w": 0.29,
+            "h": 0.027
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.027,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "| 하이레이어드+C컬펌",
+          "bbox": {
+            "x": 0.38,
+            "y": 0.366,
+            "w": 0.29,
+            "h": 0.027
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.027,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "탱글한 컬감에 무게감을 더한",
+          "bbox": {
+            "x": 0.71,
+            "y": 0.306,
+            "w": 0.29,
+            "h": 0.027
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.027,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "시크하고 사랑스러운 분위기",
+          "bbox": {
+            "x": 0.71,
+            "y": 0.336,
+            "w": 0.29,
+            "h": 0.027
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.027,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "| 여성 젤리펌",
+          "bbox": {
+            "x": 0.71,
+            "y": 0.366,
+            "w": 0.29,
+            "h": 0.027
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.027,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "디테일이 만드는 결정적 차이",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.806,
+            "w": 0.29,
+            "h": 0.027
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.027,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "간편한 손질로 살아나는 클래식 핏",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.836,
+            "w": 0.29,
+            "h": 0.027
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.027,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "| 가일컷",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.866,
+            "w": 0.29,
+            "h": 0.027
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.027,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        }
+      ],
+      "composition": "collage",
+      "text_density": 0.15,
+      "is_ui_screenshot": true,
+      "confidence": 0.95,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "i": 1,
+      "label": "UI캡처(네일 피드화면)",
+      "kind": "ui",
+      "kb": 89
+    },
+    "result": {
+      "text_blocks": [
+        {
+          "text": "반뷰 유지력은 말도",
+          "bbox": {
+            "x": 0.498,
+            "y": 0.239,
+            "w": 0.158,
+            "h": 0.016
+          },
+          "position": "center",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.016,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "혜임 바꾸고 컬러까지♥",
+          "bbox": {
+            "x": 0.498,
+            "y": 0.259,
+            "w": 0.158,
+            "h": 0.016
+          },
+          "position": "center",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.016,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "타샵제거무료 event",
+          "bbox": {
+            "x": 0.399,
+            "y": 0.835,
+            "w": 0.201,
+            "h": 0.021
+          },
+          "position": "lower-center",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.021,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "Cash 39,000",
+          "bbox": {
+            "x": 0.401,
+            "y": 0.859,
+            "w": 0.106,
+            "h": 0.016
+          },
+          "position": "lower-center",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.016,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        }
+      ],
+      "composition": "collage",
+      "text_density": 0.02,
+      "is_ui_screenshot": false,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "i": 2,
+      "label": "글자있는게시물(속눈썹)",
+      "kind": "post",
+      "kb": 25
+    },
+    "result": {
+      "text_blocks": [
+        {
+          "text": "하투하 (Hearts2Hearts)",
+          "bbox": {
+            "x": 0.06,
+            "y": 0.45,
+            "w": 0.53,
+            "h": 0.05
+          },
+          "position": "center-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.025,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.9
+        },
+        {
+          "text": "이아님 속눈썹 디자인 분석 :)",
+          "bbox": {
+            "x": 0.06,
+            "y": 0.49,
+            "w": 0.53,
+            "h": 0.04
+          },
+          "position": "center-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.02,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.9
+        },
+        {
+          "text": "@GDQBAFTERNOON",
+          "bbox": {
+            "x": 0.06,
+            "y": 0.52,
+            "w": 0.25,
+            "h": 0.02
+          },
+          "position": "center-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.01,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.9
+        }
+      ],
+      "composition": "collage",
+      "text_density": 0.05,
+      "is_ui_screenshot": false,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "i": 3,
+      "label": "글자있는게시물(왁싱)",
+      "kind": "post",
+      "kb": 16
+    },
+    "result": {
+      "text_blocks": [
+        {
+          "text": "YOU&WAXING",
+          "bbox": {
+            "x": 0.309,
+            "y": 0.06,
+            "w": 0.382,
+            "h": 0.029
+          },
+          "position": "upper-center",
+          "alignment": "center",
+          "color": "#404040",
+          "font_family_class": "serif",
+          "font_weight": "unknown",
+          "size_ratio": 0.029,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "대표",
+          "bbox": {
+            "x": 0.222,
+            "y": 0.468,
+            "w": 0.035,
+            "h": 0.013
+          },
+          "position": "center",
+          "alignment": "left",
+          "color": "#404040",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.013,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "리뷰도 많고 좋아보여서 방어의 손이 되게 빠르시시",
+          "bbox": {
+            "x": 0.222,
+            "y": 0.505,
+            "w": 0.557,
+            "h": 0.013
+          },
+          "position": "center",
+          "alignment": "left",
+          "color": "#404040",
+          "font_family_class": "sans",
+          "font_weight": "unknown",
+          "size_ratio": 0.013,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "아픈 부위인데도 빨리 끝나서 좋았으어나게를것",
+          "bbox": {
+            "x": 0.222,
+            "y": 0.52,
+            "w": 0.557,
+            "h": 0.013
+          },
+          "position": "center",
+          "alignment": "left",
+          "color": "#404040",
+          "font_family_class": "sans",
+          "font_weight": "unknown",
+          "size_ratio": 0.013,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "같았는데 인철도 주셔서 인출이 잘잡으니 잘했어요",
+          "bbox": {
+            "x": 0.222,
+            "y": 0.535,
+            "w": 0.557,
+            "h": 0.013
+          },
+          "position": "center",
+          "alignment": "left",
+          "color": "#404040",
+          "font_family_class": "sans",
+          "font_weight": "unknown",
+          "size_ratio": 0.013,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "공장의 출합니다",
+          "bbox": {
+            "x": 0.222,
+            "y": 0.55,
+            "w": 0.14,
+            "h": 0.013
+          },
+          "position": "center",
+          "alignment": "left",
+          "color": "#404040",
+          "font_family_class": "sans",
+          "font_weight": "unknown",
+          "size_ratio": 0.013,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "집기",
+          "bbox": {
+            "x": 0.222,
+            "y": 0.58,
+            "w": 0.035,
+            "h": 0.013
+          },
+          "position": "center",
+          "alignment": "left",
+          "color": "#404040",
+          "font_family_class": "sans",
+          "font_weight": "unknown",
+          "size_ratio": 0.013,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "분위기가",
+          "bbox": {
+            "x": 0.25,
+            "y": 0.68,
+            "w": 0.07,
+            "h": 0.013
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#404040",
+          "font_family_class": "sans",
+          "font_weight": "unknown",
+          "size_ratio": 0.013,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "유엔왁싱 고객님의 소중한 후기 입니다 :)",
+          "bbox": {
+            "x": 0.25,
+            "y": 0.93,
+            "w": 0.5,
+            "h": 0.018
+          },
+          "position": "lower-center",
+          "alignment": "center",
+          "color": "#404040",
+          "font_family_class": "serif",
+          "font_weight": "unknown",
+          "size_ratio": 0.018,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        }
+      ],
+      "composition": "text_overlay",
+      "text_density": 0.1,
+      "is_ui_screenshot": true,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  }
+]
