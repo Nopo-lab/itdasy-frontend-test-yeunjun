@@ -2326,7 +2326,28 @@
     refs.fonts.addEventListener('click', function (e) { var b = e.target.closest('[data-font]'); if (!b) return; applyFont(b.getAttribute('data-font')); root.querySelectorAll('[data-font]').forEach(function (x) { x.classList.toggle('on', x === b); }); });
     refs.colors.addEventListener('click', function (e) { var b = e.target.closest('[data-color]'); if (!b) return; applyColor(b.getAttribute('data-color')); root.querySelectorAll('[data-color]').forEach(function (x) { x.classList.toggle('on', x === b); }); });
     refs.aln.addEventListener('click', function (e) { var b = e.target.closest('[data-aln]'); if (!b) return; applyAlign(b.getAttribute('data-aln')); refs.aln.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); }); });
-    refs.size.addEventListener('input', function () { applyScale(refs.size.value); });
+    /* [2026-08-23] 크기 취향은 **핀치에서만** 잡히고 있었다 — 슬라이더로 바꾸면 학습이 0 이었다.
+       슬라이더가 안 잡히면 크기 개인화는 핀치를 쓰는 원장에게만 붙는다.
+       ⚠️ `input` 마다 남기면 한 번 끄는 데 수백 건이 쌓여 IDB·배터리가 죽는다(핀치와 같은 이유).
+          그래서 **조작이 끝났을 때**(change) 한 건만. 시작 스냅샷은 첫 input 에서 뜬다.
+       ⚠️ 배율(scale)이 아니라 정규화 size 로 남긴다 — 저장 스키마와 축이 같아야 적용이 맞는다. */
+    var _sizeSnap = null;
+    refs.size.addEventListener('input', function () {
+      if (!_sizeSnap && S && S.active) {
+        try { _sizeSnap = _serLayer(S.active); } catch (_se) { void _se; _sizeSnap = null; }
+      }
+      applyScale(refs.size.value);
+    });
+    refs.size.addEventListener('change', function () {
+      var L = S && S.active;
+      if (!L || !_sizeSnap) { _sizeSnap = null; return; }
+      var after = null; try { after = _serLayer(L); } catch (_se2) { void _se2; }
+      if (after && after.size != null && _sizeSnap.size != null && after.size !== _sizeSnap.size) {
+        _dqFix(L, 'size');
+        _sig('size_changed', { layerKey: L.role || L.type, before: _sizeSnap.size, after: after.size });
+      }
+      _sizeSnap = null;
+    });
     // [#13-v2] 무지개 버튼 탭 → 화면 안 색상 팔레트(SV 사각형 + 색조 바) 열기.
     root.addEventListener('click', function (e) {
       var cp = e.target.closest ? e.target.closest('[data-colorpick]') : null; if (!cp) return;

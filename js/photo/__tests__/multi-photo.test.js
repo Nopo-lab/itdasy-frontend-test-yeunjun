@@ -91,3 +91,26 @@ describe('🔑 장 전환에 Vision 호출 0 — 구조로 보장한다', () => 
     expect(rd('js/photo/instagram-text-style.js')).toMatch(/apiFetch\('\/instagram-style\/analyze'/);
   });
 });
+
+describe('🔴 크기 취향이 핀치에서만 잡히고 있었다 (2026-08-23)', () => {
+  /* 슬라이더로 크기를 바꾸면 `size_changed` 가 **한 건도 안 나왔다.**
+     크기 개인화가 핀치를 쓰는 원장에게만 붙는다는 뜻이었다.
+     실제 UI 로 확인: 슬라이더만 움직였을 때 신호 4개(정렬·색·폰트·위치) → 수정 후 5개. */
+  test('슬라이더 조작 끝(change)에 size_changed 를 한 건 남긴다', () => {
+    const i = ed.indexOf("refs.size.addEventListener('change'");
+    expect(i).toBeGreaterThan(0);
+    const seg = ed.slice(i, i + 700);
+    expect(seg).toMatch(/_sig\('size_changed'/);
+    expect(seg).toMatch(/before: _sizeSnap\.size, after: after\.size/);   // 배율이 아니라 정규화 size
+  });
+
+  test('input 마다 남기지 않는다 — 한 번 끄는 데 수백 건이면 IDB·배터리가 죽는다', () => {
+    const i = ed.indexOf("refs.size.addEventListener('input'");
+    const seg = ed.slice(i, ed.indexOf("refs.size.addEventListener('change'"));
+    expect(seg).not.toMatch(/_sig\('size_changed'/);
+  });
+
+  test('값이 실제로 바뀌었을 때만 남긴다', () => {
+    expect(ed).toMatch(/after\.size !== _sizeSnap\.size/);
+  });
+});
