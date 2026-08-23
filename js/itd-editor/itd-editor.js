@@ -1117,7 +1117,10 @@
       }
       /* 크기 — 업종 실측 비율(스테이지 높이 대비). **이미 비슷하면 안 건드린다**:
          자동 초안이 매번 몇 px 씩 흔들면 원장 눈엔 그냥 버그다. */
-      if (t.size && t.size.value && !own.size && R.height) {
+      /* 🔴 숫자가 아니면 **조용히 넘어가지 않는다.** 예전엔 `'~'` 같은 값이 오면
+         want 가 NaN 이 되고 `NaN > 0.15` 가 false 라 아무 일도 안 일어났다 —
+         화면은 멀쩡해서 아무도 못 알아챘다. 이제 명시적으로 거른다. */
+      if (t.size && isFinite(t.size.value) && t.size.value > 0 && !own.size && R.height) {
         var want = Math.max(12, Math.round(t.size.value * R.height));
         var cur = L.fontSize || 0;
         if (cur && Math.abs(want - cur) / cur > 0.15) {

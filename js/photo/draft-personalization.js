@@ -78,6 +78,23 @@
         out.evidence.axes[key] = 'conflict';
         return { veto: true };
       }
+      /* 🔴 연속축(size·x·y)은 값이 아니라 **자리표시자 `'~'`** 로 저장된다.
+         실제 대표값은 `pref.samples` 에 쌓이고 T8 이 `robust()`(중앙값)로 뽑는다.
+         그걸 안 하면 `'~'` 가 그대로 plan 에 실려 `Math.round('~' * H)` → NaN 이 되고,
+         편집기의 `NaN > 0.15` 비교가 **조용히 false** 라 크기 개인화가 영영 안 걸린다.
+         실제 UI 제스처로 size 를 학습시켜보고서야 드러났다(font/color/align 은 이 경로가 없다).
+         🔑 대표값 계산은 **WMPersonalize.robust 를 재사용**한다 — 여기서 또 만들면 두 곳이 갈린다. */
+      var CONT = (window.WMPrefs && window.WMPrefs.CONT_VALUE) || '~';
+      if (p.value === CONT) {
+        var samples = (p.pref && p.pref.samples) || p.samples || null;
+        var rep = (window.WMPersonalize && window.WMPersonalize.robust)
+          ? window.WMPersonalize.robust(samples) : null;
+        if (rep === null || !isFinite(rep)) {
+          out.evidence.axes[key] = 'no-representative';   // 표본은 있는데 대표값을 못 뽑았다
+          return null;
+        }
+        p = Object.assign({}, p, { value: rep });
+      }
       var n = p.sampleCount || (p.pref && p.pref.sampleCount) || 0;
       if (n < MIN_SAMPLES) { out.evidence.axes[key] = 'insufficient(' + n + ')'; return null; }
       var conf = p.confidence || 0;
