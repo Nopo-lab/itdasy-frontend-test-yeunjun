@@ -197,7 +197,7 @@ describe('[§16] PhotoContext 는 편집 결과에 절대 영향을 주지 않�
 
   test('원장이 만진 레이어·역할 레이어는 건드리지 않는다', () => {
     const ed = fs.readFileSync(path.join(ROOT, 'js/itd-editor/itd-editor.js'), 'utf8');
-    expect(ed).toMatch(/_planApplied \|\| S\._userMoved\) return;/);   // 손댔으면 아예 안 돔
+    expect(ed).toMatch(/_ps\(\)\.planApplied \|\| _ps\(\)\.moved\) return;/);   // 손댔으면 그 장은 아예 안 돔
     const ep = fs.readFileSync(path.join(ROOT, 'js/photo/edit-plan.js'), 'utf8');
     expect(ep).toMatch(/if \(L\.role\) return L;/);                     // 역할 레이어 제외
     expect(ep).toMatch(/touched\[i\]\) return L;/);                     // 만진 것 제외

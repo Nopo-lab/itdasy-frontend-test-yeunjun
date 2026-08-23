@@ -842,7 +842,7 @@
       rotd.L.rot = snapAngle(rotd.start + (a - rotd.a0) * 180 / Math.PI); applyXf(rotd.L); return;
     }
     if (!drag) return;
-    if (S) S._userMoved = true;   // [P2-1] 사용자가 직접 옮기면 자동 회피 우선권 해제
+    if (S) _ps().moved = true;   // [P2-1] 사용자가 직접 옮기면 자동 회피 우선권 해제 — **이 장에 한해서**
     drag.L.x = drag.ox + (e.clientX - drag.sx);
     drag.L.y = drag.oy + (e.clientY - drag.sy);
     drag.moved = true;   // [#9] 실제로 움직였을 때만 되돌리기 스택에 남긴다(탭만 하면 안 남김)
@@ -957,6 +957,12 @@
     placeCenter(L, 180, 50); selectLayer(L);
     _pushOp({ op: 'add', L: L });   // [P1-3] 추가 되돌리기
     setTimeout(function () { editText(L); }, 30);
+    /* [2026-08-23] 이 장에 글자가 처음 생겼다 → 그 장 기준으로 자동 초안을 한 번 돌린다.
+       캐러셀에선 자동 텍스트가 1번 장에만 붙으므로, 2~6번 장은 원장이 글자를 넣는 이 순간이
+       초안이 돌 수 있는 **첫 시점**이다. 이미 돈 장이거나 원장이 옮긴 장이면 `_ps` 가 막는다.
+       ⚠️ 호출부에 붙이지 않는다 — addText 는 툴탭·버튼·setTool·복원 네 군데서 불린다.
+          한 곳만 붙이면 나머지 경로에선 안 돈다(이 레포에서 반복된 실수다). */
+    setTimeout(function () { try { _planForCurrentPhoto(); } catch (_e) { void _e; } }, 40);
     return L;
   }
   function editText(L) {
@@ -1096,12 +1102,12 @@
   // [P2-1] 자동배치 텍스트가 얼굴/피사체를 덮으면 비켜 배치. 비동기(마스크/휴리스틱) → 계산 후 한 번 이동.
   //   보수적: 세로로 겹치는 자동 역할 레이어만, 빈 쪽(아래/위)으로 밀고 스테이지 안으로 클램프. 실패/저신뢰=폴백.
   function _applySafeZone() {
-    if (!S || S._safeApplied || S._userMoved) return;
+    if (!S || _ps().safeApplied || _ps().moved) return;
     if (!(window.ItdSafeZone && window.ItdSafeZone.avoidBox)) return;
     var url = S.photoUrl; if (!url) return;
-    S._safeApplied = true;   // 1회만
+    _ps().safeApplied = true;   // 장마다 1회만
     window.ItdSafeZone.avoidBox(url).then(function (box) {
-      if (!box || !S || S._userMoved || (S.layout && (S.layout.kind || 'single') !== 'single')) return;
+      if (!box || !S || _ps(_psIdx).moved || (S.layout && (S.layout.kind || 'single') !== 'single')) return;
       var R = refs.stage.getBoundingClientRect(); if (!R.height) return;
       var atop = box.y * R.height, abot = (box.y + box.h) * R.height;
       var faceUpper = (atop + (abot - atop) / 2) < R.height * 0.55;
@@ -1278,12 +1284,12 @@
 
      보수적으로만 움직인다:
        · **기본 OFF**(`?editplan=1`). 켜져도 아래 조건을 전부 넘어야 움직인다.
-       · 원장이 이미 손댔으면(`S._userMoved`) 아예 안 돈다
+       · 원장이 이미 손댔으면(그 장의 `_ps().moved`) 그 장은 아예 안 돈다
        · 지금 안전하면 개입 안 함 · 대안이 의미 있게 낫지 않으면 그대로
        · 피사체 신뢰도 낮으면 손대지 않음 · 회전 레이어 제외(AABB 를 못 믿는다)
-     한 번만 돈다. 되돌리기는 원장이 그냥 다시 옮기면 된다(우리는 그걸 학습 신호로 받는다). */
+     **장마다** 한 번씩 돈다. 되돌리기는 원장이 그냥 다시 옮기면 된다(우리는 그걸 학습 신호로 받는다). */
   function _applyPlanSafety() {
-    if (!S || S._planApplied || S._userMoved) return;
+    if (!S || _ps().planApplied || _ps().moved) return;
     /* 🔴 스위치가 둘이다. 여기서 하나만 보면 rollout 을 켜도 **아무 일도 안 일어난다**
        (실제로 그 상태였다 — 브라우저에서 10% 를 켜보고 sessions:0 으로 잡았다).
          flagOn()      QA 강제 스위치(`?editplan=1` · ITDASY_EDIT_PLAN)
@@ -1296,7 +1302,15 @@
     if (!window.PhotoContext || !window.SafetyShadow) return;
     var url = S.photoUrl; if (!url) return;
     if (S.layout && (S.layout.kind || 'single') !== 'single') return;   // 콜라주는 칸이 배치를 소유
-    S._planApplied = true;
+    /* 🔴 손댈 글자가 없으면 **찍지 않고 그냥 나간다.** 예전 코드는 여기서 무조건 도장을 찍어서,
+       빈 장을 한 번 지나가면 나중에 원장이 그 장에 글자를 넣어도 자동 초안이 영영 안 돌았다.
+       (캐러셀에선 자동 텍스트가 1번 장에만 붙으므로 2~6번 장이 정확히 이 경우다) */
+    var _hasText = (S.layers || []).some(function (L) {
+      return L && (L.type === 'text' || L.type === 'badge');
+    });
+    if (!_hasText) return;
+    var _psIdx = (S.adjSel || 0);
+    _ps(_psIdx).planApplied = true;
 
     /* 🔴 세션 토큰 — 편집기를 닫고 **바로 다시 열면** 이전 세션의 비동기 체인이
        아직 날아다닌다. 그 체인은 모듈 전역 `S` 를 보므로, 가드를 `!S` 로만 두면
@@ -1304,7 +1318,11 @@
        브라우저 실측으로 잡았다: 닫고 바로 여니 외곽선이 붙었다가 사라졌다.
        (이 레포에서 이미 나온 패턴이다 — 비동기 결과는 자기 세대인지 확인하고 쓴다) */
     var mySession = S;
-    var alive = function () { return S === mySession && !S._userMoved; };
+    /* 🔑 세대 확인에 **장 번호**도 넣는다. 비동기 계산이 끝났을 때 원장이 이미 다른 장으로
+       넘어갔으면 그 결과를 지금 화면에 얹으면 안 된다 — 1번 장 판단이 3번 장에 새는 경로다. */
+    var alive = function () {
+      return S === mySession && (S.adjSel || 0) === _psIdx && !_ps(_psIdx).moved;
+    };
     /* [STAGE D] 품질 관측 세션 시작 — 초안이 아무것도 안 해도 연다.
        분모(초안이 돈 세션 수)를 알아야 되돌림률이 의미를 갖는다. */
     try {
@@ -1627,7 +1645,12 @@
       S.photoUrl = S.photos[idx]; S.photoCss = 'url("' + S.photos[idx] + '")';
       refs.photo.style.backgroundImage = S.photoCss;
       applyAdjToDisplay();   // [#11] 사진 바꾸면 배경-제외 오버레이(photofx)도 이 사진 기준으로 다시
-      renderLayoutStrip(); renderLayoutHint(); return;
+      renderLayoutStrip(); renderLayoutHint();
+      /* 🔑 [2026-08-23] 이 장 기준으로 자동 초안을 돌린다. 예전엔 1번 장에서만 돌아서
+         2·3번 장은 맨몸으로 나갔다. 이미 돌았거나 원장이 손댄 장이면 `_ps()` 가 막는다.
+         Vision 재호출 없음 — 계획 경로엔 네트워크 호출이 없다. */
+      _planForCurrentPhoto();
+      return;
     }
     var at = S.layoutOrder.indexOf(idx);
     if (at >= 0) S.layoutOrder.splice(at, 1);              // 다시 누르면 해제(뒤 번호 당겨짐)
@@ -1837,9 +1860,18 @@
   function onAdjThumb(i) {
     if (i === S.adjSel) return;
     _switchPhotoDraw(S.adjSel, i);   // [#9] 그리기는 사진별 — 전환 시 저장/복원(다른 사진에 안 넘어감)
+    /* 🔴 [2026-08-23] 여기서 텍스트·스티커를 **안 바꾸고 있었다.** 장 전환 경로가 둘인데
+       (보정 스트립·레이아웃 스트립) 한쪽만 레이어를 갈아끼웠다.
+       그래서 두 스트립을 섞어 쓰면 레이어가 **엉뚱한 장에 저장**된다:
+         0번에서 보정스트립으로 1번 이동 → 레이어는 0번 것 그대로(0번에 저장 안 됨)
+         거기서 레이아웃스트립으로 2번 이동 → `layersByPhoto[1] = 0번 레이어` 로 덮이고
+         0번 레이어는 사라진다.
+       두 경로를 같은 함수로 통일한다. */
+    _switchPhotoLayers(S.adjSel, i);
     S.adjSel = i;
     if ((S.layout.kind || 'single') === 'single') { S.photoUrl = S.photos[i]; S.photoCss = 'url("' + S.photos[i] + '")'; refs.photo.style.backgroundImage = S.photoCss; }
     applyAdjToDisplay(); applyStraighten(); renderAdjust();
+    _planForCurrentPhoto();   // 이 장 기준 자동 초안(이미 돌았거나 원장이 손댄 장이면 _ps 가 막는다)
   }
   // [#9] 편집기 안에서 사진을 바꿀 때 그리기(캔버스)를 사진별로 보관·복원 — 한 사진에 그린 게 다른 사진에 안 뜨게.
   function _switchPhotoDraw(oldIdx, newIdx) {
@@ -1851,6 +1883,30 @@
     var saved = S.photoDraw[newIdx];
     if (saved) { var im = new Image(); im.onload = function () { try { c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(im, 0, 0); c.restore(); } catch (_e2) { void _e2; } }; im.src = saved; }
   }
+  /* 🔴 [2026-08-23] 자동 초안 상태를 **사진별**로 든다.
+     예전엔 `S._planApplied`·`S._safeApplied`·`S._userMoved` 가 세션 전역이라
+     **1번 사진에서 한 번 돌고 끝**이었다. 그런데 텍스트·스티커는 이미 `layersByPhoto` 로
+     장별로 갈라져 있다 — 2·3번 장은 자동 초안이 아예 안 붙은 맨몸으로 나갔다.
+     가독성 외곽선·안전 배치도 1번 장 밝기로만 계산돼서, 2번 장이 밝으면 흰 글씨가 그대로 묻혔다.
+
+     ⚠️ 새 state 틀을 만들지 않는다 — 이미 있는 `S.adjSel`(현재 장)을 키로 쓴다.
+     ⚠️ `moved`(원장이 직접 옮김)도 장별이다. 1번 장에서 손댔다고 3번 장 자동화를 막으면 안 되고,
+        반대로 1번 장으로 돌아왔을 때 다시 덮어써도 안 된다. */
+  function _ps(i) {
+    if (!S) return { planApplied: true, safeApplied: true, moved: true };   // 세션 없으면 아무것도 안 하게
+    if (!S._photoState) S._photoState = {};
+    var k = String(i == null ? (S.adjSel || 0) : i);
+    if (!S._photoState[k]) S._photoState[k] = { planApplied: false, safeApplied: false, moved: false };
+    return S._photoState[k];
+  }
+  /* 장을 넘긴 뒤 그 장 기준으로 자동 초안을 한 번 돌린다.
+     **Vision 을 다시 부르지 않는다** — 계획 경로(PhotoContext·ContentIntent·ShopBaseline·
+     DraftPersonalization)엔 네트워크 호출이 하나도 없다. 사진 픽셀 통계는 url 로 캐시된다. */
+  function _planForCurrentPhoto() {
+    try { _applySafeZone(); } catch (_e) { void _e; }
+    try { _applyPlanSafety(); } catch (_e2) { void _e2; }
+  }
+
   // [#5/#6] 사진별 텍스트/스티커 분리 — 단일모드에서 장 전환 시 현재 레이어를 그 장에 보관하고, 넘어간 장의 레이어를 복원.
   //   좌우(사진 스트립)로 넘기며 각 사진에 다른 글/스티커/링크를 얹을 수 있다(인스타 캐러셀 장별 편집).
   function _switchPhotoLayers(oldIdx, newIdx) {

@@ -110,7 +110,7 @@ describe('순서 — 타이포 → 렌더 → 측정 → Safety → 가독성', 
      증상이 고약했다 — 외곽선이 붙었다가 사라진다(t=200 에 1px, t=900 에 0px). */
   test('이전 세션의 비동기 결과가 새 세션에 새지 않는다', () => {
     expect(edSrc).toMatch(/var mySession = S;/);
-    expect(edSrc).toMatch(/return S === mySession && !S\._userMoved;/);
+    expect(edSrc).toMatch(/S === mySession && \(S\.adjSel \|\| 0\) === _psIdx && !_ps\(_psIdx\)\.moved/);
     // 체인의 각 단계가 자기 세대인지 확인한다
     ['_planSafetyPass', '_planReadabilityPass'].forEach((fn) => {
       expect(edSrc).toMatch(new RegExp(fn + '\\(url, alive\\)|' + fn + '\\(geoms, url, alive\\)'));

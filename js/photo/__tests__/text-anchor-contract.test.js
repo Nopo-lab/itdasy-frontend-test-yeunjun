@@ -54,8 +54,11 @@ describe('[계약 B] Safety 가 필요하다고 하면 실제로 옮긴다', () 
     expect(edSrc).toMatch(/if \(!info\.unsafe \|\| !info\.geometryReliable\) return;/);
   });
 
-  test('원장이 이미 만졌으면 안 옮긴다', () => {
-    expect(edSrc).toMatch(/S\._userMoved/);
+  test('원장이 이미 만졌으면 안 옮긴다 — **그 장에 한해서**', () => {
+    /* [2026-08-23] 세션 전역 `S._userMoved` 에서 장별 `_ps(i).moved` 로 바뀌었다.
+       전역이면 1번 장에서 손댄 순간 3·4번 장 자동화까지 같이 죽는다. */
+    expect(edSrc).toMatch(/_ps\(\)\.moved = true;/);          // 드래그 시 이 장만 표시
+    expect(edSrc).toMatch(/_ps\(_psIdx\)\.moved/);            // 비동기 결과도 그 장 기준으로 확인
   });
 });
 
