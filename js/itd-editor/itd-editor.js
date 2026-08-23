@@ -1270,7 +1270,11 @@
       category: (S.planCategory || null),
       photoCount: (S.photos || []).length
     };
-    window.EditPlan.compute(planCtx).then(function (plan) {
+    /* 🔴 이 체인을 **밖에서 기다릴 수 있게** S 에 걸어둔다.
+       헤드리스 합성(compose)은 40ms 뒤에 구워버리는데 이 체인은 사진 디코딩·IDB 조회를
+       거쳐서 그보다 오래 걸린다. 그래서 **편집기 화면엔 보정이 있는데 발행본엔 없었다.**
+       실제 인스타 캡처로 구워보고 잡았다 — 플랜 ON/OFF 결과가 바이트까지 같았다. */
+    S._planP = window.EditPlan.compute(planCtx).then(function (plan) {
       if (!plan || !alive()) return;
       var typoN = _applyPlanTypography(plan);
       if (typoN) { try { S._planTypo = typoN; } catch (_e) { void _e; } }
@@ -2118,8 +2122,28 @@
           var _al = L.align || 'center';
           var _padX = 10 * (L.scale || 1), _innerHalf = Math.max(0, ow / 2 - _padX);
           var _ax = _al === 'left' ? -_innerHalf : (_al === 'right' ? _innerHalf : 0);
-          c.textAlign = _al; c.textBaseline = 'middle'; c.shadowBlur = 8; c.shadowColor = 'rgba(0,0,0,.35)';
+          c.textAlign = _al; c.textBaseline = 'middle';
           var total = lines.length * fs * 1.16, sy = -total / 2 + fs * 0.58;
+          /* 🔴 [2026-08-23] 외곽선을 **안 그리고 있었다.** 화면(DOM)은
+             `-webkit-text-stroke:1px rgba(0,0,0,.5)` 로 그리는데 여기엔 strokeText 가 없어서
+             **편집기엔 외곽선이 보이는데 발행본엔 없었다.** 가독성 보정의 주된 수단이
+             발행에서 통째로 사라지던 것 — 실제 인스타 캡처를 구워보고 잡았다
+             (플랜 ON/OFF 결과가 바이트까지 같았다).
+             webkit 은 획 중앙 기준이라 lineWidth 를 2배로 잡고 **fill 전에** 그린다
+             (안쪽 절반은 글자가 덮어서 화면과 비슷해진다). 그림자는 끄고 그린다 —
+             외곽선에까지 그림자가 붙으면 화면보다 훨씬 두꺼워 보인다. */
+          if (L.stroke) {
+            c.save();
+            c.shadowBlur = 0; c.shadowColor = 'transparent';
+            c.lineWidth = Math.max(1, 2 * (L.scale || 1));
+            c.strokeStyle = 'rgba(0,0,0,.5)';
+            c.lineJoin = 'round'; c.miterLimit = 2;
+            lines.forEach(function (ln, i) { c.strokeText(ln, _ax, sy + i * fs * 1.16); });
+            c.restore();
+            c.font = L.font.weight + ' ' + fs + 'px ' + L.font.family; c.fillStyle = L.color;
+            c.textAlign = _al; c.textBaseline = 'middle';
+          }
+          c.shadowBlur = 8; c.shadowColor = 'rgba(0,0,0,.35)';
           lines.forEach(function (ln, i) { c.fillText(ln, _ax, sy + i * fs * 1.16); });
           c.shadowBlur = 0;
         }
@@ -2609,7 +2633,16 @@
       Promise.race([fontsReady, new Promise(function (r) { setTimeout(r, 500); })]).then(function () {
         setTimeout(function () {
           try { initCanvas(); renderIncoming(S.incoming); } catch (_e) { void _e; }
-          setTimeout(function () { try { exportComposite(fin); } catch (_e2) { fin(null); } }, 40);
+          /* 자동 초안이 끝난 **뒤에** 굽는다 — 안 그러면 발행본이 편집기와 달라진다.
+             ⏱ 상한 1.2초. 플랜이 늦거나 실패해도 굽기는 반드시 진행한다
+             (미리보기가 영영 안 나오는 것보다 보정 없는 미리보기가 낫다). */
+          var _wait = (S && S._planP && S._planP.then)
+            ? Promise.race([S._planP.catch(function () { return null; }),
+              new Promise(function (rz) { setTimeout(rz, 1200); })])
+            : Promise.resolve();
+          _wait.then(function () {
+            setTimeout(function () { try { exportComposite(fin); } catch (_e2) { fin(null); } }, 40);
+          });
         }, 0);
       });
       setTimeout(function () { fin(null); }, 6000);   // 안전망 — 어떤 경우에도 행 방지

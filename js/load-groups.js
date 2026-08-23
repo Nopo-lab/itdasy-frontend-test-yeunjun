@@ -53,7 +53,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   // [2026-07-23] 아이콘 스티커 세트 — itd-editor.js 보다 **먼저** 실려야 STK_TABS 가 탭을 만든다.
   'js/itd-editor/data/itd-icon-stickers.js?v=local-151154',
   'js/itd-editor/safe-zone.js?v=local-151154',
-  'js/itd-editor/itd-editor.js?v=local-f2',
+  'js/itd-editor/itd-editor.js?v=local-fix2',
   'js/workspace/workspace-adapter.js?v=local-151154',
   'js/workspace/workspace-sync.js?v=local-151154',
   'js/workspace/workspace-crop.js?v=local-151154',
