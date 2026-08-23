@@ -135,7 +135,8 @@
         </div>
       `;
       try {
-        sessionStorage.removeItem('pv_cache::service');
+        // [F-27] 키는 맞지만 sessionStorage 만 봤다 — 실제 저장은 localStorage 라 안 지워졌다.
+        //   아래 이벤트가 두 storage 를 모두 지운다(_clearAllSWRCache).
         window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'service_pricelist' } }));
       } catch (_e) { void _e; }
       resultBox.querySelector('#plDone').addEventListener('click', close);

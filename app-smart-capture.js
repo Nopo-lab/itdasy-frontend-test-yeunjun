@@ -206,7 +206,12 @@
         if (!cm.ok) throw new Error(cd.detail || ('HTTP ' + cm.status));
         if (window.showToast) window.showToast(`${cd.imported}건 등록 (실패 ${cd.failed}건)`);
         try {
-          ['pv_cache::customer','pv_cache::booking','pv_cache::revenue'].forEach(k => sessionStorage.removeItem(k));
+          // [출시 최종 2026-08-23 F-27] 죽은 캐시 무효화 3줄 삭제.
+          //   `pv_cache::customer/booking/revenue` 는 **존재하지 않는 키**였고
+          //   (실제 키는 `customers`·`bookings_all`·`revenue::today|week|month`),
+          //   게다가 sessionStorage 만 봤다(실제 저장은 localStorage).
+          //   = 아무것도 안 지우는 코드였다. 무효화는 아래 이벤트 하나가 전부 한다
+          //     (app-core.js `_clearAllSWRCache` 가 두 storage 의 pv_cache:: 전부 제거).
           window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'kakao_import' } }));
         } catch (_e) { void _e; }
         close();
@@ -271,7 +276,7 @@
         }
         if (window.showToast) window.showToast('고객 등록 완료');
         try {
-          sessionStorage.removeItem('pv_cache::customer');
+          // [F-27] `pv_cache::customer` 는 없는 키다(실제는 `customers`). 이벤트가 전부 처리한다.
           window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'card_import' } }));
         } catch (_e) { void _e; }
         close();

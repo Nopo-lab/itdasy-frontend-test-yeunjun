@@ -524,7 +524,11 @@
 
   function _lastSyncMs() {
     try {
-      const keys = ['pv_cache::today', 'pv_cache::customers', 'pv_cache::revenue', 'pv_cache::bookings_all'];
+      // [출시 최종 2026-08-23 F-27] `pv_cache::revenue` 는 **존재하지 않는 키**였다
+      //   (실제는 `revenue::today|week|month`). 마지막 동기 시각 추정에서 매출이 통째로
+      //   빠져 있었다 — 오프라인 배너의 '마지막 갱신' 이 실제보다 오래됐다고 표시될 수 있다.
+      const keys = ['pv_cache::today', 'pv_cache::customers',
+                    'pv_cache::revenue::today', 'pv_cache::bookings_all'];
       let latest = 0;
       keys.forEach(k => {
         const raw = _safeGet(k);

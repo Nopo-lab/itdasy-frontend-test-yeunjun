@@ -57,7 +57,10 @@
       if (window.showToast) window.showToast(r.message || '되돌렸어요');
       // 모든 데이터 캐시 무효화 (어떤 종류였는지 모르니 전부)
       try {
-        ['customer','booking','revenue','inventory','service'].forEach(k => sessionStorage.removeItem('pv_cache::' + k));
+        // [출시 최종 2026-08-23 F-27] 죽은 줄 삭제 — `pv_cache::customer` 같은 단수 키는
+        //   존재하지 않고(실제는 `customers`·`bookings_all`·`revenue::today|week|month`),
+        //   sessionStorage 만 봤다(실제 저장은 localStorage). 아무것도 안 지웠다.
+        //   아래 이벤트가 두 storage 의 pv_cache:: 를 전부 지운다(_clearAllSWRCache).
         window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'undo' } }));
       } catch (_e) { void _e; }
     } catch (e) {
@@ -75,7 +78,10 @@
       const r = await _fetch('POST', `/assistant/undo/chain/${chainId}`);
       if (window.showToast) window.showToast(r.message || '되돌렸어요');
       try {
-        ['customer','booking','revenue','inventory','service'].forEach(k => sessionStorage.removeItem('pv_cache::' + k));
+        // [출시 최종 2026-08-23 F-27] 죽은 줄 삭제 — `pv_cache::customer` 같은 단수 키는
+        //   존재하지 않고(실제는 `customers`·`bookings_all`·`revenue::today|week|month`),
+        //   sessionStorage 만 봤다(실제 저장은 localStorage). 아무것도 안 지웠다.
+        //   아래 이벤트가 두 storage 의 pv_cache:: 를 전부 지운다(_clearAllSWRCache).
         window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'undo' } }));
       } catch (_e) { void _e; }
     } catch (e) {
@@ -240,7 +246,10 @@
           });
         }
         try {
-          ['customer','booking','revenue','inventory','service'].forEach(k => sessionStorage.removeItem('pv_cache::' + k));
+          // [출시 최종 2026-08-23 F-27] 죽은 줄 삭제 — `pv_cache::customer` 같은 단수 키는
+        //   존재하지 않고(실제는 `customers`·`bookings_all`·`revenue::today|week|month`),
+        //   sessionStorage 만 봤다(실제 저장은 localStorage). 아무것도 안 지웠다.
+        //   아래 이벤트가 두 storage 의 pv_cache:: 를 전부 지운다(_clearAllSWRCache).
           window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'chain', chain_id: r.chain_id } }));
         } catch (_e) { void _e; }
       } else {

@@ -363,7 +363,13 @@
       if (window.showToast) window.showToast(`${res.imported}건 저장${res.failed ? ` · 실패 ${res.failed}` : ''}`);
       if (window.hapticSuccess) window.hapticSuccess();
       body.closest('[id="receiptScanSheet"]')?.remove();
-      try { sessionStorage.removeItem('pv_cache::inventory'); } catch (_e) { /* ignore */ }
+      // [출시 최종 2026-08-23 F-27] 여기는 **이벤트를 아예 안 쏘고 있었다** — 죽은 removeItem 하나뿐.
+      //   영수증으로 지출·재고를 넣어도 다른 화면이 옛 숫자를 그대로 보여줬다.
+      //   canonical 경로(itdasy:data-changed → _clearAllSWRCache)로 바꾼다.
+      try {
+        if (window._fireDataChanged) window._fireDataChanged({ kind: 'receipt_scan' });
+        else window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'receipt_scan' } }));
+      } catch (_e) { /* ignore */ }
     } catch (e) {
       if (window.showToast) window.showToast('저장 실패: ' + (e.message || ''));
       btn.disabled = false;
