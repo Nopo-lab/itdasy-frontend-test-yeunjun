@@ -118,13 +118,6 @@
         axes: {}
       };
 
-      // ── 색: BrandKit 이 정했으면 그것으로 끝. 학습이 브랜드 규칙을 이기면 안 된다.
-      if (bk && bk.brand_color) out.axes.color = _axis(bk.brand_color, 'explicit_brandkit', 1.0, null);
-      else if (pColor) out.axes.color = _axis(pColor.value, 'editor_observed', pColor.confidence, null);
-      else if (igOk && ig.visual.palette && ig.visual.palette.length) {
-        out.axes.color = _axis(ig.visual.palette[0], 'instagram_observed', (ig.sampleCount >= 8 ? 0.7 : 0.5) * IG_DECAY, ig.sampleCount);
-      } else out.axes.color = null;                     // 모르면 null — 기본 편집기가 알아서
-
       /* [2026-08-23] 인스타 글자 습관 — 서버 Vision 이 관찰한 결과.
          🔑 자리는 **editor_observed 아래, category_prior 위**다. 원장이 실제로 편집한 증거가
             있으면 그게 항상 이긴다 — 인스타는 '예전에 이렇게 했더라'지 '지금 그렇게 한다'가 아니다.
@@ -133,24 +126,56 @@
             대신 `fontClassHint` 로 따로 실어 보내 상위가 판단하게 한다. */
       var igt = (window.InstagramTextStyle && window.InstagramTextStyle.get)
         ? window.InstagramTextStyle.get() : null;
-      var igtOk = !!(igt && igt.enough);
       var IGT_CONF = 0.55;                       // 관찰이지 선택이 아니다 — editor_observed(최대 1.0)를 못 이긴다
+
+      /* 🔴 예전엔 `igt.enough` 하나로 **모든 축**을 열고 닫았다. 그래서 색은 4장에서 또렷한데
+         폰트가 0장이면 색까지 같이 버려졌고, 반대로 한 축만 겨우 찼는데 전부 열리기도 했다.
+         이제 축마다 따로 묻는다 — 충분한 축만 쓰고 나머지는 비워둔다.
+         비워둔 축은 원장이 실제로 편집할 때 T8(WMSignals→WMPrefs)이 채운다. */
+      function _igt(key) {
+        var a = igt && igt.axes ? igt.axes[key] : (igt ? igt[key] : null);
+        return (a && a.enough && a.value != null) ? a : null;
+      }
+      /* 의심(SUSPECT) 게시물이 섞여 만들어진 축은 한 번 더 깎는다.
+         새 상수를 만들지 않고 이미 쓰는 감쇠를 한 번 더 곱한다 — 체계를 늘리지 않는다. */
+      function _igtConf(a) {
+        return IGT_CONF * IG_DECAY * (a.evidence === 'mixed' ? IG_DECAY : 1);
+      }
+
+      var _igtColor = _igt('color');
+
+      // ── 색: BrandKit 이 정했으면 그것으로 끝. 학습이 브랜드 규칙을 이기면 안 된다.
+      if (bk && bk.brand_color) out.axes.color = _axis(bk.brand_color, 'explicit_brandkit', 1.0, null);
+      else if (pColor) out.axes.color = _axis(pColor.value, 'editor_observed', pColor.confidence, null);
+      else if (_igtColor) {
+        /* 🔑 인스타에서 **실제로 쓴 글자색**이다. 아래 palette[0] 보다 위에 둔다 —
+           palette 는 '사진에 많이 보이는 색'이지 '이 원장이 글자에 쓰는 색'이 아니다.
+           실측(샵 A): 게시물 6/6 이 흰 글자였는데, 예전 순서에선 이게 통째로 버려지고
+           색 축이 null 이 됐다. 원장의 가장 또렷한 습관을 안 쓰고 있었던 셈이다. */
+        out.axes.color = _axis(_igtColor.value, 'instagram_observed', _igtConf(_igtColor), _igtColor.posts);
+      } else if (igOk && ig.visual.palette && ig.visual.palette.length) {
+        out.axes.color = _axis(ig.visual.palette[0], 'instagram_observed', (ig.sampleCount >= 8 ? 0.7 : 0.5) * IG_DECAY, ig.sampleCount);
+      } else out.axes.color = null;                     // 모르면 null — 기본 편집기가 알아서
 
       // ── 폰트·정렬: 편집기 증거 > 인스타 관찰 > 업종 seed
       out.axes.font = pFont ? _axis(pFont.value, 'editor_observed', pFont.confidence, null) : null;
-      out.axes.fontClassHint = (!pFont && igtOk && igt.fontClass)
-        ? _axis(igt.fontClass.value, 'instagram_observed', IGT_CONF * IG_DECAY, igt.blockCount) : null;
+      var _fc = _igt('fontClass');
+      out.axes.fontClassHint = (!pFont && _fc)
+        ? _axis(_fc.value, 'instagram_observed', _igtConf(_fc), _fc.posts) : null;
+      var _al = _igt('align');
       out.axes.align = pAlign ? _axis(pAlign.value, 'editor_observed', pAlign.confidence, null)
-        : (igtOk && igt.align ? _axis(igt.align.value, 'instagram_observed', IGT_CONF * IG_DECAY, igt.blockCount)
+        : (_al ? _axis(_al.value, 'instagram_observed', _igtConf(_al), _al.posts)
           : (prior ? _axis(prior.typography.align, 'category_prior', prior.confidence * pw, null) : null));
 
       /* 글자 크기 — 편집기 증거가 없을 때 인스타 실측이 업종 seed 보다 이 원장에게 가깝다. */
-      if (igtOk && igt.sizeRatio && igt.sizeRatio.value) {
-        out.axes.size = _axis(igt.sizeRatio.value, 'instagram_observed', IGT_CONF * IG_DECAY, igt.sizeRatio.n);
+      var _sz = _igt('sizeRatio');
+      if (_sz) {
+        out.axes.size = _axis(_sz.value, 'instagram_observed', _igtConf(_sz), _sz.posts);
       }
       /* 글자를 아예 잘 안 넣는 원장이면 그것도 습관이다 — 상위가 이걸 보고 덜 얹는다. */
-      out.axes.textUsage = (igtOk && igt.textUsageRate != null)
-        ? _axis(igt.textUsageRate, 'instagram_observed', IGT_CONF * IG_DECAY, igt.postsAnalyzed) : null;
+      var _tu = (igt && igt.textUsage && igt.textUsage.enough) ? igt.textUsage : null;
+      out.axes.textUsage = _tu
+        ? _axis(_tu.value, 'instagram_observed', _igtConf(_tu), _tu.posts) : null;
 
       // ── 보정 톤: 인스타 관찰이 유일한 증거원(편집기는 슬라이더를 T8 이 학습 안 함)
       out.axes.tone = igOk
@@ -162,8 +187,9 @@
       //    그래서 지금은 prior 만 — 그리고 그 사실을 source 로 정직하게 드러낸다.
       /* [2026-08-23] 예전엔 "개인 증거가 존재하지 않는 축" 이었지만, 이제 인스타 관찰이 생겼다.
          여전히 편집기 증거가 최우선이고, 없을 때만 인스타 → 업종 seed 순이다. */
-      out.axes.textZone = (igtOk && igt.position)
-        ? _axis([igt.position.value], 'instagram_observed', IGT_CONF * IG_DECAY, igt.blockCount)
+      var _po = _igt('position');
+      out.axes.textZone = _po
+        ? _axis([_po.value], 'instagram_observed', _igtConf(_po), _po.posts)
         : (prior ? _axis(prior.textZone.slice(), 'category_prior', prior.confidence * pw, null) : null);
 
       // ── 피사체가 어디 오는가: 인스타 실측 > 업종 추정

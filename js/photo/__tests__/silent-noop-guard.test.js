@@ -100,3 +100,45 @@ describe('[상주 감시] 계측이 실제로 영속된다', () => {
     expect(qSrc).toMatch(/if \(!_isProduction\(\)\) \{ _cur = null; return null; \}/);
   });
 });
+
+describe('🔴 학습한 자리에서 다시 꺼내 쓸 수 있는가 (2026-08-23 브라우저 실측)', () => {
+  /* 증상: WMPrefs 엔 원장이 고른 center/#111111 이 분명히 있는데 EditPlan 은 인스타 값을 냈다.
+     원인 둘 —
+       ① `S.planCategory` 를 **읽기만 하고 아무도 대입하지 않았다** → category 가 늘 null
+       ② 학습은 canonicalContext(service|photoCount|kind|ba)로 하는데 조회는 그 일부만 넘겨서
+          contextKey 가 어긋났다. exact 를 못 찾고, global fallback 은 context 2개·memory 2개를
+          요구하니 원장이 아무리 편집해도 계획엔 안 보인다.
+     둘 다 "테스트는 통과하는데 실사용에선 안 도는" 그 부류다. */
+  const fs = require('fs');
+  const path = require('path');
+  const ROOT = path.resolve(__dirname, '../../..');
+  const rd = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
+
+  test('편집기가 planCategory 를 실제로 대입한다 (읽기만 하지 않는다)', () => {
+    const src = rd('js/itd-editor/itd-editor.js');
+    expect(src).toMatch(/planCategory:\s*\(opts\.category/);      // 대입부
+    expect(src).toMatch(/S\.planCategory/);                        // 읽는 곳
+  });
+
+  test('편집기가 학습에 쓴 context 를 EditPlan 에도 넘긴다', () => {
+    const src = rd('js/itd-editor/itd-editor.js');
+    expect(src).toMatch(/wmContext:\s*opts\.wmContext/);           // 열 때 보관
+    expect(src).toMatch(/var _wc = \(S && S\.wmContext\)/);        // 계획 만들 때 사용
+    ['service', 'kind', 'hasBeforeAfter'].forEach((k) => {
+      expect(src).toMatch(new RegExp(`${k}:\\s*_wc\\.${k}`));
+    });
+  });
+
+  test('EditPlan 이 contextKey 4요소를 빠짐없이 아래로 넘긴다', () => {
+    const src = rd('js/photo/edit-plan.js');
+    // contextKey = service|photoCount|kind|ba — 하나라도 빠지면 학습한 자리와 다른 키가 된다
+    const m = src.match(/var _pctxKeys = \{[\s\S]*?\};/);
+    expect(m).toBeTruthy();
+    ['service', 'photoCount', 'kind', 'hasBeforeAfter'].forEach((k) => {
+      expect(m[0]).toContain(k + ':');
+    });
+    // 개인화도 **같은** 객체를 써야 한다 — 따로 조립하면 또 어긋난다
+    expect(src).toMatch(/DraftPersonalization\.resolve\(_pctxKeys\)/);
+    expect(src).toMatch(/ShopBaseline\.resolve\(_pctxKeys\)/);
+  });
+});

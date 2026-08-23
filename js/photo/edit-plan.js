@@ -163,14 +163,19 @@
     if (!pc || !ctxOpts.photoUrl) return Promise.resolve(null);
 
     return pc.of(ctxOpts.photoUrl).then(function (pctx) {
+      /* 🔴 contextKey 는 `service|photoCount|kind|ba` 다. 하나라도 빠뜨리면 학습한 자리와
+         **다른 키**가 되어 `WMPrefs.resolve` 가 exact 를 못 찾는다. global fallback 은
+         context 2개·memory 2개를 요구하므로, 그전까지 원장 편집이 계획에 **아예 안 보인다.**
+         브라우저 실측(2026-08-23)으로 잡았다 — `hasBeforeAfter` 가 빠져 있었다. */
+      var _pctxKeys = { category: ctxOpts.category, service: ctxOpts.service,
+        photoCount: ctxOpts.photoCount, kind: ctxOpts.kind, hasBeforeAfter: ctxOpts.hasBeforeAfter };
       var baseP = (window.ShopBaseline && window.ShopBaseline.resolve)
-        ? window.ShopBaseline.resolve({ category: ctxOpts.category, service: ctxOpts.service,
-          photoCount: ctxOpts.photoCount, kind: ctxOpts.kind })
+        ? window.ShopBaseline.resolve(_pctxKeys)
         : Promise.resolve(null);
       var intent = (SCOPE.intent && window.ContentIntent) ? window.ContentIntent.classify(pctx) : null;
       /* [STAGE E] 개인화는 **조회만** 한다. 실패하면 DEFAULT 라 STAGE C 와 결과가 같다. */
       var persP = (SCOPE.personalize && window.DraftPersonalization)
-        ? window.DraftPersonalization.resolve({ service: ctxOpts.service, photoCount: ctxOpts.photoCount, kind: ctxOpts.kind })
+        ? window.DraftPersonalization.resolve(_pctxKeys)
         : Promise.resolve(null);
       return Promise.all([Promise.resolve(baseP), persP]).then(function (rr) {
         return _build(pctx, rr[0], ctxOpts, intent, rr[1]);

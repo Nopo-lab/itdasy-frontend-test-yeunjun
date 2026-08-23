@@ -19,8 +19,10 @@ const IG = load();
 const blk = (o) => Object.assign({ text: 'x', alignment: 'left', position: 'lower-left',
   color: '#FFFFFF', font_family_class: 'sans', font_weight: 'bold',
   size_ratio: 0.08, confidence: 0.8 }, o);
+/* 🔴 `engine`/`confidence` 를 빠뜨리면 안 된다 — 실제 응답에 항상 있고,
+   빠지면 '분석 실패'로 취급된다(429 때 서버가 HTTP 200 에 빈 결과를 주기 때문). */
 const post = (blocks, o) => Object.assign({ text_blocks: blocks, composition: 'text_overlay',
-  is_ui_screenshot: false, confidence: 0.8 }, o);
+  is_ui_screenshot: false, confidence: 0.8, engine: 'gemini' }, o);
 
 describe('집계 — 반복될 때만 채택한다', () => {
   test('같은 값이 반복되면 습관으로 잡는다', () => {
@@ -54,7 +56,7 @@ describe('집계 — 반복될 때만 채택한다', () => {
       post([blk({ font_family_class: 'unknown' })]),
       post([blk({ font_family_class: 'serif' })]), post([blk({ font_family_class: 'serif' })])]);
     expect(r.fontClass.value).toBe('serif');
-    expect(r.fontClass.n).toBe(2);        // unknown 2장은 분모에도 안 들어간다
+    expect(r.fontClass.posts).toBe(2);    // unknown 2장은 분모에도 안 들어간다
   });
 
   test('크기는 중앙값 — 한 장이 튀어도 안 끌려간다', () => {
@@ -71,7 +73,7 @@ describe('🔑 UI 캡처를 습관으로 세지 않는다', () => {
       post([blk()]), post([blk()]), post([blk()]), post([blk()])
     ]);
     expect(r.postsAnalyzed).toBe(4);
-    expect(r.uiScreenshotsSkipped).toBe(1);
+    expect(r.counts.clearUi + r.counts.suspect).toBe(1);
     expect(r.align.value).toBe('left');
   });
 });
@@ -166,16 +168,30 @@ describe('🔴 한 게시물이 아닌 이미지는 학습에서 뺀다 (실호�
      collage 는 여러 게시물이 섞인 것이라, UI 캡처든 아니든 학습에서 빼는 게 맞다. */
   const E2E = require('./fixtures/real-gemini-http-e2e.json').map((e) => e.result);
 
-  test('UI 플래그가 켜지면 뺀다', () => {
-    expect(IG._isNotSinglePost({ is_ui_screenshot: true, composition: 'text_overlay' })).toBe(true);
+  const R = (o) => Object.assign({ text_blocks: [], engine: 'gemini', confidence: 0.9,
+    is_ui_screenshot: false, composition: 'text_overlay' }, o);
+
+  test('collage 면 절대 학습 안 한다 — 실측에서 UI 격자 6/6 이 여기 걸렸다', () => {
+    expect(IG._eligibility(R({ composition: 'collage' }))).toBe(IG.ELIG.CLEAR_UI);
+    expect(IG._isNotSinglePost(R({ composition: 'collage' }))).toBe(true);
   });
 
-  test('🔑 collage 면 뺀다 — UI 플래그가 꺼져 있어도', () => {
-    expect(IG._isNotSinglePost({ is_ui_screenshot: false, composition: 'collage' })).toBe(true);
+  test('플래그만 켜지고 구도가 단일이면 SUSPECT — 실측 2건 모두 진짜 게시물이었다', () => {
+    expect(IG._eligibility(R({ is_ui_screenshot: true }))).toBe(IG.ELIG.SUSPECT);
+  });
+
+  test('🔴 분석 실패(429)는 진짜 게시물로 통과시키지 않는다', () => {
+    // 서버가 429 를 HTTP 200 + 빈 결과로 준다. 기본값이 is_ui_screenshot:false 라
+    // 예전 코드는 **실패한 UI 격자를 진짜 게시물로** 통과시켰다(C_full 실측).
+    const fail = { text_blocks: [], engine: 'error', confidence: 0, is_ui_screenshot: false,
+      composition: 'unknown' };
+    expect(IG._eligibility(fail)).toBe(IG.ELIG.NOT_ANALYZED);
+    expect(IG._isNotSinglePost(fail)).toBe(true);
   });
 
   test('실제 게시물은 남긴다', () => {
-    expect(IG._isNotSinglePost({ is_ui_screenshot: false, composition: 'text_overlay' })).toBe(false);
+    expect(IG._eligibility(R())).toBe(IG.ELIG.GENUINE);
+    expect(IG._isNotSinglePost(R())).toBe(false);
   });
 
   /* 🔑 실호출 **2회차(총 8건)** 실측 — 프롬프트를 보강해도 `is_ui_screenshot` 은 두 번 다 2/4 였다.
@@ -207,7 +223,7 @@ describe('🔴 우선순위 — editor_observed 가 항상 이긴다', () => {
   test('편집기 증거가 있으면 인스타 관찰을 안 쓴다', () => {
     expect(baseSrc).toMatch(/out\.axes\.align = pAlign \? _axis\(pAlign\.value, 'editor_observed'/);
     // 인스타는 pAlign 이 없을 때만
-    expect(baseSrc).toMatch(/: \(igtOk && igt\.align \? _axis\(igt\.align\.value, 'instagram_observed'/);
+    expect(baseSrc).toMatch(/_al \? _axis\(_al\.value, 'instagram_observed'/);
   });
 
   test('인스타 확신도는 editor_observed 를 못 이긴다', () => {
@@ -222,6 +238,116 @@ describe('🔴 우선순위 — editor_observed 가 항상 이긴다', () => {
   });
 
   test('표본이 모자라면 인스타 관찰을 안 쓴다', () => {
-    expect(baseSrc).toMatch(/igtOk = !!\(igt && igt\.enough\)/);
+    expect(baseSrc).toMatch(/a\.enough && a\.value != null/);
+  });
+});
+
+describe('🔴 실제 샵 3곳 cold-start — 실호출 응답 그대로 (2026-08-23)', () => {
+  /* 정답은 눈으로 붙였다: 격자 캡처 3장만 UI 이고 셀 18장은 **전부 진짜 게시물**이다.
+     그중엔 인셋 사진이 붙은 콜라주형 게시물, 네이버 리뷰 캡처를 디자인에 넣은 게시물까지 있다.
+     이 표본에서 실측한 값이 아래 숫자다 — 바뀌면 정책이 바뀐 것이다. */
+  const ROWS = require('./fixtures/real-shop-coldstart.json');
+  const shopOf = (t) => ROWS.filter((r) => r.meta.shop === t).map((r) => r.result);
+  const AX = ['align', 'position', 'fontClass', 'fontWeight', 'color', 'sizeRatio'];
+
+  test('UI 격자 캡처는 어느 샵에서도 학습에 안 들어간다 (오염 0)', () => {
+    ROWS.filter((r) => r.meta.kind === 'full_grid').forEach((r) => {
+      expect(IG._eligibility(r.result)).not.toBe(IG.ELIG.GENUINE);
+    });
+  });
+
+  test('🔑 429 로 분석이 실패한 UI 격자도 통과 못 한다 — 예전엔 통과했다', () => {
+    const failedGrid = ROWS.find((r) => r.meta.kind === 'full_grid' && r.result.engine !== 'gemini');
+    expect(failedGrid).toBeTruthy();                       // C_full 이 실제로 429 로 실패했다
+    expect(failedGrid.result.is_ui_screenshot).toBe(false); // 기본값이 false 라서 위험했다
+    expect(IG._eligibility(failedGrid.result)).toBe(IG.ELIG.NOT_ANALYZED);
+  });
+
+  test('샵 A — 6장 전부 살아서 6축이 다 찬다 (실제 피드: 흰 고딕 굵은 글씨 좌하단)', () => {
+    const p = IG._aggregate(shopOf('A'));
+    expect(p.counts.genuine).toBe(6);
+    expect(p.counts.clearUi).toBe(1);                      // 격자 캡처 1장만 빠졌다
+    expect(p.enough).toBe(true);
+    AX.forEach((k) => expect(p.axes[k].enough).toBe(true));
+    expect(p.axes.color.value).toBe('#FFFFFF');
+    expect(p.axes.align.value).toBe('left');
+    expect(p.axes.position.value).toBe('lower-left');
+  });
+
+  test('샵 B — 절반이 빠져도(UI 2 · 실패 2) 남은 3장으로 프로필이 선다', () => {
+    const p = IG._aggregate(shopOf('B'));
+    expect(p.counts.genuine).toBe(3);
+    expect(p.enough).toBe(true);
+    AX.forEach((k) => expect(p.axes[k].enough).toBe(true));
+  });
+
+  test('🔑 샵 C — 429 로 6장이 실패하면 프로필을 만들지 않는다 (없는 걸 지어내지 않는다)', () => {
+    const p = IG._aggregate(shopOf('C'));
+    expect(p.counts.notAnalyzed).toBe(6);
+    expect(p.counts.genuine).toBe(1);
+    expect(p.enough).toBe(false);
+    // 값 자체는 잡히지만 '쓸 수 있다'고 하지 않는다 — 이 구분이 핵심이다
+    expect(p.axes.align.value).toBe('left');
+    expect(p.axes.align.enough).toBe(false);
+  });
+
+  test('게시물 수별 — 3장부터 축이 열린다 (0~2장은 습관이라고 안 부른다)', () => {
+    const cells = ROWS.filter((r) => r.meta.shop === 'A' && r.meta.kind === 'cell').map((r) => r.result);
+    [0, 1, 2].forEach((n) => expect(IG._aggregate(cells.slice(0, n)).enough).toBe(false));
+    [3, 4, 5, 6].forEach((n) => {
+      const p = IG._aggregate(cells.slice(0, n));
+      expect(p.enough).toBe(true);
+      expect(AX.filter((k) => p.axes[k] && p.axes[k].enough).length).toBe(6);
+    });
+  });
+
+  test('🔑 축은 따로 논다 — 색만 있고 폰트가 없으면 색만 쓴다', () => {
+    const mk = (o) => post([blk(Object.assign({ font_family_class: 'unknown' }, o))]);
+    const p = IG._aggregate([mk(), mk(), mk()]);
+    expect(p.axes.color.enough).toBe(true);
+    expect(p.axes.fontClass).toBeNull();                   // 폰트는 비워둔다
+    expect(p.enough).toBe(true);                           // 그래도 프로필은 만든다
+  });
+
+  test('🔑 글자 많은 게시물 한 장이 축을 혼자 정하지 못한다 (게시물 단위 투표)', () => {
+    const loud = post(Array.from({ length: 12 }, () => blk({ alignment: 'right' })));
+    const quiet = [post([blk()]), post([blk()]), post([blk()])];   // left 3장
+    const p = IG._aggregate([loud].concat(quiet));
+    expect(p.axes.align.value).toBe('left');               // 12덩어리가 3장을 못 이긴다
+    expect(p.axes.align.posts).toBe(4);
+  });
+});
+
+describe('🔴 쿼터가 마르면 즉시 멈춘다 (실측 2026-08-23)', () => {
+  /* 실제로 21장을 돌리다 8장째부터 429 가 났는데, 서버가 HTTP 200 을 주는 바람에
+     클라이언트가 남은 13장을 계속 불렀다. Vertex 쿼터는 프로젝트 공용이라 그 낭비가 곧 운영 장애다. */
+  test('build() 가 quota_exhausted 를 보면 남은 장을 안 부른다', async () => {
+    const win = {};
+    new Function('window', src)(win);
+    let calls = 0;
+    // 모듈 안에서 전역 fetch 를 쓴다(window.fetch 가 아니다) — 실제 로드 환경과 같게 맞춘다
+    const realFetch = global.fetch;
+    // 🔑 진짜 Blob 이어야 한다 — _analyze 가 FormData.append(file, blob, name) 을 쓰기 때문에
+    //    가짜 객체를 주면 TypeError 가 나고 그게 조용히 삼켜진다(한참 헤맸다).
+    global.fetch = () => Promise.resolve({ ok: true, blob: () => Promise.resolve(new Blob(['xx'])) });
+    win.apiFetch = () => {
+      calls += 1;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(
+        calls >= 3
+          ? { text_blocks: [], engine: 'error', confidence: 0, warnings: ['quota_exhausted'],
+              is_ui_screenshot: false, composition: 'unknown' }
+          : { text_blocks: [blk()], engine: 'gemini', confidence: 0.9,
+              is_ui_screenshot: false, composition: 'text_overlay' }) });
+    };
+    const media = Array.from({ length: 12 }, (_, i) => ({ id: String(i), thumb: 'https://x/' + i }));
+    const prof = await win.InstagramTextStyle.build(media);
+    global.fetch = realFetch;
+    expect(calls).toBe(3);                 // 12장이 아니라 3장에서 멈춘다
+    expect(prof.quotaExhausted).toBe(true);
+    expect(prof.counts.genuine).toBe(2);   // 이미 받은 2장으로 만들 수 있는 만큼만
+  });
+
+  test('실패한 분석은 캐시하지 않는다 — 캐시하면 쿼터가 풀려도 영영 빈 결과를 쓴다', () => {
+    expect(src).toMatch(/if \(r\.engine === 'gemini'\) _cachePut/);
   });
 });

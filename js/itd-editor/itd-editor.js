@@ -1316,10 +1316,16 @@
 
     /* 🔑 순서: 타이포 먼저 → 렌더 → **그 다음에** geometry 측정 → Safety.
        타이포가 글자 박스 크기를 바꾸므로, 바꾸기 전 rect 로 Safety 를 정하면 틀린 자리로 옮긴다. */
+    var _wc = (S && S.wmContext) || {};
     var planCtx = {
       photoUrl: url,
       category: (S.planCategory || null),
-      photoCount: (S.photos || []).length
+      photoCount: (S.photos || []).length,
+      /* 학습(WMSignals.begin)에 쓴 것과 **같은** 값이어야 한다 — 여기서 손으로 다시 조립하면 또 어긋난다 */
+      service: _wc.service || undefined,
+      kind: _wc.kind || undefined,
+      hasBeforeAfter: _wc.hasBeforeAfter,
+      shopStyleId: _wc.shopStyleId
     };
     /* 🔴 이 체인을 **밖에서 기다릴 수 있게** S 에 걸어둔다.
        헤드리스 합성(compose)은 40ms 뒤에 구워버리는데 이 체인은 사진 디코딩·IDB 조회를
@@ -2606,7 +2612,17 @@
       photoUrl: photo, photoCss: 'url("' + photo + '")', photos: photos,
       shopName: (opts.shopName || '').trim(),
       pz: { scale: 1, tx: 0, ty: 0 }, incoming: (opts.layers || []),
-      onDone: opts.onDone, onCancel: opts.onCancel };
+      onDone: opts.onDone, onCancel: opts.onCancel,
+      /* 🔴 [2026-08-23] EditPlan 이 쓰던 `S.planCategory` 는 **읽기만 하고 아무도 대입하지 않았다** —
+         실사용 경로에서 category 가 늘 null 이라 업종 seed(CategoryPrior)가 한 번도 안 걸렸다.
+         그리고 더 큰 문제: 학습은 canonicalContext(시술·종류·사진수·템플릿)로 하는데
+         조회는 `{category, photoCount}` 로 해서 **contextKey 가 안 맞았다.**
+         키가 다르면 `WMPrefs.resolve` 가 exact 를 못 찾고, global fallback 은 context 2개
+         memory 2개를 요구하니 **원장이 아무리 편집해도 EditPlan 엔 안 보인다.**
+         브라우저에서 실제로 확인했다: WMPrefs 엔 center/#111111 이 있는데 계획은 인스타 값 그대로였다.
+         → 학습에 쓰는 그 context 를 그대로 들고 있다가 조회에도 쓴다. */
+      planCategory: (opts.category || (opts.wmContext && opts.wmContext.service) || null),
+      wmContext: opts.wmContext || null };
     var _ed = (opts.editState && opts.editState.v) ? opts.editState : null;   // [#4/#8/#11/#16] 재편집 이어가기
     if (_ed) { try { _restoreState(_ed); } catch (_re) { _ed = null; } }   // 복원 실패 시 일반 열기로 폴백(앱 안전)
     // [T8-A] 관찰 세션 시작 — 이 편집기 오픈 = 게시물 1개 작업 = observation 1개(batch).

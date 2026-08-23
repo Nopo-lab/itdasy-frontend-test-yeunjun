@@ -1,0 +1,1581 @@
+[
+  {
+    "meta": {
+      "id": "A_full",
+      "shop": "A",
+      "cat": "헤어",
+      "kind": "full_grid",
+      "path": "/private/tmp/claude-501/coldstart/img/A_full.jpg",
+      "kb": 81,
+      "genuine": false,
+      "klass": "ui_grid"
+    },
+    "http": 200,
+    "sec": 12.6,
+    "result": {
+      "text_blocks": [
+        {
+          "text": "상큼함 한 스푼♥",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.306,
+            "w": 0.25,
+            "h": 0.028
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.028,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "젤리처럼 탱글한 헤어스타일",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.338,
+            "w": 0.25,
+            "h": 0.028
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.028,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "| 여성 히피펌(젤리펌)",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.37,
+            "w": 0.25,
+            "h": 0.028
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.028,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "머리만 바꿨는데 과즙미 UP",
+          "bbox": {
+            "x": 0.38,
+            "y": 0.306,
+            "w": 0.25,
+            "h": 0.028
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.028,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "찰랑일 때 더 예쁜 스타일",
+          "bbox": {
+            "x": 0.38,
+            "y": 0.338,
+            "w": 0.25,
+            "h": 0.028
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.028,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "| 하이레이어드+C컬펌",
+          "bbox": {
+            "x": 0.38,
+            "y": 0.37,
+            "w": 0.25,
+            "h": 0.028
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.028,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "탱글한 컬감에 무게감을 더한",
+          "bbox": {
+            "x": 0.71,
+            "y": 0.306,
+            "w": 0.25,
+            "h": 0.028
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.028,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "시크하고 사랑스러운 분위기",
+          "bbox": {
+            "x": 0.71,
+            "y": 0.338,
+            "w": 0.25,
+            "h": 0.028
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.028,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "| 여성 젤리펌",
+          "bbox": {
+            "x": 0.71,
+            "y": 0.37,
+            "w": 0.25,
+            "h": 0.028
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.028,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "디테일이 만드는 결정적 차이",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.806,
+            "w": 0.25,
+            "h": 0.028
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.028,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "간편한 손질로 살아나는 클래식 핏",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.838,
+            "w": 0.25,
+            "h": 0.028
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.028,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "| 가일컷",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.87,
+            "w": 0.25,
+            "h": 0.028
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.028,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        }
+      ],
+      "composition": "collage",
+      "text_density": 0.15,
+      "is_ui_screenshot": true,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "A_c0",
+      "shop": "A",
+      "cat": "헤어",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/A_c0.jpg",
+      "kb": 15,
+      "genuine": true,
+      "klass": "genuine_plain"
+    },
+    "http": 200,
+    "sec": 2.9,
+    "result": {
+      "text_blocks": [
+        {
+          "text": "상큼함 한 스푼",
+          "bbox": {
+            "x": 0.09,
+            "y": 0.75,
+            "w": 0.45,
+            "h": 0.04
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.04,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.95
+        },
+        {
+          "text": "젤리처럼 탱글한 헤어스타일",
+          "bbox": {
+            "x": 0.09,
+            "y": 0.79,
+            "w": 0.68,
+            "h": 0.04
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.04,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.95
+        },
+        {
+          "text": "| 여성 히피펌(젤리펌)",
+          "bbox": {
+            "x": 0.09,
+            "y": 0.83,
+            "w": 0.65,
+            "h": 0.04
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.04,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.95
+        }
+      ],
+      "composition": "text_overlay",
+      "text_density": 0.05,
+      "is_ui_screenshot": false,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "A_c1",
+      "shop": "A",
+      "cat": "헤어",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/A_c1.jpg",
+      "kb": 13,
+      "genuine": true,
+      "klass": "genuine_plain"
+    },
+    "http": 200,
+    "sec": 3.6,
+    "result": {
+      "text_blocks": [
+        {
+          "text": "머리만 바꿨는데 과즙미 UP",
+          "bbox": {
+            "x": 0.07,
+            "y": 0.73,
+            "w": 0.85,
+            "h": 0.05
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.05,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.95
+        },
+        {
+          "text": "찰랑일 때 더 예쁜 스타일",
+          "bbox": {
+            "x": 0.07,
+            "y": 0.79,
+            "w": 0.75,
+            "h": 0.04
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.04,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.95
+        },
+        {
+          "text": "| 하이레이어드+C컬펌",
+          "bbox": {
+            "x": 0.07,
+            "y": 0.85,
+            "w": 0.7,
+            "h": 0.04
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.04,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.95
+        }
+      ],
+      "composition": "text_overlay",
+      "text_density": 0.1,
+      "is_ui_screenshot": false,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "A_c2",
+      "shop": "A",
+      "cat": "헤어",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/A_c2.jpg",
+      "kb": 13,
+      "genuine": true,
+      "klass": "genuine_plain"
+    },
+    "http": 200,
+    "sec": 3.0,
+    "result": {
+      "text_blocks": [
+        {
+          "text": "탱글한 컬감에 무게감을 더한",
+          "bbox": {
+            "x": 0.076,
+            "y": 0.72,
+            "w": 0.852,
+            "h": 0.04
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.04,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.95
+        },
+        {
+          "text": "시크하고 사랑스러운 분위기",
+          "bbox": {
+            "x": 0.076,
+            "y": 0.768,
+            "w": 0.852,
+            "h": 0.04
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.04,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.95
+        },
+        {
+          "text": "| 여성 젤리펌",
+          "bbox": {
+            "x": 0.076,
+            "y": 0.816,
+            "w": 0.852,
+            "h": 0.056
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.056,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.95
+        }
+      ],
+      "composition": "text_overlay",
+      "text_density": 0.05,
+      "is_ui_screenshot": false,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "A_c3",
+      "shop": "A",
+      "cat": "헤어",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/A_c3.jpg",
+      "kb": 14,
+      "genuine": true,
+      "klass": "genuine_plain"
+    },
+    "http": 200,
+    "sec": 4.2,
+    "result": {
+      "text_blocks": [
+        {
+          "text": "ARIAH",
+          "bbox": {
+            "x": 0.222,
+            "y": 0.11,
+            "w": 0.14,
+            "h": 0.02
+          },
+          "position": "upper-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.02,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "AIO",
+          "bbox": {
+            "x": 0.222,
+            "y": 0.13,
+            "w": 0.06,
+            "h": 0.01
+          },
+          "position": "upper-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.01,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "디테일이 만드는 결정적 차이",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.77,
+            "w": 0.6,
+            "h": 0.03
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.03,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.9
+        },
+        {
+          "text": "간편한 손질로 살아나는 클래식 핏",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.81,
+            "w": 0.6,
+            "h": 0.02
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "regular",
+          "size_ratio": 0.02,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.9
+        },
+        {
+          "text": "가일컷",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.87,
+            "w": 0.25,
+            "h": 0.05
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.05,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.9
+        }
+      ],
+      "composition": "text_overlay",
+      "text_density": 0.1,
+      "is_ui_screenshot": false,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "A_c4",
+      "shop": "A",
+      "cat": "헤어",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/A_c4.jpg",
+      "kb": 13,
+      "genuine": true,
+      "klass": "genuine_plain"
+    },
+    "http": 200,
+    "sec": 2.8,
+    "result": {
+      "text_blocks": [
+        {
+          "text": "머리를 묶어도 예쁘고,",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.69,
+            "w": 0.53,
+            "h": 0.04
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.04,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.9
+        },
+        {
+          "text": "풀어도 예쁜",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.74,
+            "w": 0.38,
+            "h": 0.04
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.04,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.9
+        },
+        {
+          "text": "| 매력적인 스타일 하피펌",
+          "bbox": {
+            "x": 0.05,
+            "y": 0.8,
+            "w": 0.78,
+            "h": 0.05
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.05,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.9
+        }
+      ],
+      "composition": "text_overlay",
+      "text_density": 0.05,
+      "is_ui_screenshot": false,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "A_c5",
+      "shop": "A",
+      "cat": "헤어",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/A_c5.jpg",
+      "kb": 15,
+      "genuine": true,
+      "klass": "genuine_plain"
+    },
+    "http": 200,
+    "sec": 2.9,
+    "result": {
+      "text_blocks": [
+        {
+          "text": "힘을 빼고 더 예쁘게",
+          "bbox": {
+            "x": 0.02,
+            "y": 0.78,
+            "w": 0.53,
+            "h": 0.04
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.04,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.95
+        },
+        {
+          "text": "부담스럽지 않은 컵과 자연스러운 컬로 편안하게",
+          "bbox": {
+            "x": 0.02,
+            "y": 0.82,
+            "w": 0.8,
+            "h": 0.03
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "regular",
+          "size_ratio": 0.03,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.95
+        },
+        {
+          "text": "쉐도우펌",
+          "bbox": {
+            "x": 0.02,
+            "y": 0.86,
+            "w": 0.3,
+            "h": 0.05
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.05,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.95
+        }
+      ],
+      "composition": "text_overlay",
+      "text_density": 0.08,
+      "is_ui_screenshot": false,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "B_full",
+      "shop": "B",
+      "cat": "속눈썹",
+      "kind": "full_grid",
+      "path": "/private/tmp/claude-501/coldstart/img/B_full.jpg",
+      "kb": 106,
+      "genuine": false,
+      "klass": "ui_grid"
+    },
+    "http": 200,
+    "sec": 11.8,
+    "result": {
+      "text_blocks": [
+        {
+          "text": "커스텀 디자인 연장 후기 사진",
+          "bbox": {
+            "x": 0.457,
+            "y": 0.076,
+            "w": 0.208,
+            "h": 0.019
+          },
+          "position": "upper-center",
+          "alignment": "left",
+          "color": "#666666",
+          "font_family_class": "sans",
+          "font_weight": "regular",
+          "size_ratio": 0.019,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "넘 이뿌시죵..",
+          "bbox": {
+            "x": 0.457,
+            "y": 0.407,
+            "w": 0.07,
+            "h": 0.015
+          },
+          "position": "center-left",
+          "alignment": "left",
+          "color": "#666666",
+          "font_family_class": "sans",
+          "font_weight": "regular",
+          "size_ratio": 0.015,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "Custom",
+          "bbox": {
+            "x": 0.702,
+            "y": 0.038,
+            "w": 0.278,
+            "h": 0.05
+          },
+          "position": "upper-right",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.05,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "Design Shop",
+          "bbox": {
+            "x": 0.698,
+            "y": 0.08,
+            "w": 0.29,
+            "h": 0.05
+          },
+          "position": "upper-right",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.05,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "Goodafternoon",
+          "bbox": {
+            "x": 0.679,
+            "y": 0.435,
+            "w": 0.14,
+            "h": 0.019
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.019,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "Unique Eyelash Design Shop.",
+          "bbox": {
+            "x": 0.679,
+            "y": 0.455,
+            "w": 0.14,
+            "h": 0.012
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "regular",
+          "size_ratio": 0.012,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "화투하 (Hearts2Hearts)",
+          "bbox": {
+            "x": 0.03,
+            "y": 0.282,
+            "w": 0.22,
+            "h": 0.02
+          },
+          "position": "center-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.02,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "이안님 속눈썹 디자인 분석",
+          "bbox": {
+            "x": 0.03,
+            "y": 0.302,
+            "w": 0.22,
+            "h": 0.019
+          },
+          "position": "center-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.019,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "배우 신세경님",
+          "bbox": {
+            "x": 0.03,
+            "y": 0.822,
+            "w": 0.15,
+            "h": 0.02
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.02,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "속눈썹 디자인 분석",
+          "bbox": {
+            "x": 0.03,
+            "y": 0.842,
+            "w": 0.15,
+            "h": 0.02
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.02,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "펌포인트연장",
+          "bbox": {
+            "x": 0.34,
+            "y": 0.822,
+            "w": 0.1,
+            "h": 0.015
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.015,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "LASH PERM + POINT EXTENSIONS",
+          "bbox": {
+            "x": 0.34,
+            "y": 0.88,
+            "w": 0.25,
+            "h": 0.02
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.02,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        }
+      ],
+      "composition": "collage",
+      "text_density": 0.1,
+      "is_ui_screenshot": true,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "B_c0",
+      "shop": "B",
+      "cat": "속눈썹",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/B_c0.jpg",
+      "kb": 25,
+      "genuine": true,
+      "klass": "genuine_collage_like"
+    },
+    "http": 200,
+    "sec": 3.2,
+    "result": {
+      "text_blocks": [
+        {
+          "text": "하투하 (Hearts2Hearts)",
+          "bbox": {
+            "x": 0.06,
+            "y": 0.45,
+            "w": 0.53,
+            "h": 0.05
+          },
+          "position": "center-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.025,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.9
+        },
+        {
+          "text": "이아님 속눈썹 디자인 분석 :)",
+          "bbox": {
+            "x": 0.06,
+            "y": 0.49,
+            "w": 0.53,
+            "h": 0.05
+          },
+          "position": "center-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.025,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.9
+        },
+        {
+          "text": "@GDQBAFTERNOON",
+          "bbox": {
+            "x": 0.06,
+            "y": 0.53,
+            "w": 0.25,
+            "h": 0.03
+          },
+          "position": "center-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.015,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.9
+        }
+      ],
+      "composition": "collage",
+      "text_density": 0.05,
+      "is_ui_screenshot": false,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "B_c1",
+      "shop": "B",
+      "cat": "속눈썹",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/B_c1.jpg",
+      "kb": 13,
+      "genuine": true,
+      "klass": "genuine_collage_like"
+    },
+    "http": 200,
+    "sec": 3.8,
+    "result": {
+      "text_blocks": [
+        {
+          "text": "커스텀 디자인 연장 후기 사진🤎",
+          "bbox": {
+            "x": 0.207,
+            "y": 0.141,
+            "w": 0.59,
+            "h": 0.038
+          },
+          "position": "upper-center",
+          "alignment": "center",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.038,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "님 이쁘시죠..🤎",
+          "bbox": {
+            "x": 0.301,
+            "y": 0.648,
+            "w": 0.246,
+            "h": 0.024
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.024,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "@goodafter_jjoob",
+          "bbox": {
+            "x": 0.067,
+            "y": 0.208,
+            "w": 0.12,
+            "h": 0.012
+          },
+          "position": "upper-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.012,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "@goodafternoon31",
+          "bbox": {
+            "x": 0.067,
+            "y": 0.22,
+            "w": 0.12,
+            "h": 0.012
+          },
+          "position": "upper-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.012,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        }
+      ],
+      "composition": "text_overlay",
+      "text_density": 0.07,
+      "is_ui_screenshot": false,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "B_c2",
+      "shop": "B",
+      "cat": "속눈썹",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/B_c2.jpg",
+      "kb": 18,
+      "genuine": true,
+      "klass": "genuine_plain"
+    },
+    "http": 200,
+    "sec": 3.6,
+    "result": {
+      "text_blocks": [
+        {
+          "text": "Custom",
+          "bbox": {
+            "x": 0.057,
+            "y": 0.063,
+            "w": 0.435,
+            "h": 0.07
+          },
+          "position": "upper-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.07,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "Design Shop",
+          "bbox": {
+            "x": 0.057,
+            "y": 0.125,
+            "w": 0.67,
+            "h": 0.07
+          },
+          "position": "upper-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.07,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "Goodafternoon",
+          "bbox": {
+            "x": 0.057,
+            "y": 0.87,
+            "w": 0.47,
+            "h": 0.04
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.04,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        },
+        {
+          "text": "Unique Eyelash Design Shop.",
+          "bbox": {
+            "x": 0.057,
+            "y": 0.91,
+            "w": 0.47,
+            "h": 0.02
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#000000",
+          "font_family_class": "sans",
+          "font_weight": "regular",
+          "size_ratio": 0.02,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.95
+        }
+      ],
+      "composition": "text_overlay",
+      "text_density": 0.1,
+      "is_ui_screenshot": false,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "B_c3",
+      "shop": "B",
+      "cat": "속눈썹",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/B_c3.jpg",
+      "kb": 23,
+      "genuine": true,
+      "klass": "genuine_plain"
+    },
+    "http": 200,
+    "sec": 3.0,
+    "result": {
+      "text_blocks": [
+        {
+          "text": "good.afternoon31",
+          "bbox": {
+            "x": 0.06,
+            "y": 0.58,
+            "w": 0.23,
+            "h": 0.02
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "unknown",
+          "size_ratio": 0.02,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "배우 신세경님",
+          "bbox": {
+            "x": 0.06,
+            "y": 0.68,
+            "w": 0.38,
+            "h": 0.04
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.04,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        },
+        {
+          "text": "속눈썹 디자인 분석",
+          "bbox": {
+            "x": 0.06,
+            "y": 0.73,
+            "w": 0.52,
+            "h": 0.05
+          },
+          "position": "lower-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.05,
+          "stroke": false,
+          "shadow": false,
+          "confidence": 0.9
+        }
+      ],
+      "composition": "text_overlay",
+      "text_density": 0.05,
+      "is_ui_screenshot": false,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "B_c4",
+      "shop": "B",
+      "cat": "속눈썹",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/B_c4.jpg",
+      "kb": 16,
+      "genuine": true,
+      "klass": "genuine_plain"
+    },
+    "http": 200,
+    "sec": 0.4,
+    "result": {
+      "text_blocks": [],
+      "composition": "unknown",
+      "text_density": 0.0,
+      "is_ui_screenshot": false,
+      "confidence": 0.0,
+      "engine": "error",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "B_c5",
+      "shop": "B",
+      "cat": "속눈썹",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/B_c5.jpg",
+      "kb": 12,
+      "genuine": true,
+      "klass": "genuine_collage_like"
+    },
+    "http": 200,
+    "sec": 0.7,
+    "result": {
+      "text_blocks": [],
+      "composition": "unknown",
+      "text_density": 0.0,
+      "is_ui_screenshot": false,
+      "confidence": 0.0,
+      "engine": "error",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "C_full",
+      "shop": "C",
+      "cat": "왁싱",
+      "kind": "full_grid",
+      "path": "/private/tmp/claude-501/coldstart/img/C_full.jpg",
+      "kb": 88,
+      "genuine": false,
+      "klass": "ui_grid"
+    },
+    "http": 200,
+    "sec": 0.6,
+    "result": {
+      "text_blocks": [],
+      "composition": "unknown",
+      "text_density": 0.0,
+      "is_ui_screenshot": false,
+      "confidence": 0.0,
+      "engine": "error",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "C_c0",
+      "shop": "C",
+      "cat": "왁싱",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/C_c0.jpg",
+      "kb": 16,
+      "genuine": true,
+      "klass": "genuine_ui_content"
+    },
+    "http": 200,
+    "sec": 0.5,
+    "result": {
+      "text_blocks": [],
+      "composition": "unknown",
+      "text_density": 0.0,
+      "is_ui_screenshot": false,
+      "confidence": 0.0,
+      "engine": "error",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "C_c1",
+      "shop": "C",
+      "cat": "왁싱",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/C_c1.jpg",
+      "kb": 12,
+      "genuine": true,
+      "klass": "genuine_collage_like"
+    },
+    "http": 200,
+    "sec": 0.6,
+    "result": {
+      "text_blocks": [],
+      "composition": "unknown",
+      "text_density": 0.0,
+      "is_ui_screenshot": false,
+      "confidence": 0.0,
+      "engine": "error",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "C_c2",
+      "shop": "C",
+      "cat": "왁싱",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/C_c2.jpg",
+      "kb": 17,
+      "genuine": true,
+      "klass": "genuine_plain"
+    },
+    "http": 200,
+    "sec": 0.5,
+    "result": {
+      "text_blocks": [],
+      "composition": "unknown",
+      "text_density": 0.0,
+      "is_ui_screenshot": false,
+      "confidence": 0.0,
+      "engine": "error",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "C_c3",
+      "shop": "C",
+      "cat": "왁싱",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/C_c3.jpg",
+      "kb": 14,
+      "genuine": true,
+      "klass": "genuine_ui_content"
+    },
+    "http": 200,
+    "sec": 0.6,
+    "result": {
+      "text_blocks": [],
+      "composition": "unknown",
+      "text_density": 0.0,
+      "is_ui_screenshot": false,
+      "confidence": 0.0,
+      "engine": "error",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "C_c4",
+      "shop": "C",
+      "cat": "왁싱",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/C_c4.jpg",
+      "kb": 12,
+      "genuine": true,
+      "klass": "genuine_collage_like"
+    },
+    "http": 200,
+    "sec": 0.5,
+    "result": {
+      "text_blocks": [],
+      "composition": "unknown",
+      "text_density": 0.0,
+      "is_ui_screenshot": false,
+      "confidence": 0.0,
+      "engine": "error",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  },
+  {
+    "meta": {
+      "id": "C_c5",
+      "shop": "C",
+      "cat": "왁싱",
+      "kind": "cell",
+      "path": "/private/tmp/claude-501/coldstart/img/C_c5.jpg",
+      "kb": 17,
+      "genuine": true,
+      "klass": "genuine_plain"
+    },
+    "http": 200,
+    "sec": 2.1,
+    "result": {
+      "text_blocks": [
+        {
+          "text": "Pov: 수염 싫어하는 사람",
+          "bbox": {
+            "x": 0.13,
+            "y": 0.02,
+            "w": 0.76,
+            "h": 0.07
+          },
+          "position": "upper-left",
+          "alignment": "left",
+          "color": "#FFFFFF",
+          "font_family_class": "sans",
+          "font_weight": "bold",
+          "size_ratio": 0.04,
+          "stroke": false,
+          "shadow": true,
+          "confidence": 0.9
+        }
+      ],
+      "composition": "text_overlay",
+      "text_density": 0.01,
+      "is_ui_screenshot": false,
+      "confidence": 0.9,
+      "engine": "gemini",
+      "warnings": [],
+      "analysis_version": "igstyle-v1"
+    }
+  }
+]
