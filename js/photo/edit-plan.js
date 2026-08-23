@@ -168,7 +168,11 @@
          context 2개·memory 2개를 요구하므로, 그전까지 원장 편집이 계획에 **아예 안 보인다.**
          브라우저 실측(2026-08-23)으로 잡았다 — `hasBeforeAfter` 가 빠져 있었다. */
       var _pctxKeys = { category: ctxOpts.category, service: ctxOpts.service,
-        photoCount: ctxOpts.photoCount, kind: ctxOpts.kind, hasBeforeAfter: ctxOpts.hasBeforeAfter };
+        photoCount: ctxOpts.photoCount, kind: ctxOpts.kind, hasBeforeAfter: ctxOpts.hasBeforeAfter,
+        /* [2026-08-23] 스타일까지 넘긴다 — 원장 한 명이 스타일을 여러 개 쓴다.
+           `undefined` 로 두면 canonicalContext 가 **현재 활성 스타일**로 채워버려서
+           학습한 스타일과 다른 칸을 뒤질 수 있다. 편집기가 준 값을 그대로 쓴다. */
+        shopStyleId: ctxOpts.shopStyleId };
       var baseP = (window.ShopBaseline && window.ShopBaseline.resolve)
         ? window.ShopBaseline.resolve(_pctxKeys)
         : Promise.resolve(null);

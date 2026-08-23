@@ -335,7 +335,8 @@ describe('[T8-G] 🔴 실제 플로우가 관찰에 context 를 붙인다 (실�
      그래서 이제 **엔진의 contextKey() 하나만** 키를 만든다. 아래 단언은 그 형식에 맞춘 것이다. */
     const keys = new Set((await P.list()).map((p) => p.contextKey));
     expect(keys.size).toBe(1);
-    expect([...keys][0]).toBe('|||');                 // 전부 한 바구니 — 이게 실제로 벌어지던 일
+    expect([...keys][0]).toBe('||||');                // 전부 한 바구니 — 이게 실제로 벌어지던 일
+                                                      // (칸이 5개다: 스타일|시술|사진수|종류|전후)
   });
   test('context 를 붙이면 상황별로 분리된다', async () => {
     const b = memBackend(); const { S, P, L } = load(5, b);
@@ -347,8 +348,8 @@ describe('[T8-G] 🔴 실제 플로우가 관찰에 context 를 붙인다 (실�
     }
     const keys = new Set((await P.list()).map((p) => p.contextKey));
     expect(keys.size).toBe(2);
-    expect(keys.has('젤네일|1|service|')).toBe(true);
-    expect(keys.has('펌|2|service|')).toBe(true);
+    expect(keys.has('|젤네일|1|service|')).toBe(true);
+    expect(keys.has('|펌|2|service|')).toBe(true);
   });
 });
 

@@ -286,21 +286,58 @@
   /* 지금 이 context 에서 쓸 선호 하나 — exact 우선, 없으면 global fallback(confidence 감쇠).
      fallback 은 "정확한 경험이 없을 때만" 쓰고, 그 사실을 via/confidence 로 드러낸다. */
   async function resolve(feature, context) {
-    var ctxKey = _ctxKey(context);
     var all = await list();
-    var here = all.filter(function (p) { return p.feature === feature && p.contextKey === ctxKey; });
-    var exact = here.filter(function (p) { return p.positive > p.negative; })
-      .sort(function (a, b) { return (b.positive - b.negative) - (a.positive - a.negative); })[0];
-    if (exact) {
-      return { feature: feature, value: exact.value, via: 'exact',
-        confidence: exact.confidence, rawConfidence: exact.confidence, pref: exact };
+    /* [2026-08-23] 계층 조회 — 좁은 칸(스타일+상황)부터 넓은 칸(시술)까지 순서대로 본다.
+       스타일을 키에 넣으면 칸이 잘게 쪼개져서 칸당 표본이 준다. 그걸 그대로 두면
+       "스타일별로 배우게 했더니 아무것도 못 배우는" 상태가 된다. 그래서 사다리가 세트다.
+
+       🔴 단, **갈린 칸에서는 멈춘다.** 원장이 그 칸에서 실제로 반반 갈렸다는 건
+          '경험 없음'이 아니라 '취향이 갈림'이다. 거기서 아래 칸으로 내려가면
+          다른 상황(심지어 다른 스타일)의 취향으로 덮어쓰게 된다. */
+    var E = window.WorkMemoryEngine;
+    var ladder = (E && E.contextKeyLadder && E.contextKeyMatches)
+      ? E.contextKeyLadder(context) : null;
+    var match = E && E.contextKeyMatches;
+    if (!ladder) ladder = [{ via: 'exact', want: null }];
+
+    for (var i = 0; i < ladder.length; i++) {
+      var step = ladder[i];
+      var here = all.filter(function (p) {
+        if (p.feature !== feature) return false;
+        return step.want ? match(p.contextKey, step.want) : (p.contextKey === _ctxKey(context));
+      });
+      if (!here.length) continue;                        // 그 칸은 겪어본 적 없다 → 다음 칸
+
+      /* 넓은 칸은 저장분이 **여러 개**다(스타일별로 흩어져 있다). 값이 같으면 합쳐서 센다 —
+         안 합치면 5회짜리 두 칸이 각각 5로 보여서 갈림 판정을 못 한다. */
+      var byVal = {};
+      here.forEach(function (p) {
+        var k = String(p.value);
+        if (!byVal[k]) byVal[k] = { value: p.value, pos: 0, neg: 0, conf: 0, n: 0, pref: p };
+        byVal[k].pos += (p.positive || 0); byVal[k].neg += (p.negative || 0);
+        byVal[k].n += (p.sampleCount || 0);
+        if ((p.confidence || 0) > byVal[k].conf) { byVal[k].conf = p.confidence || 0; byVal[k].pref = p; }
+      });
+      var vals = Object.keys(byVal).map(function (k) { return byVal[k]; });
+      var win = vals.filter(function (v) { return v.pos > v.neg; })
+        .sort(function (a, b) { return (b.pos - b.neg) - (a.pos - a.neg); })[0];
+      var tie = win && vals.filter(function (v) {
+        return v !== win && v.pos > v.neg && (v.pos - v.neg) === (win.pos - win.neg);
+      }).length > 0;
+      if (win && !tie) {
+        /* 넓은 칸에서 온 값은 그만큼 덜 확신한다 — 사다리를 내려온 횟수만큼 감쇠한다.
+           새 상수를 만들지 않고 이미 쓰는 FALLBACK_PENALTY 를 반복 적용한다. */
+        var pen = Math.pow(FALLBACK_PENALTY, i);
+        return { feature: feature, value: win.value, via: step.via,
+          confidence: win.conf * pen, rawConfidence: win.conf, pref: win.pref };
+      }
+      /* 골라본 적은 있는데 우세값이 없거나 동점이다 = **갈렸다** → 여기서 끝낸다(§13).
+         아래 칸으로 내려가면 다른 스타일의 취향으로 덮어쓰게 된다. */
+      if (vals.some(function (v) { return v.pos > 0; })) return null;
     }
-    /* [T8-D] 🔴 여기서 골라본 적이 있는데 우세값이 없다 = **취향이 갈린 것**이지 '경험 없음'이 아니다.
-       global fallback 은 "이 상황을 겪어본 적 없을 때"의 대타인데, 갈린 context 에 그걸 쓰면
-       원장이 실제로 반반 갈렸다는 명확한 증거를 다른 상황의 취향으로 덮어쓴다.
-       실측(T8-D 4패턴): jua 8 / gamja 8 인 context 에서 confidence 는 0.013 인데
-       resolve() 가 global 로 jua(0.375) 를 반환했다 → 여기선 아무것도 제안하지 않는 게 맞다. */
-    if (here.some(function (p) { return p.positive > 0; })) return null;
+    /* [T8-D] 사다리를 끝까지 내려왔는데 어느 칸에서도 골라본 적이 없다 → 진짜 '경험 없음'.
+       이때만 global 을 쓴다. (갈린 칸에서는 위 루프가 이미 null 로 끝냈다 —
+       실측 T8-D: jua 8 / gamja 8 인 칸에서 global 로 jua 를 반환하던 버그가 그 자리다.) */
     var g = await getGlobal(feature);
     if (!g) return null;
     return { feature: feature, value: g.value, via: 'global',
