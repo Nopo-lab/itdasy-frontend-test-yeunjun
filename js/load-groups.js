@@ -32,7 +32,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   // [Phase 5.2] Gate 자동판정 — 판정만, 자동화 0.
   'js/photo/safety-gate.js?v=local-p52',
   // 지표 읽기 — URL `?safetyReport=1` 로만 표시. 네트워크 0·자동전송 0.
-  'js/photo/safety-readout.js?v=local-live1',
+  'js/photo/safety-readout.js?v=local-live3',
   // [Phase 5.4] OBB 사전검증 — 순수함수. **어디에도 연결 안 됨**(테스트가 감시).
   'js/photo/obb-geometry.js?v=local-p54',
   // [Phase 5.5] 증거 모니터 — 판정·안내만. 새 저장소 없음(기존 리포트 조합).

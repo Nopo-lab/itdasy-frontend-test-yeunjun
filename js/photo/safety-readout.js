@@ -106,6 +106,22 @@
     var sum = document.createElement('div');
     sum.setAttribute('style', 'font-weight:800;margin-bottom:8px;font-size:13px;font-family:inherit');
     sum.textContent = _summary(d);
+
+    /* [실검증 DAY 1] 자동 초안 현황을 **맨 위에 크게**. 원장님은 1인샵 사장님이고 폰으로 쓰신다 —
+       콘솔을 못 연다. JSON 덩어리 안에 묻어두면 아무도 못 본다.
+       그래서 사람이 읽는 줄로 먼저 보여준다(원문 JSON 은 아래에 그대로 남는다). */
+    var dq = document.createElement('div');
+    dq.setAttribute('style', 'margin-bottom:10px;padding:10px;border-radius:10px;' +
+      'background:#F7F4F2;border:1px solid #E6DFDA;white-space:pre-wrap;font-family:inherit');
+    try { dq.textContent = axisLines(d).join('\n'); } catch (_e) { void _e; dq.textContent = '초안 지표 없음'; }
+    var head = document.createElement('div');
+    head.setAttribute('style', 'font-weight:800;margin-bottom:6px;font-family:inherit');
+    head.textContent = d.rollout
+      ? ('rollout ' + d.rollout.pct + '% · bucket ' + d.rollout.bucket + ' → ' + (d.rollout.on ? 'ON' : 'OFF') +
+         (d.draftStatus ? (' · 계측 ' + (d.draftStatus.counting ? 'ON' : 'OFF') +
+           (d.draftStatus.writeFailures ? ' · 🔴저장실패' + d.draftStatus.writeFailures : '')) : ''))
+      : 'rollout 정보 없음';
+    dq.insertBefore(head, dq.firstChild);
     var pre = document.createElement('pre');
     pre.setAttribute('style', 'white-space:pre-wrap;word-break:break-all;margin:0');
     pre.textContent = text;
@@ -126,7 +142,8 @@
     close.setAttribute('style', 'flex:1;padding:10px;border-radius:10px;border:1px solid #ccc;background:#fff;font-weight:700');
     close.onclick = function () { box.remove(); };
     row.appendChild(copy); row.appendChild(close);
-    box.appendChild(sum); box.appendChild(pre); box.appendChild(row);
+    box.appendChild(sum);
+    box.appendChild(dq); box.appendChild(pre); box.appendChild(row);
     document.body.appendChild(box);
     return d;
   }
