@@ -71,6 +71,13 @@ jobs:
       - name: Smoke check
 
         run: npm run smoke
+      # [출시 전 동결 2026-08-23] 테스트를 배포 게이트에 넣는다.
+      #   그전까지 jest 가 **CI 에서 한 번도 안 돌았다** — pre-commit 은 lint-staged + smoke 만 본다.
+      #   그래서 '조용한 무동작' 가드(silent-noop-guard 등)가 자동으로는 아무 것도 못 막고 있었다.
+      #   선언만 된 스위치·대입 없는 필드·미등록 모듈·메모리에만 있는 계측을 여기서 잡는다.
+      #   ⚠️ 파이프를 붙이지 않는다 — 파이프를 타면 실패 코드가 가려져 초록불이 뜬다(실제로 겪었다).
+      - name: Tests (photo editor guards included)
+        run: npm test
       # [기능별 연결 그래프] 코드 변경이 공유용 graph.html 에 자동 반영되게 매 배포마다 재생성.
       #   AST 만 쓰므로 API 키 불필요. 비치명적(continue-on-error) — 실패해도 커밋된 graph.html 이 서빙됨.
       - name: Rebuild feature graph (non-fatal)
