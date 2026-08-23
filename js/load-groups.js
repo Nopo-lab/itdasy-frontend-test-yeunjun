@@ -16,6 +16,8 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/workspace/edit-plan-shadow.js?v=local-pctx1',
   // [Phase 2] 인스타 과거 게시물 → 시각 스타일 **후보**. 소비처 없음(Replay/Shadow 검증 전).
   'js/photo/shop-style-candidate.js?v=local-p2b',
+  // [2026-08-23] 인스타 기존 게시물의 **글자 배치 습관** — 서버 Vision 관찰을 모아 콜드스타트에 쓴다.
+  'js/photo/instagram-text-style.js?v=local-exp1',
   // [Phase 3] 업종 seed + 증거계층 resolver. 소비처 없음(Replay/Shadow 검증 전).
   'js/photo/category-prior.js?v=local-p3a',
   // [STAGE C] 게시물 종류(인물/전후비교/후기캡처) — 실측 27샵으로 임계값 정함. EditPlan(기본 OFF)만 소비.
@@ -26,7 +28,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/photo/draft-quality.js?v=local-live1',
   // [STAGE E] 원장별 개입 강도 — WMPrefs 를 EditPlan 언어로 번역만. 저장소·이벤트 신설 0.
   'js/photo/draft-personalization.js?v=local-cont1',
-  'js/photo/shop-baseline.js?v=local-p3b',
+  'js/photo/shop-baseline.js?v=local-exp1',
   // [Phase 5] Safety Shadow — 계산만. 화면 반영 0(테스트가 소비처 0 감시).
   'js/photo/safety-shadow.js?v=local-p51',
   // [Phase 5.2] Gate 자동판정 — 판정만, 자동화 0.
@@ -53,7 +55,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   // [2026-07-23] 아이콘 스티커 세트 — itd-editor.js 보다 **먼저** 실려야 STK_TABS 가 탭을 만든다.
   'js/itd-editor/data/itd-icon-stickers.js?v=local-151154',
   'js/itd-editor/safe-zone.js?v=local-151154',
-  'js/itd-editor/itd-editor.js?v=local-cont1',
+  'js/itd-editor/itd-editor.js?v=local-exp1',
   'js/workspace/workspace-adapter.js?v=local-151154',
   'js/workspace/workspace-sync.js?v=local-151154',
   'js/workspace/workspace-crop.js?v=local-151154',

@@ -339,3 +339,16 @@
 .itl-deltoast.is-show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 .itl-deltoast__u{background:none;border:none;color:#F2A9B5;font-size:14px;font-weight:800;cursor:pointer;padding:2px 4px;font-family:inherit}
 .itl-deltoast__u:active{opacity:.65}
+
+
+/* [2026-08-23] 레이어 순서 줄 — 레일 아래. 선택이 없으면 버튼이 **꺼진다**(사라지지 않는다:
+   자리가 들썩이면 레일 위치가 흔들려 오탭이 난다). */
+.itded__lyr { display:flex; gap:6px; justify-content:center; padding:6px 10px 2px; }
+.itlyr {
+  width:38px; height:34px; display:grid; place-items:center;
+  border:1px solid rgba(255,255,255,.16); border-radius:10px;
+  background:rgba(255,255,255,.06); color:#fff; cursor:pointer;
+}
+.itlyr:disabled { opacity:.3; cursor:default; }
+.itlyr svg { width:19px; height:19px; }
+.itl-arrowhead { pointer-events:none; }

@@ -194,7 +194,8 @@
   var BRUSHES = ['pen', 'marker', 'neon', 'eraser'];
   // [#8] 도형 — 편집 가능한 레이어로 삽입(드래그/회전/크기). 그리기와 달리 '한번 세팅하면 그대로 재사용'.
   var SHAPES = [
-    { key: 'line', label: '선' }, { key: 'rect', label: '사각형' },
+    { key: 'line', label: '선' }, { key: 'arrow', label: '화살표' },
+    { key: 'rect', label: '사각형' },
     { key: 'round', label: '둥근사각' }, { key: 'circle', label: '원' }
   ];
   var STK_KEY = 'itdasy:itd_stickers';   // [#7] 내 스티커(업로드) 로컬 저장(무료, 클라이언트)
@@ -279,6 +280,15 @@
         //   브리지(_matchItdPreset)로 넘어온 콜라주는 renderCollage 가 그대로 그리므로 도구 버튼만 숨김(panel/selectLayout/renderCollage 로직은 보존).
         '<button class="itrb" data-tool="shape">' + IC.shape + '</button>' +
         '<button class="itrb" data-tool="draw">' + IC.draw + '</button>' +
+      '</div>' +
+      /* [2026-08-23] 레이어 순서 — 겹친 글자/도형을 앞뒤로 보낸다.
+         레일에 끼우지 않고 **별도 줄**로 둔다: 레일은 '무엇을 추가할까'이고
+         이건 '지금 고른 걸 어디로'라서 성격이 다르다. 선택이 없으면 버튼이 전부 꺼진다. */
+      '<div class="itded__lyr" data-r="lyr">' +
+        '<button class="itlyr" data-lyr="back" aria-label="맨 뒤로" title="맨 뒤로">' + svg('<path d="M4 8h10v10H4z"/><path d="M8 4h12v12"/>', 2) + '</button>' +
+        '<button class="itlyr" data-lyr="down" aria-label="뒤로" title="뒤로">' + svg('<path d="M12 19V5"/><path d="M5 12l7 7 7-7"/>', 2.2) + '</button>' +
+        '<button class="itlyr" data-lyr="up" aria-label="앞으로" title="앞으로">' + svg('<path d="M12 5v14"/><path d="M5 12l7-7 7 7"/>', 2.2) + '</button>' +
+        '<button class="itlyr" data-lyr="front" aria-label="맨 앞으로" title="맨 앞으로">' + svg('<path d="M10 6h10v10H10z"/><path d="M4 16V4h12"/>', 2) + '</button>' +
       '</div>' +
       buildText() + buildAdjust() + buildSticker() + buildLayout() + buildShape() + buildDraw();
     document.body.appendChild(root);
@@ -630,7 +640,42 @@
     // [2026-07-27] 폰트 패널 조건부 노출 — 텍스트 레이어 선택 시에만 열고, 선택 해제/다른 레이어면 닫는다(기존 setTool/_closeToolPanel 재사용).
     if (L && L.type === 'text') { syncTextControls(L); if (S.tool !== 'text') setTool('text', true); }
     else if (S.tool === 'text') _closeToolPanel();
+    _syncLayerBtns();
   }
+  /* [2026-08-23] 레이어 순서 — 앞/뒤로 보내기.
+     🔑 `S.layers` 배열 순서와 DOM 순서를 **함께** 옮긴다. 하나만 바꾸면
+        화면과 발행본이 어긋난다(굽기는 배열 순서로, 화면은 DOM 순서로 그린다).
+     핸들을 더 늘리지 않고 기존 도구 패널에 둔다 — 좁은 화면에서 핸들이 서로 겹친다. */
+  function reorderLayer(L, dir) {
+    if (!L || !S) return false;
+    var i = S.layers.indexOf(L);
+    if (i < 0) return false;
+    var to = dir === 'front' ? S.layers.length - 1
+      : dir === 'back' ? 0
+        : dir === 'up' ? Math.min(S.layers.length - 1, i + 1)
+          : Math.max(0, i - 1);
+    if (to === i) return false;
+    S.layers.splice(i, 1); S.layers.splice(to, 0, L);
+    // DOM 도 같은 순서로 다시 붙인다 — 배열이 진실이고 DOM 이 따라간다
+    try { S.layers.forEach(function (x) { if (x.el) refs.layers.appendChild(x.el); }); }
+    catch (_e) { void _e; }
+    _syncLayerBtns();
+    return true;
+  }
+  function _syncLayerBtns() {
+    try {
+      var L = S && S.active, i = L ? S.layers.indexOf(L) : -1, n = S ? S.layers.length : 0;
+      ['up', 'front'].forEach(function (k) {
+        var b = root.querySelector('[data-lyr="' + k + '"]');
+        if (b) b.disabled = !(L && i >= 0 && i < n - 1);
+      });
+      ['down', 'back'].forEach(function (k) {
+        var b = root.querySelector('[data-lyr="' + k + '"]');
+        if (b) b.disabled = !(L && i > 0);
+      });
+    } catch (_e) { void _e; }
+  }
+
   function removeLayer(L, track) {
     var i = S.layers.indexOf(L); if (i >= 0) S.layers.splice(i, 1);
     L.el.remove(); if (S.active === L) S.active = null;
@@ -776,7 +821,7 @@
         var rad = -(rsd.L.rot || 0) * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
         var ldx = mdx * cs - mdy * sn, ldy = mdx * sn + mdy * cs;   // 로컬 축 이동량
         var nw = Math.max(12, rsd.w0 + ldx * 2);
-        var nh = rsd.L.shape === 'line' ? rsd.h0 : Math.max(12, rsd.h0 + ldy * 2);
+        var nh = rsd.L.shape === 'line' ? rsd.h0 : Math.max(12, rsd.h0 + ldy * 2);   // 선만 세로 고정(화살표는 머리가 있어 세로도 쓴다)
         rsd.L.x = rsd.x0 - (nw - rsd.w0) / 2; rsd.L.y = rsd.y0 - (nh - rsd.h0) / 2;   // 중심 유지
         rsd.L.w = nw; rsd.L.h = nh; applyXf(rsd.L); return;
       }
@@ -978,7 +1023,10 @@
   }
   // [#14] 우리샵 스타일에서 들어온 구분선 → 편집 가능한 line 도형 레이어로.
   function addShopLine(spec, R) {
-    var L = makeLayer('shape'); L.shape = 'line'; L.color = spec.color || '#ffffff'; L.fill = true; L.rot = spec.rot || 0;
+    var L = makeLayer('shape');
+    // 화살표도 여기로 온다(구조가 선과 같다). spec.shape 를 존중하지 않으면 복원 때 민선이 된다.
+    L.shape = (spec.shape === 'arrow') ? 'arrow' : 'line';
+    L.color = spec.color || '#ffffff'; L.fill = true; L.rot = spec.rot || 0;
     // [버그수정 2026-07-17] role 을 spec 대로. 예전엔 무조건 'rule' 이라 원장이 직접 그린 선(role='')까지
     //   '우리샵 구분선'으로 취급돼 얼굴 회피·겹침 해소 로직이 제멋대로 옮겼다(기억한 자리가 안 지켜짐).
     L.role = (spec.role != null) ? spec.role : 'rule';
@@ -1476,6 +1524,18 @@
       // [#10] 안쪽 막대는 box 를 꽉 채운다(width/height:100%) — box 를 늘리면 선 길이가 늘어난다.
       //   막대 두께는 굵기(sw)만큼 세로 가운데. 내보내기도 sw 두께로 그림.
       d.style.cssText = 'width:100%;height:100%;border-radius:' + (sw / 2) + 'px;background:linear-gradient(' + c + ',' + c + ') center/100% ' + sw + 'px no-repeat';
+    } else if (L.shape === 'arrow') {
+      /* [2026-08-23] 화살표 = 선 + 머리. **선 구조를 그대로 재사용**한다 —
+         새 좌표축(시작점/끝점)을 만들면 늘리기·회전·내보내기를 전부 다시 짜야 하고
+         기존 도형과 조작감도 달라진다. 방향은 기존 회전(rot)으로 잡는다. */
+      var hd = Math.max(sw * 2.2, 10);            // 머리 크기는 굵기에 비례 — 얇은 선에 큰 머리는 어색하다
+      d.style.cssText = 'position:relative;width:100%;height:100%;' +
+        'background:linear-gradient(' + c + ',' + c + ') left center/calc(100% - ' + (hd * 0.7) + 'px) ' + sw + 'px no-repeat';
+      var head = d.querySelector('.itl-arrowhead');
+      if (!head) { head = document.createElement('i'); head.className = 'itl-arrowhead'; d.appendChild(head); }
+      head.style.cssText = 'position:absolute;right:0;top:50%;transform:translateY(-50%);width:0;height:0;' +
+        'border-top:' + hd + 'px solid transparent;border-bottom:' + hd + 'px solid transparent;' +
+        'border-left:' + (hd * 1.4) + 'px solid ' + c;
     } else {
       // [#10] 사각/원도 box 를 꽉 채운다 → box 의 w/h 를 따로 늘리면 가로·세로 독립으로 늘어난다.
       var base = 'box-sizing:border-box;width:100%;height:100%;';
@@ -1489,7 +1549,9 @@
     L.shape = kind; L.color = S.shapeColor; L.fill = !!S.shapeFill; L.strokeW = S.shapeThick;
     var d = el('div', 'itl-shape'); styleShape(d, L); L.el.appendChild(d); L.tx = d;
     // [#10] box 크기를 명시적으로 — 이후 크기 핸들이 이 w/h 를 늘린다(비균등).
-    L.w = kind === 'line' ? 180 : 120; L.h = kind === 'line' ? Math.max(L.strokeW || 6, 22) : 120;
+    var _isLinear = (kind === 'line' || kind === 'arrow');
+    L.w = _isLinear ? 180 : 120;
+    L.h = _isLinear ? Math.max((L.strokeW || 6) * 3, 28) : 120;   // 화살표 머리가 들어갈 높이
     var r = refs.stage.getBoundingClientRect();
     L.x = r.width / 2 - L.w / 2; L.y = r.height / 2 - L.h / 2; applyXf(L); selectLayer(L);
     _pushOp({ op: 'add', L: L });   // [#10] 도형 추가도 되돌리기(↩) — 예전엔 addShape 만 _pushOp 가 빠져 있었음
@@ -1985,6 +2047,18 @@
     var sw = (L.strokeW || 6) * (L.scale || 1);
     c.fillStyle = L.color; c.strokeStyle = L.color; c.lineWidth = sw; c.lineJoin = 'round';
     if (L.shape === 'line') { rrPath(c, -ow / 2, -sw / 2, ow, sw, sw / 2); c.fill(); return; }
+    if (L.shape === 'arrow') {
+      /* 🔑 화면(CSS)과 **같은 비율**로 그린다. 어제 외곽선이 화면엔 있고 발행본엔 없던 것과
+         같은 실수를 안 만들려고, CSS 의 머리 크기 계산(`sw*2.2`, 폭 `1.4배`)을 그대로 옮긴다. */
+      var hd = Math.max(sw * 2.2, 10 * (L.scale || 1));
+      var headW = hd * 1.4;
+      var bodyEnd = ow / 2 - headW;
+      rrPath(c, -ow / 2, -sw / 2, Math.max(1, bodyEnd + ow / 2), sw, sw / 2); c.fill();
+      c.beginPath();
+      c.moveTo(bodyEnd, -hd); c.lineTo(ow / 2, 0); c.lineTo(bodyEnd, hd);
+      c.closePath(); c.fill();
+      return;
+    }
     if (L.shape === 'circle') {
       var rx = Math.max(1, (ow - (L.fill ? 0 : sw)) / 2), ry = Math.max(1, (oh - (L.fill ? 0 : sw)) / 2);
       c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); if (L.fill) c.fill(); else c.stroke(); return;
@@ -2174,6 +2248,17 @@
       if (tool === 'text') addText();
       setTool(tool);
     });
+    /* [2026-08-23] 레이어 순서. 되돌리기(↩) 대상으로 넣지 않는다 —
+       순서 바꾸기는 눈으로 바로 보이고 반대 버튼이 바로 옆에 있어서, undo 스택을 채우면
+       원장이 정작 되돌리고 싶은 편집이 밀려난다. */
+    var _lyrBar = root.querySelector('[data-r="lyr"]');
+    if (_lyrBar) {
+      _lyrBar.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-lyr]'); if (!b || b.disabled) return;
+        var L = S && S.active; if (!L) return;
+        reorderLayer(L, b.getAttribute('data-lyr'));
+      });
+    }
     refs.stage.addEventListener('pointerdown', function (e) { if (e.target === refs.stage || e.target === refs.photo || e.target.classList.contains('itded__scrim')) selectLayer(null); });
     // 텍스트 컨트롤
     refs.fonts.addEventListener('click', function (e) { var b = e.target.closest('[data-font]'); if (!b) return; applyFont(b.getAttribute('data-font')); root.querySelectorAll('[data-font]').forEach(function (x) { x.classList.toggle('on', x === b); }); });
@@ -2420,6 +2505,11 @@
       base.strokeW = (L.strokeW || 6) / R.height;
       if (L.radius != null) base.radius = L.radius;
       if (L.shape === 'line') { base.type = 'line'; base.size = (L.strokeW || 3) / R.height; }
+      // 화살표도 도형으로 직렬화 — 빠뜨리면 사진 전환·재편집에서 조용히 사라진다
+      /* 🔴 새 type 이름('shape')을 만들면 안 된다 — `addShopLayer` 라우팅이 모르는 이름이면
+         **조용히 텍스트 레이어로 떨어진다.** 실제로 그래서 화살표가 발행본에서 사라졌다.
+         화살표는 구조가 선과 같으니 **선 계열로 실어보내고** shape 로 구분한다. */
+      else if (L.shape === 'arrow') { base.type = 'line'; base.shape = 'arrow'; base.size = (L.strokeW || 3) / R.height; }
       else { base.type = 'rect'; base.shape = L.shape; }
       return base;
     }
