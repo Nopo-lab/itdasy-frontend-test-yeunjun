@@ -68,6 +68,12 @@ jobs:
         env:
           BUILD_V: ${{ env.NEW_VERSION }}
         run: python3 scripts/bump_cache_busters.py "$BUILD_V"
+      # [출고 감사 2026-08-23] lint 를 게이트에 넣는다 — 단 `npm run lint` 는 쓰지 않는다.
+      #   그건 `|| eslint(경고허용)` 폴백이 있어 **항상 exit 0** 이라 게이트로 못 쓴다
+      #   (명령이 실패했는데 성공으로 보고되는 바로 그 패턴).
+      #   `lint:ci` 는 폴백 없이 **오류면 실패**한다. 경고(줄수 규칙 잔재 184건)는 출력만.
+      - name: Lint (errors fail, warnings reported)
+        run: npm run lint:ci
       - name: Smoke check
 
         run: npm run smoke

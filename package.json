@@ -10,6 +10,7 @@
     "cap:run:ios": "cap run ios",
     "cap:run:android": "cap run android",
     "lint": "eslint 'app-*.js' 'components/**/*.js' 'js/**/*.js' --no-error-on-unmatched-pattern --max-warnings=0 || eslint 'app-*.js' 'components/**/*.js' 'js/**/*.js' --no-error-on-unmatched-pattern",
+    "lint:ci": "eslint 'app-*.js' 'components/**/*.js' 'js/**/*.js' --no-error-on-unmatched-pattern",
     "lint:fix": "eslint 'app-*.js' 'components/**/*.js' 'js/**/*.js' --no-error-on-unmatched-pattern --fix && stylelint '*.css' --fix",
     "lint:css": "stylelint '*.css'",
     "test": "jest --passWithNoTests",
