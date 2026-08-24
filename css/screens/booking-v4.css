@@ -15,7 +15,13 @@
    재사용하면서 넓은 창에서 콘텐츠만 520px에 갇혀 왼쪽 붙음 + FAB(right:18px)만 창 끝에 떠 보임.
    새 캘린더 오버레이 안에서만 캡 해제 — 구 시트는 그대로. */
 #cal-overlay .cal-sheet {
-  max-width: none;
+  /* [2026-08-24] max-width:none 만 있던 탓에 style-responsive.css 의
+     `.cal-sheet{width:760px;max-width:92vw}`(>=768px) 가 그대로 살아서, 사이드바
+     (#sideNav, var(--side-nav-width)=232/260px)만큼 밀린 오버레이 안에서 시트가
+     760px 를 고집했다 → 768px 창에서 시트 오른쪽 끝이 992px, 즉 화면 밖으로 218px
+     삐져나가 금·토 칸이 잘렸다. 부모(.bk-root, 이미 사이드바 뺀 폭)에 맞춘다. */
+  width: 100%;
+  max-width: 100%;
 }
 
 /* ============================================================
@@ -337,27 +343,38 @@
 
 /* [2026-08-24] 모바일 월 달력 — "시간만 뜨고 이름이 안 보인다" 대응.
    폰(375px)에서 한 칸 폭은 ~50px 라 "10:00 김민지" 를 한 줄에 넣으면 이름이 반드시 잘린다.
-   → 칩을 2단(윗줄 시간 · 아랫줄 이름)으로 바꾸고 칸 높이를 92 → 118px 로 키웠다.
-   좌우 여백/패딩도 줄여서 이름에 쓸 폭을 ~37 → ~43px 확보(4글자까지 안 잘림).
+   → 칩을 2단(윗줄 시간 · 아랫줄 이름)으로 바꾸고 칸 높이를 92 → 128px 로 키웠다.
+   자르기 전에 폭부터 확보한다: 그리드 좌우 여백 12 → 3px, 칸 좌우 패딩 3 → 1px,
+   칩 좌우 패딩 3 → 1px 으로 이름 줄에 쓰는 폭을 375px 기준 37 → 47.6px 로 늘렸다
+   (한글 4글자 = 10px x 4 - letter-spacing = 38.4px 이므로 여유, 5글자는 마지막 수단 …).
+   가로 스크롤은 금지 — 그리드는 항상 화면(사이드바 제외 영역) 안에 들어온다.
    ⚠️ 스코프는 #cal-overlay(예약 캘린더) 안으로 한정 — 같은 .bk-month-m 그리드를
    매출 캘린더(app-revenue-calendar.js)가 재사용하는데 거긴 칩이 금액 1개라 그대로 둔다.
    JS 짝: app-calendar-view.js _buildMonthCellHTML (모바일 CAP 5 → 3, __evt-t/__evt-n). */
-#cal-overlay .bk-month-m { padding: 4px 6px 12px; }
-#cal-overlay .bk-month-m__cells { grid-auto-rows: 118px; }
-#cal-overlay .bk-month-m__cell { padding: 2px; }
+#cal-overlay .bk-month-m { padding: 4px 3px 12px; }
+#cal-overlay .bk-month-m__dow-row { padding: 0 3px; }
+#cal-overlay .bk-month-m__cells { grid-auto-rows: 128px; }
+#cal-overlay .bk-month-m__cell { padding: 2px 1px; }
+#cal-overlay .bk-month-m__num { padding-left: 2px; }
+#cal-overlay .bk-month-m__events { gap: 2px; margin-top: 3px; }
 #cal-overlay .bk-month-m__evt {
   display: flex;
   flex-direction: column;
-  padding: 1px 2px 2px;
-  border-radius: 4px;
+  /* [2026-08-24] flex 자식이라 그냥 두면 칸이 모자랄 때 칩이 '눌려서' 시간·이름이
+     서로 겹쳐 찌그러진다(overflow 로는 안 잡힌다 — scrollHeight 가 안 늘어난다).
+     줄이지 말고 그대로 두고, 안 들어가는 건 "+N건 더" 로 넘긴다. */
+  flex: 0 0 auto;
+  padding: 2px 1px 3px;
+  border-radius: 5px;
   white-space: normal;
   line-height: 1.2;
+  text-align: center;
 }
 #cal-overlay .bk-month-m__evt-t {
-  font-size: 8px;
+  font-size: 8.5px;
   font-weight: 700;
   opacity: 0.85;
-  line-height: 1.2;
+  line-height: 1.15;
   white-space: nowrap;
 }
 #cal-overlay .bk-month-m__evt-n {
@@ -371,7 +388,21 @@
 }
 #cal-overlay .bk-month-m__more {
   font-size: 9px;
-  padding: 0 2px;
+  padding: 1px 2px 0;
+  text-align: center;
+}
+
+/* 칸이 넓어지는 구간(태블릿·사이드바 있는 노트북 등)에서는 칩을 넉넉하게.
+   768px 부터는 한 칸이 70px 이상이라 이름 5~6글자도 그대로 들어간다. */
+@media (width >= 768px) {
+  #cal-overlay .bk-month-m { padding: 4px 10px 14px; }
+  #cal-overlay .bk-month-m__cells { grid-auto-rows: 156px; }
+  #cal-overlay .bk-month-m__dow-row { padding: 0 10px; }
+  #cal-overlay .bk-month-m__cell { padding: 4px 3px; }
+  #cal-overlay .bk-month-m__evt { padding: 3px 4px 4px; }
+  #cal-overlay .bk-month-m__evt-t { font-size: 10px; }
+  #cal-overlay .bk-month-m__evt-n { font-size: 12px; letter-spacing: -0.2px; }
+  #cal-overlay .bk-month-m__more { font-size: 11px; }
 }
 
 /* ============================================================
@@ -913,6 +944,15 @@
 }
 
 .bk-pc-month__evt:hover { transform: translateY(-1px); }
+
+/* [2026-08-24] PC(>=1100px) 월 칩 — 구조는 그대로 두고 여백만 조인다.
+   실측: 칸 108px → 칩 88px 인데 "10:00 김수현정"(4글자)이 89px 라 1px 모자라
+   전부 … 로 잘리고 있었다. 칸 좌우 10 → 6px, 칩 좌우 6 → 4px 만 줄이면
+   글자 크기·줄 수·정보량을 하나도 안 건드리고 5글자 이름까지 들어간다.
+   #cal-overlay 스코프 유지(매출 캘린더는 .bk-month-m 계열이라 무관). */
+#cal-overlay .bk-pc-month__cell { padding: 8px 6px; }
+#cal-overlay .bk-pc-month__evt { padding: 2px 4px; }
+#cal-overlay .bk-pc-month__more { padding: 0 4px; }
 .bk-pc-month__more {
   font-size: 11px;
   color: var(--text-subtle);
