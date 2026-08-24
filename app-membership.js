@@ -25,6 +25,30 @@
     if (typeof window.showToast === 'function') window.showToast(msg, opts);
   }
 
+  // ── 멱등키 (카오스 F-3 · 2026-08-23) ────────────────────────────
+  //
+  // 왜 필요한가 — `apiFetch` 는 `/memberships/*` 를 **자동 재시도한다**
+  // (app-core.js 의 CREATE_NO_RETRY_RE 는 bookings|revenue|customers 뿐이다).
+  // 서버가 이미 커밋했는데 응답이 돌아오는 길에 끊기면(WiFi↔LTE 핸드오프·지하철)
+  // 래퍼가 같은 POST 를 다시 쏜다 → **잔액이 두 번 오른다.**
+  // 실측: 동시 10발에서 화면엔 전부 '실패' 인데 서버 잔액은 +200,000원이었다.
+  //
+  // 🔑 키는 **시도(intent) 단위**여야 한다. 호출마다 새로 만들면 재시도가 새 충전이 되고,
+  //    영구 고정하면 원장님이 진짜로 두 번 충전하고 싶을 때 막힌다.
+  //    그래서 "같은 고객·같은 금액·같은 수단으로 아직 성공 못 한 시도" 만 키를 재사용하고,
+  //    성공하면 즉시 버린다.
+  const _uuid = () => (crypto?.randomUUID ? crypto.randomUUID()
+    : 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10));
+  const _pendingTxn = new Map();   // signature → key
+
+  function _txnFor(kind, customerId, amount, extra) {
+    const sig = [kind, customerId, amount, extra || ''].join('|');
+    let key = _pendingTxn.get(sig);
+    if (!key) { key = _uuid(); _pendingTxn.set(sig, key); }
+    return { sig, key };
+  }
+  function _txnDone(sig) { _pendingTxn.delete(sig); }
+
   // [2026-05-19] _krw 삭제 → formatMoney (format-money.js 공통 유틸)
 
   function _ensureSheet() {
@@ -150,13 +174,17 @@
         return;
       }
       btn.disabled = true;
+      // [F-3] 같은 시도의 재시도면 같은 키를 다시 쓴다 — 서버가 중복을 흡수한다.
+      const { sig: _sig, key: _txn } = _txnFor('topup', customerId, amount, method);
       try {
         const r = await _fetch('POST', '/memberships/topup', {
           customer_id: customerId,
           amount,
           payment_method: method,
           record_revenue: true,
+          client_txn_id: _txn,
         });
+        _txnDone(_sig);   // 성공했으니 이 키는 버린다 — 다음 충전은 새 시도다
         // [2026-04-29] 충전 성공 — 큰 confetti
         if (window.Fun && window.Fun.celebrate) {
           window.Fun.celebrate(`${customerName}님 +${formatMoney(amount)} (잔액 ${formatMoney(r.membership_balance)})`, {
@@ -202,12 +230,16 @@
         return;
       }
       btn.disabled = true;
+      // [F-3] 차감도 동일 — 재시도로 손님 잔액이 두 번 빠지면 안 된다.
+      const { sig: _sig, key: _txn } = _txnFor('use', customerId, amount, svc);
       try {
         const r = await _fetch('POST', '/memberships/use', {
           customer_id: customerId,
           amount,
           service_name: svc || null,
+          client_txn_id: _txn,
         });
+        _txnDone(_sig);
         _toast(`사용 완료! 잔액 ${formatMoney(r.membership_balance)}`);
         sheet.style.display = 'none';
         // [2026-04-29] 잔액 부족 경고 토스트 (백엔드가 warning 필드 반환)

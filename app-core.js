@@ -1202,6 +1202,13 @@ function authHeader() {
     '/(' + [
       'instagram/comment-reply(?!-settings)',                          // 공개 답글
       'instagram/publish',                                             // 인스타 발행(+ -file/-carousel-file/-story-file)
+      // [최종점검 2026-08-24] 재시도 안전성 전수 감사(`audit_tests/chaos/audit_retry_safety.py`)가
+      //   찾아낸 두 구멍. 둘 다 **밖으로 나가는 것**이라 재시도하면 두 번 나간다.
+      //   · test-publish-url 은 이름이 'test' 지만 실제로 IG 에 발행한다. 위 'instagram/publish'
+      //     정규식은 `/instagram/test-publish-url` 을 **안 잡는다**(중간에 test- 가 끼어 있다).
+      //   · support/admin/reply 는 문의한 원장에게 답장이 실제로 나간다.
+      'instagram/test-publish-url',                                    // 실제 IG 발행 (이름만 test)
+      'support/admin/reply',                                           // 원장에게 답장 실발송
       'scheduled-posts',                                               // 예약 발행 등록
       'dm-confirm-queue/[^/]+/(send|send_edit|send-form|confirm-deposit|decline-with-alternatives)',
       // [출시감사 P1-1 2026-07-31] 결제는 재시도하면 카드가 두 번 긁힌다.

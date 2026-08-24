@@ -44,9 +44,23 @@
           <div class="ss-card-sub" style="color:#8a5d00;">
             <strong>내 카카오 채널 직접 연결</strong>(사업자등록증·채널 ID 필요)은 <strong>Phase 2</strong> 에 열려요.
             지금은 아래 발송 템플릿을 미리 볼 수 있어요.<br>
-            <!-- [죽은동작 정리 2026-07-27] '두 화면 상반' 해소: 기본 예약 알림톡은 지금도 실제 발송된다. -->
-            <span style="display:inline-block;margin-top:8px;padding:6px 10px;background:#fff;border-radius:8px;color:#6b4e00;">
-              💡 <strong>예약 확정·전날 리마인드 알림톡</strong>은 지금도 <strong>설정 → 예약 알림톡 자동발송</strong> 에서 켜면 손님 폰으로 발송돼요.
+            <!-- [죽은동작 정리 2026-07-27] '두 화면 상반' 해소: 기본 예약 알림톡은 지금도 실제 발송된다.
+                 [최종검증 G5 2026-08-24] 그 문장이 **조건부로 거짓**이었다. 알리고 채널이 연결돼
+                 있어야만 나가는데 "지금도 … 발송돼요" 라고 단정하고 있었다. 실제로 운영 서버엔
+                 ALIGO_* 가 설정돼 있지 않다 → 켜도 아무것도 안 나간다.
+                 설정 화면은 이미 channels.alimtalk 로 토글을 잠그고 정직하게 안내하는데,
+                 ⚠️ 이 주석은 **템플릿 리터럴 안**이다 — 백틱을 쓰면 문자열이 끊겨 파일 전체가
+                    SyntaxError 가 되고, 지연로딩 스텁이 실제 함수로 안 바뀐다(실제로 그랬다).
+                 이 화면만 반대로 말하고 있었다(두 화면 상반이 다시 생긴 것).
+                 → 서버가 주는 같은 신호를 읽어 **문구를 맞춘다.** 하드코딩하지 않는다 —
+                   나중에 채널이 연결되면 저절로 원래 문장으로 돌아와야 한다. -->
+            <!-- 🔑 **기본값은 보수적으로.** 조회가 실패하면(401·404·오프라인) 문구가 그대로 남는데,
+                 낙관적인 문장이 기본이면 실패할 때마다 "된다" 고 거짓말하게 된다.
+                 실제로 그랬다 — apiFetch 가 404 를 주자 "켜면 발송돼요" 가 그대로 남았다.
+                 그래서 **연결 확인된 경우에만** 긍정 문장으로 올린다(_syncAlimtalkNote). -->
+            <span id="khAlimtalkNote" style="display:inline-block;margin-top:8px;padding:6px 10px;background:#FFF7ED;border-radius:8px;color:#C2410C;">
+              ⚠️ <strong>카카오 알림톡은 아직 준비 중이에요.</strong> 채널이 연결되기 전까지는
+              <strong>설정 → 예약 알림톡 자동발송</strong> 을 켤 수 없고, 손님에게 발송되지 않아요.
             </span>
           </div>
         </div>
@@ -130,6 +144,31 @@
     if (typeof window._registerSheet === 'function') window._registerSheet('kakaoHub', closeKakaoHub);
     if (typeof window._markSheetOpen === 'function') window._markSheetOpen('kakaoHub');
     _haptic();
+    _syncAlimtalkNote();
+  }
+
+  // [최종검증 G5 2026-08-24] 알림톡 채널 연결 여부에 맞춰 안내 문구를 고친다.
+  //   설정 화면과 **같은 신호**(`GET /shop/settings` 의 `channels.alimtalk`)를 쓴다 —
+  //   두 화면이 각자 판단하면 또 상반된 말을 하게 된다.
+  //   실패하면 문구를 건드리지 않는다(기본값이 "켜면 발송돼요" 라 낙관적이지만,
+  //   설정 화면 토글이 잠겨 있어 원장님이 켤 수 없으므로 잘못된 기대로 이어지지 않는다).
+  //   방향이 중요하다 — **"안 된다" 가 기본이고, 확인됐을 때만 "된다" 로 올린다.**
+  //   반대로 두면 조회가 실패할 때마다(401·404·오프라인) 거짓 안내가 남는다.
+  function _syncAlimtalkNote() {
+    const note = document.getElementById('khAlimtalkNote');
+    if (!note || typeof apiFetch !== 'function') return;
+    const headers = (typeof window.authHeader === 'function') ? window.authHeader() : {};
+    apiFetch('/shop/settings', { headers })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        // 채널이 **연결됐다고 확인된 경우에만** 긍정 문구로 바꾼다.
+        if (!d || !d.channels || d.channels.alimtalk !== true) return;
+        note.innerHTML = '💡 <strong>예약 확정·전날 리마인드 알림톡</strong>은 '
+          + '<strong>설정 → 예약 알림톡 자동발송</strong> 에서 켜면 손님 폰으로 발송돼요.';
+        note.style.background = '#fff';
+        note.style.color = '#6b4e00';
+      })
+      .catch(() => { /* 실패 시 보수적 기본 문구 유지 — 거짓말하지 않는다 */ });
   }
   function closeKakaoHub() {
     const el = document.getElementById(ID);
