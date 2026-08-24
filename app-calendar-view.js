@@ -265,21 +265,27 @@
     }
     const its = byDay[d] || [];
     if (its.length) {
-      // [2026-05-16] PC/모바일 모두 시간 + 이름만, 최대 5줄.
+      // [2026-05-16] PC/모바일 모두 시간 + 이름만.
       // [2026-05-17 v6] 각 줄에 작은 6px 컬러 dot — 그날 안에서 5색 순환
-      // [2026-08-16] 모바일 3줄 → 5줄. 셀 92px - 패딩6 - 날짜18 - 여백2 = 66px 가 예약칸,
-      //   한 줄은 8px x line-height1.4 = 11.2px + gap 1px → 5줄 = 60px 로 들어간다(3줄은 낭비).
-      //   6건 이상일 때만 4줄 + "+N건" (5줄 + 더보기줄 = 72px 는 넘침).
-      const CAP = 5;
-      const MAX = its.length > CAP ? CAP - 1 : CAP;
+      // [2026-08-24] 모바일 5줄(시간만) → 3줄(시간+이름 2단). 폰 칸 폭이 ~50px 라
+      //   한 줄에 "10:00 김민지" 를 넣으면 이름이 무조건 잘린다 → 시간을 윗줄로 올리고
+      //   이름을 아랫줄에 크게. 대신 한 칸에 들어가는 줄이 5 → 3 으로 줄어서 셀 높이도
+      //   92 → 118px 로 키웠다(booking-v4.css #cal-overlay 스코프). 4건 이상이면 2줄 + "+N건 더",
+      //   그 날 전부는 칸을 눌러 주간 뷰에서 본다.
+      //   모바일은 3줄 + "+N건 더" 가 118px 안에 같이 들어간다(칩 25.1 x3 + 여백 2 + 더보기 12.6
+      //   = 90.9 ≤ 95, 실측). PC 는 종전대로 5줄 / 넘치면 4줄 + 더보기.
+      const CAP = isPC ? 5 : 3;
+      const MAX = (isPC && its.length > CAP) ? CAP - 1 : CAP;
       h += `<div class="${p}__events">`;
       its.slice(0, MAX).forEach((it, _i) => {
         // [2026-05-23] is-staff2 분기 제거 — 직원 기능 폐지
         const tm = _fmt(new Date(it._raw.starts_at));
         const dotColor = _statusDotColor(it.status);
         const dot = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${dotColor};margin-right:4px;vertical-align:middle"></span>`;
-        // [2026-08-15 #36] 모바일은 폭이 좁아 이름이 잘려 보임 → 시간만. PC는 시간+이름 유지.
-        h += `<div class="${p}__evt${_stCls(it.status)}">${dot}${tm}${isPC ? ' ' + _esc(it.cust) : ''}</div>`;
+        const body = isPC
+          ? `${dot}${tm} ${_esc(it.cust)}`
+          : `<span class="${p}__evt-t">${dot}${tm}</span><span class="${p}__evt-n">${_esc(it.cust)}</span>`;
+        h += `<div class="${p}__evt${_stCls(it.status)}">${body}</div>`;
       });
       if (its.length > MAX) h += `<div class="${p}__more">+${its.length - MAX}건 더</div>`;
       h += '</div>';

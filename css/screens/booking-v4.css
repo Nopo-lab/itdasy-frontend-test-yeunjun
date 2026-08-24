@@ -335,6 +335,45 @@
   line-height: 1.4;
 }
 
+/* [2026-08-24] 모바일 월 달력 — "시간만 뜨고 이름이 안 보인다" 대응.
+   폰(375px)에서 한 칸 폭은 ~50px 라 "10:00 김민지" 를 한 줄에 넣으면 이름이 반드시 잘린다.
+   → 칩을 2단(윗줄 시간 · 아랫줄 이름)으로 바꾸고 칸 높이를 92 → 118px 로 키웠다.
+   좌우 여백/패딩도 줄여서 이름에 쓸 폭을 ~37 → ~43px 확보(4글자까지 안 잘림).
+   ⚠️ 스코프는 #cal-overlay(예약 캘린더) 안으로 한정 — 같은 .bk-month-m 그리드를
+   매출 캘린더(app-revenue-calendar.js)가 재사용하는데 거긴 칩이 금액 1개라 그대로 둔다.
+   JS 짝: app-calendar-view.js _buildMonthCellHTML (모바일 CAP 5 → 3, __evt-t/__evt-n). */
+#cal-overlay .bk-month-m { padding: 4px 6px 12px; }
+#cal-overlay .bk-month-m__cells { grid-auto-rows: 118px; }
+#cal-overlay .bk-month-m__cell { padding: 2px; }
+#cal-overlay .bk-month-m__evt {
+  display: flex;
+  flex-direction: column;
+  padding: 1px 2px 2px;
+  border-radius: 4px;
+  white-space: normal;
+  line-height: 1.2;
+}
+#cal-overlay .bk-month-m__evt-t {
+  font-size: 8px;
+  font-weight: 700;
+  opacity: 0.85;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+#cal-overlay .bk-month-m__evt-n {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#cal-overlay .bk-month-m__more {
+  font-size: 9px;
+  padding: 0 2px;
+}
+
 /* ============================================================
    §6 모바일 주간 뷰
    ============================================================ */
@@ -990,12 +1029,12 @@
 /* ============================================================
    §16 반응형 — 모바일 우선, PC 1100px+ 부터 좌측 사이드바 노출
    ============================================================ */
-@media (max-width: 1099px) {
+@media (width <= 1099px) {
   .bk-pc__left { display: none; }
   .bk-pc__body { flex-direction: column; }
 }
 
-@media (min-width: 1100px) {
+@media (width >= 1100px) {
   .bk-pc__body { flex-direction: row; }
   .bk-pc__left { display: block; }
 }
@@ -1306,7 +1345,7 @@
   margin-left: auto;
   padding-right: 4px;
 }
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .bk-toolbar .bk-legend {
     font-size: 10.5px;
     gap: 7px;
