@@ -175,7 +175,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   //   쓰므로 **그 둘보다 먼저** 로드돼야 한다. (없으면 helper_missing 으로 안전 실패한다)
   'app-save-file.js?v=local-151154',
   'app-backup.js?v=local-151154',
-  'app-kakao-hub.js?v=local-151154',
+  'app-kakao-hub.js?v=20260824-g5-note-safe',
   'app-naver-link.js?v=local-151154',
   'app-naver-talk-link.js?v=local-151154',
   'app-dm-settings-cache.js?v=local-151154',
