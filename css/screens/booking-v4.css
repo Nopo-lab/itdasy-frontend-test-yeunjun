@@ -351,7 +351,32 @@
    ⚠️ 스코프는 #cal-overlay(예약 캘린더) 안으로 한정 — 같은 .bk-month-m 그리드를
    매출 캘린더(app-revenue-calendar.js)가 재사용하는데 거긴 칩이 금액 1개라 그대로 둔다.
    JS 짝: app-calendar-view.js _buildMonthCellHTML (모바일 CAP 5 → 3, __evt-t/__evt-n). */
-#cal-overlay .bk-month-m { padding: 4px 3px 12px; }
+/* [2026-08-24] 월 그리드는 #bk-body(inline overflow:hidden) 안에 그대로 놓여 있어서,
+   칸을 128px 로 키운 뒤 6줄(820px)이 본문(579px)보다 길어지자 마지막 2주가 스크롤도
+   안 되고 그냥 잘려 나갔다. 월 뷰 루트에만 스크롤을 준다(주/일 뷰는 자체 스크롤러가
+   있고 부모가 hidden 인 걸 전제로 하므로 건드리지 않는다).
+   padding-bottom 은 FAB(.bk-fab: 56px, 시트 바닥에서 86px 위 = 바닥 142px 까지 차지)
+   자리 + 여유 — 이게 있어야 맨 아랫줄 칩이 FAB 뒤에 갇히지 않고 위로 빠져나온다. */
+#cal-overlay .bk-month-m {
+  padding: 4px 3px 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+/* [2026-08-24] FAB 가림 — 월 뷰에서만 FAB 을 화면 구석으로 내리고(기본 bottom:86px 는
+   달력 한가운데라 어느 스크롤 위치에서도 토요일 칸 칩 2개를 덮었다), 달력 스크롤 영역이
+   그 위에서 끝나게 자리를 비운다. 이러면 '스크롤하면 보인다' 가 아니라 애초에 안 겹친다.
+   주/일 뷰·PC·다른 화면 FAB 은 그대로(.bk-view-month 는 월 뷰에서만 붙는다 —
+   app-calendar-view.js _renderViewBody). */
+/* 폭이 아니라 '높이'에 따라 FAB 이 시트 안쪽으로 들어오기도 한다(900x760 에서 실측:
+   시트 82vh 라 FAB 이 그리드 위에 얹혔다) → 폭으로 미디어쿼리 걸지 말고 월 뷰 전체에 적용. */
+#cal-overlay.bk-view-month .bk-fab {
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+}
+#cal-overlay.bk-view-month .bk-month-m {
+  margin-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+}
 #cal-overlay .bk-month-m__dow-row { padding: 0 3px; }
 #cal-overlay .bk-month-m__cells { grid-auto-rows: 128px; }
 #cal-overlay .bk-month-m__cell { padding: 2px 1px; }

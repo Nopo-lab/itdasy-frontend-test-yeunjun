@@ -1081,6 +1081,9 @@
     _updateOfflineBadge();
     _updateHeaderLabel();
     _saveState();
+    // [2026-08-24] 현재 뷰를 루트 클래스로 노출 — 월 뷰에서만 FAB 위치를 내려 예약 칩을
+    //   가리지 않게 하려는 용도(CSS: #cal-overlay.bk-view-month .bk-fab). 주/일 뷰는 그대로.
+    o.classList.toggle('bk-view-month', _curView === 'month');
 
     if (_curView === 'month') {
       const visible = _visibleCache();
