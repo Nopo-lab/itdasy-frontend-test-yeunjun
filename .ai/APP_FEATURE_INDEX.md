@@ -49,6 +49,7 @@
 | 네이버 **로그인** | ✅ | `naver_oauth.py` |
 | 구글 **로그인** | ✅ | `google_oauth.py`, 애플 로그인 `auth.py` |
 | **인스타 DM 자동응답** (봇) | 🟡 코드완성, **Meta Advanced 심사통과 후 활성**(env off) | `dm_autoreply.py`(6411줄) |
+| **자동화 승인 게이트**(기본 OFF + 명시적 동의) | ✅ **[2026-08-26 신설]** 자동응답 4종(DM초안·DM자동발송·DM버튼안내·댓글문의)은 **토글 ON + 원장 승인** 둘 다 있어야 돈다. 예전엔 `DMAutoReplySettings.enabled` 기본값이 **True** 였고 `_crq_enabled` 도 행이 없으면 True 라 **신규 원장이 인스타를 연결하는 순간 승인 없이 AI 가 DM·댓글을 읽었다.** 판정 SSOT = `services/automation_gate.py`(webhook·워커·재시도가 **실행 시점에 DB 재조회**), 승인 기록 = 기존 `UserConsent`(`automation_*`, v1) · 쓰기 API 3곳(`POST /instagram/dm-reply/settings` · `PUT /instagram/comment-reply-settings` · `PUT /shop/dm-menu`)이 켜는 저장을 **403 consent_required** 로 막는다(직접 API 우회 차단). 기존 회원은 마이그 `0050` 이 **증거 있는 사람만** grandfather(무차별 `SET enabled=true` 없음). FE 안내+체크박스 시트 = `js/automation-consent.js`(4종 공용) | `services/automation_gate.py`, `alembic/versions/0050_automation_consent.py`, `js/automation-consent.js`, `app-dm-menu.js`, `app-comment-reply-queue.js` · 테스트 `tests/test_automation_consent_2026_08_26.py`(33) · `tests/test_automation_grandfather_0050.py`(10) · `__tests__/automation-consent.test.js`(20) |
 | 인스타 DM **원장 confirm 큐** (AI초안→검토→발송) | ✅ 엔진 구현 | `dm_confirm_queue.py`, `dm_manual_replies.py`, `services/dm_*` |
 | **네이버 톡톡** (문의 통합 인박스 + AI 답장) | ✅ **실전송 구현**(무료, Meta 무관) | `talktalk.py` + `services/channels/naver_talk.py`(httpx send) |
 | **카카오 알림톡** (예약확정·리마인드·노쇼·빈슬롯·생일) | 🟡 **BE 발송서비스 실구현(Aligo API)** / FE 관리화면 `app-kakao-hub.js`는 스텁 | `services/kakao_alimtalk.py`(httpx) |
@@ -69,6 +70,10 @@
 | **게시물별 성과 + "무엇이 먹혔나" 학습** | ✅ **[2026-07-18]** 표본 부족 축은 축마다 "3건 올려야" 박스를 그려 다닥다닥했음(축 5개면 최대 5줄) → 데이터 있는 축만 막대, **부족 축들은 이름만 모아 한 줄로 통합**(`_compareHtml` 의 `pending`, CSS `.wsp-axis__pending`, 은/는 조사 자동). **[2026-07-15]** 발행 게시물을 레이아웃 프리셋(`wsl-*`)·말투·사진장수 축으로 묶어 반응 비교. 표본 3건 미만은 순위 안 매김. 게시물별 미응대 문의 댓글도 표시 | `js/workspace/workspace-perf.js`, `__tests__/workspace-perf.test.js` |
 | 성과 화면 **DM 유입 귀속** | ❌ **데이터 없음**(심사 문제 아님) — `/dm/conversations`는 '마지막 대화 시각'만, `DMMessageLog`에 게시물 참조 컬럼 없음. `messaging_referral` 웹훅은 구독만 하고 파싱 없이 버려짐 | `dm_autoreply.py:3100`(버리는 곳), `:5200`(구독) |
 
+> **[2026-08-26] 자동화는 승인 없이 안 돈다.** 최종 실행 조건 = `전역 env(DM_AUTOREPLY_ENABLED / kill switch)` AND `샵 토글` AND `원장 승인(UserConsent)`.
+> 하나라도 False 면 실행 안 함. 판정은 `services/automation_gate.automation_allowed()` 한 곳이고 **결정 로그**(`AUTOMATION_GATE feature=… decision=ALLOW|DENY reason=…`)를 남긴다.
+> ⚠️ 새 자동화를 만들 때 **기본값을 ON 으로 두지 마라.** 기존 사용자 보호는 기본값이 아니라 마이그레이션이 한다(0050 참조).
+>
 > **DM 응대 구조 핵심:** DM/문의 답장은 별도 "인박스 파일" 하나가 아니라 — 수신 채널(인스타/톡톡) → `services/channels/*` 어댑터 → 코어 DM 엔진(`services/dm_intent`·`dm_context_builder`·`dm_free_reply`) → `dm_confirm_queue`(원장 검토) 로 흐른다. 잇비 챗봇 쪽 발화는 `reply_dm`/`draft_message` kind로 백엔드 LLM이 초안, FE `js/assistant/marketing-safety-labels.js`·`marketing-draft-policy.js`가 톤·안전 라벨만 입힘.
 
 ---

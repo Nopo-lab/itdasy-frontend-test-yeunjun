@@ -117,10 +117,13 @@
     const headers = _authHeaders();
     if (!window.API || !headers) return 0;
     // [v789] 자동 응대 마스터 꺼짐 → 홈 줄 숨김 + API 호출도 스킵 (비용 방어)
+    // [2026-08-26] 판정을 뒤집었다: 예전엔 **저장한 적 없으면 호출**했다(`enabled === false` 일 때만 스킵).
+    //   이제 기본값이 OFF 라 그 호출은 서버에서 `disabled:true, count:0` 으로 돌아온다 —
+    //   결과가 같은 호출을 홈이 켜질 때마다 하는 셈이라 안 부른다. 명시적으로 켠 원장만 호출.
     try {
       const s0 = JSON.parse(localStorage.getItem('itdasy:crq_settings') || 'null');
-      if (s0 && s0.enabled === false) return 0;
-    } catch (_e) { /* ignore */ }
+      if (!s0 || s0.enabled !== true) return 0;
+    } catch (_e) { return 0; }
     // [2026-07-21] 방해금지 시간대(운영시간 밖) → 홈 넛지·API 호출 스킵. 큐 열면 다 보임(유실 아님)
     try { if (window.crqQuietNow && window.crqQuietNow()) return 0; } catch (_e) { /* ignore */ }
     try {

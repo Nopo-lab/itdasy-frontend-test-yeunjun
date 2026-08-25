@@ -2528,6 +2528,9 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
 <script src="app-drawer.js?v=local-151154" defer></script>
 <script src="app-secure-storage.js?v=local-151154" defer></script>
 <script src="app-shop-settings.js?v=local-151154" defer></script>
+<!-- [2026-08-26] 자동화 켜기 전 안내+승인 시트(공용). app-dm-menu.js 와
+     lazy 로 뜨는 app-comment-reply-queue.js 가 같이 쓰므로 **먼저** 로드한다. -->
+<script src="js/automation-consent.js?v=20260826-consent" defer></script>
 <script src="app-dm-menu.js?v=20260816-dmunify" defer></script>
 <script src="app-perf-recovery.js?v=20260805-customer-search-space" defer></script>
 <script src="app-spec-validator.js" defer></script>

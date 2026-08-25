@@ -89,7 +89,10 @@
     // [2026-07-22 보스] DM 자동응답 설정창처럼 세부 설정 추가 — 단, 프론트가 진짜로 지키는 것만 넣는다.
     //   exclude_words: 이 말이 들어간 댓글은 큐에 안 올린다(협찬·광고 DM 유도 댓글 걸러내기)
     //   [2026-07-22] default_dm 제거 — 댓글 응대는 공개 답글 전용이 됐다(DM 은 DM 엔진 단일 담당).
-    var def = { enabled: true,
+    // [2026-08-26] 🔴 기본값 true → **false**. 서버도 같이 바꿨다
+    //   (routers/instagram._crq_enabled → services/automation_gate).
+    //   예전엔 저장한 적 없는 원장이 켜진 것으로 읽혔고, 신규 가입 직후에도 그랬다.
+    var def = { enabled: false,
       intents: { price: true, booking: true, location: true, hours: false, service: true, duration: true, event: true, membership: true },
       link: '', emoji: '😊',
       active_hours: { start: '09:00', end: '21:00' }, quiet_outside: true,
@@ -98,7 +101,7 @@
       var s = JSON.parse(localStorage.getItem('itdasy:crq_settings') || 'null');
       if (!s) return def;
       var ah = (s.active_hours && typeof s.active_hours === 'object') ? s.active_hours : {};
-      return { enabled: s.enabled !== false, link: s.link || '', emoji: (s.emoji != null ? s.emoji : '😊'),
+      return { enabled: s.enabled === true, link: s.link || '', emoji: (s.emoji != null ? s.emoji : '😊'),
         intents: Object.assign({}, def.intents, s.intents || {}),
         active_hours: { start: ah.start || '09:00', end: ah.end || '21:00' },
         quiet_outside: s.quiet_outside !== false,
@@ -133,18 +136,23 @@
      로컬 저장은 그대로 유지(즉시 반영·오프라인). 서버는 '기기 간 보관용 정본'.
      PUT /instagram/comment-reply-settings — 실패해도 로컬엔 남으므로 조용히 넘어간다. */
   var _srvSaving = false;
+  var _srvPending = null;
   function _pushSettingsToServer() {
     if (!window.apiFetch || !window.authHeader || !window.apiUrl) return Promise.resolve(false);
-    if (_srvSaving) return Promise.resolve(false);
+    // [2026-08-26] 저장 중이면 **false 를 돌려주지 않는다.** 예전엔 그랬는데, 마스터 토글이
+    //   그 false 를 '서버 저장 실패' 로 읽고 화면을 되돌리게 됐다(= 켰는데 도로 꺼짐).
+    //   '바쁨' 과 '실패' 는 다르다 — 진행 중인 저장의 결과를 그대로 준다.
+    if (_srvSaving && _srvPending) return _srvPending;
     _srvSaving = true;
     var h = window.authHeader() || {};
     if (!h.Authorization) { _srvSaving = false; return Promise.resolve(false); }
     h['Content-Type'] = 'application/json';
-    return window.apiFetch(window.apiUrl('/instagram/comment-reply-settings'), {
+    _srvPending = window.apiFetch(window.apiUrl('/instagram/comment-reply-settings'), {
       method: 'PUT', headers: h, body: JSON.stringify({ settings: _settings }),
     }).then(function (r) { return !!(r && r.ok); })
       .catch(function () { return false; })
-      .then(function (ok) { _srvSaving = false; return ok; });
+      .then(function (ok) { _srvSaving = false; _srvPending = null; return ok; });
+    return _srvPending;
   }
   /* 서버에 저장된 설정을 가져와 로컬에 덮어쓴다. 새 기기·캐시 삭제 후 첫 진입용.
      서버가 빈 값({})이면 아무것도 안 한다 — 한 번도 저장 안 한 원장의 로컬 설정을 지우면 안 된다. */
@@ -520,7 +528,7 @@
 
   function _settingsBody() {
     // 단일 진실원 — 열 때 최신 enabled 반영(목록 ai-hub 와 같은 저장 키). [v789] 여기서도 끄고 켬.
-    try { var _f = JSON.parse(localStorage.getItem('itdasy:crq_settings') || 'null'); if (_f) _settings.enabled = _f.enabled !== false; } catch (_e) { void _e; }
+    try { var _f = JSON.parse(localStorage.getItem('itdasy:crq_settings') || 'null'); if (_f) _settings.enabled = _f.enabled === true; } catch (_e) { void _e; }
     var S = _settings;
     var CARD = 'background:#fff;border:.5px solid #E5E8EB;border-radius:18px;padding:15px;margin-bottom:11px;';
     var TITLE = 'font-size:15px;font-weight:700;color:#191F28;';
@@ -635,7 +643,30 @@
       if (sc) {
         _haptic();
         _captureSettingInputs(el);   // 재렌더 전 입력값(링크·시간·제외단어) 보존
-        if (sc.classList.contains('crq-master')) { _settings.enabled = !_settings.enabled; }
+        if (sc.classList.contains('crq-master')) {
+          // [2026-08-26] 켜는 건 안내 + 체크 + 서버 승인 기록을 거친다.
+          //   끄는 건 안 묻는다 — 끄는 쪽은 언제나 안전하다.
+          //   승인 없이 켜면 서버가 PUT 을 403 으로 막으므로, 화면만 켜 두면 거짓말이 된다.
+          if (_settings.enabled) { _settings.enabled = false; _saveSettings(); _pushSettingsToServer(); _render(); return; }
+          var _ac = window.AutomationConsent;
+          if (!_ac || typeof _ac.ask !== 'function') { _toast('잠시 뒤 다시 눌러주세요'); return; }
+          _ac.ask(_ac.COMMENT_AUTOREPLY).then(function (ok) {
+            if (!ok) return;
+            _settings.enabled = true;
+            _saveSettings();
+            _render();
+            _pushSettingsToServer().then(function (saved) {
+              if (saved) return;
+              // 서버가 못 받았으면(403 포함) 화면도 되돌린다 —
+              // 켜진 것처럼 보이는데 큐가 안 도는 게 최악이다.
+              _settings.enabled = false;
+              _saveSettings();
+              _render();
+              _toast('켜기에 실패했어요 — 다시 시도해 주세요');
+            });
+          });
+          return;
+        }
         else if (sc.classList.contains('crq-intent')) { var k = sc.getAttribute('data-intent'); _settings.intents[k] = (_settings.intents[k] === false); }
         else if (sc.classList.contains('crq-emoji')) { _settings.emoji = sc.getAttribute('data-emoji'); }
         else if (sc.classList.contains('crq-quiet')) { _settings.quiet_outside = !_settings.quiet_outside; }

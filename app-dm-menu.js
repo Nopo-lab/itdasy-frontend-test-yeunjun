@@ -426,16 +426,30 @@
         const _next = !_menu.enabled;
         _haptic();
         const _apply = () => { _menu.enabled = _next; _render(); _syncDmMenuEnabled(_next); };
+        // 끄는 건 안 묻는다 — 끄는 쪽은 언제나 안전하다.
         if (!_next) { _apply(); return; }
-        _askQuickReplyConsent(_apply);
+        // [2026-08-26] 안내 + 체크박스 + 서버 승인 기록까지 끝난 뒤에만 켠다.
+        //   승인 기록이 없으면 서버가 저장을 403 으로 막는다(assert_consent_for_enable).
+        _consentThenApply(_AC().DM_QUICK_REPLY, _apply);
         return;
       }
       if (kind === 'draft') {
         // B묶음 — 잇비 답장 초안 on/off. 서버는 /instagram/dm-reply/settings 의 enabled.
+        // [2026-08-26] 🔴 여기엔 승인 절차가 **아예 없었다.** 손님 DM 을 AI 가 읽기 시작하는
+        //   스위치인데 한 번 탭이면 켜졌고, 서버 기본값도 ON 이라 신규 원장은 켠 적도 없이
+        //   돌고 있었다. 이제 안내를 보고 체크해야 켜진다.
         if (!_ai) _ai = {};
-        _ai.enabled = !_ai.enabled;
-        _haptic(); _render();
-        _syncAiDraftEnabled(_ai.enabled);
+        const _next = !_ai.enabled;
+        _haptic();
+        const _apply = () => { _ai.enabled = _next; _render(); _syncAiDraftEnabled(_next); };
+        if (!_next) {
+          // 초안을 끄면 자동발송은 보낼 게 없어진다. 화면도 같이 내려 준다
+          //   (서버도 `autoreply_disabled` 로 막지만, 켜진 것처럼 보이는 게 최악이다).
+          if (_ai.dm_autosend_enabled) _ai.dm_autosend_enabled = false;
+          _apply();
+          return;
+        }
+        _consentThenApply(_AC().DM_AUTOREPLY, _apply);
         return;
       }
       if (kind === 'autosend') {
@@ -456,7 +470,7 @@
         _haptic();
         const _apply = () => { _ai.dm_autosend_enabled = _next; _render(); _syncAutosendEnabled(_next); };
         if (!_next) { _apply(); return; }
-        _askAutosendConsent(_apply);
+        _consentThenApply(_AC().DM_AUTOSEND, _apply);
         return;
       }
       if (kind === 'ice') {
@@ -594,174 +608,42 @@
         body: JSON.stringify(menu),
       });
       if (seq !== _dmMenuSyncSeq) return; // PUT 도중 또 토글됨 — 최신 sync 가 정정하므로 이 결과 무시
+      // [2026-08-26] 403 = 서버가 '승인 기록이 없다'고 막은 것. 다른 실패와 말이 달라야 한다.
+      if (put.status === 403) throw new Error('CONSENT');
       if (!put.ok) throw new Error('HTTP ' + put.status);
     } catch (_e) {
       if (seq !== _dmMenuSyncSeq) return; // stale — 최신 토글이 상태 소유, 롤백하지 않음
       // 실패 → 화면 상태 롤백
       _menu.enabled = !on;
       _render();
-      _toast('인스타DM 손님 응대 ' + (on ? '켜기' : '끄기') + ' 실패 — 다시 시도해주세요');
+      _toast(String(_e && _e.message) === 'CONSENT'
+        ? '동의가 확인되지 않았어요 — 안내를 다시 확인해 주세요'
+        : '인스타DM 손님 응대 ' + (on ? '켜기' : '끄기') + ' 실패 — 다시 시도해주세요');
     }
   }
 
   // ── B묶음 토글 백엔드 반영. ⚠️ POST /settings 는 부분 저장이 아니다 — 빠진 필드는 기본값으로 덮인다.
   //   반드시 GET 결과 전체를 동봉하고 enabled 만 바꾼다(_syncDmMenuEnabled 와 같은 규칙).
   let _aiSyncSeq = 0;
-  /* [2026-08-16] '바로 나가요' 켜기 전 승인 — confirm() 금지 규칙이라 직접 만든다.
-     문구는 실제 동작만 적는다(코드 대조 완료):
-       · 버튼 탭 → 써둔 답이 그대로 발송, LLM 안 거침(요금 X)
-       · {영업시간}·{주소}·{가격표} 는 저장된 값으로 치환 — 값이 없으면 그 자리가 빈다
-       · '상세문의' 는 확인 멘트만 보내고 원장 큐로 (자동 답 아님) */
-  function _askQuickReplyConsent(onOk) {
-    const prev = document.getElementById('dmmQrConsent');
-    if (prev) prev.remove();
-    const ov = document.createElement('div');
-    ov.id = 'dmmQrConsent';
-    ov.style.cssText = 'position:fixed;inset:0;z-index:12000;display:flex;align-items:flex-end;justify-content:center;'
-      + 'background:rgba(0,0,0,.45);opacity:0;transition:opacity .18s ease;';
-    ov.innerHTML = `
-      <div role="dialog" aria-modal="true" aria-label="바로 나가요 켜기"
-           style="width:100%;max-width:460px;max-height:86vh;overflow-y:auto;background:#fff;border-radius:20px 20px 0 0;
-                  padding:22px 20px max(20px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
-                  transform:translateY(14px);transition:transform .22s cubic-bezier(.32,.72,0,1);">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#FEF3C7;color:#B45309;flex-shrink:0;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
-          </span>
-          <strong style="font-size:17px;color:#191F28;letter-spacing:-.01em;">손님에게 바로 나가요</strong>
-        </div>
-        <p style="margin:0 0 13px;font-size:13.5px;color:#4E5968;line-height:1.6;">
-          켜시면 손님이 버튼을 누르는 순간 <b>사장님 확인 없이</b> 써두신 답이 그대로 나갑니다.
-        </p>
-        <div style="background:#F7F8FA;border-radius:14px;padding:12px 14px;margin-bottom:12px;">
-          <div style="font-size:12px;font-weight:700;color:#6B7684;margin-bottom:7px;">보내기 전에 확인해 주세요</div>
-          <ul style="margin:0;padding-left:16px;font-size:12.5px;color:#4E5968;line-height:1.75;">
-            <li>영업시간 · 주소 · 가격표는 <b>저장된 값</b>이 자동으로 채워져요</li>
-            <li>아직 안 채운 값이 있으면 그 자리가 <b>비어서 나가요</b></li>
-            <li>‘상세문의’는 확인 멘트만 보내고 사장님께 넘어와요</li>
-          </ul>
-        </div>
-        <button type="button" data-qr="shop"
-          style="width:100%;padding:11px;border:1px solid #E6B9C2;background:#fff;color:#BC6675;font-weight:700;font-size:13px;border-radius:12px;cursor:pointer;font-family:inherit;margin-bottom:14px;">샵 정보 먼저 확인하기</button>
-        <p style="margin:0 0 16px;font-size:12.5px;color:#8B95A1;line-height:1.6;">
-          잇비가 글을 지어내지는 않아요. <b>써두신 문장만</b> 나가고, 언제든 끌 수 있어요.
-        </p>
-        <div style="display:flex;gap:8px;">
-          <button type="button" data-qr="no"
-            style="flex:1;padding:13px;border:1px solid #E5E8EB;background:#fff;color:#4E5968;font-weight:600;font-size:14px;border-radius:14px;cursor:pointer;font-family:inherit;">취소</button>
-          <button type="button" data-qr="yes"
-            style="flex:1.4;padding:13px;border:none;background:#191F28;color:#fff;font-weight:700;font-size:14px;border-radius:14px;cursor:pointer;font-family:inherit;">네, 바로 보낼게요</button>
-        </div>
-      </div>`;
-    document.body.appendChild(ov);
-    requestAnimationFrame(() => {
-      ov.style.opacity = '1';
-      const card = ov.firstElementChild;
-      if (card) card.style.transform = 'translateY(0)';
-    });
-    const close = () => {
-      ov.style.opacity = '0';
-      setTimeout(() => ov.remove(), 180);
-      if (typeof window._markSheetClosed === 'function') window._markSheetClosed('dmmQrConsent');
-    };
-    // 뒤로가기 등록 — 빠뜨리면 안드로이드에서 뒤로가기가 앱을 종료시킨다
-    if (typeof window._registerSheet === 'function') window._registerSheet('dmmQrConsent', close);
-    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('dmmQrConsent');
-    ov.addEventListener('click', (e) => {
-      if (e.target === ov) { close(); return; }            // 배경 탭 = 취소(안전한 쪽)
-      const b = e.target.closest('[data-qr]');
-      if (!b) return;
-      const v = b.getAttribute('data-qr');
-      if (v === 'shop') { close(); if (typeof window.openShopSettings === 'function') window.openShopSettings(); return; }
-      close();
-      if (v === 'yes') onOk();
-    });
-  }
+  /* [2026-08-26] 자동화 켜기 = 안내 → 체크 → 서버 승인 기록 → 그다음 설정 저장.
 
-  /* [2026-08-20 P0-2] 손님에게 AI 가 직접 답장 보내기 — 켤 때 동의 받기.
-     `_askQuickReplyConsent` 와 나란히 두고 같은 시트 관용구를 쓴다(뒤로가기 등록 포함).
+     옛 시트 두 개(`_askQuickReplyConsent`·`_askAutosendConsent`)를 지우고
+     `js/automation-consent.js` 하나로 합쳤다. 이유 두 가지:
+       ① 토글이 4개인데 시트는 2개뿐이었다 — 가장 위험한 '초안 만들기'에 아무것도 없었다
+       ② 시트가 파일마다 따로면 문구가 갈라진다. 실제로 갈라져 있었다.
 
-     🔴 왜 켤 때만 묻나: 끄는 쪽은 언제나 안전하다. 물어봐서 얻는 게 없고 손만 더 간다.
-     🔴 여기서 약속한 것과 서버 동작이 어긋나면 안 된다. 아래 문구 3개는 각각 코드 근거가 있다:
-        · "위험한 문의는 안 나가요"    → services/dm_safety.py (욕설·시비) + dm_autoreply _RISK_KEYWORDS(환불·법적·부작용)
-        · "손님이 말을 멈춘 뒤에"      → services/dm_batching.py (묶음) + dm_autosend.should_autosend
-        · "언제든 끌 수 있어요"        → should_autosend 가 **발송 시점에 토글을 다시 읽는다**
-                                        (test_dm_autosend_toggle_2026_08_20.py 가 이걸 잠근다)
-     문구를 고칠 땐 근거 코드를 먼저 확인할 것. 화면이 실제 동작보다 세게 약속하면 그게 사고다. */
-  function _askAutosendConsent(onOk) {
-    const prev = document.getElementById('dmmAutoSendConsent');
-    if (prev) prev.remove();
-    const ov = document.createElement('div');
-    ov.id = 'dmmAutoSendConsent';
-    ov.style.cssText = 'position:fixed;inset:0;z-index:12000;display:flex;align-items:flex-end;justify-content:center;'
-      + 'background:rgba(0,0,0,.45);opacity:0;transition:opacity .18s ease;';
-    ov.innerHTML = `
-      <div role="dialog" aria-modal="true" aria-label="AI 자동발송 켜기"
-           style="width:100%;max-width:460px;max-height:86vh;overflow-y:auto;background:#fff;border-radius:20px 20px 0 0;
-                  padding:22px 20px max(20px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
-                  transform:translateY(14px);transition:transform .22s cubic-bezier(.32,.72,0,1);">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#FEF3C7;color:#B45309;flex-shrink:0;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
-          </span>
-          <strong style="font-size:17px;color:#191F28;letter-spacing:-.01em;">잇비가 직접 답장해요</strong>
-        </div>
-        <p style="margin:0 0 13px;font-size:13.5px;color:#4E5968;line-height:1.6;">
-          켜시면 잇비가 쓴 답장이 <b>사장님 확인 없이</b> 손님에게 바로 나갑니다.
-          사장님 말투와 저장된 샵 정보로 답해요.
-        </p>
-        <div style="background:#F0FDF4;border-radius:14px;padding:12px 14px;margin-bottom:10px;">
-          <div style="font-size:12px;font-weight:700;color:#15803D;margin-bottom:7px;">이런 건 자동으로 안 나가요</div>
-          <ul style="margin:0;padding-left:16px;font-size:12.5px;color:#166534;line-height:1.75;">
-            <li>환불 · 민원 · 법적 · 부작용 얘기</li>
-            <li>화난 말투 · 거친 말이 섞인 문의</li>
-            <li>사장님이 직접 판단해야 하는 문의</li>
-          </ul>
-          <div style="font-size:11.5px;color:#15803D;margin-top:7px;">→ 이 경우는 사장님 확인 목록으로 넘어와요</div>
-        </div>
-        <div style="background:#F7F8FA;border-radius:14px;padding:12px 14px;margin-bottom:12px;">
-          <div style="font-size:12px;font-weight:700;color:#6B7684;margin-bottom:7px;">알고 계셔야 할 것</div>
-          <ul style="margin:0;padding-left:16px;font-size:12.5px;color:#4E5968;line-height:1.75;">
-            <li>손님이 말을 멈춘 뒤 <b>한 번만</b> 답장해요</li>
-            <li>영업시간 · 주소 · 가격표는 <b>저장된 값</b>으로 답해요</li>
-            <li>아직 안 채운 값은 <b>지어내지 않고</b> 확인하겠다고 답해요</li>
-          </ul>
-        </div>
-        <button type="button" data-as="shop"
-          style="width:100%;padding:11px;border:1px solid #E6B9C2;background:#fff;color:#BC6675;font-weight:700;font-size:13px;border-radius:12px;cursor:pointer;font-family:inherit;margin-bottom:14px;">샵 정보 먼저 확인하기</button>
-        <p style="margin:0 0 16px;font-size:12.5px;color:#8B95A1;line-height:1.6;">
-          <b>언제든 끌 수 있어요.</b> 끄면 그 순간부터 안 나가고, 이미 써둔 답장은 확인 목록에 남아요.
-        </p>
-        <div style="display:flex;gap:8px;">
-          <button type="button" data-as="no"
-            style="flex:1;padding:13px;border:1px solid #E5E8EB;background:#fff;color:#4E5968;font-weight:600;font-size:14px;border-radius:14px;cursor:pointer;font-family:inherit;">취소</button>
-          <button type="button" data-as="yes"
-            style="flex:1.4;padding:13px;border:none;background:#191F28;color:#fff;font-weight:700;font-size:14px;border-radius:14px;cursor:pointer;font-family:inherit;">네, 맡길게요</button>
-        </div>
-      </div>`;
-    document.body.appendChild(ov);
-    requestAnimationFrame(() => {
-      ov.style.opacity = '1';
-      const card = ov.firstElementChild;
-      if (card) card.style.transform = 'translateY(0)';
-    });
-    const close = () => {
-      ov.style.opacity = '0';
-      setTimeout(() => ov.remove(), 180);
-      if (typeof window._markSheetClosed === 'function') window._markSheetClosed('dmmAutoSendConsent');
-    };
-    // 뒤로가기 등록 — 빠뜨리면 안드로이드에서 뒤로가기가 앱을 종료시킨다
-    if (typeof window._registerSheet === 'function') window._registerSheet('dmmAutoSendConsent', close);
-    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('dmmAutoSendConsent');
-    ov.addEventListener('click', (e) => {
-      if (e.target === ov) { close(); return; }            // 배경 탭 = 취소(안전한 쪽)
-      const b = e.target.closest('[data-as]');
-      if (!b) return;
-      const v = b.getAttribute('data-as');
-      if (v === 'shop') { close(); if (typeof window.openShopSettings === 'function') window.openShopSettings(); return; }
-      close();
-      if (v === 'yes') onOk();
-    });
+     🔴 시트가 true 를 줘도 **아직 켜진 게 아니다.** 켜는 건 아래 `apply()` 의 설정 저장이고,
+       서버가 승인 기록을 보고서야 허락한다. 화면은 설명하는 일만 한다. */
+  function _AC() { return window.AutomationConsent || {}; }
+
+  function _consentThenApply(feature, apply) {
+    const ac = _AC();
+    if (!feature || typeof ac.ask !== 'function') {
+      // 공용 모듈이 아직 안 떴다 — 승인을 못 받은 채로 켜지 않는다(안전한 쪽으로 실패).
+      _toast('잠시 뒤 다시 눌러주세요');
+      return;
+    }
+    ac.ask(feature).then((ok) => { if (ok) apply(); });
   }
 
   /* [2026-08-20 P0-2] 자동발송 토글 서버 동기화.
@@ -787,6 +669,7 @@
         body: JSON.stringify(cur),
       });
       if (seq !== _aiSyncSeq) return;
+      if (put.status === 403) throw new Error('CONSENT');
       if (!put.ok) throw new Error('HTTP ' + put.status);
       _ai = cur;
       _toast(on ? '이제 잇비가 직접 답장해요' : '자동발송을 껐어요');
@@ -795,7 +678,9 @@
       // 서버가 못 받았으면 화면도 되돌린다 — 켜진 것처럼 보이는데 안 나가는 게 최악이다
       if (_ai) _ai.dm_autosend_enabled = !on;
       _render();
-      _toast('자동발송 ' + (on ? '켜기' : '끄기') + ' 실패 — 다시 시도해주세요');
+      _toast(String(_e && _e.message) === 'CONSENT'
+        ? '동의가 확인되지 않았어요 — 안내를 다시 확인해 주세요'
+        : '자동발송 ' + (on ? '켜기' : '끄기') + ' 실패 — 다시 시도해주세요');
     }
   }
 
@@ -814,13 +699,18 @@
         body: JSON.stringify(cur),
       });
       if (seq !== _aiSyncSeq) return;
+      if (put.status === 403) throw new Error('CONSENT');
       if (!put.ok) throw new Error('HTTP ' + put.status);
       _ai = cur;
+      _toast(on ? '이제 잇비가 답장 초안을 만들어요' : '답장 초안을 껐어요');
     } catch (_e) {
       if (seq !== _aiSyncSeq) return;
+      // 서버가 못 받았으면 화면도 되돌린다 — 켜진 것처럼 보이는데 안 도는 게 최악이다
       if (_ai) _ai.enabled = !on;
       _render();
-      _toast('답장 초안 ' + (on ? '켜기' : '끄기') + ' 실패 — 다시 시도해주세요');
+      _toast(String(_e && _e.message) === 'CONSENT'
+        ? '동의가 확인되지 않았어요 — 안내를 다시 확인해 주세요'
+        : '답장 초안 ' + (on ? '켜기' : '끄기') + ' 실패 — 다시 시도해주세요');
     }
   }
 

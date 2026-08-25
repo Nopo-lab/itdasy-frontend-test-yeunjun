@@ -2,10 +2,12 @@
  * autosend-toggle.test.js — AI 자동발송 토글 UI 계약  [P0-2 2026-08-20]
  *
  * ── 왜 소스 계약 테스트인가
- *   `app-dm-menu.js` 는 `_render()` 가 `body.innerHTML` 을 쓰는 DOM 화면이고, 이 레포엔
- *   jsdom 이 없다(프론트 테스트 전부 순수 node + 전역 스텁). 토글 UX 를 검증하려고
- *   jsdom 을 들이는 건 새 인프라라 이번 P0 범위가 아니다.
- *   대신 **깨지면 실제 사고가 되는 계약**만 소스에서 잠근다. 화면 픽셀은 브라우저 실측으로 본다.
+ *   `app-dm-menu.js` 는 `_render()` 가 `body.innerHTML` 을 쓰는 DOM 화면이다.
+ *   **깨지면 실제 사고가 되는 계약**만 소스에서 잠근다. 화면 픽셀은 브라우저 실측으로 본다.
+ *
+ *   [2026-08-26] 동의 시트는 `js/automation-consent.js` 로 빠졌다(토글 4개 공용).
+ *   시트 자체의 동작(체크박스 없이는 안 켜짐 등)은 jsdom 으로 실제로 눌러 보는
+ *   `__tests__/automation-consent.test.js` 가 본다. 여기는 **이 토글이 그 시트를 거치는가**만 본다.
  *   (선례: js/workspace/__tests__/work-memory-apply-undo.test.js 의 '편집기 소스 계약')
  *
  * ── 여기서 잠그는 사고 4개
@@ -81,14 +83,14 @@ describe('[2][3] 동의는 켤 때만', () => {
                             SRC.indexOf("if (kind === 'ice')"));
 
   test('켜는 방향은 동의 시트를 거친다', () => {
-    expect(handler).toMatch(/_askAutosendConsent\(_apply\)/);
+    expect(handler).toMatch(/_consentThenApply\(_AC\(\)\.DM_AUTOSEND, _apply\)/);
   });
 
   test('끄는 방향은 즉시 적용한다 (안 묻는다)', () => {
     // `if (!_next) { _apply(); return; }` — OFF 는 동의 없이 바로
     expect(handler).toMatch(/if \(!_next\)\s*\{\s*_apply\(\);\s*return;\s*\}/);
     const offAt = handler.indexOf('if (!_next)');
-    const consentAt = handler.indexOf('_askAutosendConsent');
+    const consentAt = handler.indexOf('_consentThenApply');
     expect(offAt).toBeLessThan(consentAt);        // OFF 조기 반환이 동의보다 먼저
   });
 
@@ -104,31 +106,37 @@ describe('[2][3] 동의는 켤 때만', () => {
   });
 });
 
-describe('[4] 동의 시트는 뒤로가기에 등록된다', () => {
-  const sheet = fnBody(SRC, 'function _askAutosendConsent');
+describe('[4] 동의 시트 — 공용 모듈 쪽 계약', () => {
+  // [2026-08-26] 시트가 `js/automation-consent.js` 로 옮겨갔다. 옛 `_askAutosendConsent`
+  //   본문에서 보던 것들을 그대로 새 위치에서 본다 — 검사를 잃어버리면 사고가 되돌아온다.
+  const CONSENT = fs.readFileSync(
+    path.join(__dirname, '..', '..', 'automation-consent.js'), 'utf8');
 
   test('_registerSheet + _markSheetOpen 을 부른다', () => {
     // 빠뜨리면 안드로이드 뒤로가기가 앱을 종료시킨다 (반복 사고)
-    expect(sheet).toMatch(/_registerSheet\('dmmAutoSendConsent', close\)/);
-    expect(sheet).toMatch(/_markSheetOpen\('dmmAutoSendConsent'\)/);
-    expect(sheet).toMatch(/_markSheetClosed\('dmmAutoSendConsent'\)/);
+    expect(CONSENT).toMatch(/var ID = 'automationConsentSheet';/);
+    expect(CONSENT).toMatch(/_registerSheet\(ID,/);
+    expect(CONSENT).toMatch(/_markSheetOpen\(ID\)/);
+    expect(CONSENT).toMatch(/_markSheetClosed\(ID\)/);
   });
 
   test('배경 탭은 취소(안전한 쪽)로 닫는다', () => {
-    expect(sheet).toMatch(/if \(e\.target === ov\)\s*\{\s*close\(\);\s*return;\s*\}/);
+    expect(CONSENT).toMatch(/if \(e\.target === ov\) \{ finish\(false\); return; \}/);
   });
 
   test('safe-area 를 반영한다 (홈바에 버튼이 가리지 않게)', () => {
-    expect(sheet).toMatch(/safe-area-inset-bottom/);
+    expect(CONSENT).toMatch(/safe-area-inset-bottom/);
   });
 
-  test('동의 문구가 서버 동작과 어긋나지 않는다', () => {
+  test('자동발송 동의 문구가 서버 동작과 어긋나지 않는다', () => {
     // 각 문구는 코드 근거가 있다. 근거 없는 약속을 화면에 쓰면 그게 사고다.
-    expect(sheet).toMatch(/사장님 확인 없이/);        // 자동발송의 실제 의미
-    expect(sheet).toMatch(/환불|민원/);               // dm_autoreply _RISK_KEYWORDS
-    expect(sheet).toMatch(/거친 말/);                 // services/dm_safety.py
-    expect(sheet).toMatch(/언제든 끌 수 있어요/);      // should_autosend 가 발송 시점 재조회
-    expect(sheet).toMatch(/지어내지 않고/);            // 할루시네이션 가드
+    const block = CONSENT.slice(CONSENT.indexOf('automation_dm_autosend: {'),
+                                CONSENT.indexOf('automation_dm_quick_reply: {'));
+    expect(block).toMatch(/사장님 확인 없이/);        // 자동발송의 실제 의미
+    expect(block).toMatch(/환불|민원/);               // dm_autoreply _RISK_KEYWORDS
+    expect(block).toMatch(/화난 말투/);               // services/dm_safety.py
+    expect(block).toMatch(/끄면 그 순간부터/);         // should_autosend 가 발송 시점 재조회
+    expect(block).toMatch(/지어내지 않고/);            // 할루시네이션 가드
   });
 });
 
@@ -167,7 +175,11 @@ describe('아이콘은 Lucide SVG — 이모지 금지 (레포 규칙)', () => {
   }
 
   test('동의 시트 마크업에 이모지가 없다 (Lucide SVG 만)', () => {
-    const m = markup('function _askAutosendConsent', 'async function _syncAutosendEnabled');
+    // [2026-08-26] 시트는 js/automation-consent.js 로 이동. 마크업은 ov.innerHTML 문자열 결합.
+    const CONSENT = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'automation-consent.js'), 'utf8');
+    const m = CONSENT.slice(CONSENT.indexOf('function sheetHtml('),
+                            CONSENT.indexOf('function wire('));
     expect(m).not.toMatch(/\p{Extended_Pictographic}/u);
     expect(m).toMatch(/<svg /);                 // 아이콘은 인라인 SVG 로
   });
