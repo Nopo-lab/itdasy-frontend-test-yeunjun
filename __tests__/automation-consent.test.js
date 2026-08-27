@@ -191,13 +191,24 @@ describe('문구 — 실제 동작과 어긋나지 않는다', () => {
   });
 });
 
+/* 백엔드 레포는 **옆에 있을 때만** 읽는다.
+ *
+ * 🔴 [2026-08-27] 이 검사가 배포를 죽였다. `../itdasy_backend-test/...` 를 무조건 읽는데
+ *   CI 는 프론트 레포만 체크아웃한다 → ENOENT → jest 실패 → Pages 배포 중단.
+ *   내 로컬은 두 레포가 나란히 있어서 통과했다 — **폴더 배치 덕에 통과하던 테스트**다.
+ *
+ *   그렇다고 검사를 지우면 안 된다. consent_type·version 이 서버와 어긋나면 원장이
+ *   승인을 해도 403 이 난다(문자열 하나 틀리면 조용히 그렇게 된다). 그래서 남기되,
+ *   백엔드가 없는 환경에서는 **건너뛴다.** 있는 곳(로컬·모노레포 체크아웃)에서는 그대로 잠근다.
+ */
+const BACKEND_DIR = path.join(ROOT, '..', 'itdasy_backend-test', 'backend');
+const hasBackend = fs.existsSync(path.join(BACKEND_DIR, 'services', 'automation_gate.py'));
+const withBackend = hasBackend ? test : test.skip;
+
 describe('백엔드와의 계약', () => {
-  test('consent_type 문자열이 automation_gate 와 같다', () => {
+  withBackend('consent_type 문자열이 automation_gate 와 같다', () => {
     const AC = loadModule();
-    const py = fs.readFileSync(
-      path.join(ROOT, '..', 'itdasy_backend-test', 'backend', 'services', 'automation_gate.py'),
-      'utf8',
-    );
+    const py = fs.readFileSync(path.join(BACKEND_DIR, 'services', 'automation_gate.py'), 'utf8');
     FEATURES.forEach((f) => {
       expect(AC.FEATURES[f]).toBeTruthy();
       expect(py).toContain(`"${f}"`);
@@ -206,12 +217,22 @@ describe('백엔드와의 계약', () => {
     expect(py).toContain(`CONSENT_VERSION = "${AC.VERSION}"`);
   });
 
-  test('백엔드 Literal 화이트리스트에 4종이 다 있다', () => {
+  withBackend('백엔드 Literal 화이트리스트에 4종이 다 있다', () => {
     const AC = loadModule();
-    const py = fs.readFileSync(
-      path.join(ROOT, '..', 'itdasy_backend-test', 'backend', 'schemas', 'persona.py'), 'utf8');
+    const py = fs.readFileSync(path.join(BACKEND_DIR, 'schemas', 'persona.py'), 'utf8');
     FEATURES.forEach((f) => expect(py).toContain(`"${f}"`));
     expect(AC.VERSION).toBeTruthy();
+  });
+
+  test('프론트 쪽 consent_type 상수는 백엔드 유무와 무관하게 고정', () => {
+    // 위 두 검사가 CI 에서 건너뛰어지므로, 문자열 자체는 여기서 항상 잠근다.
+    const AC = loadModule();
+    expect(AC.DM_AUTOREPLY).toBe('automation_dm_autoreply');
+    expect(AC.DM_AUTOSEND).toBe('automation_dm_autosend');
+    expect(AC.DM_QUICK_REPLY).toBe('automation_dm_quick_reply');
+    expect(AC.COMMENT_AUTOREPLY).toBe('automation_comment_autoreply');
+    expect(AC.VERSION).toBe('v1');
+    FEATURES.forEach((f) => expect(AC.FEATURES[f]).toBeTruthy());
   });
 });
 
