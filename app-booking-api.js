@@ -54,7 +54,12 @@
       clearTimeout(_to);
     }
     if (res.status === 404 || res.status === 501) throw new Error('endpoint-missing');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) {
+      // [P0-2b] 서버 detail 을 그대로 토스트에 — 잔액 부족·만료 같은 400 사유가 사용자에게 보이게 (FE 표준 패턴)
+      let _d = null;
+      try { _d = await res.json(); } catch (_e) { void _e; }
+      throw new Error((_d && _d.detail) || ('HTTP ' + res.status));
+    }
     return res.status === 204 ? null : await res.json();
   }
 

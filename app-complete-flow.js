@@ -298,12 +298,12 @@
         <div class="cf-pay-grid">${methodsHtml}</div>
       </div>
       <div class="cf-opts">
-        <div class="cf-opt-row" data-opt="includeRevenue">
+        <div class="cf-opt-row" data-opt="includeRevenue"${c.method === 'membership' ? ' style="opacity:.55;pointer-events:none"' : ''}>
           <div class="cf-opt-text">
             <div class="cf-opt-label">매출에 포함</div>
-            <div class="cf-opt-desc">${c.includeRevenue ? '이번달 매출에 더해요' : '매출에서 빠져요'}</div>
+            <div class="cf-opt-desc">${c.method === 'membership' ? '회원권 차감은 항상 기록돼요' : (c.includeRevenue ? '이번달 매출에 더해요' : '매출에서 빠져요')}</div>
           </div>
-          <div class="cf-toggle ${c.includeRevenue ? 'on' : ''}"></div>
+          <div class="cf-toggle ${(c.method === 'membership' || c.includeRevenue) ? 'on' : ''}"></div>
         </div>
         <div class="cf-opt-row" data-opt="learnCycle">
           <div class="cf-opt-text">
@@ -424,10 +424,15 @@
       _render();
     }));
     document.querySelectorAll('.cf-pay').forEach(b => b.addEventListener('click', () => {
-      _ctx.method = b.dataset.method; _render();
+      _ctx.method = b.dataset.method;
+      // [P0-2b] 회원권 = 차감 원장이 곧 기록 — 매출 제외 불가, 토글 자동 ON 고정
+      if (_ctx.method === 'membership') _ctx.includeRevenue = true;
+      _render();
     }));
     document.querySelectorAll('.cf-opt-row').forEach(row => row.addEventListener('click', () => {
-      const k = row.dataset.opt; _ctx[k] = !_ctx[k]; _render();
+      const k = row.dataset.opt;
+      if (k === 'includeRevenue' && _ctx.method === 'membership') return; // [P0-2b] 잠금
+      _ctx[k] = !_ctx[k]; _render();
     }));
     document.getElementById('cfSave')?.addEventListener('click', _saveAll);
     document.getElementById('cfNoShow')?.addEventListener('click', () => {
@@ -450,7 +455,7 @@
       if (bd > today) { if (window.showToast) window.showToast('아직 시술일이 안 됐어요'); return; }
     }
     const btn = document.getElementById('cfSave');
-    const includeRev = _ctx.includeRevenue !== false;
+    const includeRev = _ctx.method === 'membership' ? true : (_ctx.includeRevenue !== false); // [P0-2b] 회원권은 항상 기록
     if (includeRev && (!_ctx.amount || _ctx.amount <= 0)) {
       if (window.showToast) window.showToast('금액을 입력해 주세요');
       document.getElementById('cfAmtInput')?.focus();
@@ -473,7 +478,8 @@
       if (eff.revenue_created) _emitChange('create_revenue', { booking_id: ctx.booking_id, customer_id: ctx.customer_id, revenue_id: eff.revenue_id });
       if (window.hapticSuccess) window.hapticSuccess();
       if (window.showToast) {
-        if (eff.revenue_created) window.showToast(`${_fmt(ctx.amount)} 매출 자동 기록됨`);
+        if (eff.membership_deducted) window.showToast(`회원권 ${_fmt(eff.membership_deducted)} 차감 완료`);
+        else if (eff.revenue_created) window.showToast(`${_fmt(ctx.amount)} 매출 자동 기록됨`);
         else window.showToast('예약 완료 (매출 미기록)');
       }
       _close();
