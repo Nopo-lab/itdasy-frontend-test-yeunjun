@@ -1966,11 +1966,178 @@ async function _tryBiometricLogin() {
   } catch (_) { return false; }
 }
 
+// ───── 가입 이메일 인증 [2026-08-28] ─────────────────────────────────────
+//  왜 필요했나: 비밀번호를 잊으면 복구 경로가 이메일 하나뿐인데, 그 주소가
+//  본인 것인지 한 번도 확인한 적이 없었다. 오타 한 글자면 계정이 영구히
+//  잠기고, 남의 주소를 적으면 그 사람이 재설정 링크로 계정을 가져간다.
+//  코드(6자리) 방식인 이유는 메일앱 ↔ 브라우저 왕복 없이 이 화면에서
+//  끝내기 위해서다 (링크 방식은 앱 래핑 환경에서 세션이 끊긴다).
+const _suVerify = { email: '', ticket: '', deadline: 0, tick: null, cooldown: null, busy: false };
+
+function _suEl(id) { return document.getElementById(id); }
+
+function _suMsg(text, kind) {
+  const el = _suEl('signupCodeMsg');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.toggle('is-err', kind === 'err');
+  el.classList.toggle('is-ok', kind === 'ok');
+}
+
+/** 가입 버튼 활성 조건 = 약관 + 만14세 + 이메일 인증. 세 곳에서 부르므로 함수로 뺀다. */
+function _suSyncSignupBtn() {
+  const a = _suEl('signupAgree');
+  const ageOk = _suEl('signupAgeOver14');
+  const btn = _suEl('signupBtn');
+  if (!btn) return;
+  const ok = !!(a && a.checked) && (!ageOk || ageOk.checked) && !!_suVerify.ticket;
+  btn.style.opacity = ok ? '1' : '0.6';
+  btn.style.pointerEvents = ok ? 'auto' : 'none';
+}
+
+function _suStopTimer() {
+  if (_suVerify.tick) { clearInterval(_suVerify.tick); _suVerify.tick = null; }
+}
+
+function _suStartTimer(seconds) {
+  _suStopTimer();
+  _suVerify.deadline = Date.now() + seconds * 1000;
+  const el = _suEl('signupCodeTimer');
+  const paint = () => {
+    const left = Math.max(0, Math.round((_suVerify.deadline - Date.now()) / 1000));
+    if (el) {
+      el.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+      el.classList.toggle('is-low', left <= 60);
+    }
+    if (left <= 0) {
+      _suStopTimer();
+      _suMsg('인증번호가 만료됐어요. 다시 받아주세요.', 'err');
+      const code = _suEl('signupCode');
+      if (code) { code.value = ''; code.disabled = true; }
+    }
+  };
+  paint();
+  _suVerify.tick = setInterval(paint, 1000);
+}
+
+/** 재발송 쿨다운 — 서버도 60초를 막지만, 눌러보고 나서 거절당하면 사용자는 고장인 줄 안다. */
+function _suCooldown(seconds) {
+  const btn = _suEl('signupSendCode');
+  if (!btn) return;
+  if (_suVerify.cooldown) clearInterval(_suVerify.cooldown);
+  let left = seconds;
+  const paint = () => {
+    if (_suVerify.ticket) { clearInterval(_suVerify.cooldown); _suVerify.cooldown = null; return; }
+    if (left <= 0) {
+      clearInterval(_suVerify.cooldown); _suVerify.cooldown = null;
+      btn.disabled = false; btn.textContent = '재발송';
+      return;
+    }
+    btn.disabled = true; btn.textContent = `재발송 ${left}초`;
+    left -= 1;
+  };
+  paint();
+  _suVerify.cooldown = setInterval(paint, 1000);
+}
+
+/** 이메일을 고치면 앞서 받은 인증은 전부 무효. (A 주소로 인증받고 B 로 가입하는 걸 막는다) */
+function _suResetVerify() {
+  _suStopTimer();
+  if (_suVerify.cooldown) { clearInterval(_suVerify.cooldown); _suVerify.cooldown = null; }
+  _suVerify.email = ''; _suVerify.ticket = ''; _suVerify.deadline = 0;
+  const box = _suEl('signupVerifyBox');
+  if (box) box.hidden = true;
+  const code = _suEl('signupCode');
+  if (code) { code.value = ''; code.disabled = false; }
+  const btn = _suEl('signupSendCode');
+  if (btn) { btn.disabled = false; btn.classList.remove('is-done'); btn.textContent = '인증번호 받기'; }
+  _suMsg('메일로 보낸 6자리 숫자를 입력해주세요.', '');
+  _suSyncSignupBtn();
+}
+
+async function _suSendCode() {
+  if (_suVerify.busy) return;
+  const emailEl = _suEl('signupEmail');
+  const errEl = _suEl('signupError');
+  const email = (emailEl ? emailEl.value : '').trim();
+  if (errEl) errEl.style.display = 'none';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (errEl) { errEl.textContent = '이메일 형식을 확인해주세요.'; errEl.style.display = 'block'; }
+    if (emailEl) emailEl.focus();
+    return;
+  }
+  const btn = _suEl('signupSendCode');
+  _suVerify.busy = true;
+  if (btn) { btn.disabled = true; btn.textContent = '보내는 중…'; }
+  try {
+    const res = await apiFetch('/auth/send-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : '인증번호를 보내지 못했어요.');
+    _suVerify.email = email;
+    const box = _suEl('signupVerifyBox');
+    if (box) box.hidden = false;
+    const code = _suEl('signupCode');
+    if (code) { code.value = ''; code.disabled = false; code.focus(); }
+    _suStartTimer(Number(data.expires_in) || 300);
+    _suMsg('메일로 보낸 6자리 숫자를 입력해주세요. 안 오면 스팸함도 확인해주세요.', '');
+    _suCooldown(60);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '인증번호 받기'; }
+    if (errEl) { errEl.textContent = _friendlyErr(e, '인증번호를 보내지 못했어요.'); errEl.style.display = 'block'; }
+  } finally {
+    _suVerify.busy = false;
+  }
+}
+
+async function _suCheckCode() {
+  if (_suVerify.busy || _suVerify.ticket) return;
+  const codeEl = _suEl('signupCode');
+  const code = (codeEl ? codeEl.value : '').replace(/\D/g, '');
+  if (code.length !== 6) return;
+  _suVerify.busy = true;
+  if (codeEl) codeEl.disabled = true;
+  _suMsg('확인 중…', '');
+  try {
+    const res = await apiFetch('/auth/verify-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: _suVerify.email, code }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : '인증번호가 달라요.');
+    _suVerify.ticket = data.verification_ticket || '';
+    _suStopTimer();
+    if (_suVerify.cooldown) { clearInterval(_suVerify.cooldown); _suVerify.cooldown = null; }
+    // 인증 끝 → 코드 칸을 치워 폼을 다시 짧게 만든다 (시선이 비밀번호로 넘어가야 한다)
+    const box = _suEl('signupVerifyBox');
+    if (box) box.hidden = true;
+    const btn = _suEl('signupSendCode');
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add('is-done');
+      btn.innerHTML = '<svg viewBox="0 0 24 24"><use href="#ic-check-circle"></use></svg>확인됨';
+    }
+    const emailEl = _suEl('signupEmail');
+    if (emailEl) emailEl.readOnly = true;
+    _suSyncSignupBtn();
+    const pw = _suEl('signupPassword');
+    if (pw) pw.focus();
+  } catch (e) {
+    if (codeEl) { codeEl.disabled = false; codeEl.value = ''; codeEl.focus(); }
+    _suMsg(_friendlyErr(e, '인증번호가 달라요.'), 'err');
+  } finally {
+    _suVerify.busy = false;
+  }
+}
+
 // 회원가입
 let _signupInFlight = false;
 async function signup() {
   if (_signupInFlight) return;
-  const name = document.getElementById('signupName').value.trim();
   const email = document.getElementById('signupEmail').value.trim();
   const password = document.getElementById('signupPassword').value;
   const referral_code = document.getElementById('signupRef').value.trim() || null;
@@ -1983,7 +2150,8 @@ async function signup() {
   errEl.style.display = 'none';
   if (!agree) { errEl.textContent = '약관에 동의해주세요.'; errEl.style.display = 'block'; return; }
   if (!ageOver14) { errEl.textContent = '만 14세 이상만 가입할 수 있어요.'; errEl.style.display = 'block'; return; }
-  if (!name || !email || !password) { errEl.textContent = '모든 필수 항목을 입력해주세요.'; errEl.style.display = 'block'; return; }
+  if (!email || !password) { errEl.textContent = '모든 필수 항목을 입력해주세요.'; errEl.style.display = 'block'; return; }
+  if (!_suVerify.ticket) { errEl.textContent = '이메일 인증을 먼저 완료해주세요.'; errEl.style.display = 'block'; return; }
   if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/\d/.test(password)) {
     errEl.textContent = '비밀번호는 8자 이상이고 영문+숫자를 포함해야 합니다.';
     errEl.style.display = 'block'; return;
@@ -1991,7 +2159,7 @@ async function signup() {
   btn.textContent = '가입 중…'; btn.disabled = true;
   _signupInFlight = true;
   // 2026-05-01 ── 이전 필드 에러 마크 제거
-  ['signupEmail','signupPassword','signupName'].forEach(id => {
+  ['signupEmail','signupPassword'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.borderColor = '';
     const errId = id + 'Err';
@@ -2002,15 +2170,15 @@ async function signup() {
     const res = await apiFetch('/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, referral_code, age_over_14: ageOver14 }),
+      body: JSON.stringify({ email, password, referral_code, age_over_14: ageOver14, verification_ticket: _suVerify.ticket }),
     });
     const data = await res.json();
     if (!res.ok) {
       // 2026-05-01 ── 422 (Pydantic validation) 의 detail 배열에서 필드별 에러 추출.
       // FastAPI: detail = [{loc:['body','email'], msg:'value is not a valid email...', type:'...'}, ...]
       if (res.status === 422 && Array.isArray(data.detail)) {
-        const fieldMap = { email: 'signupEmail', password: 'signupPassword', name: 'signupName' };
-        const koMap = { email: '이메일', password: '비밀번호', name: '이름' };
+        const fieldMap = { email: 'signupEmail', password: 'signupPassword' };
+        const koMap = { email: '이메일', password: '비밀번호' };
         let firstFieldErr = '';
         data.detail.forEach(err => {
           const loc = (err.loc || []).filter(p => p !== 'body');
@@ -2072,6 +2240,9 @@ function _toggleSignup(show) {
     lock.classList.add('hidden');
     signup.style.display = 'flex';
     _setAuthGateLocked(true);
+    // 화면을 새로 열면 인증 상태도 처음부터 — 로그인↔가입을 오간 뒤
+    // 이전 이메일의 티켓이 남아 있으면 안 된다.
+    try { const _e = document.getElementById('signupEmail'); if (_e) _e.readOnly = false; _suResetVerify(); } catch (_) { /* ignore */ }
   } else {
     signup.style.display = 'none';
     lock.classList.remove('hidden');
@@ -2354,29 +2525,46 @@ window.addEventListener('load', async function() {
     }
   }, false);
 
-  // 약관·만14세 동의 시 버튼 활성화 (둘 다 체크돼야 활성화)
+  // 약관·만14세·이메일인증 셋 다 충족돼야 가입 버튼 활성화
   document.addEventListener('change', (e) => {
-    if (e.target && (e.target.id === 'signupAgree' || e.target.id === 'signupAgeOver14')) {
-      const a = document.getElementById('signupAgree');
-      const ageOk = document.getElementById('signupAgeOver14');
-      const ok = !!(a && a.checked) && (!ageOk || ageOk.checked);
-      const btn = document.getElementById('signupBtn');
-      if (btn) {
-        btn.style.opacity = ok ? '1' : '0.6';
-        btn.style.pointerEvents = ok ? 'auto' : 'none';
-      }
+    if (e.target && (e.target.id === 'signupAgree' || e.target.id === 'signupAgeOver14')) _suSyncSignupBtn();
+  }, false);
+
+  // 인증번호 받기 / 재발송
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#signupSendCode')) { e.preventDefault(); _suSendCode(); }
+  }, false);
+
+  // 6자리가 채워지면 알아서 확인한다 — 버튼을 하나 더 누르게 하지 않는다.
+  // 이메일을 고치면 앞서 받은 인증은 전부 무효로 되돌린다.
+  document.addEventListener('input', (e) => {
+    if (!e.target || !e.target.id) return;
+    if (e.target.id === 'signupCode') {
+      const v = e.target.value.replace(/\D/g, '').slice(0, 6);
+      if (e.target.value !== v) e.target.value = v;
+      if (v.length === 6) _suCheckCode();
+      return;
+    }
+    if (e.target.id === 'signupEmail' && (_suVerify.email || _suVerify.ticket)) {
+      if (e.target.value.trim() !== _suVerify.email) _suResetVerify();
     }
   }, false);
   // #register 해시로 진입 시 바로 가입 화면
   if ((window.location.hash || '').includes('register') && !getToken()) {
     _toggleSignup(true);
   }
-  ['signupName','signupEmail','signupPassword','signupRef'].forEach(id => {
+  ['signupEmail','signupCode','signupPassword','signupRef'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('keydown', (e) => {
       if (e.isComposing || e.keyCode === 229) return;
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
       // [A14] Enter 키 → signup() 직접 호출 (agree 스코프 문제 수정)
-      if (e.key === 'Enter') { e.preventDefault(); signup(); }
+      // 단 인증 전 이메일 칸에서의 Enter 는 '인증번호 받기'가 자연스럽다 —
+      // 여기서 signup() 을 부르면 "인증 먼저" 에러만 뜨고 아무 진전이 없다.
+      if (id === 'signupEmail' && !_suVerify.ticket) { _suSendCode(); return; }
+      if (id === 'signupCode') { _suCheckCode(); return; }
+      signup();
     });
   });
   window.signup = signup;

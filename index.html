@@ -861,8 +861,22 @@ window.__LATEST_BUILD__ = '20260705-v709-fillwide';
     가입 즉시 샘플 데이터가 자동 주입되어<br>바로 둘러볼 수 있어요.
   </div>
 
-  <input type="text" class="login-input" id="signupName" placeholder="성함" maxlength="30" autocomplete="name">
-  <input type="email" class="login-input" id="signupEmail" placeholder="이메일" autocomplete="email">
+  <!-- [2026-08-28] 성함 제거 — 화면 어디서도 안 읽는 값이었다(온보딩에서 샵 이름을 따로 받는다).
+       이메일은 인증코드를 통과해야 가입이 된다. 링크가 아니라 6자리 코드인 이유는
+       메일앱↔브라우저 왕복 없이 이 화면에서 끝내기 위해서다. -->
+  <div class="su-mailrow">
+    <input type="email" class="login-input" id="signupEmail" placeholder="이메일" autocomplete="email">
+    <button type="button" class="su-codebtn" id="signupSendCode">인증번호 받기</button>
+  </div>
+  <div class="su-verify" id="signupVerifyBox" hidden>
+    <div class="su-verify__row">
+      <input type="text" class="login-input su-code" id="signupCode" placeholder="인증번호 6자리"
+             inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+      <span class="su-timer" id="signupCodeTimer">5:00</span>
+    </div>
+    <div class="su-verify__msg" id="signupCodeMsg">메일로 보낸 6자리 숫자를 입력해주세요.</div>
+  </div>
+
   <div style="width:100%;max-width:300px;margin:2px auto 6px;text-align:left;font-size:11.5px;color:var(--text3);padding-left:4px;">비밀번호는 8자 이상, 영문+숫자를 섞어 주세요</div>
   <input type="password" class="login-input" id="signupPassword" placeholder="비밀번호" autocomplete="new-password">
   <!-- 2026-05-01 ── 추천 코드 제거 (친구초대 폐지). hidden 으로 두어 JS 호환 유지. -->
