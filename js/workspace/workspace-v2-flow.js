@@ -2081,8 +2081,10 @@
       // [2026-07-26 원영] 마무리 재구성 — '사진 편집'은 _finishActions 반반 줄로 이동(.cap-edit-btn 폐지),
       //   '재료부터 다시 고르기'(.cap-restart) 삭제. 상단 뒤로가기(←)가 그 역할.
       custLine +
-      _publishBlock() +
-      _finishActions(url);
+      // [2026-08-30 원영] 순서 고정: 미리보기 → 게시물 액션 → 해시태그 → 사진 편집 → 게시 옵션 → 메인 CTA.
+      //   설정 성격(_finishActions)이 주 행동(_publishBlock)보다 위. 주 CTA 아래엔 아무 버튼도 두지 않는다.
+      _finishActions(url) +
+      _publishBlock();
 	  }
 
   /* [시술칩 관리모드 2026-07-20] 관리 모드에서 시술 칩 드래그로 순서 바꾸기 — 포인터 이벤트(모바일 터치 대응,
@@ -2232,29 +2234,42 @@
 	  // [v584] editable=true 면 카드 안 캡션을 그 자리에서 직접 편집(아래 별도 편집칸 폐지).
 	  function _igPreviewCard(url, editable) {
 	    var ig = window.WorkspaceAdapter && window.WorkspaceAdapter.instagramProfile ? window.WorkspaceAdapter.instagramProfile() : { connected: false };
-	    var handle = ig.connected && ig.handle ? ig.handle : '인스타 미연동';
-	    var name = ig.connected ? (ig.displayName || handle) : '인스타 미연동';
+	    // [2026-08-30 원영] 실제 인스타 피드는 아이디 앞에 @ 를 안 붙인다 — 미리보기니까 똑같이 뗀다(igHandle 은 @ 를 붙인다).
+	    var handle = String((ig.connected && ig.handle) || '').replace(/^@/, '');
+	    var name = ig.connected ? (handle || '인스타') : '인스타 미연동';
+	    // 프사 우선. 없으면 아이디 첫 글자(인스타 기본 아바타 느낌) → 미연동이면 lucide 인스타 아이콘.
 	    var avatar = ig.connected && ig.profilePic
 	      ? '<span class="ig-logo ig-logo--photo" style="background-image:url(' + esc(ig.profilePic) + ')"></span>'
-	      : '<span class="ig-logo ig-logo--empty"><i class="ph-duotone ph-instagram-logo"></i></span>';
+	      : (ig.connected
+	          ? '<span class="ig-logo ig-logo--initial">' + esc((name.charAt(0) || '?').toUpperCase()) + '</span>'
+	          : '<span class="ig-logo ig-logo--empty"><svg width="20" height="20" aria-hidden="true"><use href="#ic-instagram"/></svg></span>');
+	    // [2026-08-30 원영] 사진 저장은 미리보기 카드 우상단 아이콘 버튼으로(인스타 '···' 자리). 인스타 앱에 직접 올릴 때
+	    //   폰 갤러리로 내보내는 유일한 통로라 사진 옆에 붙어 있어야 찾는다.
+	    var saveBtn = (!d.textOnly && url)
+	      ? '<button type="button" class="ig-savebtn" data-fl="saveimg" aria-label="사진을 폰에 저장"><svg width="19" height="19" aria-hidden="true"><use href="#ic-download"/></svg></button>'
+	      : '';
 	    return '<div class="ig-card2">' +
-	        '<div class="ig-head2">' + avatar + '<span class="ig-name2">' + esc(name) + '</span><span class="ig-loc">' + esc(ig.connected ? '샵 인스타' : '연결 필요') + '</span><span class="ig-dots2">···</span></div>' +
+	        '<div class="ig-head2">' + avatar + '<span class="ig-name2">' + esc(name) + '</span>' + (ig.connected ? '' : '<span class="ig-loc">연결 필요</span>') + saveBtn + '</div>' +
 	        _igCarouselHtml(url) +
 	        // [2026-07-26 원영] v589 '카드 액션줄 기능화' 철회 — 목업 안 기능버튼 혼입이 어색("너무 별로").
 	        //   카드는 순수 인스타 미리보기(정적 아이콘)로 복원, 기능 버튼은 카드 아래 _capActionRow 로 분리.
-	        '<div class="ig-act"><div class="ig-ic"><i class="ph-duotone ph-heart"></i><i class="ph-duotone ph-chat-circle"></i><i class="ph-duotone ph-paper-plane-tilt"></i></div>' +
-	        '<div class="ig-save"><i class="ph-duotone ph-bookmark-simple"></i></div></div>' +
+	        // [2026-08-30 원영] Phosphor 듀오톤 → lucide 통일. 아이콘 세트가 섞이면 이 하나만 뭉개져 보인다.
+	        '<div class="ig-act"><div class="ig-ic">' +
+	          '<svg width="22" height="22" aria-hidden="true"><use href="#ic-heart"/></svg>' +
+	          '<svg width="22" height="22" aria-hidden="true"><use href="#ic-message-circle"/></svg>' +
+	          '<svg width="22" height="22" aria-hidden="true"><use href="#ic-send"/></svg>' +
+	        '</div>' +
+	        '<div class="ig-save"><svg width="22" height="22" aria-hidden="true"><use href="#ic-bookmark"/></svg></div></div>' +
 	        /* [2026-07-26 원영] 닉네임 옆이 아니라 아랫줄부터 캡션 시작(미관) — <br> 삽입 */
         '<div class="ig-copy2"><b>' + esc(handle) + '</b><br><span data-fl-igcap' + (editable ? ' class="ig-cap-edit" contenteditable="true" role="textbox" aria-label="게시글 편집" spellcheck="false"' : '') + '>' + esc(d.caption || '') + '</span><br><span class="ig-hash" data-fl-ighash>' + esc((d.selectedHashes && d.selectedHashes.length ? d.selectedHashes : d.hashtags).join(' ')) + '</span><div class="ig-ago">' + (editable ? '게시글을 눌러 바로 고쳐 쓰기' : '미리보기') + '</div></div>' +
 	      '</div>';
 	  }
-	  // [2026-07-26 원영] 복사·문장만 다시·저장 — 인스타 목업 카드 밖, 카드 바로 아래 텍스트 필 버튼 한 줄.
-  //   data-fl / data-fl-var 속성은 기존 위임 핸들러 그대로 사용(핸들러 수정 없음). 아이콘 없음(텍스트 전용).
+	  // [2026-08-30 원영] 게시물 액션줄 = '복사' 하나.
+  //   · '다시 만들기' 삭제 — 카드 안에서 직접 고쳐 쓸 수 있는데 AI 를 또 부르는 건 API 비용만 나간다.
+  //   · '저장'은 미리보기 카드 우상단 아이콘 버튼(.ig-savebtn)으로 이동 — 사진 옆이 제자리.
   function _capActionRow() {
     return '<div class="cap-actrow">' +
-      '<button type="button" class="cap-actbtn" data-fl="copycap">복사</button>' +
-      '<button type="button" class="cap-actbtn" data-fl-var="regen">문장만 다시</button>' +
-      '<button type="button" class="cap-actbtn" data-fl="saveimg">저장</button>' +
+      '<button type="button" class="cap-actbtn" data-fl="copycap">글 복사하기</button>' +
     '</div>';
   }
   // [작업물 미리보기] 슬롯 대표 썸네일 — home _thumb 과 동일 우선순위(합성결과→단일합성→첫사진).
@@ -2297,7 +2312,7 @@
 	    }).join('');
 	    var add = d._hashAddOpen
 	      ? '<input type="text" class="cap-hashchip cap-hashchip--addin" data-fl-hashaddin maxlength="30" placeholder="#태그 입력 후 Enter" aria-label="해시태그 입력">'
-	      : '<button type="button" class="cap-hashchip cap-hashchip--add" data-fl="hashaddopen"><i class="ph-bold ph-plus"></i> 추가</button>';
+	      : '<button type="button" class="cap-hashchip cap-hashchip--add" data-fl="hashaddopen"><svg width="13" height="13" aria-hidden="true"><use href="#ic-plus"/></svg> 추가</button>';   // [2026-08-30] Phosphor → lucide
 	    return '<label class="cap-field-label cap-hashlbl">해시태그 <span>×로 지우고, 필요하면 추가해요</span></label>' +
 	      '<div class="cap-hashchips">' + chips + add + '</div>';
 	  }
@@ -2313,7 +2328,7 @@
 	    var custLine = d.customerName ?
 	      '<div class="confirmline">연결 손님: <b>' + esc(d.customerName) + '</b>' + (d.customerVc ? ' · ' + d.customerVc + '회 방문' : ' · 첫 방문') + '</div>' : '';
 	    // [v592] 인스타 미리보기 단계 = 최종 카드 + 게시.
-	    return '' + custLine + _igPreviewCard(url, true) + _capActionRow() + _publishBlock() + _finishActions(url);
+	    return '' + custLine + _igPreviewCard(url, true) + _capActionRow() + _finishActions(url) + _publishBlock();
 	  }
 
   // [통합 2026-07-14] 발행 종류 자동 판단 — 원장이 '1장/여러장'을 고르지 않게. 버튼은 하나.
@@ -2346,7 +2361,7 @@
 	    if (connected && _ig.canPublish === false) {
 	      return '<div class="cap-pubnote" style="margin-top:10px;padding:12px;border-radius:12px;background:#fff7ed;color:#9a3412;font-size:12px;line-height:1.6;">' +
 	        '자동 발행은 <b>인스타그램 심사 중</b>이에요. 승인되면 여기 버튼이 자동으로 생겨요.<br>' +
-	        '지금은 아래 <b>복사</b>를 눌러 캡션을 가져간 뒤, 인스타 앱에서 사진과 함께 올려주세요 🙏' +
+	        '지금은 위 <b>복사</b>를 눌러 캡션을 가져간 뒤, 인스타 앱에서 사진과 함께 올려주세요 🙏' +   // [2026-08-30] 복사 버튼은 카드 바로 아래(이 안내문 위)에 있다
 	        '</div>';
 	    }
 	    // [cleanup] 스토리 발행 픽커 제거(2026-07-12) — 진입 버튼(publishstory)이 재설계로 사라져 도달 불가였음. 발행은 피드/여러 장만.
@@ -2359,7 +2374,8 @@
 	      // [2026-07-26 원영] 마무리 재구성 — 발행 블록은 '주 행동 1개'(인스타에 올리기)만.
 	      //   계정태그·예약·사진편집은 _finishActions()/_tagsBlockHtml() 로 이동(버튼 5개 위계 없이 쌓이던 것).
 	      return '<div class="cap-pubrow" style="margin-top:10px">' +
-	        '<button type="button" class="cap-preview cap-preview--send" style="width:100%" data-fl="publish"' + (d._publishing ? ' disabled' : '') + '>' + (d._publishing ? '<i class="ph-duotone ph-spinner"></i>올리는 중…' : '<i class="ph-duotone ph-paper-plane-tilt"></i>인스타에 올리기' + (_n > 1 ? ' (' + _n + '장)' : '')) + '</button>' +
+	        // [2026-08-30 원영] 메인 CTA 는 이 화면에서 딱 하나 — 텍스트 전용(아이콘 없음), 로즈 단색.
+        '<button type="button" class="cap-preview cap-preview--send" style="width:100%" data-fl="publish"' + (d._publishing ? ' disabled' : '') + '>' + (d._publishing ? '올리는 중…' : '인스타에 바로 올리기' + (_n > 1 ? ' (' + _n + '장)' : '')) + '</button>' +
 	      '</div>' +
 	      // [통합 2026-07-14] '여러 장으로 올리기' 별도 버튼 제거 — 위 버튼 하나가 _publishKind() 로 알아서 캐러셀 발행.
       (_multi ? '<div class="cap-pubnote">선택한 ' + _n + '장이 여러 장 게시물로 올라가요</div>' : '');
@@ -2371,27 +2387,40 @@
         '<button type="button" class="pink" data-fl="igconnect">인스타 연결</button>' +
       '</div></div>';
   }
-  // [2026-07-26 원영] 계정 태그 블록 — _publishBlock 에서 분리(위계 정리). markup 은 v776/닫기 추가분 그대로.
+  // [2026-08-30 원영] 계정 태그 블록 — '게시 옵션' 아코디언 안에만 산다. 열고 닫는 토글(tagsopen/tagsclose) 폐지:
+  //   패널 자체가 접힘이라 안에서 또 접는 건 이중 토글. 안 쓰면 비워두면 그만.
   function _tagsBlockHtml() {
     var _multi = _publishKind() === 'carousel';
     var _tagVal = (d.igUserTags || []).map(function (u) { return '@' + u; }).join(', ');
-    return (d._tagsOpen || _tagVal)
-      ? '<div class="cap-usertags"><div style="display:flex;align-items:center;gap:8px">' +
-          '<input type="text" data-fl-usertags placeholder="@아이디 (쉼표로 여러 명)" value="' + esc(_tagVal) + '" style="flex:1;min-width:0">' +
-          '<button type="button" data-fl="tagsclose" aria-label="계정 태그 접기" style="flex:none;background:none;border:none;padding:4px;font-size:12px;font-weight:700;color:#a89aa0;cursor:pointer">안 달래요 <i class="ph-bold ph-x" style="vertical-align:-2px"></i></button>' +
+    return '<div class="cap-optfield">' +
+        '<div class="cap-optfield__lbl">다른 계정 태그</div>' +
+        '<div class="cap-usertags">' +
+          '<input type="text" data-fl-usertags placeholder="@아이디 (쉼표로 여러 명)" value="' + esc(_tagVal) + '" style="width:100%;box-sizing:border-box">' +
+          (_multi ? '<div class="cap-tagnote">여러 장은 첫 번째 사진(커버)에만 태그가 붙어요</div>' : '') +
         '</div>' +
-        (_multi ? '<div class="cap-tagnote">여러 장은 첫 번째 사진(커버)에만 태그가 붙어요</div>' : '') + '</div>'
-      : '<button type="button" class="cap-tagtoggle" data-fl="tagsopen">사진에 다른 계정 태그 달기 (선택)</button>';
+      '</div>';
   }
-  // [2026-07-26 원영] 마무리 보조 액션 스택 — 주 버튼 아래 반반 [사진 편집][예약해서 올리기](간격 통일),
-  //   그 아래 계정 태그(작은 텍스트). '재료부터 다시 고르기'는 삭제 — 상단 뒤로가기(←)가 그 역할.
+  // [2026-08-30 원영] 설정 성격 액션 = 얇은 회색 줄 2개(주 CTA 위). 로즈 반반 버튼(.cap-halfrow/.cap-halfbtn) 폐지 —
+  //   보조 기능이 주 버튼과 같은 색·무게라 위계가 없었다. '사진 편집'과 '게시 옵션'은 성격이 달라 절대 한 줄로 합치지 않는다.
+  //   게시 옵션은 화면 이동 없이 그 자리에서 펼쳐지는 아코디언(d._pubOptOpen) — 예약 + 계정 태그를 한 곳에 모은다.
+  //   아이콘은 lucide 스프라이트만 — Phosphor 듀오톤(ph-*)은 결이 달라 이 앱에서 이물감이 난다.
+  function _setRow(act, icon, title, sub, open) {
+    return '<button type="button" class="cap-setrow' + (open ? ' is-open' : '') + '" data-fl="' + act + '"' + (open ? ' aria-expanded="true"' : '') + '>' +
+        '<svg class="cap-setrow__ic" width="18" height="18" aria-hidden="true"><use href="#' + icon + '"/></svg>' +
+        '<span class="cap-setrow__t">' + esc(title) + '</span>' +
+        '<span class="cap-setrow__sub">' + esc(sub) + '</span>' +
+        '<svg class="cap-setrow__chev" width="16" height="16" aria-hidden="true"><use href="#ic-chevron-right"/></svg>' +
+      '</button>';
+  }
   function _finishActions(url) {
     var connected = window.WorkspaceAdapter ? window.WorkspaceAdapter.instagram().connected : false;
-    var eBtn = (!d.textOnly && url) ? '<button type="button" class="cap-halfbtn" data-fl="storyedit"><i class="ph-duotone ph-magic-wand"></i> 사진 편집</button>' : '';
-    var sBtn = connected ? '<button type="button" class="cap-halfbtn" data-fl="' + (d._schedOpen ? 'schedclose' : 'schedopen') + '"><i class="ph-duotone ph-clock"></i> 예약해서 올리기</button>' : '';
-    return ((eBtn || sBtn) ? '<div class="cap-halfrow">' + eBtn + sBtn + '</div>' : '') +
-      (connected && d._schedOpen ? _schedHtml() : '') +
-      (connected ? _tagsBlockHtml() : '');
+    var rows = '';
+    if (!d.textOnly && url) rows += _setRow('storyedit', 'ic-wand-sparkles', '사진 편집', '필터 · 자르기 · 밝기 · 대비', false);
+    if (connected) {
+      rows += _setRow('pubopt', 'ic-calendar-check', '게시 옵션', '예약해서 올리기 · 다른 계정 태그', !!d._pubOptOpen);
+      if (d._pubOptOpen) rows += '<div class="cap-optpanel">' + _schedHtml() + _tagsBlockHtml() + '</div>';
+    }
+    return rows ? '<div class="cap-setrows">' + rows + '</div>' : '';
   }
 
   // [v779] 예약 발행 — 기본 접힘, '예약하기' 누르면 datetime 입력. 스타일 inline(CSS 캐시 안전).
@@ -2404,23 +2433,19 @@
     } catch (_e) { return ''; }
   }
   function _schedHtml() {
-    // [2026-07-26 원영] 접힘 상태 버튼은 _finishActions 의 반반 줄로 이동 — 여기선 열린 패널만 렌더.
-    if (!d._schedOpen) return '';
+    // [2026-08-30 원영] '게시 옵션' 아코디언 안의 첫 칸 — 별도 펼침 토글(schedopen/schedclose) 없음.
+    //   로즈 틴트 제거: 이 화면의 로즈는 진행바와 메인 CTA 뿐. 예약 확정 버튼은 진회색(주 CTA와 경쟁 금지).
     // [2026-07-22 보스] 여러 장이면 몇 장이 예약되는지 미리 말한다 — 예약은 나중에 올라가서
     //   잘못 나가도 그 자리에서 못 알아챈다. 장수는 발행과 같은 규칙(_scheduleImages)으로 센다.
     var _sn = _scheduleImages().length;
     var _snNote = _sn >= 2
-      ? '<div style="font-size:11.5px;font-weight:600;color:#a89aa0;margin:-4px 0 8px">사진 ' + _sn + '장이 여러 장 게시물로 올라가요</div>'
+      ? '<div class="cap-optnote">사진 ' + _sn + '장이 여러 장 게시물로 올라가요</div>'
       : '';
-    // [2026-07-26 원영] 닫기 추가 — 예전엔 펼치기만 있고 되돌리기가 없어 예약 안 할 건데도 패널을 못 닫았다.
-    return '<div style="margin-top:8px;padding:12px;border:1px solid rgba(213,138,149,.28);border-radius:14px;background:rgba(213,138,149,.05)">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
-          '<div style="font-size:12.5px;font-weight:700;color:#8a7a80">언제 올릴까요?</div>' +
-          '<button type="button" data-fl="schedclose" aria-label="예약 접기" style="background:none;border:none;padding:2px 4px;font-size:12px;font-weight:700;color:#a89aa0;cursor:pointer">그냥 바로 올릴래요 <i class="ph-bold ph-x" style="vertical-align:-2px"></i></button>' +
-        '</div>' +
+    return '<div class="cap-optfield">' +
+        '<div class="cap-optfield__lbl">예약해서 올리기</div>' +
         _snNote +
-        '<input type="datetime-local" data-fl-schedat value="' + esc(d._schedVal || _schedDefault()) + '" style="width:100%;height:42px;border:1px solid #E9EBEE;border-radius:10px;padding:0 10px;font-size:14px;box-sizing:border-box;margin-bottom:8px">' +
-        '<button type="button" data-fl="schedule"' + (d._scheduling ? ' disabled' : '') + ' style="width:100%;height:46px;border:none;border-radius:12px;background:#d58a95;color:#fff;font-size:14.5px;font-weight:800;cursor:pointer">' + (d._scheduling ? '예약 중…' : '이 시간에 예약') + '</button>' +
+        '<input type="datetime-local" data-fl-schedat value="' + esc(d._schedVal || _schedDefault()) + '" class="cap-optinput">' +
+        '<button type="button" class="cap-optbtn" data-fl="schedule"' + (d._scheduling ? ' disabled' : '') + '>' + (d._scheduling ? '예약 중…' : '이 시간에 예약') + '</button>' +
       '</div>';
   }
   function _fmtSchedTime(dt) {
@@ -2596,6 +2621,8 @@
     el.querySelectorAll('.wsv2flow__progress .pg-seg').forEach(function (sg, i) { sg.classList.toggle('done', i <= vis); });
     var bar = el.querySelector('.wsv2flow__actionbar'), cta = el.querySelector('[data-fl="cta"]');
     if (CTA[name]) { bar.classList.remove('hidden'); cta.textContent = CTA[name].l; } else bar.classList.add('hidden');
+    // [2026-08-30 원영] ghost 스텝(캡션)은 하단 CTA 를 약한 회색으로 — 화면 안 로즈 주 CTA 와 경쟁시키지 않는다.
+    cta.classList.toggle('wsv2flow__cta--ghost', !!(CTA[name] && CTA[name].ghost));
     // [v560] 편집 화면에서만 CTA 2분할(좌:저장하고 게시글 쓰기 / 우:템플릿 선택하기). 그 외엔 단일.
     var cta2 = el.querySelector('[data-fl="cta2"]');
     if (cta2) {
@@ -2900,9 +2927,9 @@
       // [2026-07-28 원영 2번·A안] 업로드 화면에서 '사진 없이 글만 쓰기' — textOnly 모드로 캡션 직행.
       //   기존 textOnly 진입(open({textOnly:true}))과 같은 상태, 단 navStack push 로 back=업로드 복귀.
       if (a === 'textonly') { d.textOnly = true; return setScreen('caption'); }
-      if (a === 'tagsopen') { d._tagsOpen = true; return setScreen(cur, { push: false }); }   // [v776] 계정 태그 펼치기
-      // [2026-07-26 원영] 계정 태그 접기 — 값이 있으면 자동 펼침 조건(_tagVal) 때문에 값도 같이 비워야 닫힌다.
-      if (a === 'tagsclose') { d._tagsOpen = false; d.igUserTags = []; return setScreen(cur, { push: false }); }
+      // [2026-08-30 원영] 게시 옵션 아코디언 — 예약·계정 태그를 한 자리에서. 화면 이동 없음.
+      //   tagsopen/tagsclose/schedopen/schedclose 4개 토글은 이 하나로 흡수(고아 핸들러 제거).
+      if (a === 'pubopt') { flushCaptionInputs(); d._pubOptOpen = !d._pubOptOpen; return setScreen(cur, { push: false }); }
       if (a === 'crop') { return openCropFlow(); }
       // [v568·B-1] 전체화면 편집 — body 클래스로 .ed-photo-vp 를 화면 가득. ESC/버튼으로 닫기. 토글 후 마스크 재투영.
       if (a === 'edfull') {
@@ -2971,15 +2998,13 @@
       // [요청7 2026-07-13] feedplan 액션 제거 — 인플로우 '피드 정렬해보기'(현작업만) 폐지. 피드 정렬은 작업실 홈 진입으로 이관.
       // [통합 2026-07-14] 버튼 하나 → 장수에 따라 feed/carousel 자동. (publishcarousel 은 레거시 경로로 유지)
       if (a === 'publish') { return publish(_publishKind()); }
-      // [v779] 예약 발행 — '지금 말고 예약'을 펼치고, 시간 골라 예약.
-      if (a === 'schedopen') { d._schedOpen = true; return setScreen('caption', { push: false }); }
-      // [2026-07-26 원영] 예약 패널 닫기 — 열기만 있고 닫기가 없어 되돌릴 수 없었다.
-      if (a === 'schedclose') { d._schedOpen = false; return setScreen('caption', { push: false }); }
+      // [v779] 예약 발행 — 펼침 토글은 'pubopt'(게시 옵션 아코디언)이 겸한다. 여기선 확정만.
       if (a === 'schedule') { return _doSchedule(); }
       // [cleanup] publishstory/storypick/storypickcancel 제거 — 진입 버튼 없어 도달 불가였던 스토리 발행 세트. 발행은 피드/여러 장(carousel)만.
       if (a === 'publishcarousel') { return publish('carousel'); }
       if (a === 'copycap') { flushCaptionInputs(); window.WorkspaceAdapter && window.WorkspaceAdapter.copyText((d.caption || '') + (d.hashtags.length ? '\n\n' + d.hashtags.join(' ') : '')); _markPrepared(); return; }   // [#6] copyText 가 이미 토스트 → 중복 토스트 제거(두 개 쌓여 ~5초 떠있던 문제)
-      // [v547] 저장 후 게시 확인 sheet
+      // [2026-08-30 원영] 사진 저장 — 버튼은 미리보기 카드 우상단(.ig-savebtn)으로 옮겼고 동작은 그대로.
+      //   '나중에 이어서하기'(__save)는 잇데이 안에 초안을 남기는 것이고, 이건 폰 갤러리로 파일을 빼는 것 — 다른 기능이다.
       // [출시감사 2026-08-01 P0] 예전엔 saveImage 결과를 **안 기다리고** 곧바로
       //   _markPrepared()+_askPublishedSheet() 를 불렀다. 저장이 실패해도(네이티브에서
       //   `<a download>` 는 data URL 을 저장 못 한다) "게시했나요?" 가 떠서 원장님은
@@ -2989,9 +3014,7 @@
       if (a === 'saveimg') {
         if (!window.WorkspaceAdapter) return;
         Promise.resolve(window.WorkspaceAdapter.saveImage(outputUrl(), d.service || 'itdasy'))
-          .then(function (r) {
-            if (r && r.ok) { _markPrepared(); _askPublishedSheet(); }
-          })
+          .then(function (r) { if (r && r.ok) { _markPrepared(); _askPublishedSheet(); } })
           .catch(function () { /* saveImage 가 토스트로 이미 알린다 */ });
         return;
       }
@@ -3162,17 +3185,9 @@
       var cg = t.closest('[data-fl-cgen]'); if (cg) { return _triggerCaptionGenerate(null); }
       // [아코디언] 잠긴 생성 버튼 탭 = 안내 + 첫 미답변 질문 펼치기
       var cgl = t.closest('[data-fl-cgenlock]'); if (cgl) { syncServiceFromDom(); d._wizOpen = null; toast('질문에 먼저 답해주세요'); setScreen('caption'); return; }
-      // [C4] 재생성 버튼: data-fl-var="regen|short|long"
-      var vv = t.closest('[data-fl-var]'); if (vv) {
-        var vk = vv.getAttribute('data-fl-var');
-	        if (vk === 'short') { return doGenerate({ length_tier: 'short', caption_intent: 'rewrite', _regen: true }, '짧게 다시 생성했어요'); }
-	        if (vk === 'long')  { var _nl = (d.capLen === 'long' || d.capLen === 'max') ? 'max' : 'long'; return doGenerate({ length_tier: _nl, caption_intent: 'longer', _regen: true }, _nl === 'max' ? '아주 길게 다시 생성했어요' : '길게 다시 생성했어요'); }
-	        /* [2026-07-26 원영] 'reset'(재료부터 다시 고르기) 제거 — 버튼 삭제(뒤로가기가 대체). 잇비 명령 쪽 reset(cmd.variant)은 별도 유지. */
-	        /* [v532] 'hashtags'(더 가져오기) 케이스 제거 — 추천 칩/더가져오기 UI 삭제로 더 이상 트리거 없음. */
-	        // [v532] '인스타 톤' = 백엔드 tone_override enum 의 'ornate'(풍부·SNS 감성)로 매핑. 기존 'instagram' 은 enum(plain/normal/ornate)에 없어 422 → '캡션 생성 실패' 의 직접 원인.
-		        if (vk === 'insta') { return doGenerate({ tone_override: 'ornate', caption_intent: 'instagram', _regen: true }, '인스타 톤으로 다시 생성했어요'); }
-	        return doGenerate({ caption_intent: 'rewrite', _regen: true }, '문장만 새로 썼어요');
-	      }
+      /* [2026-08-30 원영] data-fl-var(재생성 regen/short/long/insta) 위임 통째 제거 — 마지막 렌더러였던
+         '피드글 다시 만들기' 버튼을 지우면서 도달 불가가 됐다. 캡션은 카드 안에서 직접 고쳐 쓰고,
+         AI 재호출은 비용만 든다. 잇비 명령 쪽 재생성(cmd.variant → doGenerate)은 별도 경로라 그대로 산다. */
     });
     el.querySelector('[data-fl-file]').addEventListener('change', function (e) {
       var files = Array.from(e.target.files || []); e.target.value = '';
