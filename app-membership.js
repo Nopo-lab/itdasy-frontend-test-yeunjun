@@ -204,7 +204,10 @@
   }
 
   // ── 사용 시트 ───────────────────────────────────────────────
-  function openUseSheet(customerId, customerName, currentBalance) {
+  // [P0-2 2026-08-30] bookingId(선택) — 예약 맥락에서 차감하면 넘겨준다.
+  //   BE 가 차감 기록에 booking_id 를 남겨, 그 예약이 취소될 때 잔액을 자동 복구한다.
+  //   없으면 기존과 동일(연결 없는 차감 — 취소 자동복구 대상 아님).
+  function openUseSheet(customerId, customerName, currentBalance, bookingId) {
     const balanceTxt = currentBalance != null ? `현재 잔액 ${formatMoney(currentBalance)}` : '';
     const html = `
       <div style="margin-bottom:14px;">
@@ -231,13 +234,15 @@
       }
       btn.disabled = true;
       // [F-3] 차감도 동일 — 재시도로 손님 잔액이 두 번 빠지면 안 된다.
-      const { sig: _sig, key: _txn } = _txnFor('use', customerId, amount, svc);
+      // [P0-2] 예약이 다르면 다른 시도다 — bookingId 를 서명에 포함해 키를 분리한다.
+      const { sig: _sig, key: _txn } = _txnFor('use', customerId, amount, svc + '|bk' + (bookingId || ''));
       try {
         const r = await _fetch('POST', '/memberships/use', {
           customer_id: customerId,
           amount,
           service_name: svc || null,
           client_txn_id: _txn,
+          booking_id: bookingId || null,   // [P0-2] 취소 시 자동 복구 근거
         });
         _txnDone(_sig);
         _toast(`사용 완료! 잔액 ${formatMoney(r.membership_balance)}`);
@@ -337,8 +342,8 @@
   window.openMembershipCharge = function (customerId, customerName, currentBalance) {
     return openTopupSheet(customerId, customerName, currentBalance);
   };
-  window.openMembershipUse = function (customerId, customerName, balance) {
-    return openUseSheet(customerId, customerName, balance);
+  window.openMembershipUse = function (customerId, customerName, balance, bookingId) {
+    return openUseSheet(customerId, customerName, balance, bookingId);
   };
   window.openMembershipExpiring = function (days) {
     return openExpiringList(days);
