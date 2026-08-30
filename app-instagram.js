@@ -449,18 +449,18 @@ function renderDetailedPopup(data) {
         const restChips = tagPairs.slice(5).map(([t, n]) => _chip(t, n)).join('');
         secs.push(`<div style="padding:18px 20px;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                <span style="font-size:11px;font-weight:600;color:var(--text-subtle);">원장님이 자주 쓰는 해시태그 <span style="font-weight:500;">${tagPairs.length}개</span></span>
+                <span style="font-size:11px;font-weight:600;color:var(--text-subtle);">원장님이 자주 쓰는 해시태그 <span style="font-weight:500;">TOP 5</span></span>
                 ${restChips ? `<button data-ig-tag-toggle style="background:none;border:none;padding:0;font-size:12px;color:var(--text-subtle);cursor:pointer;font-weight:600;flex-shrink:0;">전체 보기 ›</button>` : ''}
             </div>
             <div data-ig-tag-chips style="margin-top:10px;line-height:1;">${headChips}<span data-ig-tag-rest style="display:none;">${restChips}</span></div>
         </div>`);
     }
 
-    const emoPairs = emoCounts.length ? emoCounts : _splitEmoji(emojis).map(c => [c, null]);
+    const emoPairs = (emoCounts.length ? emoCounts : _splitEmoji(emojis).map(c => [c, null])).slice(0, 5);
     if (emoPairs.length) {
         const emoChips = emoPairs.map(([c, n]) => _emoChip(c, n)).join('');
         secs.push(`<div style="padding:18px 20px;">
-            <div style="font-size:11px;font-weight:600;color:var(--text-subtle);margin-bottom:10px;">원장님이 자주 쓰는 이모지</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text-subtle);margin-bottom:10px;">원장님이 자주 쓰는 이모지 <span style="font-weight:500;">TOP 5</span></div>
             <div style="line-height:1;">${emoChips}</div>
         </div>`);
     }
