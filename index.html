@@ -424,6 +424,29 @@ window.__LATEST_BUILD__ = '20260705-v709-fillwide';
   <symbol id="ic-message-square" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
   </symbol>
+  <!-- [2026-08-30] 내샵관리 아이콘 통일용 3종 추가. 전부 lucide 문법(24x24 · stroke 2 · round cap)
+       그대로라 기존 스프라이트와 한 패밀리로 보인다. -->
+  <!-- lucide: messages-square — 겹친 말풍선. '댓글'을 단일 말풍선(DM)과 눈으로 구분하려고 쓴다. -->
+  <symbol id="ic-messages-square" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/>
+    <path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/>
+  </symbol>
+  <!-- lucide: share-2 — 점 3개가 선으로 이어진 형태. 체인 링크보다 '외부 서비스 연결'에 가깝다. -->
+  <symbol id="ic-share-nodes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="5" r="3"/>
+    <circle cx="6" cy="12" r="3"/>
+    <circle cx="18" cy="19" r="3"/>
+    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+  </symbol>
+  <!-- 카드 + sparkle. lucide 에 딱 맞는 게 없어 file-text 와 sparkles 의 조각을 같은 문법으로 조합했다.
+       (왕관·로봇·뇌 같은 흔한 AI 아이콘은 의도적으로 피했다) -->
+  <symbol id="ic-card-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2.5" y="4.5" width="14" height="15" rx="2.5"/>
+    <path d="M6 9h7"/>
+    <path d="M6 13h4.5"/>
+    <path d="M19 3.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/>
+  </symbol>
   <symbol id="ic-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <polygon points="23 7 16 12 23 17 23 7"/>
     <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
@@ -1063,42 +1086,10 @@ window.__LATEST_BUILD__ = '20260705-v709-fillwide';
     <span class="ms-side__label">내 샵 관리</span>
   </button>
 
-  <div class="ms-side__section">운영 관리</div>
-  <button type="button" class="ms-side__item" data-static-action="calendar" aria-label="예약관리">
-    <span class="ms-side__icon"><span class="ic-box ic-box--teal"><svg width="20" height="20" aria-hidden="true"><use href="#ic-calendar-check"/></svg></span></span>
-    <span class="ms-side__label">예약관리</span>
-  </button>
-  <button type="button" class="ms-side__item" data-static-action="customer" aria-label="고객관리">
-    <span class="ms-side__icon"><span class="ic-box ic-box--blue"><svg width="20" height="20" aria-hidden="true"><use href="#ic-users"/></svg></span></span>
-    <span class="ms-side__label">고객관리</span>
-  </button>
-  <button type="button" class="ms-side__item" data-static-action="revenue" aria-label="매출관리">
-    <span class="ms-side__icon"><span class="ic-box ic-box--amber"><svg width="20" height="20" aria-hidden="true"><use href="#ic-wallet"/></svg></span></span>
-    <span class="ms-side__label">매출관리</span>
-  </button>
-  <div class="ms-side__section">손님 문의</div>
-  <button type="button" class="ms-side__item" data-static-action="insta-dm" aria-label="인스타DM">
-    <span class="ms-side__icon"><span class="ic-box ic-box--pink"><svg width="20" height="20" aria-hidden="true"><use href="#ic-instagram"/></svg></span></span>
-    <span class="ms-side__label">인스타DM</span>
-  </button>
-  <button type="button" class="ms-side__item" data-static-action="insta-comment" aria-label="인스타 댓글">
-    <span class="ms-side__icon"><span class="ic-box ic-box--blue"><svg width="20" height="20" aria-hidden="true"><use href="#ic-message-circle"/></svg></span></span>
-    <span class="ms-side__label">인스타 댓글</span>
-  </button>
-
-  <div class="ms-side__section">내 정보</div>
-  <button type="button" class="ms-side__item" data-static-action="integrations" aria-label="연동관리">
-    <span class="ms-side__icon"><span class="ic-box ic-box--blue"><svg width="20" height="20" aria-hidden="true"><use href="#ic-link"/></svg></span></span>
-    <span class="ms-side__label">연동관리</span>
-  </button>
-  <button type="button" class="ms-side__item" data-static-action="settings-hub" aria-label="내 샵 정보">
-    <span class="ms-side__icon"><span class="ic-box ic-box--gray"><i class="ph-duotone ph-gear-six" style="font-size:19px;"></i></span></span>
-    <span class="ms-side__label">내 샵 정보</span>
-  </button>
-  <button type="button" class="ms-side__item" data-static-action="plan" aria-label="내 요금제">
-    <span class="ms-side__icon"><span class="ic-box ic-box--pink"><svg width="20" height="20" aria-hidden="true"><use href="#ic-id-card"/></svg></span></span>
-    <span class="ms-side__label">내 요금제</span>
-  </button>
+  <!-- [2026-08-30] 8개 메뉴 하드코딩 제거 → js/myshop-menu.js 정본에서 주입.
+       (같은 목록이 여기·드로어·app-myshop-v3 모바일·PC사이드바 네 군데에 복붙돼 있었고
+        이미 아이콘이 서로 어긋나 있었다) -->
+  <div id="sideNavMenu"></div>
 
   <button type="button" class="ms-side__fab" data-static-action="nav-workshop" aria-label="작업실" data-haptic="light">
     <i class="ph-duotone ph-squares-four" style="font-size:16px;"></i>
@@ -2259,53 +2250,47 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
   </header>
   <!-- [2026-04-30] 13개 → 5개 핵심으로 통합. 하위 기능은 각 hub 진입 후 카드/버튼으로 노출. -->
   <nav class="drawer-nav" aria-label="내 샵 관리 메뉴">
-    <div class="drawer-group">운영 관리</div>
-    <button type="button" class="drawer-item" data-drawer-route="bookings">
-      <span class="ic-box ic-box--sm ic-box--teal" aria-hidden="true"><i class="ph-duotone ph-calendar-check"></i></span>
-      <span class="lbl">예약관리</span>
-      <i class="ph-duotone ph-caret-right" style="font-size:14px;color:var(--text-subtle);margin-left:auto;" aria-hidden="true"></i>
-    </button>
-    <button type="button" class="drawer-item" data-drawer-route="customer">
-      <span class="ic-box ic-box--sm ic-box--blue" aria-hidden="true"><i class="ph-duotone ph-users-three"></i></span>
-      <span class="lbl">고객관리</span>
-      <i class="ph-duotone ph-caret-right" style="font-size:14px;color:var(--text-subtle);margin-left:auto;" aria-hidden="true"></i>
-    </button>
-    <button type="button" class="drawer-item" data-drawer-route="revenue">
-      <span class="ic-box ic-box--sm ic-box--amber" aria-hidden="true"><i class="ph-duotone ph-chart-line-up"></i></span>
-      <span class="lbl">매출관리</span>
-      <i class="ph-duotone ph-caret-right" style="font-size:14px;color:var(--text-subtle);margin-left:auto;" aria-hidden="true"></i>
-    </button>
-    <div class="drawer-group">손님 문의</div>
-    <button type="button" class="drawer-item" data-drawer-route="insta_dm">
-      <span class="ic-box ic-box--sm ic-box--pink" aria-hidden="true"><i class="ph-duotone ph-instagram-logo"></i></span>
-      <span class="lbl">인스타DM</span>
-      <i class="ph-duotone ph-caret-right" style="font-size:14px;color:var(--text-subtle);margin-left:auto;" aria-hidden="true"></i>
-    </button>
-    <button type="button" class="drawer-item" data-drawer-route="insta_comment">
-      <span class="ic-box ic-box--sm ic-box--blue" aria-hidden="true"><i class="ph-duotone ph-chat-circle-dots"></i></span>
-      <span class="lbl">인스타 댓글</span>
-      <i class="ph-duotone ph-caret-right" style="font-size:14px;color:var(--text-subtle);margin-left:auto;" aria-hidden="true"></i>
-    </button>
-
-    <div class="drawer-group">내 정보</div>
-    <button type="button" class="drawer-item" data-drawer-route="integrations">
-      <svg class="ic" aria-hidden="true"><use href="#ic-link"/></svg>
-      <span class="lbl">연동관리</span>
-      <i class="ph-duotone ph-caret-right" style="font-size:14px;color:var(--text-subtle);margin-left:auto;" aria-hidden="true"></i>
-    </button>
-    <button type="button" class="drawer-item" data-drawer-route="settings_hub">
-      <span class="ic-box ic-box--sm ic-box--gray" aria-hidden="true"><i class="ph-duotone ph-gear-six"></i></span>
-      <span class="lbl">내 샵 정보</span>
-      <i class="ph-duotone ph-caret-right" style="font-size:14px;color:var(--text-subtle);margin-left:auto;" aria-hidden="true"></i>
-    </button>
-    <button type="button" class="drawer-item" data-drawer-route="plan">
-      <span class="ic-box ic-box--sm ic-box--pink" aria-hidden="true"><i class="ph-duotone ph-identification-card"></i></span>
-      <span class="lbl">내 요금제</span>
-      <i class="ph-duotone ph-caret-right" style="font-size:14px;color:var(--text-subtle);margin-left:auto;" aria-hidden="true"></i>
-    </button>
+    <div id="shopDrawerMenu"></div>
   </nav>
 </aside>
 <!-- /shop-drawer -->
+
+<script>
+  /* [2026-08-30] PC 사이드바 · 좌측 드로어를 메뉴 정본으로 채운다.
+     두 곳 모두 클릭 핸들러가 document 위임이라(bindStaticUiActions / app-drawer.js)
+     나중에 DOM 을 넣어도 바인딩은 그대로 붙는다. */
+  (function hydrateShopMenus() {
+    function build() {
+      const M = window.ItdasyMenu;
+      if (!M) return;
+      const side = document.getElementById('sideNavMenu');
+      const draw = document.getElementById('shopDrawerMenu');
+      if (!side && !draw) return;
+      const chev = '<i class="ph-duotone ph-caret-right" style="font-size:14px;color:var(--text-subtle);margin-left:auto;" aria-hidden="true"></i>';
+      let sideHTML = '', drawHTML = '';
+      M.GROUPS.forEach(function (g) {
+        sideHTML += '<div class="ms-side__section">' + g + '</div>';
+        drawHTML += '<div class="drawer-group">' + g + '</div>';
+        M.byGroup(g).forEach(function (it) {
+          sideHTML +=
+            '<button type="button" class="ms-side__item" data-static-action="' + it.st + '" aria-label="' + it.name + '">' +
+              '<span class="ms-side__icon"><span class="ic-box ic-box--' + it.color + '">' + M.icon(it.icon) + '</span></span>' +
+              '<span class="ms-side__label">' + it.name + '</span>' +
+            '</button>';
+          drawHTML +=
+            '<button type="button" class="drawer-item" data-drawer-route="' + it.dr + '">' +
+              '<span class="ic-box ic-box--sm ic-box--' + it.color + '" aria-hidden="true">' + M.icon(it.icon, 18) + '</span>' +
+              '<span class="lbl">' + it.name + '</span>' + chev +
+            '</button>';
+        });
+      });
+      if (side) side.outerHTML = sideHTML;
+      if (draw) draw.outerHTML = drawHTML;
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build, { once: true });
+    else build();
+  })();
+</script>
 
 <script>
   (function bindStaticUiActions() {
@@ -2533,6 +2518,8 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
 </script>
 <script src="app-core.js?v=20260805-customer-search-space"></script>
 <!-- 2026-06-16 통합 인박스 채널 마크 공유 모듈 — 실시간 DM·홈 카드 공용(app-core 직후, 소비자 전에 로드) -->
+<!-- [2026-08-30] 내샵관리 메뉴 정본. defer 아님 — 아래 하이드레이션 스크립트가 바로 쓴다. -->
+<script src="js/myshop-menu.js?v=20260830-menu"></script>
 <script src="js/channel-mark.js?v=local-151154"></script>
 <script src="js/load-groups.js?v=20260824-g5-note-safe" defer></script>
 <script src="js/loader.js?v=local-151154" defer></script>

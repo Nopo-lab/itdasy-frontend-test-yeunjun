@@ -71,6 +71,9 @@
 .ic-box--violet { background: #F3E8FF; color: #7C3AED; }
 .ic-box--gray   { background: #F1EFE8; color: #5F5E5A; }
 .ic-box--red    { background: #FCEBEB; color: #A32D2D; }
+/* [2026-08-30] myshop 메뉴 팔레트와 이름을 맞추려고 추가. purple 과 같은 값이지만
+   두 파일에서 서로 다른 이름을 쓰면 다음 사람이 또 헷갈린다. */
+.ic-box--lavender { background: #EEEDFE; color: #534AB7; }
 
 /* 다크모드 대응 */
 [data-theme="dark"] .ic-box--pink   { background: #3D1C22; color: #D58A95; }
@@ -82,6 +85,7 @@
 [data-theme="dark"] .ic-box--violet { background: #2A1540; color: #B58AFF; }
 [data-theme="dark"] .ic-box--gray   { background: #2A2A28; color: #A0A09C; }
 [data-theme="dark"] .ic-box--red    { background: #351515; color: #E05A5A; }
+[data-theme="dark"] .ic-box--lavender { background: #221F3D; color: #9B93E8; }
 
 /* ── Phase 6: Phosphor <i> 사이징 보완 ───────────────────── */
 i[class*="ph-"] {

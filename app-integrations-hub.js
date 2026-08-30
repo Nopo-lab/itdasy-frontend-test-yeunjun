@@ -58,7 +58,7 @@
         <div class="ms-sheet__handle"></div>
         <div class="ms-sheet__head">
           <div class="ms-sheet__head-left">
-            <div class="ms-sheet__title">연동관리</div>
+            <div class="ms-sheet__title">연결된 서비스</div>
             <div class="ms-sheet__sub">인스타 · 네이버 톡톡 · 카톡</div>
           </div>
           <button type="button" class="ms-sheet__close" id="ihClose" aria-label="닫기">✕</button>

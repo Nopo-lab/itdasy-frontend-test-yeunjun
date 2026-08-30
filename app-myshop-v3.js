@@ -69,7 +69,7 @@
   }
   // [2026-08-16] _shopInitial 삭제 — _shopName() 이 인스타 핸들 우선이라 이니셜이 '@' 로 찍혔고,
   //   핸들 첫 글자도 원장님에게 의미가 없다. 프사 없을 때/복구 실패 시 폴백은 가게 아이콘으로.
-  const _AVATAR_FALLBACK_HTML = '<i class="ph-duotone ph-storefront" style="font-size:20px" aria-hidden="true"></i>';
+  const _AVATAR_FALLBACK_HTML = '<svg width="20" height="20" aria-hidden="true" style="color:#fff"><use href="#ic-store"/></svg>';
   function _shopAvatarUrl() {
     try { return localStorage.getItem('itdasy:ig_profile_pic') || ''; }
     catch (_e) { return ''; }
@@ -123,18 +123,21 @@
       : _AVATAR_FALLBACK_HTML;
     return `
       <div class="ms-shop">
-        <div class="ms-shop__top">
+        <div class="ms-shop__top" data-mv-act="editShop" role="button" tabindex="0" aria-label="샵 정보 수정">
           <div class="ms-shop__avatar" aria-hidden="true">${avatarHTML}</div>
           <div class="ms-shop__info">
-            <div class="ms-shop__name">${_esc(shop)}</div>
+            <div class="ms-shop__name">
+              <span class="ms-shop__name-t">${_esc(shop)}</span>
+              <svg class="ms-shop__chev" width="15" height="15" aria-hidden="true"><use href="#ic-chevron-right"/></svg>
+            </div>
             <div class="ms-shop__plan">${_esc(_planText())}</div>
           </div>
-          <button type="button" class="ms-shop__edit" data-mv-act="toneReport" aria-label="내 말투 리포트" style="margin-right:6px;">
-            <i class="ph-duotone ph-chart-bar" style="font-size:14px" aria-hidden="true"></i>
-          </button>
-          <button type="button" class="ms-shop__edit" data-mv-act="editShop" aria-label="샵 정보 편집">
-            <i class="ph-duotone ph-pencil-simple" style="font-size:14px" aria-hidden="true"></i>
-          </button>
+          <div class="ms-shop__acts">
+            <button type="button" class="ms-shop__act" data-mv-act="toneReport" aria-label="말투분석카드">
+              <span class="ms-shop__act--tone">${window.ItdasyMenu.icon('ic-card-sparkle', 19)}</span>
+              <span class="ms-shop__act-label">말투분석카드</span>
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -179,15 +182,40 @@
       lowStock,
     };
   }
+  // ─────────── 메뉴 정본 (js/myshop-menu.js) ───────────
+  //  이름·아이콘·색은 전부 저기 한 곳에서만 정한다. 여기서는 '숫자'만 붙인다.
+  //  (같은 8개가 네 군데에 복붙돼 있던 걸 정리한 결과 — 2026-08-30)
+  function _menuDef() { return (window.ItdasyMenu && window.ItdasyMenu.ITEMS) || []; }
+  function _defByKey(key) { return _menuDef().find(i => i.key === key) || null; }
+
+  /** 정본 항목 + 그 행에만 붙는 부가정보(meta/badge) → 모바일 행 HTML */
+  function _rowFromDef(key, extra) {
+    const d = _defByKey(key);
+    if (!d) return '';
+    const e = extra || {};
+    return _menuItemHTML({
+      act: d.mv,
+      iconClass: `ms-menu__icon--${d.color}`,
+      iconSVG: window.ItdasyMenu.icon(d.icon),
+      name: d.name,
+      meta: e.meta != null ? e.meta : (d.meta || ''),
+      metaClass: e.metaClass || '',
+      badge: e.badge != null ? e.badge : null,
+    });
+  }
+  function _sectionHTML(title, rows) {
+    return `<div class="ms-section"><div class="ms-section__title">${_esc(title)}</div><div class="ms-menu">${rows}</div></div>`;
+  }
+
   function _renderOpsMenu(brief) {
     const m = _opsMetaList(brief);
     const items = [
-      _menuItemHTML({ act: 'booking', iconClass: 'ms-menu__icon--teal', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-calendar-check"/></svg>', name: '예약관리', meta: m.bookMeta }),
-      _menuItemHTML({ act: 'customer', iconClass: 'ms-menu__icon--blue', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-users"/></svg>', name: '고객관리', meta: m.custMeta, metaClass: m.atRiskN ? 'is-danger' : '' }),
-      _menuItemHTML({ act: 'revenue', iconClass: 'ms-menu__icon--amber', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-wallet"/></svg>', name: '매출관리', meta: m.revMeta, metaClass: 'is-ok' }),
-      /* INVENTORY_HIDDEN */ // _menuItemHTML({ act: 'inventory', iconClass: 'ms-menu__icon--coral', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-package"/></svg>', name: '재고관리', meta: m.stockMeta, metaClass: m.lowStock > 0 ? 'is-danger' : '', badge: m.lowStock > 0 ? m.lowStock : null }),
+      _rowFromDef('booking',  { meta: m.bookMeta }),
+      _rowFromDef('customer', { meta: m.custMeta, metaClass: m.atRiskN ? 'is-danger' : '' }),
+      _rowFromDef('revenue',  { meta: m.revMeta, metaClass: 'is-ok' }),
+      /* INVENTORY_HIDDEN */ // _rowFromDef('inventory', { meta: m.stockMeta, metaClass: m.lowStock > 0 ? 'is-danger' : '', badge: m.lowStock > 0 ? m.lowStock : null }),
     ].join('');
-    return `<div class="ms-section"><div class="ms-section__title">운영 관리</div><div class="ms-menu">${items}</div></div>`;
+    return _sectionHTML('운영 관리', items);
   }
 
   // ─────────── 손님 문의 메뉴 2개 ───────────
@@ -205,21 +233,20 @@
   function _renderInquiryMenu() {
     const n = _inquiryCounts();
     const items = [
-      _menuItemHTML({ act: 'dmHub', iconClass: 'ms-menu__icon--purple', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-instagram"/></svg>', name: '인스타DM', meta: n.dm > 0 ? `답해둘 게 ${n.dm}개 남았어요` : '' }),
-      _menuItemHTML({ act: 'comment', iconClass: 'ms-menu__icon--pink', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-message-circle"/></svg>', name: '인스타 댓글', meta: n.comment > 0 ? `${n.comment}건 기다리는 중` : '' }),
+      _rowFromDef('dm',      { meta: n.dm > 0 ? `답해둘 게 ${n.dm}개 남았어요` : '' }),
+      _rowFromDef('comment', { meta: n.comment > 0 ? `${n.comment}건 기다리는 중` : '' }),
     ].join('');
-    return `<div class="ms-section"><div class="ms-section__title">손님 문의</div><div class="ms-menu">${items}</div></div>`;
+    return _sectionHTML('손님 문의', items);
   }
 
   // ─────────── 내 정보 메뉴 3개 ───────────
   function _renderAccountMenu() {
-    const planLabel = _planLabel();
     const items = [
-      _menuItemHTML({ act: 'integrations', iconClass: 'ms-menu__icon--blue', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-link"/></svg>', name: '연동관리', meta: '인스타 · 네이버 · 카톡' }),
-      _menuItemHTML({ act: 'settings', iconClass: 'ms-menu__icon--gray', iconSVG: '<i class="ph-duotone ph-gear-six" style="font-size:19px;"></i>', name: '내 샵 정보', meta: '샵정보 · 데이터 · 백업' }),
-      _menuItemHTML({ act: 'plan', iconClass: 'ms-menu__icon--pink', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-id-card"/></svg>', name: '내 요금제', meta: planLabel }),
+      _rowFromDef('integrations'),
+      _rowFromDef('settings'),
+      _rowFromDef('plan', { meta: _planLabel() }),   // 플랜만 실제 상태를 붙인다
     ].join('');
-    return `<div class="ms-section"><div class="ms-section__title">내 정보</div><div class="ms-menu">${items}</div></div>`;
+    return _sectionHTML('내 정보', items);
   }
 
   // ─────────── 하단 푸터 링크 (쿠팡식 · 모바일 전용) ───────────
@@ -250,14 +277,23 @@
         ${badge}
       </button>`;
   }
+  /** 사이드바 행도 같은 정본에서 뽑는다 — 모바일과 아이콘이 갈라지지 않게. */
+  function _sideRowFromDef(key, extra) {
+    const d = _defByKey(key);
+    if (!d) return '';
+    const e = extra || {};
+    return _sideItemHTML({ act: d.mv, iconSVG: window.ItdasyMenu.icon(d.icon), label: d.name,
+                           badge: e.badge != null ? e.badge : null, badgeClass: e.badgeClass });
+  }
+
   function _sideOpsHTML(brief) {
     const todayN = _todayBookingsList(brief).length;
     return [
       '<div class="ms-side__section">운영 관리</div>',
-      _sideItemHTML({ act: 'booking',   iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-calendar-check"/></svg>',    label: '예약관리', badge: todayN > 0 ? todayN : null, badgeClass: 'is-ok' }),
-      _sideItemHTML({ act: 'customer',  iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-users"/></svg>',       label: '고객관리' }),
-      _sideItemHTML({ act: 'customerDm', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-message-circle"/></svg>', label: '실시간 DM' }),
-      _sideItemHTML({ act: 'revenue',   iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-wallet"/></svg>', label: '매출관리' }),
+      _sideRowFromDef('booking', { badge: todayN > 0 ? todayN : null, badgeClass: 'is-ok' }),
+      _sideRowFromDef('customer'),
+      _sideItemHTML({ act: 'customerDm', iconSVG: window.ItdasyMenu.icon('ic-message-circle'), label: '실시간 DM' }),
+      _sideRowFromDef('revenue'),
       /* INVENTORY_HIDDEN */ // _sideItemHTML({ act: 'inventory', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-package"/></svg>', label: '재고관리', badge: lowStock > 0 ? lowStock : null }),
     ].join('');
   }
@@ -265,16 +301,16 @@
     const n = _inquiryCounts();
     return [
       '<div class="ms-side__section">손님 문의</div>',
-      _sideItemHTML({ act: 'dmHub',   iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-instagram"/></svg>',      label: '인스타DM', badge: n.dm > 0 ? n.dm : null }),
-      _sideItemHTML({ act: 'comment', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-message-circle"/></svg>', label: '인스타 댓글', badge: n.comment > 0 ? n.comment : null }),
+      _sideRowFromDef('dm',      { badge: n.dm > 0 ? n.dm : null }),
+      _sideRowFromDef('comment', { badge: n.comment > 0 ? n.comment : null }),
     ].join('');
   }
   function _sideAccountHTML() {
     return [
       '<div class="ms-side__section">내 정보</div>',
-      _sideItemHTML({ act: 'integrations', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-link"/></svg>',     label: '연동관리' }),
-      _sideItemHTML({ act: 'settings', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-settings"/></svg>',      label: '내 샵 정보' }),
-      _sideItemHTML({ act: 'plan',    iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-id-card"/></svg>',        label: '내 요금제' }),
+      _sideRowFromDef('integrations'),
+      _sideRowFromDef('settings'),
+      _sideRowFromDef('plan'),
       _sideItemHTML({ act: 'support', iconSVG: '<svg width="20" height="20" aria-hidden="true"><use href="#ic-message-circle"/></svg>', label: '도움말' }),
     ].join('');
   }
@@ -506,6 +542,16 @@
         ev.stopPropagation();
         _runAct(el.dataset.mvAct || '');
       });
+      // 샵 카드 상단줄처럼 <button> 이 아닌 것(안에 버튼이 중첩돼서 div 로 둘 수밖에
+      // 없다)은 키보드로 눌리지 않는다. role="button" 인 것만 Enter/Space 를 받는다.
+      if (el.getAttribute('role') === 'button') {
+        el.addEventListener('keydown', (ev) => {
+          if (ev.key !== 'Enter' && ev.key !== ' ') return;
+          ev.preventDefault();
+          ev.stopPropagation();
+          _runAct(el.dataset.mvAct || '');
+        });
+      }
     });
     container.querySelectorAll('[data-ms-avatar-fallback]').forEach(img => {
       img.addEventListener('error', () => {
