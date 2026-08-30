@@ -346,6 +346,34 @@ function renderDetailedPopup(data) {
         ? (p.signature_phrases || raw.signature_phrases)
         : String(p.signature_phrases || raw.signature_phrases || '').split(/[,\s]+/).filter(Boolean);
 
+    // [2026-08-30] 사용 횟수 3종. BE 가 [[값, 횟수], ...] 로 내려준다.
+    //   BE 배포 전(필드 없음/[])에도 화면이 깨지면 안 되므로, 비면 [] 를 돌려주고
+    //   아래에서 기존 문자열 파싱(tagArr/sigArr/emojis)으로 폴백한다.
+    const _counts = (v) => (Array.isArray(v) ? v : [])
+        .filter(x => Array.isArray(x) && x.length === 2 && x[0] != null && Number.isFinite(Number(x[1])))
+        .map(x => [String(x[0]), Number(x[1])]);
+    const endCounts = _counts(raw.ending_counts);
+    const emoCounts = _counts(raw.emoji_counts);
+    const tagCounts = _counts(raw.hashtag_counts);
+
+    // 횟수 pill — 숫자만. '회' 같은 단위 붙이지 않는다.
+    //   1 이어도 그대로 보여준다(하한 필터 없음). 의도된 결정.
+    const _pill = (n) => `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;padding:1px 5px;margin-left:5px;background:#F2F4F6;color:var(--text-subtle);border-radius:999px;font-size:10.5px;font-weight:700;line-height:1.4;">${n}</span>`;
+    const _chip = (label, n) =>
+        `<span style="display:inline-flex;align-items:center;background:var(--surface);color:var(--text-muted);border:0.5px solid var(--border-strong);padding:5px 11px;border-radius:var(--r-pill);font-size:12px;font-weight:500;margin:3px 3px 0 0;word-break:keep-all;">${_esc(label)}${n == null ? '' : _pill(n)}</span>`;
+    // 이모지 낱개 칩 — 이모지 위, 횟수 아래 세로 배치
+    const _emoChip = (ch, n) =>
+        `<span style="display:inline-flex;flex-direction:column;align-items:center;gap:4px;min-width:42px;padding:8px 6px;background:var(--surface);border:0.5px solid var(--border-strong);border-radius:14px;margin:3px 3px 0 0;vertical-align:top;">` +
+        `<span style="font-size:21px;line-height:1;">${_esc(ch)}</span>` +
+        (n == null ? '' : `<span style="font-size:10.5px;font-weight:700;color:var(--text-subtle);line-height:1;">${n}</span>`) +
+        `</span>`;
+    // 폴백용: 이모지 문자열을 낱개로. ZWJ 결합 이모지가 쪼개지지 않게 grapheme 우선.
+    const _splitEmoji = (str) => {
+        const t = String(str).replace(/[\s,]+/g, '');
+        try { return Array.from(new Intl.Segmenter('ko', { granularity: 'grapheme' }).segment(t), g => g.segment); }
+        catch (_e) { return Array.from(t); }
+    };
+
     // 프사: localStorage 캐시 우선, 실패 시 실루엣 폴백
     const picUrl = (() => { try { return localStorage.getItem('itdasy:ig_profile_pic') || ''; } catch (_e) { return ''; } })();
     const SIL = '<svg viewBox="0 0 24 24" width="36" height="36" fill="#C9CDD4" aria-hidden="true"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2.2c-4.5 0-8 2.6-8 5.9V21h16v-.9c0-3.3-3.5-5.9-8-5.9Z"/></svg>';
@@ -382,18 +410,22 @@ function renderDetailedPopup(data) {
 
     // 말투
     const styleSummary = String(raw.style_summary || p.style_summary || raw.tone_summary || '').trim();
-    if (styleSummary) {
+    // 대표 말투 한 줄 — 요약문 위에 크게. 없으면 이 줄만 생략한다.
+    //   styleSummary 가 tone_summary 로 폴백된 경우 같은 문장이 두 번 나오므로 본문은 뺀다.
+    const toneLine = String(raw.tone || raw.tone_summary || '').trim();
+    const bodyLine = styleSummary && styleSummary !== toneLine ? styleSummary : '';
+    if (toneLine || bodyLine) {
         secs.push(`<div style="padding:18px 20px;">
             <div style="font-size:11px;font-weight:600;color:var(--text-subtle);margin-bottom:6px;">원장님 말투</div>
-            <div style="font-size:14px;color:var(--text);line-height:1.7;word-break:keep-all;">${_esc(styleSummary)}</div>
+            ${toneLine ? `<div style="font-size:17.5px;font-weight:800;color:var(--brand-strong);line-height:1.4;word-break:keep-all;margin-bottom:${bodyLine ? '8px' : '0'};">${_esc(toneLine)}</div>` : ''}
+            ${bodyLine ? `<div style="font-size:14px;color:var(--text);line-height:1.7;word-break:keep-all;">${_esc(bodyLine)}</div>` : ''}
         </div>`);
     }
 
     // 말끝 칩 (고정문구보다 위에 배치)
-    if (sigArr.length) {
-        const sigChips = sigArr.map(s =>
-            `<span style="display:inline-flex;background:var(--surface);color:var(--text-muted);border:0.5px solid var(--border-strong);padding:5px 11px;border-radius:var(--r-pill);font-size:12px;font-weight:500;margin:3px 3px 0 0;word-break:keep-all;">${_esc(s)}</span>`
-        ).join('');
+    const endPairs = endCounts.length ? endCounts : sigArr.map(t => [t, null]);
+    if (endPairs.length) {
+        const sigChips = endPairs.map(([t, n]) => _chip(t, n)).join('');
         secs.push(`<div style="padding:18px 20px;">
             <div style="font-size:11px;font-weight:600;color:var(--text-subtle);margin-bottom:10px;">원장님이 자주 쓰는 말끝</div>
             <div style="line-height:1;">${sigChips}</div>
@@ -409,23 +441,27 @@ function renderDetailedPopup(data) {
         }
     </div>`);
 
-    if (tagArr.length) {
-        const chips = tagArr.map(t =>
-            `<span style="display:inline-flex;background:var(--surface);color:var(--text-muted);border:0.5px solid var(--border-strong);padding:5px 11px;border-radius:var(--r-pill);font-size:12px;font-weight:500;margin:3px 3px 0 0;word-break:keep-all;">${_esc(t)}</span>`
-        ).join('');
+    // 기본 펼침 — 상위 5개는 바로 보이고 나머지만 '전체 보기 ›' 로 연다.
+    //   (예전엔 통째로 display:none 이라 태그가 있어도 빈 섹션처럼 보였다)
+    const tagPairs = tagCounts.length ? tagCounts : tagArr.map(t => [t, null]);
+    if (tagPairs.length) {
+        const headChips = tagPairs.slice(0, 5).map(([t, n]) => _chip(t, n)).join('');
+        const restChips = tagPairs.slice(5).map(([t, n]) => _chip(t, n)).join('');
         secs.push(`<div style="padding:18px 20px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-                <span style="font-size:11px;font-weight:600;color:var(--text-subtle);">원장님이 자주 쓰는 해시태그 <span style="font-weight:500;">${tagArr.length}개</span></span>
-                <button data-ig-tag-toggle style="background:none;border:none;padding:0;font-size:12px;color:var(--text-subtle);cursor:pointer;font-weight:600;">전체 보기 ›</button>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <span style="font-size:11px;font-weight:600;color:var(--text-subtle);">원장님이 자주 쓰는 해시태그 <span style="font-weight:500;">${tagPairs.length}개</span></span>
+                ${restChips ? `<button data-ig-tag-toggle style="background:none;border:none;padding:0;font-size:12px;color:var(--text-subtle);cursor:pointer;font-weight:600;flex-shrink:0;">전체 보기 ›</button>` : ''}
             </div>
-            <div data-ig-tag-chips style="display:none;margin-top:10px;line-height:1;">${chips}</div>
+            <div data-ig-tag-chips style="margin-top:10px;line-height:1;">${headChips}<span data-ig-tag-rest style="display:none;">${restChips}</span></div>
         </div>`);
     }
 
-    if (emojis) {
+    const emoPairs = emoCounts.length ? emoCounts : _splitEmoji(emojis).map(c => [c, null]);
+    if (emoPairs.length) {
+        const emoChips = emoPairs.map(([c, n]) => _emoChip(c, n)).join('');
         secs.push(`<div style="padding:18px 20px;">
             <div style="font-size:11px;font-weight:600;color:var(--text-subtle);margin-bottom:10px;">원장님이 자주 쓰는 이모지</div>
-            <div style="font-size:21px;letter-spacing:4px;word-break:break-all;">${_esc(emojis)}</div>
+            <div style="line-height:1;">${emoChips}</div>
         </div>`);
     }
 
@@ -443,10 +479,10 @@ function renderDetailedPopup(data) {
     // [2026-06-26] '내 말투로 글 써보기' CTA 제거 — 말투분석 보고서에서 작업실/글쓰기 진입 차단(중복·혼동 방지).
     //   닫기는 헤더 X(analyze-result-close).
     body.querySelector('[data-ig-tag-toggle]')?.addEventListener('click', function () {
-        const chips = body.querySelector('[data-ig-tag-chips]');
-        if (!chips) return;
-        const open = chips.style.display !== 'none';
-        chips.style.display = open ? 'none' : 'block';
+        const rest = body.querySelector('[data-ig-tag-rest]');
+        if (!rest) return;
+        const open = rest.style.display !== 'none';
+        rest.style.display = open ? 'none' : 'inline';
         this.textContent = open ? '전체 보기 ›' : '접기 ›';
     });
 }
