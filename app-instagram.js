@@ -16,28 +16,29 @@ const _IG_BROWSER = (function () {
 })();
 
 // ===== 인스타 토큰 만료 배너 =====
-// Instagram Graph API 장기 토큰은 60일 만료. 7일 이내 또는 이미 만료 시 재연동 배너 노출.
-function _renderTokenExpiryBanner(expiresAtIso) {
+// 인스타 토큰 배너 — 판정은 js/instagram/token-status.js 한 곳에서만 한다.
+//
+// [2026-08-31] 예전엔 여기서 expires_at 만 보고 "N일 뒤 만료 — 지금 갱신하세요" 를 띄웠다.
+//   그런데 그 시점에 백엔드는 **이미 자동갱신을 하고 있었다.** 원장님한테는 손으로 뭔가
+//   하라는 뜻으로 읽힌다. 반대로 토큰이 권한취소로 죽었는데 만료일이 아직 남아 있으면
+//   배너가 **아무것도 안 떴다** — 정작 재연동이 필요한 그 상황에서.
+//   그래서 배너는 이제 '사람이 지금 해야 할 일이 있는' RECONNECT_REQUIRED 에서만 뜬다.
+function _renderIgTokenBanner(data) {
   const existing = document.getElementById('tokenExpiryBanner');
   if (existing) existing.remove();
-  if (!expiresAtIso) return;
 
-  const expMs = new Date(expiresAtIso).getTime();
-  if (isNaN(expMs)) return;
-  const remainDays = Math.floor((expMs - Date.now()) / 86400000);
-  if (remainDays > 7) return;  // 여유 있으면 표시 안 함
+  const S = window.IgTokenStatus;
+  if (!S) return;   // 모듈 미로드 — 조용히 넘어간다(배너는 보조 표시)
+  const st = S.resolve(data, { skewMs: window._igServerSkewMs || 0 });
+  if (!S.needsBanner(st)) return;
 
-  const isExpired = remainDays < 0;
-  const msg = isExpired
-    ? '인스타 연동이 만료됐어요 — 재연동이 필요합니다'
-    : `인스타 연동이 ${remainDays}일 뒤 만료돼요 — 지금 갱신하세요`;
-
+  const info = S.describe(st);
   const banner = document.createElement('div');
   banner.id = 'tokenExpiryBanner';
   banner.setAttribute('role', 'alert');
-  banner.className = `banner ${isExpired ? 'banner--danger' : 'banner--warn'}`;
-  banner.innerHTML = `<span style="flex:1;">${msg}</span>
-    <button class="banner__cta" data-ig-reconnect>재연동</button>`;
+  banner.className = 'banner banner--danger';
+  banner.innerHTML = `<span style="flex:1;">${_igEsc(info.title)} — ${_igEsc(info.detail)}</span>
+    <button class="banner__cta" data-ig-reconnect>${_igEsc(info.cta)}</button>`;
   // [보안감사 M-1 2026-07-26] 존재하지 않는 'connectInstaBtn'(실제 id 는 'instaBtn')을 클릭하려다
   //   폴백 no-op 으로 삼켜져 재연동 버튼이 죽어 있었다(토큰 만료 = 재연동이 가장 필요한 순간).
   //   홈 배너(app-home-customer-msgs)와 동일하게 connectInstagram() 을 직접 호출한다.
@@ -52,39 +53,11 @@ function _renderTokenExpiryBanner(expiresAtIso) {
   }
 }
 
-// [F1] /instagram/status 의 살아있는 persona → itdasy_latest_analysis 재수화.
-//   내샵관리/AI Hub/인스타 화면의 "분석 리포트"는 이 localStorage 캐시만 읽는데, 캐시는 연결 직후
-//   90초 폴링(L#332)·수동 재분석(L#458)에서만 채워짐. 그 창을 놓치면(이탈/콜드스타트/기기변경/캐시삭제)
-//   백엔드엔 persona 가 있어도 리포트가 영원히 빔. → 캐시가 비었거나 무효일 때만 status persona 로 채움.
-//   기존 풍부본(raw_analysis·top5 포함)은 절대 덮어쓰지 않음. 저장 포맷은 L#332 폴링 저장본과 동일.
-function _hydrateAnalysisCacheFromStatus(persona) {
-  try {
-    if (!persona || !(persona.style_summary || persona.tone)) return false;
-    let cur = {};
-    try { cur = JSON.parse(localStorage.getItem('itdasy_latest_analysis') || '{}') || {}; } catch (_e) { cur = {}; }
-    if (cur && (cur.style_summary || cur.tone_summary || cur.tone)) return false;  // 기존 유효 캐시 보존
-    const flat = { ...persona, tone_summary: persona.tone || '', style_summary: persona.style_summary || '' };
-    localStorage.setItem('itdasy_latest_analysis', JSON.stringify(flat));
-    return true;
-  } catch (_e) { return false; }
+function _igEsc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-// ===== 인스타그램 연동 =====
-// [2026-08-22] 상태확인이 실패해도 조용히 죽지 않게 — 4초 간격 최대 2회 재시도.
-//   콜드스타트(Cloud Run 5~15초)에 첫 호출이 실패하면 로그아웃→재로그인 직후
-//   "인스타 연동하세요" 오탐 화면이 영구 고착되던 버그의 수리.
-//   _igStatusSeq = 세대 가드: 재시도 대기 중 새 호출이 시작되면 낡은 재시도는 폐기.
-let _igStatusSeq = 0;
-function _igStatusGiveUp() {
-  // 재시도 전부 실패 — 캐시가 '연동됨'이면 그대로 두고(오탐 방지), 아니면 연동 안내로 폴백.
-  try {
-    if (localStorage.getItem('itdasy:ig_connected_cache') === '1') return;
-    const pre = document.getElementById('homePreConnect');
-    const post = document.getElementById('homePostConnect');
-    if (pre) pre.style.display = 'flex';
-    if (post) post.style.display = 'none';
-  } catch (_e) { /* ignore */ }
-}
 async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
   if (!getToken()) return;
   if (_attempt === 0) _seq = ++_igStatusSeq;
@@ -101,6 +74,13 @@ async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
     if (res.status === 401) return; // 인증 만료 — 재시도해도 소용없음
     _retry(); return;
   }
+  // [2026-08-31] 서버 시각 보정 — 기기 시계가 틀어져 있어도 "자동 갱신까지 N일" 이
+  //   이상해지지 않게. status 응답의 HTTP Date 헤더가 곧 서버 시각이라 추가 호출이 0회다.
+  //   헤더가 없거나 파싱 실패하면 보정 0(기기 시계) — 없는 것보단 낫다.
+  try {
+    const _srv = Date.parse(res.headers.get('Date') || '');
+    window._igServerSkewMs = isFinite(_srv) ? (_srv - Date.now()) : 0;
+  } catch (_e) { window._igServerSkewMs = 0; }
   try {
     const data = await res.json();
 
@@ -164,7 +144,7 @@ async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
       _instaHandle = data.handle || '';
       updateHeaderProfile(_instaHandle, data.persona ? data.persona.tone : null, data.profile_picture_url || '');
       updateStep('stepInsta', true);
-      _renderTokenExpiryBanner(data.expires_at);
+      _renderIgTokenBanner(data);
       // [죽은코드 정리 2026-07-27] KillerWidgets.renderRow('homeKillerWidgets') 호출 제거 —
       //   렌더 타깃 컨테이너 'homeKillerWidgets'/'dashKiller' 가 DOM 어디에도 없어(HomeV41 로 대체됨)
       //   render 가 getElementById=null 로 즉시 return, 모든 위젯이 안 떴다. 매 부팅 헛로드도 제거.
@@ -240,10 +220,22 @@ async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
         //   작업실이 못 보고 되지도 않는 '인스타에 올리기' 버튼을 계속 띄운다.
         //   백엔드가 아직 안 주는 경우(구버전) undefined → 소비 측에서 낙관적 true 로 처리.
         capabilities: data.capabilities || null,
+        // [2026-08-31] 재연동 필요 여부를 이름 그대로 싣는다. 소비 측이 expires_at 을
+        //   각자 계산하다 서로 어긋나던 걸 막는다(판정은 IgTokenStatus 한 곳).
+        //   ⚠️ 미연동 응답에는 이 필드가 **없다** — 없는 걸 false 로 읽지 말 것.
+        reconnectRequired: (typeof data.reconnect_required === 'boolean')
+          ? data.reconnect_required
+          : (!!data.connected && data.token_valid === false),
+        tokenState: (window.IgTokenStatus
+          ? window.IgTokenStatus.resolve(data, { skewMs: window._igServerSkewMs || 0 }).state
+          : null),
         ts: Date.now(),
       };
       window._lastIgState = next;
-      if (prev.connected !== next.connected || prev.handle !== next.handle) {
+      // [2026-08-31] 재연동 필요/해소도 변경으로 친다 — 예전엔 connected·handle 만 봐서,
+      //   토큰이 죽어도(connected 는 그대로 true) 구독자에게 아무 신호가 안 갔다.
+      if (prev.connected !== next.connected || prev.handle !== next.handle
+          || prev.reconnectRequired !== next.reconnectRequired) {
         window.dispatchEvent(new CustomEvent('itdasy:ig:changed', { detail: next }));
       }
     } catch (_e) { /* ignore */ }

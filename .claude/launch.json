@@ -40,6 +40,16 @@
         "8114"
       ],
       "port": 8114
+    },
+    {
+      "name": "itdasy-igtoken-8121",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8121"
+      ],
+      "port": 8121
     }
   ]
 }
