@@ -2051,6 +2051,10 @@ function _suResetVerify() {
   if (code) { code.value = ''; code.disabled = false; }
   const btn = _suEl('signupSendCode');
   if (btn) { btn.disabled = false; btn.classList.remove('is-done'); btn.textContent = '인증번호 받기'; }
+  // 인증 상태를 되돌리면 그 상태에서 뜬 에러도 같이 지운다 — 안 지우면 "이미 가입된 이메일이에요" 가
+  //   이메일을 고치거나 화면을 다시 열어도 남아서 멀쩡한 주소를 막힌 것처럼 보이게 한다.
+  const errEl = _suEl('signupError');
+  if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
   _suMsg('메일로 보낸 6자리 숫자를 입력해주세요.', '');
   _suSyncSignupBtn();
 }
@@ -2077,6 +2081,17 @@ async function _suSendCode() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : '인증번호를 보내지 못했어요.');
+    // [2026-08-30 원영] 이미 가입된 주소 — 서버가 코드를 발급하지 않았다.
+    //   예전엔 이 경우도 200 ok 라서 코드칸과 5분 타이머가 열렸고, 무슨 숫자를 넣어도
+    //   "인증번호가 만료됐어요" 만 떴다(가입이 통째로 막힌 실제 버그). 그냥 알려주고 로그인으로 보낸다.
+    if (data.status === 'already_registered') {
+      _suResetVerify();
+      if (errEl) {
+        errEl.innerHTML = '이미 가입된 이메일이에요. <a href="#login" id="goLoginFromErr" style="color:var(--accent);font-weight:700;text-decoration:underline;">로그인하러 가기</a>';
+        errEl.style.display = 'block';
+      }
+      return;
+    }
     _suVerify.email = email;
     const box = _suEl('signupVerifyBox');
     if (box) box.hidden = false;
@@ -2504,7 +2519,8 @@ window.addEventListener('load', async function() {
   document.addEventListener('click', (e) => {
     const goSignup = e.target.closest('#goSignup');
     if (goSignup) { e.preventDefault(); _toggleSignup(true); return; }
-    const goLogin = e.target.closest('#goLogin');
+    // #goLoginFromErr = "이미 가입된 이메일" 안내 안의 링크. 하단 #goLogin 과 같은 동작이라 한 곳에서 받는다.
+    const goLogin = e.target.closest('#goLogin, #goLoginFromErr');
     if (goLogin) { e.preventDefault(); _toggleSignup(false); return; }
     const signupBtn2 = e.target.closest('#signupBtn');
     if (signupBtn2) {
