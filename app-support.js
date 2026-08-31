@@ -140,6 +140,9 @@
     // 진입 가드 — 진입 click 이 backdrop close 핸들러로 즉시 흡수되는 경합 차단
     modal.dataset.opened = '0';
     modal.style.display = 'flex';
+    /* [2026-08-31] 뒤로가기 스택 등록 — 미등록 시 하드웨어 back 이 아래 화면까지 닫던 버그 */
+    if (typeof window._registerSheet === 'function') window._registerSheet('supportChat', window.closeSupportChat);
+    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('supportChat');
     requestAnimationFrame(() => {
       setTimeout(() => { modal.dataset.opened = '1'; }, 80);
     });
@@ -186,6 +189,7 @@
       modal.dataset.opened = '0';
     }
     if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+    if (typeof window._markSheetClosed === 'function') window._markSheetClosed('supportChat');
   };
 
   window.sendSupportMessage = async function () {

@@ -150,9 +150,12 @@
         return;
       }
       // 1) 열려있는 팝업/모달 먼저 닫기
+      /* [2026-08-31] 공백 없는 인라인 스타일("display:flex")도 잡도록 셀렉터 보강 */
       const openPopup = document.querySelector(
-        '.popup[style*="display: flex"], .modal-overlay[style*="display: flex"], ' +
-        '.bottom-sheet[style*="display: flex"], .pop[style*="display: block"]'
+        '.popup[style*="display: flex"], .popup[style*="display:flex"], ' +
+        '.modal-overlay[style*="display: flex"], .modal-overlay[style*="display:flex"], ' +
+        '.bottom-sheet[style*="display: flex"], .bottom-sheet[style*="display:flex"], ' +
+        '.pop[style*="display: block"], .pop[style*="display:block"]'
       );
       if (openPopup) {
         const closeBtn = openPopup.querySelector('.close-btn, [data-close], [aria-label*="닫기"]');

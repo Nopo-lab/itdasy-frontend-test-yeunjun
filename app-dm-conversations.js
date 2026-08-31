@@ -142,11 +142,15 @@
     const sheet = _ensureListSheet();
     sheet.style.display = 'flex';
     sheet.style.animation = 'dmScreenIn .22s ease-out both';
+    /* [2026-08-31] 뒤로가기 스택 등록 — 미등록 시 하드웨어 back 이 아래 화면까지 닫던 버그 */
+    if (typeof window._registerSheet === 'function') window._registerSheet('dmList', closeList);
+    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('dmList');
     await _refreshList();
     _startListPoll();
   }
   function closeList() {
     _stopListPoll();
+    if (typeof window._markSheetClosed === 'function') window._markSheetClosed('dmList');
     const sheet = document.getElementById('dmConversationsSheet');
     if (!sheet) return;
     sheet.style.animation = 'dmScreenOut .18s ease-in both';

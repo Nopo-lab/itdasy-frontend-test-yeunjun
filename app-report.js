@@ -145,6 +145,9 @@
     _ensureSheet();
     document.getElementById('reportSheet').style.display = 'block';
     document.body.style.overflow = 'hidden';
+    /* [2026-08-31] 뒤로가기 스택 등록 — 미등록 시 하드웨어 back 이 아래 화면까지 닫던 버그 */
+    if (typeof window._registerSheet === 'function') window._registerSheet('report', window.closeReport);
+    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('report');
     _currentY = new Date().getFullYear();
     _currentM = new Date().getMonth() + 1;
     _load();
@@ -153,5 +156,6 @@
     const sheet = document.getElementById('reportSheet');
     if (sheet) sheet.style.display = 'none';
     document.body.style.overflow = '';
+    if (typeof window._markSheetClosed === 'function') window._markSheetClosed('report');
   };
 })();

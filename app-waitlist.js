@@ -134,6 +134,9 @@
   async function openWaitlist() {
     _ensure();
     document.getElementById('waitlistSheet').style.display = 'flex';
+    /* [2026-08-31] 뒤로가기 스택 등록 — 미등록 시 하드웨어 back 이 아래 화면까지 닫던 버그 */
+    if (typeof window._registerSheet === 'function') window._registerSheet('waitlist', closeWaitlist);
+    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('waitlist');
     _render();
     await _loadFromServer();
     _render();
@@ -142,6 +145,7 @@
   function closeWaitlist() {
     const el = document.getElementById('waitlistSheet');
     if (el) el.style.display = 'none';
+    if (typeof window._markSheetClosed === 'function') window._markSheetClosed('waitlist');
   }
 
   window.openWaitlist = openWaitlist;

@@ -462,6 +462,9 @@
     _ensureSheet();
     document.getElementById('importSheet').style.display = 'block';
     document.body.style.overflow = 'hidden';
+    /* [2026-08-31] 뒤로가기 스택 등록 — 미등록 시 하드웨어 back 이 아래 화면까지 닫던 버그 */
+    if (typeof window._registerSheet === 'function') window._registerSheet('import', window.closeImport);
+    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('import');
     _preview = null;
     _currentKind = null;
     _renderKindPicker();
@@ -471,5 +474,6 @@
     const sheet = document.getElementById('importSheet');
     if (sheet) sheet.style.display = 'none';
     document.body.style.overflow = '';
+    if (typeof window._markSheetClosed === 'function') window._markSheetClosed('import');
   };
 })();
