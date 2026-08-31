@@ -237,7 +237,6 @@
       .rvm5-mnav .label{font-size:15px;font-weight:700;color:#191F28;letter-spacing:-0.4px}
       .rvm5-today{margin-left:8px;padding:0 12px;height:30px;border:1px solid #E5E8EB;border-radius:8px;background:#F7F8FA;color:#4E5968;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
       .rvm5-today:disabled{opacity:0.35;cursor:default;pointer-events:none}
-      .rvm5-mmnav .rvm5-today{height:26px;padding:0 10px;font-size:11px;margin-left:6px}
       .rvm5-past-badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;background:#F7F8FA;font-size:11px;font-weight:600;color:#6B7684;margin-left:6px}
 
       /* PC 2컬럼 상단 */
@@ -301,57 +300,33 @@
       .rvm5-more:hover{background:#E5E8EB}
       .rvm5-hidden{display:none}
 
-      /* ── 모바일 v6 ── */
-      .rvm5-mbody{padding:14px 10px}
-      .rvm5-mmnav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px}
-      .rvm5-mmnav .ar{width:28px;height:28px;border-radius:50%;border:1px solid #E5E8EB;display:flex;align-items:center;justify-content:center;font-size:12px;color:#191F28;background:#fff;cursor:pointer;padding:0;line-height:1}
-      .rvm5-mmnav .ar:disabled{opacity:0.25;cursor:not-allowed;pointer-events:none}
-      .rvm5-mmnav .ml{font-size:14px;font-weight:700;letter-spacing:-0.3px}
+      /* ── 모바일 v4 (2026-08-31) ──
+         폰트는 4단계만: 11(라벨·캡션) / 13(본문행) / 15(섹션타이틀·행금액) / 26(히어로).
+         여백도 4단계만: 4 / 8 / 14 / 20.
+         카드 금지 — 히어로는 흰 바탕에 라벨+숫자, 보조 숫자는 리스트 행.
+         (v6 의 로즈 카드 + .rvm5-mai 알림카드 3장은 세로 112px 를 먹어서 캘린더가 잘렸다) */
+      .rvm5-mbody{padding:0}
 
-      .rvm5-mhero{background:#F7EFF0;border-radius:14px;padding:16px;margin-bottom:8px}
-      .rvm5-mhero-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-      .rvm5-mhero-top .amt{font-size:26px;font-weight:800;color:#BC6675;letter-spacing:-1.2px;line-height:1}
-      .rvm5-mhero-top .cnt{font-size:12px;font-weight:600;color:#BC6675;opacity:0.65}
-      .rvm5-mhero-sub{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#E5E8EB;border-radius:8px;overflow:hidden;margin-top:12px}
-      .rvm5-mhero-sub .c{background:#fff;padding:10px}
-      .rvm5-mhero-sub .l{font-size:9px;color:#191F28;font-weight:600}
-      .rvm5-mhero-sub .v{font-size:14px;font-weight:700;margin-top:2px;letter-spacing:-0.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .rvm5-mhero{padding:8px 14px 14px}
+      .rvm5-mhero .l{display:block;font-size:11px;font-weight:500;color:#8B95A1;letter-spacing:-.2px}
+      .rvm5-mhero .amt{display:block;font-size:26px;font-weight:800;color:#191F28;letter-spacing:-1.4px;line-height:1.15;font-variant-numeric:tabular-nums}
+      .rvm5-mhero .note{font-size:11px;color:#6B7684;margin-top:5px}
+      .rvm5-mhero .note b{font-weight:700}
+      .rvm5-mhero .note b.up{color:#0F6E56}
+      .rvm5-mhero .note b.dn{color:#C0392B}
 
-      .rvm5-mai{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fff;border:1px solid #E5E8EB;border-radius:14px;margin-bottom:8px}
-      .rvm5-mai .badge{padding:2px 7px;border-radius:5px;background:#BC6675;color:#fff;font-size:8px;font-weight:800;flex-shrink:0}
-      .rvm5-mai .txt{font-size:12px;color:#191F28}
-      .rvm5-mai .txt b{font-weight:700}
+      .rvm5-mlist{border-top:1px solid #F1F3F5}
+      .rvm5-mrow{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #F1F3F5}
+      .rvm5-mrow .l{flex:1;min-width:0;font-size:13px;font-weight:500;color:#4E5968;letter-spacing:-.2px}
+      .rvm5-mrow .c{flex-shrink:0;font-size:11px;font-weight:600;color:#8B95A1;background:#F7F8FA;padding:2px 7px;border-radius:6px}
+      .rvm5-mrow .v{flex-shrink:0;font-size:15px;font-weight:700;color:#191F28;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
+      .rvm5-mrow.ghost .l,.rvm5-mrow.ghost .v{color:#8B95A1;font-weight:500}
 
-      .rvm5-mc{margin-bottom:8px}
-      .rvm5-mc .t{font-size:12px;font-weight:600;color:#191F28;margin:16px 0 8px;letter-spacing:-.2px}
-
-      .rvm5-mbr{display:flex;align-items:center;gap:5px;padding:4px 0}
-      .rvm5-mbr .lb{font-size:11px;width:30px;text-align:right;color:#191F28;flex-shrink:0}
-      .rvm5-mbr .tk{flex:1;height:12px;background:#F7F8FA;border-radius:3px;overflow:hidden}
-      .rvm5-mbr .fl{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.2,.7,.2,1)}
-      .rvm5-mbr .pc{font-size:11px;font-weight:600;width:28px;text-align:right;color:#191F28;flex-shrink:0}
-
-      .rvm5-md{display:flex;align-items:center;gap:5px;padding:6px 0;border-bottom:1px solid #F7F8FA}
-      .rvm5-md:last-child{border:none}
-      .rvm5-md .d{font-size:11px;color:#191F28;width:62px;flex-shrink:0;font-weight:500}
-      .rvm5-md .bar{flex:1;height:6px;background:#F7F8FA;border-radius:2px;overflow:hidden;position:relative;min-width:40px}
-      .rvm5-md .f{height:100%;border-radius:2px}
-      .rvm5-md .gl{position:absolute;top:-1px;bottom:-1px;width:1.5px;background:#191F28;opacity:0.18;border-radius:1px}
-      .rvm5-md .a{font-size:12px;font-weight:600;width:78px;text-align:right;letter-spacing:-0.3px;flex-shrink:0}
-      .rvm5-md .a.over{color:#0F6E56}
-      .rvm5-md .a.under{color:#4E5968}
-      .rvm5-md .c{font-size:11px;color:#6B7684;width:24px;text-align:right;flex-shrink:0}
-
-      .rvm5-mli{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #F7F8FA;cursor:pointer}
-      .rvm5-mli:last-child{border:none}
-      .rvm5-mli .dt{font-size:11px;color:#6B7684;width:30px;flex-shrink:0}
-      .rvm5-mli .nm{font-size:12px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-      .rvm5-mli .am{font-size:13px;font-weight:700;letter-spacing:-0.2px;flex-shrink:0}
-      .rvm5-mli .ch{font-size:12px;color:#C5CBD2;margin-left:1px;flex-shrink:0}
-
-      .rvm5-mgb{display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:8px;margin-bottom:8px;background:#F7EFF0}
-      .rvm5-mgb .t{font-size:11px;font-weight:600;color:#BC6675;flex:1}
-      .rvm5-mgb .btn{padding:3px 10px;border-radius:999px;font-size:9px;font-weight:600;border:1px solid #E5E8EB;background:#fff;color:#BC6675;cursor:pointer}
+      .rvm5-mc{padding-bottom:8px}
+      .rvm5-mc .t{display:flex;align-items:baseline;gap:8px;padding:0 14px;margin:14px 0 8px}
+      .rvm5-mc .t b{font-size:15px;font-weight:700;color:#191F28;letter-spacing:-.3px}
+      .rvm5-mc .t span{font-size:11px;font-weight:500;color:#8B95A1}
+      .rvm5-mbody .rvcal-wrap{padding:0 14px}
 
       /* ═════ today/week 호환 — 옛 v4 톤 ═════ */
       .rvm-body{padding:20px}
@@ -489,42 +464,57 @@
     _ensureStyles();
     const isCur = _isCurrentMonth();
     const isPast = !!summary.is_past || !isCur;
-    const depositRow = (Number(summary.confirmed_deposit_total) > 0)
-      ? `<div class="rvm5-mai"><span class="badge">확정매출</span><span class="txt">예약금 <b>${formatMoney(summary.confirmed_deposit_total)}</b></span></div>`
-      : '';
+
+    // [v4] 월 네비를 셸 헤더(#rvHeaderMonth)로 올린다.
+    //   월 상태(_viewYear/_viewMonth)는 이 모듈이 들고 있어서 셸(app-revenue.js)이 직접 못 그린다.
+    //   예약관리 #bk-toolbar-mount 와 같은 마운트 패턴. PC(renderPC)는 마운트가 없어 무영향.
+    //   innerHTML 로 매번 갈아끼우니 _bindEvents 를 다시 걸어도 리스너가 중복되지 않는다.
+    const headerMount = document.getElementById('rvHeaderMonth');
+    if (headerMount) {
+      headerMount.innerHTML = `
+        <button type="button" class="ar" data-rvm-act="prev-month" aria-label="이전달">‹</button>
+        <span class="ml">${_esc(_monthLabel())}</span>
+        <button type="button" class="ar" data-rvm-act="next-month" aria-label="다음달"${isCur ? ' disabled' : ''}>›</button>
+        <button type="button" class="tdy" data-rvm-act="this-month"${isCur ? ' disabled' : ''}>오늘</button>`;
+      _bindEvents(headerMount);
+    }
+
+    // [v4] 지난달 대비 — 서버가 이미 주는 prev_same_period.total 기준. 추가 API 호출 없음.
+    //   [주의] summary.total 은 확정 예약금이 더해진 값(booking-revenue-overlay._depositPatch)이고
+    //   prev_same_period.total 은 서버 원본이라 예약금이 없다. 지난달 확정 예약은 이미 완료돼
+    //   RevenueRecord 가 됐거나 취소됐으므로 이 비교가 맞다 — mergeBrief._mergeMomDelta 와 같은 기준.
+    //   prev<=0 이면 -100%/∞ 가 뜨므로 줄 자체를 숨긴다.
+    const prevTotal = Number(summary && summary.prev_same_period && summary.prev_same_period.total) || 0;
+    let momHTML = '';
+    if (prevTotal > 0) {
+      const pct = Math.round((Number(summary.total) - prevTotal) / prevTotal * 1000) / 10;
+      const cls = pct >= 0 ? 'up' : 'dn';
+      const base = isCur ? '지난달 같은 기간보다' : '전달보다';
+      momHTML = ` · ${base} <b class="${cls}">${pct >= 0 ? '+' : ''}${pct}%</b>`;
+    }
+
+    // [v4] 확정 예약금 줄 삭제 — 예약금은 위 히어로 total 에 이미 더해져 있다(_depositPatch).
+    //   따로 한 줄 더 보여주면 같은 돈이 화면에 두 번 나온다.
+    const pendingCnt = Number(summary.pending_booking_count) || 0;
     const pendingRow = (!isPast && Number(summary.pending_bookings_total) > 0)
-      ? `<div class="rvm5-mai"><span class="badge">남은 예약</span><span class="txt">모두 완료 시 <b>+${formatEstimate(summary.pending_bookings_total)}</b></span></div>`
+      ? `<div class="rvm5-mrow"><span class="l">아직 안 받은 돈</span>${pendingCnt ? `<span class="c">예약 ${pendingCnt}건</span>` : ''}<span class="v">${formatEstimate(summary.pending_bookings_total)}</span></div>`
       : '';
-    const aiRow = (!isPast && summary.projected_total)
-      ? `<div class="rvm5-mai"><span class="badge">예상</span><span class="txt">이번달 예상 매출 <b>${formatEstimate(summary.projected_total)}</b></span></div>`
+    const aiRow = (!isPast && Number(summary.projected_total) > 0)
+      ? `<div class="rvm5-mrow ghost"><span class="l">이번달 예상 매출</span><span class="v">${formatEstimate(summary.projected_total)}</span></div>`
       : '';
-    const pastBadge = isPast ? `<span class="rvm5-past-badge">지난달</span>` : '';
+    const listHTML = (pendingRow || aiRow) ? `<div class="rvm5-mlist">${pendingRow}${aiRow}</div>` : '';
+    const heroLabel = isPast ? `${_viewMonth}월 매출` : '이번달 매출';
 
     container.innerHTML = `
       <div class="rvm5-mbody">
-        <div class="rvm5-mmnav">
-          <button type="button" class="ar" data-rvm-act="prev-month" aria-label="이전달">‹</button>
-          <div class="ml">${_esc(_monthLabel())}${pastBadge}</div>
-          <button type="button" class="ar" data-rvm-act="next-month" aria-label="다음달"${isCur ? ' disabled' : ''}>›</button>
-          <button type="button" class="rvm5-today" data-rvm-act="this-month"${isCur ? ' disabled' : ''}>오늘</button>
-        </div>
         <div class="rvm5-mhero">
-          <div class="rvm5-mhero-top">
-            <span class="amt">${formatMoney(summary.total)}</span>
-            <span class="cnt">${summary.count}건 완료</span>
-          </div>
-          <!-- PROFIT_HIDDEN
-          <div class="rvm5-mhero-sub">
-            <div class="c"><div class="l">순수익</div><div class="v">${"$"}{formatMoney(summary.net_profit)}</div></div>
-            <div class="c"><div class="l">재료비</div><div class="v">${"$"}{formatMoney(summary.material_cost_total || 0)}</div></div>
-          </div>
-          -->
+          <span class="l">${_esc(heroLabel)}</span>
+          <span class="amt">${formatMoney(summary.total)}</span>
+          <div class="note">${summary.count}건 완료${momHTML}</div>
         </div>
-        ${depositRow}
-        ${pendingRow}
-        ${aiRow}
+        ${listHTML}
         <div class="rvm5-mc">
-          <div class="t">날짜별 매출</div>
+          <div class="t"><b>날짜별 매출</b><span>날짜를 누르면 상세</span></div>
           <div class="rvcal-wrap" data-rvcal-wrap>
             <div class="rvcal-grid" data-rvcal-grid></div>
             <div class="rvcal-detail is-empty" data-rvcal-detail></div>
@@ -539,7 +529,7 @@
   // 카운트업 — render 후 호출
   function _afterRenderAnim(container, summary, isMobile) {
     if (isMobile) {
-      const heroAmt = container.querySelector('.rvm5-mhero-top .amt');
+      const heroAmt = container.querySelector('.rvm5-mhero .amt');
       if (heroAmt) _countUp(heroAmt, summary.total, 800);
       /* PROFIT_HIDDEN
       const subVals = container.querySelectorAll('.rvm5-mhero-sub .v');

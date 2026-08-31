@@ -60,9 +60,11 @@
       .rvcal-grid .bk-month-m__cell--sel{outline:2px solid var(--brand-strong,#BC6675);outline-offset:-2px;border-radius:6px;z-index:1}
       /* 매출 칩 — 예약 .bk-month-m__evt(8px) 보다 크고 날짜 아래 로즈 알약 */
       .rvcal-grid .bk-month-m{padding:4px 0 10px}
-      .rvcal-grid .bk-month-m__cells{grid-auto-rows:64px}
-      .rvcal-grid .bk-month-m__cell{padding:6px 3px 5px 4px}
-      .rvcal-grid .bk-month-m__evt{font-size:10.5px;font-weight:600;padding:1px 4px;border-radius:4px;margin-top:4px;letter-spacing:-.3px;align-self:flex-start;line-height:1.45;font-variant-numeric:tabular-nums;background:var(--brand-bg,#F7EFF0);color:var(--brand-strong,#BC6675)}
+      /* [v4 2026-08-31] 64px → 48px. 6주 그리드가 384px 였는데 히어로/카드에 밀려 3주만 보였다.
+         48px 면 288px 라 상세까지 한 화면에 들어온다. 칩 폰트는 4단계 스케일의 11px. */
+      .rvcal-grid .bk-month-m__cells{grid-auto-rows:48px}
+      .rvcal-grid .bk-month-m__cell{padding:5px 3px 4px 4px}
+      .rvcal-grid .bk-month-m__evt{font-size:11px;font-weight:600;padding:1px 4px;border-radius:4px;margin-top:3px;letter-spacing:-.3px;align-self:flex-start;line-height:1.35;font-variant-numeric:tabular-nums;background:var(--brand-bg,#F7EFF0);color:var(--brand-strong,#BC6675)}
       @media(min-width:1100px){
         /* 기본: 캘린더 풀폭 + 칩 크게 */
         .rvcal-grid .bk-month-m__cells{grid-auto-rows:88px}
@@ -78,19 +80,21 @@
         .rvcal-wrap.is-detail .rvcal-detail{display:block;animation:rvcalSlideIn .3s ease}
         @keyframes rvcalSlideIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
       }
-      .rvcal-detail{margin-top:14px;background:var(--surface,#fff);border:.5px solid var(--border,rgba(0,0,0,.07));border-radius:16px;padding:16px 18px;box-shadow:var(--shadow-sm,0 2px 8px rgba(0,0,0,.04))}
-      .rvcal-detail.is-empty{color:var(--text-subtle,#8B95A1);font-size:12.5px;text-align:center;padding:22px 18px;font-weight:500}
-      .rvcal-dh{display:flex;align-items:center;border-left:3px solid var(--brand-strong,#BC6675);padding-left:11px;margin-bottom:6px}
-      .rvcal-dh .dt{font-size:14.5px;font-weight:700;color:var(--text,#191F28)}
-      .rvcal-dh .da{margin-left:auto;font-size:17px;font-weight:800;letter-spacing:-.03em;color:var(--text,#191F28);font-variant-numeric:tabular-nums}
-      .rvcal-x{margin-left:10px;width:26px;height:26px;flex-shrink:0;border:0;background:var(--surface-2,#F7F8FA);border-radius:50%;color:var(--text-subtle,#8B95A1);font-size:14px;cursor:pointer;line-height:1;font-family:inherit}
-      .rvcal-dsub{font-size:11.5px;color:var(--text-subtle,#8B95A1);padding-left:14px;margin-bottom:8px;font-weight:500}
-      .rvcal-li{display:flex;align-items:center;padding:11px 0;border-top:.5px solid var(--border,rgba(0,0,0,.07))}
-      .rvcal-li .nm{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--text,#191F28)}
-      .rvcal-li .nm .sub{font-size:11.5px;font-weight:400;color:var(--text-subtle,#8B95A1);margin-left:5px}
-      .rvcal-li .pm{min-width:36px;text-align:center;font-size:10.5px;color:var(--text-subtle,#8B95A1);background:var(--surface-2,#F7F8FA);padding:3px 9px;border-radius:999px;font-weight:500;margin-right:14px}
-      .rvcal-li .am{min-width:76px;text-align:right;font-size:13.5px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text,#191F28)}
-      .rvcal-add{margin-top:12px;width:100%;padding:11px;border:.5px solid var(--brand,#D58A95);border-radius:10px;background:var(--brand-bg,#F7EFF0);color:var(--brand-strong,#BC6675);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+      /* [v4 2026-08-31] 상세는 흰 카드(테두리+그림자) → 회색 면으로. 시트 배경이 흰색이라
+         흰 카드에 테두리를 두르면 선만 늘어난다. 폰트는 전부 11/13/15 4단계에 스냅. */
+      .rvcal-detail{margin-top:14px;background:var(--surface-2,#F7F8FA);border:0;border-radius:14px;padding:14px;box-shadow:none}
+      .rvcal-detail.is-empty{color:var(--text-subtle,#8B95A1);font-size:13px;text-align:center;padding:20px 14px;font-weight:500}
+      .rvcal-dh{display:flex;align-items:center;border-left:3px solid var(--brand-strong,#BC6675);padding-left:8px;margin-bottom:4px}
+      .rvcal-dh .dt{font-size:13px;font-weight:700;color:var(--text,#191F28)}
+      .rvcal-dh .da{margin-left:auto;font-size:15px;font-weight:800;letter-spacing:-.03em;color:var(--text,#191F28);font-variant-numeric:tabular-nums}
+      .rvcal-x{margin-left:8px;width:24px;height:24px;flex-shrink:0;border:0;background:var(--surface,#fff);border-radius:50%;color:var(--text-subtle,#8B95A1);font-size:13px;cursor:pointer;line-height:1;font-family:inherit}
+      .rvcal-dsub{font-size:11px;color:var(--text-subtle,#8B95A1);padding-left:11px;margin-bottom:8px;font-weight:500}
+      .rvcal-li{display:flex;align-items:center;padding:10px 0;border-top:.5px solid var(--border,rgba(0,0,0,.07))}
+      .rvcal-li .nm{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text,#191F28)}
+      .rvcal-li .nm .sub{font-size:11px;font-weight:400;color:var(--text-subtle,#8B95A1);margin-left:5px}
+      .rvcal-li .pm{min-width:36px;text-align:center;font-size:11px;color:var(--text-subtle,#8B95A1);background:var(--surface,#fff);padding:2px 8px;border-radius:999px;font-weight:500;margin-right:14px}
+      .rvcal-li .am{min-width:76px;text-align:right;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text,#191F28)}
+      .rvcal-add{margin-top:14px;width:100%;height:38px;padding:0;border:0;border-radius:9px;background:var(--brand-strong,#BC6675);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
       .rvcal-add:active{transform:scale(.99)}
     `;
     document.head.appendChild(s);

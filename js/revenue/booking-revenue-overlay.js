@@ -73,6 +73,9 @@
       pending_bookings_total: 0,
       pending_booking_amount_total: 0,
       pending_booking_remaining_total: 0,
+      // [v4 2026-08-31] '아직 안 받은 돈' 옆 "예약 N건" 칩용. 금액이 아니라 건수라
+      //   booking_count(이번달 전체 예약)와 다르다 — 미래 예약만 센다.
+      pending_booking_count: 0,
     };
   }
 
@@ -85,6 +88,7 @@
     if (deposit > 0) out.booking_deposit_count += 1;
     if (!_isFuture(booking, nowMs)) return;
     const remaining = Math.max(amount - deposit, 0);
+    out.pending_booking_count += 1;
     out.pending_booking_amount_total += amount;
     out.pending_booking_remaining_total += remaining;
     out.pending_bookings_total += remaining;
@@ -146,6 +150,7 @@
     if (agg.booking_count > 0 || pending > 0) out.pending_bookings_total = pending;
     out.pending_booking_amount_total = _num(agg.pending_booking_amount_total);
     out.pending_booking_remaining_total = _num(agg.pending_booking_remaining_total);
+    out.pending_booking_count = _num(agg.pending_booking_count);
   }
 
   function _mergeProjection(out, depositDelta) {

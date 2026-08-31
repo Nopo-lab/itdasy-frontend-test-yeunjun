@@ -438,7 +438,9 @@
     sheet = document.createElement('div');
     sheet.id = 'revenueSheet';
     sheet.className = 'rv-screen';
-    sheet.style.cssText = 'position:fixed;inset:0;z-index:9000;display:none;background:var(--bg);flex-direction:column;';
+    // [v4 2026-08-31] 배경 흰색 — 히어로/리스트를 카드 없이 흰 바탕에 얹는 구조라
+    //   --bg(회색)면 행 사이 여백이 전부 회색 띠로 보인다.
+    sheet.style.cssText = 'position:fixed;inset:0;z-index:9000;display:none;background:var(--surface,#fff);flex-direction:column;';
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
     document.body.appendChild(sheet);
@@ -518,16 +520,17 @@
   // ── 모바일 셸 ────────────────────────────────────────────
   function _mobileLayoutHTML() {
     return `
+      <!-- [v4 2026-08-31] "매출관리" 타이틀 제거 — 헤더 가운데는 월 네비(‹ 2026년 8월 ›)가 차지한다.
+           월 상태는 RevenueMonth 가 들고 있어서 여기선 빈 마운트만 두고 renderMobile 이 채운다.
+           (예약관리 #bk-toolbar-mount 와 같은 패턴) -->
       <div class="rv-header">
         <button type="button" class="rv-header__back" data-rv-act="close" aria-label="뒤로가기">
           <svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
         </button>
-        <div class="rv-header__title-wrap">
-          <div class="rv-header__title">매출관리</div>
-          <div class="rv-header__sub" id="rvOfflineBadge" style="display:none;color:var(--danger);">오프라인</div>
-        </div>
-        <button type="button" class="rv-header__action" data-rv-act="add-form">+ 입력</button>
+        <div class="rv-header__month" id="rvHeaderMonth"></div>
+        <button type="button" class="rv-header__action" data-rv-act="add-form">+ 매출 입력</button>
       </div>
+      <div class="rv-header__sub" id="rvOfflineBadge" style="display:none;color:var(--danger);">오프라인</div>
       <!-- [2026-06-05] 일/주/월 토글·구 날짜네비 제거 — 월 캘린더 단일. 월 네비는 RevenueMonth(캘린더) 가 담당. -->
       <div class="rv-body" id="rvBody"></div>
       <datalist id="rvDataCustomer"></datalist>
