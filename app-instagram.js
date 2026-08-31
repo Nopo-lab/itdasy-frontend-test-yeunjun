@@ -58,6 +58,39 @@ function _igEsc(v) {
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// [F1] /instagram/status 의 살아있는 persona → itdasy_latest_analysis 재수화.
+//   내샵관리/AI Hub/인스타 화면의 "분석 리포트"는 이 localStorage 캐시만 읽는데, 캐시는 연결 직후
+//   90초 폴링(L#332)·수동 재분석(L#458)에서만 채워짐. 그 창을 놓치면(이탈/콜드스타트/기기변경/캐시삭제)
+//   백엔드엔 persona 가 있어도 리포트가 영원히 빔. → 캐시가 비었거나 무효일 때만 status persona 로 채움.
+//   기존 풍부본(raw_analysis·top5 포함)은 절대 덮어쓰지 않음. 저장 포맷은 L#332 폴링 저장본과 동일.
+function _hydrateAnalysisCacheFromStatus(persona) {
+  try {
+    if (!persona || !(persona.style_summary || persona.tone)) return false;
+    let cur = {};
+    try { cur = JSON.parse(localStorage.getItem('itdasy_latest_analysis') || '{}') || {}; } catch (_e) { cur = {}; }
+    if (cur && (cur.style_summary || cur.tone_summary || cur.tone)) return false;  // 기존 유효 캐시 보존
+    const flat = { ...persona, tone_summary: persona.tone || '', style_summary: persona.style_summary || '' };
+    localStorage.setItem('itdasy_latest_analysis', JSON.stringify(flat));
+    return true;
+  } catch (_e) { return false; }
+}
+
+// [2026-08-22] 상태확인이 실패해도 조용히 죽지 않게 — 4초 간격 최대 2회 재시도.
+//   _igStatusSeq = 세대 가드: 재시도 대기 중 새 호출이 시작되면 낡은 재시도는 폐기.
+// [2026-09-01 사고복구] f7a3ea8 리팩터링이 이 세 정의를 지웠는데 checkInstaStatus 참조는 남아
+//   매 호출 ReferenceError → 로그인 유저 전원 홈 흰화면. 정의 복원. 지울 땐 참조 grep 필수.
+let _igStatusSeq = 0;
+function _igStatusGiveUp() {
+  // 재시도 전부 실패 — 캐시가 '연동됨'이면 그대로 두고(오탐 방지), 아니면 연동 안내로 폴백.
+  try {
+    if (localStorage.getItem('itdasy:ig_connected_cache') === '1') return;
+    const pre = document.getElementById('homePreConnect');
+    const post = document.getElementById('homePostConnect');
+    if (pre) pre.style.display = 'flex';
+    if (post) post.style.display = 'none';
+  } catch (_e) { /* ignore */ }
+}
+
 async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
   if (!getToken()) return;
   if (_attempt === 0) _seq = ++_igStatusSeq;
