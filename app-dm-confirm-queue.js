@@ -784,6 +784,7 @@
         }
         r = await _fetch('POST', `/dm-confirm-queue/${id}/confirm-deposit`, _cbody);
         if (window.showToast) window.showToast(r.ok ? '캘린더 추가 + 고객 등록했어요 ✓' : (r.message || '확정 실패'));
+        if (!(r && r.ok)) { btn.disabled = false; btn.style.opacity = '1'; return; }
       } else if (action === 'reset') {
         const ok = await window.nativeConfirm('대화 초기화', '이 손님의 대화를 초기화할까요?\n성함·연락처·예약 정보가 모두 사라져요.').catch(() => false);
         if (!ok) { btn.disabled = false; btn.style.opacity = '1'; return; }
@@ -800,6 +801,12 @@
       // send / send_edit 성공 시 → 예약 캐시 무효화 + 홈/벨 갱신 + Undo 토스트
       // (app-booking-api.js 의 _invalidateCache 가 itdasy:data-changed 리스너로 발동)
       const isApproveSend = (action === 'send' || action === 'send_edit');
+      if (isApproveSend && r && r.ok === false) {
+        // [P1 C-1] BE 가 200 + {ok:false} 로 예약 액션 실패를 알린 경우 — 성공 처리 금지
+        if (window.showToast) window.showToast(r.message || '전송 실패');
+        btn.disabled = false; btn.style.opacity = '1';
+        return;
+      }
       const undoLogId = r.log_id || r.action_log_id || null;
       // [F3] 전송 후 체크 토스트 — 밋밋한 "발송 완료" 대신 "전송했어요 ✓"
       const bookingYmd = card.dataset.bookingDate || '';

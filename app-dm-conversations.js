@@ -572,7 +572,8 @@
         try { const d = await _postDraft(); _curLogId = d.log_id || null; } catch (_e) { void _e; }
       }
       if (!_curLogId) throw new Error('초안을 만들 수 없어요');
-      await _fetch('POST', `/dm-confirm-queue/${encodeURIComponent(_curLogId)}/send_edit`, { edited_reply: text });
+      const r = await _fetch('POST', `/dm-confirm-queue/${encodeURIComponent(_curLogId)}/send_edit`, { edited_reply: text });
+      if (r && r.ok === false) throw new Error(r.message || '전송하지 못했어요');
       if (window.showToast) window.showToast('답장을 보냈어요 ✓');
       _afterSent();
     } catch (e) {
