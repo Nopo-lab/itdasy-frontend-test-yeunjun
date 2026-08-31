@@ -74,6 +74,16 @@
       default: return '';
     }
   }
+  // [2026-08-31] 칩 색 = 상태. 완료 초록 / 노쇼 빨강 고정, 예정은 '그날 안에서의 순번'으로
+  //   5색 순환(고객별 고정색 아님 — 매일 리셋). 줄끼리 안 뭉개져 보이게 하는 용도라
+  //   월 셀 칩과 주간 블록이 같은 클래스를 써야 같은 손님이 뷰마다 같은 색으로 보인다.
+  //   색 정본은 booking-v4.css `.bk-ch--*` 한 곳.
+  const BK_UP_COLORS = 5;
+  function _chipCls(status, i) {
+    if (status === 'completed') return 'bk-ch--done';
+    if (status === 'no_show')   return 'bk-ch--no';
+    return 'bk-ch--up' + (i % BK_UP_COLORS);
+  }
   let _curDate = new Date();
   let _mappedCache = [];         // 현재 월 매핑된 예약
   // [2026-05-23] _staffList / _activeStaffIds 제거 — 직원 기능 폐지
@@ -102,6 +112,11 @@
   }
   function _ds(d)   { return d.getFullYear() + '-' + _pad(d.getMonth()+1) + '-' + _pad(d.getDate()); }
   function _fmt(d)  { return _pad(d.getHours()) + ':' + _pad(d.getMinutes()); }
+  // 월 셀 전용 축약 — 정시는 "11시", 그 외는 "11:30". 칸 폭이 좁아 ":00" 두 글자가 아깝다.
+  function _fmtCell(d) {
+    const h = d.getHours(), m = d.getMinutes();
+    return m === 0 ? h + '시' : h + ':' + _pad(m);
+  }
   function _overlay()  { return document.getElementById(OVERLAY_ID); }
   function _isPC() { return window.innerWidth >= PC_BREAKPOINT; }
 
@@ -250,7 +265,7 @@
   // §5 모바일 — 월 그리드
   // ============================================================
   // 월 그리드 공통 — 모바일/PC 모두 사용. clsPrefix: 'bk-month-m' or 'bk-pc-month'
-  function _buildMonthCellHTML(d, year, month, byDay, today, p, isPC, opts) {
+  function _buildMonthCellHTML(d, year, month, byDay, today, p, _isPC, opts) {
     const isToday = today.getFullYear() === year && today.getMonth() + 1 === month && today.getDate() === d;
     const dateStr = year + '-' + _pad(month) + '-' + _pad(d);
     let cls = `${p}__cell` + (isToday ? ` ${p}__cell--today` : '');
@@ -265,29 +280,19 @@
     }
     const its = byDay[d] || [];
     if (its.length) {
-      // [2026-05-16] PC/모바일 모두 시간 + 이름만.
-      // [2026-05-17 v6] 각 줄에 작은 6px 컬러 dot — 그날 안에서 5색 순환
-      // [2026-08-24] 모바일 5줄(시간만) → 3줄(시간+이름 2단). 폰 칸 폭이 ~50px 라
-      //   한 줄에 "10:00 김민지" 를 넣으면 이름이 무조건 잘린다 → 시간을 윗줄로 올리고
-      //   이름을 아랫줄에 크게. 대신 한 칸에 들어가는 줄이 5 → 3 으로 줄어서 셀 높이도
-      //   92 → 118px 로 키웠다(booking-v4.css #cal-overlay 스코프). 4건 이상이면 2줄 + "+N건 더",
-      //   그 날 전부는 칸을 눌러 주간 뷰에서 본다.
-      //   모바일은 3줄 + "+N건 더" 가 118px 안에 같이 들어간다(칩 25.1 x3 + 여백 2 + 더보기 12.6
-      //   = 90.9 ≤ 95, 실측). PC 는 종전대로 5줄 / 넘치면 4줄 + 더보기.
-      const CAP = isPC ? 5 : 3;
-      const MAX = (isPC && its.length > CAP) ? CAP - 1 : CAP;
+      // [2026-08-31] 칩을 1줄("11시 홍길동")로 눕히고 앞 dot 을 없앴다. dot 6px + margin 4px 이
+      //   정확히 이름 한 글자 폭이라, 그걸 회수하고 시간을 "11:00"→"11시"로 줄이면
+      //   360px 폰에서도 4글자 이름이 한 줄에 들어간다. 상태는 이제 칩 배경색이 말한다(범례 동일).
+      //   PC/모바일 마크업 통일 — 크기 차이는 CSS 미디어쿼리로만 낸다(isPC 미사용).
+      //   몇 줄까지 보일지는 여기서 안 정한다. 칸 높이를 실측하는 _capMonthCells 가 정한다.
       h += `<div class="${p}__events">`;
-      its.slice(0, MAX).forEach((it, _i) => {
-        // [2026-05-23] is-staff2 분기 제거 — 직원 기능 폐지
-        const tm = _fmt(new Date(it._raw.starts_at));
-        const dotColor = _statusDotColor(it.status);
-        const dot = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${dotColor};margin-right:4px;vertical-align:middle"></span>`;
-        const body = isPC
-          ? `${dot}${tm} ${_esc(it.cust)}`
-          : `<span class="${p}__evt-t">${dot}${tm}</span><span class="${p}__evt-n">${_esc(it.cust)}</span>`;
-        h += `<div class="${p}__evt${_stCls(it.status)}">${body}</div>`;
+      its.forEach((it, i) => {
+        h += `<div class="${p}__evt ${_chipCls(it.status, i)}">`
+           +   `<span class="${p}__evt-t">${_fmtCell(new Date(it._raw.starts_at))}</span>`
+           +   `<span class="${p}__evt-n">${_esc(it.cust)}</span>`
+           + `</div>`;
       });
-      if (its.length > MAX) h += `<div class="${p}__more">+${its.length - MAX}건 더</div>`;
+      h += `<div class="${p}__more" hidden></div>`;
       h += '</div>';
     }
     return h + '</div>';
@@ -304,6 +309,8 @@
       if (sd.getFullYear() !== year || sd.getMonth() + 1 !== month) return;
       (byDay[m.d] = byDay[m.d] || []).push(m);
     });
+    // [2026-08-31] 칩 색이 '그날 안에서의 순번'이라 순서가 흔들리면 색도 흔들린다 → 시간순 고정.
+    Object.keys(byDay).forEach(k => byDay[k].sort((a, b) => new Date(a._raw.starts_at) - new Date(b._raw.starts_at)));
     const firstDow = new Date(year, month - 1, 1).getDay();
     const lastDate = new Date(year, month, 0).getDate();
     const prevLast = new Date(year, month - 1, 0).getDate();
@@ -320,6 +327,42 @@
       }
     }
     return cells;
+  }
+
+  // [2026-08-31] 칸당 몇 명까지 보일지를 CAP 상수(3/5)로 박아두면, 화면 높이·통계 접힘·5주/6주에
+  //   따라 반드시 어긋난다(넘치면 잘리고, 남으면 빈칸). 그래서 렌더 후 칸 높이를 실측해서
+  //   들어가는 만큼만 남긴다 — 이게 "말일이 스크롤된다"의 근본 해결.
+  //   ⚠️ 넘치는 칩을 DOM 에서 지우지 말 것. 통계를 접었다 펴면 칸이 커지는데 그때 되살려야 한다.
+  //   → hidden 속성 토글만 한다(멱등, 몇 번 불려도 같은 결과).
+  function _capMonthCells(root) {
+    if (!root) return;
+    root.querySelectorAll('.bk-month-m__events, .bk-pc-month__events').forEach(box => {
+      const more = box.querySelector('.bk-month-m__more, .bk-pc-month__more');
+      const chips = Array.prototype.filter.call(box.children, el => el !== more);
+      if (!chips.length) return;
+      chips.forEach(el => { el.hidden = false; });
+      if (more) more.hidden = true;
+      const avail = box.clientHeight;
+      const gap = parseFloat(getComputedStyle(box).rowGap) || 0;
+      const unit = chips[0].offsetHeight + gap;
+      if (!avail || !unit) return;
+      let cap = Math.max(1, Math.floor((avail + gap) / unit));
+      // 넘칠 때만 "+N" 줄 자리를 빼고 다시 센다(안 넘치면 뺄 이유가 없다).
+      // 빈 문자열이면 높이가 0 이라 측정이 안 된다 → 더미 텍스트 넣고 잰다.
+      if (chips.length > cap && more) {
+        more.textContent = '+9';
+        more.hidden = false;
+        cap = Math.max(1, Math.floor((avail - more.offsetHeight + gap) / unit));
+        more.hidden = true;
+      }
+      if (chips.length <= cap) return;
+      chips.slice(cap).forEach(el => { el.hidden = true; });
+      if (more) { more.textContent = '+' + (chips.length - cap); more.hidden = false; }
+    });
+  }
+  function _capMonthCellsSoon() {
+    const o = _overlay(); if (!o || _curView !== 'month') return;
+    requestAnimationFrame(() => _capMonthCells(o.querySelector('#bk-body')));
   }
 
   function _renderMonthMobile(year, month, mapped) {
@@ -472,9 +515,9 @@
         + (done ? '<span style="flex-shrink:0;color:#16B55E;display:inline-flex;align-items:center;"><svg width="13" height="13" aria-hidden="true"><use href="#ic-check"/></svg></span>' : '')
         + '</div>';
     }
-    // 모바일: 좁은 컬럼(≈49px) — 점·시간을 윗줄에, 이름은 아랫줄(잘려도 점·시간은 보존)
+    // 모바일: 좁은 컬럼(≈49px) — 시간은 윗줄, 이름은 아랫줄(잘려도 시간은 보존).
+    // [2026-08-31] 점 제거 — 블록 배경색(bk-ch--*)이 상태를 말한다. 월 뷰 칩과 같은 언어.
     return '<div style="display:flex;align-items:center;gap:3px;line-height:1.1;">'
-      + dot(7)
       + '<span style="font-size:10px;color:#8B95A1;font-weight:600;flex-shrink:0;' + strike + '">' + tm + '</span>'
       + (done ? '<span style="margin-left:auto;color:#16B55E;flex-shrink:0;display:inline-flex;align-items:center;"><svg width="11" height="11" aria-hidden="true"><use href="#ic-check"/></svg></span>' : '')
       + '</div>'
@@ -490,6 +533,14 @@
       cellMap.set(key, cell);
     });
     const fragments = new Map();
+    // [2026-08-31] 블록 색은 월 뷰 칩과 같아야 한다 → 같은 기준인 '그날 안에서의 시간순 순번'을 미리 매긴다.
+    //   (시간대 안 순번으로 매기면 같은 손님이 월에서 파랑, 주에서 초록으로 보인다.)
+    const dayIdx = new Map(); const dayCnt = {};
+    items.slice().sort((a, b) => new Date(a._raw.starts_at) - new Date(b._raw.starts_at)).forEach(it => {
+      const k = _ds(new Date(it._raw.starts_at));
+      dayCnt[k] = dayCnt[k] || 0;
+      dayIdx.set(it, dayCnt[k]++);
+    });
     items.forEach(it => {
       const s = new Date(it._raw.starts_at);
       const e = new Date(it._raw.ends_at);
@@ -506,7 +557,7 @@
       const height = Math.max(15, ((e - s) / 60000 / 60) * HOUR_PX_MOBILE_WEEK);
       // [2026-05-23] is-staff2 분기 제거 — 직원 기능 폐지
       const block = document.createElement('button');
-      block.className = 'bk-week-m__block bk-week-m__block--v6';
+      block.className = 'bk-week-m__block bk-week-m__block--v6 ' + _chipCls(it.status, dayIdx.get(it) || 0);
       block.dataset.bookingId = it.id;
       block.style.top = top + 'px';
       block.style.height = height + 'px';
@@ -753,12 +804,8 @@
   // [2026-05-23] _renderStaffList 제거 — 직원 기능 폐지
 
   // [2026-05-28] 4칸 분할 카드 (완료·예정·노쇼·취소). 메인 숫자 = 완료+예정 (취소·노쇼 제외).
-  //   isMobile=true 이면 button 형태(접힘/펴짐), false 이면 PC 펼친 상태.
-  //   open=true 이면 4칸 표시 (모바일에서만 영향).
-  function _renderStatCard(kind, s, opts) {
-    opts = opts || {};
-    const isMobile = !!opts.mobile;
-    const open = !!opts.open;
+  // [2026-08-31] 모바일 분기(mobile/open) 제거 — 모바일은 1줄 바(_renderMobileCards)로 갈아탔다. 여긴 PC 좌측 전용.
+  function _renderStatCard(kind, s) {
     let label, count, note, done, upcoming, noShow, cancel;
     if (kind === 'today') {
       label = s.todayLabel;
@@ -771,10 +818,7 @@
       note  = '취소·노쇼 제외';
       done = s.viewDone; upcoming = s.viewUpcoming; noShow = s.viewNoShow; cancel = s.viewCancel;
     }
-    const cardCls = isMobile ? 'bk-stat-card bk-stat-card--m' + (open ? ' is-open' : '') : 'bk-stat-card';
-    const tag = isMobile ? 'button' : 'div';
-    const typeAttr = isMobile ? ' type="button"' : '';
-    let h = '<' + tag + ' class="' + cardCls + '" data-card="' + kind + '"' + typeAttr + '>';
+    let h = '<div class="bk-stat-card" data-card="' + kind + '">';
     h += '<div class="bk-stat-card__head">';
     h +=   '<div>';
     h +=     '<div class="bk-stat-card__label">' + _esc(label) + '</div>';
@@ -782,21 +826,13 @@
     h +=   '</div>';
     h +=   '<div class="bk-stat-card__count">' + count + '건</div>';
     h += '</div>';
-    if (isMobile && !open) {
-      h += '<div class="bk-stat-card__compact">';
-      h +=   '<span>완료 ' + done + ' · 예정 ' + upcoming + '</span>';
-      h +=   '<span class="bk-stat-card__caret" style="display:inline-flex;align-items:center;"><svg width="13" height="13" aria-hidden="true"><use href="#ic-chevron-right"/></svg></span>';
-      h += '</div>';
-    } else {
-      h += '<div class="bk-stat-card__row">';
-      h +=   '<div class="bk-stat-card__cell"><span class="bk-stat-card__cell-label">완료</span><span class="bk-stat-card__cell-val">' + done + '</span></div>';
-      h +=   '<div class="bk-stat-card__cell"><span class="bk-stat-card__cell-label">예정</span><span class="bk-stat-card__cell-val">' + upcoming + '</span></div>';
-      h +=   '<div class="bk-stat-card__cell"><span class="bk-stat-card__cell-label">노쇼</span><span class="bk-stat-card__cell-val">' + noShow + '</span></div>';
-      h +=   '<div class="bk-stat-card__cell is-cancel"><span class="bk-stat-card__cell-label">취소</span><span class="bk-stat-card__cell-val">' + cancel + '</span></div>';
-      h += '</div>';
-    }
-    h += '</' + tag + '>';
-    return h;
+    h += '<div class="bk-stat-card__row">';
+    h +=   '<div class="bk-stat-card__cell"><span class="bk-stat-card__cell-label">완료</span><span class="bk-stat-card__cell-val">' + done + '</span></div>';
+    h +=   '<div class="bk-stat-card__cell"><span class="bk-stat-card__cell-label">예정</span><span class="bk-stat-card__cell-val">' + upcoming + '</span></div>';
+    h +=   '<div class="bk-stat-card__cell"><span class="bk-stat-card__cell-label">노쇼</span><span class="bk-stat-card__cell-val">' + noShow + '</span></div>';
+    h +=   '<div class="bk-stat-card__cell is-cancel"><span class="bk-stat-card__cell-label">취소</span><span class="bk-stat-card__cell-val">' + cancel + '</span></div>';
+    h += '</div>';
+    return h + '</div>';
   }
 
   function _renderStats() {
@@ -807,26 +843,42 @@
          + '</div>';
   }
 
-  // 모바일 카드 영역 — 뷰별 다른 노출 + 접힘 토글
-  const _mobileCardOpen = { today: false, view: false };
+  // [2026-08-31] 모바일 통계 — 카드 2장(≈140px)이 달력을 아래로 밀어내던 걸 1줄 바로 낮췄다.
+  //   접힘: "오늘 3건 · 이번달 41건 ›" / 펼침: 오늘·이번달 각 1행 × 완료·예정·노쇼·취소.
+  //   주 뷰에서는 아예 안 만든다(숨김이 아니라 빈 문자열) — 월에서 이미 본 숫자다.
+  let _statOpen = false;
   function _renderMobileCards() {
+    if (_curView === 'week') return '';
     const s = _calcStats(_mappedCache);
-    const single = (_curView === 'week');
-    let h = '<div class="bk-stat-mobile-row' + (single ? ' is-single' : '') + '" id="bk-mobile-stats">';
-    h += _renderStatCard('today', s, { mobile: true, open: _mobileCardOpen.today });
-    if (!single) h += _renderStatCard('view', s, { mobile: true, open: _mobileCardOpen.view });
-    h += '</div>';
-    return h;
+    const rows = [
+      [s.todayLabel, s.todayDone, s.todayUpcoming, s.todayNoShow, s.todayCancel],
+      [s.viewGroupLabel + ' · ' + s.viewLabel, s.viewDone, s.viewUpcoming, s.viewNoShow, s.viewCancel],
+    ];
+    let h = '<div class="bk-statbar' + (_statOpen ? ' is-open' : '') + '" id="bk-mobile-stats">';
+    h += '<button type="button" class="bk-statbar__sum" id="bk-stat-toggle" aria-expanded="' + _statOpen + '">';
+    h +=   '<span>오늘 <b>' + (s.todayDone + s.todayUpcoming) + '건</b></span>';
+    h +=   '<i class="bk-statbar__div"></i>';
+    h +=   '<span>' + _esc(s.viewGroupLabel) + ' <b>' + s.viewCnt + '건</b></span>';
+    h +=   '<span class="bk-statbar__caret"><svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-right"/></svg></span>';
+    h += '</button>';
+    if (_statOpen) {
+      h += '<div class="bk-statbar__panel">';
+      rows.forEach(r => {
+        h += '<div class="bk-statbar__row"><span class="bk-statbar__label">' + _esc(r[0]) + '</span>'
+           +   '<span class="bk-statbar__cell">완료 <b>' + r[1] + '</b></span>'
+           +   '<span class="bk-statbar__cell">예정 <b>' + r[2] + '</b></span>'
+           +   '<span class="bk-statbar__cell">노쇼 <b>' + r[3] + '</b></span>'
+           +   '<span class="bk-statbar__cell is-cancel">취소 <b>' + r[4] + '</b></span></div>';
+      });
+      h += '</div>';
+    }
+    return h + '</div>';
   }
   function _bindMobileCards(root) {
     if (!root) return;
-    root.querySelectorAll('.bk-stat-card--m').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const k = btn.dataset.card;
-        if (k !== 'today' && k !== 'view') return;
-        _mobileCardOpen[k] = !_mobileCardOpen[k];
-        _refreshMobileCards();
-      });
+    root.querySelector('#bk-stat-toggle')?.addEventListener('click', () => {
+      _statOpen = !_statOpen;
+      _refreshMobileCards();
     });
   }
   function _refreshMobileCards() {
@@ -835,12 +887,8 @@
     if (!mount) return;
     mount.innerHTML = _renderMobileCards();
     _bindMobileCards(mount);
-  }
-
-  // [2026-05-24] 모바일 헤더 sub — 뷰 따라 이번달/이번주/그날 카운트
-  function _viewSubText() {
-    const s = _calcStats(_mappedCache);
-    return s.viewGroupLabel + ' 예약 ' + s.viewCnt + '건';
+    // 통계가 접히고 펴지면 달력이 그만큼 커지고 작아진다 → 칸당 인원 재계산(스크롤 0 유지)
+    _capMonthCellsSoon();
   }
 
   function _renderPCLeft() {
@@ -866,10 +914,11 @@
   }
 
   // [2026-05-26] 예약 상태 색상 범례 — 취소 제거, status 3개로 일원화
+  // [2026-08-31] 예정 dot 만 3색 그라데이션 — 예정 칩이 5색으로 도니까 단색 파랑 하나로는 거짓말이 된다.
   function _renderLegend() {
     return (
       '<div class="bk-legend" aria-label="예약 상태 범례">' +
-        '<span class="bk-legend__item"><i class="bk-legend__dot" style="background:#5B7FC4"></i>확정</span>' +
+        '<span class="bk-legend__item"><i class="bk-legend__dot" style="background:linear-gradient(135deg,#5B7FC4 0 33%,#8E6FC0 33% 66%,#C4718E 66%)"></i>확정</span>' +
         '<span class="bk-legend__item"><i class="bk-legend__dot" style="background:#16B55E"></i>완료</span>' +
         '<span class="bk-legend__item"><i class="bk-legend__dot" style="background:#E5484D"></i>노쇼</span>' +
       '</div>'
@@ -880,8 +929,6 @@
   // §15 모바일 진입 — 시트 오버레이
   // ============================================================
   function _renderMobileLayout() {
-    // [2026-05-24] 뷰 연동 subTxt (이번달/이번주 카운트)
-    const subTxt = _viewSubText();
     const o = document.createElement('div');
     o.id = OVERLAY_ID;
     o.className = 'bk-root bk-root--mobile';
@@ -896,20 +943,19 @@
             <svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
           </button>
           <div class="bk-header__title-wrap">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <button id="bk-month-prev" aria-label="이전 달" style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px 6px;color:var(--text-primary,#333);">&lt;</button>
-              <div class="bk-header__month" id="bk-month-label">${_curYear}년 ${_curMonth}월</div>
-              <button id="bk-month-next" aria-label="다음 달" style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px 6px;color:var(--text-primary,#333);">&gt;</button>
-            </div>
-            <div class="bk-header__sub" id="bk-month-sub">${subTxt}</div>
-            <span id="cal-offline-badge" style="display:none;font-size:11px;font-weight:700;color:var(--danger);background:rgba(220,53,69,.1);padding:2px 8px;border-radius:999px;margin-left:6px;">오프라인</span>
+            <button id="bk-month-prev" aria-label="이전 달" style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px 6px;color:var(--text-primary,#333);">&lt;</button>
+            <div class="bk-header__month" id="bk-month-label">${_curYear}년 ${_curMonth}월</div>
+            <button id="bk-month-next" aria-label="다음 달" style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px 6px;color:var(--text-primary,#333);">&gt;</button>
           </div>
-          <button class="bk-today-btn" id="bk-today-btn">오늘</button>
+          <div class="bk-header__right">
+            <span id="cal-offline-badge" style="display:none;font-size:11px;font-weight:700;color:var(--danger);background:rgba(220,53,69,.1);padding:2px 8px;border-radius:999px;">오프라인</span>
+            <button class="bk-today-btn" id="bk-today-btn">오늘</button>
+            <button class="bk-ico bk-ico--add" id="bk-fab" aria-label="예약 추가">+</button>
+          </div>
         </div>
         <div id="bk-toolbar-mount">${_renderToolbar()}</div>
         <div id="bk-mobile-stats-mount">${_renderMobileCards()}</div>
         <div class="cal-body bk-body" id="bk-body" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div>
-        <button class="bk-fab" id="bk-fab" aria-label="예약 추가" style="font-size:26px;font-weight:600;line-height:1;">+</button>
       </div>`;
     o.addEventListener('click', e => { if (e.target === o) _close(); });
     document.body.appendChild(o);
@@ -1081,16 +1127,13 @@
     _updateOfflineBadge();
     _updateHeaderLabel();
     _saveState();
-    // [2026-08-24] 현재 뷰를 루트 클래스로 노출 — 월 뷰에서만 FAB 위치를 내려 예약 칩을
-    //   가리지 않게 하려는 용도(CSS: #cal-overlay.bk-view-month .bk-fab). 주/일 뷰는 그대로.
-    o.classList.toggle('bk-view-month', _curView === 'month');
-
     if (_curView === 'month') {
       const visible = _visibleCache();
       const html = _cachedIsPC ? _renderMonthPC(_curYear, _curMonth, visible)
                                : _renderMonthMobile(_curYear, _curMonth, visible);
       body.innerHTML = html;
       _bindMonthCells(body);
+      _capMonthCellsSoon();
     } else if (_curView === 'week') {
       _renderWeekView(body);
     } else {
@@ -1186,9 +1229,8 @@
     } else {
       lbl.textContent = _curYear + '년 ' + _curMonth + '월';
     }
-    const sub = o.querySelector('#bk-month-sub');
-    if (sub) sub.textContent = _viewSubText();
     // [2026-05-24] PC #bk-pc-stats 갱신 분기 제거 — 헤더에서 통째 삭제됨
+    // [2026-08-31] #bk-month-sub("이번달 N건") 삭제 — 바로 아래 통계 줄이 같은 숫자를 또 말했다
   }
 
   function _updateOfflineBadge() {
@@ -2615,7 +2657,10 @@
         const o = _overlay(); if (o) o.remove();
         if (_cachedIsPC) _renderPCLayout();
         else _renderMobileLayout();
+        return;
       }
+      // [2026-08-31] PC↔모바일 전환이 없어도 높이가 바뀌면(키보드·주소창·회전) 칸당 인원이 달라진다
+      _capMonthCellsSoon();
     }, 200);
   });
 

@@ -18,8 +18,9 @@
   min-height: 44px;
 }
 
+/* [2026-08-31] .bk-fab 제거 — 예약 FAB 이 헤더 안 버튼(.bk-ico--add)으로 이사했다.
+   헤더 버튼은 같은 줄의 .bk-header__back(34px)에 맞춘다. 여기 48px 를 강제하면 헤더가 터진다. */
 .rv-qa__add,
-.bk-fab,
 .rv-fab {
   min-width: 48px;
   min-height: 48px;
