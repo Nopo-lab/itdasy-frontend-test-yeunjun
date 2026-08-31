@@ -1027,8 +1027,14 @@
   // ============================================================
   // §17 헤더 바인딩
   // ============================================================
+  /* [2026-08-31] 헤더 ← 는 '한 단계 전'으로 — 주간뷰에서 누르면 시트가 통째로 닫혀
+     내샵관리로 튕기던 버그. 주/일 뷰면 월간뷰 복귀, 월간뷰에서만 시트 닫기. */
+  function _back() {
+    if (_curView !== 'month') { _switchView('month'); return; }
+    _close();
+  }
   function _bindHeader(o) {
-    o.querySelector('#bk-back')?.addEventListener('click', _close);
+    o.querySelector('#bk-back')?.addEventListener('click', _back);
     // [A1] 모바일 달 이동 버튼
     o.querySelector('#bk-month-prev')?.addEventListener('click', _prevMonth);
     o.querySelector('#bk-month-next')?.addEventListener('click', _nextMonth);
@@ -1045,7 +1051,7 @@
     });
   }
   function _bindHeaderPC(o) {
-    o.querySelector('#bk-back')?.addEventListener('click', _close);
+    o.querySelector('#bk-back')?.addEventListener('click', _back);
     o.querySelector('#bk-pc-prev')?.addEventListener('click', _prevMonth);
     o.querySelector('#bk-pc-next')?.addEventListener('click', _nextMonth);
     o.querySelector('#bk-today-btn')?.addEventListener('click', () => {
