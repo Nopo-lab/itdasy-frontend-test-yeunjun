@@ -13,15 +13,16 @@
   flex: 1 1 auto;
   max-width: 460px;
   min-width: 0;
-  background: #ffffff;
+  background: #fff;
   border: 1px solid rgba(15, 20, 25, 0.08);
   border-radius: 999px;
   display: grid;
   grid-template-columns: 1fr 64px 1fr;
-  padding: 10px 20px 12px;
+  /* [2026-08-31 원영] 필 높이 56px — 잇비 FAB(56px)와 상·하 라인 일치.
+     44(btn) + 5 + 5(padding) + 2(border) = 56. */
+  padding: 5px 18px;
   z-index: 999;
   box-shadow: 0 12px 32px rgba(15, 20, 25, 0.12), 0 2px 6px rgba(15, 20, 25, 0.06);
-
   backface-visibility: hidden;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -53,7 +54,8 @@
 
   /* 2026-04-24 perf — 색상 0.15s → 0.08s */
   transition: color 0.08s ease-out;
-  min-height: 56px;
+  /* [2026-08-31 원영] 56 → 44 — 필 슬림화(잇비 높이 맞춤). 애플 HIG 최소 터치 44px 유지. */
+  min-height: 44px;
   position: relative;
   font-family: inherit;
   touch-action: manipulation;
@@ -92,24 +94,19 @@ i.tab-bar__icon {
   color: var(--brand);
 }
 
-.tab-bar__btn.active::before {
-  content: '';
-  position: absolute;
-  top: 6px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--brand);
-}
+/* [2026-08-31 원영] 활성 점(::before) 제거 — 필 44px 높이에선 아이콘을 침범.
+   활성 표시는 로즈색 아이콘+라벨(.active color)로 충분. */
 
 /* 중앙 FAB (글쓰기) */
 .tab-bar__fab {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
-  margin: -20px auto 0;
+  /* [2026-08-31 원영] 52→44 + 돌출(-20px) 제거 — 필 안 중앙 안착.
+     잇비 FAB 가 이미 옆에 떠 있어 돌출 원 2개는 시각 소음이었음. */
+  width: 44px;
+  height: 44px;
+  margin: 0 auto;
   border: none;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
