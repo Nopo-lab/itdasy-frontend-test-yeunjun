@@ -57,40 +57,47 @@
       </header>
       <div class="ss-body">
         <div class="ss-card">
-          <div class="ss-card-tt">샵 정보</div>
-          <div class="ss-row"><span class="lbl">샵 이름</span>
-            <input class="ss-input" id="ssShopName" placeholder="예) 잇데이 네일 강남점"></div>
-          <div class="ss-row"><span class="lbl">전화번호</span>
-            <input class="ss-input" id="ssShopPhone" placeholder="010-0000-0000" inputmode="tel"></div>
-          <div class="ss-row"><span class="lbl">주소</span>
-            <input class="ss-input" id="ssShopAddr" placeholder="도로명 주소"></div>
-          <div class="ss-row" style="flex-direction:column;align-items:stretch;min-width:0;"><span class="lbl" style="flex:0 0 auto;margin-bottom:8px;">영업시간</span>
-            <div id="ssShopHoursGrid" style="display:flex;flex-direction:column;gap:6px;min-width:0;width:100%;box-sizing:border-box;"></div>
+          <div class="ss-card-tt">기본 정보</div>
+          <div class="sv2-field">
+            <label class="sv2-field__lbl" for="ssShopName">샵 이름</label>
+            <input class="ss-input" id="ssShopName" placeholder="샵 이름을 입력해주세요" autocomplete="organization">
+          </div>
+          <div class="sv2-field">
+            <label class="sv2-field__lbl" for="ssShopPhone">전화번호</label>
+            <input class="ss-input" id="ssShopPhone" placeholder="전화번호를 입력해주세요" inputmode="tel" autocomplete="tel">
+          </div>
+          <div class="sv2-field">
+            <label class="sv2-field__lbl" for="ssShopAddr">주소</label>
+            <input class="ss-input" id="ssShopAddr" placeholder="도로명 주소를 입력해주세요" autocomplete="street-address">
           </div>
         </div>
 
         <div class="ss-card">
-          <div class="ss-card-tt">운영 모드</div>
-          <div class="ss-toggle">
+          <div class="ss-card-tt">영업시간</div>
+          <div id="ssShopHoursGrid" class="sv2-hours"></div>
+        </div>
+
+        <div class="ss-card">
+          <div class="ss-card-tt">운영 자동화</div>
+          <div class="ss-toggle sv2-tg">
             <div>
               <div class="ss-toggle-lbl">예약 자동 확정</div>
-              <div class="ss-toggle-sub">손님 입금 신호가 오면 원장 확인 없이 자동으로 예약을 확정해요. 꺼두면 [입금 확인+예약 확정] 버튼으로 직접 확정해요(기본).</div>
+              <div class="ss-toggle-sub">입금 신호가 오면 확인 없이 바로 확정돼요. 꺼두면 직접 확정해요(기본).</div>
             </div>
             <div class="ss-switch" id="ssAutoConfirmSwitch" role="switch" aria-checked="false" tabindex="0"></div>
           </div>
-          <div class="ss-toggle" style="margin-top:12px;">
+          <div class="ss-toggle sv2-tg sv2-tg--last">
             <div>
               <div class="ss-toggle-lbl">예약 알림톡 자동발송</div>
-              <div class="ss-toggle-sub">예약 확인·전날 리마인드를 고객에게 카카오 알림톡으로 자동 발송해요. 켜면 발송돼요.</div>
+              <div class="ss-toggle-sub">예약 확인·전날 리마인드를 카카오 알림톡으로 보내요.</div>
             </div>
             <div class="ss-switch" id="ssAlimtalkSwitch" role="switch" aria-checked="false" tabindex="0"></div>
           </div>
+          <div class="sv2-warn" id="ssAlimtalkWarn"></div>
         </div>
 
         <div class="ss-card">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
-            <div class="ss-card-tt" style="margin:0;">외부 심사 진행 상태</div>
-          </div>
+          <div class="ss-card-tt" style="margin-bottom:6px;">외부 심사 진행 상태</div>
           <div class="ss-card-sub" style="margin-bottom:10px;">제3자 플랫폼 검증 현황이에요. 통과 즉시 자동 활성화돼요.</div>
           ${_reviewRowHTML('Meta 비즈니스 검증', 'DM 자동응답·인스타 게시 · 예상 1~2주', 'progress')}
           ${_reviewRowHTML('Apple App Store 심사', 'iOS 앱 출시 · 예상 1~2주', 'progress')}
@@ -99,7 +106,8 @@
             심사 진행 중에는 일부 외부 연동(DM 자동응답·카카오 알림톡)이 제한돼요. 통과되면 알림으로 알려 드릴게요.
           </div>
         </div>
-
+      </div>
+      <div class="sv2-savebar">
         <button type="button" class="sv2-cta" data-ss-save>저장</button>
       </div>
     `;
@@ -109,6 +117,12 @@
     el.addEventListener('click', (e) => {
       if (e.target.closest('[data-ss-back]')) { closeShopSettings(); return; }
       if (e.target.closest('[data-ss-save]')) { _save(); return; }
+      // 알림톡 미연결 안내의 [연결하기] — 기존 카카오 허브 진입점을 그대로 쓴다(신규 화면 아님).
+      if (e.target.closest('[data-ss-kakao]')) {
+        if (typeof window.openKakaoHub === 'function') window.openKakaoHub();
+        else _toast('카카오 연결 화면을 열 수 없어요');
+        return;
+      }
       const sw = e.target.closest('.ss-switch');
       if (sw) {
         // [출시게이트 2026-08-06] 채널이 연결 안 된 토글은 켜지지 않는다.
@@ -361,16 +375,22 @@
         //   아무것도 안 나간다. 실패 알림조차 안 만든다(도배 방지로 일부러 그렇게 돼 있다).
         //   원장님은 손님에게 예약 확인이 갔다고 믿는다 — 잇비 문자에서 고쳤던
         //   "조용히 아무것도 안 함" 과 같은 종류라 같은 방식으로 고친다.
+        //   [2026-08-31] 설명문을 주황색으로 물들이는 대신 경고 박스 + [연결하기] 로 뺀다.
+        //   원장님 입장에서 필요한 건 "왜 안 되는지" 가 아니라 "어디로 가면 되는지" 다.
         const _ch = data.channels || null;
+        const _warn = document.getElementById('ssAlimtalkWarn');
         if (_ch && _ch.alimtalk === false && _alSw) {
           _alSw.classList.add('is-disabled');
           _alSw.setAttribute('aria-disabled', 'true');
-          const _sub = _alSw.closest('.ss-toggle')?.querySelector('.ss-toggle-sub');
-          if (_sub) {
-            _sub.textContent = '카카오 알림톡 채널이 아직 연결되지 않았어요. '
-              + '지금 켜도 손님에게는 발송되지 않아요 — 연결되면 알려 드릴게요.';
-            _sub.style.color = 'var(--warn, #C2410C)';
+          if (_warn) {
+            _warn.innerHTML = '<div class="sv2-warn__t">카카오 알림톡 채널이 아직 연결되지 않았어요. '
+              + '지금 켜도 손님에게는 발송되지 않아요.</div>'
+              + '<button type="button" class="sv2-warn__btn" data-ss-kakao>카카오 연결하기</button>';
           }
+        } else if (_warn) {
+          // 연결이 끝난 뒤 화면을 다시 열면 안내가 남지 않게 비운다.
+          _warn.innerHTML = '';
+          if (_alSw) { _alSw.classList.remove('is-disabled'); _alSw.removeAttribute('aria-disabled'); }
         }
         // [C-6 2026-07-27] 예약 자동확정 스위치 서버값 반영. 백엔드에 auto_confirm 컬럼을 신설해
         //   이제 GET 에서 실제 값을 내려준다(기본 False = 팀 설계대로 원장 수동 확정). 켠 샵에서만 자동확정.

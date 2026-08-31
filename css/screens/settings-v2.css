@@ -226,11 +226,127 @@
 .sv2-empty svg { opacity: 0.55; margin-bottom: 10px; }
 .sv2-empty .t { font-size: 13px; font-weight: 600; }
 
+/* ───────────────────────────────────────────────────────────
+   샵 정보 화면 구조 개선 (2026-08-31)
+   기능 추가 없음. 카드 분할 · 타이포 위계 · 터치 영역만 손봄.
+   전부 #shopSettingsScreen 로 스코프 — 다른 서브화면에 새지 않게.
+   ─────────────────────────────────────────────────────────── */
+
+/* 저장 바가 따로 생겼으니 본문 하단 여백(80px)은 필요 없다 */
+#shopSettingsScreen .ss-body { padding: 14px 14px 20px; }
+#shopSettingsScreen .ss-card { padding: 16px 16px 18px; margin-bottom: 12px; }
+#shopSettingsScreen .ss-card:last-child { margin-bottom: 0; }
+
+/* 카드 제목 — 13px/800 은 본문(14px)보다 작아서 위계가 뒤집혀 있었다 */
+#shopSettingsScreen .ss-card-tt {
+  font-size: 15px; font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0 0 14px;
+}
+#shopSettingsScreen .ss-card-sub {
+  font-size: 12.5px; font-weight: 500;
+  color: var(--text-muted); line-height: 1.55;
+}
+
+/* ── 기본 정보: 라벨을 입력칸 위로 ──
+   가로 라벨(flex 0 0 92px)은 360px 에서 입력칸을 250px 남짓으로 눌러
+   긴 주소가 잘렸다. 세로로 쌓으면 폭을 전부 쓴다. */
+#shopSettingsScreen .sv2-field { margin-bottom: 14px; }
+#shopSettingsScreen .sv2-field:last-child { margin-bottom: 0; }
+#shopSettingsScreen .sv2-field__lbl {
+  display: block; margin: 0 0 7px 2px;
+  font-size: 13px; font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-subtle);
+}
+#shopSettingsScreen .ss-input {
+  box-sizing: border-box;
+  height: 50px; padding: 0 15px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  /* 16px 미만이면 iOS 사파리가 포커스할 때 화면을 확대한다 — 한 손 입력이 깨진다 */
+  font-size: 16px; font-weight: 500;
+  letter-spacing: -0.02em;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+#shopSettingsScreen .ss-input::placeholder { color: var(--text-subtle); font-weight: 500; }
+#shopSettingsScreen .ss-input:focus { background: #fff; border-color: var(--brand); }
+
+/* ── 영업시간 카드 ── */
+#shopSettingsScreen .sv2-hours {
+  display: flex; flex-direction: column; gap: 6px;
+  min-width: 0; width: 100%; box-sizing: border-box;
+}
+/* 쉬는 요일은 점선으로 — 색만으로는 켜짐/꺼짐이 잘 안 보인다 */
+#shopSettingsScreen .sv2-hm__chip:not(.is-on) {
+  border-style: dashed;
+  background: var(--surface-2);
+}
+#shopSettingsScreen .sv2-hr__select { height: 50px; font-size: 15px; }
+
+/* ── 운영 자동화: 두 줄 사이만 구분선 ── */
+#shopSettingsScreen .sv2-tg {
+  align-items: flex-start;
+  border-top: 0;
+  padding: 0 0 14px;
+}
+#shopSettingsScreen .sv2-tg + .sv2-tg {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+#shopSettingsScreen .sv2-tg--last { padding-bottom: 0; }
+#shopSettingsScreen .ss-toggle-lbl {
+  font-size: 15px; font-weight: 700; letter-spacing: -0.02em;
+}
+#shopSettingsScreen .ss-toggle-sub {
+  font-size: 12.5px; font-weight: 500;
+  color: var(--text-muted); line-height: 1.55;
+  margin-top: 4px;
+}
+#shopSettingsScreen .sv2-tg .ss-switch { margin-top: 2px; }
+
+/* ── 미연결 채널 경고 (알림톡) ── */
+.sv2-warn { margin-top: 12px; padding: 12px 14px; background: rgba(234, 88, 12, 0.07); border-radius: var(--r-md); }
+.sv2-warn:empty { display: none; }
+.sv2-warn__t { font-size: 12.5px; font-weight: 600; color: #B45309; line-height: 1.55; }
+.sv2-warn__btn {
+  appearance: none; -webkit-appearance: none;
+  width: 100%; margin-top: 10px;
+  height: 40px; border: 0; border-radius: 12px;
+  background: #fff; color: #B45309;
+  font-family: inherit;
+  font-size: 13px; font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.sv2-warn__btn:active { transform: scale(0.97); }
+
+/* ── 하단 고정 저장 바 ──
+   .subscreen-overlay 가 flex column + safe-area padding 을 이미 갖고 있어서
+   .ss-body 다음 형제로 두면 그대로 바닥에 붙고 홈 인디케이터도 안 겹친다. */
+.sv2-savebar {
+  flex-shrink: 0;
+  padding: 10px 14px 14px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  border-top: 1px solid var(--border);
+}
+.sv2-savebar .sv2-cta { margin-top: 0; }
+
 /* ── PC: 설정 하위화면 콘텐츠 640px 중앙 ── */
 @media (width >= 768px) {
   .subscreen-overlay .ss-body {
     width: 100%;
     max-width: 668px; /* 640 + 좌우 패딩 14*2 */
     margin: 0 auto;
+  }
+  .sv2-savebar {
+    width: 100%;
+    max-width: 668px;
+    margin: 0 auto;
+    box-sizing: border-box;
   }
 }
