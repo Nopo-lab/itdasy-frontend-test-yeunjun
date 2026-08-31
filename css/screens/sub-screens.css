@@ -45,6 +45,23 @@
 }
 .ss-back:active { transform: scale(0.92); background: var(--bg2, #f6f6f7); }
 .ss-back .ic { width: 22px; height: 22px; }
+
+/* [2026-08-31 네비 통일] 닫기 ✕ 공통 — 뒤로가기와 같은 고스트 규칙.
+   문자 글리프(✕ × x &times;)를 전부 #ic-x 스프라이트로 바꾸면서 같이 세운다.
+   button.ss-close 로 태그를 붙여 특이도를 (0,1,1)로 올린 이유:
+   이 파일이 myshop-v3 / phase9-ux 보다 먼저 로드되고, .rvcal-x 는 아예 런타임에
+   \3c style> 로 head 에 주입돼서, 홑클래스로는 기존 배경을 못 이긴다. */
+button.ss-close {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--text-muted, #4E5968);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+button.ss-close:active { transform: scale(0.92); background: var(--bg2, #f6f6f7); }
+button.ss-close .ic { width: 18px; height: 18px; }
 .subscreen-overlay .ss-title {
   font-size: 17px; font-weight: 800;
   color: var(--text, #222);

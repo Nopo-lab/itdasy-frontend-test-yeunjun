@@ -364,7 +364,7 @@
       <div style="width:100%;max-width:420px;background:#fff;border-radius:20px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:85vh;overflow-y:auto;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <div style="font-size:15px;font-weight:900;">📋 안부 문자 초안</div>
-          <button id="kw-sms-close" style="width:30px;height:30px;border:none;border-radius:10px;background:#eee;cursor:pointer;">✕</button>
+          <button class="ss-close" id="kw-sms-close" style="width:30px;height:30px;border:none;border-radius:10px;background:transparent;cursor:pointer;"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         ${hasBulk ? `
           <div style="font-size:11.5px;color:#888;margin-bottom:12px;line-height:1.5;">

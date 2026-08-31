@@ -270,7 +270,7 @@
               <button class="cf-menu-item" id="cfEditBooking" type="button">예약 시간·고객 수정</button>
             </div>
           </div>
-          <button class="cf-iconbtn" id="cfClose" aria-label="닫기" type="button">✕</button>
+          <button class="cf-iconbtn ss-close" id="cfClose" aria-label="닫기" type="button"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
       </div>
       <div class="cf-cust">
@@ -336,7 +336,7 @@
           <button class="cf-back" id="cfBack" type="button">‹ 되돌리기</button>
         </div>
         <div class="cf-hd-right">
-          <button class="cf-iconbtn" id="cfClose" aria-label="닫기" type="button">✕</button>
+          <button class="cf-iconbtn ss-close" id="cfClose" aria-label="닫기" type="button"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
       </div>
       <div class="cf-cust">

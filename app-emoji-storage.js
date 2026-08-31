@@ -131,7 +131,7 @@
       <div style="width:min(420px,100%);background:var(--surface);border-radius:18px;padding:16px;box-shadow:0 18px 70px rgba(0,0,0,0.28);">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
           <div style="font-size:16px;font-weight:900;color:var(--text);">이모지 창고</div>
-          <button data-close type="button" aria-label="닫기" style="margin-left:auto;border:none;background:var(--bg2);border-radius:50%;width:32px;height:32px;cursor:pointer;">×</button>
+          <button class="ss-close" data-close type="button" aria-label="닫기" style="margin-left:auto;border:none;background:transparent;border-radius:50%;width:32px;height:32px;cursor:pointer;"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:12px;">
           <button data-tab="caption" type="button" style="flex:1;padding:9px;border-radius:10px;border:1px solid var(--border);font-weight:800;cursor:pointer;">캡션</button>

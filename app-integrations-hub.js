@@ -61,7 +61,7 @@
             <div class="ms-sheet__title">연결된 서비스</div>
             <div class="ms-sheet__sub">인스타 · 네이버 톡톡 · 카톡</div>
           </div>
-          <button type="button" class="ms-sheet__close" id="ihClose" aria-label="닫기">✕</button>
+          <button type="button" class="ms-sheet__close ss-close" id="ihClose" aria-label="닫기"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <div class="ms-sheet__body">
           <div class="ms-section__title">인스타그램</div>

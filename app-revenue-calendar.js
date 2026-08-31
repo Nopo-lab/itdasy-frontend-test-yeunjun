@@ -130,7 +130,7 @@
     }).join('');
     detailEl.className = 'rvcal-detail';
     detailEl.innerHTML = `
-      <div class="rvcal-dh"><span class="dt">${_esc(_dayLabel(dateStr))}</span><span class="da">${_money(total)}원</span><button type="button" class="rvcal-x" data-rvcal-close aria-label="닫기">✕</button></div>
+      <div class="rvcal-dh"><span class="dt">${_esc(_dayLabel(dateStr))}</span><span class="da">${_money(total)}원</span><button type="button" class="rvcal-x ss-close" data-rvcal-close aria-label="닫기"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button></div>
       ${list.length ? `<div class="rvcal-dsub">${_esc(sub)}</div>` : '<div class="rvcal-dsub">이 날은 기록된 매출이 없어요</div>'}
       ${rows}
       <button type="button" class="rvcal-add" data-rvcal-add="${_esc(dateStr)}">+ 이 날 매출 입력</button>`;

@@ -73,7 +73,7 @@
       <div class="tpli-card" id="tplImportCard">
         <div class="tpli-head">
           <strong>가격표·홍보물로 카드 만들기</strong>
-          <button id="tpliClose" class="tpli-x" aria-label="닫기">&times;</button>
+          <button id="tpliClose" class="tpli-x ss-close" aria-label="닫기"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <div class="tpli-desc">
           기존 가격표·홍보물 사진을 올리면 AI 가 <b>글자(시술·가격·문구)만</b> 읽어서

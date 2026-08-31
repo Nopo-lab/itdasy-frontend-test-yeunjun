@@ -176,7 +176,7 @@
           '<div class="wtpl-rhead"><div class="wtpl-rtitle">템플릿 레이어 편집</div>' +
             '<div class="wtpl-rtools">' +
               '<button class="wtpl-reset" type="button" data-wtpl="reset"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><use href="#ic-refresh-cw"/></svg>초기화</button>' +
-              '<button class="wtpl-x" type="button" data-wtpl="close">×</button>' +
+              '<button class="wtpl-x ss-close" type="button" data-wtpl="close"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>' +
             '</div>' +
           '</div>' +
           '<div class="wtpl-rsub">문구를 수정하면 미리보기에 바로 반영돼요.</div>' +

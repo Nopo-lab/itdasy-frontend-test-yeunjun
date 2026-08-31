@@ -84,7 +84,7 @@ function _renderAssignPopup() {
       <div style="padding:8px 16px 12px;border-bottom:1px solid var(--border);">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <div style="font-size:16px;font-weight:800;color:var(--text);">사진 → 손님 배정</div>
-          <button data-assign-close aria-label="닫기" style="background:transparent;border:none;font-size:24px;color:var(--text-subtle);cursor:pointer;padding:0 4px;">×</button>
+          <button class="ss-close" data-assign-close aria-label="닫기" style="background:transparent;border:none;font-size:24px;color:var(--text-subtle);cursor:pointer;padding:0 4px;"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <div style="font-size:11px;color:var(--text3);margin-top:4px;">사진 선택 후 아래 손님 카드를 탭하세요</div>
       </div>

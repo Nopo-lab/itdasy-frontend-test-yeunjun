@@ -35,26 +35,8 @@
   flex-shrink: 0;
 }
 
-.dt-back,
-.dt-close {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  background: var(--surface-2);
-  border: none;
-  border-radius: 12px;
-  color: var(--text);
-  cursor: pointer;
-  flex-shrink: 0;
-  font-family: inherit;
-  transition: opacity .12s;
-}
-
-.dt-back:active,
-.dt-close:active {
-  opacity: .6;
-}
+/* [2026-08-31 네비 통일] .dt-back / .dt-close 제거 — 마크업 참조 0.
+   뒤로는 .ss-back, 닫기는 button.ss-close 로 흡수됐다(sub-screens.css). */
 
 .dt-title {
   margin: 0;

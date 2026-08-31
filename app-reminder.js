@@ -31,7 +31,7 @@
       <div class="p9-sheet__body" role="dialog" aria-modal="true">
         <div class="p9-sheet__head">
           <div class="p9-sheet__title">예약 리마인더</div>
-          <button type="button" class="p9-sheet__close" data-rm-close aria-label="닫기">x</button>
+          <button type="button" class="p9-sheet__close ss-close" data-rm-close aria-label="닫기"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <label class="p9-sheet__card"><input type="checkbox" id="rmEnabled"> 자동 알림 켜기</label>
         <label class="p9-sheet__card"><input type="checkbox" id="rm24"> 예약 24시간 전</label>

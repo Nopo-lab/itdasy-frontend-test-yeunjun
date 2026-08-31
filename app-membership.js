@@ -73,7 +73,7 @@
             <h3 id="msTitle" style="font-size:17px;font-weight:800;margin:0;">회원권</h3>
             <div id="msSub" style="font-size:12.5px;color:var(--text-subtle);margin-top:2px;"></div>
           </div>
-          <button id="msClose" style="background:none;border:none;font-size:24px;cursor:pointer;line-height:1;color:var(--text-subtle);">×</button>
+          <button class="ss-close" id="msClose" style="background:transparent;border:none;font-size:24px;cursor:pointer;line-height:1;color:var(--text-subtle);"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <div id="msBody"></div>
       </div>

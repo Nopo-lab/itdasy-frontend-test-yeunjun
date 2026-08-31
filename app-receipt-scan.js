@@ -621,7 +621,7 @@
         <div style="width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 14px;"></div>
         <div style="display:flex;align-items:center;gap:8px;">
           <strong style="font-size:17px;">${meta.title}</strong>
-          <button class="rs-close" style="margin-left:auto;background:none;border:none;font-size:20px;color:#888;cursor:pointer;">✕</button>
+          <button class="rs-close ss-close" style="margin-left:auto;background:transparent;border:none;font-size:20px;color:#888;cursor:pointer;"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <div style="font-size:12px;color:#888;margin-top:4px;">${meta.subtitle}</div>
       </div>

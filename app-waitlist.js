@@ -46,7 +46,7 @@
       <div class="p9-sheet__body" role="dialog" aria-modal="true">
         <div class="p9-sheet__head">
           <div class="p9-sheet__title">대기자 목록</div>
-          <button type="button" class="p9-sheet__close" data-wl-close aria-label="닫기">✕</button>
+          <button type="button" class="p9-sheet__close ss-close" data-wl-close aria-label="닫기"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <label class="p9-sheet__field">이름 <input id="wlName" maxlength="30" placeholder="고객 이름"></label>
         <label class="p9-sheet__field">연락처 <input id="wlPhone" inputmode="tel" maxlength="30" placeholder="010-0000-0000"></label>

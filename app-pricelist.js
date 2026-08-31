@@ -21,7 +21,7 @@
       <div id="pricelistCard" style="width:100%;max-width:520px;background:#fff;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;padding:18px 18px max(18px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
           <strong style="font-size:17px;">가격표 사진으로 일괄 등록</strong>
-          <button id="plClose" aria-label="닫기" style="margin-left:auto;background:none;border:none;font-size:22px;cursor:pointer;line-height:1;">×</button>
+          <button class="ss-close" id="plClose" aria-label="닫기" style="margin-left:auto;background:transparent;border:none;font-size:22px;cursor:pointer;line-height:1;"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <div style="font-size:12px;color:#777;line-height:1.55;margin-bottom:14px;">
           샵 가격표 사진 한 장만 올려주세요. AI 가 시술명·가격을 인식해서 자동 등록해요.<br>

@@ -599,8 +599,8 @@
     } else {
       sheet.innerHTML = `
         <div class="dt-body" style="padding:56px 16px 80px;position:relative;">
-          <button class="dt-back cv4-mobile-back" data-customer-close aria-label="뒤로"
-                  style="position:absolute;top:14px;left:10px;background:var(--surface-2,#F7F8FA);border:none;width:36px;height:36px;border-radius:12px;color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:600;z-index:2;">‹</button>
+          <button type="button" class="ss-back cv4-mobile-back" data-customer-close aria-label="뒤로"
+                  style="position:absolute;top:14px;left:10px;z-index:2;"><svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>
           <div class="cv4-hd">
             <h1 style="font-size:22px;font-weight:700;color:var(--text);letter-spacing:-0.5px;margin:0;">고객관리</h1>
             <button class="cv4-hd-add" id="customerAddBtn" aria-label="고객 추가">+</button>
@@ -710,8 +710,8 @@
     const groups = _dupGroups || [];
     box.innerHTML = `
       <div id="cvMergeScreen">
-        <button type="button" data-merge-back class="dt-back" aria-label="뒤로"
-          style="min-width:44px;min-height:44px;margin-bottom:12px;"><svg width="20" height="20" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>
+        <button type="button" data-merge-back class="ss-back" aria-label="뒤로"
+          style="min-width:44px;min-height:44px;margin-bottom:12px;"><svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>
         <h2 style="font-size:17px;font-weight:800;margin:0 0 4px;color:var(--text);">중복 손님 정리</h2>
         <p style="font-size:12px;color:var(--text2,#5A6573);margin:0 0 16px;line-height:1.5;">
           남길 손님을 고르면 나머지 기록(예약·매출·회원권·메모)이 그쪽으로 옮겨가요.<br>기록은 사라지지 않아요.
@@ -1426,7 +1426,7 @@
         <div style="width:100%;background:var(--bg,#fff);border-radius:20px 20px 0 0;max-height:75vh;display:flex;flex-direction:column;padding:16px;padding-bottom:max(16px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
             <strong style="font-size:16px;">고객 선택</strong>
-            <button data-pick-cancel style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
+            <button class="ss-close" data-pick-cancel style="margin-left:auto;background:transparent;border:none;font-size:20px;cursor:pointer;"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
           </div>
           <input data-pick-search placeholder="이름·연락처 검색 또는 새 고객 이름" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:14px;margin-bottom:10px;" />
           <div data-pick-list style="flex:1;overflow-y:auto;min-height:140px;"></div>

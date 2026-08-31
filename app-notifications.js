@@ -101,7 +101,7 @@
           <strong style="font-size:17px;">알림</strong>
           <span id="notifHeaderBadge" style="display:none;background:#BC6675;color:#fff;font-size:11px;padding:2px 7px;border-radius:5px;font-weight:600;"></span>
           <button data-notif-all style="margin-left:auto;font-size:11px;color:#888;background:none;border:none;cursor:pointer;">전부 읽음</button>
-          <button data-notif-close style="background:rgba(0,0,0,0.05);border:none;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;">✕</button>
+          <button class="ss-close" data-notif-close style="background:transparent;border:none;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <div id="notifBody" style="flex:1;overflow-y:auto;"></div>
       </div>

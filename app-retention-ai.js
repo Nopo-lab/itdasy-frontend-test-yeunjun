@@ -38,7 +38,7 @@
       <div class="p9-sheet__body" role="dialog" aria-modal="true">
         <div class="p9-sheet__head">
           <div class="p9-sheet__title">위험 고객</div>
-          <button type="button" class="p9-sheet__close" data-rt-close aria-label="닫기">x</button>
+          <button type="button" class="p9-sheet__close ss-close" data-rt-close aria-label="닫기"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <div id="rtList"></div>
       </div>`;

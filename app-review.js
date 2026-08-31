@@ -100,7 +100,7 @@
       <div class="p9-sheet__body" role="dialog" aria-modal="true">
         <div class="p9-sheet__head">
           <div class="p9-sheet__title">리뷰 요청</div>
-          <button type="button" class="p9-sheet__close" data-rvreq-close aria-label="닫기">✕</button>
+          <button type="button" class="p9-sheet__close ss-close" data-rvreq-close aria-label="닫기"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <div class="p9-sheet__row">
           <input id="rvreqCustomer" readonly placeholder="고객 선택" style="flex:1;min-height:48px;border:1px solid var(--border);border-radius:8px;padding:0 12px;">

@@ -229,7 +229,7 @@ function _galleryItemDetail(galleryId) {
       <div style="width:100%;max-width:480px;background:#fff;border-radius:20px 20px 0 0;max-height:90vh;overflow-y:auto;padding:16px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <div style="font-size:14px;font-weight:800;">${escapeHtml(item.label)} <span style="font-size:11px;color:var(--text3);font-weight:400;">${escapeHtml(item.date)}</span></div>
-          <button data-gallery-detail-close style="background:transparent;border:none;font-size:20px;color:var(--text-subtle);cursor:pointer;">×</button>
+          <button class="ss-close" data-gallery-detail-close style="background:transparent;border:none;font-size:20px;color:var(--text-subtle);cursor:pointer;"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         ${_buildPeekCarousel(photos, 'gd_carousel')}
         ${escapedCaption ? `<div style="margin-top:12px;font-size:13px;color:#333;white-space:pre-wrap;line-height:1.6;">${escapedCaption}</div>` : ''}

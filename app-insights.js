@@ -43,7 +43,7 @@
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
           <span style="font-size:22px;">✨</span>
           <strong style="font-size:18px;">AI 인사이트</strong>
-          <button data-insights-close style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;" aria-label="닫기">✕</button>
+          <button class="ss-close" data-insights-close style="margin-left:auto;background:transparent;border:none;font-size:20px;cursor:pointer;" aria-label="닫기"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <div id="insightsBody" style="flex:1;overflow-y:auto;"></div>
       </div>
@@ -307,7 +307,7 @@
           <span style="font-size:22px;">💝</span>
           <strong style="font-size:17px;">안부 문자 초안</strong>
           <span id="bulkProgress" style="margin-left:auto;font-size:12px;color:#888;font-weight:700;"></span>
-          <button id="bulkCloseBtn" style="margin-left:8px;background:none;border:none;font-size:20px;cursor:pointer;" aria-label="닫기">✕</button>
+          <button class="ss-close" id="bulkCloseBtn" style="margin-left:8px;background:transparent;border:none;font-size:20px;cursor:pointer;" aria-label="닫기"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <div style="font-size:11.5px;color:#888;margin-bottom:10px;line-height:1.5;">
           한 명씩 탭해서 문구를 확인하고 [카톡 공유]로 보내세요. 일괄 전송하지 않아요 — 원장님이 직접 승인.

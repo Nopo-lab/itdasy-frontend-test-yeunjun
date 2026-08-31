@@ -41,7 +41,7 @@
           <div class="ms-sheet__title">설정</div>
           <div class="ms-sheet__sub">앱 설정 · 샵 정보 · 백업</div>
         </div>
-        <button type="button" class="ms-sheet__close" id="shClose" aria-label="닫기">✕</button>
+        <button type="button" class="ms-sheet__close ss-close" id="shClose" aria-label="닫기"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
       </div>
     `;
   }

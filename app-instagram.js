@@ -1191,7 +1191,7 @@ function openInstagramPreview(opts) {
           <div style="font-size:13px;font-weight:700;line-height:1.2;">${window._esc ? window._esc(shopName) : shopName}</div>
           <div style="font-size:11px;color:var(--text-subtle,#888);">미리보기 ${ratioBadge}</div>
         </div>
-        <button data-ig-preview-x style="background:transparent;border:none;font-size:20px;color:var(--text-subtle,#888);cursor:pointer;margin-left:8px;" aria-label="닫기">×</button>
+        <button class="ss-close" data-ig-preview-x style="background:transparent;border:none;font-size:20px;color:var(--text-subtle,#888);cursor:pointer;margin-left:8px;" aria-label="닫기"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
       </div>
       ${photoHtml}
       <div style="display:flex;align-items:center;gap:14px;padding:10px 12px 4px;">

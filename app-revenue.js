@@ -671,7 +671,7 @@
       <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:18px 16px;padding-bottom:max(18px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));max-height:92vh;overflow-y:auto;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
           <strong style="font-size:17px;color:#191F28;letter-spacing:-0.3px;">${_title}</strong>
-          <button type="button" data-rv-modal-close style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;color:#8B95A1;" aria-label="닫기">✕</button>
+          <button class="ss-close" type="button" data-rv-modal-close style="margin-left:auto;background:transparent;border:none;font-size:20px;cursor:pointer;color:#8B95A1;" aria-label="닫기"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
 
         <!-- 금액: 화면 중앙 큰 표시 -->
@@ -1104,7 +1104,7 @@
       <div style="background:var(--surface,#fff);border-radius:20px 20px 0 0;width:100%;max-width:440px;padding:20px;padding-bottom:max(20px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <strong style="font-size:17px;color:var(--text);">이 매출 기록</strong>
-          <button type="button" data-rv-close style="background:none;border:none;font-size:20px;cursor:pointer;color:#8B95A1;" aria-label="닫기">✕</button>
+          <button class="ss-close" type="button" data-rv-close style="background:transparent;border:none;font-size:20px;cursor:pointer;color:#8B95A1;" aria-label="닫기"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <div style="background:var(--surface-2,#F7F8FA);border-radius:12px;padding:14px;margin-bottom:14px;">
           <div style="font-weight:700;font-size:15px;margin-bottom:4px;">${svc}</div>

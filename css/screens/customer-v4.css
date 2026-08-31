@@ -220,13 +220,11 @@
  * ───────────────────────────────────────────────────────────── */
 #customerSheet .cv4-chip,
 #customerSheet .cv4-hd-add,
-#customerSheet .dt-back,
 #customerDashSheet .cv4-detail-mobile-head .ss-back {
   position: relative;
 }
 #customerSheet .cv4-chip::after,
 #customerSheet .cv4-hd-add::after,
-#customerSheet .dt-back::after,
 #customerDashSheet .cv4-detail-mobile-head .ss-back::after {
   content: '';
   position: absolute;

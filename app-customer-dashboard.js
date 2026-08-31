@@ -399,7 +399,7 @@
       <div style="background:var(--surface,#fff);border-radius:18px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;padding:24px;box-shadow:0 24px 64px rgba(0,0,0,0.18);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
           <strong style="font-size:18px;color:var(--text);">${title}</strong>
-          <button type="button" id="custEditClose" aria-label="닫기" style="background:var(--surface-2,#F7F8FA);border:none;width:32px;height:32px;border-radius:50%;font-size:14px;cursor:pointer;color:var(--text);">✕</button>
+          <button class="ss-close" type="button" id="custEditClose" aria-label="닫기" style="background:transparent;border:none;width:32px;height:32px;border-radius:50%;font-size:14px;cursor:pointer;color:var(--text);"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <label style="display:block;font-size:12px;color:#888;margin-bottom:4px;">이름 *</label>
         <input id="cedName" type="text" maxlength="50" value="${_esc(c.name || '')}" style="width:100%;height:42px;padding:0 14px;border-radius:10px;border:1px solid var(--border,#E5E7EB);background:var(--surface,#fff);font-size:14px;color:var(--text);outline:none;font-family:inherit;margin-bottom:14px;" />
