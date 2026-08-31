@@ -24,22 +24,11 @@
     localStorage.setItem(key, value || '');
   }
 
-  // [2026-07-05 리디자인] 심사 상태 행 — status: 'progress'(로즈 필) | 'ok'(초록 필)
-  function _reviewRowHTML(title, sub, status) {
-    const ok = status === 'ok';
-    const icon = ok ? 'ic-check' : 'ic-clock';
-    const badge = ok ? 'sv2-badge--ok' : 'sv2-badge--progress';
-    return `
-      <div class="sv2-review-row">
-        <span class="sv2-review-ic"><svg width="18" height="18" aria-hidden="true"><use href="#${icon}"/></svg></span>
-        <div style="flex:1;min-width:0;">
-          <div class="t1">${title}</div>
-          <div class="t2">${sub}</div>
-        </div>
-        <span class="sv2-badge ${badge}"><svg width="12" height="12" aria-hidden="true"><use href="#${icon}"/></svg>${ok ? '승인됨' : '심사 중'}</span>
-      </div>
-    `;
-  }
+  // [2026-08-31 원영] '외부 심사 진행 상태' 카드 삭제.
+  //   Meta·애플·구글 심사는 원장님이 손댈 수 있는 게 아무것도 없는 읽기 전용 정보인데
+  //   화면 아래 250px 을 먹고 있었다. 게다가 세 줄 모두 'progress' 하드코딩이라
+  //   Meta 가 이미 승인된 뒤에도 "심사 중" 이라는 틀린 상태를 보여주고 있었다.
+  //   같이 쓰이던 _reviewRowHTML() 과 .sv2-review-row/.sv2-badge/.sv2-note CSS 도 함께 제거.
 
   function _ensureMounted() {
     let el = document.getElementById(ID);
@@ -56,19 +45,21 @@
         <div class="ss-title">샵 정보</div>
       </header>
       <div class="ss-body">
+        <!-- 카드 제목 없음 — 라벨(샵 이름/전화번호/주소)이 이미 다 말하고 있어서
+             '기본 정보' 는 한 줄을 더 쓸 뿐 새로 알려주는 게 없다.
+             placeholder 도 같은 이유로 뺐다 — 라벨과 같은 말의 반복. -->
         <div class="ss-card">
-          <div class="ss-card-tt">기본 정보</div>
           <div class="sv2-field">
             <label class="sv2-field__lbl" for="ssShopName">샵 이름</label>
-            <input class="ss-input" id="ssShopName" placeholder="샵 이름을 입력해주세요" autocomplete="organization">
+            <input class="ss-input" id="ssShopName" autocomplete="organization">
           </div>
           <div class="sv2-field">
             <label class="sv2-field__lbl" for="ssShopPhone">전화번호</label>
-            <input class="ss-input" id="ssShopPhone" placeholder="전화번호를 입력해주세요" inputmode="tel" autocomplete="tel">
+            <input class="ss-input" id="ssShopPhone" inputmode="tel" autocomplete="tel">
           </div>
           <div class="sv2-field">
             <label class="sv2-field__lbl" for="ssShopAddr">주소</label>
-            <input class="ss-input" id="ssShopAddr" placeholder="도로명 주소를 입력해주세요" autocomplete="street-address">
+            <input class="ss-input" id="ssShopAddr" autocomplete="street-address">
           </div>
         </div>
 
@@ -94,17 +85,6 @@
             <div class="ss-switch" id="ssAlimtalkSwitch" role="switch" aria-checked="false" tabindex="0"></div>
           </div>
           <div class="sv2-warn" id="ssAlimtalkWarn"></div>
-        </div>
-
-        <div class="ss-card">
-          <div class="ss-card-tt" style="margin-bottom:6px;">외부 심사 진행 상태</div>
-          <div class="ss-card-sub" style="margin-bottom:10px;">제3자 플랫폼 검증 현황이에요. 통과 즉시 자동 활성화돼요.</div>
-          ${_reviewRowHTML('Meta 비즈니스 검증', 'DM 자동응답·인스타 게시 · 예상 1~2주', 'progress')}
-          ${_reviewRowHTML('Apple App Store 심사', 'iOS 앱 출시 · 예상 1~2주', 'progress')}
-          ${_reviewRowHTML('Google Play 심사', 'Android 앱 출시 · 예상 3~7일', 'progress')}
-          <div class="sv2-note">
-            심사 진행 중에는 일부 외부 연동(DM 자동응답·카카오 알림톡)이 제한돼요. 통과되면 알림으로 알려 드릴게요.
-          </div>
         </div>
       </div>
       <div class="sv2-savebar">

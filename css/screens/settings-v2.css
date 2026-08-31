@@ -49,31 +49,8 @@
 .sv2-pill--brand { background: var(--brand-bg); color: var(--brand-strong); cursor: pointer; }
 .sv2-pill--brand:active { transform: scale(0.96); }
 
-/* ── 샵정보: 외부 심사 상태 행 ── */
-.sv2-review-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-.sv2-review-row:last-of-type { border-bottom: 0; }
-.sv2-review-row .sv2-review-ic { color: var(--text-subtle); flex-shrink: 0; display: flex; }
-.sv2-review-row .t1 { font-size: 13px; font-weight: 700; color: var(--text); }
-.sv2-review-row .t2 { font-size: 11px; color: var(--text-subtle); margin-top: 2px; }
-.sv2-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 10px;
-  border-radius: var(--r-pill);
-  font-size: 11px; font-weight: 800;
-  flex-shrink: 0;
-}
-.sv2-badge--progress { background: var(--brand-bg); color: var(--brand-strong); }
-.sv2-badge--ok       { background: rgba(22, 181, 94, 0.10); color: #0d8f49; }
-.sv2-note {
-  margin-top: 10px; padding: 10px 12px;
-  background: var(--surface-2);
-  border-radius: var(--r-md);
-  font-size: 11px; color: var(--text-muted); line-height: 1.5;
-}
+/* [2026-08-31] .sv2-review-row / .sv2-badge / .sv2-note 삭제.
+   샵 정보의 '외부 심사 진행 상태' 카드에서만 쓰이던 스타일인데 그 카드를 없앴다. */
 
 /* ── 샵정보: 영업시간 프리셋 (네이버식 3모드) ── */
 .sv2-hm__seg {
@@ -233,8 +210,8 @@
    ─────────────────────────────────────────────────────────── */
 
 /* 저장 바가 따로 생겼으니 본문 하단 여백(80px)은 필요 없다 */
-#shopSettingsScreen .ss-body { padding: 14px 14px 20px; }
-#shopSettingsScreen .ss-card { padding: 16px 16px 18px; margin-bottom: 12px; }
+#shopSettingsScreen .ss-body { padding: 12px 14px 16px; }
+#shopSettingsScreen .ss-card { padding: 14px 14px 15px; margin-bottom: 10px; }
 #shopSettingsScreen .ss-card:last-child { margin-bottom: 0; }
 
 /* 카드 제목 — 13px/800 은 본문(14px)보다 작아서 위계가 뒤집혀 있었다 */
@@ -242,28 +219,24 @@
   font-size: 15px; font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text);
-  margin: 0 0 14px;
-}
-#shopSettingsScreen .ss-card-sub {
-  font-size: 12.5px; font-weight: 500;
-  color: var(--text-muted); line-height: 1.55;
+  margin: 0 0 10px;
 }
 
 /* ── 기본 정보: 라벨을 입력칸 위로 ──
    가로 라벨(flex 0 0 92px)은 360px 에서 입력칸을 250px 남짓으로 눌러
    긴 주소가 잘렸다. 세로로 쌓으면 폭을 전부 쓴다. */
-#shopSettingsScreen .sv2-field { margin-bottom: 14px; }
+#shopSettingsScreen .sv2-field { margin-bottom: 8px; }
 #shopSettingsScreen .sv2-field:last-child { margin-bottom: 0; }
 #shopSettingsScreen .sv2-field__lbl {
-  display: block; margin: 0 0 7px 2px;
-  font-size: 13px; font-weight: 600;
+  display: block; margin: 0 0 4px 2px;
+  font-size: 12.5px; font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--text-subtle);
 }
 #shopSettingsScreen .ss-input {
   box-sizing: border-box;
-  height: 50px; padding: 0 15px;
-  border-radius: 14px;
+  height: 42px; padding: 0 13px;
+  border-radius: 12px;
   background: var(--surface-2);
   border: 1px solid transparent;
   /* 16px 미만이면 iOS 사파리가 포커스할 때 화면을 확대한다 — 한 손 입력이 깨진다 */
@@ -271,30 +244,39 @@
   letter-spacing: -0.02em;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
-#shopSettingsScreen .ss-input::placeholder { color: var(--text-subtle); font-weight: 500; }
+/* 색은 전역 --placeholder-color 를 그대로 탄다(2026-08-22 빈칸 예시글 통일) */
+#shopSettingsScreen .ss-input::placeholder { font-weight: 500; }
 #shopSettingsScreen .ss-input:focus { background: #fff; border-color: var(--brand); }
 
-/* ── 영업시간 카드 ── */
+/* ── 영업시간 카드 ──
+   gap 은 0. 아래 margin 들과 겹쳐 이중 여백이 생기던 것 정리. */
 #shopSettingsScreen .sv2-hours {
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-direction: column; gap: 0;
   min-width: 0; width: 100%; box-sizing: border-box;
 }
+#shopSettingsScreen .sv2-hm__seg { margin-bottom: 10px; }
+#shopSettingsScreen .sv2-hm__segbtn { height: 34px; }
+#shopSettingsScreen .sv2-hm__chip { height: 36px; }
+#shopSettingsScreen .sv2-hm__hint { margin: 6px 2px 0; }
+#shopSettingsScreen .sv2-hm__timerow { margin-top: 8px; }
 /* 쉬는 요일은 점선으로 — 색만으로는 켜짐/꺼짐이 잘 안 보인다 */
 #shopSettingsScreen .sv2-hm__chip:not(.is-on) {
   border-style: dashed;
   background: var(--surface-2);
 }
-#shopSettingsScreen .sv2-hr__select { height: 50px; font-size: 15px; }
+#shopSettingsScreen .sv2-hr__select { height: 46px; font-size: 15px; }
+#shopSettingsScreen .sv2-hr__row { padding: 7px 4px; }
+#shopSettingsScreen .sv2-hr__expand { padding: 2px 4px 10px 44px; }
 
 /* ── 운영 자동화: 두 줄 사이만 구분선 ── */
 #shopSettingsScreen .sv2-tg {
   align-items: flex-start;
   border-top: 0;
-  padding: 0 0 14px;
+  padding: 0 0 12px;
 }
 #shopSettingsScreen .sv2-tg + .sv2-tg {
   border-top: 1px solid var(--border);
-  padding-top: 14px;
+  padding-top: 12px;
 }
 #shopSettingsScreen .sv2-tg--last { padding-bottom: 0; }
 #shopSettingsScreen .ss-toggle-lbl {
@@ -328,13 +310,13 @@
    .ss-body 다음 형제로 두면 그대로 바닥에 붙고 홈 인디케이터도 안 겹친다. */
 .sv2-savebar {
   flex-shrink: 0;
-  padding: 10px 14px 14px;
+  padding: 9px 14px 12px;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: saturate(180%) blur(12px);
   -webkit-backdrop-filter: saturate(180%) blur(12px);
   border-top: 1px solid var(--border);
 }
-.sv2-savebar .sv2-cta { margin-top: 0; }
+.sv2-savebar .sv2-cta { margin-top: 0; height: 50px; }
 
 /* ── PC: 설정 하위화면 콘텐츠 640px 중앙 ── */
 @media (width >= 768px) {
