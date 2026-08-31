@@ -323,13 +323,15 @@ function showDetailedAnalysis() {
   } else if (window.showToast) window.showToast('리포트 영역을 찾을 수 없어요');
 }
 
-// [2026-06-09 Phase2 v9] 말투 분석 리포트 — 회색 배경 + 헤더 카드 / 내용 카드 2장.
-// 흰 바탕·네이비 텍스트·중립 그레이, 로즈는 뱃지·CTA 포인트만. word-break:keep-all.
-// 제거: TOP5·"이렇게 쓰면"·추상 말투요약·자주 쓰는 어미 섹션.
+// [2026-08-31 v3] 말투 분석 리포트 — 포토카드 히어로(프사 스토리링 + 잇비 둥둥) + 절취선 + 장부식 리스트.
+// 시안: mockup_tone_report_v3.html (원영 확정). 폰트 11/13/15 고정(이모지 글리프 20px 예외).
+// 로즈는 1위 강조·고정문구 라인·태그 더보기만. word-break:keep-all.
+// 제거: 판단형 대표말투 헤드라인(tone), 중복 아바타 뱃지 행, 칩 3종 스타일(장부 행 통일).
+// 절취선 노치(실구멍)는 생략 — backdrop 이 반투명 blur 라 배경색 노치는 티가 나고,
+//   mask 실구멍은 히어로 높이 가변이라 과한 복잡도. 점선만 유지.
 function renderDetailedPopup(data) {
     const p = data.persona || {};
     const raw = data.raw_analysis || {};
-    const ROSE = '#BC6675';
     const _esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
         ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -356,17 +358,8 @@ function renderDetailedPopup(data) {
     const emoCounts = _counts(raw.emoji_counts);
     const tagCounts = _counts(raw.hashtag_counts);
 
-    // 횟수 pill — 숫자만. '회' 같은 단위 붙이지 않는다.
-    //   1 이어도 그대로 보여준다(하한 필터 없음). 의도된 결정.
-    const _pill = (n) => `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;padding:1px 5px;margin-left:5px;background:#F2F4F6;color:var(--text-subtle);border-radius:999px;font-size:10.5px;font-weight:700;line-height:1.4;">${n}</span>`;
-    const _chip = (label, n) =>
-        `<span style="display:inline-flex;align-items:center;background:var(--surface);color:var(--text-muted);border:0.5px solid var(--border-strong);padding:5px 11px;border-radius:var(--r-pill);font-size:12px;font-weight:500;margin:3px 3px 0 0;word-break:keep-all;">${_esc(label)}${n == null ? '' : _pill(n)}</span>`;
-    // 이모지 낱개 칩 — 이모지 위, 횟수 아래 세로 배치
-    const _emoChip = (ch, n) =>
-        `<span style="display:inline-flex;flex-direction:column;align-items:center;gap:4px;min-width:42px;padding:8px 6px;background:var(--surface);border:0.5px solid var(--border-strong);border-radius:14px;margin:3px 3px 0 0;vertical-align:top;">` +
-        `<span style="font-size:21px;line-height:1;">${_esc(ch)}</span>` +
-        (n == null ? '' : `<span style="font-size:10.5px;font-weight:700;color:var(--text-subtle);line-height:1;">${n}</span>`) +
-        `</span>`;
+    // 횟수는 숫자만. '회' 단위 붙이지 않고, 1 이어도 그대로 보여준다(하한 필터 없음). 의도된 결정.
+    const _rm = (() => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_e) { return false; } })();
     // 폴백용: 이모지 문자열을 낱개로. ZWJ 결합 이모지가 쪼개지지 않게 grapheme 우선.
     const _splitEmoji = (str) => {
         const t = String(str).replace(/[\s,]+/g, '');
@@ -381,110 +374,139 @@ function renderDetailedPopup(data) {
         ? `<img src="${_esc(picUrl)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.style.display='none';this.parentNode.querySelector('svg').style.display='block';" alt="">${SIL.replace('<svg', '<svg style="display:none"')}`
         : SIL;
 
-    // ── 히어로 섹션
+    // ── 히어로: 사실만 — 프사(인스타 스토리 링) + 잇비 둥둥 + @핸들 + 분석 수 pill(카운트업)
+    const IG_GLYPH = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D62976" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.5"/><circle cx="17.5" cy="6.5" r="1" fill="#D62976" stroke="none"/></svg>';
+    const pillText = postCount > 0
+        ? `게시물 <span data-count-up="${postCount}">0</span>개 말투 분석 완료`
+        : '말투 분석 완료';
     let html = `
-    <div style="background:#FBEAF0;border-radius:26px 26px 0 0;padding:32px 20px 24px;text-align:center;position:relative;">
-      <button data-static-action="analyze-result-close" aria-label="닫기" style="position:absolute;top:14px;right:14px;width:32px;height:32px;border:none;border-radius:50%;background:rgba(255,255,255,0.6);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
+    <div style="position:relative;text-align:center;padding:32px 20px 22px;background:linear-gradient(180deg,#FDF3F6 0%,#FBEAF0 100%);border-radius:26px 26px 0 0;">
+      <button data-static-action="analyze-result-close" aria-label="닫기" style="position:absolute;top:14px;right:14px;width:32px;height:32px;border:none;border-radius:50%;background:rgba(255,255,255,0.75);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
-      <div style="margin-bottom:14px;display:flex;justify-content:center;">
-        <svg width="46" height="46" class="itb-float" aria-hidden="true"><use href="#ic-bot"/></svg>
+      <div style="position:relative;display:inline-block;margin-bottom:12px;">
+        <div style="width:86px;height:86px;border-radius:50%;padding:3.5px;box-sizing:border-box;background:conic-gradient(from 210deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5,#FEDA75);">
+          <div style="width:100%;height:100%;border-radius:50%;border:3px solid #fff;box-sizing:border-box;overflow:hidden;background:#F2F4F6;display:flex;align-items:center;justify-content:center;">${avatarInner}</div>
+        </div>
+        <div class="itb-float" style="position:absolute;right:-34px;top:-10px;color:var(--brand-strong);">
+          <svg width="34" height="34" aria-hidden="true"><use href="#ic-bot"/></svg>
+        </div>
       </div>
-      <div style="font-size:16px;font-weight:800;color:var(--text);line-height:1.4;margin-bottom:6px;">말투 분석이 완료됐어요!</div>
-      <div style="font-size:13px;color:${ROSE};font-weight:600;">${postCount > 0 ? `게시물 ${postCount}개 분석 완료` : '말투 분석 완료'}</div>
+      ${handle ? `<div style="font-size:15px;font-weight:800;color:var(--text);">@${_esc(handle)}</div>` : ''}
+      <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:rgba(255,255,255,0.85);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--text-muted);">${IG_GLYPH}<span>${pillText}</span></div>
     </div>`;
 
-    // ── 아바타/핸들/배지
-    html += `
-    <div style="padding:20px 20px 16px;display:flex;align-items:center;gap:12px;border-bottom:0.5px solid var(--border);">
-      <div style="width:44px;height:44px;border-radius:50%;background:#F2F4F6;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;">${avatarInner}</div>
-      <div>
-        ${handle ? `<div style="font-size:15px;font-weight:700;color:var(--text);">@${_esc(handle)}</div>` : ''}
-        ${postCount > 0 ? `<div style="display:inline-flex;align-items:center;gap:4px;background:${ROSE};color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;margin-top:4px;"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 6l3 3 5-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>${postCount}개 분석</div>` : ''}
-      </div>
-    </div>`;
+    // ── 절취선 (티켓 카드 연출 — 점선만)
+    html += '<div style="position:relative;height:22px;background:var(--surface);"><div style="position:absolute;left:22px;right:22px;top:50%;border-top:1.5px dashed var(--border-strong);"></div></div>';
 
-    // ── 섹션 목록 (hairline 구분선)
+    // ── 장부식 섹션 (라벨 11 / 본문 13·15, hairline 구분선)
     const DIV = '<div style="height:.5px;background:var(--border);"></div>';
+    const _label = (t) => `<div style="font-size:11px;font-weight:600;color:var(--text-subtle);">${t}</div>`;
     const secs = [];
 
-    // 말투
+    // 잇비의 한 줄 요약 — 판단형 헤드라인(tone) 대신 관찰 요약 한 문장만 작게. 없으면 생략
     const styleSummary = String(raw.style_summary || p.style_summary || raw.tone_summary || '').trim();
-    // 대표 말투 한 줄 — 요약문 위에 크게. 없으면 이 줄만 생략한다.
-    //   styleSummary 가 tone_summary 로 폴백된 경우 같은 문장이 두 번 나오므로 본문은 뺀다.
-    const toneLine = String(raw.tone || raw.tone_summary || '').trim();
-    const bodyLine = styleSummary && styleSummary !== toneLine ? styleSummary : '';
-    if (toneLine || bodyLine) {
-        secs.push(`<div style="padding:18px 20px;">
-            <div style="font-size:11px;font-weight:600;color:var(--text-subtle);margin-bottom:6px;">원장님 말투</div>
-            ${toneLine ? `<div style="font-size:17.5px;font-weight:800;color:var(--brand-strong);line-height:1.4;word-break:keep-all;margin-bottom:${bodyLine ? '8px' : '0'};">${_esc(toneLine)}</div>` : ''}
-            ${bodyLine ? `<div style="font-size:14px;color:var(--text);line-height:1.7;word-break:keep-all;">${_esc(bodyLine)}</div>` : ''}
+    if (styleSummary) {
+        secs.push(`<div style="padding:16px 20px;">${_label('잇비의 한 줄 요약')}
+            <div style="font-size:13px;color:var(--text-muted);line-height:1.7;word-break:keep-all;margin-top:8px;">${_esc(styleSummary)}</div>
         </div>`);
     }
 
-    // 말끝 칩 (고정문구보다 위에 배치)
+    // 말끝 — 장부 행 + 미니 게이지(최댓값 대비 %). counts 없으면(구 응답 폴백) 값만
     const endPairs = endCounts.length ? endCounts : sigArr.map(t => [t, null]);
     if (endPairs.length) {
-        const sigChips = endPairs.map(([t, n]) => _chip(t, n)).join('');
-        secs.push(`<div style="padding:18px 20px;">
-            <div style="font-size:11px;font-weight:600;color:var(--text-subtle);margin-bottom:10px;">원장님이 자주 쓰는 말끝</div>
-            <div style="line-height:1;">${sigChips}</div>
+        const maxN = Math.max(...endPairs.map(x => x[1] || 0), 1);
+        const topN = endCounts.length ? Math.max(...endCounts.map(x => x[1])) : -1;
+        const rows = endPairs.map(([t, n], i) => {
+            const isTop = n != null && n === topN;
+            const gauge = n == null ? '' :
+                `<span style="flex:1;height:5px;border-radius:999px;background:#F2F4F6;overflow:hidden;"><span style="display:block;height:100%;border-radius:999px;width:${Math.round(n / maxN * 100)}%;background:var(${isTop ? '--brand-strong' : '--brand'});"></span></span>`;
+            const num = n == null ? '' : `<span style="font-size:13px;font-weight:600;color:var(${isTop ? '--brand-strong' : '--text-subtle'});font-variant-numeric:tabular-nums;flex-shrink:0;">${n}</span>`;
+            return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;${i > 0 ? 'border-top:.5px solid var(--border);' : ''}">
+                <span style="font-size:15px;color:var(--text);word-break:keep-all;flex-shrink:0;min-width:86px;${isTop ? 'font-weight:700;' : ''}">${_esc(t)}</span>${gauge}${num}</div>`;
+        }).join('');
+        secs.push(`<div style="padding:16px 20px 8px;">${_label('자주 쓰는 말끝')}<div style="margin-top:4px;">${rows}</div></div>`);
+    }
+
+    // 해시태그 — 축소: 상위 3개 칩 한 줄 + "+N개" 펼침. counts 없으면 횟수 없이
+    const tagPairs = tagCounts.length ? tagCounts : tagArr.map(t => [t, null]);
+    if (tagPairs.length) {
+        const _tagChip = ([t, n]) =>
+            `<span style="display:inline-flex;align-items:baseline;font-size:13px;color:var(--text-muted);background:#F7F8FA;padding:6px 12px;border-radius:999px;word-break:keep-all;">${_esc(t)}${n == null ? '' : `<b style="font-weight:600;color:var(--text-subtle);margin-left:3px;">${n}</b>`}</span>`;
+        const head = tagPairs.slice(0, 3).map(_tagChip).join('');
+        const rest = tagPairs.slice(3).map(_tagChip).join('');
+        const restN = tagPairs.length - 3;
+        secs.push(`<div style="padding:16px 20px;">${_label('자주 쓰는 해시태그')}
+            <div data-ig-tag-chips style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">${head}<span data-ig-tag-rest style="display:none;">${rest}</span>${rest ? `<button data-ig-tag-toggle data-n="${restN}" style="font-size:13px;font-weight:600;color:var(--brand-strong);background:#FBEAF0;padding:6px 12px;border-radius:999px;border:none;cursor:pointer;">+${restN}개</button>` : ''}</div>
         </div>`);
     }
 
-    // 고정문구: 항상 렌더, 없으면 '없음'
-    secs.push(`<div style="padding:18px 20px;">
-        <div style="font-size:11px;font-weight:600;color:var(--text-subtle);margin-bottom:10px;">원장님이 꼭 쓰는 고정문구</div>
+    // 이모지 — 카드 없이 한 줄: 글리프 20px + 횟수 13px 페어, 1위 횟수만 로즈
+    const emoPairs = (emoCounts.length ? emoCounts : _splitEmoji(emojis).map(c => [c, null])).slice(0, 5);
+    if (emoPairs.length) {
+        const topE = emoCounts.length ? Math.max(...emoCounts.map(x => x[1])) : -1;
+        const pairs = emoPairs.map(([c, n]) =>
+            `<span style="display:inline-flex;align-items:baseline;gap:5px;"><span style="font-size:20px;line-height:1;">${_esc(c)}</span>${n == null ? '' : `<span style="font-size:13px;font-weight:600;color:var(${n === topE ? '--brand-strong' : '--text-subtle'});">${n}</span>`}</span>`).join('');
+        secs.push(`<div style="padding:16px 20px;">${_label('자주 쓰는 이모지')}
+            <div style="display:flex;gap:18px;align-items:baseline;margin-top:10px;">${pairs}</div>
+        </div>`);
+    }
+
+    // 고정문구 — 인용 블록. 항상 렌더, 없으면 '없음'
+    secs.push(`<div style="padding:16px 20px;">${_label('꼭 쓰는 고정문구')}
         ${capTmpl
-            ? `<div style="font-size:13.5px;color:var(--text);line-height:1.8;white-space:pre-wrap;word-break:keep-all;">${_esc(capTmpl)}</div>`
-            : `<div style="font-size:13.5px;color:var(--text-subtle);">없음</div>`
+            ? `<div style="margin-top:8px;padding:2px 0 2px 12px;border-left:2px solid var(--brand);font-size:13px;color:var(--text-muted);line-height:1.8;white-space:pre-wrap;word-break:keep-all;">${_esc(capTmpl)}</div>`
+            : `<div style="font-size:13px;color:var(--text-subtle);margin-top:8px;">없음</div>`
         }
     </div>`);
 
-    // 기본 펼침 — 상위 5개는 바로 보이고 나머지만 '전체 보기 ›' 로 연다.
-    //   (예전엔 통째로 display:none 이라 태그가 있어도 빈 섹션처럼 보였다)
-    const tagPairs = tagCounts.length ? tagCounts : tagArr.map(t => [t, null]);
-    if (tagPairs.length) {
-        const headChips = tagPairs.slice(0, 5).map(([t, n]) => _chip(t, n)).join('');
-        const restChips = tagPairs.slice(5).map(([t, n]) => _chip(t, n)).join('');
-        secs.push(`<div style="padding:18px 20px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                <span style="font-size:11px;font-weight:600;color:var(--text-subtle);">원장님이 자주 쓰는 해시태그 <span style="font-weight:500;">TOP 5</span></span>
-                ${restChips ? `<button data-ig-tag-toggle style="background:none;border:none;padding:0;font-size:12px;color:var(--text-subtle);cursor:pointer;font-weight:600;flex-shrink:0;">전체 보기 ›</button>` : ''}
-            </div>
-            <div data-ig-tag-chips style="margin-top:10px;line-height:1;">${headChips}<span data-ig-tag-rest style="display:none;">${restChips}</span></div>
-        </div>`);
-    }
-
-    const emoPairs = (emoCounts.length ? emoCounts : _splitEmoji(emojis).map(c => [c, null])).slice(0, 5);
-    if (emoPairs.length) {
-        const emoChips = emoPairs.map(([c, n]) => _emoChip(c, n)).join('');
-        secs.push(`<div style="padding:18px 20px;">
-            <div style="font-size:11px;font-weight:600;color:var(--text-subtle);margin-bottom:10px;">원장님이 자주 쓰는 이모지 <span style="font-weight:500;">TOP 5</span></div>
-            <div style="line-height:1;">${emoChips}</div>
-        </div>`);
-    }
-
-    if (secs.length) {
-        html += `<div style="overflow:hidden;">${secs.join(DIV)}</div>`;
-    }
+    // 절취선 아래 전체를 스태거 대상으로 묶는다 (data-report-secs)
+    html += `<div data-report-secs style="overflow:hidden;">${secs.join(DIV)}</div>`;
 
     // [2026-08-16] 하단 안내 문구 삭제 — "내샵관리 › 잇비/자동화 › 내 말투" 메뉴가 실제로 없어서
     //   없는 경로를 안내하고 있었음(원영 지적). 하단 여백만 유지.
-    html += `<div style="height:24px;"></div>`;
+    html += `<div style="height:20px;"></div>`;
 
     const body = document.getElementById('analyzeResultBody');
     if (!body) return;
     body.innerHTML = html;
-    // [2026-06-26] '내 말투로 글 써보기' CTA 제거 — 말투분석 보고서에서 작업실/글쓰기 진입 차단(중복·혼동 방지).
+
+    // [2026-06-26] '내 말투로 글 써보기' CTA 제거 유지 — 작업실/글쓰기 진입 차단(중복·혼동 방지).
     //   닫기는 헤더 X(analyze-result-close).
+
+    // 태그 "+N개" 펼침 토글 — rest 는 flex 부모 안이라 display:contents 로 펼쳐야 랩핑이 자연스럽다
     body.querySelector('[data-ig-tag-toggle]')?.addEventListener('click', function () {
         const rest = body.querySelector('[data-ig-tag-rest]');
         if (!rest) return;
         const open = rest.style.display !== 'none';
-        rest.style.display = open ? 'none' : 'inline';
-        this.textContent = open ? '전체 보기 ›' : '접기 ›';
+        rest.style.display = open ? 'none' : 'contents';
+        this.textContent = open ? `+${this.dataset.n}개` : '접기';
     });
+
+    // 게시물 수 카운트업 0→N (약 0.8s ease-out). reduced-motion 이면 즉시
+    const cEl = body.querySelector('[data-count-up]');
+    if (cEl) {
+        const target = parseInt(cEl.getAttribute('data-count-up'), 10) || 0;
+        if (_rm || target <= 0) { cEl.textContent = String(target); }
+        else {
+            const t0 = performance.now(), DUR = 800;
+            const tick = (t) => {
+                const k = Math.min((t - t0) / DUR, 1);
+                cEl.textContent = String(Math.round(target * (1 - Math.pow(1 - k, 3))));
+                if (k < 1) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        }
+    }
+
+    // 절취선 아래 섹션 0.2s 지연 페이드업 — CSS 파일 수정 없이 인라인 트랜지션
+    const rb = body.querySelector('[data-report-secs]');
+    if (rb && !_rm) {
+        rb.style.opacity = '0';
+        rb.style.transform = 'translateY(8px)';
+        rb.style.transition = 'opacity .4s ease, transform .4s ease';
+        setTimeout(() => { rb.style.opacity = '1'; rb.style.transform = 'none'; }, 200);
+    }
 }
 
 // [2026-05-13 QA #blocker1] 인스타 연동 직후 자동 분석 진입점 — backend 가 _auto_analyze_persona_bg
