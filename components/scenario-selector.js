@@ -55,8 +55,11 @@ const SS_CSS = `
   transition:opacity .12s;
 }
 .ss-confirm-btn:active { opacity:.75; }
-.ss-back { background:none; border:none; color:#aaa; font-size:13px; cursor:pointer; margin-bottom:16px; padding:0; }
-.ss-back:hover { color:#555; }
+/* [2026-08-31] .ss-back -> .ss-step-back 개명. 공통 .ss-back 이 40px 고스트
+   아이콘 버튼으로 승격돼서(sub-screens.css) 같은 이름이면 이 텍스트 링크가
+   40px 네모로 찌그러진다. 여긴 스텝 되돌리기라 성격이 다르다. */
+.ss-step-back { background:none; border:none; color:#aaa; font-size:13px; cursor:pointer; margin-bottom:16px; padding:0; }
+.ss-step-back:hover { color:#555; }
 `;
 
 function _injectSSStyles() {
@@ -117,7 +120,7 @@ function renderScenarioSelector(container, onComplete) {
 
     if (stepIdx > 0) {
       const back = document.createElement('button');
-      back.className = 'ss-back';
+      back.className = 'ss-step-back';
       back.textContent = '← 이전';
       back.onclick = () => { currentStep--; render(); };
       wrap.appendChild(back);
@@ -201,7 +204,7 @@ function renderScenarioSelector(container, onComplete) {
 
   function _renderSpecialContext(wrap) {
     const back = document.createElement('button');
-    back.className = 'ss-back';
+    back.className = 'ss-step-back';
     back.textContent = '← 이전';
     back.onclick = () => { currentStep = 2; render(); };
     wrap.appendChild(back);

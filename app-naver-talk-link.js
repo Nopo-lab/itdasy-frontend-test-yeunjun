@@ -31,7 +31,7 @@
     el.innerHTML = `
       <header class="ss-topbar">
         <button type="button" class="ss-back" data-nt-back aria-label="뒤로">
-          <svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
+          <svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
         </button>
         <div class="ss-title" style="display:flex;align-items:center;gap:7px;">${_nBadge()}네이버 톡톡 연동</div>
       </header>

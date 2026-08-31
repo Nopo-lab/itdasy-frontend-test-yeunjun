@@ -39,7 +39,7 @@
     el.innerHTML = `
       <header class="ss-topbar">
         <button type="button" class="ss-back" data-bk-back aria-label="뒤로">
-          <svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
+          <svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
         </button>
         <div class="ss-title">백업 · 로그아웃</div>
       </header>

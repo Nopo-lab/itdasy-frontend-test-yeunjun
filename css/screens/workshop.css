@@ -311,7 +311,7 @@
 /* 상단바 */
 #slotPopup .dt-hdr { background: var(--ws-clite-surface); border-bottom: 1px solid rgba(232,234,240,0.8); }
 #slotPopup .dt-title { font-size: 15px; font-weight: 750; color: var(--ws-clite-text); letter-spacing: -0.03em; }
-#slotPopup .dt-back { border-radius: 14px; background: #f3f4f6; border: 1px solid var(--ws-clite-border); color: var(--ws-clite-text-soft); }
+/* [2026-08-31 네비 통일] #slotPopup .dt-back 제거 — 공통 .ss-back(고스트)으로 흡수. */
 /* 헤더 보조 '잇비' 버튼 (하단에서 이전) */
 #slotPopup .slot-itbi-hd {
   width: 36px; height: 36px; border-radius: 12px; flex-shrink: 0;

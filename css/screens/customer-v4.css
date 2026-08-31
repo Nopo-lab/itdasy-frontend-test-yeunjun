@@ -207,9 +207,7 @@
   display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border,#F0F0F0);
   background:var(--surface,#fff);position:sticky;top:0;z-index:5;
 }
-#customerDashSheet .cv4-detail-mobile-head .back {
-  background:none;border:none;font-size:20px;cursor:pointer;color:var(--text,#111);padding:4px 8px;
-}
+/* [2026-08-31 네비 통일] .back -> 공통 .ss-back. 배경·크기는 sub-screens.css 가 준다. */
 #customerDashSheet .cv4-detail-mobile-body { padding:20px 16px; }
 
 /* ── [2026-08-05 출시감사] 터치 영역 44×44 확보 ───────────────────
@@ -223,13 +221,13 @@
 #customerSheet .cv4-chip,
 #customerSheet .cv4-hd-add,
 #customerSheet .dt-back,
-#customerDashSheet .cv4-detail-mobile-head .back {
+#customerDashSheet .cv4-detail-mobile-head .ss-back {
   position: relative;
 }
 #customerSheet .cv4-chip::after,
 #customerSheet .cv4-hd-add::after,
 #customerSheet .dt-back::after,
-#customerDashSheet .cv4-detail-mobile-head .back::after {
+#customerDashSheet .cv4-detail-mobile-head .ss-back::after {
   content: '';
   position: absolute;
   left: 50%;

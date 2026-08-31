@@ -1175,7 +1175,7 @@
     const _formId = id ? `customer-edit::${id}` : 'customer-add';
     box.innerHTML = `
       <div data-form-id="${_esc(_formId)}">
-      <button data-customer-back class="dt-back" style="margin-bottom:12px;" aria-label="뒤로"><svg width="20" height="20" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>
+      <button type="button" data-customer-back class="ss-back" style="margin-bottom:12px;" aria-label="뒤로"><svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>
       <div class="dt-field-row"><label class="dt-field-lbl">이름 *</label><input id="cfName" name="cfName" class="dt-field" value="${_esc(c.name)}" maxlength="50" /></div>
       <div class="dt-field-row"><label class="dt-field-lbl">연락처</label><input id="cfPhone" name="cfPhone" class="dt-field" value="${_esc(c.phone||'')}" inputmode="tel" maxlength="20" /></div>
       <div class="dt-field-row"><label class="dt-field-lbl">생일 (MM-DD)</label><input id="cfBirthday" name="cfBirthday" class="dt-field" value="${_esc(c.birthday||'')}" placeholder="03-14" maxlength="5" /></div>

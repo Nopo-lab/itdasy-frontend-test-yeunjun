@@ -24,7 +24,7 @@
     el.innerHTML = `
       <header class="ss-topbar">
         <button type="button" class="ss-back" data-nv-back aria-label="뒤로">
-          <svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
+          <svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
         </button>
         <div class="ss-title">네이버 예약 연동</div>
       </header>

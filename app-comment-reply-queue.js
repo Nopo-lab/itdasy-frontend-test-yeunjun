@@ -602,7 +602,7 @@
     el.setAttribute('aria-hidden', 'true');
     el.innerHTML =
       '<header class="ss-topbar">' +
-        '<button type="button" class="ss-back" data-crq-back aria-label="뒤로"><svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>' +
+        '<button type="button" class="ss-back" data-crq-back aria-label="뒤로"><svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>' +
         '<div class="ss-title crq-title">댓글 문의 응대</div>' +
         '<button type="button" class="crq-gear" aria-label="설정" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#4E5968;display:inline-flex;align-items:center;padding:4px;">' + IC.gear + '</button>' +
         // [2026-07-22 보스] 저장 버튼 — DM 자동응답 설정창(dm-header__action)과 같은 자리·같은 역할.

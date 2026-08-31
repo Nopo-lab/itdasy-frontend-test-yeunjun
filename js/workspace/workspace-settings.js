@@ -287,7 +287,7 @@
     el.innerHTML =
       // [2026-07-22 보스] 저장 버튼 — DM 자동응답 설정창과 같은 자리·같은 역할.
       //   값은 원래도 입력이 끝나면 바로 저장되지만, 버튼이 없으면 원장님은 저장됐는지 알 수가 없다.
-      '<header class="ss-topbar"><button type="button" class="ss-back" data-wss-back aria-label="뒤로"><svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>' +
+      '<header class="ss-topbar"><button type="button" class="ss-back" data-wss-back aria-label="뒤로"><svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>' +
         '<div class="ss-title">작업실 설정</div>' +
         '<button type="button" data-wss-save style="margin-left:auto;background:none;border:none;cursor:pointer;color:#BC6675;font-size:15px;font-weight:700;font-family:inherit;padding:4px 6px;">저장</button></header>' +
       '<div class="ss-body">' +

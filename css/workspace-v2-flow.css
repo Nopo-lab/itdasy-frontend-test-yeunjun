@@ -13,9 +13,8 @@
 /* 상단바 + 진행 */
 .wsv2flow__bar { flex: none; padding: calc(8px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 16px 0;
   display: grid; grid-template-columns: 40px 1fr 56px; align-items: center; height: 54px; }
-.wsv2flow__back { appearance: none; border: 0; background: transparent; color: var(--text);
-  width: 38px; height: 38px; border-radius: var(--r-md); display: grid; place-items: center; cursor: pointer; }
-.wsv2flow__back svg { width: 24px; height: 24px; stroke: var(--text); }
+/* [2026-08-31 네비 통일] .wsv2flow__back 제거 — 공통 .ss-back 으로 흡수.
+   __bar 의 grid 첫 칸이 40px 라 ss-back(40px)이 오히려 정확히 맞는다. */
 .wsv2flow__title { text-align: center; font-size: 17px; font-weight: 800; letter-spacing: -.02em; }
 .wsv2flow__step { justify-self: end; font-size: 13px; font-weight: 800; color: var(--text-subtle); }
 .wsv2flow__progress { flex: none; display: flex; gap: 6px; padding: 6px 18px 12px; }

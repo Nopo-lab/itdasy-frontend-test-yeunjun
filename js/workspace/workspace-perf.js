@@ -848,7 +848,7 @@
     el.innerHTML =
       '<header class="ss-topbar">' +
         '<button type="button" class="ss-back" data-wsp-back aria-label="뒤로">' +
-          '<svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>' +
+          '<svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>' +
         '<div class="ss-title">성과</div>' +
         // [2026-07-22 보스] 새로고침 — 예전엔 열 때 딱 1번만 불러오고 그 뒤엔 영영 그대로였다.
         //   좋아요·댓글이 방금 달렸는데 화면이 안 바뀌니 "성과가 실시간이 아니다"로 보였다.

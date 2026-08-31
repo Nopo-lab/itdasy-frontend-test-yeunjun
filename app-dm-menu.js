@@ -238,7 +238,7 @@
     el.setAttribute('aria-hidden', 'true');
     el.innerHTML = `
       <header class="ss-topbar">
-        <button type="button" class="ss-back" data-dmm-back aria-label="뒤로"><svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>
+        <button type="button" class="ss-back" data-dmm-back aria-label="뒤로"><svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>
         <div class="ss-title">인스타DM 손님 응대</div>
         <button type="button" class="ss-action" data-dmm-save>저장</button>
       </header>

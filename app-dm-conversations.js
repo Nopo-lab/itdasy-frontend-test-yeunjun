@@ -110,9 +110,7 @@
     sheet.innerHTML = `
       <!-- 헤더: 인스타 다이렉트 스타일 -->
       <div style="display:flex;align-items:center;gap:8px;padding:max(14px,var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 16px 12px;border-bottom:1px solid #DBDBDB;background:#fff;">
-        <button id="dcvClose" aria-label="닫기" style="background:none;border:none;cursor:pointer;color:#262626;display:inline-flex;align-items:center;padding:4px;">
-          <svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
-        </button>
+        <button type="button" id="dcvClose" class="ss-back" aria-label="닫기"><svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>
         <strong style="font-size:18px;font-weight:700;color:#262626;letter-spacing:-0.3px;">실시간 DM</strong>
         <span id="dcvCount" style="font-size:12px;color:#8E8E8E;margin-left:4px;"></span>
         <button id="dcvSettings" aria-label="자동응답 설정" title="자동응답 설정" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#262626;display:inline-flex;align-items:center;padding:6px;">
@@ -246,9 +244,7 @@
     sheet.innerHTML = `
       <!-- 인스타 DM 헤더 -->
       <div style="display:flex;align-items:center;gap:10px;padding:max(14px,var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 14px 10px;border-bottom:1px solid #DBDBDB;background:#fff;">
-        <button id="dthBack" aria-label="뒤로" style="background:none;border:none;cursor:pointer;color:#262626;display:inline-flex;align-items:center;padding:4px;">
-          <svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
-        </button>
+        <button type="button" id="dthBack" class="ss-back" aria-label="뒤로"><svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>
         <div id="dthAvatar" style="width:36px;height:36px;border-radius:50%;background:${IG_GRADIENT};padding:2px;flex-shrink:0;">
           <div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,#FCE7F3,#FBCFE8);display:flex;align-items:center;justify-content:center;font-weight:700;color:#9D174D;font-size:14px;">?</div>
         </div>

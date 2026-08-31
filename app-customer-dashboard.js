@@ -61,7 +61,7 @@
     sheet.innerHTML = `
       <div class="cust-detail" style="position:relative;width:100%;max-width:720px;margin:0 auto;min-height:100vh;background:var(--surface,#fff);">
         <div class="cv4-detail-mobile-head">
-          <button class="back" data-customer-dashboard-close aria-label="뒤로가기">‹</button>
+          <button type="button" class="ss-back" data-customer-dashboard-close aria-label="뒤로"><svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>
           <div style="flex:1;text-align:center;font-size:15px;font-weight:600;color:var(--text);">고객 정보</div>
           <div style="width:36px;"></div>
         </div>
