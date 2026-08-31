@@ -143,7 +143,9 @@
   let _escHandler = null;
   function _bindEscClose() {
     if (_escHandler) return;
-    _escHandler = (e) => { if (e.key === 'Escape') _close(); };
+    // [2026-08-31] ESC 도 헤더 ← 와 같은 경로. 주간뷰에서 ← 는 월간뷰 복귀인데
+    //   ESC 만 시트를 통째로 닫으면 같은 화면에서 두 동작이 갈린다.
+    _escHandler = (e) => { if (e.key === 'Escape') _back(); };
     document.addEventListener('keydown', _escHandler);
   }
 
@@ -939,7 +941,7 @@
     o.innerHTML = `
       <div class="cal-sheet" style="display:flex;flex-direction:column;height:100%;">
         <div class="bk-header">
-          <button class="bk-header__back" id="bk-back" aria-label="닫기">
+          <button class="bk-header__back" id="bk-back" aria-label="뒤로">
             <svg width="14" height="14" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
           </button>
           <div class="bk-header__title-wrap">
@@ -977,8 +979,8 @@
     }).join('');
     return `
         <div class="bk-pc__header">
-          <button class="bk-header__back" id="bk-back" aria-label="닫기" title="ESC 또는 클릭으로 닫기">
-            <svg width="16" height="16" aria-hidden="true"><use href="#ic-x"/></svg>
+          <button class="bk-header__back" id="bk-back" aria-label="뒤로" title="ESC 또는 클릭으로 뒤로">
+            <svg width="16" height="16" aria-hidden="true"><use href="#ic-chevron-left"/></svg>
           </button>
           <div class="bk-pc__title">예약</div>
           <div class="bk-pc__month-nav">
