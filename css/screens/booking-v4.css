@@ -396,17 +396,28 @@
    FAB 이 헤더로 이사해서 애초에 달력을 덮을 일이 없어졌다.
    ⚠️ 스코프는 #cal-overlay 한정. 같은 .bk-month-m 그리드를 매출 캘린더
    (app-revenue-calendar.js)가 재사용하는데 거긴 칩이 금액 1개라 그대로 둔다. */
+/* [2026-08-31] 칸 높이를 '주별 유동'으로 — grid-auto-rows:1fr 폐기.
+   1fr 은 남은 높이를 주 수로 균등분배라, 6주짜리 달(2026-08)에서 칸이 짜부라져
+   하루 5건인 날이 칩 1개 + "+4" 로 접혔다. "예약이 안 보인다"의 실제 원인이 이거다.
+   이제 JS(_sizeMonthRows)가 주별로 `max(그 주 최대 건수, 4) × 칩높이` 를 계산해서
+   gridTemplateRows 에 실제 px 를 박는다. 4건 이하인 주는 예전과 같은 높이고,
+   5건 넘는 주만 그 줄이 늘어난다 → 넘치는 달에만 세로 스크롤.
+   여기 78px 는 JS 가 실측하기 전(첫 페인트)의 기본값이자 폴백이다: 4칩 기준.
+   __cells 는 flex:0 0 auto 라야 한다 — 1 1 auto 면 부모가 다시 눌러서 1fr 시절로 돌아간다. */
 #cal-overlay .bk-month-m {
   padding: 2px 3px 8px;
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 #cal-overlay .bk-month-m__dow-row { padding: 0 3px; flex: 0 0 auto; }
 #cal-overlay .bk-month-m__cells {
-  grid-auto-rows: 1fr;
-  flex: 1 1 auto;
+  grid-auto-rows: 78px;
+  flex: 0 0 auto;
   min-height: 0;
 }
 #cal-overlay .bk-month-m__cell { padding: 2px 1px; overflow: hidden; min-height: 0; }

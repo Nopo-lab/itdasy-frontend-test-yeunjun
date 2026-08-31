@@ -20,6 +20,19 @@
     return d;
   }
 
+  /* [2026-08-31] DM 확정 경로는 window.Booking.create() 를 안 거치고 BE 로 직접 POST 한다.
+     그래서 예약이 서버엔 생겼는데 프론트 예약 캐시(app-booking-api.js 의 _cache)는 그대로라
+     캘린더가 옛 목록을 계속 그렸다(원장님 "확정했는데 캘린더에 안 보여요"). 확정 성공 직후
+     캐시를 직접 비워, 다음 list() 가 무조건 서버에서 새로 받게 한다.
+     app-booking-api.js 의 public 이름은 _invalidateCache (언더바 포함) — 미로드 대비 방어적 호출. */
+  function _invalidateBookingCache() {
+    try {
+      if (window.Booking && typeof window.Booking._invalidateCache === 'function') {
+        window.Booking._invalidateCache();
+      }
+    } catch (_e) { /* ignore */ }
+  }
+
   function _ensureSheet() {
     let sheet = document.getElementById('dmConfirmQueueSheet');
     if (sheet) return sheet;
@@ -785,6 +798,7 @@
         r = await _fetch('POST', `/dm-confirm-queue/${id}/confirm-deposit`, _cbody);
         if (window.showToast) window.showToast(r.ok ? '캘린더 추가 + 고객 등록했어요 ✓' : (r.message || '확정 실패'));
         if (!(r && r.ok)) { btn.disabled = false; btn.style.opacity = '1'; return; }
+        _invalidateBookingCache();  // 입금확인 → 예약 확정. BE 직접 POST 라 프론트 캐시를 여기서 비운다.
       } else if (action === 'reset') {
         const ok = await window.nativeConfirm('대화 초기화', '이 손님의 대화를 초기화할까요?\n성함·연락처·예약 정보가 모두 사라져요.').catch(() => false);
         if (!ok) { btn.disabled = false; btn.style.opacity = '1'; return; }
@@ -799,7 +813,6 @@
         r = await _fetch('POST', `/dm-confirm-queue/${id}/discard`);
       }
       // send / send_edit 성공 시 → 예약 캐시 무효화 + 홈/벨 갱신 + Undo 토스트
-      // (app-booking-api.js 의 _invalidateCache 가 itdasy:data-changed 리스너로 발동)
       const isApproveSend = (action === 'send' || action === 'send_edit');
       if (isApproveSend && r && r.ok === false) {
         // [P1 C-1] BE 가 200 + {ok:false} 로 예약 액션 실패를 알린 경우 — 성공 처리 금지
@@ -807,6 +820,10 @@
         btn.disabled = false; btn.style.opacity = '1';
         return;
       }
+      // [2026-08-31] send/send_edit 도 BE 가 예약을 만들거나 옮긴다. 예전엔 아래 itdasy:data-changed
+      //   리스너가 대신 캐시를 비워주길 기대했는데(kind 문자열 정규식 매칭에 의존), 그 간접 경로가
+      //   끊기면 캘린더가 조용히 옛 목록을 그린다. 여기서 직접 비운다.
+      if (isApproveSend) _invalidateBookingCache();
       const undoLogId = r.log_id || r.action_log_id || null;
       // [F3] 전송 후 체크 토스트 — 밋밋한 "발송 완료" 대신 "전송했어요 ✓"
       const bookingYmd = card.dataset.bookingDate || '';

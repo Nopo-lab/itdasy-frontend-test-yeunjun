@@ -449,6 +449,14 @@
     </button>`;
   }
 
+  // [2026-08-31] "+N건 더 보기"가 data-hv-act="openCalendar" 라, 누르면 캘린더로 화면이 통째로
+  //   넘어갔다(오늘 5건이면 홈에서 5번째 예약을 영영 못 봄). "화면 이동 금지" 원칙 정면 위반이라
+  //   제자리 인라인 펼침으로 교체한다.
+  //   - 슬롯은 이제 전부 렌더하고, 최대 노출 개수 초과분에만 .is-extra 를 달아 CSS 로 숨긴다
+  //     (기존 slice 제거). 그래야 펼칠 때 DOM 을 새로 만들 필요가 없고, data-hv-slot 인덱스도
+  //     todayBookings() 원본 배열과 그대로 맞아 슬롯 클릭 바인딩이 전부 유효하다.
+  //   - 펼침 상태는 .hv5-slots 의 클래스로만 산다 → localStorage 저장 X. 홈이 다시 그려지면
+  //     자동으로 접힘(내일 예약 1건인데 펼쳐진 채 남는 사고 방지).
   function renderBooking(brief) {
     const all = todayBookings(brief);
     const empty = cfg().BOOKING_EMPTY_DISPLAY || 'hide';
@@ -456,10 +464,12 @@
     const max = cfg().BOOKING_SLOTS_MAX || 5;
     const now = Date.now();
     const idxNext = all.findIndex(b => Number.isFinite(Date.parse(b.starts_at || '')) && Date.parse(b.starts_at || '') >= now);
-    const visible = all.slice(0, max);
-    const slotsHtml = visible.map((b, i) => renderBookingSlot(b, i, idxNext)).join('');
-    const more = all.length - visible.length;
-    const moreRow = more > 0 ? `<button type="button" class="hv5-s-more" data-hv-act="openCalendar">+${more}건 더 보기</button>` : '';
+    const slotsHtml = all.map((b, i) => renderBookingSlot(b, i, idxNext, i >= max)).join('');
+    const more = all.length - max;
+    const moreRow = more > 0 ? `<button type="button" class="hv5-s-more" data-hv-act="toggleBookings" data-hv-more="${more}" aria-expanded="false">
+        <span class="hv5-s-more-t">+${more}건 더 보기</span>
+        <svg class="hv5-s-more-ic" width="14" height="14" aria-hidden="true"><use href="#ic-chevron-down"/></svg>
+      </button>` : '';
     return `<div class="hv5-card">
       <div class="hv5-card-h">
         <div class="hv5-card-title">오늘의 예약 ${all.length}건</div>
@@ -467,6 +477,18 @@
       </div>
       <div class="hv5-slots">${slotsHtml}${moreRow}</div>
     </div>`;
+  }
+
+  // [2026-08-31] 오늘의 예약 펼침/접기 — 홈 전체 재렌더가 아니라 이 카드의 DOM 만 만진다.
+  //   HomeV41.render() 를 다시 태우면 스크롤이 맨 위로 튀고 brief 재조립 비용도 든다.
+  //   여기선 클래스 토글 + 라벨 텍스트 교체만 → 스크롤 위치 그대로. (app-home-v41.js _bindEvents 에서 호출)
+  function toggleBookings(btn) {
+    const list = btn && btn.closest ? btn.closest('.hv5-slots') : null;
+    if (!list) return;
+    const open = list.classList.toggle('is-open');
+    const label = btn.querySelector('.hv5-s-more-t');
+    if (label) label.textContent = open ? '접기' : `+${btn.dataset.hvMore || ''}건 더 보기`;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
   function bookingEmptyHtml() {
@@ -479,11 +501,11 @@
     </div>`;
   }
 
-  function renderBookingSlot(b, i, idxNext) {
+  function renderBookingSlot(b, i, idxNext, isExtra) {
     const status = statusLabel(b.status);
     const badge = status ? `<span class="hv5-s-badge ${statusClass(b.status)}">${status}</span>` : '';
     const amount = bookingAmount(b);
-    return `<button type="button" class="hv5-slot${i === idxNext ? ' now' : ''} hv5-slot-${COLORS[i % 5]}" data-hv-slot="${i}" data-hv-time="${esc(b.starts_at || '')}">
+    return `<button type="button" class="hv5-slot${i === idxNext ? ' now' : ''}${isExtra ? ' is-extra' : ''} hv5-slot-${COLORS[i % 5]}" data-hv-slot="${i}" data-hv-time="${esc(b.starts_at || '')}">
       <span class="hv5-s-time">${esc(hhmm(b.starts_at))}</span>
       <span class="hv5-s-bar" aria-hidden="true"></span>
       <span class="hv5-s-info">
@@ -558,5 +580,5 @@
     ].join('');
   }
 
-  window.HomeV41Render = { compose, syncAvatar, todayBookings };
+  window.HomeV41Render = { compose, syncAvatar, todayBookings, toggleBookings };
 })();

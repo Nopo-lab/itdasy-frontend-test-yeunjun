@@ -362,9 +362,48 @@
       if (more) { more.textContent = '+' + (chips.length - cap); more.hidden = false; }
     });
   }
+  // [2026-08-31] 주별 칸 높이 유동화 — CSS 의 grid-auto-rows:1fr 을 대체한다.
+  //   1fr 은 '남은 높이를 주 수로 균등분배'라 6주짜리 달에서 칸이 짜부라졌고,
+  //   하루 5건인 날이 칩 1개 + "+4" 로 접혀서 "예약이 안 보인다"는 신고가 나왔다.
+  //   이제 주 단위로 `max(그 주 최대 건수, MONTH_BASE_SLOTS) × 칩높이` 를 실제 px 로 박는다.
+  //   ⚠️ 칸이 아니라 '주 행' 단위다 — CSS 그리드 행은 7일이 높이를 공유한다.
+  //   ⚠️ 하드코딩 금지. 칩 높이·간격·칸 여백은 폰트/DPI/미디어쿼리로 달라지므로 전부 실측한다.
+  const MONTH_BASE_SLOTS = 4;
+  function _sizeMonthRows(root) {
+    const grid = root && root.querySelector('.bk-month-m__cells');
+    if (!grid) return;
+    const cells = Array.prototype.slice.call(grid.children);
+    if (cells.length < 7) return;
+    // 칩이 한 개도 없는 달이면 잴 게 없다 → 인라인 높이를 걷어내고 CSS 기본값(78px)에 맡긴다.
+    const box = grid.querySelector('.bk-month-m__events');
+    const chip = grid.querySelector('.bk-month-m__evt');
+    if (!box || !chip) { grid.style.gridTemplateRows = ''; return; }
+    const gap = parseFloat(getComputedStyle(box).rowGap) || 0;
+    const unit = chip.offsetHeight + gap;
+    // 칸에서 칩 영역을 뺀 고정분(날짜 숫자 줄 + margin + padding). 1fr 이 걸려 있어도
+    // 이 차이값은 변하지 않으므로 지금 재도 된다.
+    const overhead = Math.max(0, box.parentElement.getBoundingClientRect().height - box.getBoundingClientRect().height);
+    if (!unit) return;
+    const rows = [];
+    for (let i = 0; i < cells.length; i += 7) {
+      let mx = 0;
+      for (let j = i; j < i + 7 && j < cells.length; j++) {
+        const n = cells[j].querySelectorAll('.bk-month-m__evt').length;
+        if (n > mx) mx = n;
+      }
+      rows.push(Math.round(overhead + Math.max(mx, MONTH_BASE_SLOTS) * unit - gap));
+    }
+    grid.style.gridTemplateRows = rows.map(h => h + 'px').join(' ');
+  }
   function _capMonthCellsSoon() {
     const o = _overlay(); if (!o || _curView !== 'month') return;
-    requestAnimationFrame(() => _capMonthCells(o.querySelector('#bk-body')));
+    // 순서 중요 — 먼저 행 높이를 확정하고, 그 다음 남는 걸 자른다.
+    // 반대로 하면 1fr 시절 높이 기준으로 잘라놓고 칸만 커져서 빈칸이 생긴다.
+    requestAnimationFrame(() => {
+      const root = o.querySelector('#bk-body');
+      _sizeMonthRows(root);
+      _capMonthCells(root);
+    });
   }
 
   function _renderMonthMobile(year, month, mapped) {
@@ -1167,7 +1206,41 @@
       const grid = body.querySelector('#bk-week-m-grid');
       _placeWeekMBlocks(grid, r.items, r.start, r.ws);
       _bindTimetable(body, _curDate);
+      _scrollWeekToFirst(grid, r.items, r.ws);
     }
+  }
+
+  // [2026-08-31] 주간 뷰는 항상 축 맨 위(영업 시작시)에서 시작했다. 오후 예약만 있는 날은
+  //   첫 화면이 텅 빈 시간대라 "예약이 없다"로 오해된다(실제 신고: 5건 중 1건만 보인다고 했는데
+  //   나머지는 스크롤 아래 있었다). 그 주 첫 예약 시간대가 화면 위쪽에 오게 맞춰준다.
+  //   innerHTML 교체 직후라 스크롤은 이미 0 — 사용자가 보던 위치를 뺏을 일은 없다.
+  function _scrollParentOf(el) {
+    let p = el && el.parentElement;
+    while (p && p !== document.body) {
+      const oy = getComputedStyle(p).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) return p;
+      p = p.parentElement;
+    }
+    return null;
+  }
+  function _scrollWeekToFirst(grid, items, weekStart) {
+    if (!grid || !weekStart) return;
+    const we = new Date(weekStart); we.setDate(weekStart.getDate() + 7);
+    let firstH = null;
+    (items || []).forEach(it => {
+      const s = new Date(it._raw.starts_at);
+      if (isNaN(s) || s < weekStart || s >= we) return;
+      if (firstH === null || s.getHours() < firstH) firstH = s.getHours();
+    });
+    if (firstH === null) return;
+    // 블록 배치가 끝나고 레이아웃이 잡힌 다음에 재야 위치가 맞는다.
+    requestAnimationFrame(() => {
+      const cell = grid.querySelector('.bk-week-m__day[data-hour="' + firstH + '"]');
+      const sc = _scrollParentOf(grid);
+      if (!cell || !sc) return;
+      const delta = cell.getBoundingClientRect().top - sc.getBoundingClientRect().top;
+      sc.scrollTop = Math.max(0, sc.scrollTop + delta - 8);
+    });
   }
 
   function _renderDayView(body) {
@@ -2645,6 +2718,21 @@
       const kind = e && e.detail && e.detail.kind;
       if (kind && !/(booking|force_sync|focus_sync|online_restore)/.test(kind)) return;
       try { if (window.Booking && typeof window.Booking._invalidateCache === 'function') window.Booking._invalidateCache(); } catch (_e) { void _e; }
+      if (!_overlay()) return;
+      try {
+        _mappedCache = await _loadMonth(_curYear, _curMonth);
+        _renderViewBody();
+      } catch (_e) { void _e; }
+    });
+
+    // [2026-08-31] SWR 백그라운드 갱신 → 화면 반영.
+    //   app-booking-api.js 의 list() 는 캐시된 옛 목록을 즉시 돌려주고 새 목록은
+    //   백그라운드로 받아 _cache 에만 넣었다. 아무도 다시 그리라고 안 해서, 새로 만든 예약이
+    //   캐시 TTL(5분) 지나고 화면을 한 번 더 전환해야 나타났다("적용에 시간이 걸리는 건가?").
+    //   ⚠️ 위의 itdasy:data-changed 와 달리 여기선 캐시를 비우지 않는다. 비우면
+    //      _loadMonth → 네트워크 → 응답 → 또 이 이벤트 → 무한 루프(사용량 폭발)가 된다.
+    //      새 데이터는 이미 _cache 에 들어와 있으므로 _loadMonth 는 그걸 그냥 읽어 간다.
+    window.addEventListener('itdasy:bookings-refreshed', async () => {
       if (!_overlay()) return;
       try {
         _mappedCache = await _loadMonth(_curYear, _curMonth);

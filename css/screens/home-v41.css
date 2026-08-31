@@ -946,3 +946,24 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 #homePostConnect { padding-left: 0; padding-right: 0; }
 #homeV41Root { padding: 0 !important; }
 #tab-home .hv5-row { gap: 8px !important; margin-bottom: 8px !important; }
+
+/* ============ [2026-08-31] 오늘의 예약 인라인 펼침 ============
+   "+N건 더 보기"가 캘린더로 화면을 통째로 넘겨서 홈에서 5번째 예약을 영영 못 봤다.
+   이제 슬롯을 전부 렌더하고(v41-renderers.js) 초과분만 여기서 숨긴다 → 버튼은 .is-open
+   토글만 하므로 재렌더 없이 그 자리에서 펼쳐진다(스크롤 안 튐).
+   기본 .hv5-slot 은 v41-styles.js 의 display:flex 라 펼칠 때 flex 로 되돌린다.
+   선택자 2단계(.hv5-slots …)로 잡은 이유: hv5 기본 스타일이 \3c style id="hv5Styles"> 로
+   런타임 주입돼 이 파일보다 뒤에 오기 때문에 특이도로 이겨야 한다. */
+.hv5-slots .hv5-slot.is-extra { display: none; }
+.hv5-slots.is-open .hv5-slot.is-extra { display: flex; }
+.hv5-slots .hv5-s-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.hv5-slots .hv5-s-more-ic { flex-shrink: 0; transition: transform 0.18s ease; }
+.hv5-slots.is-open .hv5-s-more-ic { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+  .hv5-slots .hv5-s-more-ic { transition: none; }
+}

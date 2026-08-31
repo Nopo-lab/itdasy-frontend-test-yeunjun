@@ -63,6 +63,16 @@
     return res.status === 204 ? null : await res.json();
   }
 
+  // [2026-08-31] 목록 시그니처 — 백그라운드 갱신 결과가 "실제로" 달라졌는지 판정용.
+  //   전체 JSON 비교는 서버가 필드 순서·updated_at 같은 걸 바꾸면 매번 '달라짐'이 나와서
+  //   화면 재렌더가 무의미하게 반복된다. 화면에 영향 주는 값(id·시작·종료·상태)만 이어붙인다.
+  function _listSignature(items) {
+    if (!Array.isArray(items)) return '';
+    return items.map(b => (
+      (b && b.id) + '~' + (b && b.starts_at) + '~' + (b && b.ends_at) + '~' + (b && b.status)
+    )).join('|');
+  }
+
   // [P2] 백그라운드 fresh fetch — stale-while-revalidate 의 fresh 단계
   // 절대 dispatch('itdasy:data-changed') 하지 말 것 — listener 가 cache invalidate + 재호출 → 무한 루프 (사용량 폭발).
   async function _fetchFreshBookings(fromISO, toISO, key, opts) {
@@ -79,10 +89,23 @@
       const d = await _api('GET', '/bookings?' + qs);
       _isOffline = false;
       const items = d.items || [];
+      // [2026-08-31] SWR 백그라운드 갱신이 캐시(_cache)만 채우고 화면엔 아무것도 안 알려서,
+      //   새로 등록한 예약이 캘린더에 최대 TTL(5분) + 화면 전환 한 번을 더 거쳐야 보였다
+      //   (원장님 예약 5건 미표시 사고). 갱신 결과가 실제로 달라졌으면 재렌더 신호를 쏜다.
+      const _prev = _cache[key];
+      const _changed = !!_prev && _listSignature(_prev.items) !== _listSignature(items);
       _cache[key] = { t: Date.now(), items };
       // 실(prefetch 아님) fetch 중 더 새로운 요청이 없을 때만 _items 갱신(월 연타 이동 stale 방지).
       if (!prefetch && fetchId === _lastFetchId) {
         _items = items;
+      }
+      // 첫 로드(_prev 없음)는 호출자가 await 해서 이미 그리므로 제외. prefetch(이웃 달)도 화면 밖이라 제외.
+      // ⚠️ 'itdasy:data-changed' 는 절대 금지 — 그 리스너가 캐시 무효화 + 재호출로 무한 루프(사용량 폭발) 낸 이력.
+      //    이 이벤트는 "방금 받아둔 캐시로 화면만 다시 그려라" 라는 뜻이다. 재fetch 유발 금지.
+      if (_changed && !prefetch) {
+        try {
+          window.dispatchEvent(new CustomEvent('itdasy:bookings-refreshed', { detail: { from: fromISO, to: toISO } }));
+        } catch (_e) { void _e; }  // 이벤트 실패가 fetch 결과를 죽이지 않게
       }
       return items;
     } catch (e) {

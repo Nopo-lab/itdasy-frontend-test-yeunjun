@@ -235,7 +235,16 @@
       el.addEventListener('click', (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
-        window.HomeV41Actions.run(el.dataset.hvAct || '');
+        const act = el.dataset.hvAct || '';
+        // [2026-08-31] "+N건 더 보기"는 캘린더로 넘어가던 걸 제자리 펼침으로 바꿨다.
+        //   HomeV41Actions 는 "다른 화면 열기" 액션 모음이고 이건 오늘의 예약 카드 DOM 만
+        //   건드리는 토글이라, 마크업 주인인 렌더러에게 바로 넘긴다.
+        if (act === 'toggleBookings') {
+          if (window.hapticLight) { try { window.hapticLight(); } catch (_e) { /* ignore */ } }
+          window.HomeV41Render.toggleBookings(el);
+          return;
+        }
+        window.HomeV41Actions.run(act);
       });
     });
     _bindItbiCardInput(container);
