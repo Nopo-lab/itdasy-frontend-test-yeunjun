@@ -1435,6 +1435,8 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
        checkInstaStatus 가 실제 상태로 마지막에 덮어씀. 첫 방문은 캐시 없어 그대로 pre-connect.
        [2026-05-08 v117] OAuth 직후 (?connected=success) 도 잇비카드 즉시 숨김 — status 호출 결과 기다리지 않음. -->
   <style>
+    /* 기본은 숨김 — 특이도 (0,1,0). 아래 .ig-connected-cache 규칙이 (0,2,0) 이라 이긴다. */
+    #homePostConnect { display: none; }
     html.ig-connected-cache #homePreConnect { display: none; }
     html.ig-connected-cache #homePostConnect { display: flex; }
     @keyframes itb-pulse { 0%,100% { transform:scale(1); opacity:1; } 50% { transform:scale(1.08); opacity:.8; } }
@@ -1643,7 +1645,11 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
   </div>
 
   <!-- ── 연동 후 상태 (홈 v4.1 톤다운) ── -->
-  <div id="homePostConnect" class="hc-section" style="display:none;">
+  <!-- [2026-09-01] display:none 을 인라인에서 CSS 로 옮김. 인라인이면 위 <style> 의
+       html.ig-connected-cache #homePostConnect{display:flex} 가 못 이겨서, 로그인 유저는
+       pre 는 클래스로 숨겨지고 post 는 인라인에 막혀 둘 다 안 보이는 흰 화면이었다.
+       checkInstaStatus 가 API 받고 .style.display 를 찍어야 겨우 나타났다. -->
+  <div id="homePostConnect" class="hc-section">
 
     <!-- ── 외부 JS 호환용 hidden anchor 모음 (절대 삭제 금지)
          다른 모듈이 #home-today-brief 등을 갱신해도 DOM 이 살아있어야 함 -->

@@ -97,7 +97,8 @@ async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
   else if (_seq !== _igStatusSeq) return; // 그 사이 새 호출 시작됨 — 낡은 재시도 폐기
   const _retry = () => {
     if (_attempt >= 2) { _igStatusGiveUp(); return; }
-    setTimeout(() => { try { checkInstaStatus(fromLogin, _attempt + 1, _seq); } catch (_e) { /* ignore */ } }, 4000);
+    // [2026-09-01] 4000 -> 1500. 2회 재시도면 최악 8초를 흰 화면으로 기다렸다.
+    setTimeout(() => { try { checkInstaStatus(fromLogin, _attempt + 1, _seq); } catch (_e) { /* ignore */ } }, 1500);
   };
   let res;
   try {
