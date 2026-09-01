@@ -1075,6 +1075,11 @@ function _bindLoginSocialButtons() {
 }
 
 function setToken(t) {
+  /* [2026-09-01 SESS-1] 새 토큰이 들어오면 "세션 죽음" 표시를 푼다.
+     이걸 빼먹으면 재로그인에 성공해도 app-core 의 죽은세션 차단이 계속 걸려
+     **로그인은 됐는데 앱이 텅 빈** 상태가 된다. 지우는 쪽(null)에서는 건드리지 않는다 —
+     정상 로그아웃과 세션 만료를 구분해야 하고, 만료 표시는 _handle401 이 세운다. */
+  if (t) { try { window.__itdasyAuthDead = false; } catch (_e) { void _e; } }
   // [보안감사 H-3 2026-07-27] secure 모드 OFF → 아래 블록은 원본 그대로(byte-for-byte). 웹·플러그인없는네이티브는 항상 여기.
   if (!_secureMode) {
     try {
@@ -1320,6 +1325,31 @@ function authHeader() {
     const lock = document.getElementById('lockOverlay');
     if (lock) lock.classList.remove('hidden');
     _setAuthGateLocked(true);
+    /* [2026-09-01 SESS-1] 세션이 죽었다고 **앱에 알린다.**
+       예전엔 잠금화면만 띄우고 끝이라, 그 아래에서 열려 있던 시트의 폴러가 계속 돌았다.
+       실측(2026-08-26~09-01 Cloud Logging): 아이폰 1대가 `/dm-confirm-queue` 를
+       **4초 간격으로 26분 넘게** 때려 7일간 401 이 2,989건. 화면엔 아무 표시도 없었다
+       (`_refresh().catch(() => {})` 가 통째로 삼킨다). 원장 배터리·데이터가 새고,
+       서버는 매 요청마다 `get_current_user` 로 DB 를 잡는다 — 과거 QueuePool 고갈의 연료다. */
+    try { window.__itdasyAuthDead = true; } catch (_e) { void _e; }
+    try { document.dispatchEvent(new CustomEvent('itdasy:auth-expired')); } catch (_e) { void _e; }
+  }
+
+  /* [2026-09-01 SESS-1] 세션이 죽은 뒤 인증이 필요한 요청은 **네트워크를 타지 않는다.**
+     타이머를 멈추는 것만으로는 부족하다 — 폴러는 8개 모듈에 흩어져 있고 앞으로 더 생긴다.
+     여기서 막으면 지금 것도 앞으로 생길 것도 같이 막힌다(합성 401 을 돌려주므로
+     호출부 코드는 한 줄도 안 바뀐다). 로그인·헬스체크 경로는 반드시 통과시켜야 한다 —
+     막으면 재로그인 자체가 불가능해지고, /health 를 막으면 앱이 "연결 불안정" 으로 오판한다. */
+  const _AUTH_FREE_RE = /^\/(auth|health|healthz|version|public|docs|openapi)(\/|$|\?)/;
+  function _isAuthFreePath(input) {
+    try {
+      const raw = typeof input === 'string' ? input : (input && input.url) || '';
+      return _AUTH_FREE_RE.test(new URL(raw, location.href).pathname.replace(/^\/+/, '/'));
+    } catch (_e) { void _e; return true; }   // 못 읽으면 막지 않는다(기능 정지보다 낫다)
+  }
+  function _blockedByDeadSession(input) {
+    return !!window.__itdasyAuthDead && !getToken()
+      && _isApiOrigin(input) && !_isAuthFreePath(input);
   }
 
   // [보안감사 H-6 2026-07-27] 401 자동 리프레시/재첨부는 우리 API 오리진에만.
@@ -1334,6 +1364,13 @@ function authHeader() {
   }
 
   window.fetch = async function(input, init) {
+    // [2026-09-01 SESS-1] 세션이 죽었으면 인증 요청은 여기서 끝낸다 — 네트워크 0회.
+    //   응답 모양은 서버 401 과 같게 만들어(호출부가 res.ok / res.status / res.json() 을 그대로 쓴다)
+    //   "조용히 성공한 척" 하지 않는다. 실패는 실패로 돌려준다.
+    if (_blockedByDeadSession(input)) {
+      return new Response(JSON.stringify({ detail: '세션이 만료됐어요. 다시 로그인해 주세요.' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } });
+    }
     const retryable = _isRetryableMethod(init) && _bodyReusable(init) && !_isNoRetryPath(input) && !_isNonIdempotentCreate(input, init);
     const isLlm = _isLlmCall(input);   // [2026-07-22] 생성형 호출 — 오래 기다리되 타임아웃 재시도는 안 함
     let attempt = 0;
@@ -1346,13 +1383,18 @@ function authHeader() {
       try {
         const res = await _fetchWithTimeout(input, init, _tmo);
         if (res.ok) _resetConnFail();   // [버그2] 성공 응답 = 연결 정상 — 실패 카운터 리셋
-        if (res.status === 401 && getToken() && _isApiOrigin(input)) {
+        if (res.status === 401 && _isApiOrigin(input)) {
           // /auth/refresh 자체가 401이면 무한루프 방지
           const url = typeof input === 'string' ? input : (input.url || '');
           if (url.includes('/auth/refresh') || url.includes('/auth/login')) {
             _handle401();
             return res;
           }
+          /* [2026-09-01 SESS-1] 토큰이 없는데 401 → 갱신할 것이 없다. 잠금만 다시 세운다.
+             예전엔 이 분기 조건이 `&& getToken()` 이라, _handle401 이 토큰을 지운 **다음부터는
+             401 을 아무도 처리하지 않았다.** 잠금화면을 닫아 버린 사용자는 그 뒤로 영영
+             "다시 로그인하라" 는 말을 못 듣고, 화면은 옛 데이터를 그대로 띄운 채 남았다. */
+          if (!getToken()) { _handle401(); return res; }
           try {
             const newTok = await _tryRefresh();
             // 갱신된 토큰으로 원 요청 재시도 (refresh 후 fetch 는 timeout 짧게)

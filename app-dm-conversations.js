@@ -351,6 +351,8 @@
     if (_listPollTimer) clearInterval(_listPollTimer);
     _listPollTimer = null;
   }
+  // [2026-09-01 SESS-1] 세션 만료 → 대화 목록·스레드 폴링 둘 다 정지
+  document.addEventListener('itdasy:auth-expired', function () { _stopThreadPoll(); _stopListPoll(); });
 
   async function _pollThreadOnce() {
     if (!_curSender) return;

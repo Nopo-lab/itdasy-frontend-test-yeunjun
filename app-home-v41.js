@@ -126,18 +126,20 @@
     } catch (_e) { return 0; }
     // [2026-07-21] 방해금지 시간대(운영시간 밖) → 홈 넛지·API 호출 스킵. 큐 열면 다 보임(유실 아님)
     try { if (window.crqQuietNow && window.crqQuietNow()) return 0; } catch (_e) { /* ignore */ }
+    /* [2026-09-01 CMT-P1-004] `count_only=1` — 배지 전용 저비용 경로.
+       예전엔 파라미터 없이 풀 엔드포인트를 불렀다. 그러면 캐시가 식어 있을 때
+       배지 숫자 하나 때문에 **Graph 외부호출 최대 60회 + Gemini 재판정 20 + 초안 8** 이 돈다.
+       백엔드엔 진작부터 count_only 가 있었는데(주석에 "뱃지는 비용상 스킵" 이라고까지 적혀 있다)
+       **프론트에서 아무도 안 썼다**(grep 0건). 홈은 앱을 켤 때마다 불리는 자리다 —
+       Vertex 쿼터는 프로젝트 공용이라(2026-08-18 실사고) 배지가 원장 본업을 죽일 수 있다.
+
+       [CMT-P2-008] 인텐트·제외단어 필터도 서버가 한다. 예전엔 홈만 다른 필터를 들고 있어서
+       홈은 "문의 3건", 큐에 들어가면 1건이었다. 이제 숫자와 목록이 같은 판정을 쓴다. */
     try {
-      const res = await apiFetch('/instagram/comment-queue', { headers });
+      const res = await apiFetch('/instagram/comment-queue?count_only=1', { headers });
       if (!res.ok) return 0;
       const data = await res.json();
-      const items = Array.isArray(data && data.items) ? data.items : [];
-      // 큐 화면과 같은 필터 적용 (설정에서 끈 문의 종류 제외 — itdasy:crq_settings, 기본 hours=off)
-      let intents = { hours: false };
-      try {
-        const s = JSON.parse(localStorage.getItem('itdasy:crq_settings') || 'null');
-        if (s && s.intents) intents = Object.assign(intents, s.intents);
-      } catch (_e) { /* ignore */ }
-      return items.filter(it => intents[it.intent] !== false).length;
+      return Number((data && data.count) || 0);
     } catch (_e) { return 0; }
   }
 

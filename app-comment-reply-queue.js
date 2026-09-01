@@ -4,7 +4,7 @@
 
    목적: "모든 댓글" 아니라 가격·예약·위치 문의 댓글만 골라 대댓글 + DM 퍼널.
    디자인: app-dm-confirm-queue.js 와 동일 언어(카드 r18·버블 #F2F4F6 꼬리·CTA #191F28·로즈 #BC6675).
-   지금 단계: 백엔드 실연동은 Meta manage_comments 심사 전이라 SEED 데이터로 UI/동작만 검증.
+   [2026-09-01] 예시(SEED) 데이터 제거 — 실댓글 0건·권한없음·통신실패를 상태로 구분한다.
    진입: window.openCommentReplyQueue()  · 플래그 window.ITDASY_IG_COMMENT_REPLY
 
    [2026-07-20 v785] 카드 리디자인 — ① 게시물 행·IG배지 삭제 → 헤더 우측 "게시물 보기" 칩
@@ -41,36 +41,55 @@
   function _toast(m) { if (window.showToast) window.showToast(m); }
   function _haptic() { try { window.hapticLight && window.hapticLight(); } catch (_e) { void _e; } }
 
-  // ── 시드 데이터 (실연동 전 UI 검증용) — 백엔드 붙으면 GET /instagram/comment-queue 로 교체 ──
-  var SEED = [
-    { id: 'c1', name: '@minji_nail', av: '민', intent: 'price', media: '내 속눈썹 게시물에 달린 댓글', likes: 12, waiting: 0,
-      text: '여기 속눈썹 얼마예요? 예약도 되나요?',
-      publicDraft: '문의 감사해요! 자세한 내용 DM으로 보내드렸어요, 편하게 봐주세요',
-      dmDraft: '속눈썹 벨벳 5만원이에요. 예약은 여기서 → naver.me/xxxx' },
-    { id: 'c2', name: '@yuna_daily', av: '유', intent: 'booking', media: '내 젤네일 게시물에 달린 댓글', likes: 3, waiting: 8,
-      text: '이거 예약 어디서 해요?? 이번주 토요일 가능한가요',
-      publicDraft: '예약 도와드릴게요, DM 확인해 주세요',
-      dmDraft: '토요일 오후 2시·4시 자리 있어요. 예약 링크 → naver.me/xxxx' },
-    { id: 'c3', name: '@soo_beauty', av: '수', intent: 'location', media: '내 왁싱 게시물에 달린 댓글', likes: 1, waiting: 21,
-      text: '위치가 어디예요? 주차 되나요?',
-      publicDraft: '위치·오시는 길 DM으로 보냈어요',
-      dmDraft: '서울 강남구 테헤란로 12길 34, 5층이에요. 건물 주차 2시간 무료!' }
-  ];
+  /* [2026-09-01 CMT-P1-003] 예시(SEED) 댓글을 통째로 없앴다.
+     예전엔 실댓글이 0건이거나 권한이 없으면 가짜 손님 3명(민지·유나·수)이 **진짜처럼** 떴다.
+     그게 뜨는 조건이 하필 1인샵의 평상시였다 — 연동돼 있고, 기능도 켰고, 지난 14일 문의가 없을 때.
+     원장님은 "내 계정엔 이런 댓글 없는데?" 하고 앱 전체 데이터를 못 믿게 된다.
+     07-22·08-15 에 두 번 부분 수정했는데도 경로가 남아 있었다 → 데이터 자체를 지운다.
 
-  var ITEMS = SEED.slice();   // 렌더 대상 — 실연동 성공 시 실댓글로 교체
+     빈 화면은 빈 화면대로, 오류는 오류대로 보여준다. 그게 정직하고, 다음 행동도 명확하다. */
+  var ITEMS = [];
+
+  /* 화면 상태 — '빈 목록' 과 '못 불러옴' 을 절대 섞지 않는다.
+     예전엔 둘 다 items:[] 로 뭉뚱그려져서, 권한이 없어 못 읽은 건데도 화면은 예시를 보여줬다.
+     LOADING       불러오는 중
+     DATA          실댓글 있음
+     EMPTY         연동·권한 정상인데 답할 문의가 없음
+     DISABLED      원장이 기능을 꺼둠
+     PERMISSION    인스타 댓글 권한 없음 → 재연결하면 풀린다
+     NOT_CONNECTED 인스타 미연동
+     NETWORK       통신 실패 → 다시 시도 */
+  var _state = 'LOADING';
 
   // [무시 영속화] 무시한 댓글 id 를 localStorage 에 남긴다. 예전엔 _removeItem 이 ITEMS.splice 만 해서
   //   큐를 다시 열거나 자동갱신(_loadReal)하면 백엔드가 그 댓글을 다시 실어와 되살아났다(백엔드는
   //   '답장한 댓글'만 제외하지 '무시한 댓글' 개념이 없음). 이제 id 를 저장해 표시 단계에서 영구 제외.
   var _HIDDEN_KEY = 'itdasy:crq_hidden';
+  var _HIDDEN_TTL = 30 * 24 * 60 * 60 * 1000;   // 30일
+
+  /* 로컬 숨김은 **이 기기의 즉답용 보조**다. 정본은 서버 CommentReplyLog 다.
+     [2026-09-01] 예전엔 id 배열에 계속 push 만 해서 무한히 커졌다(정리 로직 0).
+     이제 {id: 숨긴시각} 으로 저장하고 30일 지난 건 읽을 때 버린다.
+     30일이면 서버 큐(기본 14일)를 이미 지난 뒤라 되살아날 걱정이 없다.
+     옛 형식(배열)도 그대로 읽어 준다 — 기존 사용자의 숨김이 갑자기 풀리면 안 된다. */
   var _hidden = (function () {
-    try { var a = JSON.parse(localStorage.getItem(_HIDDEN_KEY) || '[]'); var m = {};
-      if (Array.isArray(a)) a.forEach(function (id) { m[id] = 1; }); return m; }
-    catch (_e) { return {}; }
+    var now = Date.now(), m = {};
+    try {
+      var raw = JSON.parse(localStorage.getItem(_HIDDEN_KEY) || '[]');
+      if (Array.isArray(raw)) raw.forEach(function (id) { m[id] = now; });        // 옛 형식 이관
+      else if (raw && typeof raw === 'object') {
+        Object.keys(raw).forEach(function (id) {
+          var t = +raw[id] || 0;
+          if (now - t < _HIDDEN_TTL) m[id] = t;                                   // 오래된 건 버린다
+        });
+      }
+    } catch (_e) { return {}; }
+    return m;
   })();
+  function _hiddenPayload() { return _hidden; }
   function _markHidden(id) {
-    if (!id) return; _hidden[id] = 1;
-    try { localStorage.setItem(_HIDDEN_KEY, JSON.stringify(Object.keys(_hidden))); } catch (_e) { void _e; }
+    if (!id) return; _hidden[id] = Date.now();
+    try { localStorage.setItem(_HIDDEN_KEY, JSON.stringify(_hidden)); } catch (_e) { void _e; }
   }
   function _isHidden(it) { return !!_hidden[(it && it.id)]; }
 
@@ -108,17 +127,9 @@
         exclude_words: String(s.exclude_words || '') };
     } catch (_e) { return def; }
   }
-  /* 제외 단어 — 쉼표/줄바꿈으로 나눈 목록. 빈 항목은 버린다(빈 문자열이 남으면 전부 매칭돼 큐가 통째로 빈다). */
-  function _excludeList() {
-    return String(_settings.exclude_words || '').split(/[,\n]/)
-      .map(function (w) { return w.trim().toLowerCase(); }).filter(Boolean);
-  }
-  function _isExcluded(it) {
-    var words = _excludeList();
-    if (!words.length) return false;
-    var hay = String((it && it.text) || '').toLowerCase();
-    return words.some(function (w) { return hay.indexOf(w) >= 0; });
-  }
+  /* [2026-09-01 CMT-P2-008] 제외단어·인텐트 필터를 프론트에서 뺐다.
+     판정이 두 벌이면(홈=인텐트만, 큐=인텐트+제외단어) 같은 사용자에게 다른 숫자를 보여준다.
+     이제 서버 `_crq_item_eligible` 하나가 목록과 배지를 같이 판정한다. 설정 입력칸은 그대로다. */
   // [2026-07-21] 응답 시간대 판정 — 지금이 운영시간 밖인가(자정 넘김 지원). 방해금지 로직 공용.
   function _minutesOf(hhmm) { try { var p = String(hhmm).split(':'); return (+p[0]) * 60 + (+p[1]); } catch (_e) { return 0; } }
   function _withinActiveHours() {
@@ -176,7 +187,6 @@
      조용히 날아갔다. 걷어오는 지점을 하나로 모은다. */
   function _captureSettingInputs(el) {
     if (!el) return;
-    var lk = el.querySelector('.crq-link'); if (lk) _settings.link = (lk.value || '').trim();
     var ex = el.querySelector('.crq-exclude'); if (ex) _settings.exclude_words = (ex.value || '').trim();
     _captureTimes(el);
   }
@@ -191,50 +201,46 @@
   var _settings = _loadSettings();
 
   // 설정 반영된 최종 문구 — 공개답글에 이모지, DM에 예약 링크(없을 때만) 부착
+  /* [2026-09-01] 불만·건강여부엔 설정 이모지를 붙이지 않는다.
+     실기기 QA 에서 잡았다 — 기본 이모지가 😊 라서 공개 답글이
+     "불편 드려 정말 죄송해요, 바로 확인해서 도와드릴게요 😊" 로 나갔다.
+     사과에 웃는 얼굴을 붙이면 손님은 비꼰다고 읽는다. 그게 원장 계정으로 피드에 박힌다.
+     건강여부도 같다 — 안전 문제에 붙이는 이모지는 가볍게 보인다.
+     (초안 본문 자체에 이모지가 있으면 그건 LLM 이 맥락 보고 넣은 거라 건드리지 않는다.) */
+  var _NO_EMOJI_INTENTS = { complaint: 1, eligibility: 1 };
   function _finalPublic(it) {
     var p = it.publicDraft || '';
     var e = _settings.emoji;
+    if (_NO_EMOJI_INTENTS[it && it.intent]) return p;
     if (e && p.indexOf(e) < 0) p = p.replace(/\s*$/, '') + ' ' + e;
     return p;
-  }
-  function _finalDm(it) {
-    var d = it.dmDraft || '';
-    // 댓글 설정 링크가 없으면 샵 설정에 이미 저장된 예약 링크(itdasy:shop_book) 자동 재사용
-    //  → 원장이 댓글 설정 안 건드려도 DM에 실제 예약 링크가 박혀 바로 예약 가능(가만히 있어도 예약).
-    var l = _settings.link || _shop('book', '');
-    if (l && d.indexOf('http') < 0 && d.indexOf(l) < 0) d = d + '\n예약 → ' + l;
-    return d;
   }
 
   // 샵 설정값(작업실 설정과 공유하는 itdasy:shop_* 키) — DM 상세에 사용
   function _shop(k, fb) { try { return localStorage.getItem('itdasy:shop_' + k) || fb || ''; } catch (_e) { return fb || ''; } }
 
-  // 의도별 답장 초안 (공개 답글만, 샵설정 반영)
-  // [2026-07-23] 공개 초안에서 DM 언급을 전부 뺐다. 이 화면은 DM 을 안 보내는데(발송 주체는
-  //   DM 엔진 하나 — 2026-07-22 정책) 초안은 "DM으로 보내드렸어요" 라고 적혀 있었다. 그러면
-  //   백엔드 nodm_public 방어가 발송 직전에 문구를 갈아끼워서, 원장이 화면에서 보고 승인한
-  //   문장과 실제로 피드에 달리는 문장이 달랐다. 화면 = 실제여야 한다.
-  //   dmDraft 는 발송에 안 쓰이지만(항상 dm_text:''), 서버 초안이 없을 때 카드 미리보기가
-  //   참조하므로 남겨둔다.
+  /* 의도별 기본 답장 문구 — 서버 AI 초안이 없을 때(상위 8건 밖·생성 실패) 쓰는 폴백.
+     [2026-07-23] 공개 초안에서 DM 언급을 전부 뺐다. 이 화면은 DM 을 안 보내는데(발송 주체는
+     DM 엔진 하나 — 2026-07-22 정책) 초안은 "DM으로 보내드렸어요" 라고 적혀 있었다. 그러면
+     백엔드 nodm_public 방어가 발송 직전에 문구를 갈아끼워서, 원장이 화면에서 보고 승인한
+     문장과 실제로 피드에 달리는 문장이 달랐다. 화면 = 실제여야 한다.
+     [2026-09-01] dmDraft 반환을 없앴다 — 읽는 곳이 한 군데도 없는 죽은 값이었다. */
   function _drafts(intent) {
-    var book = _shop('book', ''), addr = _shop('addr', _shop('location', '')), hours = _shop('hours', ''), phone = _shop('phone', '');
-    var link = book ? ('\n예약은 여기서 → ' + book) : (phone ? ('\n예약 문의 → ' + phone) : '');
-    if (intent === 'price') return { publicDraft: '문의 감사해요! 원하시는 시술 알려주시면 가격 안내드릴게요', dmDraft: '가격 안내드릴게요' + link };
-    if (intent === 'booking') return { publicDraft: '예약 문의 감사해요! 원하시는 날짜·시술 남겨주시면 확인하고 도와드릴게요', dmDraft: '예약 도와드릴게요!' + link };
-    if (intent === 'location') return { publicDraft: '찾아와 주셔서 감사해요! 위치·오시는 길 안내드릴게요', dmDraft: (addr || '위치 안내드릴게요') + (book ? ('\n예약 → ' + book) : '') };
-    if (intent === 'hours') return { publicDraft: '문의 감사해요! 영업시간 안내드릴게요', dmDraft: (hours ? ('영업시간: ' + hours) : '영업시간 안내드릴게요') + (book ? ('\n예약 → ' + book) : '') };
-    // [2026-07-21] 신규 인텐트 폴백 초안 (서버 페르소나 초안 없을 때만)
-    if (intent === 'duration') return { publicDraft: '문의 감사해요! 시술 소요시간·지속력 안내드릴게요', dmDraft: '시술 소요시간·지속력 안내드릴게요' + link };
-    if (intent === 'event') return { publicDraft: '관심 감사해요! 진행 중인 이벤트 안내드릴게요', dmDraft: '진행 중인 이벤트 안내드릴게요' + link };
-    if (intent === 'membership') return { publicDraft: '문의 감사해요! 회원권·정기권 안내드릴게요', dmDraft: '회원권·정기권 안내드릴게요' + link };
+    if (intent === 'price') return '문의 감사해요! 원하시는 시술 알려주시면 가격 안내드릴게요';
+    if (intent === 'booking') return '예약 문의 감사해요! 원하시는 날짜·시술 남겨주시면 확인하고 도와드릴게요';
+    if (intent === 'location') return '찾아와 주셔서 감사해요! 위치·오시는 길 안내드릴게요';
+    if (intent === 'hours') return '문의 감사해요! 영업시간 안내드릴게요';
+    if (intent === 'duration') return '문의 감사해요! 시술 소요시간·지속력 안내드릴게요';
+    if (intent === 'event') return '관심 감사해요! 진행 중인 이벤트 안내드릴게요';
+    if (intent === 'membership') return '문의 감사해요! 회원권·정기권 안내드릴게요';
+    if (intent === 'complaint') return '불편 드려 정말 죄송해요, 바로 확인해서 도와드릴게요';
     // 건강여부(eligibility): 절대 '가능하다' 단정 금지 — 상태 확인 후 상담 유도 (사람이 검토·발송)
-    if (intent === 'eligibility') return { publicDraft: '문의 감사해요! 상태에 따라 달라서 확인이 필요해요, 편하게 알려주시면 상담 도와드릴게요', dmDraft: '상태에 따라 시술 가능 여부가 달라서요, 편하게 자세히 알려주시면 상담 도와드릴게요' + (phone ? ('\n상담 문의 → ' + phone) : '') };
-    return { publicDraft: '문의 감사해요! 어떤 점이 궁금하신지 알려주시면 안내드릴게요', dmDraft: '문의 주셔서 감사해요' + (book ? ('\n예약 → ' + book) : '') };
+    if (intent === 'eligibility') return '문의 감사해요! 상태에 따라 달라서 확인이 필요해요, 편하게 알려주시면 상담 도와드릴게요';
+    return '문의 감사해요! 어떤 점이 궁금하신지 알려주시면 안내드릴게요';
   }
 
   // 실 API 아이템 → 렌더 형식. 서버 페르소나 초안(public_draft/dm_draft) 우선, 없으면 템플릿 폴백.
   function _mapReal(it) {
-    var d = _drafts(it.intent);
     return { id: it.comment_id, commentId: it.comment_id, mediaId: it.media_id || '', name: it.username ? ('@' + it.username) : '손님',
       av: (it.username || '?').slice(0, 1), pic: it.profile_pic || '', intent: it.intent,   // pic = BE 프사 매칭(대기)
       media: it.media_caption || '게시물',
@@ -242,7 +248,9 @@
       mediaDate: it.media_timestamp || '',                          // 팝업용 발행일 (BE 필드 추가 대기)
       permalink: it.permalink || '', likes: it.like_count || 0, ts: it.timestamp || '',
       waiting: 0, thumb: it.media_thumb || '', text: it.text || '', manual: !!it.manual, returning: !!it.returning, confidence: it.confidence || '',
-      publicDraft: it.public_draft || d.publicDraft, dmDraft: it.dm_draft || d.dmDraft, _real: true };
+      publicDraft: it.public_draft || _drafts(it.intent),
+      // 서버가 초안 출처를 알려준다(ai/template/none). 없으면 우리가 템플릿을 쓴 것.
+      draftSource: (it.public_draft && it.draft_source) || 'none', _real: true };
   }
 
   // ── 인라인 아이콘 (스프라이트 밖은 svg, 봇은 #ic-bot) ──
@@ -281,7 +289,6 @@
   }
   // 표시/발송용 최종 문구 — 편집(override)했으면 그 값, 아니면 설정 반영값
   function _displayPublic(it) { return (it._override && it._override.pub != null) ? it._override.pub : _finalPublic(it); }
-  function _displayDm(it) { return (it._override && it._override.dm != null) ? it._override.dm : _finalDm(it); }
 
   // [v787] 채널 라벨줄 공통 — 아이콘+라벨(13px) 좌, 토글 우측 끝(margin-left:auto → 세로선 정렬)
   function _chRow(icon, label, on, kind, id, badges) {
@@ -295,8 +302,7 @@
   //   (묶음 밖에서 부를 땐 예전 그대로. ⚠️ items.map(_cardHtml) 로 부르면 index 가 2번째 인자로
   //    들어와 i>0 이 전부 inGroup 이 되니, 반드시 명시적으로 감싸서 호출할 것.)
   function _cardHtml(it, inGroup) {
-    var pubOn = it._sendPub !== false, dmOn = it._sendDm !== false;
-    var dmText = _displayDm(it);
+    var pubOn = it._sendPub !== false;
     // [v787] 게시물 인용 스트립 — 카드 안, 탭=미리보기 팝업 (기존 crq-chip 핸들러 재사용)
     var dstr = it.mediaDate ? _peekDate(it.mediaDate) : '';
     var strip = inGroup ? '' : '<button class="crq-chip" data-id="' + _esc(it.id) + '" style="width:100%;display:flex;align-items:center;gap:10px;background:#F7F8FA;border:none;border-radius:13px;padding:8px;margin-bottom:11px;cursor:pointer;font-family:inherit;text-align:left;">' +
@@ -306,8 +312,14 @@
       '<span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:#6B7684;">이 게시물에 달린 댓글' + (dstr ? '<span style="color:#B0B8C1;font-weight:500;"> · ' + dstr + '</span>' : '') + '</span>' +
       '<span style="color:#B0B8C1;font-size:13px;flex-shrink:0;">›</span></button>';
     // 공개 답글 — 라벨줄(토글 우측 끝) + 말풍선 or 꺼짐 안내
+    /* [2026-09-01 CMT-P2-010] '잇비가 우리 샵을 보고 쓴 문장' 과 '아무한테나 나가는 기본 문구' 는
+       다른 것이다. 예전엔 둘이 같은 자리에 같은 모양으로 나와서 구분할 방법이 없었다
+       (초안은 상위 8건만 생성되고 나머지는 조용히 템플릿으로 폴백했다).
+       AI 를 강조해 불안하게 만들 필요는 없으니, 기본 문구인 쪽에만 조용히 표시한다. */
+    var isTemplate = it.draftSource !== 'ai' && !it._override && !it.manual;
     var pubBadges = (it.manual ? '<span style="font-size:10px;font-weight:700;color:#0F766E;background:#E7F6EF;border-radius:7px;padding:1px 6px;">내 멘트</span>' : '') +
-      (it._override ? '<span style="font-size:10px;font-weight:700;color:#BC6675;background:#F7EFF0;border-radius:7px;padding:1px 6px;">수정함</span>' : '');
+      (it._override ? '<span style="font-size:10px;font-weight:700;color:#BC6675;background:#F7EFF0;border-radius:7px;padding:1px 6px;">수정함</span>' : '') +
+      (isTemplate ? '<span style="font-size:10px;font-weight:700;color:#8B95A1;background:#F2F4F6;border-radius:7px;padding:1px 6px;">기본 문구</span>' : '');
     var pubHtml = '<div style="margin-bottom:10px;">' + _chRow(IC.comment, '공개 답글', pubOn, 'pub', it.id, pubBadges) +
       (pubOn ? '<div style="' + _BUBBLE + '">' + _esc(_displayPublic(it)) + '</div>'
              : '<div style="font-size:13px;color:#B0B8C1;padding:1px 2px 0;">공개 답글 안 달아요</div>') + '</div>';
@@ -340,8 +352,12 @@
       // 손님 댓글 원문
       '<div style="background:#fff;border:.5px solid #E5E8EB;color:#191F28;border-radius:13px;border-top-left-radius:4px;padding:11px 13px;font-size:15px;line-height:1.55;white-space:pre-wrap;word-break:break-word;margin-bottom:12px;">' + _esc(it.text) + '</div>' +
       // 잇비 추천 답장 — 편집 중이면 텍스트영역, 아니면 토글형 답글/DM
+      /* [2026-09-01 CMT-P2-009] '비공개 DM' 편집칸을 없앴다.
+         이 화면은 DM 을 **절대 안 보낸다**(_postReply 가 dm_text:'' 를 하드코딩). 그런데
+         [수정] 을 누르면 DM textarea 가 떴고, 원장이 거기 정성껏 쓴 내용은 조용히 버려졌다.
+         원장은 보냈다고 믿고 손님은 못 받는다 — 입력받아 놓고 버리는 UX 는 남기면 안 된다. */
       (it._editing
-        ? _editArea(IC.comment, '공개 답글', 'crq-edit-pub', it.id, _displayPublic(it)) + '<div style="height:9px;"></div>' + _editArea(IC.mail, '비공개 DM', 'crq-edit-dm', it.id, dmText)
+        ? _editArea(IC.comment, '공개 답글', 'crq-edit-pub', it.id, _displayPublic(it))
         : pubHtml + dmHtml) +
       // 액션
       '<div style="display:flex;gap:8px;margin-top:13px;align-items:center;">' +
@@ -395,10 +411,17 @@
   }
 
   // [v787] 한 줄 상태 + 정렬 토글 — 배너·통계박스·필터탭 대체
-  function _statRow(count) {
+  /* 원장이 3초 안에 알아야 하는 것: ① 몇 건인가 ② 급한 게 있나 ③ 내가 이번 주 얼마나 했나.
+     [2026-09-01] 급한 건(불만·건강여부) 수를 앞에 세운다 — 예전엔 목록을 끝까지 훑어야 알 수 있었다. */
+  function _statRow(items) {
+    var count = items.length;
+    var urgent = items.filter(function (it) {
+      return it.intent === 'complaint' || it.intent === 'eligibility';
+    }).length;
     return '<div style="display:flex;align-items:center;gap:7px;margin-bottom:13px;padding:2px 2px 0;">' +
-      '<span style="width:6px;height:6px;border-radius:50%;flex-shrink:0;background:#16B55E;"></span>' +
+      '<span style="width:6px;height:6px;border-radius:50%;flex-shrink:0;background:' + (urgent ? '#DC2626' : '#16B55E') + ';"></span>' +
       '<span style="font-size:15px;color:#191F28;"><b>대기 ' + count + '건</b>' +
+        (urgent ? '<span style="color:#DC2626;font-weight:700;"> · 먼저 볼 것 ' + urgent + '건</span>' : '') +
         (_weekReplied > 0 ? '<span style="color:#8B95A1;font-weight:400;"> · 이번 주 ' + _weekReplied + '건 응대</span>' : '') + '</span>' +
       '<button class="crq-sort" style="margin-left:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:4px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:#6B7684;padding:4px 2px;">' +
         IC.sort + (_sort === 'old' ? '오래된순' : '최신순') + '</button></div>';
@@ -409,11 +432,66 @@
       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + fg + '" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px;" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>' +
       '<span style="font-size:11.5px;color:' + fg + ';line-height:1.5;">' + msg + '</span></div>';
   }
-  function _demoBanner() {
-    if (_loading) return _banner('#F2F4F6', '#E5E8EB', '#4E5968', '실제 인스타 댓글을 불러오는 중…');
-    return _banner('#FFF7ED', '#FED7AA', '#9A3412', '지금 보이는 댓글은 <b>예시</b>예요. 실제 댓글을 불러오려면 <b>인스타 연동 + 댓글 권한</b>이 필요해요. (연동돼도 문의 댓글이 없으면 예시가 보여요)');
+  /* 상태별 빈 화면. **오류를 '문의 없음' 으로 위장하지 않는다.**
+     원장이 알아야 하는 건 "지금 뭘 해야 하나" 하나다 — 그래서 고칠 수 있는 상태엔 버튼을 준다.
+     문구는 작업실 성과 화면(_cqNoticeHtml)과 같은 표현을 쓴다 — 같은 상황에 두 화면이
+     다른 말을 하면 원장은 둘 다 안 믿는다. */
+  function _emptyStateHtml() {
+    var WRAP = 'text-align:center;padding:44px 24px;';
+    var TITLE = 'font-size:15px;font-weight:700;color:#191F28;margin-bottom:6px;';
+    var DESC = 'font-size:13px;color:#8B95A1;line-height:1.7;';
+    var BTN = 'margin-top:16px;padding:12px 20px;border:none;border-radius:13px;background:#191F28;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;';
+    function box(title, desc, btn) {
+      return '<div style="' + WRAP + '"><div style="' + TITLE + '">' + title + '</div>' +
+        '<div style="' + DESC + '">' + desc + '</div>' + (btn || '') + '</div>';
+    }
+    if (_state === 'DISABLED') {
+      return box('댓글 문의 응대를 꺼두셨어요',
+        '위 톱니(설정)에서 다시 켜면<br>문의 댓글을 모아드려요.');
+    }
+    if (_state === 'PERMISSION') {
+      // 지금 Meta 심사 상태상 가장 흔한 실패다. 원인이 '권한' 이고 해법이 '재연결' 이라는 걸 말해준다.
+      return box('문의 댓글을 못 읽었어요',
+        '인스타를 연결할 때 <b>댓글 권한</b>을 안 받아서예요.<br>다시 연결하면 문의를 모아서 보여드릴 수 있어요.',
+        '<button class="crq-reconnect" style="' + BTN + '">인스타 다시 연결</button>');
+    }
+    if (_state === 'NOT_CONNECTED') {
+      return box('인스타가 연결되어 있지 않아요',
+        '인스타를 연결하면 게시물에 달린<br>문의 댓글을 모아드려요.',
+        '<button class="crq-reconnect" style="' + BTN + '">인스타 연결하기</button>');
+    }
+    if (_state === 'NETWORK') {
+      return box('댓글을 불러오지 못했어요',
+        '잠시 문제가 생겼어요.<br>다시 시도해 주세요.',
+        '<button class="crq-retry" style="' + BTN + '">다시 시도</button>');
+    }
+    return box('답할 문의 댓글이 없어요',
+      '지난 14일간 새로 온 문의가 없어요.<br>새 댓글이 오면 여기에 모아드려요.');
   }
-  // [v787] 정렬 기준 시각 — 실데이터 timestamp, 시드는 waiting(분) 역산
+  /* [2026-09-01] 응대 우선순위. 예전엔 **불만 → 좋아요 수 → 최신** 이었는데,
+     좋아요 수는 "누구에게 먼저 답해야 하나" 와 아무 상관이 없다. 좋아요 3개 붙은
+     사흘 전 댓글이 오늘 온 예약 문의보다 위에 오는 게 실제로 벌어졌다.
+
+     새 기준은 **놓치면 손해가 큰 순서**다. 새 분류 체계를 만들지 않고 지금 있는 intent 만 쓴다:
+       0  complaint    불만 — 늦으면 공개적으로 번진다
+       1  eligibility  건강·시술 가능 여부 — 안전 문제, 반드시 사람이 답해야 한다
+       2  booking/price/membership/event — 돈으로 이어지는 문의
+       3  나머지 문의
+     같은 등급 안에서는 **단골 먼저**, 그 다음 시간순(기본 최신, 토글로 오래된순). */
+  var _PRIORITY = { complaint: 0, eligibility: 1, booking: 2, price: 2, membership: 2, event: 2 };
+  function _prio(it) {
+    var p = _PRIORITY[it && it.intent];
+    return p === undefined ? 3 : p;
+  }
+  function _priorityCmp(a, b) {
+    var pa = _prio(a), pb = _prio(b);
+    if (pa !== pb) return pa - pb;                       // 급한 등급 먼저
+    var ra = a.returning ? 0 : 1, rb = b.returning ? 0 : 1;
+    if (ra !== rb) return ra - rb;                       // 같은 등급이면 단골 먼저
+    return _sort === 'old' ? _ord(a) - _ord(b) : _ord(b) - _ord(a);
+  }
+
+  // [v787] 정렬 기준 시각 — 실데이터 timestamp (없으면 지금)
   function _ord(it) {
     var t = it.ts ? Date.parse(it.ts) : NaN;
     return isFinite(t) ? t : (Date.now() - (it.waiting || 0) * 60000);
@@ -499,30 +577,27 @@
   }
 
   function _queueBody() {
-    if (_loading) {
+    if (_loading || _state === 'LOADING') {
       return _banner('#F2F4F6', '#E5E8EB', '#4E5968', '인스타에서 문의 댓글을 모으는 중이에요… (처음엔 10초쯤 걸려요)') +
         _skeletonHtml();
     }
-    var items = ITEMS.filter(function (it) { return !_isHidden(it); })   // [무시 영속화] 무시한 댓글 영구 제외
-      .filter(function (it) { return _settings.intents[it.intent] !== false; })   // 설정에서 끈 의도 제외
-      .filter(function (it) { return !_isExcluded(it); })   // [2026-07-22] 제외 단어(협찬·광고 등) 걸러내기
-      .slice().sort(function (a, b) {
-        var ca = a.intent === 'complaint' ? 1 : 0, cb = b.intent === 'complaint' ? 1 : 0;
-        if (ca !== cb) return cb - ca;                                    // 불만 항상 최상단
-        return _sort === 'old' ? _ord(a) - _ord(b) : _ord(b) - _ord(a);   // 그 외 시간순
-      });
-    var cards = items.length ? _groupedHtml(items) :
-      (_disabled
-      ? '<div style="text-align:center;color:#8B95A1;font-size:13px;padding:40px 20px;line-height:1.7;">댓글 문의 응대를 <b>꺼두셨어요</b>.<br>위 톱니(설정)에서 다시 켜면 문의 댓글을 모아드려요.</div>'
-      : '<div style="text-align:center;color:#C9CDD4;font-size:13px;padding:40px 0;">응대할 문의 댓글이 없어요</div>');
+    /* [2026-09-01 CMT-P2-008] 인텐트·제외단어 필터를 프론트에서 뺐다.
+       예전엔 홈(인텐트만)과 큐(인텐트+숨김+제외단어)가 서로 다른 필터를 들고 있어서
+       홈은 "문의 3건", 들어가면 1건이었다. 같은 사용자에게 보여주는 숫자가 다르면
+       원장은 둘 다 안 믿는다. 이제 자격 판정은 서버(_crq_item_eligible) 한 곳이 한다.
+       로컬 숨김(_isHidden)만 남긴다 — 서버 반영 전 이 기기의 즉답용이다. */
+    var items = ITEMS.filter(function (it) { return !_isHidden(it); })
+      .slice().sort(_priorityCmp);
+
+    if (!items.length) return _emptyStateHtml();
+
     // [2026-07-21] 운영시간 밖 + 방해금지 → 조용히 모아뒀다는 안내 (발송은 언제든 가능)
     var quietBar = _isQuietNow()
       ? '<div style="display:flex;align-items:center;gap:7px;background:#F2F4F6;border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#6B7684;">' +
         '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B95A1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>' +
         '<span>지금은 응답 시간대 밖이에요 · 조용히 모아뒀어요<span style="color:#B0B8C1;"> (발송은 언제든 가능)</span></span></div>'
       : '';
-    var top = _realMode ? (quietBar + _statRow(items.length)) : (_demoBanner() + quietBar + _statRow(items.length));
-    return top + cards +
+    return quietBar + _statRow(items) + _groupedHtml(items) +
       '<div style="font-size:11px;color:#C9CDD4;text-align:center;margin-top:12px;">애매한 댓글은 큐에 안 올라와요 · 확실한 문의만</div>';
   }
 
@@ -564,11 +639,10 @@
           '<span style="color:#8B95A1;font-size:15px;">~</span>' +
           '<input class="crq-time" type="time" data-field="end" value="' + _esc(S.active_hours.end) + '" style="flex:1;padding:11px 12px;border:none;border-radius:12px;font-size:15px;background:#F7F8FA;color:#191F28;box-sizing:border-box;font-family:inherit;text-align:center;"></div>' : '') +
         '</div>' +
-      // 예약 링크
-      '<div style="' + CARD + '"><div style="' + TITLE + 'margin-bottom:4px;">예약 링크</div>' +
-        '<div style="' + SUB + 'margin-bottom:12px;">DM 답장 끝에 자동으로 붙어요</div>' +
-        '<input class="crq-link" type="text" value="' + _esc(S.link) + '" placeholder="예) naver.me/xxxx" ' +
-          'style="width:100%;padding:13px 14px;border:none;border-radius:14px;font-size:15px;background:#F7F8FA;color:#191F28;box-sizing:border-box;font-family:inherit;" /></div>' +
+      /* [2026-09-01] '예약 링크' 입력칸 제거. 설명은 "DM 답장 끝에 자동으로 붙어요" 였는데
+         이 화면은 DM 을 안 보낸다 — 값은 저장됐지만 **아무 데서도 안 쓰였다**(_finalDm 뿐, 그것도 죽은 코드).
+         원장이 채워 넣고 뭔가 된다고 믿게 만드는 칸은 없느니만 못하다. CMT-P2-009 와 같은 종류.
+         저장돼 있던 값은 crq_settings_json 에 그대로 남는다(지우지 않음 — 되살릴 때 쓴다). */
       // 공개답글 끝 이모지 (AI 응답 텍스트용 — 이모지 허용 예외)
       '<div style="' + CARD + '"><div style="' + TITLE + 'margin-bottom:12px;">공개답글 끝 이모지</div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:7px;">' + _EMOJI_OPTS.map(_emojiOpt).join('') + '</div></div>' +
@@ -699,6 +773,15 @@
         return;
       }
       if (t.classList.contains('crq-gear')) { _haptic(); _view = 'settings'; _render(); return; }
+      if (t.classList.contains('crq-retry')) { _haptic(); _igWaitTries = 0; _loadReal(false); return; }
+      if (t.classList.contains('crq-reconnect')) {
+        /* 실제로 존재하는 경로로만 보낸다 — 없는 화면을 여는 가짜 버튼은 만들지 않는다.
+           연동 허브(app-integrations-hub.js)가 인스타 연결/재연결의 정식 진입점이다. */
+        _haptic();
+        if (typeof window.openIntegrationsHub === 'function') { closeCommentReplyQueue(); window.openIntegrationsHub(); }
+        else _toast('설정 > 연동에서 인스타를 다시 연결해 주세요');
+        return;
+      }
       // [v787] 정렬 토글 — 최신순 ↔ 오래된순 (불만은 항상 위)
       if (t.classList.contains('crq-sort')) { _haptic(); _sort = _sort === 'old' ? 'new' : 'old'; _render(); return; }
       var id = t.getAttribute('data-id');
@@ -712,13 +795,12 @@
         _render();
         return;
       }
-      if (t.classList.contains('crq-discard')) { _haptic(); _removeItem(id); _toast('이 댓글은 응대하지 않아요'); return; }
+      if (t.classList.contains('crq-discard')) { _haptic(); _dismissItem(id); _toast('이 댓글은 응대하지 않아요'); return; }
     });
     // [v789] 예약 링크 즉시 저장 — 입력 마치고 포커스 빠질 때(change 는 버블됨)
     el.addEventListener('change', function (e) {
       if (!e.target || !e.target.classList) return;
-      if (e.target.classList.contains('crq-link')
-          || e.target.classList.contains('crq-time')          // [2026-07-21] 응답 시간대
+      if (e.target.classList.contains('crq-time')             // [2026-07-21] 응답 시간대
           || e.target.classList.contains('crq-exclude')) {    // [2026-07-22] 제외 단어
         _captureSettingInputs(el);
         _saveSettings();   // 목록 반영은 설정에서 나갈 때 _render() 가 한다(입력 중 재렌더 = 포커스 튐)
@@ -739,20 +821,35 @@
       }).catch(function () { void 0; });
     } catch (_e) { void _e; }
   }
-  // silent=true 면 재렌더를 미룬다 — 묶음 발송에서 건마다 다시 그리면 목록이 흔들린다(마지막에 한 번만).
+  /* 목록에서 카드를 뺀다. **서버 dismiss 는 여기서 안 쏜다.**
+
+     [2026-09-01 CMT-P1-001] 예전엔 이 함수가 항상 dismiss 를 서버로 보냈는데,
+     [보내기] 경로도 이 함수를 먼저 불렀다. 그래서 답장을 보낼 때마다 서버엔
+     `intent='_dismissed'` 행이 먼저 생기고, 뒤이어 온 답글 성공이 그 행을 갱신했다
+     → 실제 응대가 '무시' 로 굳어 **"이번 주 N건 응대" 가 영원히 0** 이었다.
+     운영 DB 에서 오염 3건을 실측했다(user 3, 07-29 ~ 08-04).
+
+     이제 서버 dismiss 는 오직 [무시] 버튼만 보낸다(_dismissItem).
+     silent=true 면 재렌더를 미룬다 — 묶음 발송에서 건마다 다시 그리면 목록이 흔들린다. */
   function _removeItem(id, silent) {
-    _markHidden(id);   // [무시 영속화] 이 기기 즉시 반영 (오프라인·즉답)
+    _markHidden(id);   // 이 기기 즉시 반영 (오프라인·즉답). 서버 정본은 CommentReplyLog.
     var i = ITEMS.findIndex(function (x) { return x.id === id; });
-    var it = i >= 0 ? ITEMS[i] : null;
-    if (it && it._real) _pushDismissToServer(it);   // [무시 영속화] 서버에도 → 배지·다른기기 동기화
     if (i >= 0) ITEMS.splice(i, 1);
-    if (!silent) _render();
+    if (!silent) { _state = ITEMS.length ? 'DATA' : 'EMPTY'; _render(); }
+  }
+
+  /* [무시] 버튼 전용 — 화면에서 빼고 **서버에도** 무시로 기록한다.
+     서버 기록이 있어야 다른 기기·홈 배지에서도 같이 빠진다. */
+  function _dismissItem(id) {
+    var it = ITEMS.find(function (x) { return x.id === id; });
+    if (it && it._real) _pushDismissToServer(it);
+    _removeItem(id);
   }
   // 편집 중인 텍스트영역 값을 아이템 override로 캡처
   function _captureEdit(el, it) {
+    // 공개 답글만 편집한다 — DM 은 이 화면에서 안 나간다(CMT-P2-009).
     var pta = el.querySelector('.crq-edit-pub[data-id="' + it.id + '"]');
-    var dta = el.querySelector('.crq-edit-dm[data-id="' + it.id + '"]');
-    if (pta || dta) it._override = { pub: pta ? pta.value : _displayPublic(it), dm: dta ? dta.value : _displayDm(it) };
+    if (pta) it._override = { pub: pta.value };
   }
   function _sendReply(id) {
     var it = ITEMS.find(function (x) { return x.id === id; });
@@ -763,19 +860,39 @@
     if (it._sendPub === false) return;   // 보낼 게 없음 → CTA 비활성 (안전망). send_dm:false 는 _postReply 가 박는다.
     var el = document.getElementById(ID);
     if (it._editing && el) { _captureEdit(el, it); it._editing = false; }   // 편집 중 발송 → 편집값 반영
-    var okMsg = '공개답글 달림';
-    if (it._real && it.commentId && window.apiFetch) {
-      // 실제 인스타: 켠 채널만 발송 (끈 채널은 텍스트 '' + 플래그 false)
-      _removeItem(id);
-      _toast('보내는 중…');
-      _postReply(it)
-        .then(function (j) { _toast(j && j.ok ? (okMsg + ' (' + it.name + ')') : ('일부 실패 — ' + JSON.stringify((j && (j.public || j.dm)) || j).slice(0, 80))); })
-        .catch(function () { _toast('발송 실패 — 다시 시도해 주세요'); });
-      return;
-    }
-    // 시드(예시): 목업 발송
+    if (!(it._real && it.commentId && window.apiFetch)) return;   // 예시 데이터는 이제 없다
     _removeItem(id);
-    _toast(okMsg + ' (' + it.name + ') · 예시');
+    _toast('보내는 중…');
+    _postReply(it)
+      .then(function (j) {
+        if (j && j.ok) { _toast('답글 달았어요 (' + it.name + ')'); return; }
+        _toast(_errorMessage(j));
+        _restoreItem(it);          // 실패했으면 되살린다 — 조용히 사라지면 원장이 놓친다
+      })
+      .catch(function () { _toast(_errorMessage(null)); _restoreItem(it); });
+  }
+
+  /* [2026-09-01] 발송 실패 문구. 예전엔 `'일부 실패 — ' + JSON.stringify(...)` 로
+     **Graph 원본 JSON 을 원장 화면에 그대로** 던졌다. 원장은 개발자가 아니고,
+     그 문자열로는 다음에 뭘 해야 할지 알 수 없다.
+     서버가 error_code(permission/rate_limit/gone/temporary)를 준다 — 상세는 로그에만 남는다. */
+  function _errorMessage(j) {
+    var code = j && j.error_code;
+    if (code === 'permission') return '인스타 연결을 확인해 주세요';
+    if (code === 'rate_limit') return '인스타가 잠시 바빠요 — 조금 뒤에 다시 시도해 주세요';
+    if (code === 'gone') return '이 댓글은 인스타에서 삭제됐어요';
+    return '답변을 보내지 못했어요 — 잠시 후 다시 시도해 주세요';
+  }
+
+  /* 발송 실패분 되살리기. 낙관적으로 지웠는데 실패하면 원장 화면에서 그냥 사라진다 —
+     "보낸 줄 알았는데 안 갔다" 가 제일 나쁘다. 로컬 숨김도 같이 푼다. */
+  function _restoreItem(it) {
+    if (!it) return;
+    delete _hidden[it.id];
+    try { localStorage.setItem(_HIDDEN_KEY, JSON.stringify(_hiddenPayload())); } catch (_e) { void _e; }
+    if (!ITEMS.some(function (x) { return x.id === it.id; })) ITEMS.push(it);
+    _state = ITEMS.length ? 'DATA' : 'EMPTY';
+    _render();
   }
 
   /* [2026-08-15] 발송을 한 군데로 모은다 — 낱개 발송과 묶음 발송이 각자 fetch 를 들고 있으면
@@ -799,7 +916,6 @@
      안전장치: ① _batchBusy 로 연타 차단 ② 버튼 즉시 비활성 ③ **순차 발송**(병렬로 쏘면 인스타 쪽에서
      레이트리밋·중복 위험) ④ 재시도 없음 ⑤ 낙관적 제거는 silent 로 모아서 마지막에 한 번만 렌더. */
   var _batchBusy = false;
-  var _disabled = false;   // [2026-08-15] 서버가 '이 기능 꺼짐' 이라고 알려준 상태
   var _igWaitTries = 0;    // 인스타 상태 도착 대기 재시도 횟수(무한루프 방지)
   function _sendBatch(ids, btn) {
     if (_batchBusy) return;
@@ -812,7 +928,7 @@
     list.forEach(function (it) { if (it._editing && el) { _captureEdit(el, it); it._editing = false; } });
     var real = list.filter(function (it) { return it._real && it.commentId && window.apiFetch; });
     list.forEach(function (it) { _removeItem(it.id, true); });   // 렌더는 끝나고 한 번만
-    if (!real.length) { _batchBusy = false; _render(); _toast(list.length + '건 답장 보냈어요 · 예시'); return; }
+    if (!real.length) { _batchBusy = false; _render(); return; }
     var ok = 0, fail = 0;
     real.reduce(function (chain, it) {
       return chain.then(function () {
@@ -852,31 +968,42 @@
         return;
       }
     }
-    if (!connected || !window.apiFetch) { _realMode = false; if (!silent) ITEMS = SEED.slice(); return; }
+    if (!connected || !window.apiFetch) {
+      _realMode = false;
+      if (!silent) { ITEMS = []; _state = 'NOT_CONNECTED'; }
+      return;
+    }
     if (_loading) return;                 // 이미 불러오는 중이면 폴링 중복 방지
-    if (!silent) { _loading = true; _render(); }   // silent(자동갱신)면 스켈레톤 안 띄움
+    if (!silent) { _loading = true; _state = 'LOADING'; _render(); }   // silent(자동갱신)면 스켈레톤 안 띄움
     var auth = window.authHeader ? window.authHeader() : {};
     window.apiFetch(window.apiUrl('/instagram/comment-queue'), { headers: auth })
-      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (r) {
+        if (!r.ok) throw new Error('http ' + r.status);
+        return r.json().catch(function () { return {}; });
+      })
       .then(function (j) {
         _loading = false;
-        _weekReplied = (j && j.week_replied) || 0;
-        var arr = (j && j.items) || [];
-        /* [2026-08-15] 원장님이 기능을 껐을 때 — 예전엔 이 분기가 없어서 0건 → **시드(예시) 폴백**으로
-           빠졌다. 끄고 들어왔는데 가짜 손님(민지·서연…) 카드가 진짜처럼 떠 있는 셈이다. */
         _igWaitTries = 0;
-        if (j && j.disabled) { ITEMS = []; _realMode = true; _disabled = true; return; }
-        _disabled = false;
-        if (arr.length) {
-          ITEMS = arr.map(_mapReal).filter(function (x) { return !_isHidden(x); });   // [무시 영속화]
-          _realMode = true;
-        } else if (silent) {
-          if (_realMode) ITEMS = [];   // 실모드였는데 0건 = 다 처리됨 (자동갱신 중 데모로 깜빡이지 않게)
-        } else {
-          ITEMS = SEED.slice(); _realMode = false;   // 권한 없음/문의 댓글 0 → 시드 폴백
-        }
+        _weekReplied = (j && j.week_replied) || 0;
+        _realMode = true;
+
+        /* [2026-09-01 CMT-P1-003] 상태를 분리한다. 예전엔 여기서 items.length 만 보고
+           0 건이면 예시로 떨어뜨렸다 — 권한이 없어 못 읽은 것도, 진짜로 문의가 없는 것도
+           똑같이 가짜 손님 3명으로 보였다. */
+        if (j && j.connected === false) { ITEMS = []; _state = 'NOT_CONNECTED'; return; }
+        if (j && j.disabled) { ITEMS = []; _state = 'DISABLED'; return; }
+        if (j && j.permission_error) { ITEMS = []; _state = 'PERMISSION'; return; }
+
+        var arr = (j && j.items) || [];
+        ITEMS = arr.map(_mapReal).filter(function (x) { return !_isHidden(x); });
+        _state = ITEMS.length ? 'DATA' : 'EMPTY';
       })
-      .catch(function () { _loading = false; if (!silent) { ITEMS = SEED.slice(); _realMode = false; } })
+      .catch(function () {
+        _loading = false;
+        /* 자동갱신(silent) 중 한 번 실패했다고 화면을 오류로 갈아엎지 않는다 —
+           원장이 답장 쓰는 중에 목록이 사라지면 그게 더 나쁘다. 다음 폴링에서 다시 시도한다. */
+        if (!silent) { ITEMS = []; _state = 'NETWORK'; }
+      })
       .then(function () { if (_view === 'queue') _render(); });
   }
 
@@ -891,13 +1018,15 @@
     }, 30000);
   }
   function _stopPoll() { if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; } }
+  // [2026-09-01 SESS-1] 세션 만료 → 폴링 정지 (잠금화면 아래에서 계속 도는 것 차단)
+  document.addEventListener('itdasy:auth-expired', _stopPoll);
 
   function openCommentReplyQueue() {
     if (window.ITDASY_IG_COMMENT_REPLY === false) { _toast('댓글 응대는 준비 중이에요'); return; }
     var el = _ensureMounted();
     _settings = _loadSettings();   // 열 때 최신 저장값 반영(방해금지 배너·필터가 stale 안 되게)
     _view = 'queue'; _sort = 'new';
-    ITEMS = SEED.slice(); _realMode = false; _loading = false;
+    ITEMS = []; _realMode = false; _loading = false; _state = 'LOADING';
     _render();
     // [2026-07-22 보스] 서버에 보관된 설정 내려받기 — 폰을 바꾸거나 캐시를 지운 뒤 첫 진입에서
     //   설정이 초기화된 것처럼 보이던 걸 막는다. 실패/빈 값이면 로컬 설정 그대로(덮어쓰지 않음).
