@@ -104,11 +104,15 @@ function _purgeIgTextStyleIDB() {
 const _IG_STYLE_COOLDOWN_KEY = 'itdasy:ig_style_cooldown';
 const _IG_STYLE_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
-function _kickIgTextStyleBuild() {
+function _kickIgTextStyleBuild(force) {
   try {
     if (!window.InstagramTextStyle) return;
     if (window.InstagramTextStyle.get()) return;              // 이미 분석됨 → 재분석 금지
     if (_kickIgTextStyleBuild._inflight) return;              // 같은 세션 중복 트리거 방어
+    // [2026-09-02] force = OAuth 복귀 직후. "방금 연동 성공" 확정 신호가 있으므로,
+    //   연동 깨진 동안의 실패로 걸린 쿨다운을 풀고 즉시 재시도한다.
+    //   (같은 핸들 재연동은 계정교체 청소를 안 타서 쿨다운이 최대 6시간 잔류하던 문제)
+    if (force) { try { localStorage.removeItem(_IG_STYLE_COOLDOWN_KEY); } catch (_e) { void _e; } }
     // 직전 시도가 프로필을 못 만들었으면 6시간은 쉰다.
     try {
       const _last = Number(localStorage.getItem(_IG_STYLE_COOLDOWN_KEY)) || 0;
@@ -246,8 +250,11 @@ async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
       _instaHandle = data.handle || '';
       updateHeaderProfile(_instaHandle, data.persona ? data.persona.tone : null, data.profile_picture_url || '');
       updateStep('stepInsta', true);
+      // [2026-05-08 hotfix] OAuth 직후 (?connected=success) 자동 분석이 곧 따라옴 → 옛 persona 안 깜빡이게 강제 숨김
+      const justOAuthed = (function(){ try { return new URLSearchParams(location.search).get('connected') === 'success'; } catch (_) { return false; } })();
       // [2026-09-02] 사진편집 스타일 분석 — 연동 확인 시점에 딱 한 번. 비동기·무음.
-      _kickIgTextStyleBuild();
+      //   OAuth 복귀면 실패 쿨다운을 풀고 즉시 빌드 (_kickIgTextStyleBuild 주석 참조).
+      _kickIgTextStyleBuild(justOAuthed);
       _renderIgTokenBanner(data);
       // [죽은코드 정리 2026-07-27] KillerWidgets.renderRow('homeKillerWidgets') 호출 제거 —
       //   렌더 타깃 컨테이너 'homeKillerWidgets'/'dashKiller' 가 DOM 어디에도 없어(HomeV41 로 대체됨)
@@ -258,8 +265,6 @@ async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
       const persona = data.persona || {};
       const personaDone = !!(persona.style_summary);
       updateStep('stepPersona', personaDone);
-      // [2026-05-08 hotfix] OAuth 직후 (?connected=success) 자동 분석이 곧 따라옴 → 옛 persona 안 깜빡이게 강제 숨김
-      const justOAuthed = (function(){ try { return new URLSearchParams(location.search).get('connected') === 'success'; } catch (_) { return false; } })();
       if (personaDone && !justOAuthed) renderPersonaDash(persona);
       else { const _pd = document.getElementById('personaDash'); if (_pd) _pd.style.display = 'none'; }
       // 첫 글 완성 여부는 generationLog 기반. 백엔드 지원 전까진 localStorage hint로
