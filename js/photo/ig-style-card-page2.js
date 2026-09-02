@@ -138,7 +138,9 @@
     return '<div style="position:relative;aspect-ratio:4/5;border-radius:16px;overflow:hidden;margin-top:10px;'
       + 'background:linear-gradient(180deg,#FDF3F6 0%,#FBEAF0 100%);">'
       // 잇비 — #ic-bot 스프라이트 그대로. 다른 모양·이모지 대체 금지.
-      + '<div style="position:absolute;left:50%;bottom:24%;transform:translateX(-50%);color:' + ROSE + ';">'
+      // [2026-09-03] 배경 워터마크로 — 진하게 두면 샘플 문구 존과 겹쳐 이상하다(원영 피드백).
+      + '<div style="position:absolute;left:50%;bottom:24%;transform:translateX(-50%);color:' + ROSE + ';'
+      + 'opacity:.18;filter:blur(1px);pointer-events:none;">'
       + '<svg width="96" height="96" aria-hidden="true"><use href="#ic-bot"/></svg></div>'
       + '<div style="position:absolute;' + zoneStyle + 'padding:12px 14px;border-radius:12px;'
       + 'border:1.5px dashed ' + ROSE + ';background:rgba(255,255,255,.28);">'
@@ -186,8 +188,39 @@
     return html;
   }
 
+  /* [2026-09-03] 분석은 했는데 스타일이 매번 달라 습관을 못 정한 경우(enough=false)의 빈 상태.
+     예전엔 페이지 2 를 아예 안 그려서 원장이 "왜 없지?" 도 몰랐다(원영 피드백).
+     🔴 여기도 지어내지 않는다 — "봤는데 갈렸다" 는 사실만 말한다.
+     profile 이 null(분석 자체가 안 됨)이면 여전히 '' — 할 말이 없는 상태다. */
+  function renderInsufficient(profile) {
+    if (!profile || profile.enough) return '';
+
+    var HEAD_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+      + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+      + '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/>'
+      + '<path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>';
+
+    var n = parseInt(profile.postsAnalyzed, 10) || 0;
+    return '<div style="display:flex;align-items:center;gap:6px;padding:14px 20px 0;color:var(--text-subtle);">'
+      + HEAD_ICON + '<span style="font-size:11px;font-weight:700;color:var(--text-subtle);letter-spacing:.02em;">'
+      + '사진편집 스타일</span></div>'
+      + '<div style="padding:28px 20px;text-align:center;">'
+      // 잇비 — #ic-bot 스프라이트 그대로. 다른 모양·이모지 대체 금지.
+      + '<div style="color:' + ROSE + ';"><svg width="72" height="72" aria-hidden="true"><use href="#ic-bot"/></svg></div>'
+      + '<div style="margin-top:14px;font-size:15px;font-weight:700;color:var(--text);word-break:keep-all;line-height:1.5;">'
+      + '아직 일관된 사진편집 스타일이 없어요 ㅠㅡㅠ</div>'
+      + '<div style="margin-top:8px;font-size:13px;color:var(--text-muted);line-height:1.7;word-break:keep-all;">'
+      + (n > 0 ? '게시물 ' + n + '개를 봤는데, ' : '')
+      + '사진 속 글자 스타일이 매번 달라서<br>한 가지 습관으로 정하지 못했어요.</div>'
+      + '<div style="margin-top:14px;display:inline-block;padding:8px 14px;background:var(--surface-2, #F7F8FA);'
+      + 'border-radius:999px;font-size:11px;font-weight:600;color:var(--text-subtle);">'
+      + '비슷한 스타일이 쌓이면 잇비가 다시 배워올게요</div>'
+      + '</div>';
+  }
+
   window.IgStyleCardPage2 = {
     render: render,
+    renderInsufficient: renderInsufficient,
     // 테스트·디버그용 내부 노출 (동작은 render 로만 쓴다)
     _zoneBox: _zoneBox, _fontFamily: _fontFamily, _fontWeight: _fontWeight,
     _textColor: _textColor, _summary: _summary

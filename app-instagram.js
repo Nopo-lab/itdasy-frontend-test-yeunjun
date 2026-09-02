@@ -570,12 +570,17 @@ function renderDetailedPopup(data) {
 
     // ── [2026-09-02 v5] 절취선 아래를 2페이지 좌우 스와이프로.
     //   시안: 기획/37_인스타분석카드_목업_v5_스와이프.html
-    //   페이지 2 는 사진편집 스타일(InstagramTextStyle 실데이터). 프로필이 없거나 enough 가
-    //   falsy 면 '' 가 와서 **1페이지 카드로 그대로 떨어진다** — 점·힌트·넛지도 안 만든다.
+    //   페이지 2 는 사진편집 스타일(InstagramTextStyle 실데이터).
+    //   · enough=true  → 학습된 스타일 렌더
+    //   · enough=false → [2026-09-03] "일관된 스타일이 없어요" 빈 상태 (조용히 숨기지 않는다 — 원영 피드백)
+    //   · profile null(분석 자체가 안 됨) → '' → 1페이지 카드, 점·힌트·넛지도 안 만든다.
     let page2 = '';
     try {
         const prof = (window.InstagramTextStyle && window.InstagramTextStyle.get()) || null;
-        page2 = (window.IgStyleCardPage2 && prof) ? window.IgStyleCardPage2.render(prof) : '';
+        if (window.IgStyleCardPage2 && prof) {
+            page2 = window.IgStyleCardPage2.render(prof)
+                || (window.IgStyleCardPage2.renderInsufficient ? window.IgStyleCardPage2.renderInsufficient(prof) : '');
+        }
     } catch (_e) { page2 = ''; }
 
     const PAGE1_HEAD = `<div style="display:flex;align-items:center;gap:6px;padding:14px 20px 0;color:var(--text-subtle);">
