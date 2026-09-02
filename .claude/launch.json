@@ -50,6 +50,28 @@
         "8121"
       ],
       "port": 8121
+    },
+    {
+      "name": "itdasy-cmtqa-8137",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8137"
+      ],
+      "port": 8137
+    },
+    {
+      "name": "itdasy-audit-8151",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8151",
+        "--directory",
+        "/private/tmp/claude-501/fe-rebase"
+      ],
+      "port": 8151
     }
   ]
 }

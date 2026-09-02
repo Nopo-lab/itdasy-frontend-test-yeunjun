@@ -2264,9 +2264,22 @@
     let _saving = false; // [2026-07-14 QA] 연타 시 예약 이중 생성 방지
     body.querySelector('#bfSave').addEventListener('click', async (ev) => {
       if (_saving) return;
+      /* [2026-09-02 API/E2E 게이트] 예전엔 `_saving = true` 를 **첫 await 뒤(라인 2340 부근)** 에 세웠다.
+         그래서 연타하면 2·3번째 클릭이 이 가드를 그냥 통과했고, 아래 `#bfDate` 를 읽을 때
+         폼이 이미 사라져 **TypeError: Cannot read properties of null** 로 터졌다.
+         결과적으로 중복은 안 생겼지만 그건 가드가 막은 게 아니라 **크래시가 막은 것**이다 —
+         타이밍이 조금만 달랐으면(폼이 아직 살아 있으면) 진짜 이중 예약이 만들어진다.
+         실측(배포본 cf12c38, 실계정): 저장 3연타 → POST 1회 + unhandled rejection 2건,
+         수정 2연타 → PATCH 1회 + rejection 1건. Sentry 에도 그대로 쌓이고 있었다.
+         → 진입 즉시 잠그고, 조기 종료 경로마다 _bail() 로 되돌린다. */
+      _saving = true;
       const _saveBtn = ev.currentTarget;
-      const d = body.querySelector('#bfDate').value;
-      if (!d) { if (window.showToast) window.showToast('날짜를 입력해 주세요'); return; }
+      if (_saveBtn) _saveBtn.disabled = true;
+      const _bail = () => { _saving = false; if (_saveBtn) _saveBtn.disabled = false; };
+      const _dateEl = body.querySelector('#bfDate');
+      if (!_dateEl) { _bail(); return; }   // 폼이 이미 닫힘(연타 2번째) — 조용히 끝낸다
+      const d = _dateEl.value;
+      if (!d) { if (window.showToast) window.showToast('날짜를 입력해 주세요'); _bail(); return; }
       const sh = body._getStartH(), sm = body._getStartM(), dur = body._getDurMin();
       const endMin = sh * 60 + sm + dur;
       const eh = Math.floor(endMin / 60) % 24, em = endMin % 60;
@@ -2276,7 +2289,7 @@
       const adjEm = crossesMidnight ? (endMin - 1440) % 60 : em;
       const eTime = _pad(adjEh) + ':' + _pad(adjEm);
       const endDate = crossesMidnight ? _nextDay(d) : d;
-      if (!crossesMidnight && sTime >= eTime) { if (window.showToast) window.showToast('종료 시간이 시작보다 늦어야 해요'); return; }
+      if (!crossesMidnight && sTime >= eTime) { if (window.showToast) window.showToast('종료 시간이 시작보다 늦어야 해요'); _bail(); return; }
       // [A3] 과거 날짜 예약 방지
       if (!existing) {
         // [2026-07-25 #6] 로컬(KST) 날짜로. 예전엔 toISOString(UTC)이라 KST 00~09시엔 today 가
@@ -2284,7 +2297,7 @@
         const today = _ds(new Date());
         if (d < today) {
           if (window.showToast) window.showToast('과거 날짜에는 예약을 추가할 수 없어요');
-          return;
+          _bail(); return;
         }
       }
       // [A2] 시간 충돌 시 저장 차단
@@ -2294,7 +2307,7 @@
         const conflict = window.Booking?.findConflict?.(starts, ends, existing?.id);
         if (conflict) {
           if (window.showToast) window.showToast(_conflictMsg(conflict));
-          return;
+          _bail(); return;
         }
         // [보안감사 M-4] 고른 날짜가 현재 보고 있는 달 밖이면 findConflict(_items=현재 달)가 못 잡는다.
         //   그 날짜만 직접 조회해 한 번 더 확인(타월 이중예약 무경고 방지). 조회 실패 시엔 막지 않음.
@@ -2304,7 +2317,7 @@
           const _c2 = await window.Booking.dayConflict(starts, ends, existing?.id);
           if (_c2) {
             if (window.showToast) window.showToast(_conflictMsg(_c2));
-            return;
+            _bail(); return;
           }
         }
       }
@@ -2318,7 +2331,7 @@
           custCard.classList.add('bf-cust-required');
           setTimeout(() => custCard.classList.remove('bf-cust-required'), 1600);
         }
-        return;
+        _bail(); return;
       }
       // [2026-05-16] 시술명: chip 선택값(#bfSvc) 또는 직접입력값(#bfSvcCustom) 둘 다 폴백
       const svcSelected = body.querySelector('#bfSvc').value.trim();
@@ -2337,8 +2350,7 @@
         amount:        amtVal > 0 ? amtVal : null,
         deposit:       depVal > 0 ? depVal : null,
       };
-      _saving = true;
-      if (_saveBtn) _saveBtn.disabled = true;
+      // (_saving·disabled 는 진입 즉시 위에서 이미 세웠다)
       try {
         const changeDetail = {
           customer_id: payload.customer_id,
