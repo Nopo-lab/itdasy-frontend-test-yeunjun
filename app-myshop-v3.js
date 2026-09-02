@@ -133,9 +133,9 @@
             <div class="ms-shop__plan">${_esc(_planText())}</div>
           </div>
           <div class="ms-shop__acts">
-            <button type="button" class="ms-shop__act" data-mv-act="toneReport" aria-label="말투분석카드">
+            <button type="button" class="ms-shop__act" data-mv-act="toneReport" aria-label="인스타분석카드">
               <span class="ms-shop__act--tone">${window.ItdasyMenu.icon('ic-card-sparkle', 19)}</span>
-              <span class="ms-shop__act-label">말투분석카드</span>
+              <span class="ms-shop__act-label">인스타분석카드</span>
             </button>
           </div>
         </div>

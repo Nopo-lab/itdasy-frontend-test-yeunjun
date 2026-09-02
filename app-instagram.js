@@ -80,6 +80,42 @@ function _hydrateAnalysisCacheFromStatus(persona) {
 // [2026-09-01 사고복구] f7a3ea8 리팩터링이 이 세 정의를 지웠는데 checkInstaStatus 참조는 남아
 //   매 호출 ReferenceError → 로그인 유저 전원 홈 흰화면. 정의 복원. 지울 땐 참조 grep 필수.
 let _igStatusSeq = 0;
+// [2026-09-02] 사진편집 스타일 IDB 캐시(ig_text_analysis) 비우기 — 계정 교체 전용.
+//   이미지 해시 캐시라 옛 계정 사진 분석 결과가 남으면 새 계정 build() 가 그걸 재사용한다.
+//   전용 clear 헬퍼가 없어 getAll → delete 로 훑는다. 실패는 조용히 넘긴다(연동을 막을 일 아님).
+function _purgeIgTextStyleIDB() {
+  try {
+    if (typeof window.wmLearnAll !== 'function' || typeof window.wmLearnDel !== 'function') return;
+    Promise.resolve(window.wmLearnAll('ig_text_analysis'))
+      .then((rows) => Promise.all((rows || []).map((r) =>
+        r && r.id ? window.wmLearnDel('ig_text_analysis', r.id).catch(() => {}) : null)))
+      .catch(() => {});
+  } catch (_e) { void _e; }
+}
+
+// [2026-09-02] 사진편집 스타일 분석 파이프라인 트리거 (B-4).
+//   여태 InstagramTextStyle.build() 를 **아무도 부르지 않아** 페이지 2 가 영원히 빈 상태였다.
+//   · 이미 프로필이 있으면 skip — Vision 재호출은 곧 비용이다.
+//   · fire-and-forget. 실패해도 연동 플로우를 절대 막지 않는다.
+//   · 비용 가드(MAX_CALLS=12·이미지 해시 캐시·429 즉시 중단)는 모듈 안에 이미 있다 — 건드리지 않는다.
+function _kickIgTextStyleBuild() {
+  try {
+    if (!window.InstagramTextStyle) return;
+    if (window.InstagramTextStyle.get()) return;              // 이미 분석됨 → 재분석 금지
+    if (_kickIgTextStyleBuild._inflight) return;              // 같은 세션 중복 트리거 방어
+    _kickIgTextStyleBuild._inflight = true;
+    apiFetch('/instagram/recent-media?limit=12', { headers: authHeader() })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((j) => {
+        const media = j && Array.isArray(j.media) ? j.media : null;
+        if (!media || !media.length) return null;
+        return window.InstagramTextStyle.build(media);         // 필드명은 thumb — 모듈이 처리
+      })
+      .catch(() => {})
+      .finally(() => { _kickIgTextStyleBuild._inflight = false; });
+  } catch (_e) { void _e; _kickIgTextStyleBuild._inflight = false; }
+}
+
 function _igStatusGiveUp() {
   // 재시도 전부 실패 — 캐시가 '연동됨'이면 그대로 두고(오탐 방지), 아니면 연동 안내로 폴백.
   try {
@@ -133,10 +169,17 @@ async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
       // [2026-06-12 Bug] 다른 계정으로 재연동 시 옛 분석 리포트가 localStorage 에 잔존하는 문제.
       //   캐시된 핸들과 새 data.handle 이 다르면(둘 다 truthy) 옛 분석 캐시부터 제거 →
       //   아래 hydrate 가 새 persona 로 다시 채움.
+      // [2026-09-02] 계정 교체면 **사진편집 스타일 프로필까지** 함께 청소한다.
+      //   예전엔 itdasy_latest_analysis 만 지워서, 옛 계정에서 배운 글자 위치·크기가
+      //   새 계정 캡션 편집에 그대로 적용됐다(BE 는 이미 지우는데 FE 캐시만 남던 누수).
       try {
         const _prevHandle = localStorage.getItem('itdasy:ig_handle');
         if (_prevHandle && data.handle && _prevHandle !== data.handle) {
           localStorage.removeItem('itdasy_latest_analysis');
+          localStorage.removeItem('itdasy:ig_profile_pic');
+          localStorage.removeItem('itdasy:ig_handle');   // 바로 아래에서 새 handle 로 다시 채움
+          try { if (window.InstagramTextStyle) window.InstagramTextStyle.clear(); } catch (_e2) { void _e2; }
+          _purgeIgTextStyleIDB();
         }
       } catch (_e) { void _e; }
       // [2026-06-12 Bug] 같은 핸들 재연동·재분석 후 서버는 done 인데 캐시가 옛 분석본을 유지해
@@ -178,6 +221,8 @@ async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
       _instaHandle = data.handle || '';
       updateHeaderProfile(_instaHandle, data.persona ? data.persona.tone : null, data.profile_picture_url || '');
       updateStep('stepInsta', true);
+      // [2026-09-02] 사진편집 스타일 분석 — 연동 확인 시점에 딱 한 번. 비동기·무음.
+      _kickIgTextStyleBuild();
       _renderIgTokenBanner(data);
       // [죽은코드 정리 2026-07-27] KillerWidgets.renderRow('homeKillerWidgets') 호출 제거 —
       //   렌더 타깃 컨테이너 'homeKillerWidgets'/'dashKiller' 가 DOM 어디에도 없어(HomeV41 로 대체됨)
@@ -329,10 +374,10 @@ function showDetailedAnalysis() {
     let st = '';
     try { st = localStorage.getItem('itdasy_persona_status') || ''; } catch (_e) { st = ''; }
     if (st === 'pending') {
-      if (window.showToast) window.showToast('말투 분석 중이에요. 잠시 뒤 다시 확인해 주세요.');
+      if (window.showToast) window.showToast('인스타 분석 중이에요. 잠시 뒤 다시 확인해 주세요.');
     } else if (st === 'failed') {
       // [F2] safe 안내만 — 리포트 열기로 자동 재분석 금지. 재분석은 사용자가 직접 동선을 눌러야 함.
-      if (window.showToast) window.showToast('말투 분석에 실패했어요. 설정 → 말투 분석에서 다시 시도해 주세요.');
+      if (window.showToast) window.showToast('인스타 분석에 실패했어요. 설정 → 말투 분석에서 다시 시도해 주세요.');
     } else {
       if (window.showToast) window.showToast('학습된 말투 데이터가 없어요. 인스타 연동 후 분석을 진행해주세요');
     }
@@ -403,8 +448,8 @@ function renderDetailedPopup(data) {
     // ── 히어로: 사실만 — 프사(인스타 스토리 링) + 잇비 둥둥 + @핸들 + 분석 수 pill(카운트업)
     const IG_GLYPH = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D62976" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.5"/><circle cx="17.5" cy="6.5" r="1" fill="#D62976" stroke="none"/></svg>';
     const pillText = postCount > 0
-        ? `게시물 <span data-count-up="${postCount}">0</span>개 말투 분석 완료`
-        : '말투 분석 완료';
+        ? `게시물 <span data-count-up="${postCount}">0</span>개 인스타 분석 완료`
+        : '인스타 분석 완료';
     let html = `
     <div style="position:relative;text-align:center;padding:32px 20px 22px;background:linear-gradient(180deg,#FDF3F6 0%,#FBEAF0 100%);border-radius:26px 26px 0 0;">
       <button data-static-action="analyze-result-close" aria-label="닫기" style="position:absolute;top:14px;right:14px;width:32px;height:32px;border:none;border-radius:50%;background:rgba(255,255,255,0.75);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
@@ -439,19 +484,26 @@ function renderDetailedPopup(data) {
     }
 
     // 말끝 — 장부 행 + 미니 게이지(최댓값 대비 %). counts 없으면(구 응답 폴백) 값만
+    // [2026-09-02 v5] 상위 3개만 펼쳐두고 나머지는 "+N개" 접기 — 해시태그와 같은 패턴.
+    //   말끝이 6~8개씩 나오면 페이지 1 이 길어져서 스와이프 힌트까지 스크롤해야 보였다.
     const endPairs = endCounts.length ? endCounts : sigArr.map(t => [t, null]);
     if (endPairs.length) {
         const maxN = Math.max(...endPairs.map(x => x[1] || 0), 1);
         const topN = endCounts.length ? Math.max(...endCounts.map(x => x[1])) : -1;
-        const rows = endPairs.map(([t, n], i) => {
+        const _endRow = ([t, n], i) => {
             const isTop = n != null && n === topN;
             const gauge = n == null ? '' :
                 `<span style="flex:1;height:5px;border-radius:999px;background:#F2F4F6;overflow:hidden;"><span style="display:block;height:100%;border-radius:999px;width:${Math.round(n / maxN * 100)}%;background:var(${isTop ? '--brand-strong' : '--brand'});"></span></span>`;
             const num = n == null ? '' : `<span style="font-size:13px;font-weight:600;color:var(${isTop ? '--brand-strong' : '--text-subtle'});font-variant-numeric:tabular-nums;flex-shrink:0;">${n}</span>`;
             return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;${i > 0 ? 'border-top:.5px solid var(--border);' : ''}">
                 <span style="font-size:15px;color:var(--text);word-break:keep-all;flex-shrink:0;min-width:86px;${isTop ? 'font-weight:700;' : ''}">${_esc(t)}</span>${gauge}${num}</div>`;
-        }).join('');
-        secs.push(`<div style="padding:16px 20px 8px;">${_label('자주 쓰는 말끝')}<div style="margin-top:4px;">${rows}</div></div>`);
+        };
+        const headRows = endPairs.slice(0, 3).map(_endRow).join('');
+        const restRows = endPairs.slice(3).map((p, i) => _endRow(p, i + 3)).join('');
+        const restEndN = endPairs.length - 3;
+        secs.push(`<div style="padding:16px 20px 8px;">${_label('자주 쓰는 말끝')}<div style="margin-top:4px;">${headRows}<div data-ig-end-rest style="display:none;">${restRows}</div></div>${
+            restEndN > 0 ? `<button data-ig-end-toggle data-n="${restEndN}" style="font-size:13px;font-weight:600;color:var(--brand-strong);background:#FBEAF0;padding:6px 12px;border-radius:999px;border:none;cursor:pointer;margin-top:6px;">+${restEndN}개</button>` : ''
+        }</div>`);
     }
 
     // 해시태그 — 축소: 상위 3개 칩 한 줄 + "+N개" 펼침. counts 없으면 횟수 없이
@@ -486,15 +538,48 @@ function renderDetailedPopup(data) {
         }
     </div>`);
 
-    // 절취선 아래 전체를 스태거 대상으로 묶는다 (data-report-secs)
-    html += `<div data-report-secs style="overflow:hidden;">${secs.join(DIV)}</div>`;
+    // ── [2026-09-02 v5] 절취선 아래를 2페이지 좌우 스와이프로.
+    //   시안: 기획/37_인스타분석카드_목업_v5_스와이프.html
+    //   페이지 2 는 사진편집 스타일(InstagramTextStyle 실데이터). 프로필이 없거나 enough 가
+    //   falsy 면 '' 가 와서 **1페이지 카드로 그대로 떨어진다** — 점·힌트·넛지도 안 만든다.
+    let page2 = '';
+    try {
+        const prof = (window.InstagramTextStyle && window.InstagramTextStyle.get()) || null;
+        page2 = (window.IgStyleCardPage2 && prof) ? window.IgStyleCardPage2.render(prof) : '';
+    } catch (_e) { page2 = ''; }
 
-    // [2026-08-16] 하단 안내 문구 삭제 — "내샵관리 › 잇비/자동화 › 내 말투" 메뉴가 실제로 없어서
-    //   없는 경로를 안내하고 있었음(원영 지적). 하단 여백만 유지.
-    html += `<div style="height:20px;"></div>`;
+    const PAGE1_HEAD = `<div style="display:flex;align-items:center;gap:6px;padding:14px 20px 0;color:var(--text-subtle);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span style="font-size:11px;font-weight:700;color:var(--text-subtle);letter-spacing:.02em;">말투</span></div>`;
+
+    // 절취선 아래 전체를 스태거 대상으로 묶는다 (data-report-secs)
+    if (page2) {
+        // pager: flex:1 + min-height:0 → 페이지 내용만 세로로 흐르고 점은 항상 카드 하단.
+        html += `<div data-report-secs style="flex:1;min-height:0;display:flex;flex-direction:column;">
+            <div data-ig-pager style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none;flex:1;min-height:0;">
+                <div style="flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;overflow-y:auto;">${PAGE1_HEAD}${secs.join(DIV)}<div style="height:20px;"></div></div>
+                <div style="flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;overflow-y:auto;">${page2}<div style="height:20px;"></div></div>
+            </div>
+        </div>
+        <div style="flex-shrink:0;background:var(--surface);border-top:.5px solid var(--border);padding:10px 0 14px;text-align:center;">
+            <div style="display:flex;justify-content:center;gap:6px;">
+                <span data-ig-dot="0" style="width:16px;height:6px;border-radius:999px;background:var(--brand-strong);transition:all .25s;cursor:pointer;"></span>
+                <span data-ig-dot="1" style="width:6px;height:6px;border-radius:50%;background:#D8DCE2;transition:all .25s;cursor:pointer;"></span>
+            </div>
+            <span data-ig-hint style="display:inline-flex;align-items:center;gap:4px;margin-top:7px;font-size:11px;font-weight:600;color:var(--text-subtle);transition:opacity .4s;">옆으로 넘겨 사진편집 스타일 보기
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+            </span>
+        </div>`;
+    } else {
+        // 1페이지 폴백 — 기존 카드와 동일. 페이지 헤더·점·힌트 전부 없음.
+        html += `<div data-report-secs style="flex:1;min-height:0;overflow-y:auto;">${secs.join(DIV)}
+            <div style="height:20px;"></div></div>`;
+    }
 
     const body = document.getElementById('analyzeResultBody');
     if (!body) return;
+    // 카드 = flex column. 이게 있어야 pager 의 flex:1 이 먹고 점이 하단에 고정된다.
+    body.setAttribute('style', 'display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden;');
     body.innerHTML = html;
 
     // [2026-06-26] '내 말투로 글 써보기' CTA 제거 유지 — 작업실/글쓰기 진입 차단(중복·혼동 방지).
@@ -508,6 +593,50 @@ function renderDetailedPopup(data) {
         rest.style.display = open ? 'none' : 'contents';
         this.textContent = open ? `+${this.dataset.n}개` : '접기';
     });
+
+    // 말끝 "+N개" 펼침 토글 — 이쪽 rest 는 블록 컨테이너라 display:'' 로 충분하다.
+    body.querySelector('[data-ig-end-toggle]')?.addEventListener('click', function () {
+        const rest = body.querySelector('[data-ig-end-rest]');
+        if (!rest) return;
+        const open = rest.style.display !== 'none';
+        rest.style.display = open ? 'none' : '';
+        this.textContent = open ? `+${this.dataset.n}개` : '접기';
+    });
+
+    // ── 스와이프 페이저: 점 동기화 · 점 탭 이동 · 힌트 · 최초 넛지 1회
+    const pager = body.querySelector('[data-ig-pager]');
+    if (pager) {
+        const dots = Array.from(body.querySelectorAll('[data-ig-dot]'));
+        const hint = body.querySelector('[data-ig-hint]');
+        const _paint = (i) => dots.forEach((d, k) => {
+            const on = k === i;
+            d.style.background = on ? 'var(--brand-strong)' : '#D8DCE2';
+            d.style.width = on ? '16px' : '6px';
+            d.style.borderRadius = on ? '999px' : '50%';
+        });
+        pager.addEventListener('scroll', () => {
+            const w = pager.clientWidth || 1;
+            const i = Math.round(pager.scrollLeft / w);
+            _paint(i);
+            if (i > 0 && hint) hint.style.opacity = '0';   // 2페이지 한 번 보면 힌트 제거
+        }, { passive: true });
+        dots.forEach((d, k) => d.addEventListener('click', () =>
+            pager.scrollTo({ left: k * pager.clientWidth, behavior: 'smooth' })));
+
+        // 최초 1회 34px 넛지 — "옆으로 넘어간다"를 몸으로 알린다.
+        //   넛지 동안 scroll-snap 을 끄지 않으면 34px 에서 스냅이 되받아쳐 덜컥거린다.
+        if (!_rm) {
+            setTimeout(() => {
+                if (!pager.isConnected) return;
+                pager.style.scrollSnapType = 'none';
+                pager.scrollTo({ left: 34, behavior: 'smooth' });
+                setTimeout(() => {
+                    pager.scrollTo({ left: 0, behavior: 'smooth' });
+                    setTimeout(() => { pager.style.scrollSnapType = ''; }, 400);
+                }, 450);
+            }, 900);
+        }
+    }
 
     // 게시물 수 카운트업 0→N (약 0.8s ease-out). reduced-motion 이면 즉시
     const cEl = body.querySelector('[data-count-up]');
@@ -564,7 +693,7 @@ async function runAutoAnalysisAfterConnect() {
     if (bar) bar.style.width = (22 + _mi * 18) + '%';
   }, 1200);
   if (subTxt)  subTxt.textContent  = '최근 사장님의 게시물들을 읽고 잇비가 학습 중이에요';
-  try { if (typeof showToast === 'function') showToast('🪄 AI 말투 분석을 시작했어요. 결과 곧 보여드릴게요'); } catch (_e) { void _e; }
+  try { if (typeof showToast === 'function') showToast('🪄 AI 인스타 분석을 시작했어요. 결과 곧 보여드릴게요'); } catch (_e) { void _e; }
 
   const startedAt = Date.now();
   const MAX_MS = 90_000;
@@ -631,7 +760,7 @@ async function runAutoAnalysisAfterConnect() {
       _endOverlay();
       console.log('[IG-ANALYZE] open-report');
       if (!_openReportPopupDirect(p)) {
-        try { if (typeof showToast === 'function') showToast('✅ 말투 분석 완료!'); } catch (_e2) { void _e2; }
+        try { if (typeof showToast === 'function') showToast('✅ 인스타 분석 완료!'); } catch (_e2) { void _e2; }
       }
     }, 1000);
     return;
@@ -655,7 +784,7 @@ async function runAutoAnalysisAfterConnect() {
         } catch (_e) { void _e; }
         _endOverlay();
         if (!_openReportPopupDirect(p)) {
-          try { if (typeof showToast === 'function') showToast('✅ 말투 분석 완료!'); } catch (_e) { void _e; }
+          try { if (typeof showToast === 'function') showToast('✅ 인스타 분석 완료!'); } catch (_e) { void _e; }
         }
         return;
       }
@@ -719,7 +848,7 @@ function _showAnalyzeError(code) {
   }
   barEl.innerHTML = '<span style="flex:1;word-break:keep-all;line-height:1.4;"></span>' +
     '<button data-ig-retry style="flex-shrink:0;background:#A32D2D;color:#fff;border:none;border-radius:10px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;">다시 분석</button>';
-  barEl.querySelector('span').textContent = MSG[code] || '말투 분석에 실패했어요. 다시 시도해 주세요.';
+  barEl.querySelector('span').textContent = MSG[code] || '인스타 분석에 실패했어요. 다시 시도해 주세요.';
   barEl.style.display = 'flex';
   barEl.querySelector('[data-ig-retry]').onclick = () => {
     barEl.style.display = 'none';
@@ -830,7 +959,7 @@ async function runPersonaAnalyze(force) {
               setTimeout(() => {
                 if (overlay) overlay.style.display = 'none';
                 if (!_openReportPopupDirect(sp)) {
-                  try { if (typeof showToast === 'function') showToast('말투 분석 완료!'); } catch(_e){ void _e; }
+                  try { if (typeof showToast === 'function') showToast('인스타 분석 완료!'); } catch(_e){ void _e; }
                 }
               }, 800);
               return;
@@ -906,7 +1035,8 @@ async function disconnectInstagram() {
   // OAuth provider (google/kakao/naver/email) 세션은 유지. IG 상태만 끊고 UI 갱신.
   if (!(await nativeConfirm(
     '인스타 연동 해제',
-    '인스타 연동을 끊을게요. 잇데이 로그인은 그대로 유지돼요.\n나중에 다시 연결하면 분석 결과를 새 인스타 기준으로 갱신해요.\n\n고객·예약·매출·말투 분석 데이터는 안전하게 보관돼요.'
+    // [2026-09-02] 문구 정정 — 이제 "무조건 갱신" 이 아니라 "같은 계정이면 유지" 다.
+    '인스타 연동을 끊을게요. 잇데이 로그인은 그대로 유지돼요.\n같은 계정으로 다시 연결하면 인스타 분석 결과는 그대로 쓸 수 있어요.\n\n고객·예약·매출·인스타 분석 데이터는 안전하게 보관돼요.'
   ))) return;
   try {
     const res = await apiFetch('/instagram/disconnect', {
@@ -919,11 +1049,13 @@ async function disconnectInstagram() {
     }
     // [2026-05-12 QA #1] 캐시 클린업 — checkInstaStatus 가 미연결 분기에서도 처리하지만
     // 다른 화면이 다음 렌더 전까지 stale 값 노출 가능 → disconnect 시점에 선제 청소.
+    // [2026-09-02 B-6] 해제 시엔 **프로필 사진·핸들 캐시만** 청소한다.
+    //   분석 데이터(itdasy_latest_analysis · InstagramTextStyle)는 남긴다 — BE 와 같은 원칙:
+    //   지우는 건 '계정 교체' 때뿐이고, 같은 계정으로 되돌아오면 그대로 쓴다.
     try {
       localStorage.removeItem('itdasy:ig_connected_cache');
       localStorage.removeItem('itdasy:ig_handle');
       localStorage.removeItem('itdasy:ig_profile_pic');
-      localStorage.removeItem('itdasy_latest_analysis');
     } catch (_e) { /* ignore */ }
     try { if (typeof window !== 'undefined') window._instaHandle = ''; } catch (_e) { /* ignore */ }
     showToast('✓ 인스타 해제됨');
@@ -987,6 +1119,13 @@ async function connectInstagram() {
     showInstallGuide();
     return;
   }
+
+  // [2026-09-02 B-5] 계정 교체 경고 카드 — 기존 분석 데이터가 있을 때만 뜬다.
+  //   환경 가드(카톡·iOS 비PWA)를 통과한 뒤에 띄운다. 앞에 두면 카드를 확인시켜 놓고
+  //   바로 "홈 화면에 추가하세요" 안내로 막는 꼴이 된다.
+  try {
+    if (window.IgConnectWarn && !(await window.IgConnectWarn.maybeConfirm())) return;
+  } catch (_e) { void _e; }   // 카드가 깨져도 연동 자체는 막지 않는다
 
   btn.textContent = '연결 중...';
   btn.disabled = true;

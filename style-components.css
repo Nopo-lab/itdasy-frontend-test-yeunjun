@@ -582,3 +582,7 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
   position: absolute;
   inset: -6px 0;
 }
+
+/* [2026-09-02] 인스타분석카드 v5 — 페이지 스와이프 스크롤바 숨김.
+   scrollbar-width/-ms-overflow-style 은 인라인으로 넣었지만 webkit 은 의사요소라 여기서만 가능. */
+[data-ig-pager]::-webkit-scrollbar { display: none; }
