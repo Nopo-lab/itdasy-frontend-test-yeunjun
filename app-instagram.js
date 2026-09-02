@@ -98,11 +98,22 @@ function _purgeIgTextStyleIDB() {
 //   · 이미 프로필이 있으면 skip — Vision 재호출은 곧 비용이다.
 //   · fire-and-forget. 실패해도 연동 플로우를 절대 막지 않는다.
 //   · 비용 가드(MAX_CALLS=12·이미지 해시 캐시·429 즉시 중단)는 모듈 안에 이미 있다 — 건드리지 않는다.
+// [2026-09-02] 실패 쿨다운 6시간. checkInstaStatus 는 부팅·가입·생체인증·OAuth 복귀·수동 새로고침
+//   5곳에서 불린다. 실패하면 get() 이 계속 null 이라, 쿨다운이 없으면 그 5곳이 매번 12장짜리
+//   파이프라인을 통째로 다시 돌린다(= 사용자가 겪은 오류 폭발).
+const _IG_STYLE_COOLDOWN_KEY = 'itdasy:ig_style_cooldown';
+const _IG_STYLE_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+
 function _kickIgTextStyleBuild() {
   try {
     if (!window.InstagramTextStyle) return;
     if (window.InstagramTextStyle.get()) return;              // 이미 분석됨 → 재분석 금지
     if (_kickIgTextStyleBuild._inflight) return;              // 같은 세션 중복 트리거 방어
+    // 직전 시도가 프로필을 못 만들었으면 6시간은 쉰다.
+    try {
+      const _last = Number(localStorage.getItem(_IG_STYLE_COOLDOWN_KEY)) || 0;
+      if (_last && Date.now() - _last < _IG_STYLE_COOLDOWN_MS) return;
+    } catch (_e) { void _e; }
     _kickIgTextStyleBuild._inflight = true;
     apiFetch('/instagram/recent-media?limit=12', { headers: authHeader() })
       .then((r) => (r && r.ok ? r.json() : null))
@@ -112,7 +123,18 @@ function _kickIgTextStyleBuild() {
         return window.InstagramTextStyle.build(media);         // 필드명은 thumb — 모듈이 처리
       })
       .catch(() => {})
-      .finally(() => { _kickIgTextStyleBuild._inflight = false; });
+      .finally(() => {
+        _kickIgTextStyleBuild._inflight = false;
+        // 성공 판정은 "프로필이 실제로 저장됐나" 하나뿐이다. build 가 예외 없이 끝나도
+        //   표본이 모자라 프로필이 안 만들어질 수 있는데, 그것도 재시도해봐야 같은 결과다.
+        try {
+          if (!window.InstagramTextStyle.get()) {
+            localStorage.setItem(_IG_STYLE_COOLDOWN_KEY, String(Date.now()));
+          } else {
+            localStorage.removeItem(_IG_STYLE_COOLDOWN_KEY);
+          }
+        } catch (_e) { void _e; }
+      });
   } catch (_e) { void _e; _kickIgTextStyleBuild._inflight = false; }
 }
 
@@ -179,6 +201,9 @@ async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
           localStorage.removeItem('itdasy:ig_profile_pic');
           localStorage.removeItem('itdasy:ig_handle');   // 바로 아래에서 새 handle 로 다시 채움
           try { if (window.InstagramTextStyle) window.InstagramTextStyle.clear(); } catch (_e2) { void _e2; }
+          // 계정이 바뀌었으면 쿨다운도 푼다 — 옛 계정에서 실패해 걸린 쿨다운 때문에
+          //   새 계정 분석이 6시간 미뤄지면 안 된다.
+          localStorage.removeItem(_IG_STYLE_COOLDOWN_KEY);
           _purgeIgTextStyleIDB();
         }
       } catch (_e) { void _e; }
