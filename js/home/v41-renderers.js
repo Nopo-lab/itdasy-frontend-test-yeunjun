@@ -80,7 +80,61 @@
       : (goal > 0 ? '이번달 목표 달성!' : '요일별 매출 패턴 보기');
     const card = { ...base, dot: (p != null && p < 0) ? 'var(--danger)' : '#3B82F6', hl, desc };
     if (p != null && p < 0) card.alert = true;       // 마이너스일 때만 '확인 필요'에 포함
+
+    // [2026-09-02] 잇비 표 줄 전용 — 스파크라인 + "지난달 이맘때" 비교 (목업 39 B안).
+    //   hl/desc 는 건드리지 않는다. 그건 '전체 보기' 펼침 뷰가 쓰는 값이라,
+    //   여기서 바꾸면 표 줄만 고치려다 펼침 뷰까지 같이 흔들린다.
+    //   표 줄 금액은 축약 없이 천단위 콤마 — 만원 축약은 "4,231,000원"의 자릿수 감각을 지운다.
+    card.rowVal = total.toLocaleString('ko-KR') + '원';
+    // [2026-09-03] 스파크 데이터 = **최근 7일 일별**(week_revenue, index 6 = 오늘).
+    //   이번달 누적을 쓰면 월초마다 점 1~2개짜리 직선으로 리셋된다(원영 피드백 — 9/2에 직선).
+    //   최근 7일은 월 경계 무관이라 언제나 리듬이 보이고, 매출이 하루뿐이면
+    //   토스처럼 "바닥 깔리다 끝에서 쑥" 하키스틱이 자연히 나온다.
+    //   전부 0이면 그래프 생략 (0짜리 평평한 선은 정보가 아니다).
+    const wk = Array.isArray(brief.week_revenue) ? brief.week_revenue.map(Number) : null;
+    if (wk && wk.length >= 2 && wk.some(v => v > 0)) {
+      card.spark = wk;
+    } else {
+      // 구버전 BE 폴백 — 이번달 누적을 일별로 풀어서 사용.
+      const cum = Array.isArray(brief.month_daily_cumulative) ? brief.month_daily_cumulative : null;
+      if (cum && cum.length >= 2) {
+        const d = cum.map((v, i) => Math.max(0, Number(v) - (i ? Number(cum[i - 1]) : 0)));
+        if (d.some(v => v > 0)) card.spark = d;
+      }
+    }
+    // 구버전 BE(필드 없음)거나 지난달 이맘때 매출이 0이면 비교 줄 자체를 안 만든다 —
+    //   분모가 없는 비교는 "+전액 ↑" 같은 무의미한 문구가 된다.
+    const prevSame = Number(brief.prev_month_same_day_total) || 0;
+    if (prevSame > 0) {
+      const diff = total - prevSame;
+      card.cmp = { diff, up: diff >= 0 };
+    }
     return card;
+  }
+
+  // [2026-09-03] 스파크라인 v2 — **일별 매출** 배열을 받아 그린다 (변환은 cardRevenue 가 함).
+  //   누적은 절대 안 내려가서 매일 비슷하면 자로 그은 직선이 됐다(원영 피드백).
+  //   일별이면 장사 리듬(바쁜 날/한가한 날)이 그대로 오르내림으로 보인다.
+  //   · Catmull-Rom → 베지어 보간으로 토스처럼 부드러운 곡선.
+  //   · 반환에 끝점 좌표(ex, ey) 포함 — pulse 도트를 CSS 고정이 아니라 실제 선 끝에 붙인다.
+  function _monthSparkPath(daily) {
+    const W = 56, H = 24, PAD = 3;
+    const n = daily.length;
+    const max = Math.max(...daily, 1);
+    const pts = daily.map((v, i) => [
+      n === 1 ? W - PAD : PAD + (W - PAD * 2) * (i / (n - 1)),
+      H - PAD - (H - PAD * 2) * (v / max),
+    ]);
+    const cy = (y) => Math.min(H - PAD, Math.max(1, y)); // 제어점이 바닥선(H-PAD) 아래로 파고들지 않게
+    let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+    for (let i = 0; i < n - 1; i++) {
+      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = cy(p1[1] + (p2[1] - p0[1]) / 6);
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = cy(p2[1] - (p3[1] - p1[1]) / 6);
+      d += ` C${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+    }
+    const last = pts[n - 1];
+    return { d, ex: last[0], ey: last[1] };
   }
 
   // [2026-07-05] 고객관리 — "안부" 프레임 폐기. 사실만: 올 차례였던 날이 지났다.
@@ -303,11 +357,43 @@
     const timeHtml = (lastMsg && lastTime) ? `<div class="hv5-itbi-msg-time">${esc(lastTime)}</div>` : '';
     // [2026-08-16] 확인 필요 항목 표 줄 — not-ok 카드 전부(매출·빈시간·고객·회원권·리터치·재시도)를
     //   같은 규격 행(라벨 + 값 + ›)으로. 값은 rowVal(짧은 축약) 우선, 없으면 hl 을 말줄임.
-    const rowsHtml = list.filter(c => !c.ok).map(c => `<button type="button" class="hv5-itbi-mini" data-hv-act="${esc(c.act || 'openAssistant')}">
-          <span class="hv5-itbi-mini-label">${esc(c.cat || '')}</span>
-          <span class="hv5-itbi-mini-val">${esc(c.rowVal || c.hl || '')}</span>
+    // [2026-09-02] 매출 행만 두 줄(목업 39 B안) — 스파크라인 + "지난달 이맘때" 비교.
+    //   is-rev 모디파이어로 스코프해서 다른 행(고객관리·빈 시간 등) 레이아웃은 그대로 둔다.
+    const rowsHtml = list.filter(c => !c.ok).map(c => {
+      const label = esc(c.cat || '');
+      const val = esc(c.rowVal || c.hl || '');
+      const act = esc(c.act || 'openAssistant');
+      if (!c.spark && !c.cmp) {
+        return `<button type="button" class="hv5-itbi-mini" data-hv-act="${act}">
+          <span class="hv5-itbi-mini-label">${label}</span>
+          <span class="hv5-itbi-mini-val">${val}</span>
           <span class="hv5-itbi-mini-arr">›</span>
-        </button>`).join('');
+        </button>`;
+      }
+      let sparkHtml = '';
+      if (c.spark) {
+        const sp = _monthSparkPath(c.spark);
+        // 도트 중심 = 실제 선 끝점 (viewBox 56×24 를 56×24px 로 그리므로 좌표 1:1).
+        // 바닥선(연회색) — 토스처럼 곡선 아래 기준선을 깔아야 선이 붕 떠 보이지 않는다.
+        sparkHtml = `<span class="hv5-itbi-spark" aria-hidden="true">
+             <svg width="56" height="24" viewBox="0 0 56 24"><path class="hv5-itbi-spark-base" d="M3 21 L53 21"/><path d="${esc(sp.d)}"/></svg>
+             <span class="hv5-itbi-spark-tip" style="left:${(sp.ex - 3).toFixed(1)}px;top:${(sp.ey - 3).toFixed(1)}px"></span>
+           </span>`;
+      }
+      const cmpHtml = c.cmp
+        ? `<span class="hv5-itbi-mini-sub${c.cmp.up ? '' : ' is-down'}">지난달 이맘때보다 ${
+            c.cmp.up ? '+' : '−'}${Math.abs(c.cmp.diff).toLocaleString('ko-KR')}원 ${c.cmp.up ? '↑' : '↓'}</span>`
+        : '';
+      return `<button type="button" class="hv5-itbi-mini is-rev" data-hv-act="${act}">
+          <span class="hv5-itbi-mini-line1">
+            <span class="hv5-itbi-mini-label">${label}</span>
+            <span class="hv5-itbi-mini-val">${val}</span>
+            ${sparkHtml}
+            <span class="hv5-itbi-mini-arr">›</span>
+          </span>
+          ${cmpHtml}
+        </button>`;
+    }).join('');
     // 나머지 정상 항목 요약 줄
     const restHtml = (!st.retry && st.okCnt > 0)
       ? `<button type="button" class="hv5-itbi-rest" data-hv-act="openAssistant">

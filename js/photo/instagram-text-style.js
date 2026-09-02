@@ -80,7 +80,11 @@
       if (!window.apiFetch) return Promise.resolve(null);
       var fd = new FormData();
       fd.append('file', blob, 'p.jpg');
-      return window.apiFetch('/instagram-style/analyze', { method: 'POST', body: fd })
+      // [2026-09-02] 🔴 인증 헤더 — 없어서 매 실행마다 401 이 최대 12발씩 터졌다.
+      //   apiFetch 는 순수 fetch 래퍼(app-core.js)라 토큰을 자동으로 붙여주지 않는다.
+      //   Content-Type 은 넣지 않는다 — FormData 는 브라우저가 multipart boundary 를 직접 박아야 한다.
+      var _h = (typeof window.authHeader === 'function') ? window.authHeader() : {};
+      return window.apiFetch('/instagram-style/analyze', { method: 'POST', body: fd, headers: _h })
         .then(function (r) {
           if (!r) return null;
           if (r.status === 429) return { status: 'RATE_LIMITED', engine: 'error', confidence: 0, text_blocks: [] };
