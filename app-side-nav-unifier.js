@@ -56,6 +56,12 @@
     });
     // 운영 hub 들 — overlay 요소 제거 (#genericSheet 도 .hub-overlay 라 같이 제거됨)
     document.querySelectorAll('.hub-overlay, .hub-backdrop').forEach(el => el.remove());
+    // [2026-09-02] 고객 추가/편집 모달 — z 10010 이라 **사이드바(10000)까지 덮는다.**
+    //   위 SIDE_NAV_MANAGED_SHEETS 가 아니라 여기서 제거하는 이유: 이 모달은 열 때마다
+    //   새로 만들고 닫을 때 DOM 에서 사라지는(remove) 방식이라, display:none 으로 숨기면
+    //   유령 노드가 남는다. 애니메이션 타이머도 없어 remove 가 안전하다.
+    document.getElementById('custEditModal')?.remove();
+    try { window._markSheetClosed?.('custEdit'); } catch (_e) { void _e; }
     try { window.closeSheet?.(); } catch (_e) { void _e; }
     // navSheet 직접 닫기 — closeNavSheet 의 280ms setTimeout race condition 회피
     const ns = document.getElementById('navSheet');

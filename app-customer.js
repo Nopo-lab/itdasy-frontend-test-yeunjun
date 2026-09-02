@@ -1301,6 +1301,14 @@
     if (!sheet || sheet.style.display !== 'flex') return;
     if (e.key === 'Escape') {
       e.preventDefault();
+      // [2026-09-02 API/E2E 게이트] 편집·추가 모달(#custEditModal, z 10010)이 맨 위면 그것부터.
+      //   실측 재현(배포본 6227fbf, 실계정): 고객관리 → [+] → ESC 를 누르면
+      //   **위층 모달은 남고 아래 시트만 닫혔다.** 그 뒤 사이드바로 매출관리를 눌러도
+      //   모달이 z 10010 으로 사이드바(10000)까지 덮어, 화면은 바뀌는데 보이지 않았다.
+      //   탈출구가 모달의 [취소] 하나뿐이라 "앱이 멈춘 것처럼" 보인다.
+      //   아래 _isDetailOpen 분기와 같은 원칙 — 한 번에 다 닫지 않고 맨 위 한 겹만.
+      const editModal = document.getElementById('custEditModal');
+      if (editModal) { editModal.remove(); try { window._markSheetClosed?.('custEdit'); } catch (_e) { void _e; } return; }
       // 안쪽 화면(상세/병합)이 열려 있으면 그것부터 닫는다 — 한 번에 다 닫지 않는다
       if (_isDetailOpen) { history.back(); return; }
       window.closeCustomers();
