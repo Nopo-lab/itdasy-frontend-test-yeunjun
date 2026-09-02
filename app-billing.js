@@ -97,17 +97,24 @@
   }
 
   // [단건 폴백] 빌링키 미지원/실패 시. customer.id 로 계정 매칭(서버가 재검증).
+  // [2026-09-02 가격 개편] 표시용 금액 — 청구 권위값은 서버 PLAN_PRICING(불일치 시 서버가 거부).
+  var PLAN_DISPLAY = {
+    pro:        { amount: 9900,  orderName: '잇데이 Pro (월간)' },
+    pro_yearly: { amount: 99000, orderName: '잇데이 Pro (연간)' },
+  };
+
   async function _onetimeFallback(c, plan) {
     var uid = _userId();
     var paymentId = _rid('pay');
+    var disp = PLAN_DISPLAY[plan] || PLAN_DISPLAY.pro;
     var r;
     try {
       r = await window.PortOne.requestPayment({
         storeId: c.storeId,
         channelKey: c.channelKey,
         paymentId: paymentId,
-        orderName: '잇데이 멤버십',
-        totalAmount: 6900,
+        orderName: disp.orderName,
+        totalAmount: disp.amount,
         currency: 'CURRENCY_KRW',
         payMethod: 'CARD',
         customer: uid ? { id: 'user-' + uid } : {},
@@ -137,6 +144,17 @@
     } catch (e) { _toast('취소 실패: ' + (e.message || '')); return { ok: false }; }
   }
 
+  // [2026-09-02] 해지 예약 철회 — 해지 시트 "마음 바뀌면 다시 시작하기".
+  async function resumeSubscription() {
+    try {
+      var res = await apiFetch('/billing/resume', { method: 'POST', headers: (window.authHeader && window.authHeader()) || {} });
+      if (!res.ok) throw new Error(((await res.json().catch(function () { return {}; })).detail) || '재시작 실패');
+      _toast('구독이 다시 이어져요');
+      await _afterSuccess();
+      return { ok: true };
+    } catch (e) { _toast('재시작 실패: ' + (e.message || '')); return { ok: false }; }
+  }
+
   async function _afterSuccess() {
     try { if (window.refreshPlanStatus) await window.refreshPlanStatus(); } catch (_e) { void 0; }
   }
@@ -144,6 +162,7 @@
   window.ItdasyBilling = {
     startWebSubscription: startWebSubscription,
     cancelSubscription: cancelSubscription,
+    resumeSubscription: resumeSubscription,
     isWebBillingAvailable: isWebBillingAvailable,
     loadConfig: _loadConfig,
   };

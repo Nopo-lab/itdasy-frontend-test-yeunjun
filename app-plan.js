@@ -1,8 +1,7 @@
 /* ─────────────────────────────────────────────────────────────
-   플랜 팝업 — md 정리: 월 6,900원 단일 멤버십 + 사용량 안내
-
-   기존 planPopup HTML은 있었으나 열기·액션 함수가 없어서
-   모든 플랜 배지·업그레이드 버튼이 무반응이던 버그 수정.
+   플랜 팝업 — 잇데이 Pro: 월 9,900 / 연 99,000(2개월 무료) · 10일 체험(월간)
+   [2026-09-02 가격 개편] 금액 정본 = BE routers/billing.PLAN_PRICING.
+   해지(웹 PortOne)는 #cancelSheet 2단계 바텀시트, 스토어 결제는 딥링크.
    ──────────────────────────────────────────────────────────── */
 (function () {
   'use strict';
@@ -23,7 +22,7 @@
 
   function _planDisplayName(plan) {
     if (plan === 'free') return '체험';
-    return '잇데이';
+    return '잇데이 Pro';
   }
 
   async function openPlanPopup() {
@@ -76,27 +75,12 @@
     if (pop) pop.style.display = 'none';
   }
 
-  // 추천(pro) 카드 — index.html 수정 없이 JS에서 플랫 로즈 배지/보더로 통일
-  function _stylePopularCard() {
-    const proCard = document.getElementById('planCardPro');
-    if (!proCard) return;
-    proCard.style.border = '2px solid var(--brand)';
-    const badge = Array.from(proCard.children).find((el) => el.style && el.style.position === 'absolute');
-    if (badge) {
-      badge.textContent = '가장 인기';
-      badge.style.background = 'var(--brand)';
-      badge.style.borderRadius = 'var(--r-pill,999px)';
-      badge.style.fontSize = '11px';
-      badge.style.fontWeight = '700';
-      badge.style.padding = '3px 10px';
-    }
-  }
+  // [2026-09-02 가격 개편] 카드 디자인은 index.html(pw- 클래스)이 정본 — JS 덧칠 제거.
+  function _stylePopularCard() { /* no-op: v5 페이월은 HTML/CSS 가 디자인을 가진다 */ }
 
   function _updatePlanCardHighlight() {
     document.querySelectorAll('#planPopup .plan-card').forEach((card) => {
-      const selected = card.dataset.plan === _selectedPlan;
-      card.style.transform = selected ? 'scale(1.02)' : 'scale(1)';
-      card.style.boxShadow = selected ? 'var(--shadow-brand)' : 'none';
+      card.classList.toggle('pw-on', card.dataset.plan === _selectedPlan);
     });
     _updateActionButton();
   }
@@ -104,7 +88,9 @@
   function _updateActionButton() {
     const btn = document.getElementById('planActionBtn');
     if (!btn) return;
-    if (_selectedPlan === _currentPlan) {
+    // pro_yearly 는 결제 키일 뿐 저장 플랜은 'pro' — 이미 유료면 둘 다 "이용 중" 처리
+    const paidNow = ['pro', 'premium', 'membership'].includes(_currentPlan);
+    if (_selectedPlan === _currentPlan || (paidNow && (_selectedPlan === 'pro' || _selectedPlan === 'pro_yearly'))) {
       btn.textContent = '현재 이용 중인 플랜입니다';
       btn.disabled = true;
       btn.style.opacity = '0.5';
@@ -116,13 +102,15 @@
     btn.style.cursor = 'pointer';
     if (_selectedPlan === 'free') {
       btn.textContent = '체험 상태로 유지';
-      btn.style.background = 'var(--text-subtle,#888)';
-    } else if (_selectedPlan === 'pro') {
-      btn.textContent = (_currentPlan === 'free') ? '월 6,900원 시작하기' : '잇데이 멤버십으로 전환';
-      btn.style.background = 'var(--brand)';
-    } else if (_selectedPlan === 'premium') {
-      btn.textContent = '잇데이 멤버십으로 전환';
-      btn.style.background = 'var(--brand)';
+    } else if (_selectedPlan === 'pro_yearly') {
+      // 연간은 무료체험 없이 즉시 결제 (체험 후 연간 청구 = 기만 패턴)
+      btn.textContent = '연 99,000원으로 시작하기';
+    } else {
+      // "10일 무료" 는 스토어 IAP 체험이 붙는 네이티브에서만 — 웹 PortOne 은 즉시 청구라
+      //   무료라고 쓰면 그 자체가 다크패턴이다.
+      btn.textContent = (_currentPlan === 'free')
+        ? (_isNative() ? '10일 무료로 시작하기' : '월 9,900원 시작하기')
+        : '잇데이 Pro 로 전환';
     }
   }
 
@@ -386,7 +374,8 @@
     const orig = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.textContent = '결제 진행 중…'; }
     try {
-      const r = await window.ItdasyBilling.startWebSubscription('pro');
+      // pro_yearly 도 서버 저장 플랜은 'pro' — 금액·기간만 billing.PLAN_PRICING 이 다르게 청구
+      const r = await window.ItdasyBilling.startWebSubscription(_selectedPlan);
       if (r && r.ok) {
         if (window.hapticSuccess) window.hapticSuccess();
         _currentPlan = 'pro';
@@ -405,13 +394,87 @@
 
   // 구독 취소 / 스토어 구독 관리.
   //   스토어(Apple·Google) 결제면 서버 취소 API 를 **부르지 않는다** — 위 _storeOwner() 주석 참고.
-  //   웹 PG(포트원) 결제일 때만 만료일까지 유지하는 취소 예약(cancel_at_period_end)을 건다.
+  //   웹 PG(포트원) 결제일 때만 해지 바텀시트(#cancelSheet)로 취소 예약(cancel_at_period_end)을 건다.
+  //   [2026-09-02] window.confirm → 2단계 시트(해지→완료). 시안: 시안_해지시트_390_360.html.
+  //   다크패턴 금지: 해지 버튼은 항상 활성, 단계는 시트 1장, 만류는 정보 제공(유지 혜택·연간 업셀)까지만.
   async function doCancelSubscription() {
     if (_storeOwner()) { _openStoreSubs(); return; }
     if (!window.ItdasyBilling) return;
-    if (!window.confirm('구독을 취소할까요?\n\n· 만료일까지는 계속 이용할 수 있어요.\n· 앱스토어·Play 스토어로 결제하셨다면 여기서는 해지되지 않아요. 스토어 구독 화면에서 해지해 주세요.')) return;
-    const r = await window.ItdasyBilling.cancelSubscription();
-    if (r && r.ok) { _cancelScheduled = true; _renderSubMeta(); }
+    _openCancelSheet();
+  }
+
+  function _fmtEndDate() {
+    if (!_periodEnd) return '만료일';
+    const dt = new Date(_periodEnd);
+    return isNaN(dt.getTime()) ? '만료일' : ((dt.getMonth() + 1) + '월 ' + dt.getDate() + '일');
+  }
+
+  function _openCancelSheet() {
+    const sheet = document.getElementById('cancelSheet');
+    if (!sheet) return;
+    document.querySelectorAll('#cancelSheet .csEndDate').forEach((el) => { el.textContent = _fmtEndDate(); });
+    document.getElementById('cancelSheetA').style.display = 'block';
+    document.getElementById('cancelSheetB').style.display = 'none';
+    document.querySelectorAll('#csChips .cs-chip').forEach((ch) => {
+      ch.style.borderColor = '#e5e5e5'; ch.style.background = '#fff'; ch.style.color = '#555';
+      ch.dataset.on = '';
+    });
+    sheet.style.display = 'flex';
+    _bindCancelSheet();
+  }
+
+  function _closeCancelSheet() {
+    const sheet = document.getElementById('cancelSheet');
+    if (sheet) sheet.style.display = 'none';
+  }
+
+  function _bindCancelSheet() {
+    const sheet = document.getElementById('cancelSheet');
+    if (!sheet || sheet._bound) return;
+    sheet._bound = true;
+    // 이유 칩(선택) — 서버 전송 없음, 단일 선택 토글
+    document.querySelectorAll('#csChips .cs-chip').forEach((ch) => {
+      ch.addEventListener('click', () => {
+        const on = ch.dataset.on === '1';
+        document.querySelectorAll('#csChips .cs-chip').forEach((c) => {
+          c.dataset.on = ''; c.style.borderColor = '#e5e5e5'; c.style.background = '#fff'; c.style.color = '#555';
+        });
+        if (!on) { ch.dataset.on = '1'; ch.style.borderColor = 'var(--brand)'; ch.style.background = '#fff5f7'; ch.style.color = '#BC6675'; }
+        if (window.hapticLight) window.hapticLight();
+      });
+    });
+    // 연간 업셀 → 시트 닫고 결제 팝업에서 연간 선택
+    const upsell = document.getElementById('csUpsellBtn');
+    if (upsell) upsell.addEventListener('click', () => {
+      _closeCancelSheet();
+      _selectedPlan = 'pro_yearly';
+      _updatePlanCardHighlight();
+    });
+    const stay = document.getElementById('csStayBtn');
+    if (stay) stay.addEventListener('click', _closeCancelSheet);
+    const closeB = document.getElementById('csCloseBtn');
+    if (closeB) closeB.addEventListener('click', _closeCancelSheet);
+    sheet.addEventListener('click', (e) => { if (e.target === sheet) _closeCancelSheet(); });
+    // 해지하기 → 서버 취소 예약 → 완료 상태(②)로 전환
+    const doIt = document.getElementById('csCancelBtn');
+    if (doIt) doIt.addEventListener('click', async () => {
+      doIt.disabled = true; doIt.textContent = '처리 중…';
+      const r = await window.ItdasyBilling.cancelSubscription();
+      doIt.disabled = false; doIt.textContent = '해지하기';
+      if (r && r.ok) {
+        _cancelScheduled = true; _renderSubMeta();
+        document.getElementById('cancelSheetA').style.display = 'none';
+        document.getElementById('cancelSheetB').style.display = 'block';
+      }
+    });
+    // 마음 바뀌면 다시 시작하기 → 해지 예약 철회(POST /billing/resume)
+    const resume = document.getElementById('csResumeBtn');
+    if (resume) resume.addEventListener('click', async () => {
+      resume.disabled = true;
+      const r = await window.ItdasyBilling.resumeSubscription();
+      resume.disabled = false;
+      if (r && r.ok) { _cancelScheduled = false; _renderSubMeta(); _closeCancelSheet(); }
+    });
   }
 
   // 전역 노출 (index.html onclick 에서 참조)
