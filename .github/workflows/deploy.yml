@@ -22,8 +22,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy_try3.outputs.page_url || steps.deploy_try2.outputs.page_url || steps.deploy_try1.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: 'npm'
@@ -110,7 +110,7 @@ jobs:
           rm -f ./*.md
           touch .nojekyll
           echo "files to publish: $(find . -type f -not -path './.git/*' | wc -l)"
-      - uses: actions/configure-pages@v4
+      - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
@@ -120,21 +120,21 @@ jobs:
       #     artifacts" 오류 없음('rerun'과 다름 — rerun은 아티팩트를 하나 더 올려 터진다).
       #   attempt 1·2는 continue-on-error(삼키고 재시도), 마지막 attempt 3만 실패 시 job 실패(진짜 문제 노출).
       - id: deploy_try1
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
         continue-on-error: true
       - name: Backoff before retry 1 (30s)
         if: steps.deploy_try1.outcome == 'failure'
         run: sleep 30
       - id: deploy_try2
         if: steps.deploy_try1.outcome == 'failure'
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
         continue-on-error: true
       - name: Backoff before retry 2 (60s)
         if: steps.deploy_try1.outcome == 'failure' && steps.deploy_try2.outcome == 'failure'
         run: sleep 60
       - id: deploy_try3
         if: steps.deploy_try1.outcome == 'failure' && steps.deploy_try2.outcome == 'failure'
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
       # [출시감사 2026-08-02] **배포가 라이브에 실제로 반영됐는지 SHA 로 검증한다.**
       #   deploy-pages 가 성공해도 CDN 전파 전이면 옛 파일이 서빙된다. 그 상태에서 QA 를 시작하면
       #   "고쳤는데 안 고쳐졌다"가 되고 그 회차 결과가 통째로 무효가 된다(2026-08-02 실제로 겪음).

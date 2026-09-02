@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
 
@@ -69,7 +69,7 @@ jobs:
 
       - name: Create GitHub Issue
         if: steps.gc.outputs.exit_code == '0' && steps.issue.outputs.body != ''
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           # 리포트 본문에 ```markdown / 백틱이 들어있어 script 에 직접 보간하면
           # JS 템플릿 리터럴이 조기 종료돼 SyntaxError 가 났다(2026-07-27 수정).
@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload Report as Artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gc-report
           path: .ai/gc-reports/
