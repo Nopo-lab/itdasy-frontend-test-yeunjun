@@ -853,6 +853,8 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
   stroke: var(--brand-strong, #BC6675); stroke-width: 2; fill: none;
   stroke-linecap: round; stroke-linejoin: round;
 }
+/* [2026-09-03] 토스식 바닥 기준선 — 곡선보다 연하고 얇게 */
+.hv5-itbi-spark svg path.hv5-itbi-spark-base { stroke: #E5E8EB; stroke-width: 1.5; }
 .hv5-itbi-spark-tip {
   /* [2026-09-03] 위치는 렌더러가 인라인 left/top 으로 실제 선 끝점에 박는다.
      CSS 고정(right:0)은 데이터에 따라 선과 어긋나던 원인이라 제거. */
