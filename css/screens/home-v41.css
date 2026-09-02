@@ -854,7 +854,9 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
   stroke-linecap: round; stroke-linejoin: round;
 }
 .hv5-itbi-spark-tip {
-  position: absolute; right: 0; top: 2px;
+  /* [2026-09-03] 위치는 렌더러가 인라인 left/top 으로 실제 선 끝점에 박는다.
+     CSS 고정(right:0)은 데이터에 따라 선과 어긋나던 원인이라 제거. */
+  position: absolute;
   width: 6px; height: 6px; border-radius: 50%;
   background: var(--brand-strong, #BC6675);
 }

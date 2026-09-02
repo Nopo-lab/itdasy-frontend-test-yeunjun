@@ -98,18 +98,30 @@
     return card;
   }
 
-  // [2026-09-02] 이번달 누적 배열 → 56×24 스파크라인 path.
-  //   0~max 정규화, 좌→우. 값이 전부 같으면(=하루치뿐) 평평한 선이 되도록 max 를 1 로 깐다.
+  // [2026-09-03] 스파크라인 v2 — 누적이 아니라 **일별 매출**을 그린다.
+  //   누적은 절대 안 내려가서 매일 비슷하면 자로 그은 직선이 됐다(원영 피드백).
+  //   일별로 바꾸면 장사 리듬(바쁜 날/한가한 날)이 그대로 오르내림으로 보인다.
+  //   · Catmull-Rom → 베지어 보간으로 토스처럼 부드러운 곡선.
+  //   · 반환에 끝점 좌표(ex, ey) 포함 — pulse 도트를 CSS 고정이 아니라 실제 선 끝에 붙인다.
   function _monthSparkPath(cum) {
-    const W = 56, H = 24, PAD = 2;
-    const n = cum.length;
-    const max = Math.max(...cum, 1);
-    const pts = cum.map((v, i) => {
-      const x = n === 1 ? W - PAD : PAD + (W - PAD * 2) * (i / (n - 1));
-      const y = H - PAD - (H - PAD * 2) * (v / max);
-      return `${x.toFixed(1)} ${y.toFixed(1)}`;
-    });
-    return 'M' + pts.join(' L');
+    const W = 56, H = 24, PAD = 3;
+    const daily = cum.map((v, i) => Math.max(0, Number(v) - (i ? Number(cum[i - 1]) : 0)));
+    const n = daily.length;
+    const max = Math.max(...daily, 1);
+    const pts = daily.map((v, i) => [
+      n === 1 ? W - PAD : PAD + (W - PAD * 2) * (i / (n - 1)),
+      H - PAD - (H - PAD * 2) * (v / max),
+    ]);
+    const cy = (y) => Math.min(H - 1, Math.max(1, y)); // 제어점이 viewBox 밖으로 새는 것 방지
+    let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+    for (let i = 0; i < n - 1; i++) {
+      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = cy(p1[1] + (p2[1] - p0[1]) / 6);
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = cy(p2[1] - (p3[1] - p1[1]) / 6);
+      d += ` C${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+    }
+    const last = pts[n - 1];
+    return { d, ex: last[0], ey: last[1] };
   }
 
   // [2026-07-05] 고객관리 — "안부" 프레임 폐기. 사실만: 올 차례였던 날이 지났다.
@@ -345,12 +357,15 @@
           <span class="hv5-itbi-mini-arr">›</span>
         </button>`;
       }
-      const sparkHtml = c.spark
-        ? `<span class="hv5-itbi-spark" aria-hidden="true">
-             <svg width="56" height="24" viewBox="0 0 56 24"><path d="${esc(_monthSparkPath(c.spark))}"/></svg>
-             <span class="hv5-itbi-spark-tip"></span>
-           </span>`
-        : '';
+      let sparkHtml = '';
+      if (c.spark) {
+        const sp = _monthSparkPath(c.spark);
+        // 도트 중심 = 실제 선 끝점 (viewBox 56×24 를 56×24px 로 그리므로 좌표 1:1).
+        sparkHtml = `<span class="hv5-itbi-spark" aria-hidden="true">
+             <svg width="56" height="24" viewBox="0 0 56 24"><path d="${esc(sp.d)}"/></svg>
+             <span class="hv5-itbi-spark-tip" style="left:${(sp.ex - 3).toFixed(1)}px;top:${(sp.ey - 3).toFixed(1)}px"></span>
+           </span>`;
+      }
       const cmpHtml = c.cmp
         ? `<span class="hv5-itbi-mini-sub${c.cmp.up ? '' : ' is-down'}">지난달 이맘때보다 ${
             c.cmp.up ? '+' : '−'}${Math.abs(c.cmp.diff).toLocaleString('ko-KR')}원 ${c.cmp.up ? '↑' : '↓'}</span>`
