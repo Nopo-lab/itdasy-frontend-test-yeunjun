@@ -840,6 +840,45 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 }
 .hv5-itbi-mini-arr { font-size: 12px; color: #B0B8C1; flex-shrink: 0; }
 
+/* [2026-09-02] 매출 행만 두 줄 — 스파크라인 + "지난달 이맘때" 비교 (목업 39 B안).
+   .is-rev 로 스코프. 이 블록 밖의 .hv5-itbi-mini 행(고객관리·빈 시간 등)은 한 줄 그대로다. */
+.hv5-itbi-mini.is-rev { flex-direction: column; align-items: stretch; gap: 0; }
+.hv5-itbi-mini-line1 { display: flex; align-items: center; gap: 8px; width: 100%; }
+/* 한 줄 모드의 val 은 flex:1 로 남는 폭을 먹는다. 두 줄 모드에선 금액이 제 폭만 쓰고
+   스파크가 margin-left:auto 로 오른쪽에 붙어야 목업과 같은 배치가 된다. */
+.hv5-itbi-mini.is-rev .hv5-itbi-mini-val { flex: 0 1 auto; }
+.hv5-itbi-spark { position: relative; width: 56px; height: 24px; flex-shrink: 0; margin-left: auto; }
+.hv5-itbi-spark svg { display: block; }
+.hv5-itbi-spark svg path {
+  stroke: var(--brand-strong, #BC6675); stroke-width: 2; fill: none;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.hv5-itbi-spark-tip {
+  position: absolute; right: 0; top: 2px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--brand-strong, #BC6675);
+}
+.hv5-itbi-spark-tip::after {
+  content: ""; position: absolute; inset: -3px; border-radius: 50%;
+  background: rgba(188, 102, 117, .35);
+  animation: hv5-itbi-spark-pulse 1.6s ease-out infinite;
+}
+@keyframes hv5-itbi-spark-pulse {
+  0%   { transform: scale(.6); opacity: 1; }
+  100% { transform: scale(2);  opacity: 0; }
+}
+.hv5-itbi-mini-sub {
+  margin-top: 3px; font-size: 11px; font-weight: 600;
+  color: var(--brand-strong, #BC6675);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* 하락은 회색 — 매출이 준 걸 경고색으로 때리면 원장님이 홈을 안 열게 된다. */
+.hv5-itbi-mini-sub.is-down { color: var(--text-muted, #4E5968); }
+@media (prefers-reduced-motion: reduce) {
+  .hv5-itbi-spark-tip::after { animation: none; }
+}
+
 /* [2026-08-16] "나머지 N개는 문제 없어요" 줄 */
 .hv5-itbi-rest {
   display: flex; align-items: center; gap: 7px;
