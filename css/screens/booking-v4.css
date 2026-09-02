@@ -92,29 +92,44 @@
   border-radius: var(--r-pill);
 }
 
-/* [2026-08-31] 예약 캘린더 헤더 — 년월을 '화면' 정중앙에 고정.
-   좌(뒤로 34px)와 우([오늘][+] ≈ 76px)는 폭이 달라서 flex 로는 절대 가운데가 안 나온다.
-   → 타이틀만 absolute 로 빼서 left:50% 에 건다. 스코프는 #cal-overlay —
-   .bk-header 는 브랜드 키트(app-brand-kit.js)도 쓰는 이름이라 전역으로 건드리면 안 된다. */
+/* 예약 캘린더 헤더 — 년월을 좌([뒤로])·우([오늘][+]) 사이 가운데에.
+   [2026-08-31] 처음엔 타이틀만 position:absolute(left:50%) 로 빼서 **화면** 정중앙에 걸었다.
+     좌우 폭이 달라 flex 로는 정중앙이 안 나온다는 이유였다.
+   [2026-09-02 PC/모바일 전수감사] 그 방식이 겹침을 만들었다 — absolute 는 흐름 밖이라
+     오른쪽 그룹이 자기 옆에 뭐가 있는지 모른다. 390px 실측: 타이틀 132~258 · 오른쪽 240~376
+     → 18px 겹침. 화면엔 `2026년 9월 >오프라인` 처럼 배지가 다음달 화살표를 덮어썼다.
+     오른쪽이 커지는 건 **네트워크가 끊겨 #cal-offline-badge 가 뜰 때**뿐이라
+     정상 상태만 보면 절대 안 나오는 조합이었다.
+   → 3열 그리드. 가운데 칸이 좌우 칸 사이로 제한돼 겹침이 **구조적으로** 불가능하다.
+     (좌우 폭이 다르면 뷰포트 정중앙과 몇 px 어긋난다 — 겹치는 것보다 낫다)
+   스코프는 #cal-overlay — .bk-header 는 브랜드 키트(app-brand-kit.js)도 쓰는 이름이라
+   전역으로 건드리면 안 된다. */
 #cal-overlay .bk-header {
   position: relative;
   padding: 14px 14px 8px;
   flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
 }
 #cal-overlay .bk-header__title-wrap {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  position: static;
+  transform: none;
+  justify-self: center;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 2px;
-  flex: none;
+}
+#cal-overlay .bk-header__month {
+  white-space: nowrap;
 }
 #cal-overlay .bk-header__right {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
+  margin-left: 0;
+  min-width: 0;
 }
 /* 360px 에서 타이틀과 12px 여유 — 이보다 키우면 "2026년 12월" 과 겹친다 */
 #cal-overlay .bk-today-btn { font-size: 11px; padding: 8px 9px; }

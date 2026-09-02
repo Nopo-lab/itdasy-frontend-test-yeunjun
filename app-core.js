@@ -1958,21 +1958,43 @@ async function forgotPassword() {
 
 // 네트워크/타임아웃 등 친근한 에러 메시지
 function _friendlyErr(e, fallback) {
-  const m = String(e && e.message || e || '').toLowerCase();
+  const raw = String(e && e.message || e || '');
+  const m = raw.toLowerCase();
   // [2026-08-15 기기QA] 'load failed' 는 사파리/WebKit 의 fetch 실패 문구 —
   //   크롬('failed to fetch')만 잡고 있어서 iOS 에서만 한글 UI 에 "Load failed" 영문이 그대로 노출됐다.
   //   (iPhone 시뮬레이터 실측: 로그인 실패 시 빨간 글씨 "Load failed")
   //   'the network connection was lost' / 'cancelled' 도 WebKit 계열 문구라 같이 잡는다.
   if (m.includes('failed to fetch') || m.includes('load failed') || m.includes('networkerror')
       || m.includes('network connection was lost') || m.includes('cancelled') || m.includes('network')) {
-    return '인터넷 연결을 확인해 주세요.';
+    /* [2026-09-02] 예전엔 여기서 무조건 "인터넷 연결을 확인해 주세요" 였다.
+       브라우저는 **서버 다운·DNS 실패·CORS 거부를 전부 `Failed to fetch` 하나로** 보고한다.
+       그래서 원장님 인터넷은 멀쩡한데 공유기를 다시 켜게 만들었다.
+       실측(2026-09-01, GCP 결제 차단으로 백엔드 503): 로그인 화면에 이 문구가 그대로 떴다.
+       navigator.onLine 은 "랜선이 꽂혀 있나" 수준이라 **false 일 때만** 신뢰한다.
+       true 인데 못 닿으면 서버 쪽 — 원장님이 할 일은 '기다리기'지 '공유기 확인'이 아니다. */
+    return (typeof navigator !== 'undefined' && navigator.onLine === false)
+      ? '인터넷이 끊긴 것 같아요. 연결을 확인해 주세요.'
+      : '서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.';
   }
-  if (m.includes('timeout')) return '응답이 지연되고 있어요. 잠시 후 다시 시도해 주세요.';
-  if (m.includes('401')) return '로그인이 필요해요.';
-  if (m.includes('403')) return '권한이 없어요.';
-  if (m.includes('429')) return '잠시 후 다시 시도해 주세요.';
-  if (m.includes('500') || m.includes('502') || m.includes('503')) return '서버가 잠깐 불안정해요. 다시 시도해 주세요.';
-  return e && e.message ? e.message : (fallback || '문제가 생겼어요.');
+  if (m.includes('timeout') || m.includes('aborted')) return '응답이 지연되고 있어요. 잠시 후 다시 시도해 주세요.';
+  /* 상태코드는 e.status 를 먼저 본다. 예전엔 메시지에 '401' 이 들어있는지로만 봐서
+     금액·ID 에 숫자가 스치기만 해도 오판했다(예: "1401원"). \b 로 단어 경계도 건다. */
+  const _st = Number(e && (e.status || e.httpStatus)) || 0;
+  const has = (code) => _st === code || (!_st && new RegExp('\\b' + code + '\\b').test(raw));
+  if (has(401)) return '로그인이 풀렸어요. 다시 로그인해 주세요.';
+  if (has(403)) return '권한이 없어요.';
+  if (has(404)) return '찾을 수 없어요. 이미 지워졌을 수 있어요.';
+  if (has(409)) return '이미 처리된 것 같아요. 새로고침 후 확인해 주세요.';
+  if (has(429)) return '요청이 많아요. 잠시 후 다시 시도해 주세요.';
+  if (has(500) || has(502) || has(503) || has(504)) return '서버가 잠깐 불안정해요. 잠시 후 다시 시도해 주세요.';
+  /* 마지막 폴백이 e.message 를 **그대로** 내보내서 기술 문구가 사용자에게 샜다
+     ("HTTP 500", "TypeError: ... undefined"). 사람이 쓴 한국어 문장만 통과시킨다 —
+     로그인 실패처럼 일부러 한국어를 throw 하는 경로가 있어 통째로 막으면 안 된다. */
+  const looksHuman = /[가-힣]/.test(raw)
+    && !/(typeerror|referenceerror|syntaxerror|http|undefined|null|nan)/i.test(raw)
+    && !/[{}[\]<>]/.test(raw);
+  if (looksHuman) return raw;
+  return fallback || '문제가 생겼어요. 잠시 후 다시 시도해 주세요.';
 }
 
 // T-317 — 생체 인증 등록 제안 (최초 1회만)
