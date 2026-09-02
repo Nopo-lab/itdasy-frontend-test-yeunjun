@@ -865,7 +865,14 @@
     _toast('보내는 중…');
     _postReply(it)
       .then(function (j) {
-        if (j && j.ok) { _toast('답글 달았어요 (' + it.name + ')'); return; }
+        if (_delivered(j)) { _toast('답글 달았어요 (' + it.name + ')'); return; }
+        if (_isInProgress(j)) {
+          // 다른 기기·탭이 보내는 중. 성공으로 세면 안 된다 — 그쪽이 실패하면 아무도 답을 못 받는다.
+          // 카드를 되살려 큐에 남긴다. 그쪽이 성공했으면 다음 갱신 때 서버 판정으로 알아서 사라진다.
+          _toast('다른 기기에서 보내는 중이에요. 잠시 후 확인해 주세요');
+          _restoreItem(it);
+          return;
+        }
         _toast(_errorMessage(j));
         _restoreItem(it);          // 실패했으면 되살린다 — 조용히 사라지면 원장이 놓친다
       })
@@ -898,6 +905,18 @@
   /* [2026-08-15] 발송을 한 군데로 모은다 — 낱개 발송과 묶음 발송이 각자 fetch 를 들고 있으면
      한쪽만 고쳐서 어긋난다. 예전에 발송 API 가 전역 재시도에 걸려 **같은 답글이 4번 나간 적**이 있어
      (33cdd1f) 이 경로는 특히 하나로 유지해야 한다. */
+  /* [2026-09-02 PHASE 9] "내 요청이 실제로 답글을 달았나" 판정.
+     백엔드는 동시 요청을 UNIQUE 제약으로 하나만 통과시키고, 진 요청에는
+     `{ok:true, in_progress:true, public:null}` 을 준다 — 뜻은 "**다른 요청이 지금 보내는 중**"이지
+     "보냈다"가 아니다(routers/instagram.py 의 주석에도 '화면엔 보내는 중으로 보인다'고 적혀 있다).
+     그런데 화면은 `j.ok` 하나만 보고 "답장 보냈어요" 로 세고 카드를 큐에서 지웠다.
+     실측(2026-09-02, 동시 3발): ok=true(dup) / ok=true(dup) / ok=false(Graph 400)
+       → **실제 발송 0회인데 2건이 성공으로 집계**. 이긴 요청이 실패하면 손님 문의가
+         조용히 사라진다(카드는 이미 없어졌고 아무도 답을 못 받는다).
+     duplicate 는 다르다 — public_reply_id 가 있다 = 진짜로 나갔다. 성공으로 친다. */
+  function _delivered(j) { return !!(j && j.ok && !j.in_progress); }
+  function _isInProgress(j) { return !!(j && j.in_progress); }
+
   function _postReply(it) {
     var sendPub = it._sendPub !== false;
     var auth = window.authHeader ? window.authHeader() : {};
@@ -929,17 +948,24 @@
     var real = list.filter(function (it) { return it._real && it.commentId && window.apiFetch; });
     list.forEach(function (it) { _removeItem(it.id, true); });   // 렌더는 끝나고 한 번만
     if (!real.length) { _batchBusy = false; _render(); return; }
-    var ok = 0, fail = 0;
+    var ok = 0, fail = 0, pending = 0;
     real.reduce(function (chain, it) {
       return chain.then(function () {
         return _postReply(it)
-          .then(function (j) { if (j && j.ok) ok += 1; else fail += 1; })
+          .then(function (j) {
+            if (_delivered(j)) { ok += 1; return; }
+            if (_isInProgress(j)) { pending += 1; _restoreItem(it); return; }
+            fail += 1;
+          })
           .catch(function () { fail += 1; });
       });
     }, Promise.resolve()).then(function () {
       _batchBusy = false;
       _render();
-      _toast(fail ? (ok + '건 보냈고 ' + fail + '건은 실패했어요') : (ok + '건 답장 보냈어요'));
+      var _msg = ok + '건 답장 보냈어요';
+      if (fail) _msg = ok + '건 보냈고 ' + fail + '건은 실패했어요';
+      if (pending) _msg += (fail ? ' · ' : ', ') + pending + '건은 다른 기기에서 보내는 중';
+      _toast(_msg);
     });
   }
 
