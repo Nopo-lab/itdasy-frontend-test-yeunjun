@@ -2321,6 +2321,13 @@
           }
         }
       }
+      /* [2026-09-02] 충돌검사 await 사이에 폼이 사라졌으면 여기서 끝낸다.
+         저장을 누른 뒤 dayConflict(네트워크) 응답을 기다리는 100~500ms 동안
+         원장님이 뒤로가기·사이드바 이동으로 폼을 닫을 수 있다. 그러면 아래 querySelector 들이
+         null 을 반환해 `.value` 에서 TypeError 로 터진다.
+         ⚠️ 이 줄들은 아래 try 블록 **밖**이라 finally 의 잠금 해제도 안 돈다.
+         진입부의 #bfDate null 가드와 같은 이유 — await 뒤에도 한 번 더 봐야 한다. */
+      if (!body.isConnected || !body.querySelector('#bfCustName')) { _bail(); return; }
       // [2026-06-10] 신규 예약은 고객 필수 — 이름 없는 "이름 없음" 예약 생성 차단.
       //   (기존 예약 수정은 과거 데이터 호환 위해 그대로 허용)
       if (!existing && !body.querySelector('#bfCustName').value.trim()) {
@@ -2334,7 +2341,7 @@
         _bail(); return;
       }
       // [2026-05-16] 시술명: chip 선택값(#bfSvc) 또는 직접입력값(#bfSvcCustom) 둘 다 폴백
-      const svcSelected = body.querySelector('#bfSvc').value.trim();
+      const svcSelected = (body.querySelector('#bfSvc')?.value || '').trim();
       const svcCustom   = (body.querySelector('#bfSvcCustom')?.value || '').trim();
       // [v206] amount + deposit — BE 정식 저장. 노쇼 시 deposit 으로 자동 매출 기록.
       const amtVal = +body.querySelector('#bfAmount')?.value || 0;
@@ -2343,9 +2350,9 @@
         starts_at:     `${d}T${sTime}:00+09:00`,
         ends_at:       `${endDate}T${eTime}:00+09:00`,
         customer_id:   body._getCustId?.() || null,
-        customer_name: body.querySelector('#bfCustName').value.trim() || null,
+        customer_name: (body.querySelector('#bfCustName')?.value || '').trim() || null,
         service_name:  svcSelected || svcCustom || null,
-        memo:          body.querySelector('#bfMemo').value.trim()      || null,
+        memo:          (body.querySelector('#bfMemo')?.value || '').trim()      || null,
         // [2026-05-23] staff_id 전송 제거 — 직원 기능 폐지
         amount:        amtVal > 0 ? amtVal : null,
         deposit:       depVal > 0 ? depVal : null,

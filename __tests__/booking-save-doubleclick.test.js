@@ -61,6 +61,32 @@ describe('연타 가드 위치', () => {
   });
 });
 
+describe('await 이후에도 폼 생존을 다시 본다', () => {
+  const body = stripComments(saveHandler());
+
+  test('충돌검사 await 뒤에 폼 생존 게이트가 있다', () => {
+    const firstAwait = body.indexOf('await ');
+    const gate = body.indexOf('body.isConnected');
+    expect(gate).toBeGreaterThan(-1);
+    expect(gate).toBeGreaterThan(firstAwait);
+  });
+
+  test('생존 게이트가 payload 를 만들기 전에 온다', () => {
+    // 게이트가 payload 뒤로 밀리면 null.value 로 터지는 원래 버그가 되살아난다
+    const gate = body.indexOf('body.isConnected');
+    const payload = body.indexOf('customer_name:');
+    expect(payload).toBeGreaterThan(gate);
+  });
+
+  test('게이트 이후의 DOM 읽기는 옵셔널 체이닝이거나 게이트가 보장하는 것만', () => {
+    const gate = body.indexOf('body.isConnected');
+    const after = body.slice(gate);
+    // `querySelector('#x').value` 형태(무가드)로 남은 것은 게이트가 존재를 보장한 #bfCustName 뿐
+    const unguarded = [...after.matchAll(/querySelector\('(#[\w-]+)'\)\.value/g)].map(m => m[1]);
+    expect(unguarded.every(sel => sel === '#bfCustName')).toBe(true);
+  });
+});
+
 describe('조기 종료가 잠금을 되돌린다', () => {
   const body = stripComments(saveHandler());
 
