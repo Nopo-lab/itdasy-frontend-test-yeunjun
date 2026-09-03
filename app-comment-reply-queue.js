@@ -248,6 +248,11 @@
       mediaDate: it.media_timestamp || '',                          // 팝업용 발행일 (BE 필드 추가 대기)
       permalink: it.permalink || '', likes: it.like_count || 0, ts: it.timestamp || '',
       waiting: 0, thumb: it.media_thumb || '', text: it.text || '', manual: !!it.manual, returning: !!it.returning, confidence: it.confidence || '',
+      /* [2026-09-02] 서버가 IGSID 로 매칭한 기존 고객. **없으면 없는 대로 둔다** —
+         프론트에서 이름·username 으로 추측해 붙이지 않는다(오연결 > 미연결). */
+      authorIgsid: it.author_igsid || '',
+      customerId: it.customer_id || null, isCustomer: !!it.is_customer,
+      visitCount: Number(it.visit_count || 0), isRegular: !!it.is_regular,
       publicDraft: it.public_draft || _drafts(it.intent),
       // 서버가 초안 출처를 알려준다(ai/template/none). 없으면 우리가 템플릿을 쓴 것.
       draftSource: (it.public_draft && it.draft_source) || 'none', _real: true };
@@ -345,7 +350,14 @@
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;align-items:center;gap:6px;"><span style="font-size:15px;font-weight:700;color:#191F28;white-space:nowrap;overflow:hidden;">' + _esc(it.name) + '</span>' +
             (it.intent === 'complaint' ? '<span style="font-size:10px;font-weight:700;color:#DC2626;background:#FEF2F2;border-radius:8px;padding:2px 7px;">불만</span>' : '') +
-            (it.returning ? '<span style="font-size:10px;font-weight:700;color:#0F766E;background:#E7F6EF;border-radius:8px;padding:2px 7px;">단골</span>' : '') + '</div>' +
+            /* [2026-09-02] '단골' 배지가 두 벌이던 것 — 브라우저 QA 에서 잡았다.
+               하나는 댓글 문구 추정(_is_returning_comment "저번에 받은 거 또"),
+               하나는 실제 고객 DB(방문 5회). 둘 다 그리면 "단골 단골 · 5회 방문" 이 된다.
+               **실측 데이터가 있으면 그게 이긴다** — 추정 배지는 숨긴다. */
+            (it.returning && !it.isCustomer ? '<span style="font-size:10px;font-weight:700;color:#0F766E;background:#E7F6EF;border-radius:8px;padding:2px 7px;">단골</span>' : '') +
+            /* [2026-09-02] 기존 고객 표시. **DB 에 실제 값이 있을 때만** 그린다 — 방문 0회면 숫자를 만들지 않는다. */
+            (it.isCustomer ? '<span style="font-size:10px;font-weight:700;color:#3B5BDB;background:#EDF2FF;border-radius:8px;padding:2px 7px;">' +
+              (it.visitCount > 0 ? (it.isRegular ? '단골 · ' : '') + it.visitCount + '회 방문' : '기존 고객') + '</span>' : '') + '</div>' +
           '<div style="font-size:13px;color:#8B95A1;margin-top:1px;">' + _ago(it) + '</div>' +
         '</div>' +
       '</div>' + strip +
@@ -365,7 +377,80 @@
         '<button class="crq-edit" data-id="' + _esc(it.id) + '" style="padding:12px 14px;border:1px solid ' + (it._editing ? '#BC6675' : '#E5E8EB') + ';background:#fff;color:' + (it._editing ? '#BC6675' : '#191F28') + ';font-weight:600;font-size:15px;border-radius:13px;cursor:pointer;">' + (it._editing ? '완료' : '수정') + '</button>' +
         '<button class="crq-discard" data-id="' + _esc(it.id) + '" style="padding:12px 6px;border:none;background:none;color:#8B95A1;font-weight:600;font-size:13px;cursor:pointer;">무시</button>' +
       '</div>' +
+      /* [2026-09-02] 보조 행동 — **고객이 확실히 매칭됐을 때만** 뜬다.
+         미매칭 카드에는 안 그린다: 누르면 엉뚱한 고객이 열리거나 아무 일도 안 나는 버튼이 되기 때문.
+         주행동은 여전히 [공개 답글 보내기] 하나 — 이건 그 아래 옅은 링크로 둬서 흐름을 안 뺏는다.
+         예약은 route 가 customer 를 안 받아서(openBooking(date)) 만들지 않았다. */
+      _secondaryRow(it) +
     '</div>';
+  }
+
+  /* [2026-09-02] 보조 행동 줄 — 카드 하단, 구분선 아래 옅은 링크.
+     주행동은 언제나 [공개 답글 보내기] 하나다. 여기는 그 흐름을 뺏지 않는 자리다.
+
+       매칭된 고객   → [고객 보기] [DM 보기]
+       미매칭        → [고객으로 등록]      ← 이게 그동안 없어서 댓글로만 온 손님이 CRM 밖에 있었다
+
+     ⚠️ 등록은 **서버가 결정한다.** 프론트는 author_igsid 만 넘기고 이름·전화를 추측하지 않는다
+        (username 으로 고객을 단정하면 동명이인이 합쳐진다 — 오연결 > 미연결). */
+  var _LINK = 'background:none;border:none;padding:14px 8px;margin:-14px -8px;min-height:44px;'
+    + 'font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;';
+  var _ROW = 'display:flex;gap:30px;margin-top:11px;padding-top:11px;border-top:.5px solid #F2F4F6;align-items:center;';
+
+  function _secondaryRow(it) {
+    if (it.isCustomer && it.customerId) {
+      return '<div style="' + _ROW + '">' +
+        '<button class="crq-cust" data-id="' + _esc(it.id) + '" style="' + _LINK + 'color:#3B5BDB;">고객 보기</button>' +
+        (it.authorIgsid ? '<button class="crq-dm" data-id="' + _esc(it.id) + '" style="' + _LINK + 'color:#3B5BDB;">DM 보기</button>' : '') +
+        '</div>';
+    }
+    if (!it.authorIgsid) return '';          // 작성자 신원이 없으면 등록 자체가 불가
+    if (it._regState === 'REGISTERING') {
+      return '<div style="' + _ROW + '"><button class="crq-reg" data-id="' + _esc(it.id) + '" disabled ' +
+        'style="' + _LINK + 'color:#B0B8C1;cursor:default;">등록 중…</button></div>';
+    }
+    var err = it._regState === 'ERROR'
+      ? '<span style="font-size:12px;color:#DC2626;">고객으로 등록하지 못했어요</span>' : '';
+    return '<div style="' + _ROW + '">' +
+      '<button class="crq-reg" data-id="' + _esc(it.id) + '" style="' + _LINK + 'color:#3B5BDB;">' +
+        (it._regState === 'ERROR' ? '다시 시도' : '고객으로 등록') + '</button>' + err +
+      '</div>';
+  }
+
+  /* 승격 — 실제 백엔드 계약 그대로. 보내는 값은 author_igsid(필수) + media_id 뿐이다.
+     응답 3종(created / linked_existing / already_linked) 모두 customer_id 를 준다 → 전부 성공 처리.
+     already_linked 는 이미 이어져 있다는 뜻이지 실패가 아니다(중복 고객을 만들지 않는다). */
+  function _registerCustomer(id) {
+    var it = ITEMS.find(function (x) { return x.id === id; });
+    if (!it || !it.authorIgsid) return;
+    if (it._regState === 'REGISTERING') return;        // 연타 차단(최종 방어선은 서버 멱등)
+    it._regState = 'REGISTERING';
+    _render();
+    var auth = window.authHeader ? window.authHeader() : {};
+    window.apiFetch(window.apiUrl('/instagram/comment-author/promote'), {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, auth),
+      body: JSON.stringify({ author_igsid: it.authorIgsid, media_id: it.mediaId || '' }),
+    })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (j) {
+        if (j && j.ok && j.customer_id) {
+          // 서버가 준 id 만 쓴다. 방문 횟수는 실제 값이 올 때까지 표시하지 않는다(가짜 숫자 금지).
+          it.customerId = j.customer_id;
+          it.isCustomer = true;
+          it._regState = 'SUCCESS';
+          _toast('고객으로 등록했어요');
+        } else {
+          it._regState = 'ERROR';
+          _toast('고객으로 등록하지 못했어요 — 잠시 후 다시 시도해 주세요');
+        }
+        _render();
+      })
+      .catch(function () {
+        it._regState = 'ERROR';
+        _toast('고객으로 등록하지 못했어요 — 잠시 후 다시 시도해 주세요');
+        _render();
+      });
   }
 
   // [v785] 게시물 미리보기 팝업 — 큐 흐름 안 끊고 어떤 글인지 확인 (탭하면 닫힘)
@@ -778,7 +863,7 @@
         /* 실제로 존재하는 경로로만 보낸다 — 없는 화면을 여는 가짜 버튼은 만들지 않는다.
            연동 허브(app-integrations-hub.js)가 인스타 연결/재연결의 정식 진입점이다. */
         _haptic();
-        if (typeof window.openIntegrationsHub === 'function') { closeCommentReplyQueue(); window.openIntegrationsHub(); }
+        if (typeof window.openIntegrationsHub === 'function') { _goAfterClose(function () { window.openIntegrationsHub(); }); }
         else _toast('설정 > 연동에서 인스타를 다시 연결해 주세요');
         return;
       }
@@ -796,6 +881,25 @@
         return;
       }
       if (t.classList.contains('crq-discard')) { _haptic(); _dismissItem(id); _toast('이 댓글은 응대하지 않아요'); return; }
+      /* 실재하는 route 로만 보낸다. 없으면 버튼 자체를 안 그렸으므로 여기 오지 않지만,
+         로더 지연 등으로 함수가 아직 없을 수 있어 방어한다(조용히 실패시키지 않고 알린다). */
+      if (t.classList.contains('crq-reg')) { _haptic(); _registerCustomer(id); return; }
+      if (t.classList.contains('crq-cust')) {
+        _haptic();
+        var ci = ITEMS.find(function (x) { return x.id === id; });
+        if (ci && ci.customerId && typeof window.openCustomerDashboard === 'function') {
+          _goAfterClose(function () { window.openCustomerDashboard(ci.customerId); });
+        } else _toast('고객 화면을 불러오지 못했어요');
+        return;
+      }
+      if (t.classList.contains('crq-dm')) {
+        _haptic();
+        var di = ITEMS.find(function (x) { return x.id === id; });
+        if (di && di.authorIgsid && typeof window.openDMThread === 'function') {
+          _goAfterClose(function () { window.openDMThread(di.authorIgsid); });
+        } else _toast('DM 화면을 불러오지 못했어요');
+        return;
+      }
     });
     // [v789] 예약 링크 즉시 저장 — 입력 마치고 포커스 빠질 때(change 는 버블됨)
     el.addEventListener('change', function (e) {
@@ -1072,6 +1176,25 @@
     el.classList.remove('is-open');
     el.setAttribute('aria-hidden', 'true');
     if (window._markSheetClosed) window._markSheetClosed('crq');
+  }
+
+  /* [2026-09-03] 큐를 닫고 **다음 화면으로 넘어갈 때**는 history 가 착지할 때까지 기다린다.
+
+     안 기다리면 뒤로가기가 죽는다. 실측(375px):
+       [고객 보기] → 고객 화면은 열리는데 주소의 `#customers` 가 **사라지고**,
+       그 뒤 뒤로가기가 아예 안 먹는다(스택엔 'customers' 가 남아 있는데 hash 는 비어 있어
+       popstate 매칭이 실패한다).
+
+     원인은 `closeCommentReplyQueue()` 안의 `history.back()` 이 **비동기**라는 것.
+     닫자마자 다음 줄에서 화면을 열면, 그쪽이 `pushState('#customers')` 를 한 *뒤에*
+     큐의 popstate 가 도착해서 그걸 되돌려 버린다.
+
+     app-core 가 이미 같은 사고를 겪고 `__afterHistorySettles` 를 만들어 뒀다
+     (잇비 → "고객 화면 열기" 건, 2026-08-18). 그걸 쓴다. */
+  function _goAfterClose(open) {
+    closeCommentReplyQueue();
+    if (typeof window.__afterHistorySettles === 'function') window.__afterHistorySettles(open);
+    else setTimeout(open, 0);   // 구버전 app-core 폴백 — 동기 호출보다는 낫다
   }
 
   window.openCommentReplyQueue = openCommentReplyQueue;

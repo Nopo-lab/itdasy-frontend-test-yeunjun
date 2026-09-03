@@ -351,25 +351,11 @@
     }
   }
 
-  const FREE_CUSTOMER_LIMIT = 50;
-
-  function _overLimit() {
-    const paid = typeof window.isPaidPlan === 'function' && window.isPaidPlan();
-    if (paid) return false;
-    const count = (_cache || _loadOffline()).length;
-    return count >= FREE_CUSTOMER_LIMIT;
-  }
+  // [2026-09-03] Free 고객 50명 게이트 철회 — 셀프 입력은 원가 0원, 무료도 무제한 (원영 확정).
+  //   BE customers.py 402 가드도 같이 제거됨.
 
   async function create(payload) {
     if (!payload || !payload.name) throw new Error('name-required');
-    if (_overLimit()) {
-      const msg = '체험 상태에서는 고객 ' + FREE_CUSTOMER_LIMIT + '명까지 등록할 수 있어요. 잇데이 멤버십에서 더 등록할 수 있어요.';
-      if (window.showToast) window.showToast(msg);
-      if (typeof window.openPlanPopup === 'function') {
-        setTimeout(() => window.openPlanPopup(), 500);
-      }
-      throw new Error('free-limit-reached');
-    }
     const data = {
       name: String(payload.name).trim().slice(0, 50),
       phone: payload.phone ? String(payload.phone).trim().slice(0, 20) : null,
@@ -1555,7 +1541,6 @@
           createBtn.disabled = false;
           createBtn.textContent = '+ 추가하고 선택';
           try { listEl.querySelectorAll('[data-pick-quick-add]').forEach(b => { b.disabled = false; b.style.opacity = ''; }); } catch (_e) { void _e; }
-          if (err && err.message === 'free-limit-reached') return;  // create() 내부에서 토스트 처리됨
           console.warn('[customer.pick] 신규 추가 실패:', err);
           if (window.showToast) window.showToast('고객 추가 실패');
         }

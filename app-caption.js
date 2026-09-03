@@ -164,12 +164,54 @@ function generateCaption() {
   openCaptionScenarioPopup();
 }
 
+// ── [2026-09-03] 한도 사전 차단 ─────────────────────────────
+// 게이지(로더)까지 돌려놓고 "한도 초과" 알림이 뜨면 다 만들어진 걸 뺏는 느낌이다.
+// 시트 여는 시점에 사용량을 미리 물어두고, 다 썼으면 로더 없이 즉시 안내한다.
+// 서버 검사(429)는 그대로 최종 방어선 — 이 캐시가 틀려도 돈은 안 샌다.
+let _capQuotaExhausted = false;
+let _capQuotaDay = '';
+let _capQuotaLimit = null;
+
+function _capMarkQuotaExhausted(limit) {
+  _capQuotaExhausted = true;
+  _capQuotaDay = new Date().toDateString();
+  _capQuotaLimit = limit || null;
+}
+
+async function _capPrefetchQuota() {
+  try {
+    if (!window.authHeader) return;
+    const h = window.authHeader();
+    if (!h || !h.Authorization) return;
+    const r = await apiFetch('/subscription/usage', { headers: h });
+    if (!r.ok) return;
+    const d = await r.json();
+    const c = d && d.caption;
+    if (c && typeof c.used === 'number' && typeof c.limit === 'number' && c.limit > 0 && c.used >= c.limit) {
+      _capMarkQuotaExhausted(c.limit);
+    } else {
+      _capQuotaExhausted = false; // 업그레이드·날짜 변경 등으로 풀렸으면 해제
+    }
+  } catch (_e) { void _e; /* 사전조회 실패는 무시 */ }
+}
+
+// 소진 상태면 즉시 안내하고 true 반환 (호출부는 생성 진행 중단)
+function _capBlockIfExhausted(closePopup) {
+  if (!(_capQuotaExhausted && _capQuotaDay === new Date().toDateString())) return false;
+  if (closePopup) closePopup();
+  const n = _capQuotaLimit ? `(${_capQuotaLimit}회)` : '';
+  if (window.showToast) showToast(`오늘 캡션 한도${n}를 다 쓰셨어요. 내일 다시 만들거나 Pro로 늘릴 수 있어요.`);
+  if (window.openPlanPopup) window.openPlanPopup();
+  return true;
+}
+
 // 시나리오 선택 바텀시트 팝업
 function openCaptionScenarioPopup() {
   if (typeof window.renderScenarioSelector !== 'function') {
     showToast('잠시 후 다시 시도해주세요.');
     return;
   }
+  _capPrefetchQuota(); // 논블로킹 — 시나리오 고르는 사이에 사용량 도착
 
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center;animation:pp-bg-in .2s ease;';
@@ -227,6 +269,12 @@ function _closeCaptionScenarioPopup(overlay) {
 
 async function _doGenerateCaption(scenario, closePopup, inlineHost) {
   const btn = document.getElementById('captionBtn');
+
+  // [2026-09-03] 한도 소진이면 로더 돌리기 전에 즉시 안내
+  if (_capBlockIfExhausted(closePopup)) {
+    if (btn) { btn.innerHTML = '만들기'; btn.disabled = false; }
+    return;
+  }
   if (btn) btn.disabled = true;
 
   showCaptionLoader();
@@ -378,8 +426,9 @@ async function _doGenerateCaption(scenario, closePopup, inlineHost) {
     const quotaMatch = raw.match(/quota_exceeded:caption(?::(\d+))?/i);
     let userMsg;
     if (quotaMatch) {
-      const limit = quotaMatch[1] || '3';
-      userMsg = `오늘 캡션 한도(${limit}회) 다 쓰셨어요. 내일 다시 시도하거나 잇데이 멤버십을 확인해 주세요.`;
+      const limit = quotaMatch[1] || '1';
+      _capMarkQuotaExhausted(limit); // 다음 탭부터는 로더 없이 즉시 안내
+      userMsg = `오늘 캡션 한도(${limit}회) 다 쓰셨어요. 내일 다시 시도하거나 잇데이 Pro를 확인해 주세요.`;
     } else if (/quota_exceeded/i.test(raw)) {
       userMsg = '오늘 사용 한도를 다 쓰셨어요. 내일 다시 시도해 주세요.';
     } else if (/^캡션 생성 실패/.test(raw)) {
@@ -620,8 +669,9 @@ async function regenerateCaption(overrides = {}) {
     let userMsg;
     const quotaMatch = raw.match(/quota_exceeded:caption(?::(\d+))?/i);
     if (quotaMatch) {
-      const limit = quotaMatch[1] || '3';
-      userMsg = `오늘 캡션 한도(${limit}회) 다 쓰셨어요. 내일 다시 시도하거나 잇데이 멤버십을 확인해 주세요.`;
+      const limit = quotaMatch[1] || '1';
+      _capMarkQuotaExhausted(limit);
+      userMsg = `오늘 캡션 한도(${limit}회) 다 쓰셨어요. 내일 다시 시도하거나 잇데이 Pro를 확인해 주세요.`;
     } else if (/^캡션 생성 실패/.test(raw)) {
       userMsg = raw;
     } else if (/Failed to fetch|Load failed|NetworkError/i.test(raw)) {   // Load failed = 사파리/WebKit 문구

@@ -183,7 +183,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'app-dm-preview.js?v=20260816-dmpreview',
   'js/dm/ig-thread-link.js?v=local-260831v5',
   'app-dm-confirm-queue.js?v=local-260831v5',
-  'app-comment-reply-queue.js?v=20260723-nestback',
+  'app-comment-reply-queue.js?v=20260903-crqback',
   'app-dm-conversations.js?v=local-260831v5',
   'app-dm-manual-replies.js?v=20260723-dmback',
   'app-persona-survey.js',

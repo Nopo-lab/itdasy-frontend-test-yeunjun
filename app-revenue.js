@@ -145,7 +145,13 @@
     if (body) opts.body = JSON.stringify(body);
     const res = await apiFetch(path, opts);
     if (res.status === 404 || res.status === 501) throw new Error('endpoint-missing');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) {
+      // [2026-09-02] 402(무료 장부 월30건 게이트) 등 서버의 한국어 detail 을 그대로 노출 —
+      //   "HTTP 402" 만 보이면 원장님이 뭘 해야 할지 모른다.
+      let d = null;
+      try { d = await res.json(); } catch (_) { /* body 없음 */ }
+      throw new Error((d && d.detail) || ('HTTP ' + res.status));
+    }
     return res.status === 204 ? null : await res.json();
   }
 
