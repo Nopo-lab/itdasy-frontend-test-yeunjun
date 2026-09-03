@@ -128,3 +128,27 @@ describe('못 지운 사실을 남겨 다음에 재시도한다', () => {
     expect(init).toMatch(/clearLocal\(\)/);
   });
 });
+
+describe('같은 뿌리 — clearGalleryDB 도 매달리지 않는다', () => {
+  /* 2026-09-03 최종 스윕: deleteDatabase 무한 pending 은 workspace-sync 만의 문제가 아니었다.
+     app-gallery-db.clearGalleryDB 도 같은 구조였고, 역시 _purgeUserScopedDB →
+     로그인 경로에서 await 된다. 한 곳만 고치면 다른 쪽으로 같은 사고가 난다. */
+  const GDB = fs.readFileSync(path.join(__dirname, '..', 'app-gallery-db.js'), 'utf8');
+  const body = GDB.slice(GDB.indexOf('async function clearGalleryDB'), GDB.indexOf('window.clearGalleryDB'));
+
+  test('타임아웃 상수가 있고 유한하다', () => {
+    const m = GDB.match(/CLEAR_GDB_TIMEOUT_MS\s*=\s*(\d+)/);
+    expect(m).toBeTruthy();
+    expect(Number(m[1])).toBeGreaterThan(0);
+    expect(Number(m[1])).toBeLessThanOrEqual(5000);
+  });
+
+  test('deleteDatabase 대기에 setTimeout 안전망이 걸려 있다', () => {
+    expect(body).toMatch(/setTimeout\([\s\S]{0,60}?CLEAR_GDB_TIMEOUT_MS/);
+    expect(body).toMatch(/settled/);
+  });
+
+  test('세 이벤트 모두 타이머를 해제한다 (중복 resolve 방지)', () => {
+    expect((body.match(/clearTimeout\(timer\)/g) || []).length).toBeGreaterThanOrEqual(4);
+  });
+});

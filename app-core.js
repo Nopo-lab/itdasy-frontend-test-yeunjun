@@ -2025,11 +2025,16 @@ function _friendlyErr(e, fallback) {
   if (has(403)) return '권한이 없어요.';
   if (has(404)) return '찾을 수 없어요. 이미 지워졌을 수 있어요.';
   if (has(409)) return '이미 처리된 것 같아요. 새로고침 후 확인해 주세요.';
+  if (has(422)) return '입력한 내용을 다시 확인해 주세요.';
   if (has(429)) return '요청이 많아요. 잠시 후 다시 시도해 주세요.';
   if (has(500) || has(502) || has(503) || has(504)) return '서버가 잠깐 불안정해요. 잠시 후 다시 시도해 주세요.';
   /* 마지막 폴백이 e.message 를 **그대로** 내보내서 기술 문구가 사용자에게 샜다
      ("HTTP 500", "TypeError: ... undefined"). 사람이 쓴 한국어 문장만 통과시킨다 —
      로그인 실패처럼 일부러 한국어를 throw 하는 경로가 있어 통째로 막으면 안 된다. */
+  /* 서버가 준 개발자 말투는 한국어라도 통과시키지 않는다.
+     실측: 422 응답의 detail 이 "요청 형식이 올바르지 않습니다." 인데,
+     원장님은 '형식' 이 뭔지도, 뭘 고쳐야 하는지도 알 수 없다. */
+  if (/요청 형식이 올바르지|유효하지 않은 요청|잘못된 요청/.test(raw)) return '입력한 내용을 다시 확인해 주세요.';
   const looksHuman = /[가-힣]/.test(raw)
     && !/(typeerror|referenceerror|syntaxerror|http|undefined|null|nan)/i.test(raw)
     && !/[{}[\]<>]/.test(raw);

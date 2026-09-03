@@ -212,16 +212,26 @@ async function deleteSlotFromDB(id) {
 
 // [2026-04-26] 계정 격리 — 로그아웃·계정 전환 시 갤러리 IndexedDB 전체 폐기.
 // 이전 사용자의 작업실 사진이 다음 사용자에게 노출되는 누수 방지 (메타 심사 대응).
+const CLEAR_GDB_TIMEOUT_MS = 2000;
 async function clearGalleryDB() {
   try {
     if (_gdb) { try { _gdb.close(); } catch (_) { void 0; } _gdb = null; }
+    /* [2026-09-03 최종 스윕] workspace-sync.clearLocal 과 **같은 뿌리**다.
+       deleteDatabase 는 다른 연결이 붙잡고 있으면 success·error·blocked 를
+       **하나도 안 내고** pending 으로 남는다(2026-09-03 실측: 4초 관찰 이벤트 0건).
+       onblocked 를 달아둔 것으로는 못 막는다 — 그 이벤트조차 안 온다.
+       이 함수도 _purgeUserScopedDB → 로그인 경로에서 await 되므로
+       안 끝나면 **로그인이 멈춘다**. 정리는 best-effort 로 강등한다. */
     return await new Promise((resolve) => {
+      let settled = false;
+      const finish = (v) => { if (!settled) { settled = true; resolve(v); } };
+      const timer = setTimeout(() => finish(false), CLEAR_GDB_TIMEOUT_MS);
       try {
         const req = indexedDB.deleteDatabase(_GDB_NAME);
-        req.onsuccess = () => resolve(true);
-        req.onerror   = () => resolve(false);
-        req.onblocked = () => resolve(false);
-      } catch (_) { resolve(false); }
+        req.onsuccess = () => { clearTimeout(timer); finish(true); };
+        req.onerror   = () => { clearTimeout(timer); finish(false); };
+        req.onblocked = () => { clearTimeout(timer); finish(false); };
+      } catch (_) { clearTimeout(timer); finish(false); }
     });
   } catch (_) { return false; }
 }
