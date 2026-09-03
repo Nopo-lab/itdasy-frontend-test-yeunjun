@@ -178,9 +178,49 @@ function apiUrl(path) {
   return API + (raw[0] === '/' ? raw : '/' + raw);
 }
 
+/* [2026-09-03 최종 클로저] 동시에 나가는 **동일 GET 을 하나로 합친다**(in-flight coalescing).
+   실측(예약 생성 1회): data-changed 하나에 /revenue ×2, /assistant/brief ×2 처럼
+   여러 소비자가 같은 URL 을 각자 불렀다. 서로를 모르니 각자 네트워크를 탄다.
+   → 이미 같은 GET 이 날아가 있으면 그 약속을 나눠 쓴다. 캐시가 아니다 —
+     **끝나는 순간 지운다.** 다음 호출은 정상적으로 새로 나간다(stale 위험 없음).
+   ⚠️ Response 본문은 한 번만 읽을 수 있으므로 소비자마다 clone() 을 준다.
+   GET 만 합친다. POST/PATCH/DELETE 는 각각이 의미 있는 행위라 절대 합치면 안 된다. */
+const _inflightGET = new Map();
 function apiFetch(path, opts) {
-  return fetch(apiUrl(path), opts);
+  const url = apiUrl(path);
+  const method = ((opts && opts.method) || 'GET').toUpperCase();
+  if (method !== 'GET') return fetch(url, opts);
+  // 인증 헤더가 다르면 다른 요청이다(계정 전환 중 섞임 방지)
+  const auth = (opts && opts.headers && (opts.headers.Authorization || opts.headers.authorization)) || '';
+  const key = url + '\n' + String(auth).slice(-24);
+  const pending = _inflightGET.get(key);
+  if (pending) return pending.then((r) => r.clone());
+  const p = fetch(url, opts).finally(() => { _inflightGET.delete(key); });
+  _inflightGET.set(key, p);
+  return p.then((r) => r.clone());
 }
+
+/* 변경 종류(kind) → 영향받는 도메인. 리스너가 "내 데이터가 정말 바뀌었나" 를 여기서 묻는다.
+   예전엔 모듈마다 필터가 없어서, 예약 하나 만들면 DM 큐까지 다시 불렀다(실측 /dm-confirm-queue ×3).
+   정책을 한 곳에 두는 이유: 모듈마다 제각각 조건을 만들면 또 어긋난다. */
+const _CHANGE_DOMAINS = {
+  create_booking: ['booking', 'home'],
+  update_booking: ['booking', 'home'],
+  delete_booking: ['booking', 'home'],
+  create_revenue: ['revenue', 'home'],
+  update_revenue: ['revenue', 'home'],
+  delete_revenue: ['revenue', 'home'],
+  create_customer: ['customer', 'home'],
+  update_customer: ['customer', 'home'],
+  delete_customer: ['customer', 'booking', 'home'],
+};
+window.itdChangeAffects = function (evOrKind, domain) {
+  const kind = (evOrKind && evOrKind.detail && evOrKind.detail.kind) || evOrKind || '';
+  if (!kind) return true;                       // kind 없는 옛 이벤트 = 보수적으로 전부 통과
+  const domains = _CHANGE_DOMAINS[kind];
+  if (!domains) return true;                    // 모르는 kind = 통과(놓치는 것보다 낫다)
+  return domains.indexOf(domain) !== -1;
+};
 
 // ===== 토큰 localStorage 키를 백엔드별로 분리 =====
 // nopo-lab.github.io는 운영/스테이징 프론트가 같은 origin이라 localStorage 공유.
@@ -3604,7 +3644,24 @@ window._humanError = function (e) {
 };
 
 // --- Inline dialog helpers (Capacitor 호환) ---
+/* [2026-09-03 최종 클로저] 확인 다이얼로그는 **한 번에 하나만** 떠야 한다.
+   실측: 예약 취소를 3번 누르면 확인 토스트가 3개 쌓이고, 하나를 확인해도 2개가 남았다.
+   단순 미관 문제가 아니다 — 남은 토스트는 **여전히 눌린다.** 나중에 그걸 누르면
+   그때의 낡은 콜백(이미 취소한 예약 등)이 실행된다.
+   ⚠️ 그냥 remove() 하면 안 된다. Promise 로 감싼 호출자(nativeConfirm 등)가 onNo 를
+      기다리고 있으면 **영영 안 끝난다**(로그인 멈춤과 같은 종류의 사고).
+      → 취소 버튼을 눌러서 onNo 를 태우고 정상 종료시킨다. */
+function _dismissOpenInlineDialogs() {
+  document.querySelectorAll('.bk-confirm-toast').forEach((old) => {
+    const cancel = old.querySelector('.bk-confirm-toast__cancel');
+    if (cancel) cancel.click();      // el.remove() + onNo() 가 같이 돈다
+    else old.remove();
+  });
+}
+window._dismissOpenInlineDialogs = _dismissOpenInlineDialogs;
+
 function _inlineConfirm(msg, onYes, onNo, opts) {
+  _dismissOpenInlineDialogs();
   // [2026-06-10] onNo(취소 콜백) 추가 — Promise<boolean> 래핑(nativeConfirm 등)이 가능하도록. 기존 호출엔 영향 없음.
   // [Phase3-B #8] opts.okText / opts.cancelText 로 버튼 라벨 커스터마이즈(예: '예약 취소' / '아니요'). 미지정 시 기존 '확인'/'취소'.
   opts = opts || {};
@@ -3626,6 +3683,7 @@ function _inlineConfirm(msg, onYes, onNo, opts) {
 }
 
 function _inlinePrompt(msg, defaultVal, onSubmit) {
+  _dismissOpenInlineDialogs();
   const el = document.createElement('div');
   el.className = 'bk-confirm-toast';
   el.innerHTML = `
