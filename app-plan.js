@@ -413,8 +413,10 @@
     const sheet = document.getElementById('cancelSheet');
     if (!sheet) return;
     document.querySelectorAll('#cancelSheet .csEndDate').forEach((el) => { el.textContent = _fmtEndDate(); });
-    document.getElementById('cancelSheetA').style.display = 'block';
-    document.getElementById('cancelSheetB').style.display = 'none';
+    const shA = document.getElementById('cancelSheetA');
+    const shB = document.getElementById('cancelSheetB');
+    if (shA) shA.style.display = 'block';
+    if (shB) shB.style.display = 'none';
     document.querySelectorAll('#csChips .cs-chip').forEach((ch) => {
       ch.style.borderColor = '#e5e5e5'; ch.style.background = '#fff'; ch.style.color = '#555';
       ch.dataset.on = '';
@@ -458,18 +460,22 @@
     // 해지하기 → 서버 취소 예약 → 완료 상태(②)로 전환
     const doIt = document.getElementById('csCancelBtn');
     if (doIt) doIt.addEventListener('click', async () => {
+      if (!(window.ItdasyBilling && window.ItdasyBilling.cancelSubscription)) return;
       doIt.disabled = true; doIt.textContent = '처리 중…';
       const r = await window.ItdasyBilling.cancelSubscription();
       doIt.disabled = false; doIt.textContent = '해지하기';
       if (r && r.ok) {
         _cancelScheduled = true; _renderSubMeta();
-        document.getElementById('cancelSheetA').style.display = 'none';
-        document.getElementById('cancelSheetB').style.display = 'block';
+        const a = document.getElementById('cancelSheetA');
+        const b = document.getElementById('cancelSheetB');
+        if (a) a.style.display = 'none';
+        if (b) b.style.display = 'block';
       }
     });
     // 마음 바뀌면 다시 시작하기 → 해지 예약 철회(POST /billing/resume)
     const resume = document.getElementById('csResumeBtn');
     if (resume) resume.addEventListener('click', async () => {
+      if (!(window.ItdasyBilling && window.ItdasyBilling.resumeSubscription)) return;
       resume.disabled = true;
       const r = await window.ItdasyBilling.resumeSubscription();
       resume.disabled = false;
