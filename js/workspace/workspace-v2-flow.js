@@ -362,7 +362,17 @@
   //   근사 흰/검 제외하고 5비트 버킷 빈도순 상위색 반환. 폰트/로고 자동추출은 부정확해 미지원(수동).
   // [v587·C] 우리샵 스타일 레이어 빌더 — 편집기 진입과 헤드리스 자동합성이 공유.
   function _buildShopStyleLayers() {
-    var ss = (window.ShopStyle && window.ShopStyle.getActive) ? window.ShopStyle.getActive() : null;
+    /* [2026-09-04] 우선순위: **이 작업에 고른 스타일** > 전역 기본값.
+       원장이 '내 스타일'에서 하나를 골랐으면 이번 게시물엔 그게 이긴다(§21).
+       고른 게 없으면 예전 그대로 — `setActive` 를 안 건드리므로 다음 새 글까지
+       이번 선택이 따라가지 않는다(§22. last-used 강제 적용 방지). */
+    var ss = null;
+    try {
+      if (window.IgStyleLibrary && window.IgStyleLibrary.styleForWork) {
+        ss = window.IgStyleLibrary.styleForWork((d.slot && d.slot.id) || null);
+      }
+    } catch (_igs) { void _igs; }
+    if (!ss) ss = (window.ShopStyle && window.ShopStyle.getActive) ? window.ShopStyle.getActive() : null;
     var roleText = _splitServiceForLayers(d.service);   // [v583·A] 시술명/시술내용 분리
     var layers = [];
     var autoArranged = false;
@@ -1325,11 +1335,38 @@
     var s = el && el.querySelector('[data-fs="edit"] [data-ed-zoompct]');
     if (s) s.textContent = Math.round((((d.zoom && d.zoom.s) || 1)) * 100) + '%';
   }
+  /* [2026-09-04] '내 스타일' 진입점(§17).
+     스타일이 하나도 없으면 **안 보여준다** — 누르면 빈 목록만 나오는 버튼은 없느니만 못하다.
+     지금 이 작업에 걸린 스타일이 있으면 그 이름을 보여준다(뭘 쓰고 있는지 모르면 불안하다). */
+  function _myStyleBarHtml() {
+    try {
+      var L = window.IgStyleLibrary;
+      if (!L || !L.cached) return '';
+      var gs = L.cached();
+      if (!gs.length) return '';
+      var picked = L.styleForWork && L.styleForWork((d.slot && d.slot.id) || null);
+      var label = picked ? esc(picked.name || '내 스타일') : '스타일 고르기';
+      return '<div class="ed-sec"><button type="button" data-fl="mystyle" ' +
+        'style="width:100%;display:flex;align-items:center;gap:10px;padding:11px 14px;min-height:48px;' +
+        'background:var(--surface,#fff);border:1px solid var(--border);border-radius:14px;cursor:pointer;text-align:left;">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--brand-strong);flex-shrink:0;">' +
+        '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/>' +
+        '<path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>' +
+        '<span style="flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--text);' +
+        'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">내 스타일 · ' + label + '</span>' +
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-subtle);flex-shrink:0;">' +
+        '<path d="m9 6 6 6-6 6"/></svg></button></div>';
+    } catch (_e) { void _e; return ''; }
+  }
+
   function renderEdit() {
     d.zoom = { s: 1, tx: 0, ty: 0 };   // 편집화면 새로 그릴 때(진입/사진전환) 줌 초기화
     var pu = _editPhotoUrls();
     return '' +
       '<div class="ed-sec" data-ed-switcher>' + _editSwitcherHtml() + '</div>' +
+      _myStyleBarHtml() +
       '<div class="ed-photo-vp" data-fl-edvp><div class="ed-photo" data-fl-edphoto style="background-image:url(' + esc(pu.url) + ');filter:' + pu.preview + '"></div><canvas class="ed-mask-ov" data-fl-maskov hidden></canvas></div>' + _vpToolsHtml() +
       '<div class="ed-sec" data-ed-basic>' + _mainAdjustHtml() + '</div>' +
       '<div class="ed-sec" data-ed-bottom>' + _editBottomHtml() + '</div>' +
@@ -2952,6 +2989,15 @@
       // [S4] 레이아웃 화면 전용(dellayout·layoutpick·trayph·savelayout·skiplayout)은 layout.handleClick 로 이관 — 아래 스텝 위임에서 처리됨.
       // [v560] 편집 화면 우측 CTA — 현재 보정 굽고 '템플릿 선택' 화면으로.
       if (a === 'cta2') { return bakeEdit().then(function () { setScreen('template'); }); }
+      /* [2026-09-04] '내 스타일' — 시트를 연다. 시트가 apply 하면 이 작업에만 걸리고,
+         다음에 편집기를 열 때 `_buildShopStyleLayers` 가 그 스타일을 집는다. */
+      if (a === 'mystyle') {
+        try {
+          if (window.IgStyleSheet && window.IgStyleSheet.openList) window.IgStyleSheet.openList();
+          else toast('잠시 후 다시 시도해 주세요');
+        } catch (_mse) { toast('잠시 후 다시 시도해 주세요'); }
+        return;
+      }
       // [refactor S4] 스텝 전용 클릭 핸들러 위임 — 현재 스텝(STEP_FX[cur])이 처리하면 종료. 스텝 제거 시 핸들러도 함께 제거(고아 방지).
       //   버튼이 해당 스텝 화면(render)에서만 렌더되는 '스텝 전용'만 이관(공유 핸들러는 아래 인라인 유지).
       var _fx4 = STEP_FX[cur]; if (_fx4 && _fx4.handle && _fx4.handle(t, a, e) === true) return;
@@ -5032,6 +5078,8 @@
     var p0 = curPhoto();
     return {
       open: true, screen: cur, cat: d.cat || null, service: d.service || '',
+      // [2026-09-04] 작업 식별자 — '내 스타일' 을 **이 작업에만** 걸기 위해 필요하다(§22).
+      slotId: (d.slot && d.slot.id) || null,
       photoCount: (d.photos || []).length,
       coverUrl: (p0 && (p0.editedDataUrl || p0.dataUrl)) || null,
       hasCaption: !!String(d.caption || '').trim()
