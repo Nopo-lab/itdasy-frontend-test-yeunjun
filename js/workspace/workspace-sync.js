@@ -553,15 +553,39 @@
   // ── 로그아웃/계정전환 시 로컬 sync 메타 완전 삭제 ──────────────
   //   [버그수정 2026-07-06] logout 은 itdasy-gallery(slots)만 지우고 itdasy-sync(migratedAt·lastPulledAt·
   //   tombstones)는 안 지웠다 → 다음 계정에서 migrate skip·delta 누락으로 계정 격리 붕괴+slot 유실.
+  /* [2026-09-03 모바일 게이트] **이 함수는 로그인 경로에서 await 된다 — 절대 매달리면 안 된다.**
+     실측(배포본 0f56fe9, 실기기 크기 390×844): 로그인은 성공했는데(/auth/me 200, 토큰 저장됨)
+     버튼이 "로그인 중..." 에서 멈추고 잠금화면이 안 걷혔다. 새로고침해야만 들어가진다.
+     추적: _doLogin → applyNewSession(forcePurge) → _purgeUserScopedDB → **여기서 정지**.
+     원인: `indexedDB.deleteDatabase` 가 다른 연결이 열려 있으면
+       **success·error·blocked 를 하나도 안 내고 readyState=pending 으로 남는다**
+       (4초 관찰 결과 이벤트 0건, DB 그대로). 그래서 이 Promise 가 영영 settle 되지 않았다.
+       onblocked 를 달아둔 것만으로는 부족하다 — 그 이벤트조차 안 온다.
+     → 정리는 **best-effort** 로 강등한다. 못 지워도 로그인은 통과시키고,
+       못 지웠다는 사실을 남겨 다음 부팅에서 다시 시도한다(아래 init 의 재시도).
+     ⚠️ 타임아웃을 없애지 마라. 이 await 하나가 로그인 전체를 막는다. */
+  var CLEAR_LOCAL_TIMEOUT_MS = 2000;
+  var PURGE_PENDING_KEY = 'itdasy_sync_purge_pending';
   function clearLocal() {
     return new Promise(function (resolve) {
+      var settled = false;
+      function finish(ok) {
+        if (settled) return;
+        settled = true;
+        try {
+          if (ok) localStorage.removeItem(PURGE_PENDING_KEY);
+          else localStorage.setItem(PURGE_PENDING_KEY, '1');   // 다음 부팅에서 재시도
+        } catch (_e0) { void 0; }
+        resolve(ok);
+      }
+      var timer = setTimeout(function () { finish(false); }, CLEAR_LOCAL_TIMEOUT_MS);
       try {
         if (_sdb) { try { _sdb.close(); } catch (_e) { void 0; } _sdb = null; }
         try { _uploadCache.clear(); } catch (_e2) { void 0; }
         try { if (typeof _hydrateCache !== 'undefined' && _hydrateCache) _hydrateCache.clear(); } catch (_e3) { void 0; }
         var req = indexedDB.deleteDatabase('itdasy-sync');
-        req.onsuccess = req.onerror = req.onblocked = function () { resolve(true); };
-      } catch (_e) { resolve(false); }
+        req.onsuccess = req.onerror = req.onblocked = function () { clearTimeout(timer); finish(true); };
+      } catch (_e) { clearTimeout(timer); finish(false); }
     });
   }
 
@@ -569,6 +593,11 @@
   function init() {
     if (!enabled()) { window.WorkspaceSync = { enabled: false, sync: function () { return Promise.resolve(); }, hydratePhotos: function () { return Promise.resolve(false); }, beginEdit: function () {}, settleSlot: function () { return Promise.resolve(); }, clearLocal: clearLocal }; return; }
     wrapGlobals();
+    /* 지난번 정리가 타임아웃으로 못 끝났으면(다른 연결이 붙잡고 있었음) 여기서 다시 시도한다.
+       그때는 로그인 경로가 아니라 await 하는 사람이 없으므로 매달려도 화면을 막지 않는다. */
+    try {
+      if (localStorage.getItem(PURGE_PENDING_KEY) === '1') clearLocal();
+    } catch (_e) { void 0; }
     window.WorkspaceSync = { enabled: true, sync: sync, pull: pull, push: pushAll, hydratePhotos: hydratePhotos, beginEdit: beginEdit, settleSlot: settleSlot, clearLocal: clearLocal, _debug: { buildPayload: buildPayload, remoteToLocal: remoteToLocal, hydratePhotos: hydratePhotos, merge3: merge3, makeBase: makeBase, photoSig: photoSig } };
     // 최초 동기화 — 로그인 상태 갖춰지면. 아니면 이후 트리거에서 재시도.
     var tries = 0;
