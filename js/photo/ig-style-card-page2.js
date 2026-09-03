@@ -219,7 +219,12 @@
       + '평소 올리던 사진의 색감과 글자 자리를 배워서<br>새 사진에도 똑같이 맞춰드려요.</div>'
       + '<button type="button" data-igs-analyze style="margin-top:16px;padding:12px 20px;background:' + ROSE + ';'
       + 'border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;min-height:48px;">'
-      + '스타일 분석 시작</button></div>';
+      + '스타일 분석 시작</button></div>'
+      /* 자동 분석 전이어도 **이미 만든 스타일은 보여야** 한다.
+         원장이 게시물을 직접 골라 만든 스타일이 있는데 "아직 분석 전이에요" 화면이
+         그걸 통째로 가리면, 만든 사람 입장에선 스타일이 사라진 것이다.
+         (계정 교체·캐시 삭제로 관찰 프로필만 날아가는 경우도 여기 걸린다) */
+      + renderStyles(_groups());
   }
 
   function _headIcon() {

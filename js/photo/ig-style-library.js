@@ -82,11 +82,11 @@
   }
 
   // ── 목록 ──────────────────────────────────────────────────────────
-  function cached() { var a = _read(LS_CACHE, []); return Array.isArray(a) ? a : []; }
+  function cached() { var a = _read(LS_CACHE, []); return _sane(Array.isArray(a) ? a : []); }
 
   function refresh() {
     return _req('/instagram-style/groups', { headers: _auth() }).then(function (j) {
-      var gs = (j && j.groups) || [];
+      var gs = _sane((j && j.groups) || []);
       _write(LS_CACHE, gs);
       return gs;
     });
@@ -97,17 +97,32 @@
   }
 
   // ── 쓰기 ──────────────────────────────────────────────────────────
+  /* 🔴 응답을 그대로 믿지 않는다. 실측(카오스 QA)에서 **유령 스타일 행**이 남았다 —
+     `{}` 를 200 으로 받은 적이 있었고(프록시·게이트웨이가 본문을 비우는 경우도 있다)
+     그게 `id: undefined` 인 채로 캐시에 들어가 "게시물 0개" 짜리 이름 없는 줄이
+     목록 맨 위에 영원히 붙었다. 지우려 해도 id 가 없어 지워지지도 않는다.
+     id 가 없으면 **캐시를 건드리지 않고** 그대로 돌려준다. */
   function _afterWrite(g) {
-    var arr = cached().filter(function (x) { return x && x.id !== g.id; });
+    if (!g || g.id == null || g.id === '') return g;
+    var arr = cached().filter(function (x) { return x && x.id != null && x.id !== g.id; });
     arr.unshift(g);
     _write(LS_CACHE, arr);
     return g;
   }
 
+  /* 옛 캐시에 이미 들어간 유령 행 청소 — 한 번 생기면 스스로 사라지지 않는다. */
+  function _sane(list_) {
+    return (list_ || []).filter(function (x) { return x && x.id != null && x.id !== ''; });
+  }
+
   function create(body) {
     return _req('/instagram-style/groups', {
       method: 'POST', headers: _json(), body: JSON.stringify(body)
-    }).then(_afterWrite);
+    }).then(function (g) {
+      // 만들었다면서 id 를 안 주면 그건 성공이 아니다 — 화면이 '만들어졌다' 고 거짓말하게 둘 수 없다.
+      if (!g || g.id == null) throw new Error('no_id');
+      return _afterWrite(g);
+    });
   }
 
   function patch(id, body) {

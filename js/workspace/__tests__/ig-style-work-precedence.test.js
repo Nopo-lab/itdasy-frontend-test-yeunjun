@@ -122,3 +122,47 @@ describe('§17 — 작업실 진입점이 실제로 연결돼 있다', () => {
     expect(fn.slice(0, 900)).toMatch(/if \(!gs\.length\) return '';/);
   });
 });
+
+describe('§28 — 목록이 서버를 끝없이 두드리지 않는다', () => {
+  const sheet = fs.readFileSync(path.join(ROOT, 'js/photo/ig-style-sheet.js'), 'utf8');
+
+  test('_renderList 의 재렌더는 skipRefresh 로 한 번에서 끊긴다', () => {
+    /* 🔴 브라우저 카오스 QA 에서 탭이 통째로 얼어붙어 잡았다:
+         _renderList → L.list() → then(_renderList) → L.list() → …
+       목록 화면이 열려 있는 동안 API 를 무한 호출한다. 운영에선 원장 한 명이
+       스타일 목록을 열어두기만 해도 서버를 계속 때린다. */
+    expect(sheet).toMatch(/function _renderList\(body, skipRefresh\)/);
+    expect(sheet).toMatch(/if \(L && !skipRefresh\)/);
+    expect(sheet).toMatch(/_renderList\(body, true\)/);
+  });
+
+  test('빠르게 여러 번 눌러도 요청은 한 번 (§46)', () => {
+    expect(sheet).toMatch(/var _busy = false;/);
+    expect(sheet).toMatch(/function _guard\(fn\)/);
+    // 생성·이름변경·게시물저장·삭제·적용 — 전부 _guard 를 통과해야 한다
+    ['data-igs-savenew', 'data-igs-rename', 'data-igs-savepost', 'data-igs-delete', 'data-igs-apply']
+      .forEach((attr) => {
+        const i = sheet.indexOf("t.closest('[" + attr + "]')");
+        expect(i).toBeGreaterThan(-1);
+        expect(sheet.slice(i, i + 700)).toMatch(/_guard\(/);
+      });
+  });
+});
+
+describe('§48 — 뒤로가기에 등록한다', () => {
+  const sheet = fs.readFileSync(path.join(ROOT, 'js/photo/ig-style-sheet.js'), 'utf8');
+  test('_registerSheet / _markSheetOpen / _markSheetClosed 전부 부른다', () => {
+    /* 안 부르면 안드로이드 백버튼이 이 시트를 모르고 **앱을 종료한다**.
+       이 레포에서 반복해서 난 사고라 가드로 둔다. */
+    expect(sheet).toMatch(/_registerSheet.*\(ID, close\)/);
+    expect(sheet).toMatch(/_markSheetOpen.*\(ID\)/);
+    expect(sheet).toMatch(/_markSheetClosed.*\(ID\)/);
+  });
+
+  test('열림 클래스를 rAF 에 걸지 않는다 — 백그라운드면 rAF 가 안 돈다', () => {
+    const open = sheet.slice(sheet.indexOf('function _open(view, id)'), sheet.indexOf('function close()'));
+    // 이름이 아니라 **호출**을 본다 — 주석에 이름이 있는 건 괜찮다(왜 안 쓰는지 적어뒀다).
+    expect(open).not.toMatch(/requestAnimationFrame\s*\(/);
+    expect(open).toMatch(/void el\.offsetHeight;/);
+  });
+});

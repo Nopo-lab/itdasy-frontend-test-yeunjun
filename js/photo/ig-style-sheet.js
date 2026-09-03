@@ -195,7 +195,11 @@
     else if (_view === 'create') { title.textContent = '스타일 만들기'; _renderCreate(body); }
   }
 
-  function _renderList(body) {
+  /* 🔴 `skipRefresh` 가 없으면 **무한 루프**다.
+     _renderList → L.list() → then(_renderList) → L.list() → … 로 서버를 끝없이 두드리고
+     렌더러가 멈춘다(브라우저 카오스 QA 에서 실제로 탭이 얼어붙어 잡았다).
+     캐시로 먼저 그리고 → 서버에서 한 번 받아 다시 그리고 → **거기서 끝낸다**. */
+  function _renderList(body, skipRefresh) {
     var L = _L();
     var gs = L ? L.cached() : [];
     body.innerHTML =
@@ -211,8 +215,9 @@
         '<button type="button" class="ss-cta" data-igs-create>게시물 골라 직접 만들기</button>' +
       '</div>';
     // 서버에서 최신을 받아 조용히 갱신 — 캐시로 먼저 보여주고 나중에 맞춘다(빈 화면 방지).
-    if (L) {
-      L.list().then(function () { if (_view === 'list') _renderList(body); }).catch(function () {});
+    //   두 번째 렌더는 skipRefresh=true 라 여기서 멈춘다.
+    if (L && !skipRefresh) {
+      L.list().then(function () { if (_view === 'list') _renderList(body, true); }).catch(function () {});
     }
   }
 

@@ -285,6 +285,40 @@ describe('서버가 안 될 때', () => {
     await expect(win.IgStyleLibrary.create({ name: '시크' })).rejects.toMatchObject({ code: 409 });
   });
 
+  test('🔴 id 없는 응답이 목록을 오염시키지 않는다 (카오스 QA 실측)', async () => {
+    /* 실측: PATCH 가 200 + `{}` 를 돌려준 적이 있었고, 그게 `id: undefined` 로 캐시에 들어가
+       "게시물 0개" 짜리 이름 없는 줄이 목록 맨 위에 영원히 붙었다.
+       id 가 없으니 지울 수도 없다 — 원장 입장에선 고칠 방법이 없는 유령이다. */
+    const win = boot({
+      apiFetch: (p, o) => {
+        if (p === '/instagram-style/groups' && (!o || !o.method || o.method === 'GET')) {
+          return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ groups: [GROUP] }) });
+        }
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });  // 본문이 빈 200
+      }
+    });
+    await win.IgStyleLibrary.list();
+    await win.IgStyleLibrary.patch(7, { shop_style_id: 'x' });
+    const ids = win.IgStyleLibrary.cached().map((g) => g.id);
+    expect(ids).toEqual([7]);
+    expect(ids).not.toContain(undefined);
+  });
+
+  test('만들었다면서 id 를 안 주면 실패로 알린다', async () => {
+    const win = boot({
+      apiFetch: () => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) })
+    });
+    await expect(win.IgStyleLibrary.create({ name: '새 스타일' })).rejects.toThrow();
+    expect(win.IgStyleLibrary.cached()).toEqual([]);
+  });
+
+  test('옛 캐시에 이미 든 유령 행은 읽을 때 걸러진다', () => {
+    const win = boot();
+    win.localStorage.setItem('itdasy:ig_style_groups::1',
+      JSON.stringify([{ name: '유령' }, { id: 3, name: '진짜' }]));
+    expect(win.IgStyleLibrary.cached().map((g) => g.id)).toEqual([3]);
+  });
+
   test('자동 그룹 저장은 한 건 실패해도 나머지를 저장한다', async () => {
     let n = 0;
     const win = boot({
