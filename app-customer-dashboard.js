@@ -511,8 +511,22 @@
     wrap.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:20px;';
     wrap.innerHTML = _customerEditHtml(c, isNew);
     document.body.appendChild(wrap);
-    const close = () => wrap.remove();
+    /* [2026-09-02 API/E2E 게이트] 이 모달은 **어떤 레이어 스택에도 등록돼 있지 않았다.**
+       z-index 10010 은 사이드바(10000)보다 위라 앱 전체를 덮는데,
+       ESC·안드로이드 뒤로가기·사이드바 이동 중 무엇으로도 닫히지 않았다.
+       실측(배포본 6227fbf, 실계정 1919×863): 고객관리 → [+] → ESC →
+       아래 시트만 닫히고 모달은 남음 → 매출관리를 눌러도 모달이 그대로 덮음.
+       탈출구가 [취소] 하나뿐이라 원장님에겐 "앱이 멈췄다"로 보인다.
+       → 다른 시트와 동일하게 등록한다(뒤로가기 스택 + 닫기 함수). */
+    const close = () => {
+      wrap.remove();
+      try { window._markSheetClosed?.('custEdit'); } catch (_e) { void _e; }
+    };
     _bindCustomerEditModal(wrap, c, isNew, close);
+    try {
+      window._registerSheet?.('custEdit', close);
+      window._markSheetOpen?.('custEdit');
+    } catch (_e) { void _e; }
   };
 
   // Wave D3 (2026-04-24) — 챗봇·외부 데이터 변경 감지 → 고객 상세 대시보드 재로드

@@ -17,9 +17,36 @@ const R = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
 const planSrc = R('js/photo/edit-plan.js');
 const edSrc = R('js/itd-editor/itd-editor.js');
-const manifest = R('js/load-groups.js');
 const html = R('index.html');
 const both = planSrc + '\n' + edSrc;
+
+/* [2026-09-03] manifest 를 **못 읽었을 때 조용히 오판**하는 걸 막는다.
+   실제 사고(2026-09-02 CI): 이 가드가 "js/photo 16개가 전부 미등록" 이라고 실패했다.
+   커밋 내용은 멀쩡했고(원격 == 로컬, 16개 전부 참조 있음) 같은 커밋을 깨끗한 worktree 에서
+   CI 순서 그대로 돌리면 통과했다 — 즉 **manifest 를 제대로 못 읽은 상태에서 "전부 미등록"**
+   이라는 엉뚱한 결론을 냈다. 원인 진단에 시간을 다 썼다.
+   → manifest 가 쓸 수 없는 상태면 "전부 미등록" 이 아니라 **그 사실로 즉시 실패**시킨다.
+
+   그리고 참조 검사는 **주석을 지우고** 한다. 안 그러면 주석에 적힌 경로가
+   "등록됨" 으로 통과한다(설명문이 가드를 뚫는 그 패턴). */
+const MIN_MANIFEST_REFS = 50;   // 실측 176+. 절반 이하로 떨어지면 파일이 깨진 것이다.
+function stripJsComments(src) {
+  return String(src).replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
+function assertManifestUsable(src, label) {
+  if (typeof src !== 'string') throw new Error('manifest 읽기 실패(' + label + '): 문자열이 아님');
+  if (!src.trim()) throw new Error('manifest 가 비어 있음(' + label + ') — "전부 미등록" 으로 오판하면 안 된다');
+  const code = stripJsComments(src);
+  const refs = code.match(/js\/[\w./-]+\.js/g) || [];
+  if (refs.length < MIN_MANIFEST_REFS) {
+    throw new Error('manifest 가 손상된 듯(' + label + '): js/ 참조 ' + refs.length +
+      '개 < 최소 ' + MIN_MANIFEST_REFS + ' — 이 상태로는 등록 여부를 판정할 수 없다');
+  }
+  return code;
+}
+// 실제 사용본 — 주석 제거 + 사용 가능 검증을 통과한 것만 쓴다
+const manifest = assertManifestUsable(R('js/load-groups.js'), 'js/load-groups.js');
+const htmlCode = stripJsComments(html);
 
 describe('[상주 감시] 선언만 되고 안 쓰이는 스위치', () => {
   test('SCOPE 키는 전부 런타임에서 읽힌다', () => {
@@ -42,12 +69,40 @@ describe('[상주 감시] 읽기만 하고 안 채우는 필드', () => {
   });
 });
 
+describe('[상주 감시] manifest 자체가 쓸 수 있는 상태인가', () => {
+  // 이게 깨지면 아래 '전부 미등록' 판정은 전부 무의미하다. 그래서 먼저 본다.
+  test('정상 manifest 는 통과한다', () => {
+    expect(() => assertManifestUsable(R('js/load-groups.js'), 'real')).not.toThrow();
+    expect(manifest.length).toBeGreaterThan(0);
+  });
+  test('빈 manifest 는 HARD FAIL', () => {
+    expect(() => assertManifestUsable('', 'empty')).toThrow(/비어 있음/);
+    expect(() => assertManifestUsable('   \n  ', 'blank')).toThrow(/비어 있음/);
+  });
+  test('manifest 파일이 없으면 HARD FAIL (읽기 단계에서 터진다)', () => {
+    expect(() => R('js/__no_such_manifest__.js')).toThrow();
+  });
+  test('잘린/손상된 manifest 는 HARD FAIL — "전부 미등록" 으로 오판하지 않는다', () => {
+    const truncated = R('js/load-groups.js').slice(0, 200);
+    expect(() => assertManifestUsable(truncated, 'truncated')).toThrow(/손상/);
+  });
+  test('문자열이 아니면 HARD FAIL', () => {
+    expect(() => assertManifestUsable(null, 'null')).toThrow(/문자열이 아님/);
+    expect(() => assertManifestUsable(undefined, 'undef')).toThrow(/문자열이 아님/);
+  });
+  test('주석에만 적힌 경로는 등록으로 안 쳐준다', () => {
+    const fake = R('js/load-groups.js') + '\n// js/photo/__ghost_module__.js\n';
+    const code = assertManifestUsable(fake, 'commented');
+    expect(code).not.toMatch(/__ghost_module__/);
+  });
+});
+
 describe('[상주 감시] 등록·호출', () => {
   test('js/photo 모듈은 전부 로더가 부른다', () => {
     const files = fs.readdirSync(path.join(ROOT, 'js/photo')).filter((f) => f.endsWith('.js'));
     const missing = files.filter((f) => {
       const ref = 'js/photo/' + f;
-      return !manifest.includes(ref) && !html.includes(ref);
+      return !manifest.includes(ref) && !htmlCode.includes(ref);
     });
     expect(missing).toEqual([]);
   });

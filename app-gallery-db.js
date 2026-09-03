@@ -20,6 +20,19 @@ const _LEARN_STORES = ['preferences', 'learning_signals', 'preference_versions']
 //   (원본 바이트·EXIF·임베딩 없음). tenantId 인덱스를 안 만드는 이유: photoHash 는 픽셀 파생이라
 //   계정 식별성이 없고, 계정 전환 시 DB 통째 purge 경로가 이미 있다.
 const _PCTX_STORE = 'photo_contexts';
+/* [2026-09-03 IDB-1] v7 — 인스타 텍스트 스타일 분석 캐시.
+   **이 store 가 없는 채로 쓰는 코드가 이미 배포돼 있었다.** 실측(배포본 daef812, 실브라우저):
+
+       NotFoundError: Failed to execute 'transaction' on 'IDBDatabase':
+                      One of the specified object stores was not found.
+         @ app-gallery-db.js:232 (wmLearnPut)   — 한 화면에서 10회+ 반복, uncaught rejection
+
+   `js/photo/instagram-text-style.js:34` 이 `IDB_STORE = 'ig_text_analysis'` 로 읽고 쓰는데
+   업그레이드 경로에 그 store 가 없었다. 그래서 **인스타 텍스트 스타일은 한 번도 저장된 적이 없다** —
+   T8 학습이 v4 라서 0 이던 것과 똑같은 실패다(그때 이 가드를 만든 이유이기도 하다).
+   조용한 실패가 아니라 콘솔로 터져 나왔는데도 안 잡힌 건, 가드가 '선언한 store 가 생성되나' 만
+   보고 '쓰는 store 가 선언됐나' 는 안 봤기 때문이다 → 가드도 같이 고쳤다. */
+const _IGTEXT_STORE = 'ig_text_analysis';
 let _gdb = null;
 
 function openGalleryDB() {
@@ -28,7 +41,7 @@ function openGalleryDB() {
     // [T-002 2026-05-29] v3 — gallery 항목에 customer_id 연결 (사진↔고객 이력).
     // [T6 2026-08-17] v4 — assets store 추가. 기존 v3 마이그레이션 로직은 그대로 보존
     //   (onupgradeneeded 는 구버전→4 직행도 처리해야 하므로 아래 분기 전부 유지).
-    const req = indexedDB.open(_GDB_NAME, 6);
+    const req = indexedDB.open(_GDB_NAME, 7);
     req.onupgradeneeded = e => {
       const db = e.target.result;
       const tx = e.target.transaction;
@@ -61,6 +74,13 @@ function openGalleryDB() {
       // v5→v6 [Phase 1]: 사진 문맥 캐시. 기존 store 무변경 — 실패해도 v5 데이터 손실 0.
       if (!db.objectStoreNames.contains(_PCTX_STORE)) {
         db.createObjectStore(_PCTX_STORE, { keyPath: 'id' });
+      }
+      // v6→v7 [IDB-1]: 인스타 텍스트 스타일 캐시. 기존 store 무변경 — 실패해도 v6 데이터 손실 0.
+      //   tenantId 인덱스를 붙인다: 레코드 키가 샵별 분석 결과라 계정 전환 시 걸러낼 수 있어야 한다
+      //   (app-instagram.js 가 계정 교체 때 wmLearnAll/wmLearnDel 로 이 store 를 청소한다).
+      if (!db.objectStoreNames.contains(_IGTEXT_STORE)) {
+        const its = db.createObjectStore(_IGTEXT_STORE, { keyPath: 'id' });
+        its.createIndex('tenantId', 'tenantId', { unique: false });
       }
     };
     req.onsuccess = e => {
@@ -212,16 +232,26 @@ async function deleteSlotFromDB(id) {
 
 // [2026-04-26] 계정 격리 — 로그아웃·계정 전환 시 갤러리 IndexedDB 전체 폐기.
 // 이전 사용자의 작업실 사진이 다음 사용자에게 노출되는 누수 방지 (메타 심사 대응).
+const CLEAR_GDB_TIMEOUT_MS = 2000;
 async function clearGalleryDB() {
   try {
     if (_gdb) { try { _gdb.close(); } catch (_) { void 0; } _gdb = null; }
+    /* [2026-09-03 최종 스윕] workspace-sync.clearLocal 과 **같은 뿌리**다.
+       deleteDatabase 는 다른 연결이 붙잡고 있으면 success·error·blocked 를
+       **하나도 안 내고** pending 으로 남는다(2026-09-03 실측: 4초 관찰 이벤트 0건).
+       onblocked 를 달아둔 것으로는 못 막는다 — 그 이벤트조차 안 온다.
+       이 함수도 _purgeUserScopedDB → 로그인 경로에서 await 되므로
+       안 끝나면 **로그인이 멈춘다**. 정리는 best-effort 로 강등한다. */
     return await new Promise((resolve) => {
+      let settled = false;
+      const finish = (v) => { if (!settled) { settled = true; resolve(v); } };
+      const timer = setTimeout(() => finish(false), CLEAR_GDB_TIMEOUT_MS);
       try {
         const req = indexedDB.deleteDatabase(_GDB_NAME);
-        req.onsuccess = () => resolve(true);
-        req.onerror   = () => resolve(false);
-        req.onblocked = () => resolve(false);
-      } catch (_) { resolve(false); }
+        req.onsuccess = () => { clearTimeout(timer); finish(true); };
+        req.onerror   = () => { clearTimeout(timer); finish(false); };
+        req.onblocked = () => { clearTimeout(timer); finish(false); };
+      } catch (_) { clearTimeout(timer); finish(false); }
     });
   } catch (_) { return false; }
 }

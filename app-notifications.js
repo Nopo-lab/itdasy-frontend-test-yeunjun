@@ -339,6 +339,8 @@
     clearInterval(_pollTimer);
     _pollTimer = null;
   }
+  // [2026-09-01 SESS-1] 세션 만료 → 폴링 정지. 재로그인하면 visibilitychange 로 다시 뜬다.
+  document.addEventListener('itdasy:auth-expired', _stopPolling);
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {

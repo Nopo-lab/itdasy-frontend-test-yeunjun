@@ -178,9 +178,49 @@ function apiUrl(path) {
   return API + (raw[0] === '/' ? raw : '/' + raw);
 }
 
+/* [2026-09-03 최종 클로저] 동시에 나가는 **동일 GET 을 하나로 합친다**(in-flight coalescing).
+   실측(예약 생성 1회): data-changed 하나에 /revenue ×2, /assistant/brief ×2 처럼
+   여러 소비자가 같은 URL 을 각자 불렀다. 서로를 모르니 각자 네트워크를 탄다.
+   → 이미 같은 GET 이 날아가 있으면 그 약속을 나눠 쓴다. 캐시가 아니다 —
+     **끝나는 순간 지운다.** 다음 호출은 정상적으로 새로 나간다(stale 위험 없음).
+   ⚠️ Response 본문은 한 번만 읽을 수 있으므로 소비자마다 clone() 을 준다.
+   GET 만 합친다. POST/PATCH/DELETE 는 각각이 의미 있는 행위라 절대 합치면 안 된다. */
+const _inflightGET = new Map();
 function apiFetch(path, opts) {
-  return fetch(apiUrl(path), opts);
+  const url = apiUrl(path);
+  const method = ((opts && opts.method) || 'GET').toUpperCase();
+  if (method !== 'GET') return fetch(url, opts);
+  // 인증 헤더가 다르면 다른 요청이다(계정 전환 중 섞임 방지)
+  const auth = (opts && opts.headers && (opts.headers.Authorization || opts.headers.authorization)) || '';
+  const key = url + '\n' + String(auth).slice(-24);
+  const pending = _inflightGET.get(key);
+  if (pending) return pending.then((r) => r.clone());
+  const p = fetch(url, opts).finally(() => { _inflightGET.delete(key); });
+  _inflightGET.set(key, p);
+  return p.then((r) => r.clone());
 }
+
+/* 변경 종류(kind) → 영향받는 도메인. 리스너가 "내 데이터가 정말 바뀌었나" 를 여기서 묻는다.
+   예전엔 모듈마다 필터가 없어서, 예약 하나 만들면 DM 큐까지 다시 불렀다(실측 /dm-confirm-queue ×3).
+   정책을 한 곳에 두는 이유: 모듈마다 제각각 조건을 만들면 또 어긋난다. */
+const _CHANGE_DOMAINS = {
+  create_booking: ['booking', 'home'],
+  update_booking: ['booking', 'home'],
+  delete_booking: ['booking', 'home'],
+  create_revenue: ['revenue', 'home'],
+  update_revenue: ['revenue', 'home'],
+  delete_revenue: ['revenue', 'home'],
+  create_customer: ['customer', 'home'],
+  update_customer: ['customer', 'home'],
+  delete_customer: ['customer', 'booking', 'home'],
+};
+window.itdChangeAffects = function (evOrKind, domain) {
+  const kind = (evOrKind && evOrKind.detail && evOrKind.detail.kind) || evOrKind || '';
+  if (!kind) return true;                       // kind 없는 옛 이벤트 = 보수적으로 전부 통과
+  const domains = _CHANGE_DOMAINS[kind];
+  if (!domains) return true;                    // 모르는 kind = 통과(놓치는 것보다 낫다)
+  return domains.indexOf(domain) !== -1;
+};
 
 // ===== 토큰 localStorage 키를 백엔드별로 분리 =====
 // nopo-lab.github.io는 운영/스테이징 프론트가 같은 origin이라 localStorage 공유.
@@ -1075,6 +1115,11 @@ function _bindLoginSocialButtons() {
 }
 
 function setToken(t) {
+  /* [2026-09-01 SESS-1] 새 토큰이 들어오면 "세션 죽음" 표시를 푼다.
+     이걸 빼먹으면 재로그인에 성공해도 app-core 의 죽은세션 차단이 계속 걸려
+     **로그인은 됐는데 앱이 텅 빈** 상태가 된다. 지우는 쪽(null)에서는 건드리지 않는다 —
+     정상 로그아웃과 세션 만료를 구분해야 하고, 만료 표시는 _handle401 이 세운다. */
+  if (t) { try { window.__itdasyAuthDead = false; } catch (_e) { void _e; } }
   // [보안감사 H-3 2026-07-27] secure 모드 OFF → 아래 블록은 원본 그대로(byte-for-byte). 웹·플러그인없는네이티브는 항상 여기.
   if (!_secureMode) {
     try {
@@ -1320,6 +1365,31 @@ function authHeader() {
     const lock = document.getElementById('lockOverlay');
     if (lock) lock.classList.remove('hidden');
     _setAuthGateLocked(true);
+    /* [2026-09-01 SESS-1] 세션이 죽었다고 **앱에 알린다.**
+       예전엔 잠금화면만 띄우고 끝이라, 그 아래에서 열려 있던 시트의 폴러가 계속 돌았다.
+       실측(2026-08-26~09-01 Cloud Logging): 아이폰 1대가 `/dm-confirm-queue` 를
+       **4초 간격으로 26분 넘게** 때려 7일간 401 이 2,989건. 화면엔 아무 표시도 없었다
+       (`_refresh().catch(() => {})` 가 통째로 삼킨다). 원장 배터리·데이터가 새고,
+       서버는 매 요청마다 `get_current_user` 로 DB 를 잡는다 — 과거 QueuePool 고갈의 연료다. */
+    try { window.__itdasyAuthDead = true; } catch (_e) { void _e; }
+    try { document.dispatchEvent(new CustomEvent('itdasy:auth-expired')); } catch (_e) { void _e; }
+  }
+
+  /* [2026-09-01 SESS-1] 세션이 죽은 뒤 인증이 필요한 요청은 **네트워크를 타지 않는다.**
+     타이머를 멈추는 것만으로는 부족하다 — 폴러는 8개 모듈에 흩어져 있고 앞으로 더 생긴다.
+     여기서 막으면 지금 것도 앞으로 생길 것도 같이 막힌다(합성 401 을 돌려주므로
+     호출부 코드는 한 줄도 안 바뀐다). 로그인·헬스체크 경로는 반드시 통과시켜야 한다 —
+     막으면 재로그인 자체가 불가능해지고, /health 를 막으면 앱이 "연결 불안정" 으로 오판한다. */
+  const _AUTH_FREE_RE = /^\/(auth|health|healthz|version|public|docs|openapi)(\/|$|\?)/;
+  function _isAuthFreePath(input) {
+    try {
+      const raw = typeof input === 'string' ? input : (input && input.url) || '';
+      return _AUTH_FREE_RE.test(new URL(raw, location.href).pathname.replace(/^\/+/, '/'));
+    } catch (_e) { void _e; return true; }   // 못 읽으면 막지 않는다(기능 정지보다 낫다)
+  }
+  function _blockedByDeadSession(input) {
+    return !!window.__itdasyAuthDead && !getToken()
+      && _isApiOrigin(input) && !_isAuthFreePath(input);
   }
 
   // [보안감사 H-6 2026-07-27] 401 자동 리프레시/재첨부는 우리 API 오리진에만.
@@ -1334,6 +1404,13 @@ function authHeader() {
   }
 
   window.fetch = async function(input, init) {
+    // [2026-09-01 SESS-1] 세션이 죽었으면 인증 요청은 여기서 끝낸다 — 네트워크 0회.
+    //   응답 모양은 서버 401 과 같게 만들어(호출부가 res.ok / res.status / res.json() 을 그대로 쓴다)
+    //   "조용히 성공한 척" 하지 않는다. 실패는 실패로 돌려준다.
+    if (_blockedByDeadSession(input)) {
+      return new Response(JSON.stringify({ detail: '세션이 만료됐어요. 다시 로그인해 주세요.' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } });
+    }
     const retryable = _isRetryableMethod(init) && _bodyReusable(init) && !_isNoRetryPath(input) && !_isNonIdempotentCreate(input, init);
     const isLlm = _isLlmCall(input);   // [2026-07-22] 생성형 호출 — 오래 기다리되 타임아웃 재시도는 안 함
     let attempt = 0;
@@ -1346,13 +1423,18 @@ function authHeader() {
       try {
         const res = await _fetchWithTimeout(input, init, _tmo);
         if (res.ok) _resetConnFail();   // [버그2] 성공 응답 = 연결 정상 — 실패 카운터 리셋
-        if (res.status === 401 && getToken() && _isApiOrigin(input)) {
+        if (res.status === 401 && _isApiOrigin(input)) {
           // /auth/refresh 자체가 401이면 무한루프 방지
           const url = typeof input === 'string' ? input : (input.url || '');
           if (url.includes('/auth/refresh') || url.includes('/auth/login')) {
             _handle401();
             return res;
           }
+          /* [2026-09-01 SESS-1] 토큰이 없는데 401 → 갱신할 것이 없다. 잠금만 다시 세운다.
+             예전엔 이 분기 조건이 `&& getToken()` 이라, _handle401 이 토큰을 지운 **다음부터는
+             401 을 아무도 처리하지 않았다.** 잠금화면을 닫아 버린 사용자는 그 뒤로 영영
+             "다시 로그인하라" 는 말을 못 듣고, 화면은 옛 데이터를 그대로 띄운 채 남았다. */
+          if (!getToken()) { _handle401(); return res; }
           try {
             const newTok = await _tryRefresh();
             // 갱신된 토큰으로 원 요청 재시도 (refresh 후 fetch 는 timeout 짧게)
@@ -1916,21 +1998,48 @@ async function forgotPassword() {
 
 // 네트워크/타임아웃 등 친근한 에러 메시지
 function _friendlyErr(e, fallback) {
-  const m = String(e && e.message || e || '').toLowerCase();
+  const raw = String(e && e.message || e || '');
+  const m = raw.toLowerCase();
   // [2026-08-15 기기QA] 'load failed' 는 사파리/WebKit 의 fetch 실패 문구 —
   //   크롬('failed to fetch')만 잡고 있어서 iOS 에서만 한글 UI 에 "Load failed" 영문이 그대로 노출됐다.
   //   (iPhone 시뮬레이터 실측: 로그인 실패 시 빨간 글씨 "Load failed")
   //   'the network connection was lost' / 'cancelled' 도 WebKit 계열 문구라 같이 잡는다.
   if (m.includes('failed to fetch') || m.includes('load failed') || m.includes('networkerror')
       || m.includes('network connection was lost') || m.includes('cancelled') || m.includes('network')) {
-    return '인터넷 연결을 확인해 주세요.';
+    /* [2026-09-02] 예전엔 여기서 무조건 "인터넷 연결을 확인해 주세요" 였다.
+       브라우저는 **서버 다운·DNS 실패·CORS 거부를 전부 `Failed to fetch` 하나로** 보고한다.
+       그래서 원장님 인터넷은 멀쩡한데 공유기를 다시 켜게 만들었다.
+       실측(2026-09-01, GCP 결제 차단으로 백엔드 503): 로그인 화면에 이 문구가 그대로 떴다.
+       navigator.onLine 은 "랜선이 꽂혀 있나" 수준이라 **false 일 때만** 신뢰한다.
+       true 인데 못 닿으면 서버 쪽 — 원장님이 할 일은 '기다리기'지 '공유기 확인'이 아니다. */
+    return (typeof navigator !== 'undefined' && navigator.onLine === false)
+      ? '인터넷이 끊긴 것 같아요. 연결을 확인해 주세요.'
+      : '서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.';
   }
-  if (m.includes('timeout')) return '응답이 지연되고 있어요. 잠시 후 다시 시도해 주세요.';
-  if (m.includes('401')) return '로그인이 필요해요.';
-  if (m.includes('403')) return '권한이 없어요.';
-  if (m.includes('429')) return '잠시 후 다시 시도해 주세요.';
-  if (m.includes('500') || m.includes('502') || m.includes('503')) return '서버가 잠깐 불안정해요. 다시 시도해 주세요.';
-  return e && e.message ? e.message : (fallback || '문제가 생겼어요.');
+  if (m.includes('timeout') || m.includes('aborted')) return '응답이 지연되고 있어요. 잠시 후 다시 시도해 주세요.';
+  /* 상태코드는 e.status 를 먼저 본다. 예전엔 메시지에 '401' 이 들어있는지로만 봐서
+     금액·ID 에 숫자가 스치기만 해도 오판했다(예: "1401원"). \b 로 단어 경계도 건다. */
+  const _st = Number(e && (e.status || e.httpStatus)) || 0;
+  const has = (code) => _st === code || (!_st && new RegExp('\\b' + code + '\\b').test(raw));
+  if (has(401)) return '로그인이 풀렸어요. 다시 로그인해 주세요.';
+  if (has(403)) return '권한이 없어요.';
+  if (has(404)) return '찾을 수 없어요. 이미 지워졌을 수 있어요.';
+  if (has(409)) return '이미 처리된 것 같아요. 새로고침 후 확인해 주세요.';
+  if (has(422)) return '입력한 내용을 다시 확인해 주세요.';
+  if (has(429)) return '요청이 많아요. 잠시 후 다시 시도해 주세요.';
+  if (has(500) || has(502) || has(503) || has(504)) return '서버가 잠깐 불안정해요. 잠시 후 다시 시도해 주세요.';
+  /* 마지막 폴백이 e.message 를 **그대로** 내보내서 기술 문구가 사용자에게 샜다
+     ("HTTP 500", "TypeError: ... undefined"). 사람이 쓴 한국어 문장만 통과시킨다 —
+     로그인 실패처럼 일부러 한국어를 throw 하는 경로가 있어 통째로 막으면 안 된다. */
+  /* 서버가 준 개발자 말투는 한국어라도 통과시키지 않는다.
+     실측: 422 응답의 detail 이 "요청 형식이 올바르지 않습니다." 인데,
+     원장님은 '형식' 이 뭔지도, 뭘 고쳐야 하는지도 알 수 없다. */
+  if (/요청 형식이 올바르지|유효하지 않은 요청|잘못된 요청/.test(raw)) return '입력한 내용을 다시 확인해 주세요.';
+  const looksHuman = /[가-힣]/.test(raw)
+    && !/(typeerror|referenceerror|syntaxerror|http|undefined|null|nan)/i.test(raw)
+    && !/[{}[\]<>]/.test(raw);
+  if (looksHuman) return raw;
+  return fallback || '문제가 생겼어요. 잠시 후 다시 시도해 주세요.';
 }
 
 // T-317 — 생체 인증 등록 제안 (최초 1회만)
@@ -3540,7 +3649,24 @@ window._humanError = function (e) {
 };
 
 // --- Inline dialog helpers (Capacitor 호환) ---
+/* [2026-09-03 최종 클로저] 확인 다이얼로그는 **한 번에 하나만** 떠야 한다.
+   실측: 예약 취소를 3번 누르면 확인 토스트가 3개 쌓이고, 하나를 확인해도 2개가 남았다.
+   단순 미관 문제가 아니다 — 남은 토스트는 **여전히 눌린다.** 나중에 그걸 누르면
+   그때의 낡은 콜백(이미 취소한 예약 등)이 실행된다.
+   ⚠️ 그냥 remove() 하면 안 된다. Promise 로 감싼 호출자(nativeConfirm 등)가 onNo 를
+      기다리고 있으면 **영영 안 끝난다**(로그인 멈춤과 같은 종류의 사고).
+      → 취소 버튼을 눌러서 onNo 를 태우고 정상 종료시킨다. */
+function _dismissOpenInlineDialogs() {
+  document.querySelectorAll('.bk-confirm-toast').forEach((old) => {
+    const cancel = old.querySelector('.bk-confirm-toast__cancel');
+    if (cancel) cancel.click();      // el.remove() + onNo() 가 같이 돈다
+    else old.remove();
+  });
+}
+window._dismissOpenInlineDialogs = _dismissOpenInlineDialogs;
+
 function _inlineConfirm(msg, onYes, onNo, opts) {
+  _dismissOpenInlineDialogs();
   // [2026-06-10] onNo(취소 콜백) 추가 — Promise<boolean> 래핑(nativeConfirm 등)이 가능하도록. 기존 호출엔 영향 없음.
   // [Phase3-B #8] opts.okText / opts.cancelText 로 버튼 라벨 커스터마이즈(예: '예약 취소' / '아니요'). 미지정 시 기존 '확인'/'취소'.
   opts = opts || {};
@@ -3562,6 +3688,7 @@ function _inlineConfirm(msg, onYes, onNo, opts) {
 }
 
 function _inlinePrompt(msg, defaultVal, onSubmit) {
+  _dismissOpenInlineDialogs();
   const el = document.createElement('div');
   el.className = 'bk-confirm-toast';
   el.innerHTML = `

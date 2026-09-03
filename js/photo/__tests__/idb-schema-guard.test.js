@@ -21,7 +21,7 @@ const ROOT = path.resolve(__dirname, '../../..');
 const src = fs.readFileSync(path.join(ROOT, 'app-gallery-db.js'), 'utf8');
 
 /* 지금 스키마가 요구하는 것. store 를 늘릴 때는 **여기와 버전을 같이** 올려야 한다. */
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 const REQUIRED_STORES = {
   slots: 'v1 작업 슬롯',
   gallery: 'v2 갤러리(+v3 customer_id)',
@@ -29,7 +29,8 @@ const REQUIRED_STORES = {
   preferences: 'v5 T8 학습 — 이게 없으면 원장이 편집해도 아무것도 안 쌓인다',
   learning_signals: 'v5 T8 관측',
   preference_versions: 'v5 T8 롤백',
-  photo_contexts: 'v6 사진 문맥 캐시'
+  photo_contexts: 'v6 사진 문맥 캐시',
+  ig_text_analysis: 'v7 인스타 텍스트 스타일 — 없는 채로 배포돼 NotFoundError 가 반복됐다'
 };
 
 function openVersion() {
@@ -71,13 +72,15 @@ describe('필수 store — 하나라도 빠지면 실패', () => {
     expect(up).toMatch(/createObjectStore\(_ASSET_STORE/);
     expect(up).toMatch(/_LEARN_STORES\.forEach/);
     expect(up).toMatch(/createObjectStore\(_PCTX_STORE/);
+    expect(up).toMatch(/createObjectStore\(_IGTEXT_STORE/);
   });
 
   test('createObjectStore 개수가 필수 store 수와 맞는다 — 몰래 늘리면 드러난다', () => {
     const up = src.slice(src.indexOf('onupgradeneeded'), src.indexOf('req.onsuccess'));
     const n = (up.match(/createObjectStore\(/g) || []).length;
-    // 학습 3종은 forEach 안에서 1번만 등장하므로: slots·gallery·assets·pctx(4) + forEach(1) = 5
-    expect(n).toBe(5);
+    // 학습 3종은 forEach 안에서 1번만 등장하므로:
+    //   slots·gallery·assets·pctx·ig_text(5) + forEach(1) = 6
+    expect(n).toBe(6);
   });
 });
 
@@ -85,7 +88,7 @@ describe('마이그레이션 분기 — 구버전에서 올라오는 경로가 �
   const up = src.slice(src.indexOf('onupgradeneeded'), src.indexOf('req.onsuccess'));
 
   test('🔑 모든 신설이 "없으면 만든다" 조건부다 — 무조건 만들면 기존 DB 가 깨진다', () => {
-    ['_GDB_STORE', '_GALLERY_STORE', '_ASSET_STORE', '_PCTX_STORE'].forEach((s) => {
+    ['_GDB_STORE', '_GALLERY_STORE', '_ASSET_STORE', '_PCTX_STORE', '_IGTEXT_STORE'].forEach((s) => {
       expect(up).toMatch(new RegExp(`objectStoreNames\\.contains\\(${s}\\)`));
     });
     expect(up).toMatch(/objectStoreNames\.contains\(name\)/);      // 학습 store 3종
@@ -108,5 +111,64 @@ describe('마이그레이션 분기 — 구버전에서 올라오는 경로가 �
 describe('저장 헬퍼 — store 만 있고 CRUD 가 없으면 역시 무증상 실패', () => {
   test.each(['wmLearnPut', 'wmLearnGet', 'wmLearnAll', 'wmLearnDel'])('%s 를 전역으로 낸다', (fn) => {
     expect(src).toMatch(new RegExp(`window\\.${fn}\\s*=`));
+  });
+});
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+   🔴 [2026-09-03 IDB-1] 가드를 **뒤집는다.**
+
+   여기까지는 전부 "내가 REQUIRED_STORES 에 적은 store 가 만들어지나" 만 봤다.
+   그래서 **아무도 적지 않은 store 를 쓰는 새 코드**는 통과했다. 실제로 그랬다:
+
+       js/photo/instagram-text-style.js:34   IDB_STORE = 'ig_text_analysis'
+       app-instagram.js                      wmLearnAll('ig_text_analysis')
+       → 업그레이드 경로엔 없음 → 브라우저에서 NotFoundError 10회+ (배포본 daef812 실측)
+
+   화이트리스트는 "빠뜨림" 은 잡아도 "새로 씀" 은 못 잡는다.
+   그래서 소스를 훑어 **실제로 쓰이는 store 이름**을 뽑고, 그게 전부 스키마에 있는지 본다.
+   이제 store 를 새로 쓰는 코드를 추가하면, 스키마를 안 고치는 한 여기서 막힌다.
+   ──────────────────────────────────────────────────────────────────────────── */
+describe('🔑 쓰는 store 가 전부 스키마에 있다 (화이트리스트 반대 방향)', () => {
+  const SRC_DIRS = ['.', 'js'];
+  const SKIP = /node_modules|__tests__|\.claude|\.git|android|ios|dist/;
+
+  function walk(dir, acc) {
+    for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, f.name);
+      if (SKIP.test(full)) continue;
+      if (f.isDirectory()) walk(full, acc);
+      else if (f.name.endsWith('.js')) acc.push(full);
+    }
+    return acc;
+  }
+
+  /** wmLearn*('store') 직접 호출 + `IDB_STORE = 'store'` 형태의 상수 선언을 모두 모은다. */
+  function usedStores() {
+    const files = SRC_DIRS.flatMap((d) => walk(path.join(ROOT, d), []));
+    const found = new Map();
+    for (const f of files) {
+      const t = fs.readFileSync(f, 'utf8');
+      const rel = path.relative(ROOT, f);
+      for (const m of t.matchAll(/wmLearn(?:Put|Get|All|Del)\(\s*['"]([a-z0-9_]+)['"]/g)) {
+        if (!found.has(m[1])) found.set(m[1], rel);
+      }
+      for (const m of t.matchAll(/IDB_STORE\s*=\s*['"]([a-z0-9_]+)['"]/g)) {
+        if (!found.has(m[1])) found.set(m[1], rel);
+      }
+    }
+    return found;
+  }
+
+  test('wmLearn*/IDB_STORE 로 쓰이는 store 를 실제로 찾아낸다 (탐지기가 죽으면 무의미)', () => {
+    const used = usedStores();
+    expect(used.size).toBeGreaterThan(0);
+    expect([...used.keys()]).toContain('ig_text_analysis');
+  });
+
+  test.each(Object.keys(REQUIRED_STORES).length ? [[0]] : [[0]])('쓰이는 store 가 전부 생성된다', () => {
+    const used = usedStores();
+    const missing = [...used.entries()].filter(([name]) => !src.includes(`'${name}'`));
+    expect(missing.map(([n, f]) => `${n}  (${f})`)).toEqual([]);
   });
 });

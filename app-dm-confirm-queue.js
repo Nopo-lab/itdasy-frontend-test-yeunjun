@@ -123,6 +123,9 @@
     if (_queuePollTimer) clearInterval(_queuePollTimer);
     _queuePollTimer = null;
   }
+  /* [2026-09-01 SESS-1] 세션이 죽으면 폴링을 멈춘다. 시트는 잠금화면 아래에 열린 채로 남는데
+     예전엔 이 4초 타이머가 그대로 돌아 401 을 무한히 때렸다(실측 26분 연속·7일 2,989건). */
+  document.addEventListener('itdasy:auth-expired', _stopQueuePoll);
 
   async function open() {
     const sheet = _ensureSheet();
