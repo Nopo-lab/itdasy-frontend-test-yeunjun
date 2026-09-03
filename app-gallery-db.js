@@ -35,9 +35,56 @@ const _PCTX_STORE = 'photo_contexts';
 const _IGTEXT_STORE = 'ig_text_analysis';
 let _gdb = null;
 
+/* ── [2026-09-03 P0 계정 격리] 이 DB 가 **누구 것인지** 도장 ──────────────────
+   왜 필요한가 — 실측으로 확인한 교차 노출 경로:
+     ① 로그아웃(또는 계정 전환)이 `clearGalleryDB()` 를 부르지만, 다른 탭이 연결을 붙잡고 있으면
+        `deleteDatabase` 는 success·error·blocked 를 **하나도 안 내고** pending 으로 남는다
+        (이 파일 236행 주석의 실측). 호출부는 3초 타임아웃으로 넘어가고 **실패를 삼킨다.**
+     ② `_purgeUserScopedStorage()` 가 `last_user_id`(계정 전환 감지 기준)를 **지운다.**
+        그 삭제가 requestIdleCallback 이라 `applyNewSession` 이 방금 쓴 값보다 늦게 도착하면 null 이 된다
+        (실측: 전환 직후 'USER_B' → 2.5초 뒤 null).
+     ③ 그러면 다음 로그인에서 `prevUserId === null` → 전환 조건이 거짓 → **purge 를 아예 안 한다.**
+   실측 결과: USER_C 로 로그인했는데 USER_B 의 초안(고객명 '박서연'·시술·사진)이 그대로 보였다.
+   고객 개인정보 교차 노출이라 '삭제가 best-effort' 로 끝낼 수 없다.
+
+   그래서 삭제 성공에만 의존하지 않고 **읽기 관문에서 소유자를 확인**한다.
+   이미 T8 학습 store 는 레코드마다 tenantId 를 검증한다(파일 상단 주석) — 정작 사진·고객명이 들어있는
+   slots/gallery 만 DB 삭제 하나에 기대고 있었다. 그 불일치를 없앤다.
+   도장은 purge 대상 밖(itdasy_ 접두어 아님·KEEP 등록)이라 스토리지 청소에 안 지워진다. */
+const _GDB_OWNER_KEY = 'itdasy_gdb_owner';
+function _gdbCurrentUser() {
+  try { const v = localStorage.getItem('last_user_id'); return v ? String(v) : null; } catch (_) { return null; }
+}
+function _gdbOwner() {
+  try { const v = localStorage.getItem(_GDB_OWNER_KEY); return v ? String(v) : null; } catch (_) { return null; }
+}
+function _gdbSetOwner(uid) {
+  try { if (uid) localStorage.setItem(_GDB_OWNER_KEY, String(uid)); else localStorage.removeItem(_GDB_OWNER_KEY); } catch (_) { void 0; }
+}
+window._gdbOwner = _gdbOwner;
+window._gdbSetOwner = _gdbSetOwner;
+window._GDB_OWNER_KEY = _GDB_OWNER_KEY;
+
 function openGalleryDB() {
   return new Promise((resolve, reject) => {
     if (_gdb) return resolve(_gdb);
+    /* 소유자 확인 — 도장이 없으면(첫 사용·기존 설치) 현재 사용자로 찍고 통과(하위호환).
+       도장이 있고 다르면 앞선 purge 가 실패한 것이다 → 한 번 더 지워보고, 그래도 안 되면 **열지 않는다.**
+       여기서 통과시키면 남의 고객 정보를 화면에 그린다. 기능 정지가 정보 유출보다 낫다. */
+    const _cur = _gdbCurrentUser(), _own = _gdbOwner();
+    if (_cur && _own && _own !== _cur) {
+      clearGalleryDB().then((ok) => {
+        if (!ok) {
+          try { if (window.showToast) window.showToast('이전 계정 데이터를 정리하지 못했어요 — 다른 탭을 모두 닫고 새로고침해 주세요'); } catch (_) { void 0; }
+          reject(new Error('gdb_owner_mismatch'));
+          return;
+        }
+        _gdbSetOwner(_cur);
+        openGalleryDB().then(resolve, reject);
+      }, () => reject(new Error('gdb_owner_mismatch')));
+      return;
+    }
+    if (_cur && !_own) _gdbSetOwner(_cur);
     // [T-002 2026-05-29] v3 — gallery 항목에 customer_id 연결 (사진↔고객 이력).
     // [T6 2026-08-17] v4 — assets store 추가. 기존 v3 마이그레이션 로직은 그대로 보존
     //   (onupgradeneeded 는 구버전→4 직행도 처리해야 하므로 아래 분기 전부 유지).
@@ -248,7 +295,8 @@ async function clearGalleryDB() {
       const timer = setTimeout(() => finish(false), CLEAR_GDB_TIMEOUT_MS);
       try {
         const req = indexedDB.deleteDatabase(_GDB_NAME);
-        req.onsuccess = () => { clearTimeout(timer); finish(true); };
+        // 지워졌으면 소유자 도장도 비운다 — 다음 open 이 현재 사용자로 새로 찍는다.
+        req.onsuccess = () => { clearTimeout(timer); try { _gdbSetOwner(null); } catch (_) { void 0; } finish(true); };
         req.onerror   = () => { clearTimeout(timer); finish(false); };
         req.onblocked = () => { clearTimeout(timer); finish(false); };
       } catch (_) { clearTimeout(timer); finish(false); }

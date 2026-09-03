@@ -445,3 +445,47 @@ button:focus:not(:focus-visible) { outline: none; }
   transform: translate(-50%, -50%);
   /* 배경 없음 — 보이지 않는다. 옆 요소가 버튼이 아니라 글자(월 이름·금액)라 가려도 무해하다. */
 }
+
+/* 14-b. 헤더 아이콘 버튼 [2026-09-04 전 화면 실측 추가]
+   위 14번과 **같은 패턴을 확장**한다(새 파일·새 유틸 안 만든다 — 규칙이 흩어지면 다음 사람이 못 찾는다).
+   375×812 실측(히트박스 = elementFromPoint 격자 스캔, 보이는 박스 아님):
+     .ss-back        40×40  ← 공통 뒤로. 고객·DM·댓글·설정 등 여러 화면이 함께 쓴다
+     .bk-header__back 34×34 ← 예약관리 뒤로
+     .bk-ico          34×34 ← 예약 추가
+     .cv4-hd-add      34×34 ← 고객 추가
+   ⚠️ `.bk-view__btn`(월/주/일 30×44)·`.bk-today-btn`(38×44)은 **일부러 뺐다** —
+      세그먼트라 좌우가 서로 붙어 있어 넓히면 옆 버튼을 뺏는다. 못 누르는 것보다
+      **엉뚱한 걸 누르는 게 더 나쁘다**(높이는 이미 44 라 세로 조준은 충분).
+   ⚠️ 보이는 크기는 안 건드린다 — phase9-ux.css 주석대로 헤더에서 48px 를 강제하면 정렬이 터진다. */
+.ss-back,
+.bk-header__back,
+.bk-ico,
+.rv-header__back,
+#customerSheet .cv4-hd-add { position: relative; }
+
+.ss-back::after,
+.bk-header__back::after,
+.bk-ico::after,
+.rv-header__back::after,
+#customerSheet .cv4-hd-add::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+
+/* 폭은 충분하고 **높이만** 모자란 텍스트 버튼 — 세로로만 넓힌다.
+   가로까지 넓히면 헤더의 옆 요소를 덮는다(실측: .rv-header__action 82×32, 옆이 제목). */
+.rv-header__action { position: relative; }
+.rv-header__action::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 44px;
+  transform: translateY(-50%);
+}

@@ -922,7 +922,15 @@ const _USER_KEY_PREFIXES = ['itdasy_', 'itdasy:', 'pv_cache::', 'persona_'];
 // [연준님 2026-08-16] assistant_session_id 추가 — prefix 어디에도 안 걸려 계정 전환 후에도
 //   이전 계정의 잇비 세션 id 가 그대로 남았다. 서버가 user_id 로 걸러 유출은 없지만,
 //   그 상태 자체가 틀렸고 실측에서 UI 가 꼬였다(대화가 없는데 초기 추천칩이 숨겨짐).
-const _USER_KEY_EXACT = ['last_login_email', 'user_oauth_provider', 'last_user_id', 'shop_id',
+/* [2026-09-03 P0 계정 격리] `last_user_id` 를 삭제 목록에서 뺀다.
+   이 키는 **계정 전환을 감지하는 유일한 기준**(applyNewSession 의 prevUserId)이자
+   T8 학습·EditPlan·DraftQuality 전부가 쓰는 tenant 경계다. 그런데 이 purge 가
+   requestIdleCallback 으로 늦게 돌아서, applyNewSession 이 방금 쓴 새 값을 **지워버렸다**
+   (실측: 전환 직후 'USER_B' → 2.5초 뒤 null). 그 뒤 다음 로그인은 prevUserId=null 이라
+   전환 조건이 거짓 → purge 를 안 함 → **B 원장의 초안(고객명·사진)이 C 계정 화면에 그대로 떴다.**
+   값 자체는 서버 발급 숫자 id 라 민감정보가 아니고, 로그인마다 applyNewSession 이 덮어쓴다.
+   로그아웃 후 남는 것이 **의도**다 — 남아 있어야 다음 로그인이 '계정이 바뀌었나'를 판정한다. */
+const _USER_KEY_EXACT = ['last_login_email', 'user_oauth_provider', 'shop_id',
   'assistant_session_id'];
 // [2026-05-07 26차] user 변경 시 보존 키는 "디바이스 단위 UI 설정"만.
 // shop_* / onboarding_done 은 user 데이터 → 제거.
@@ -939,6 +947,10 @@ const _USER_KEY_KEEP = new Set([
   'itdasy_consent_v1',
   'itdasy_consent_at',
   'itdasy_consent_region',
+  // [2026-09-03 P0 계정 격리] 갤러리 IDB 소유자 도장(app-gallery-db.js) — itdasy_ 접두어라
+  // 여기 안 올리면 purge 가 도장을 지워 다음 open 의 소유자 검사가 무력화된다.
+  // 도장을 지우는 곳은 clearGalleryDB 성공 콜백 한 곳뿐이어야 한다(삭제 성공 = 도장 소멸).
+  'itdasy_gdb_owner',
 ]);
 
 // [2026-04-26 A10] 사용자 데이터 정리 — localStorage 전수 순회는 큰 객체일 때

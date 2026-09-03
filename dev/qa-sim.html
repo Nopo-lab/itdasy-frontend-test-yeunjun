@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QA — 편집기 실기기 검증 (배포 미포함)</title>
+<!-- [2026-09-03] dev 전용 — index.html·load-groups.js·sw.js 어디에도 등록 안 됨 = 배포 영향 0.
+     목적: 로그인 게이트 없이 사진 편집기(ItdEditor)를 실 iOS/Android 브라우저에서 열어
+     safe-area·홈 인디케이터·터치 타깃을 **실기기 렌더러**로 검증한다.
+     (데스크톱 에뮬레이션은 env(safe-area-inset-*) 가 항상 0 이라 이 검증을 못 한다) -->
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/itd-editor.css">
+<style>
+  body { margin:0; font-family:-apple-system,sans-serif; background:#f6f2ef; padding:20px;
+         padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+  .qa-btn { display:block; width:100%; padding:16px; margin:10px 0; font-size:16px; font-weight:700;
+            border:0; border-radius:14px; background:#1c1316; color:#fff; }
+  #qaInfo { font-size:12px; color:#555; white-space:pre-wrap; word-break:break-all; }
+</style>
+</head>
+<body>
+<h2>편집기 실기기 QA</h2>
+<p id="qaEnv"></p>
+<button class="qa-btn" id="qaOpen">편집기 열기 (텍스트+스티커+도형)</button>
+<button class="qa-btn" id="qaMeasure" style="background:#7a4a56">하단 실측 (safe-area/터치)</button>
+<div id="qaInfo"></div>
+<script src="../js/itd-editor/safe-zone.js"></script>
+<script src="../js/itd-editor/itd-editor.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+  var sab = getComputedStyle(document.documentElement).getPropertyValue('--qa-sab');
+  // env() 실값 측정
+  var probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;bottom:0;height:env(safe-area-inset-bottom,0px);width:1px;visibility:hidden';
+  document.body.appendChild(probe);
+  var envBottom = probe.getBoundingClientRect().height;
+  $('#qaEnv').textContent = 'UA: ' + navigator.userAgent.slice(0, 80) + '\n'
+    + 'viewport: ' + innerWidth + 'x' + innerHeight + ' dpr=' + devicePixelRatio
+    + ' | env(safe-area-inset-bottom)=' + envBottom + 'px';
+  function img(color, label) {
+    var cv = document.createElement('canvas'); cv.width = 800; cv.height = 1000;
+    var x = cv.getContext('2d');
+    x.fillStyle = color; x.fillRect(0, 0, 800, 1000);
+    x.fillStyle = '#fff'; x.font = 'bold 90px sans-serif'; x.textAlign = 'center'; x.fillText(label, 400, 500);
+    return cv.toDataURL('image/jpeg', 0.9);
+  }
+  $('#qaOpen').addEventListener('click', function () {
+    var P = img('#c0392b', 'QA');
+    window.ItdEditor.open({
+      photoUrl: P, photos: [P], ratio: '4:5',
+      layers: [
+        { type: 'text', text: '속눈썹 연장', x: 0.5, y: 0.2, w: 0.7, size: 0.07, color: '#FFD400', align: 'center', font: 'pretendard', weight: 800, shadow: true },
+        { type: 'sticker', emoji: '✨', x: 0.8, y: 0.35, size: 0.1 }
+      ],
+      onDone: function () { $('#qaInfo').textContent = '완료(onDone) 호출됨 — 정상'; },
+      onCancel: function () { $('#qaInfo').textContent = '취소(onCancel) 호출됨 — 정상'; }
+    });
+  });
+  $('#qaMeasure').addEventListener('click', function () {
+    var rows = [];
+    var vh = innerHeight;
+    document.querySelectorAll('.itlyr, .itded__ic, .itded__done, .itrb').forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      if (!r.width) return;
+      rows.push((el.className || '').split(' ')[0] + ' ' + Math.round(r.width) + 'x' + Math.round(r.height)
+        + ' gap-bottom=' + Math.round(vh - r.bottom));
+    });
+    $('#qaInfo').textContent = 'env(sab)=' + envBottom + 'px · vh=' + vh + '\n' + rows.join('\n');
+  });
+})();
+</script>
+</body>
+</html>

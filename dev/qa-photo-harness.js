@@ -272,6 +272,44 @@
     return QA._lsn;
   };
 
+  /* ── [2026-09-04] 앱 전체 화면 스윕 ──────────────────────────
+     사진편집만 보는 하네스였는데, "실수하는 신규 사용자" 관점 감사는 전 화면이 대상이다.
+     화면을 열고 → 하단/터치/오버플로/에러를 재고 → **원래 화면으로 안전하게 돌아온다.**
+     ⚠️ history.back() 을 여러 번 돌리면 앱 이전의 페이지까지 넘어가 세션이 날아간다
+        (실측으로 당했다: ?api=staging 로 되감겨 토큰키가 바뀌어 로그아웃 상태가 됐다).
+        그래서 시트 레지스트리 스택이 빌 때까지만, 최대 횟수를 정해 되감는다. */
+  QA.sheetDepth = function () {
+    try { return (window._sheetBackStack || []).length; } catch (_e) { return 0; }
+  };
+  QA.closeAllSheets = async function (max) {
+    max = max || 6;
+    for (let i = 0; i < max && QA.sheetDepth() > 0; i++) { history.back(); await sleep(360); }
+    await sleep(300);
+    return QA.sheetDepth();
+  };
+  /** 한 화면 감사 — 열기 함수를 받아 열고, 재고, 닫는다. */
+  QA.auditScreen = async function (name, open, waitMs) {
+    QA.clearErrors();
+    const before = QA.sheetDepth();
+    let openError = null;
+    try { await open(); } catch (e) { openError = String(e && e.message); }
+    await sleep(waitMs || 2000);
+    const a = QA.bottomAudit(34);
+    const iconOnly = a.filter((x) => {
+      const [w, h] = x.size.split('x').map(Number);
+      return Math.max(w, h) < 44;   // 폭도 좁은 = 진짜 아이콘 버튼(텍스트 링크는 폭이 넓다)
+    });
+    const res = {
+      name, openError, depth: before + '→' + QA.sheetDepth(),
+      inHome: a.filter((x) => x.inHome).map((x) => (x.label || x.cls) + ' ' + x.size + ' gap' + x.gap),
+      tinyTargets: iconOnly.map((x) => (x.label || x.cls || '(무명)') + ' ' + x.size),
+      hOverflow: document.documentElement.scrollWidth > innerWidth + 2,
+      errors: QA.errors.slice(0, 3), rejections: QA.rejections.slice(0, 2),
+    };
+    await QA.closeAllSheets();
+    return res;
+  };
+
   QA.sleep = sleep;
   QA.flowScreen = function () { const s = window.WorkspaceFlow.getActiveSlot(); return s ? s.screen : null; };
   QA.clearErrors = function () { QA.errors = []; QA.rejections = []; };
