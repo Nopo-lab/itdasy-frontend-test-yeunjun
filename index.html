@@ -2193,45 +2193,61 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
 <!-- [2026-06-10 QA] z-index 9999→11500: 고객 픽커(10001)·잇비(10500) 위에 떠야
      "한도 도달 → 업그레이드 유도" 팝업이 가려지지 않음 (막다른 실패 금지 원칙) -->
 <style>
-  /* pw- = paywall 전용. 시안: 시안_잇데이Pro_결제_390_360.html (v5) */
-  @keyframes pwSheen{0%,60%{left:-80%}100%{left:130%}}
-  @keyframes pwTwinkle{0%,100%{opacity:0;transform:scale(.5)}50%{opacity:1;transform:scale(1)}}
-  @keyframes pwBreathe{0%,100%{box-shadow:0 4px 15px rgba(213,138,149,.30)}50%{box-shadow:0 4px 24px rgba(213,138,149,.55)}}
-  .pw-hero{text-align:center;padding:6px 0 16px;position:relative;}
-  .pw-spark{position:absolute;color:var(--brand);animation:pwTwinkle 2.4s ease-in-out infinite;}
-  .pw-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:linear-gradient(135deg,var(--brand),#BC6675);color:#fff;font-size:12px;font-weight:800;position:relative;overflow:hidden;}
-  .pw-badge::after{content:'';position:absolute;top:0;left:-80%;width:50%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);animation:pwSheen 3s ease-in-out infinite;}
-  .pw-title{font-size:22px;font-weight:800;color:#191F28;line-height:1.35;margin-top:12px;letter-spacing:-0.5px;}
-  .pw-title em{font-style:normal;color:#BC6675;}
+  /* pw- = paywall 전용. 시안: 시안_결제창_WOW_390_360.html (v2 — 팅커뷰·캐시노트 문법, 장식 제거) */
+  .pw-cap{font-size:13px;font-weight:700;color:#BC6675;}
+  .pw-title{font-size:22px;font-weight:800;color:#191F28;line-height:1.4;letter-spacing:-0.5px;margin-top:6px;}
+  .pw-sub{font-size:13px;color:#8B95A1;margin-top:6px;line-height:1.5;}
+  .pw-bene{margin:16px 0 18px;display:flex;flex-direction:column;gap:11px;}
+  .pw-br{display:flex;align-items:flex-start;gap:9px;}
+  .pw-br svg{flex-shrink:0;margin-top:1px;}
+  .pw-br .t{font-size:14px;color:#191F28;font-weight:600;line-height:1.45;letter-spacing:-0.2px;}
+  .pw-br .t small{display:block;font-size:12px;font-weight:400;color:#8B95A1;margin-top:1px;}
+  .pw-br .t .pw-free{color:#2EA44F;font-weight:700;}
   .plan-card{border:1.5px solid #e5e5e5;border-radius:16px;padding:14px 16px;margin-bottom:10px;cursor:pointer;background:#fff;position:relative;display:flex;justify-content:space-between;align-items:center;transition:border-color .15s, background .15s;}
   .plan-card.pw-on{border:2px solid var(--brand);background:#fff5f7;padding:13px 15px;}
   .pw-plan-name{font-size:15px;font-weight:800;color:#191F28;}
   .pw-plan-sub{font-size:12px;color:#888;margin-top:2px;}
   .plan-card.pw-on .pw-plan-sub{color:#BC6675;}
-  .pw-price{font-size:17px;font-weight:900;color:#191F28;white-space:nowrap;}
+  .pw-price{font-size:17px;font-weight:900;color:#191F28;white-space:nowrap;text-align:right;}
   .pw-price small{font-size:11px;font-weight:600;color:#888;}
-  .pw-ribbon{position:absolute;top:-9px;left:14px;background:linear-gradient(135deg,var(--brand),#BC6675);color:#fff;font-size:10px;font-weight:800;padding:3px 10px;border-radius:999px;overflow:hidden;}
-  .pw-ribbon::after{content:'';position:absolute;top:0;left:-80%;width:60%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);animation:pwSheen 2.6s ease-in-out infinite;}
-  .pw-tbl{border:1px solid rgba(0,0,0,0.06);border-radius:14px;overflow:hidden;margin:14px 0 16px;background:#fffbfc;}
+  .pw-price del{display:block;font-size:11px;font-weight:600;color:#b0b8c1;}
+  .pw-ribbon{position:absolute;top:-9px;left:14px;background:#BC6675;color:#fff;font-size:10px;font-weight:800;padding:3px 10px;border-radius:999px;}
+  .pw-tbl{border:1px solid rgba(0,0,0,0.07);border-radius:14px;overflow:hidden;margin:14px 0 16px;background:#fff;}
   .pw-tr{display:flex;align-items:center;padding:9px 14px;font-size:12px;border-top:1px solid rgba(0,0,0,0.05);}
-  .pw-tr:first-child{border-top:none;background:#fdf5f6;font-weight:800;color:#BC6675;font-size:11px;}
+  .pw-tr:first-child{border-top:none;background:#f9fafb;font-weight:800;color:#8B95A1;font-size:11px;}
   .pw-tr>span:first-child{flex:1;color:#4E5968;}
   .pw-tr>span:nth-child(2){width:64px;text-align:center;color:#aaa;}
   .pw-tr>span:last-child{width:74px;text-align:center;font-weight:800;color:#BC6675;}
-  #planActionBtn{width:100%;padding:16px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--brand),#BC6675);color:#fff;font-size:15px;font-weight:800;cursor:pointer;min-height:52px;position:relative;overflow:hidden;animation:pwBreathe 2.8s ease-in-out infinite;}
-  #planActionBtn::after{content:'';position:absolute;top:0;left:-80%;width:50%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);animation:pwSheen 3.2s ease-in-out infinite;}
-  #planActionBtn:disabled{animation:none;}
+  .pw-gp{padding:9px 14px 3px;font-size:11px;font-weight:800;color:#191F28;border-top:1px solid rgba(0,0,0,0.05);}
+  .pw-gp small{font-weight:600;color:#8B95A1;margin-left:4px;}
+  .pw-ok{color:#2EA44F !important;}
+  #planActionBtn{width:100%;padding:16px;border-radius:14px;border:none;background:#BC6675;color:#fff;font-size:15px;font-weight:800;cursor:pointer;min-height:52px;}
+  .pw-cta-sub{text-align:center;font-size:12px;color:#8B95A1;margin-top:8px;}
 </style>
 <div id="planPopup" style="display:none;position:fixed;inset:0;z-index:11500;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;padding:16px;">
   <div style="background:#fff;border-radius:24px;max-width:420px;width:100%;max-height:92vh;overflow-y:auto;padding:24px 20px calc(24px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));box-shadow:0 20px 60px rgba(0,0,0,0.2);position:relative;">
     <button id="planCloseBtn" aria-label="닫기" class="ss-close" style="position:absolute;top:12px;right:12px;color:#999;width:44px;height:44px;z-index:2;"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
 
-    <div class="pw-hero">
-      <svg class="pw-spark" style="top:2px;left:14%;" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg>
-      <svg class="pw-spark" style="top:34px;right:10%;animation-delay:.8s;" width="8" height="8" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg>
-      <svg class="pw-spark" style="top:6px;right:22%;animation-delay:1.6s;" width="7" height="7" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg>
-      <div class="pw-badge"><svg class="ic" width="14" height="14" aria-hidden="true"><use href="#ic-bot"/></svg>잇데이 Pro</div>
-      <div class="pw-title">사진 한 장이<br><em>게시물이 되고, 장부가 돼요</em></div>
+    <div class="pw-cap">잇데이 Pro</div>
+    <div class="pw-title">매일 밤 게시물 고민,<br>이제 잇데이가 대신해요</div>
+    <div class="pw-sub">가입비·수수료 없이 월 9,900원. 언제든 해지할 수 있어요.</div>
+
+    <div class="pw-bene">
+      <div class="pw-br">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#BC6675" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#FBEAF0" stroke="none"/><path d="m8.5 12.2 2.4 2.4 4.6-5"/></svg>
+        <div class="t">사진 한 장이면 내 말투 게시물 완성
+          <small>누끼 · AI 보정 · 캡션 · 해시태그까지 한 번에</small></div>
+      </div>
+      <div class="pw-br">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#BC6675" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#FBEAF0" stroke="none"/><path d="m8.5 12.2 2.4 2.4 4.6-5"/></svg>
+        <div class="t">인스타 DM 답장 초안을 미리 써놔요
+          <small>응대하면 고객 등록 · 예약까지 자동으로 이어져요</small></div>
+      </div>
+      <div class="pw-br">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2EA44F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#EAF6EE" stroke="none"/><path d="m8.5 12.2 2.4 2.4 4.6-5"/></svg>
+        <div class="t">예약·매출·고객 장부는 <span class="pw-free">평생 무료</span>
+          <small>Pro가 아니어도 인원·건수 제한 없이 쓸 수 있어요</small></div>
+      </div>
     </div>
 
     <!-- 월간이 기본 선택 — 무료체험(10일)은 월간에만 붙는다. 연간은 즉시 결제(체험 후 연간 = 기만) -->
@@ -2241,24 +2257,27 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
     </div>
     <div id="planCardYearly" class="plan-card" data-plan="pro_yearly">
       <div class="pw-ribbon">2개월 무료</div>
-      <div><div class="pw-plan-name">연간 결제</div><div class="pw-plan-sub">17% 할인 · 10개월 값으로 12개월</div></div>
-      <div class="pw-price">연 99,000원</div>
+      <div><div class="pw-plan-name">연간 결제</div><div class="pw-plan-sub">10개월 값으로 12개월</div></div>
+      <div class="pw-price"><del>118,800원</del>연 99,000원</div>
     </div>
 
     <div class="pw-tbl">
       <div class="pw-tr"><span></span><span>무료</span><span>Pro</span></div>
-      <div class="pw-tr"><span>AI 캡션·해시태그</span><span>하루 1개</span><span>하루 10개</span></div>
-      <div class="pw-tr"><span>누끼(배경 제거)</span><span>하루 1장</span><span>하루 10장</span></div>
-      <div class="pw-tr"><span>AI 정밀 보정</span><span>✕</span><span>하루 10장</span></div>
+      <div class="pw-gp">작업실<small>게시물 만들기</small></div>
+      <div class="pw-tr"><span>AI 캡션 · 해시태그</span><span>하루 1개</span><span>하루 10개</span></div>
+      <div class="pw-tr"><span>누끼 (배경 제거)</span><span>하루 1장</span><span>하루 10장</span></div>
+      <div class="pw-tr"><span>AI 정밀 보정</span><span>–</span><span>하루 10장</span></div>
+      <div class="pw-tr"><span>내 말투 학습</span><span>1회</span><span>월 4회</span></div>
+      <div class="pw-gp">잇비 · 인스타 DM</div>
       <div class="pw-tr"><span>잇비 AI 비서</span><span>월 10회</span><span>월 150회</span></div>
       <div class="pw-tr"><span>DM 답장 초안</span><span>월 20개</span><span>월 300개</span></div>
-      <div class="pw-tr"><span>내 말투 학습</span><span>✕</span><span>월 4회</span></div>
-      <div class="pw-tr"><span>고객 등록</span><span>✓</span><span>✓</span></div>
-      <div class="pw-tr"><span>예약·매출 기록</span><span>월 30건</span><span>제한 없음</span></div>
-      <div class="pw-tr"><span>월간 리포트</span><span>✕</span><span>✓</span></div>
+      <div class="pw-gp">내샵 관리<small>전부 무료</small></div>
+      <div class="pw-tr"><span>예약 · 매출 · 고객 장부</span><span class="pw-ok">무제한</span><span class="pw-ok">무제한</span></div>
+      <div class="pw-tr"><span>월간 리포트</span><span>–</span><span>포함</span></div>
     </div>
 
     <button id="planActionBtn">10일 무료로 시작하기</button>
+    <div class="pw-cta-sub">체험 기간엔 요금이 청구되지 않아요</div>
     <div id="planSubMeta" style="display:none;text-align:center;margin-top:10px;font-size:12px;color:#666;"></div>
     <button id="planCancelBtn" style="display:none;width:100%;margin-top:10px;padding:12px;border-radius:12px;border:1px solid #e5e5e5;background:#fff;color:#999;font-size:13px;font-weight:700;cursor:pointer;min-height:44px;">구독 취소</button>
     <!-- [C-1] 앱스토어 IAP 구매 복원 — 네이티브+플러그인 있을 때만 app-plan.js 가 노출 (Apple 3.1.1 필수) -->
