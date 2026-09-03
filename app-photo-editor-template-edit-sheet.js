@@ -461,9 +461,14 @@
       const f = e.target.files && e.target.files[0];
       if (!f) return;
       const img = new Image();
-      img.onload = () => _setBefore(img);
-      img.onerror = () => _toast('사진을 불러오지 못했어요');
-      img.src = URL.createObjectURL(f);
+      // [2026-09-03] objectURL 회수 누락 — 사진을 고를 때마다 blob 이 쌓였다(같은 파일 슬롯을 여러 번 바꾸면 계속 누적).
+      //   같은 파일을 다시 고를 수 있게 input.value 도 비운다(change 가 안 터져 '눌러도 반응 없음'이 되던 것).
+      const _u = URL.createObjectURL(f);
+      const _free = () => { try { URL.revokeObjectURL(_u); } catch (_e) { /* 이미 회수됨 */ } };
+      img.onload = () => { _free(); _setBefore(img); };
+      img.onerror = () => { _free(); _toast('사진을 불러오지 못했어요'); };
+      img.src = _u;
+      e.target.value = '';
     });
   }
 

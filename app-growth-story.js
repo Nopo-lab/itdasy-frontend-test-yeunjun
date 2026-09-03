@@ -180,6 +180,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href = url;
         a.download = file.name; a.click();
+        setTimeout(() => { try { a.remove(); URL.revokeObjectURL(url); } catch (_e) { void _e; } }, 1000);   // [2026-09-03] 회수 누락 — 저장할 때마다 blob 이 남았다
         if (window.showToast) window.showToast('이미지 저장됨');
       }, 'image/png', 0.95);
     });

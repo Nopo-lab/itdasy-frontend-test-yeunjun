@@ -74,7 +74,11 @@
   box-shadow: var(--shadow-sm); background: var(--frame) center/cover; cursor: pointer; overflow: hidden; }
 .wsv2flow .photo-tile.selected { border-color: var(--brand-strong); box-shadow: var(--shadow-md); }
 /* 삭제 버튼 — 선택 체크처럼 안 보이게 어두운 휴지통 */
-.wsv2flow .thumb-del { position: absolute; right: 7px; top: 7px; width: 26px; height: 26px; border: 0; border-radius: var(--r-md); background: rgba(20,16,16,.6); color: #fff; display: grid; place-items: center; cursor: pointer; box-shadow: var(--shadow-sm); }
+/* [2026-09-03] 26px 는 손가락으로 못 맞춘다(HIG 최소 44). 아이콘은 그대로 두고 히트영역만
+   ::after 로 넓힌다 — **타일 안쪽(아래·왼쪽)으로만**. 위·오른쪽으로 대칭 확장하면 타일 밖으로
+   삐져나가 옆 타일 선택을 뺏는다. 삭제는 되돌리기(_lyUndo)가 붙어 있어 오탭도 복구 가능. */
+.wsv2flow .thumb-del { position: absolute; right: 6px; top: 6px; width: 30px; height: 30px; border: 0; border-radius: var(--r-md); background: rgba(20,16,16,.62); color: #fff; display: grid; place-items: center; cursor: pointer; box-shadow: var(--shadow-sm); }
+.wsv2flow .thumb-del::after { content: ""; position: absolute; inset: -6px -6px -14px -14px; }
 .wsv2flow .thumb-del i { font-size: 14px; }
 .wsv2flow .thumb-del:active { background: var(--danger); }
 .wsv2flow .thumb-tag { position: absolute; left: 7px; bottom: 7px; height: 22px; padding: 0 9px; border-radius: var(--r-pill); background: rgba(31,26,26,.66); color: #fff; font-size: 9.5px; font-weight: 800; display: inline-flex; align-items: center; }
@@ -106,7 +110,7 @@
 /* [#18] 게시 크기 세그먼트 — 세로 4:5(기본)/정사각 1:1. on=브랜드 톤(cust-card.selected 관례) */
 .wsv2flow .up-fmt { display: flex; align-items: center; gap: 6px; margin: 2px 0 8px; }
 .wsv2flow .up-fmt__label { flex: 0 0 auto; font-size: 11.5px; font-weight: 800; color: var(--text-muted); margin-right: 2px; }
-.wsv2flow .up-fmt__b { flex: 1 1 0; height: 34px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-muted); font: inherit; font-size: 12px; font-weight: 800; letter-spacing: -.01em; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+.wsv2flow .up-fmt__b { flex: 1 1 0; height: 40px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-muted); font: inherit; font-size: 12px; font-weight: 800; letter-spacing: -.01em; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
 .wsv2flow .up-fmt__b small { font-size: 10.5px; font-weight: 700; color: var(--text-subtle); margin-left: 2px; }
 .wsv2flow .up-fmt__b.on { background: var(--accent-soft); border-color: var(--brand); color: var(--brand-strong); }
 .wsv2flow .up-fmt__b.on small { color: var(--brand-strong); }

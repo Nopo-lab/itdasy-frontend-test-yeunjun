@@ -140,10 +140,22 @@
     if (!el || !el.classList.contains('is-open')) return false;
     // [v587·#5] 편집기(seOverlay)가 열렸거나 방금 popstate 로 닫힌 back 이면 flow 가 같은 back 을 중복 처리하지 않는다.
     //   (전역 시트 시스템이 편집기를 먼저 닫음 → 작업실 단계는 그대로 유지, 앱 종료 방지.)
-    if (window.__seOpen || window.__seSwallowPop) return false;
+    if (window.__seOpen) return false;
+    // [2026-09-03] 편집기가 남긴 표식은 **하나 소비하고** 넘어간다(불리언이면 타이밍에 따라 놓치거나 계속 삼킨다).
+    if (+window.__seSwallowPop > 0) { window.__seSwallowPop = Math.max(0, (+window.__seSwallowPop) - 1); return false; }
     // [refactor S3] 스텝별 뒤로가기 특수처리(캡션 결과 되돌리기 등)는 STEP_FX[cur].onBack 에 위임 — 처리했으면 true.
     var fx = STEP_FX[cur];
     if (fx && fx.onBack && fx.onBack() === true) return true;
+    /* [2026-09-03 P1] 편집(슬라이더) 화면을 **뒤로가기로** 떠나면 보정이 조용히 사라졌다.
+       bake(픽셀로 굽기)는 STEP_FX.edit.onExit 에 있는데 onExit 은 onCta(하단 버튼)에서만 돈다 —
+       _navBack 은 안 태운다. 그래서 밝기/대비/피부 보정을 만지고 뒤로 누르면 d.adjust 에만 남고
+       photo.editedDataUrl 에는 안 실린다 → 저장·발행은 보정 없는 원본이 나간다(에러도 토스트도 없음).
+       onExit 전체를 태우면 _exitCaption 이 false 를 반환해 뒤로가기 자체가 막히므로 edit 만 굽는다.
+       비동기지만 photo 객체를 직접 갱신하므로 이후 렌더/저장이 결과를 집는다. 중복 실행만 막는다. */
+    if (cur === 'edit' && !d._backBaking) {
+      d._backBaking = true;
+      Promise.resolve(bakeEdit()).catch(function () {}).then(function () { d._backBaking = false; });
+    }
     if (navStack.length) {
       if (_histDepth > 0) _histDepth--;
       // [버그수정] 캡션 화면 이탈 시에도 재생성 응답 무효화
@@ -274,9 +286,31 @@
   }
   // [#18] 게시 크기(피드 규격) 선택 — 4:5(세로로 크게, 기본) / 1:1(정사각). 마지막 선택 기억.
   //   선택값이 편집기 캔버스→템플릿 출력→콜라주→IG 미리보기까지 관통. 스토리/릴스 9:16은 템플릿이 별도 처리.
-  function _wsFormat() { try { return localStorage.getItem('itdasy:ws_format') === '11' ? '11' : '45'; } catch (_e) { return '45'; } }
+  /* [2026-09-03] 게시 크기(4:5 / 1:1)는 **게시물별**이다. 예전엔 localStorage 한 칸뿐이라
+     A 를 1:1 로 만들고 B 를 4:5 로 바꾸면 A 를 다시 열 때도 4:5 가 됐다 —
+     '마지막에 쓴 설정을 모든 게시물에 적용'(피해야 할 대표 패턴). editState 엔 ratio 가
+     이미 저장돼 있었는데 아무도 안 읽었다.
+     정책: 기존 게시물 = 그 게시물의 스냅샷 우선 · 새 게시물 = 전역 기본값(마지막에 고른 값). */
+  function _slotFormat(slot) {
+    try {
+      if (!slot) return null;                                   // 새 게시물 → 전역 기본값 사용
+      var wc = slot.workspaceContext || {};
+      var p0 = slot.photos && slot.photos[0];
+      var r = (p0 && p0.editState && p0.editState.ratio) || wc.defaultRatio || null;
+      if (!r) return null;
+      return String(r) === '1:1' ? '11' : '45';
+    } catch (_e) { return null; }
+  }
+  function _wsFormat() {
+    try { if (d && d._wsFmt) return d._wsFmt === '11' ? '11' : '45'; } catch (_e) { void _e; }
+    try { return localStorage.getItem('itdasy:ws_format') === '11' ? '11' : '45'; } catch (_e) { return '45'; }
+  }
   function _wsRatio() { return _wsFormat() === '11' ? '1:1' : '4:5'; }
-  function _setWsFormat(v) { try { localStorage.setItem('itdasy:ws_format', v === '11' ? '11' : '45'); } catch (_e) { void _e; } }
+  function _setWsFormat(v) {
+    var f = (v === '11') ? '11' : '45';
+    try { if (d) d._wsFmt = f; } catch (_e) { void _e; }                       // 이 게시물에 적용
+    try { localStorage.setItem('itdasy:ws_format', f); } catch (_e) { void _e; }  // 다음 '새' 게시물의 기본값
+  }
   // [#18] 업로드 화면 하단 규격 세그먼트 — 사진 1장 이상 선택 시에만 노출.
   function _formatSegHtml(n) {
     if (!n) return '';
@@ -937,6 +971,7 @@
       '<div class="upload-grid">' + tiles +
         '<div class="grid-add" data-fl-pick><i class="ph-bold ph-plus"></i><span>추가</span></div>' +
       '</div>' +
+      ((d._lyUndo && d._lyUndo.photo) ? '<div class="wsc-undo"><span>사진 1장을 뺐어요</span><button type="button" data-fl-upundo data-haptic="light">되돌리기</button></div>' : '') +
       '<div class="up-foot" data-up-foot>' + _formatSegHtml(selCount) + _upSummaryHtml(selCount, multi, cnt) + _pairPreviewHtml(cnt) + '</div>';
   }
   // [v531 렉] 역할/선택 변경 시 전체 재렌더(이미지 6장 base64 재파싱) 대신 in-place 갱신.
@@ -2503,7 +2538,8 @@
   // [T-104 P2] 레이아웃 화면 클러스터(renderLayout·_ws*·_fillLayoutText) → flow/layout.js (context 주입)
   var _WSL = (window.WSFlowLayout && window.WSFlowLayout.create) ? window.WSFlowLayout.create({
     d: function () { return d; }, cur: function () { return cur; }, el: function () { return el; },
-    setScreen: setScreen, editablePhotos: editablePhotos, photoUrl: photoUrl, cleanBase: _cleanBase
+    setScreen: setScreen, editablePhotos: editablePhotos, photoUrl: photoUrl, cleanBase: _cleanBase,
+    reassignRoles: function () { return reassignRoles(); }   // [2026-09-03] 레이아웃 화면 사진 빼기/되돌리기 후 전·후 재배치
   }) : {};
   // [S4] dellayout·layoutpick·trayph·savelayout·skiplayout 는 layout.handleClick 로 이관 → 여기선 render/mount/편집상태/텍스트주입만 별칭.
   var renderLayout = _WSL.renderLayout, _wsMountStage = _WSL._wsMountStage,
@@ -3023,7 +3059,23 @@
       if (a === 'igconnect') { window.WorkspaceAdapter && window.WorkspaceAdapter.connectInstagram(); return; }
 
       if (t.closest('[data-fl-pick]')) { el.querySelector('[data-fl-file]').click(); return; }
-      var del = t.closest('[data-fl-del]'); if (del) { e.stopPropagation(); d.photos.splice(+del.getAttribute('data-fl-del'), 1); reassignRoles(); setScreen('upload'); return; }
+      /* [2026-09-03] 사진 삭제는 **되돌릴 수 있어야** 한다. 26px 짜리 휴지통이 선택 토글 타일 바로 위에 있어
+         오탭이 잦은데(실측), 예전엔 splice 한 번으로 원본이 영영 사라졌다(파일 선택 다시 하는 수밖에). */
+      var del = t.closest('[data-fl-del]'); if (del) {
+        e.stopPropagation();
+        var _di = +del.getAttribute('data-fl-del');
+        if (d.photos[_di]) d._lyUndo = { photo: d.photos[_di], at: _di };
+        d.photos.splice(_di, 1); reassignRoles();
+        // 사진이 바뀌면 이미 구운 합성 결과물은 그 사진을 담고 있으니 무효화(지운 사진이 그대로 발행되는 것 방지).
+        d.templateOutput = null; d.templateOutputs = []; d.templateOutputId = null; d.activeDisplayId = null; d.previewUrl = null;
+        setScreen('upload'); return;
+      }
+      if (t.closest('[data-fl-upundo]')) {
+        e.stopPropagation();
+        var _u = d._lyUndo;
+        if (_u && _u.photo) { d.photos.splice(Math.min(_u.at, d.photos.length), 0, _u.photo); d._lyUndo = null; reassignRoles(); setScreen('upload'); }
+        return;
+      }
       var roleBtn = t.closest('[data-fl-setrole]'); if (roleBtn) { e.stopPropagation(); var _pr = roleBtn.getAttribute('data-fl-setrole').split(':'); _setRole(+_pr[0], _pr[1]); if (cur === 'template') _rerenderTemplate(); else if (d.rolesOpen) _setEditSection('[data-ed-adv]', _advFoldHtml()); return; }
       // [#18] 게시 크기 세그먼트 — 저장 후 세그 on 상태만 토글(전체 재렌더 없이).
       var fmtBtn = t.closest('[data-fl-format]'); if (fmtBtn) {
@@ -4185,12 +4237,31 @@
 	    // [#6] 업로드 픽커가 느린 원인 = 폰 사진(3~8MB) 원본을 그대로 base64 로 읽어 담던 것.
 	    //   2MB 초과분은 먼저 1920px JPEG 로 축소(_resizeIfNeeded) 후 읽어 import·썸네일·편집기 로딩을 크게 단축.
 	    var _resize = (typeof window._resizeIfNeeded === 'function') ? window._resizeIfNeeded : function (f) { return Promise.resolve(f); };
-	    return Promise.all(files.map(function (f) { return Promise.resolve(_resize(f, 1920)).catch(function () { return f; }).then(fileToDataUrl); })).then(function (rawUrls) {
+	    return Promise.all(files.map(function (f) { return Promise.resolve(_resize(f, 1920)).catch(function () { return f; }).then(fileToDataUrl); }))
+	      .then(function (rawUrls) {
+	        /* [2026-09-03 P2] **읽힘 ≠ 그려짐.** FileReader 는 내용이 뭐든 base64 로 바꿔주므로
+	           디코드 불가 파일도 dataURL 이 나온다 — 아래 `!!u` 필터를 그냥 통과했다.
+	           실측: 변환 실패한 HEIC(`ERR_LIBHEIF format not supported`)이 `data:image/heic;base64,…` 로
+	           들어와 **"2장 추가됨"** 토스트까지 떴고, 레이아웃·편집기·발행본엔 빈 칸이 됐다(경고 0).
+	           아이폰 기본 촬영 포맷이 HEIC 이라 원장이 실제로 겪는다. 여기서 한 번 그려보고 거른다. */
+	        return Promise.all(rawUrls.map(function (u) {
+	          if (!u) return null;
+	          return new Promise(function (res) {
+	            var im = new Image();
+	            var t = setTimeout(function () { res(null); }, 8000);   // 디코드가 영영 안 끝나도 진행(무한 행 방지)
+	            im.onload = function () { clearTimeout(t); res(im.naturalWidth > 0 && im.naturalHeight > 0 ? u : null); };
+	            im.onerror = function () { clearTimeout(t); res(null); };
+	            im.src = u;
+	          });
+	        }));
+	      })
+	      .then(function (rawUrls) {
 	      // [보안감사 H-3] 읽기 실패(null)한 파일은 걸러낸다. 예전엔 한 장 실패가 Promise.all 전체를 reject 시켜
 	      //   같이 고른 정상 사진까지 조용히 버려지고 무피드백이었다. 이제 성공분만 넣고 실패 건수만 안내.
 	      var urls = rawUrls.filter(function (u) { return !!u; });
 	      var _failed = rawUrls.length - urls.length;
-	      if (_failed > 0) { try { toast(_failed + '장은 열 수 없어 건너뛰었어요'); } catch (_e) { void _e; } }
+	      // [2026-09-03] 왜 실패했는지·무엇을 하면 되는지까지 말한다("오류가 발생했습니다" 금지).
+	      if (_failed > 0) { try { toast(_failed + '장은 잇데이가 읽을 수 없어 뺐어요 — 아이폰 설정 > 카메라 > 포맷을 \'높은 호환성\'으로 바꾸면 돼요'); } catch (_e) { void _e; } }
 	      if (!urls.length) { setScreen('upload'); return urls; }
 	      urls.forEach(function (u) { d.photos.push({ id: uid(), dataUrl: u, role: 'hero', selected: true, selSeq: ++d._selSeq }); });
 	      // [QA hotfix] 다중 업로드 시 전후/홍보컷 자동 확정 금지 — 사용자가 '전/후 토글' 또는
@@ -4208,6 +4279,14 @@
       if (cur === 'upload') d.textOnly = false;
       if (!d.textOnly && editablePhotos().length) {
         setScreen('layout', { push: false });   // 사진 로드 후 '레이아웃 고르기'로
+      /* [2026-09-03 P0] 뒤로가기 목적지를 만든다.
+         예전엔 navStack 이 빈 채로 레이아웃에 도착해 **뒤로가기 한 번에 작업실이 닫히고
+         방금 올린 사진이 전부 사라졌다**(확인창 없음, 실측 iPhone 375×812). 사진을 잘못 골랐을 때
+         복구할 방법이 그것뿐이었으니 '잘못 고르면 처음부터'가 된다.
+         VISIBLE_SCREENS 시드(_seedNavStack)를 쓰면 back → 사진 고르기(upload) → back → 닫힘 이 되고,
+         히스토리 엔트리 수도 시트 레지스트리(#wsv2flow)와 어긋나지 않는다(직접 _pushHist 하면 어긋나서
+         '눌러도 아무 일 없는 뒤로가기'가 한 번 생긴다 — 실측으로 확인하고 되돌렸다). */
+      if (!navStack.length) _seedNavStack('layout');
         /* [2026-07-22 보스] 잇비 채팅에서 이미 레이아웃을 골라 왔으면 그 구성을 적용하고
            **레이아웃 화면을 그냥 지나쳐** 게시글(캡션)로 간다 — 채팅에서 딸깍 = 바로 다음 단계.
            setScreen('caption') 로 건너뛰지 않고 onCta() 를 쓰는 이유: layout 의 onExit(_exitLayout)이
@@ -4265,6 +4344,9 @@
   }
   // 실제 전환 — 특수 대상(__save=저장 완료, __edit=통합 편집기) 처리 후 setScreen.
   function _ctaGo(to) {
+    // 다음 단계로 넘어가면 '방금 뺀 사진 되돌리기' 는 끝난 얘기다 — 안 지우면 나중에 돌아왔을 때
+    // 며칠 전 뺀 사진이 되살아날 수 있는 버튼이 남는다(뭘 되돌리는지도 알 수 없다).
+    if (d) d._lyUndo = null;
     if (to === '__save') return save();
     if (to === '__edit') return _openEditFirst();   // [통합 편집기] 업로드 다음 = ItdEditor
     // [2026-07-22 오케스트레이션] 레이아웃 다음(→캡션) 직전에 잇비 브리핑 편집기(텍스트·스티커 주입)를 먼저 연다.
@@ -4705,6 +4787,7 @@
 	      editTab: 'skin', control: null, basicTool: 'brightness', precTool: null, editIdx: null, bgOpen: false, advOpen: true, tplOpen: true, adjust: newAdjust(), beauty: newBeauty(), undo: [], redo: [], originalPreview: false, previewUrl: null, bgAction: null, bgColor: null, bgBusy: false, bgFail: false,
       maskPaint: false, maskBrush: 26, maskErase: false, _paintCv: {},   // [v561] 직접 칠하기(수동 마스크)
 	      captionAxes: null, captionTemplate: '',
+      _wsFmt: _slotFormat(slot),   // [2026-09-03] 기존 게시물이면 그 게시물의 크기, 새 게시물이면 null(=전역 기본)
 	    };
 	    if (d.photos.length && !hadRoles) reassignRoles();
     el.classList.add('is-open');
@@ -4800,6 +4883,14 @@
     if (cur === 'upload') {
       if (!d.textOnly && editablePhotos().length) {
         setScreen('layout', { push: false });
+      /* [2026-09-03 P0] 뒤로가기 목적지를 만든다.
+         예전엔 navStack 이 빈 채로 레이아웃에 도착해 **뒤로가기 한 번에 작업실이 닫히고
+         방금 올린 사진이 전부 사라졌다**(확인창 없음, 실측 iPhone 375×812). 사진을 잘못 골랐을 때
+         복구할 방법이 그것뿐이었으니 '잘못 고르면 처음부터'가 된다.
+         VISIBLE_SCREENS 시드(_seedNavStack)를 쓰면 back → 사진 고르기(upload) → back → 닫힘 이 되고,
+         히스토리 엔트리 수도 시트 레지스트리(#wsv2flow)와 어긋나지 않는다(직접 _pushHist 하면 어긋나서
+         '눌러도 아무 일 없는 뒤로가기'가 한 번 생긴다 — 실측으로 확인하고 되돌렸다). */
+      if (!navStack.length) _seedNavStack('layout');
         // [2026-07-22 보스] 잇비 채팅에서 이미 레이아웃을 골라 왔으면 레이아웃 화면을 지나쳐 게시글로.
         //   ⚠️ 파일 업로드 경로(addPhotoFiles)와 채팅/딥링크 경로(여기)가 **따로**다 —
         //      한쪽만 고치면 채팅에서 고른 게 안 먹는다(실제로 처음에 그 실수를 했다).

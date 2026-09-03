@@ -3,7 +3,7 @@
    재생성: index.html 의 해당 script 태그 순서에서 추출. */
 window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   photo: [
-  'app-gallery-utils.js',
+  'app-gallery-utils.js?v=20260903-mobqa19',
   'app-gallery-db.js?v=local-260831v5',
   'app-gallery-workshop.js?v=local-260831v5',
   'js/workspace/workspace-state.js?v=local-260831v5',
@@ -55,7 +55,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   // [2026-07-23] 아이콘 스티커 세트 — itd-editor.js 보다 **먼저** 실려야 STK_TABS 가 탭을 만든다.
   'js/itd-editor/data/itd-icon-stickers.js?v=local-260831v5',
   'js/itd-editor/safe-zone.js?v=local-260831v5',
-  'js/itd-editor/itd-editor.js?v=local-exp1',
+  'js/itd-editor/itd-editor.js?v=20260903-mobqa19',
   'js/workspace/workspace-adapter.js?v=local-260831v5',
   'js/workspace/workspace-sync.js?v=local-260831v5',
   'js/workspace/workspace-crop.js?v=local-260831v5',
@@ -69,13 +69,13 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/workspace/layout/slot-stage.js?v=local-260831v5',
   'js/workspace/flow/util.js?v=local-260831v5',
   'js/workspace/flow/thumbs.js?v=local-260831v5',
-  'js/workspace/flow/layout.js?v=local-260831v5',
+  'js/workspace/flow/layout.js?v=20260903-mobqa19',
   'js/workspace/flow/connect.js?v=local-260831v5',
   'js/workspace/flow/publish-progress.js?v=local-260831v5',
   'js/workspace/flow/ba-autorole.js?v=local-260831v5',
   'js/workspace/flow/steps.js?v=local-260831v5',
   'app-feed-planner.js?v=local-260831v5',
-  'js/workspace/workspace-v2-flow.js?v=local-c3',
+  'js/workspace/workspace-v2-flow.js?v=20260903-mobqa19',
   'js/workspace/workspace-tpl-edit.js?v=local-260831v5',
   'app-gallery-assign.js?v=local-260831v5',
   'app-gallery-slot-editor.js?v=local-260831v5',
@@ -115,7 +115,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/photo-editor/template-renderer-beauty-pack-draws.js?v=local-260831v5',
   'js/photo-editor/template-renderer-wm-pack-draws.js?v=local-260831v5',
   'app-photo-editor-template-library.js?v=local-260831v5',
-  'app-photo-editor-template-edit-sheet.js?v=local-260831v5'
+  'app-photo-editor-template-edit-sheet.js?v=20260903-mobqa19'
   ],
   assistant: [
   'js/assistant/photo-brief-parser.js?v=local-260831v5',
@@ -196,7 +196,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'app-receipt-scan.js?v=local-260831v5',
   'app-import-wizard.js',
   'app-waitlist.js?v=local-260831v5',
-  'app-growth-story.js',
+  'app-growth-story.js?v=20260903-mobqa19',
   'app-data-export.js?v=local-260831v5',
   // [P0-2 Phase3] 게이트된 주변 기능 화면 — open* 진입점·부팅 리스너 0·공용유틸 재정의 0·자립.
   //   loader.js 스텁이 openReport/openReviewRequests/openReminderSettings/openRetentionAI/openVoiceCaption 브리지.

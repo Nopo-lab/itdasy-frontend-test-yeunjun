@@ -59,7 +59,7 @@
 /* 상단바 */
 .itded__top{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;
   padding:calc(14px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 16px 0;z-index:9}
-.itded__ic{width:38px;height:38px;border-radius:50%;background:rgba(30,18,22,.42);backdrop-filter:blur(8px);
+.itded__ic{position:relative;width:38px;height:38px;border-radius:50%;background:rgba(30,18,22,.42);backdrop-filter:blur(8px);
   color:#fff;display:grid;place-items:center;border:0;cursor:pointer}
 .itded__ic svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 /* [P1-3] 되돌리기/다시 — 상단 가운데 그룹 */
@@ -67,7 +67,14 @@
 .itded__hist .itded__ic{width:36px;height:36px}
 .itded__hist .itded__ic svg{width:19px;height:19px}
 .itded__ic:disabled{opacity:.34;cursor:default}
-.itded__done{height:38px;padding:0 18px;border-radius:999px;background:#fff;color:#1c1316;font-size:14px;font-weight:800;
+/* [2026-09-03 모바일 터치 타깃] 아이콘은 그대로 두고 **히트 영역만** 44px 로 넓힌다(iOS HIG 최소).
+   실측(375×812): 닫기 38×38 · 되돌리기/다시실행/전체보기 36×36 · 완료 60×38 — 전부 44 미만이라
+   한 손 조작에서 빗나간다. 확장폭은 서로 이웃한 버튼 간격(.itded__hist gap:8px) 안쪽으로만 잡아
+   옆 버튼을 뺏지 않는다(36+4+4=44 = 정확히 pitch). */
+.itded__ic::after{content:"";position:absolute;inset:-3px}
+.itded__hist .itded__ic::after{inset:-4px}
+.itded__done::after{content:"";position:absolute;inset:-3px 0}
+.itded__done{position:relative;height:38px;padding:0 18px;border-radius:999px;background:#fff;color:#1c1316;font-size:14px;font-weight:800;
   border:0;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.22)}
 
 /* 우측 레일 */
@@ -111,7 +118,10 @@
 .itcolors{display:flex;gap:13px;overflow-x:auto;padding:2px 0;scrollbar-width:none}
 .itcolors::-webkit-scrollbar{display:none}
 /* [팔레트 통일 2026-07-27] 모든 색 스와치 공통 — 텍스트(.itsw)·도형(.itscw)·그리기(.itdsw)·배경(.itlaybg) 28px 단일 스타일 */
-.itsw,.itscw,.itdsw,.itlaybg{width:28px;height:28px;border-radius:50%;flex:none;border:1.5px solid rgba(255,255,255,.5);cursor:pointer;padding:0}
+.itsw,.itscw,.itdsw,.itlaybg{position:relative;width:28px;height:28px;border-radius:50%;flex:none;border:1.5px solid rgba(255,255,255,.5);cursor:pointer;padding:0}
+/* [2026-09-03] 색 스와치 28px 는 손가락으로 못 맞춘다. 원 크기는 디자인이라 그대로 두고 히트 영역만 넓힌다.
+   가로 확장은 스와치 간격(gap:13px)의 절반까지만 — 더 넓히면 옆 색이 눌린다(색을 잘못 고르는 게 더 나쁘다). */
+.itsw::after,.itscw::after,.itdsw::after,.itlaybg::after{content:"";position:absolute;inset:-6px}
 .itsw.on,.itscw.on,.itdsw.on,.itlaybg.on{box-shadow:0 0 0 2px #1c1316,0 0 0 4px #fff}
 /* [스포이드] 파이펫 스와치 — 탭하면 사진에서 색 추출 모드 */
 .itsw--pip{display:inline-grid;place-items:center;background:rgba(255,255,255,.12)}
@@ -343,10 +353,18 @@
 
 /* [2026-08-23] 레이어 순서 줄 — 레일 아래. 선택이 없으면 버튼이 **꺼진다**(사라지지 않는다:
    자리가 들썩이면 레일 위치가 흔들려 오탭이 난다). */
-.itded__lyr { display:flex; gap:6px; justify-content:center; padding:6px 10px 2px; }
+/* [2026-09-03 모바일 실측] 이 줄은 편집기(.itded, position:fixed inset:0)의 **마지막 플렉스 자식**이라
+   화면 맨 아래에 붙는다. padding-bottom 이 2px 뿐이라 iPhone 홈 인디케이터(≈34px) 안에 통째로 들어갔다
+   — 실측(375×812): 버튼 4개가 뷰포트 바닥에서 2px, 크기 38×34. 누르면 iOS 홈 제스처가 먼저 먹는다.
+   safe-area 를 더하고 터치 타깃을 44px(HIG 최소)로 올린다. 아이콘 크기는 그대로 두고 높이만 키운다. */
+.itded__lyr { display:flex; gap:6px; justify-content:center;
+  padding:6px 10px calc(8px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
+/* [2026-09-03] 도구 패널이 열리면 이 줄은 패널에 완전히 덮인다 — 보이는 채로 두면
+   눌러도 패널의 다른 버튼이 먹는다(실측). 패널 닫으면 그대로 돌아온다. */
+.itded.itded--panel .itded__lyr { display:none; }
 .itlyr {
-  width:38px; height:34px; display:grid; place-items:center;
-  border:1px solid rgba(255,255,255,.16); border-radius:10px;
+  width:44px; height:44px; display:grid; place-items:center;
+  border:1px solid rgba(255,255,255,.16); border-radius:12px;
   background:rgba(255,255,255,.06); color:#fff; cursor:pointer;
 }
 .itlyr:disabled { opacity:.3; cursor:default; }

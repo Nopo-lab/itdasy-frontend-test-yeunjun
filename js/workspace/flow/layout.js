@@ -17,6 +17,7 @@
     // [P0-1] 표시용 dataURL → blob URL (리렌더 재파싱 제거). 비-dataURL 은 그대로 통과.
     function disp(u) { return (window.WSBlobUrl && window.WSBlobUrl.disp) ? window.WSBlobUrl.disp(u) : u; }
     var setScreen = ctx.setScreen, editablePhotos = ctx.editablePhotos, photoUrl = ctx.photoUrl, _cleanBase = ctx.cleanBase;
+    var reassignRoles = ctx.reassignRoles || function () {};
     function D() { return ctx.d(); }       // 현재 상태 객체(open 마다 새로 할당되므로 접근자)
     function CUR() { return ctx.cur(); }   // 현재 화면 이름
     function EL() { return ctx.el(); }     // 플로우 루트 엘리먼트
@@ -213,6 +214,36 @@
       return '<span class="wsc-mini wsc-mini--2v" aria-hidden="true"><i></i><i></i></span>';   // ba · merge-lr
     }
 
+    /* [2026-09-03 사진 복구 P0] 레이아웃 화면에서 사진을 **뺄 수도 바꿀 수도** 없었다.
+       실측(iPhone 375×812): 파일을 고르면 업로드 화면을 건너뛰고 바로 여기로 오는데
+       상단 썸네일은 data-* 가 하나도 없는 장식이었고, 유일한 탈출구인 뒤로가기는
+       navStack 이 비어 있어 **작업실을 통째로 닫아 사진 전부를 버렸다**(확인창도 없음).
+       → 썸네일에 빼기(×) · 끝에 추가 타일 · '다시 고르기'(업로드 화면=선택/순서/역할)를 둔다.
+       실수로 뺐을 때를 위해 방금 뺀 1장은 되돌릴 수 있게 d._lyUndo 에 담아둔다. */
+    function _stripHtml(eps) {
+      var d = D();
+      var cells = eps.map(function (p, i) {
+        return '<span class="wsc-sph" style="background-image:url(' + esc(disp(photoUrl(p))) + ')" role="img" aria-label="' + (i + 1) + '번째 사진"><i>' + (i + 1) + '</i>' +
+          '<button type="button" class="wsc-sph__x" data-fl-lyrm="' + esc(String(p.id)) + '" data-haptic="light" aria-label="' + (i + 1) + '번째 사진 빼기">' +
+            '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>' +
+          '</button></span>';
+      }).join('');
+      // 10장 상한(addFiles 와 동일) — 꽉 찼으면 추가 타일을 숨겨 눌러도 안 되는 버튼을 안 만든다.
+      var add = eps.length >= 10 ? '' :
+        '<button type="button" class="wsc-sph wsc-sph--add" data-fl-pick data-haptic="light" aria-label="사진 추가">' +
+          '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>' +
+        '</button>';
+      var undo = (d._lyUndo && d._lyUndo.photo)
+        ? '<div class="wsc-undo"><span>사진 1장을 뺐어요</span><button type="button" data-fl-lyundo data-haptic="light">되돌리기</button></div>'
+        : '';
+      return '<div class="wsc-strip">' + cells + add + '</div>' + undo;
+    }
+    function _stripSecHtml(eps) {
+      return '<div><div class="wsc-sec">사진 ' + eps.length + '장 <span>탭해서 빼거나 더할 수 있어요</span>' +
+          '<button type="button" class="wsc-repick" data-fl-lyredit data-haptic="light">다시 고르기</button></div>' +
+        _stripHtml(eps) + '</div>';
+    }
+
     function renderLayout() {
       _ensureCards();
       var eps = editablePhotos() || [], n = eps.length;
@@ -225,16 +256,16 @@
           '<div class="wsc-one" style="background-image:url(' + esc(disp(photoUrl(p1))) + ')" role="img" aria-label="올릴 사진"></div>' +
           '<div class="wsc-onemsg">' +
             '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>' +
-            '<div><b>사진이 1장이라 그대로 올라가요</b><span>레이아웃은 2장부터 골라요 · 사진 더하기는 이전 화면에서</span></div>' +
+            // [2026-09-03] '사진 더하기는 이전 화면에서' 라고 써놨지만 **이전 화면으로 갈 방법이 없었다**(뒤로=플로우 종료).
+            //   안내 대신 이 화면에서 바로 되는 컨트롤(아래 스트립)을 준다.
+            '<div><b>사진이 1장이라 그대로 올라가요</b><span>레이아웃은 2장부터 — 아래에서 사진을 더하거나 바꿔요</span></div>' +
           '</div>' +
+          _stripSecHtml(eps) +
         '</div>';
       }
 
       // ③ n장 — 번호 썸네일 전부 보이기 + 결과 미리보기 + 구성 2~3종
       var cards = CARDS(), comp = _curComp();
-      var strip = eps.map(function (p, i) {
-        return '<span class="wsc-sph" style="background-image:url(' + esc(disp(photoUrl(p))) + ')" role="img" aria-label="' + (i + 1) + '번째 사진"><i>' + (i + 1) + '</i></span>';
-      }).join('');
       var frames = cards.map(function (c, i) {
         return '<div class="wsc-frame" style="aspect-ratio:' + _arOf(c.layout) + '">' +
           _prevInner(c) +
@@ -251,8 +282,7 @@
       }).join('');
 
       return '<div class="wsc-wrap">' +
-        '<div><div class="wsc-sec">사진 ' + n + '장 <span>업로드한 순서대로 올라가요</span></div>' +
-          '<div class="wsc-strip">' + strip + '</div></div>' +
+        _stripSecHtml(eps) +
         '<div class="wsc-preview"><div class="wsc-frames">' + frames + '</div>' +
           '<p class="wsc-count">이대로 <b>' + cards.length + '장</b>이 올라가요</p></div>' +
         '<div><div class="wsc-sec">구성 <span>썸네일 눌러 골라요 · 한 컷에 모으거나 한 장씩</span></div>' +
@@ -393,6 +423,36 @@
     // [refactor S4] 레이아웃 화면 전용 클릭 핸들러 — 처리하면 true.
     function handleClick(t, a) {
       void a;
+      /* [2026-09-03 사진 복구 P0] 빼기 / 되돌리기 / 다시 고르기.
+         인덱스가 아니라 **photo.id** 로 지운다 — 스트립은 editablePhotos()(선택된 것만) 순서라
+         d.photos 인덱스와 다를 수 있고, 그 어긋남이 '엉뚱한 사진이 지워짐'의 고전적 원인이다. */
+      var delBtn = t.closest('[data-fl-lyrm]');
+      if (delBtn) {
+        var d0 = D(), pid = delBtn.getAttribute('data-fl-lyrm');
+        var idx = -1;
+        for (var i = 0; i < (d0.photos || []).length; i++) { if (String(d0.photos[i].id) === String(pid)) { idx = i; break; } }
+        if (idx < 0) return true;
+        if ((editablePhotos() || []).length <= 1) { toast('마지막 사진은 뺄 수 없어요 \u2014 다른 사진을 먼저 추가해 주세요'); return true; }
+        d0._lyUndo = { photo: d0.photos[idx], at: idx };
+        d0.photos.splice(idx, 1);
+        reassignRoles();
+        // 사진이 바뀌면 이미 구운 결과물은 그 사진을 담고 있으니 무효화(안 하면 뺀 사진이 그대로 발행된다).
+        d0.templateOutput = null; d0.templateOutputs = []; d0.templateOutputId = null; d0.activeDisplayId = null; d0.previewUrl = null;
+        if (CUR() === 'layout') setScreen('layout', { push: false });
+        return true;
+      }
+      if (t.closest('[data-fl-lyundo]')) {
+        var d1 = D(), u = d1._lyUndo;
+        if (u && u.photo) {
+          d1.photos.splice(Math.min(u.at, d1.photos.length), 0, u.photo);
+          d1._lyUndo = null;
+          reassignRoles();
+          d1.templateOutput = null; d1.templateOutputs = []; d1.templateOutputId = null; d1.activeDisplayId = null; d1.previewUrl = null;
+          if (CUR() === 'layout') setScreen('layout', { push: false });
+        }
+        return true;
+      }
+      if (t.closest('[data-fl-lyredit]')) { setScreen('upload'); return true; }
       var op = t.closest('[data-fl-comp]');
       if (op) {
         var d = D(), key = op.getAttribute('data-fl-comp');

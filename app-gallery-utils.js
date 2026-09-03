@@ -36,7 +36,11 @@ async function _resizeIfNeeded(file, maxWidth = 1920) {
       file = await window.HeicConvert.toJpeg(file);   // 변환 실패면 throw → 아래 catch 로 원본 유지
     }
   } catch (_he) { void _he; }
-  if (file.size < 2 * 1024 * 1024) return file; // 2MB 이하면 그대로
+  /* [2026-09-03] 예전엔 여기서 `file.size < 2MB` 면 **무조건** 원본을 돌려줬다.
+     그런데 우리가 막으려는 건 바이트가 아니라 **픽셀 수**다 — iOS Safari 는 canvas 총 픽셀에 상한이 있어서
+     (기기에 따라 16.7M / 구형은 4096×4096) 넘으면 그리기가 조용히 실패해 **검은 저장본**이 나온다.
+     평평한 그래픽·스크린샷·긴 세로 이미지는 9000px 짜리도 2MB 아래로 압축되므로 그 관문을 그냥 통과했다.
+     이제 한 번 디코드해서 **긴 변**으로 판정한다. 작으면 원본 파일을 그대로 반환(재인코딩 없음 = 무손실·무회귀). */
   return new Promise((resolve) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -44,7 +48,13 @@ async function _resizeIfNeeded(file, maxWidth = 1920) {
     const finish = (result) => { if (done) return; done = true; try { URL.revokeObjectURL(url); } catch (_e) { void _e; } resolve(result); };
     img.onload = () => {
       try {
-        const scale = Math.min(1, maxWidth / img.width);
+        const longSide = Math.max(img.width, img.height);
+        // 긴 변이 한도 안이고 파일도 작으면 손대지 않는다 — 예전 빠른 경로와 같은 결과(원본 그대로).
+        if (longSide <= maxWidth && file.size < 2 * 1024 * 1024) return finish(file);
+        /* [2026-09-03] `maxWidth / img.width` 는 **가로만** 봤다. 1200×9000 같은 세로 긴 사진은
+           width 1200 < 1920 이라 scale=1 → 축소가 통째로 건너뛰어져 10.8M 픽셀이 그대로 canvas 로 갔다.
+           긴 변 기준으로 바꿔야 어떤 방향이든 한도 안에 들어온다. */
+        const scale = Math.min(1, maxWidth / longSide);
         const canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.round(img.width * scale));
         canvas.height = Math.max(1, Math.round(img.height * scale));

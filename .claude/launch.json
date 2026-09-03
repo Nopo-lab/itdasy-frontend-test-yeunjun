@@ -72,6 +72,16 @@
         "/private/tmp/claude-501/fe-rebase"
       ],
       "port": 8151
+    },
+    {
+      "name": "itdasy-mobqa-8166",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8166"
+      ],
+      "port": 8166
     }
   ]
 }

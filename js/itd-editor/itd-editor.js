@@ -510,6 +510,12 @@
     S.tool = tool;
     root.querySelectorAll('.itrb').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tool') === tool); });
     Object.keys(refs.panels).forEach(function (k) { refs.panels[k].classList.toggle('is-open', k === tool); });
+    /* [2026-09-03 P1 실측] 도구 패널(.itpanel, z-index:10)이 열리면 그 아래 '레이어 순서' 줄을 덮는데,
+       그 줄은 여전히 visible + pointer-events:auto 라 **보이는데 눌리지 않는** 상태였다.
+       실측(375×812, 그리기 패널): .itlyr 44×44 가 화면에 남아 있는데 가운데를 찍으면
+       elementFromPoint 가 색 스와치(.itdsw)를 준다 — 원장은 '앞으로 보내기'를 눌렀는데 색이 바뀐다.
+       패널이 열려 있는 동안엔 줄 자체를 감춘다(패널을 닫으면 그대로 돌아온다). */
+    root.classList.toggle('itded--panel', !!tool);
     var drawing = tool === 'draw', inLayout = tool === 'layout';
     refs.draw.classList.toggle('is-armed', drawing);
     refs.draw.style.zIndex = drawing ? '5' : '3';
@@ -753,7 +759,12 @@
       });
       return;
     }
-    var add = (op.op === 'add') === undo;   // undo: add→제거, del→복원 / redo: 반대
+    /* [2026-09-03 P1] 부호가 뒤집혀 있었다 — 주석("undo: add→제거")과 코드가 반대였다.
+       `('add'==='add') === true` → true → **추가** 분기를 타서, 글자를 넣고 ↩ 를 눌러도 안 지워지고
+       오히려 ↪(다시 실행)이 지웠다. 실측(375×812): 텍스트 3개 추가 → ↩×3(스택 소진) 후에도 3개 그대로,
+       ↪ 1회에 2개로 줄었다. 삭제도 같은 이유로 ↩ 가 복원 대신 재삭제였다.
+       ⚠️ 이동/크기/wrap/사진교체/wmApply 는 위에서 이미 return 하므로 영향 없음 — add/del 만 해당. */
+    var add = (op.op === 'add') !== undo;   // undo: add→제거, del→복원 / redo: 반대
     if (add) { if (refs.layers && op.L.el) refs.layers.appendChild(op.L.el); if (S.layers.indexOf(op.L) < 0) { var at = (op.idx != null && op.idx <= S.layers.length) ? op.idx : S.layers.length; S.layers.splice(at, 0, op.L); } selectLayer(op.L); }
     else { var i = S.layers.indexOf(op.L); if (i >= 0) S.layers.splice(i, 1); op.L.el.remove(); if (S.active === op.L) S.active = null; }
   }
@@ -981,6 +992,9 @@
   /* ── 우리샵 스타일 입력 레이어 렌더(학습 round-trip용) ── */
   function fontByKey(k) { for (var i = 0; i < FONTS.length; i++) { if (FONTS[i].key === k) return FONTS[i]; } return null; }
   function addShopLayer(spec, R) {
+    // [2026-09-03] 손상된 저장본에서 null·숫자·문자열이 섞여 오면 예전엔 전부 '빈 텍스트 레이어'가 됐다
+    //   (실측: [null, 42, 'x', {type:'unknown'}] → 유령 레이어 3개). 객체가 아니면 그냥 버린다.
+    if (!spec || typeof spec !== 'object') return null;
     if (spec.type === 'image') return addShopImage(spec, R);
     if (spec.type === 'line') return addShopLine(spec, R);
     if (spec.type === 'rect') return addShopRect(spec, R);
@@ -992,8 +1006,16 @@
     var L = makeLayer('sticker'); L.emoji = spec.emoji; L.fontSize = 64; L.rot = spec.rot || 0;
     L.scale = spec.size != null ? (spec.size * R.height) / 64 : (spec.scale || 1);
     var s = el('div', 'itl-sticker'); s.textContent = spec.emoji; L.el.appendChild(s); L.tx = s;
-    L.x = (spec.x != null ? spec.x : 0.5) * R.width - 32;
-    L.y = (spec.y != null ? spec.y : 0.5) * R.height - 32; applyXf(L);
+    /* [2026-09-03] 예전엔 `- 32`(64px 의 절반) 고정이었는데 이모지 글리프 박스는 정확히 64px 가 아니라,
+       _serLayer 가 저장하는 **실측 중심**과 어긋나 저장→복원마다 스티커가 밀렸다(실측 4회: cx 0.7996→0.7980).
+       ⚠️ scale 이 걸린 박스로 재면 더 크게 틀린다 — transform 은 **중심 기준**이라 확대해도 중심은 안 움직인다.
+          그래서 필요한 건 '변형 없는 레이아웃 박스'다. transform 을 잠깐 none 으로 두고 재서 소수점까지 맞춘다
+          (offsetWidth 는 정수 반올림이라 또 다른 미세 드리프트를 만든다 — 텍스트에서 이미 겪었다). */
+    L.el.style.transform = 'none';
+    var _sb = L.el.getBoundingClientRect();
+    var _sw = _sb.width || 64, _sh = _sb.height || 64;
+    L.x = (spec.x != null ? spec.x : 0.5) * R.width - _sw / 2;
+    L.y = (spec.y != null ? spec.y : 0.5) * R.height - _sh / 2; applyXf(L);
     return L;
   }
   function _addShopLayerText(spec, R) {
@@ -1012,8 +1034,18 @@
        기본값(normal)은 한글을 글자 단위로 끊어서 '속눈썹 연/장', '뿌리염/색' 처럼 어색하게 잘렸다.
        overflow-wrap:anywhere 는 안전망 — 띄어쓰기 없이 아주 긴 한 덩어리(URL·영문)가 오면
        keep-all 만으론 박스를 뚫고 나가므로 그때만 강제로 끊는다. */
-    var css = 'font-family:' + L.font.family + ';font-weight:' + (spec.weight || L.font.weight) + ';color:' + L.color + ';text-align:' + L.align + ';font-size:' + L.fontSize + 'px;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere';
-    if (spec.w != null) css += ';max-width:' + Math.round(spec.w * R.width) + 'px';
+    L.weight = spec.weight || L.font.weight;   // [2026-09-03] 굵기를 L 에 남긴다 — 없으면 _serLayer 가 폰트 기본값으로 덮어써 재편집마다 굵어졌다.
+    var css = 'font-family:' + L.font.family + ';font-weight:' + L.weight + ';color:' + L.color + ';text-align:' + L.align + ';font-size:' + L.fontSize + 'px;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere';
+    /* [2026-09-03 P1 실측] 저장→복원에서 **한 줄짜리 글자가 두 줄로 접혔다.**
+       _serLayer 는 렌더된 폭을 상대값으로 저장하는데(예 0.3879166…), 복원이 그걸
+       Math.round(0.3879166×375)=145px 로 깎아 max-width 로 걸었다. 실제 필요 폭은 145.469px —
+       **0.47px 모자라서** keep-all 이 어절 사이에서 줄을 바꾼다. 높이가 0.1186→0.2052(+73%)로
+       늘어나고, 그 상태로 다시 저장하면 발행본도 두 줄이 된다(재편집마다 누적).
+       ceil+1 로 올림해 부족분을 없앤다 — 최대 2px 여유라 의도한 줄바꿈은 그대로 유지된다.
+       [wrapW] 원장이 '가로 늘리기' 핸들로 **직접 정한 폭**은 max-width 가 아니라 고정 width 다.
+       예전엔 _serLayer 가 이 값을 안 실어서 재편집 때 통째로 사라졌다. */
+    if (spec.wrapW != null) { L.wrapW = Math.max(40, Math.round(spec.wrapW * R.width)); css += ';width:' + L.wrapW + 'px'; }
+    else if (spec.w != null) css += ';max-width:' + (Math.ceil(spec.w * R.width) + 1) + 'px';
     if (L.stroke) css += ';-webkit-text-stroke:1px rgba(0,0,0,.5)';
     if (L.shadow) css += ';text-shadow:0 2px 8px rgba(0,0,0,.35)';
     if (isBadge) css += ';background:' + (spec.bg || 'rgba(0,0,0,.32)') + ';padding:4px 10px;border-radius:8px';
@@ -1021,7 +1053,13 @@
     t.style.cssText = css; L.el.appendChild(t); L.tx = t;
     // [#2c] 긴 시술내용/두 줄 이상도 안 잘리게 — 텍스트 블록이 사진 높이의 ~1/3을 넘으면 폰트를 줄여 자동으로 맞춘다.
     if (spec.w != null && R.height) { var _maxH = R.height * 0.34, _g = 0; while (L.el.offsetHeight > _maxH && L.fontSize > 13 && _g++ < 16) { L.fontSize -= 2; t.style.fontSize = L.fontSize + 'px'; } }
-    var bw = L.el.offsetWidth, bh = L.el.offsetHeight;
+    /* [2026-09-03 P3 실측] offsetWidth/Height 는 **정수로 반올림**된 값이고, _serLayer 는
+       getBoundingClientRect 의 **소수 값**으로 중심을 계산한다. 두 척도가 달라서
+       저장→복원을 반복할 때마다 글자가 회당 약 0.22px 씩 한 방향으로 밀렸다
+       (실측 4회: cy 0.1806→0.1812→0.1819→0.1825). 재편집을 자주 하는 원장일수록 누적된다.
+       직렬화와 같은 척도(getBoundingClientRect)로 맞춰 왕복을 무손실로 만든다. */
+    var _bb = L.el.getBoundingClientRect();
+    var bw = _bb.width || L.el.offsetWidth, bh = _bb.height || L.el.offsetHeight;
     L.x = (spec.x != null ? spec.x : 0.5) * R.width - bw / 2;
     L.y = (spec.y != null ? spec.y : 0.5) * R.height - bh / 2;
     applyXf(L);
@@ -1485,6 +1523,7 @@
     S.tool = null;
     root.querySelectorAll('.itrb').forEach(function (b) { b.classList.remove('on'); });
     Object.keys(refs.panels).forEach(function (k) { refs.panels[k].classList.remove('is-open'); });
+    root.classList.remove('itded--panel');   // [2026-09-03] 패널 닫힘 → 레이어 순서 줄 복귀
     refs.draw.classList.remove('is-armed'); refs.draw.style.zIndex = '3'; refs.draw.style.pointerEvents = 'auto';
     refs.layers.style.pointerEvents = '';
     if (refs.collage) refs.collage.classList.remove('is-cropping');
@@ -1733,8 +1772,21 @@
   // [#2 단일화·WYSIWYG] 스테이지를 게시물 비율(4:5 등) 박스로 고정 — 화면 전체로 늘어나지 않게.
   //   편집기(실기기)·헤드리스 compose(432px) 모두 같은 종횡비 → 줄바꿈/겹침방지/내보내기 100% 일치(#2).
   //   바깥 여백은 .itded 어두운 배경, 상단바·우측레일·하단패널은 absolute 오버레이라 겹쳐도 OK.
+  /* [2026-09-03] 비율 정규화 — 저장본이 손상됐거나 호출자가 이상한 값을 주면 화면이 망가진다.
+     실측: `ratio:'999:0'` 을 넣으니 스테이지가 **375×2px** 로 찌그러져 편집이 불가능했다(에러는 0).
+     `+rp[1] || 5` 는 0 만 걸러서 '999:0'→999:5(=187:1) 같은 값을 그대로 통과시킨다.
+     실제 게시물 비율은 세로 9:16 ~ 가로 16:9 사이 — 그 밖은 못 믿을 값으로 보고 기본값(4:5)으로 돌린다. */
+  function _safeRatio(r) {
+    var rp = String(r || '').split(':');
+    var rw = parseFloat(rp[0]), rh = parseFloat(rp[1]);
+    if (!isFinite(rw) || !isFinite(rh) || rw <= 0 || rh <= 0) return '4:5';
+    var a = rw / rh;
+    if (a < 0.4 || a > 2.5) return '4:5';
+    return rw + ':' + rh;
+  }
   function fitStageToRatio() {
     if (!root || !refs.stage) return;
+    if (S) S.ratio = _safeRatio(S.ratio);
     var rp = String(S && S.ratio || '4:5').split(':'); var rw = +rp[0] || 4, rh = +rp[1] || 5;
     var availW = root.clientWidth || 432, availH = root.clientHeight || 540;
     var w = availW, h = w * rh / rw;
@@ -2599,7 +2651,11 @@
     var fs = ((L.fontSize || 30) * (L.scale || 1)) / R.height;
     base.type = (L.type === 'badge') ? 'badge' : 'text';
     base.text = L.text; base.font = L.font && L.font.key; base.color = L.color; base.align = L.align;
-    base.size = fs; base.weight = L.font && L.font.weight; base.stroke = !!L.stroke; base.shadow = !!L.shadow;
+    /* [2026-09-03] weight 는 **L.weight 우선**. 예전엔 항상 폰트 기본값을 실어보내서,
+       자동배치가 준 얇은 글씨(600)가 재편집 후 800 으로 굵어졌다(복제·undo 는 이미 L.weight 를 쓰고 있었다). */
+    base.size = fs; base.weight = L.weight || (L.font && L.font.weight); base.stroke = !!L.stroke; base.shadow = !!L.shadow;
+    // 원장이 '가로 늘리기' 로 직접 정한 폭 — 안 실으면 재편집 때 줄바꿈 폭이 통째로 날아간다.
+    if (L.wrapW) base.wrapW = L.wrapW / R.width;
     return base;
   }
   // [#5/#6] 사진별 레이어 수집 — 단일모드에서 각 장(현재 장 포함)이 가진 텍스트/스티커 레이어를 { idx, photoUrl, layers } 로.
@@ -2638,6 +2694,11 @@
     if (st.collageBgImg) S.collageBgImg = st.collageBgImg;
     if (st.collageGap != null) S.collageGap = st.collageGap;
     if (st.fitMode) S.fitMode = st.fitMode;
+    /* [2026-09-03] `_exportState` 는 ratio 를 저장하는데 **여기서 읽지 않았다** — 3년 묵은 누락.
+       그래서 1:1 이나 9:16 으로 만든 게시물을 다시 열면 호출자가 넘긴 값(대개 전역 4:5)으로 돌아왔다.
+       레이어 x/y/size 는 전부 스테이지 비율에 대한 **비율값**이라, 비율이 바뀌면 글자·스티커가
+       통째로 옮겨지고 크기까지 달라진다 = "저장한 화면과 다시 연 화면이 다르다". */
+    if (st.ratio) S.ratio = _safeRatio(st.ratio);
     if (Array.isArray(st.adj) && st.adj.length) S.adj = st.adj.map(function (a) { return Object.assign(defAdj(), a); });
     if (st.photoDraw) S.photoDraw = Object.assign({}, st.photoDraw);
     if (st.photoBg) S.photoBg = Object.assign({}, st.photoBg);
@@ -2684,7 +2745,7 @@
       shapeColor: COLORS[2], shapeFill: false, shapeThick: 6,
       adj: photos.map(function () { return defAdj(); }), adjSel: 0, collageGap: 3,
       collageBg: (loadBgPref().color || '#FFFFFF'), collageBgImg: null, cellCrop: [], cellSel: -1, fitMode: 'contain',   // [#5] 배경색만 기억, 배경'이미지'는 매번 초기화(예전 stale 배경이 누끼에 자동적용되던 문제)
-      ratio: (opts.ratio || '4:5'), undo: [], redo: [], photoDraw: {}, photoBg: {}, layersByPhoto: {},   // [#5/#6] 사진별 레이어 보관
+      ratio: _safeRatio(opts.ratio), undo: [], redo: [], photoDraw: {}, photoBg: {}, layersByPhoto: {},   // [#5/#6] 사진별 레이어 보관
       matte: {}, fgMask: {},   // [#11 2026-07-18] matte=누끼 PNG(재합성 캐시) · fgMask[i]=합성본 정렬 사람 마스크(배경 보정 제외용). 매트처럼 세션 전용.
       photoUrl: photo, photoCss: 'url("' + photo + '")', photos: photos,
       shopName: (opts.shopName || '').trim(),
@@ -2730,6 +2791,11 @@
     if (refs.photofx) { refs.photofx.hidden = true; refs.photofx.style.webkitMaskImage = ''; refs.photofx.style.maskImage = ''; }   // [#11] 새 세션 — 오버레이 초기화
     refs.collage.hidden = true; refs.collage.innerHTML = '';
     refs.photowrap.style.transform = '';
+    /* [2026-09-03 P2 실측] _syncHist 는 _pushOp/_undo/_redo 에서만 불렸다 — **새 세션 시작 때는 안 불렸다.**
+       그래서 앞 세션에서 되돌리기를 쓰고 나오면 다음 사진을 열었을 때도 ↩/↪ 가 **켜진 채로** 보인다
+       (S.undo/S.redo 는 비어 있으니 눌러도 아무 일도 안 남 = 눌러도 반응 없는 버튼).
+       실측: 새로 연 편집기에서 레이어 0개인데 undo.disabled=false, redo.disabled=false. */
+    _syncHist();
     root.classList.add('is-open');
     // [#9] 시스템 back 으로 편집기가 '먼저' 닫히게 — history 엔트리 1개 push + flow 가 단계 pop 안 하도록 __seOpen 플래그.
     try {
@@ -2737,7 +2803,7 @@
       S._popHandler = function () {
         if (!root || !root.classList.contains('is-open')) return;
         S._histPushed = false; S._cancelled = true;   // [audit] 저장(export) 진행 중 back → onDone 이중발화 차단
-        window.__seSwallowPop = true; setTimeout(function () { window.__seSwallowPop = false; }, 0);
+        _swallowNextPop();
         _teardownBack(true); root.classList.remove('is-open');
         if (S && S.onCancel) S.onCancel();   // 시스템 back = 취소로 닫기
       };
@@ -2772,10 +2838,22 @@
     renderLayoutStrip(); renderLayoutHint();
     _restoreLayers(st.layers);
   }
+  /* [2026-09-03 경합 수정] 편집기가 자기 history 엔트리를 되감을 때 생기는 popstate 를
+     작업실(flow)이 '사용자가 뒤로 눌렀다'로 오해하지 않게 하는 표식.
+     예전엔 `= true` + `setTimeout(…,0)` 이었는데, **popstate 가 그 0ms 타이머보다 늦게 도착**하면
+     이미 false 로 돌아가 있어 작업실이 단계를 하나 먹었다.
+     실측: 편집기에서 '완료' → 작업실이 레이아웃에서 **사진 고르기로 밀림**(단계 유실).
+     예전엔 navStack 이 비어 있어 pop 할 게 없었던 덕에 증상이 안 보였을 뿐, 경합 자체는 그대로 있었다.
+     → 개수를 세고 **소비하는 쪽(_navBack)이 하나 깎는다**. 타이머는 못 받은 표식을 치우는 백스톱일 뿐. */
+  function _swallowNextPop() {
+    window.__seSwallowPop = (+window.__seSwallowPop || 0) + 1;
+    setTimeout(function () { window.__seSwallowPop = Math.max(0, (+window.__seSwallowPop || 0) - 1); }, 600);
+  }
+
   function _teardownBack(fromPop) {
     window.__seOpen = false;
     if (S && S._popHandler) { try { window.removeEventListener('popstate', S._popHandler); } catch (_e) { void _e; } S._popHandler = null; }
-    if (!fromPop && S && S._histPushed) { S._histPushed = false; window.__seSwallowPop = true; setTimeout(function () { window.__seSwallowPop = false; }, 0); try { history.back(); } catch (_e2) { void _e2; } }
+    if (!fromPop && S && S._histPushed) { S._histPushed = false; _swallowNextPop(); try { history.back(); } catch (_e2) { void _e2; } }
   }
   function close() {
     if (!root || !root.classList.contains('is-open')) return;
