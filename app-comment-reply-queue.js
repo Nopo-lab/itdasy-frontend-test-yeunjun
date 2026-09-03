@@ -863,7 +863,7 @@
         /* 실제로 존재하는 경로로만 보낸다 — 없는 화면을 여는 가짜 버튼은 만들지 않는다.
            연동 허브(app-integrations-hub.js)가 인스타 연결/재연결의 정식 진입점이다. */
         _haptic();
-        if (typeof window.openIntegrationsHub === 'function') { closeCommentReplyQueue(); window.openIntegrationsHub(); }
+        if (typeof window.openIntegrationsHub === 'function') { _goAfterClose(function () { window.openIntegrationsHub(); }); }
         else _toast('설정 > 연동에서 인스타를 다시 연결해 주세요');
         return;
       }

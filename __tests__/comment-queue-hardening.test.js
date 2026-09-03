@@ -483,10 +483,12 @@ describe('닫고 다음 화면으로 — history 착지 대기', () => {
   const SRC = require('fs').readFileSync(
     require('path').join(__dirname, '..', 'app-comment-reply-queue.js'), 'utf8');
 
-  test('고객 보기·DM 보기는 close 직후 동기로 열지 않는다', () => {
-    // 이 두 패턴이 살아 있으면 뒤로가기가 다시 죽는다.
-    expect(SRC).not.toMatch(/closeCommentReplyQueue\(\);\s*window\.openCustomerDashboard/);
-    expect(SRC).not.toMatch(/closeCommentReplyQueue\(\);\s*window\.openDMThread/);
+  test('close 직후 동기로 다른 화면을 여는 곳이 하나도 없다', () => {
+    /* 이름을 하나씩 나열하면 또 빠뜨린다 — 실제로 그랬다. 내 두 곳(고객·DM)을 고치고
+       배포본을 훑어보니 openIntegrationsHub 가 같은 패턴으로 남아 있었다(내 변경 이전부터).
+       그래서 가드는 **패턴 전수**로 건다. */
+    const bad = SRC.match(/closeCommentReplyQueue\(\);\s*window\.\w+\(/g) || [];
+    expect(bad).toEqual([]);
   });
 
   test('_goAtferClose 는 __afterHistorySettles 를 경유한다', () => {
@@ -494,9 +496,10 @@ describe('닫고 다음 화면으로 — history 착지 대기', () => {
     expect(SRC).toMatch(/__afterHistorySettles/);
   });
 
-  test('_goAfterClose 로 두 화면 모두 전환한다', () => {
+  test('_goAfterClose 로 세 화면 모두 전환한다', () => {
     expect(SRC).toMatch(/_goAfterClose\(function \(\) \{ window\.openCustomerDashboard/);
     expect(SRC).toMatch(/_goAfterClose\(function \(\) \{ window\.openDMThread/);
+    expect(SRC).toMatch(/_goAfterClose\(function \(\) \{ window\.openIntegrationsHub/);
   });
 
   test('__afterHistorySettles 가 없는 구버전에서도 동기 호출은 안 한다(폴백 존재)', () => {
