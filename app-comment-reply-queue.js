@@ -888,7 +888,7 @@
         _haptic();
         var ci = ITEMS.find(function (x) { return x.id === id; });
         if (ci && ci.customerId && typeof window.openCustomerDashboard === 'function') {
-          closeCommentReplyQueue(); window.openCustomerDashboard(ci.customerId);
+          _goAfterClose(function () { window.openCustomerDashboard(ci.customerId); });
         } else _toast('고객 화면을 불러오지 못했어요');
         return;
       }
@@ -896,7 +896,7 @@
         _haptic();
         var di = ITEMS.find(function (x) { return x.id === id; });
         if (di && di.authorIgsid && typeof window.openDMThread === 'function') {
-          closeCommentReplyQueue(); window.openDMThread(di.authorIgsid);
+          _goAfterClose(function () { window.openDMThread(di.authorIgsid); });
         } else _toast('DM 화면을 불러오지 못했어요');
         return;
       }
@@ -1176,6 +1176,25 @@
     el.classList.remove('is-open');
     el.setAttribute('aria-hidden', 'true');
     if (window._markSheetClosed) window._markSheetClosed('crq');
+  }
+
+  /* [2026-09-03] 큐를 닫고 **다음 화면으로 넘어갈 때**는 history 가 착지할 때까지 기다린다.
+
+     안 기다리면 뒤로가기가 죽는다. 실측(375px):
+       [고객 보기] → 고객 화면은 열리는데 주소의 `#customers` 가 **사라지고**,
+       그 뒤 뒤로가기가 아예 안 먹는다(스택엔 'customers' 가 남아 있는데 hash 는 비어 있어
+       popstate 매칭이 실패한다).
+
+     원인은 `closeCommentReplyQueue()` 안의 `history.back()` 이 **비동기**라는 것.
+     닫자마자 다음 줄에서 화면을 열면, 그쪽이 `pushState('#customers')` 를 한 *뒤에*
+     큐의 popstate 가 도착해서 그걸 되돌려 버린다.
+
+     app-core 가 이미 같은 사고를 겪고 `__afterHistorySettles` 를 만들어 뒀다
+     (잇비 → "고객 화면 열기" 건, 2026-08-18). 그걸 쓴다. */
+  function _goAfterClose(open) {
+    closeCommentReplyQueue();
+    if (typeof window.__afterHistorySettles === 'function') window.__afterHistorySettles(open);
+    else setTimeout(open, 0);   // 구버전 app-core 폴백 — 동기 호출보다는 낫다
   }
 
   window.openCommentReplyQueue = openCommentReplyQueue;

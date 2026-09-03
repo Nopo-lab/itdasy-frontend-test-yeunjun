@@ -333,6 +333,8 @@ describe('고객 연결 CTA', () => {
     const calls = [];
     window.openCustomerDashboard = (id) => calls.push(id);
     body().querySelector('.crq-cust').click();
+    // [2026-09-03] 이제 history 가 착지한 뒤에 연다(뒤로가기 보호) — 동기 아님.
+    await new Promise((r) => setTimeout(r, 0));
     expect(calls).toEqual([42]);
   });
 
@@ -341,6 +343,7 @@ describe('고객 연결 CTA', () => {
     const calls = [];
     window.openDMThread = (s) => calls.push(s);
     body().querySelector('.crq-dm').click();
+    await new Promise((r) => setTimeout(r, 0));
     expect(calls).toEqual(['IG777']);
   });
 
@@ -418,6 +421,7 @@ describe('고객으로 등록', () => {
     const opened = [];
     window.openCustomerDashboard = (id) => opened.push(id);
     body().querySelector('.crq-cust').click();
+    await new Promise((r) => setTimeout(r, 0));
     expect(opened).toEqual([456]);
   });
 
@@ -430,6 +434,7 @@ describe('고객으로 등록', () => {
     const opened = [];
     window.openDMThread = (s) => opened.push(s);
     body().querySelector('.crq-dm').click();
+    await new Promise((r) => setTimeout(r, 0));
     expect(opened).toEqual(['IG_NEW']);
   });
 
@@ -463,5 +468,39 @@ describe('고객으로 등록', () => {
     const card = body().querySelector('.crq-item');
     expect(card.querySelectorAll('.crq-send')).toHaveLength(1);
     expect(card.querySelectorAll('button').length).toBeLessThanOrEqual(6);
+  });
+});
+
+/* [2026-09-03 실사고] [고객 보기]/[DM 보기] 를 누르면 뒤로가기가 죽었다.
+
+   실측(375px): 고객 화면은 열리는데 주소의 `#customers` 가 사라지고, 그 뒤 뒤로가기가
+   아예 안 먹었다(스택엔 'customers' 가 남았는데 hash 는 비어 popstate 매칭 실패).
+
+   원인은 `closeCommentReplyQueue()` 안의 `history.back()` 이 비동기라는 것 —
+   닫자마자 다음 줄에서 화면을 열면, 그쪽 pushState 를 늦게 도착한 popstate 가 되돌린다.
+   app-core 가 같은 사고로 `__afterHistorySettles` 를 만들어 뒀는데 내가 안 썼다. */
+describe('닫고 다음 화면으로 — history 착지 대기', () => {
+  const SRC = require('fs').readFileSync(
+    require('path').join(__dirname, '..', 'app-comment-reply-queue.js'), 'utf8');
+
+  test('고객 보기·DM 보기는 close 직후 동기로 열지 않는다', () => {
+    // 이 두 패턴이 살아 있으면 뒤로가기가 다시 죽는다.
+    expect(SRC).not.toMatch(/closeCommentReplyQueue\(\);\s*window\.openCustomerDashboard/);
+    expect(SRC).not.toMatch(/closeCommentReplyQueue\(\);\s*window\.openDMThread/);
+  });
+
+  test('_goAtferClose 는 __afterHistorySettles 를 경유한다', () => {
+    expect(SRC).toMatch(/function _goAfterClose/);
+    expect(SRC).toMatch(/__afterHistorySettles/);
+  });
+
+  test('_goAfterClose 로 두 화면 모두 전환한다', () => {
+    expect(SRC).toMatch(/_goAfterClose\(function \(\) \{ window\.openCustomerDashboard/);
+    expect(SRC).toMatch(/_goAfterClose\(function \(\) \{ window\.openDMThread/);
+  });
+
+  test('__afterHistorySettles 가 없는 구버전에서도 동기 호출은 안 한다(폴백 존재)', () => {
+    const fn = SRC.slice(SRC.indexOf('function _goAfterClose'));
+    expect(fn.slice(0, 400)).toMatch(/setTimeout\(open, 0\)/);
   });
 });
