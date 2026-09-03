@@ -4,7 +4,7 @@
 window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   photo: [
   'app-gallery-utils.js?v=20260903-mobqa19',
-  'app-gallery-db.js?v=20260903-mobqa20',
+  'app-gallery-db.js?v=20260904-uxqa6',
   'app-gallery-workshop.js?v=local-260831v5',
   'js/workspace/workspace-state.js?v=local-260831v5',
   'js/workspace/blob-url.js?v=local-260831v5',
@@ -59,7 +59,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/workspace/workspace-adapter.js?v=local-260831v5',
   'js/workspace/workspace-sync.js?v=local-260831v5',
   'js/workspace/workspace-crop.js?v=local-260831v5',
-  'js/workspace/workspace-v2-home.js?v=local-260831v5',
+  'js/workspace/workspace-v2-home.js?v=20260904-uxqa6',
   'js/workspace/workspace-settings.js?v=local-260831v5',
   'js/workspace/workspace-perf.js?v=local-260831v5',
   // [P0-2] service-vocab.js 중복 제거 — index.html(콜드스타트, caption-keyword-tags 가 소비)에 이미 있어
