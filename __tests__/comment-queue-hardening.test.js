@@ -51,6 +51,11 @@ function boot(queueResponse, opts) {
     if (url.indexOf('/comment-queue/dismiss') >= 0) {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) });
     }
+    if (url.indexOf('/comment-author/promote') >= 0) {
+      const pr = opts.promoteResponse || { ok: true, customer_id: 1, created: true };
+      return Promise.resolve({ ok: pr.ok !== false, status: pr.ok === false ? 500 : 200,
+        json: () => Promise.resolve(pr) });
+    }
     if (url.indexOf('/comment-reply') >= 0) {
       return Promise.resolve({
         ok: true, status: 200,
@@ -295,5 +300,168 @@ describe('공개 답글 톤', () => {
     localStorage.setItem('itdasy:crq_settings', JSON.stringify({ enabled: true, emoji: '\u{1F60A}' }));
     await boot({ connected: true, items: [item({ intent: 'price' })] });
     expect(body().querySelector('.crq-item').textContent).toContain('\u{1F60A}');
+  });
+});
+
+// ── ⑪ 댓글 → 고객 / DM 연결 (2026-09-02) ───────────────────────────────────
+describe('고객 연결 CTA', () => {
+  test('매칭된 고객이면 [고객 보기]/[DM 보기] 가 뜬다', async () => {
+    // is_regular 는 **서버가 판정해서 내려준다**(threshold 를 FE 에 복제하지 않는다 —
+    // 판정이 두 벌이면 화면과 서버가 어긋난다. 배지/목록 필터에서 이미 겪은 실수다).
+    await boot({ connected: true, items: [item({
+      customer_id: 42, is_customer: true, visit_count: 3, is_regular: true, author_igsid: 'IG123' })] });
+    expect(body().querySelector('.crq-cust')).not.toBeNull();
+    expect(body().querySelector('.crq-dm')).not.toBeNull();
+    expect(body().textContent).toContain('단골 · 3회 방문');
+  });
+
+  test('미매칭이면 secondary CTA 를 안 그린다 (엉뚱한 고객 열림 방지)', async () => {
+    await boot({ connected: true, items: [item({ author_igsid: 'IG999' })] });
+    expect(body().querySelector('.crq-cust')).toBeNull();
+    expect(body().querySelector('.crq-dm')).toBeNull();
+    expect(body().textContent).not.toContain('기존 고객');
+  });
+
+  test('고객이지만 방문 0회면 숫자를 만들지 않는다', async () => {
+    await boot({ connected: true, items: [item({ customer_id: 7, is_customer: true, author_igsid: 'IG1' })] });
+    expect(body().textContent).toContain('기존 고객');
+    expect(body().textContent).not.toMatch(/\d+회 방문/);
+  });
+
+  test('[고객 보기] 는 실제 customer_id 로 openCustomerDashboard 를 부른다', async () => {
+    await boot({ connected: true, items: [item({ customer_id: 42, is_customer: true, author_igsid: 'IG1' })] });
+    const calls = [];
+    window.openCustomerDashboard = (id) => calls.push(id);
+    body().querySelector('.crq-cust').click();
+    expect(calls).toEqual([42]);
+  });
+
+  test('[DM 보기] 는 댓글 작성자 IGSID 로 openDMThread 를 부른다', async () => {
+    await boot({ connected: true, items: [item({ customer_id: 42, is_customer: true, author_igsid: 'IG777' })] });
+    const calls = [];
+    window.openDMThread = (s) => calls.push(s);
+    body().querySelector('.crq-dm').click();
+    expect(calls).toEqual(['IG777']);
+  });
+
+  test('route 가 없으면 조용히 실패하지 않고 알린다', async () => {
+    await boot({ connected: true, items: [item({ customer_id: 42, is_customer: true, author_igsid: 'IG1' })] });
+    delete window.openCustomerDashboard;
+    body().querySelector('.crq-cust').click();
+    expect(window.showToast.mock.calls.map((c) => c[0]).join('|')).toContain('불러오지 못했어요');
+  });
+
+  test('주행동은 여전히 [공개 답글 보내기] 하나다 (UI 과부하 금지)', async () => {
+    await boot({ connected: true, items: [item({ customer_id: 42, is_customer: true, author_igsid: 'IG1' })] });
+    const card = body().querySelector('.crq-item');
+    expect(card.querySelectorAll('.crq-send')).toHaveLength(1);
+    // 예약 CTA 는 route 가 customer 를 안 받으므로 만들지 않았다
+    expect(card.textContent).not.toContain('예약 잡기');
+    expect(card.textContent).not.toContain('예약 보기');
+  });
+});
+
+// ── ⑫ 미매칭 작성자 → 고객으로 등록 (2026-09-02) ───────────────────────────
+describe('고객으로 등록', () => {
+  const withIg = (o) => item(Object.assign({ author_igsid: 'IG_NEW' }, o || {}));
+
+  test('미매칭이면 [고객으로 등록] 이 뜬다', async () => {
+    await boot({ connected: true, items: [withIg()] });
+    expect(body().querySelectorAll('.crq-reg')).toHaveLength(1);
+    expect(body().querySelector('.crq-cust')).toBeNull();
+    expect(body().querySelector('.crq-dm')).toBeNull();
+  });
+
+  test('이미 매칭된 고객에겐 등록 버튼을 안 보여준다', async () => {
+    await boot({ connected: true, items: [withIg({ customer_id: 123, is_customer: true })] });
+    expect(body().querySelector('.crq-reg')).toBeNull();
+    expect(body().querySelector('.crq-cust')).not.toBeNull();
+    expect(body().querySelector('.crq-dm')).not.toBeNull();
+  });
+
+  test('작성자 신원이 없으면 등록 버튼도 안 만든다', async () => {
+    await boot({ connected: true, items: [item({ author_igsid: '' })] });
+    expect(body().querySelector('.crq-reg')).toBeNull();
+  });
+
+  test('등록 성공 → customer_id 반영 + 고객/DM 버튼으로 전환', async () => {
+    await boot({ connected: true, items: [withIg()] }, {
+      promoteResponse: { ok: true, customer_id: 123, created: true },
+    });
+    body().querySelector('.crq-reg').click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    const posts = fetchCalls.filter((c) => c.url.indexOf('/comment-author/promote') >= 0);
+    expect(posts).toHaveLength(1);
+    expect(posts[0].body).toEqual({ author_igsid: 'IG_NEW', media_id: 'm1' }); // 이름·전화 추측 금지
+    expect(body().querySelector('.crq-reg')).toBeNull();
+    expect(body().querySelector('.crq-cust')).not.toBeNull();
+    expect(body().querySelector('.crq-dm')).not.toBeNull();
+  });
+
+  test('already_linked 도 성공으로 취급한다 (중복 고객 금지)', async () => {
+    await boot({ connected: true, items: [withIg()] }, {
+      promoteResponse: { ok: true, customer_id: 77, already_linked: true },
+    });
+    body().querySelector('.crq-reg').click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(body().querySelector('.crq-cust')).not.toBeNull();
+    expect(fetchCalls.filter((c) => c.url.indexOf('/promote') >= 0)).toHaveLength(1);
+  });
+
+  test('등록 후 [고객 보기] 가 서버가 준 id 로 열린다', async () => {
+    await boot({ connected: true, items: [withIg()] }, {
+      promoteResponse: { ok: true, customer_id: 456, created: true },
+    });
+    body().querySelector('.crq-reg').click();
+    await new Promise((r) => setTimeout(r, 0));
+    const opened = [];
+    window.openCustomerDashboard = (id) => opened.push(id);
+    body().querySelector('.crq-cust').click();
+    expect(opened).toEqual([456]);
+  });
+
+  test('등록 후 [DM 보기] 는 여전히 author_igsid 로 연다 (대화 생성 아님)', async () => {
+    await boot({ connected: true, items: [withIg()] }, {
+      promoteResponse: { ok: true, customer_id: 456, created: true },
+    });
+    body().querySelector('.crq-reg').click();
+    await new Promise((r) => setTimeout(r, 0));
+    const opened = [];
+    window.openDMThread = (s) => opened.push(s);
+    body().querySelector('.crq-dm').click();
+    expect(opened).toEqual(['IG_NEW']);
+  });
+
+  test('실패하면 사람 말 문구 + 다시 시도 가능, 미매칭 상태로 되돌아간다', async () => {
+    await boot({ connected: true, items: [withIg()] }, {
+      promoteResponse: { ok: false, detail: '{"error":"boom"}' },
+    });
+    body().querySelector('.crq-reg').click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    const said = window.showToast.mock.calls.map((c) => c[0]).join('|');
+    expect(said).toContain('등록하지 못했어요');
+    expect(said).not.toContain('{');
+    expect(body().querySelector('.crq-reg')).not.toBeNull();   // 재시도 가능
+    expect(body().querySelector('.crq-cust')).toBeNull();      // 매칭으로 넘어가지 않음
+    expect(body().textContent).toContain('다시 시도');
+  });
+
+  test('연타해도 요청은 1회 (등록 중 잠금)', async () => {
+    await boot({ connected: true, items: [withIg()] }, {
+      promoteResponse: { ok: true, customer_id: 1, created: true },
+    });
+    const btn = body().querySelector('.crq-reg');
+    btn.click(); btn.click(); btn.click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fetchCalls.filter((c) => c.url.indexOf('/promote') >= 0)).toHaveLength(1);
+  });
+
+  test('주행동은 여전히 [공개 답글 보내기] 하나 (버튼 과부하 금지)', async () => {
+    await boot({ connected: true, items: [withIg()] });
+    const card = body().querySelector('.crq-item');
+    expect(card.querySelectorAll('.crq-send')).toHaveLength(1);
+    expect(card.querySelectorAll('button').length).toBeLessThanOrEqual(6);
   });
 });
