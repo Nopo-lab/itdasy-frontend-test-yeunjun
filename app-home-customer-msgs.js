@@ -353,7 +353,11 @@
     _bindDelegation();
     _startPoll();
     // 새 DM 실시간: 데이터 변경 이벤트에도 가볍게 반응
-    window.addEventListener('itdasy:data-changed', () => {
+    window.addEventListener('itdasy:data-changed', (ev) => {
+      /* [2026-09-03] 예전엔 **아무 변경에나** 다시 불렀다. 예약 하나 만들면 손님 문의(DM)까지
+         재조회돼서, 실측상 /dm-confirm-queue 가 한 번의 예약 저장에 3회씩 나갔다.
+         손님 문의는 예약·매출·고객 변경과 아무 상관이 없다. */
+      if (window.itdChangeAffects && !window.itdChangeAffects(ev, 'dm')) return;
       if (document.getElementById('hv5Cmsg')) refresh();
     });
     // 답장 전송/처리 성공 → 해당 손님 카드 즉시 제거(서버도 이미 pending 에서 빠짐).

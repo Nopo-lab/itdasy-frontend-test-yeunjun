@@ -27,6 +27,16 @@
 #customerSheet .cv4-chip {
   font-size:12px;padding:6px 10px;border-radius:20px;cursor:pointer;font-weight:500;white-space:nowrap;
   transition:background .15s,color .15s;border:none;flex-shrink:0;
+  position:relative;
+}
+/* [2026-09-03 최종 클로저] 손가락 영역 44px — **보이는 크기는 그대로** 둔다.
+   실측(390×844): 칩 높이 27px. CLAUDE.md(44px)·HIG(44pt)·Android(48dp) 미달이고
+   부모가 대신 클릭을 받아주지도 않았다. 칩 자체를 키우면 6개가 한 줄에 안 들어간다
+   (PC 규칙에 "380px 안에 6칩" 이라고 못박혀 있다) → ::after 로 히트 영역만 세로로 넓힌다.
+   가로는 이미 37~75px 이고 칩끼리 gap 이 좁아 좌우로 넓히면 옆 칩을 먹는다. 세로만 키운다. */
+#customerSheet .cv4-chip::after {
+  content:'';position:absolute;left:0;right:0;top:50%;
+  height:44px;transform:translateY(-50%);
 }
 /* [v212] PC 좌측 380px 안에 6칩 들어가도록 더 빠듯하게 */
 #customerSheet.cv4-pc .cv4-chip { padding:6px 9px;font-size:11px; }
