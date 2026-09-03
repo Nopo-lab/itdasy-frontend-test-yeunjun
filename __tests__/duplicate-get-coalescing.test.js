@@ -149,3 +149,34 @@ describe('DM 리스너가 실제로 정책을 쓴다', () => {
     expect(li.indexOf('itdChangeAffects')).toBeLessThan(li.indexOf('refresh()'));
   });
 });
+
+describe('홈 배지 — 예약류 변경에 채널 재조회 안 함', () => {
+  /* 실측(2026-09-03, 배포본): 예약 저장 1회에
+       /dm-confirm-queue ×3 · /instagram/comment-queue ×2
+     원인은 두 겹이었다.
+       ① _doRender 가 brief·slots·DM배지·댓글배지 4개를 통째로 부른다
+       ② brief 백엔드 지연 대응 재시도(1500·4000ms)가 그 4개를 **또** 부른다
+     지연을 따라잡아야 하는 건 brief 뿐이다. DM·댓글 수는 예약과 무관하다. */
+  const SRC = read('app-home-v41.js');
+  const code = stripComments(SRC);
+
+  test('_doRender 가 채널 스킵 옵션을 받는다', () => {
+    expect(code).toMatch(/opts && opts\.channels === false/);
+    expect(code).toMatch(/_skipChannels \? Promise\.resolve\(_lastDmCount\)/);
+    expect(code).toMatch(/_skipChannels \? Promise\.resolve\(_lastCmtCount\)/);
+  });
+
+  test('예약류 변경이면 즉시 렌더에서 채널을 스킵한다', () => {
+    expect(code).toMatch(/_doRender\(root, \{ channels: !isBookingish \}\)/);
+  });
+
+  test('★ brief 지연 재시도는 채널을 절대 다시 부르지 않는다', () => {
+    // 이 재시도가 예전 중복의 절반을 만들었다
+    const retry = code.slice(code.indexOf('_retryTimers.push'));
+    expect(retry.slice(0, 400)).toMatch(/_doRender\(r, \{ channels: false \}\)/);
+  });
+
+  test('스킵해도 직전 값을 유지한다 (배지가 0으로 깜빡이면 안 된다)', () => {
+    expect(code).toMatch(/_lastDmCount = dmQueueCount;\s*_lastCmtCount = commentQueueCount;/);
+  });
+});

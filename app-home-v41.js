@@ -399,6 +399,8 @@
       </div>`;
   }
 
+  // 채널 배지 직전 값 — 예약류 변경 때 재조회 대신 이 값을 쓴다(위 주석 참조)
+  let _lastDmCount = 0, _lastCmtCount = 0;
   async function _doRender(containerId, opts) {
     const force = !!(opts && opts.force);
     const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
@@ -424,12 +426,19 @@
     // [2026-08-22 UX-COLD] 캐시로 그린 게 없으면(진짜 첫 진입) fetch 기다리는 동안 스켈레톤.
     _showSkeleton(container);
     try {
+      /* [2026-09-03 최종 클로저] 채널 배지(DM·댓글)는 **예약·매출·고객 변경과 무관**하다.
+         예전엔 data-changed 마다 4개를 통째로 다시 불렀고, 게다가 brief 백엔드 지연 대응
+         재시도(1500·4000ms)까지 같은 4개를 반복해서, 예약 저장 1회에
+         /dm-confirm-queue 3회 · /instagram/comment-queue 2회가 나갔다(실측).
+         지연을 따라잡아야 하는 건 brief 뿐이다 → 그때는 배지 직전 값을 재사용한다. */
+      const _skipChannels = !!(opts && opts.channels === false);
       const [briefRaw, slots, dmQueueCount, commentQueueCount] = await Promise.all([
         _fetchBrief().catch(() => null),
         _fetchSlots().catch(() => []),
-        _fetchDMQueueCount().catch(() => 0),
-        _fetchCommentQueueCount().catch(() => 0),
+        _skipChannels ? Promise.resolve(_lastDmCount) : _fetchDMQueueCount().catch(() => 0),
+        _skipChannels ? Promise.resolve(_lastCmtCount) : _fetchCommentQueueCount().catch(() => 0),
       ]);
+      _lastDmCount = dmQueueCount; _lastCmtCount = commentQueueCount;
       // [2026-08-17 보스] 세션 만료(AUTH) — 에러 카드 금지. 게이트가 로그인 화면을 띄우고,
       //   재로그인 훅(app-core)이 refresh() 로 다시 그린다. 캐시 있으면 그걸로 유지.
       if (briefRaw === 'AUTH' && !(swr && swr.d)) return;
@@ -552,7 +561,7 @@
       // [2026-06-10 QA] 탭 활성 조건 제거 — 예약관리에서 예약 추가/취소 후 홈에 와도
       //   옛 DOM 이 그대로 남아 "반영이 한참 걸리는" 문제 픽스. 데이터 변경 이벤트는
       //   드물어서 백그라운드 재렌더 비용 무시 가능.
-      _doRender(root);
+      _doRender(root, { channels: !isBookingish });
       // [2026-06-14 QA] 예약 추가/완료 직후 /assistant/brief 가 옛 값을 반환(서버 반영
       //   지연)해 즉시 재fetch 가 stale 를 받던 문제. 수동 새로고침은 수 초 뒤라 정상이었음.
       //   → 지연 재fetch 안전망: 캐시 비우고 한두 번 더 갱신해 백엔드 지연을 따라잡음.
@@ -562,7 +571,7 @@
           _retryTimers.push(setTimeout(() => {
             _clearSWR();
             const r = document.getElementById('homeV41Root');
-            if (r) _doRender(r);
+            if (r) _doRender(r, { channels: false });   // 지연 따라잡기는 brief 만
           }, ms));
         });
       }
