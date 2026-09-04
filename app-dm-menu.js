@@ -693,6 +693,14 @@
       const cur = await res.json().catch(() => null);
       if (!cur || typeof cur !== 'object') throw new Error('설정을 불러오지 못했어요');
       cur.enabled = !!on;
+      /* [2026-09-04 P1] 초안을 끄면 자동발송도 **서버까지** 내린다.
+         전엔 화면(_ai)에서만 내리고 POST 본문은 GET 결과를 그대로 실어서
+         서버엔 dm_autosend_enabled=true 가 남았다. 화면은 _render 가
+         `aiOn && dm_autosend_enabled` 로 그리니 계속 '꺼짐'으로 보였고,
+         원장이 나중에 초안만 다시 켜는 순간 **자동발송이 확인 없이 되살아났다**
+         (실측: 초안 ON 시트 하나만 뜨고 자동발송 동의는 다시 안 묻는다).
+         손님에게 실제로 나가는 유일한 스위치라 화면·서버가 어긋나면 안 된다. */
+      if (!on) cur.dm_autosend_enabled = false;
       const put = await apiFetch(apiUrl('/instagram/dm-reply/settings'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...auth },
