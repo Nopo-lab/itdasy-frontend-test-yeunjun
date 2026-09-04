@@ -34,6 +34,10 @@ const _PCTX_STORE = 'photo_contexts';
    보고 '쓰는 store 가 선언됐나' 는 안 봤기 때문이다 → 가드도 같이 고쳤다. */
 const _IGTEXT_STORE = 'ig_text_analysis';
 let _gdb = null;
+/* open 이 pending 으로 남을 때 포기하는 시각. 너무 짧으면 느린 기기에서 헛되이 실패하고,
+   너무 길면 사용자가 빈 화면을 그만큼 오래 본다. 에뮬레이터 실측(정상 open 은 수십 ms)과
+   저사양 실기기 여유를 함께 보고 6초. */
+const OPEN_GDB_TIMEOUT_MS = 6000;
 
 /* ── [2026-09-03 P0 계정 격리] 이 DB 가 **누구 것인지** 도장 ──────────────────
    왜 필요한가 — 실측으로 확인한 교차 노출 경로:
@@ -130,6 +134,19 @@ function openGalleryDB() {
         its.createIndex('tenantId', 'tenantId', { unique: false });
       }
     };
+    /* [2026-09-04 P1 · Android 에뮬레이터 실측] open 자체가 **아무 이벤트도 안 내고 pending** 으로
+       남는 경우가 있다. 탭 2개를 띄운 Android Chrome 에서 `indexedDB.open('itdasy-gallery', 7)` 이
+       5초 동안 success·error·blocked 를 **하나도** 안 냈고(탭 1개로 줄이자 즉시 OK v7),
+       그 사이 작업실은 **로딩 표시도 없이 빈 화면**으로 굳었다 — 이 Promise 를 기다리는 호출자가
+       전부 멈추기 때문이다. 같은 파일의 clearGalleryDB 는 이미 이 함정 때문에 타임아웃이 있는데
+       (236행 주석) 정작 open 은 무방비였다.
+       → 늦으면 **실패로 끝낸다.** 호출자가 catch 로 빈 상태를 그릴 수 있어야 dead state 가 안 된다.
+       ⚠️ 성공 이벤트가 늦게 와도 _gdb 는 채워두고 즉시 닫지 않는다 — 다음 호출이 재사용한다. */
+    let _settled = false;
+    const _finish = (fn, v) => { if (_settled) return; _settled = true; clearTimeout(_openTimer); fn(v); };
+    const _openTimer = setTimeout(() => {
+      _finish(reject, new Error('gdb_open_timeout'));
+    }, OPEN_GDB_TIMEOUT_MS);
     req.onsuccess = e => {
       _gdb = e.target.result;
       // [T7 실측 2026-08-17] 멀티탭 데드락 방지 — 다른 탭이 계정 전환 purge(deleteDatabase)나
@@ -137,9 +154,11 @@ function openGalleryDB() {
       //   줄선 모든 open(발행 가드·자산 웜업·갤러리)이 같이 얼어붙는다(실측: 발행 버튼 영구 '올리는 중…').
       //   versionchange 를 받으면 즉시 양보하고, 다음 사용 때 openGalleryDB 가 재연결한다.
       _gdb.onversionchange = () => { try { _gdb.close(); } catch (_) { void 0; } _gdb = null; };
-      resolve(_gdb);
+      _finish(resolve, _gdb);
     };
-    req.onerror   = () => reject(req.error);
+    req.onerror   = () => _finish(reject, req.error);
+    // blocked = 다른 탭이 잡고 있다. 사람이 할 수 있는 일이 있으니 그대로 알려준다.
+    req.onblocked = () => _finish(reject, new Error('gdb_open_blocked'));
   });
 }
 

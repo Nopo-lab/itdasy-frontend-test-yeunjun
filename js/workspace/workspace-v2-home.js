@@ -277,7 +277,15 @@
 	  function refresh() {
 	    if (typeof initWorkshopTab === 'function') { Promise.resolve(initWorkshopTab()).catch(function () {}); return; }
 	    if (!_lastRoot || typeof loadSlotsFromDB !== 'function') return;
-	    Promise.resolve(loadSlotsFromDB()).then(function (s) { render(_lastRoot, { slots: s || [] }); }).catch(function () {});
+	    /* [2026-09-04] 예전엔 실패를 통째로 삼켰다(`catch(function(){})`). Android 실측에서
+	       openGalleryDB 가 응답을 안 주자 화면이 **아무 안내 없이 그대로 멈춰** 있었다.
+	       갱신 실패는 기존 화면을 지우지 않되(가진 걸 없애면 더 나쁘다) 사용자에게는 말한다. */
+	    Promise.resolve(loadSlotsFromDB())
+	      .then(function (s) { render(_lastRoot, { slots: s || [] }); })
+	      .catch(function (e) {
+	        try { console.warn('[wsv2home] 슬롯 갱신 실패', e); } catch (_c) { void _c; }
+	        try { if (window.showToast) window.showToast('작업 내역을 새로 불러오지 못했어요 — 잠시 후 다시 시도해 주세요'); } catch (_t) { void _t; }
+	      });
 	  }
 
 	  function _pickHeroFiles(root) {

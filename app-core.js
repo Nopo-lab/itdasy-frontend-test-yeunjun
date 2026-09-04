@@ -1438,7 +1438,14 @@ function authHeader() {
         if (res.status === 401 && _isApiOrigin(input)) {
           // /auth/refresh 자체가 401이면 무한루프 방지
           const url = typeof input === 'string' ? input : (input.url || '');
-          if (url.includes('/auth/refresh') || url.includes('/auth/login')) {
+          /* [2026-09-04 UX] 로그인 **시도** 실패(비번 오류)와 **세션 만료**는 다른 일이다.
+             예전엔 둘 다 _handle401() 로 보내서, 처음 로그인하는 원장이 비번을 한 번 틀리면
+             "⚠️ 로그인 세션이 만료되었습니다" 가 떴다 — 로그인한 적도 없는데 세션 얘기를 하니
+             무슨 말인지 알 수가 없다(Android 에뮬레이터 실측으로 잡았다).
+             login() 은 이미 "아이디 또는 비밀번호가 달라요" 를 자기가 띄운다. 여기선 잠금만
+             유지하고 만료 배너는 세우지 않는다. 진짜 만료(/auth/refresh 401)는 그대로 배너. */
+          if (url.includes('/auth/login')) return res;
+          if (url.includes('/auth/refresh')) {
             _handle401();
             return res;
           }
@@ -1898,7 +1905,12 @@ async function login() {
     if (!res.ok) {
       // [버그1 2026-07-25] 401(비번 틀림)뿐 아니라 422(이메일 형식 검증 실패 — pydantic EmailStr)도
       //   "요청 형식이 올바르지 않습니다" 같은 기술 문구 대신 사용자 언어로. detail 이 배열(422)이면 노출 금지.
-      if (res.status === 401 || res.status === 422) throw new Error('아이디 또는 비밀번호가 달라요. 다시 확인해 주세요.');
+      if (res.status === 401 || res.status === 422) {
+        // [2026-09-04 UX] 지난 '세션 만료' 배너를 걷는다 — 지금은 만료가 아니라 **입력이 틀린** 것이다.
+        //   남겨두면 화면에 만료 안내와 비번 오류가 같이 떠서 무엇이 문제인지 알 수 없다.
+        try { const _m = document.getElementById('sessionExpiredMsg'); if (_m) _m.style.display = 'none'; } catch (_e) { void _e; }
+        throw new Error('아이디 또는 비밀번호가 달라요. 다시 확인해 주세요.');
+      }
       throw new Error((typeof data.detail === 'string' && data.detail) || '로그인 실패');
     }
     setToken(data.access_token);
