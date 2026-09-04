@@ -37,9 +37,14 @@ describe('§21 — 고른 스타일이 전역 기본값보다 먼저', () => {
     expect(fn).toMatch(/if\s*\(!ss\)\s*ss\s*=\s*\(window\.ShopStyle/);
   });
 
-  test('선택 키는 **작업 id** 다 — 전역 키로 바뀌면 §22 가 깨진다', () => {
+  test('선택 키는 **작업 세션키** 다 — 전역 키로 바뀌면 §22 가 깨진다', () => {
+    /* [2026-09-04] 예전엔 `d.slot.id` 를 직접 읽었다. 그런데 그건 **저장 시점에야 생겨서**
+       사진 올린 직후 고른 스타일이 통째로 무시됐다(P0, 브라우저 매트릭스로 잡음).
+       이제 `_workKey()` — 열릴 때 만들어지는 세션키 — 를 쓴다. */
     const fn = flow.slice(flow.indexOf('function _buildShopStyleLayers()'), flow.indexOf('function _buildShopStyleLayers()') + 1600);
-    expect(fn).toMatch(/styleForWork\(\s*\(d\.slot && d\.slot\.id\)/);
+    expect(fn).toMatch(/styleForWork\(_workKey\(\)\)/);
+    // 전역 키(테넌트만)로 되돌아가면 안 된다
+    expect(fn).not.toMatch(/styleForWork\(\s*['"]/);
   });
 });
 
@@ -72,8 +77,13 @@ describe('§20/§39 — 저장된 작업 스냅샷이 스타일보다 먼저', (
   });
 
   test('flow 는 저장된 editState 를 editState 로 넘긴다(스타일 레이어로 덮지 않는다)', () => {
-    expect(flow).toMatch(/var _restore = \(!_hasBg && p0 && p0\.editState\) \|\| null;/);
+    /* [2026-09-04] `_freshPick` 이 붙었다 — **원장이 방금 고른** 스타일만 스냅샷을 한 번 건너뛴다.
+       §20 이 막으려던 건 '자동 개인화가 예전 작업을 바꾸는 것' 이지,
+       원장이 직접 고른 걸 막는 게 아니다(§21). 자동 경로는 여전히 스냅샷이 이긴다. */
+    expect(flow).toMatch(/var _restore = \(!_freshPick && !_hasBg && p0 && p0\.editState\) \|\| null;/);
     expect(flow).toMatch(/editState: _finalEs/);
+    // fresh pick 이 아닐 때는 예전 그대로 스냅샷이 이긴다
+    expect(flow).toMatch(/\(o\.fresh \|\| _freshPick\) \? _wmEd : \(\(p0 && p0\.editState\) \|\| _wmEd\)/);
   });
 
   test('저장 시 editState 스냅샷을 사진에 붙인다 — 나중에 스타일이 바뀌어도 이게 진실원', () => {

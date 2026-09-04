@@ -477,7 +477,9 @@
          이 레포에서 남의 모듈 계약을 기억으로 쓰다가 여러 번 틀렸다(`thumb` 사건). */
       var _as = (window.WorkspaceFlow && window.WorkspaceFlow.getActiveSlot)
         ? window.WorkspaceFlow.getActiveSlot() : null;
-      workId = (_as && _as.slotId) || null;
+      /* 🔑 `workId` 를 먼저 본다. `slotId` 는 **저장 전에는 null** 이라
+         그걸 쓰면 사진 올린 직후 고른 스타일이 아무 데도 안 걸린다(실측 P0). */
+      workId = (_as && (_as.workId || _as.slotId)) || null;
     } catch (_e) { void _e; }
     return L.apply(groupId, workId).then(function () {
       _toast(workId ? '이 작업에 스타일을 입혔어요' : '스타일을 골랐어요 — 사진을 올려보세요');

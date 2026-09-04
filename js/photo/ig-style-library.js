@@ -41,6 +41,7 @@
 
   var LS_CACHE = 'itdasy:ig_style_groups::';    // 서버 응답 캐시(오프라인에서도 목록이 보이게)
   var LS_PICK = 'itdasy:ig_style_pick::';       // 작업별 선택 {workId: shopStyleId}
+  var MAX_PICKS = 20;                          // 작업키는 세션마다 새로 생긴다 — 무한 적재 방지
 
   function _tenant() {
     try {
@@ -358,7 +359,16 @@
       if (!ss) throw new Error('shopstyle_unavailable');
       if (workId) {
         var picks = _picks();
-        picks[String(workId)] = ss.id;
+        // 새 선택은 항상 '아직 안 씀' 으로 — 그래야 다음 편집기 열기에서 실제로 적용된다.
+        picks[String(workId)] = { id: ss.id, at: Date.now(), applied: false };
+        /* 작업키는 세션마다 새로 생긴다 → 안 지우면 localStorage 에 영원히 쌓인다.
+           최근 것만 남긴다. 옛 작업의 선택은 어차피 그 세션이 끝나면 쓸 일이 없다
+           (재오픈은 저장된 editState 스냅샷이 이긴다). */
+        var keys = Object.keys(picks);
+        if (keys.length > MAX_PICKS) {
+          var drop = keys.slice(0, keys.length - MAX_PICKS);
+          drop.forEach(function (k) { if (k !== String(workId)) delete picks[k]; });
+        }
         _write(LS_PICK, picks);
       }
       // 사용 횟수 — 실패해도 적용은 이미 끝났다. 통계 때문에 기능을 막지 않는다.
@@ -368,13 +378,47 @@
     });
   }
 
+  /* 저장 모양은 {id, at}. 옛 저장분(문자열 id)도 그대로 읽는다. */
+  function _pickOf(workId) {
+    var v = _picks()[String(workId)];
+    if (!v) return null;
+    return (typeof v === 'string') ? { id: v, at: 0 } : v;
+  }
+
   /* flow 가 편집기를 열 때 부른다. 이 작업에 고른 게 없으면 null → 기존 기본값으로 간다. */
   function styleForWork(workId) {
     if (!workId) return null;
-    var id = _picks()[String(workId)];
-    if (!id) return null;
-    try { return (window.ShopStyle && window.ShopStyle.get) ? window.ShopStyle.get(id) : null; }
+    var p = _pickOf(workId);
+    if (!p || !p.id) return null;
+    try { return (window.ShopStyle && window.ShopStyle.get) ? window.ShopStyle.get(p.id) : null; }
     catch (_e) { void _e; return null; }
+  }
+
+  /* 🔴 "골랐는데 아무 일도 안 일어난다" 를 막는 장치.
+     원장이 사진을 한 번 편집·저장하면 `photo.editState` 스냅샷이 생기고, 편집기는
+     그 스냅샷을 **무조건 복원**한다(§20 — 새로 생긴 개인화가 예전 작업을 바꾸면 안 되니까).
+     그런데 그 규칙이 §21(원장이 **명시적으로 고른** 스타일이 우선)까지 같이 눌러버렸다.
+     실측: A 적용 → 저장 → B 선택 → 편집기가 **여전히 A** 를 보여줬다.
+
+     구분해야 하는 건 '자동'과 '명시적 선택' 이다:
+       · 자동 개인화가 예전 작업을 바꾸는 것  → 막아야 한다 (§20)
+       · 원장이 직접 고른 스타일             → 이겨야 한다 (§21)
+
+     그래서 **아직 안 쓴 선택**이 있을 때 한 번만 스냅샷을 건너뛴다.
+     그 뒤(같은 작업을 다시 열 때)는 원장이 그 위에 한 편집이 이긴다 — §20 그대로. */
+  function isFreshPick(workId) {
+    if (!workId) return false;
+    var p = _pickOf(workId);
+    return !!(p && p.id && !p.applied);
+  }
+
+  function markApplied(workId) {
+    if (!workId) return;
+    var picks = _picks();
+    var v = picks[String(workId)];
+    if (!v) return;
+    picks[String(workId)] = (typeof v === 'string') ? { id: v, applied: true } : Object.assign({}, v, { applied: true });
+    _write(LS_PICK, picks);
   }
 
   function clearWork(workId) {
@@ -395,6 +439,7 @@
     create: create, patch: patch, rename: rename, setPosts: setPosts,
     setCover: setCover, remove: remove, saveAuto: saveAuto,
     apply: apply, styleForWork: styleForWork, clearWork: clearWork, clear: clear,
+    isFreshPick: isFreshPick, markApplied: markApplied,
     ensureShopStyle: ensureShopStyle, toShopStylePatch: toShopStylePatch,
     // 테스트·디버그용
     _zone: _zone, _ratio: _ratio, FONT_BY_CLASS: FONT_BY_CLASS
