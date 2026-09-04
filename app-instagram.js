@@ -561,11 +561,26 @@ function renderDetailedPopup(data) {
     }
 
     // 고정문구 — 인용 블록. 항상 렌더, 없으면 '없음'
-    secs.push(`<div style="padding:16px 20px;">${_label('꼭 쓰는 고정문구')}
-        ${capTmpl
+    // [2026-09-04] 인라인 편집 추가 — 연필 버튼 누르면 그 자리에서 textarea 로 바뀌어
+    //   PATCH /persona/caption-template 저장(이모지 슬롯과 같은 manual 보호 규칙).
+    //   저장값은 캡션 생성 시 글 끝에 자동으로 붙는다(append_template). 팝업·화면이동 없음.
+    secs.push(`<div data-ig-tmpl-wrap style="padding:16px 20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">${_label('꼭 쓰는 고정문구')}
+            <button type="button" data-ig-tmpl-edit style="display:inline-flex;align-items:center;gap:4px;border:none;background:none;padding:2px 0;font-size:11px;font-weight:600;color:var(--text-subtle);cursor:pointer;">
+                <svg width="12" height="12" aria-hidden="true"><use href="#ic-pen-line"/></svg>${capTmpl ? '수정' : '직접 입력'}</button>
+        </div>
+        <div data-ig-tmpl-view>${capTmpl
             ? `<div style="margin-top:8px;padding:2px 0 2px 12px;border-left:2px solid var(--brand);font-size:13px;color:var(--text-muted);line-height:1.8;white-space:pre-wrap;word-break:keep-all;">${_esc(capTmpl)}</div>`
             : `<div style="font-size:13px;color:var(--text-subtle);margin-top:8px;">없음</div>`
-        }
+        }</div>
+        <div data-ig-tmpl-editbox style="display:none;margin-top:8px;">
+            <textarea data-ig-tmpl-input maxlength="1000" rows="4" placeholder="예약 안내·링크 등 글 끝에 항상 붙일 문구" style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.7;color:var(--text-muted);background:var(--surface);resize:vertical;font-family:inherit;"></textarea>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+                <button type="button" data-ig-tmpl-save style="border:none;border-radius:999px;background:var(--brand-strong);color:#fff;font-size:13px;font-weight:700;padding:7px 18px;cursor:pointer;">저장</button>
+                <button type="button" data-ig-tmpl-cancel style="border:none;border-radius:999px;background:none;color:var(--text-subtle);font-size:13px;font-weight:600;padding:7px 10px;cursor:pointer;">취소</button>
+            </div>
+            <div style="margin-top:6px;font-size:11px;color:var(--text-subtle);line-height:1.6;">저장하면 캡션 끝에 자동으로 붙고, 재분석해도 안 바뀌어요. 비우고 저장하면 다시 AI가 찾아요.</div>
+        </div>
     </div>`);
 
     // ── [2026-09-02 v5] 절취선 아래를 2페이지 좌우 스와이프로.
@@ -637,6 +652,56 @@ function renderDetailedPopup(data) {
         rest.style.display = open ? 'none' : '';
         this.textContent = open ? `+${this.dataset.n}개` : '접기';
     });
+
+    // ── [2026-09-04] 고정문구 인라인 편집 — 뷰↔편집 전환 + PATCH 저장.
+    //   apiFetch 는 비-GET 에서 raw Response 를 돌려주므로 res.ok 로 판정.
+    (function () {
+        const wrap = body.querySelector('[data-ig-tmpl-wrap]');
+        if (!wrap) return;
+        const view = wrap.querySelector('[data-ig-tmpl-view]');
+        const box = wrap.querySelector('[data-ig-tmpl-editbox]');
+        const input = wrap.querySelector('[data-ig-tmpl-input]');
+        const editBtn = wrap.querySelector('[data-ig-tmpl-edit]');
+        const saveBtn = wrap.querySelector('[data-ig-tmpl-save]');
+        let current = capTmpl || '';
+
+        const _show = (editing) => {
+            view.style.display = editing ? 'none' : '';
+            box.style.display = editing ? '' : 'none';
+            editBtn.style.display = editing ? 'none' : 'inline-flex';
+        };
+        const _paintView = () => {
+            view.innerHTML = current
+                ? `<div style="margin-top:8px;padding:2px 0 2px 12px;border-left:2px solid var(--brand);font-size:13px;color:var(--text-muted);line-height:1.8;white-space:pre-wrap;word-break:keep-all;">${_esc(current)}</div>`
+                : `<div style="font-size:13px;color:var(--text-subtle);margin-top:8px;">없음</div>`;
+            editBtn.lastChild.textContent = current ? '수정' : '직접 입력';
+        };
+
+        editBtn.addEventListener('click', () => { input.value = current; _show(true); input.focus(); });
+        wrap.querySelector('[data-ig-tmpl-cancel]').addEventListener('click', () => _show(false));
+        saveBtn.addEventListener('click', async () => {
+            const val = input.value.trim();
+            saveBtn.disabled = true;
+            saveBtn.textContent = '저장 중…';
+            try {
+                const res = await apiFetch('/persona/caption-template', {
+                    method: 'PATCH',
+                    headers: { ...authHeader(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: val }),
+                });
+                if (!res || !res.ok) throw new Error('save failed');
+                current = val;
+                _paintView();
+                _show(false);
+                if (window.showToast) window.showToast(val ? '고정문구를 저장했어요. 이제 캡션 끝에 항상 붙어요.' : '고정문구를 비웠어요. 다음 분석 때 AI가 다시 찾아요.');
+            } catch (_e) {
+                if (window.showToast) window.showToast('저장에 실패했어요. 잠시 뒤 다시 시도해 주세요.');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '저장';
+            }
+        });
+    })();
 
     // ── 스와이프 페이저: 점 동기화 · 점 탭 이동 · 힌트 · 최초 넛지 1회
     const pager = body.querySelector('[data-ig-pager]');

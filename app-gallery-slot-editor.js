@@ -531,8 +531,10 @@ function openSlotPhotoInEditor(tab) {
     if (typeof showToast === 'function') showToast('작업실을 불러오는 중이에요. 잠시 후 다시 시도해주세요');
     return;
   }
-  // [버그수정] 편집기가 이미 열려 있으면 재오픈 금지 — 편집 화면 여러 개/패널 섞임 방지.
-  if (window.WorkspaceFlow.isOpen && window.WorkspaceFlow.isOpen()) return;
+  // [2026-09-05 원영 모바일 실사용] '이미 열려 있으면 조용히 return' 가드 삭제 — 하단 4버튼이
+  //   작업실 열림 상태에서 아무 반응 없는 죽은 버튼이 됐다. command('storyedit') 자체가
+  //   이미-열림 케이스를 처리한다(workspace-v2-flow.js: _flowReady() → 현재 사진으로
+  //   _openStoryEditor, 새 화면을 겹쳐 열지 않음) — 중복 가드였고 해로웠다.
   const slot = _slots.find(s => s.id === _popupSlotId);
   if (!slot) return;
   const visible = (slot.photos || []).filter(p => !p.hidden);

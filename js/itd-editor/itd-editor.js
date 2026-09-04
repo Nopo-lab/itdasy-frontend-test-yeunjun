@@ -939,6 +939,11 @@
     if (S.tool === 'draw' || (e.target.closest && (e.target.closest('.itl') || e.target.closest('.itrb') || e.target.closest('.itpanel')))) return;
     // [보스#9] 레이어(텍스트/스티커) 밖 빈 곳을 탭하면 선택 해제 → 핸들(×·회전·크기) 숨김.
     if (S.active) selectLayer(null);
+    /* [2026-09-05 원영 모바일 실사용] 누끼·색감(보정) 등 도구 시트가 열려 있을 때 빈 공간을
+       탭하면 시트가 닫힌다. 그립 줄을 정확히 아래로 긁어야만 닫히던 게 모바일에선
+       "빈 곳을 눌러도 안 닫힌다"로 느껴졌다. draw 는 위 조기 return 으로 제외,
+       layout 은 스테이지 탭이 칸 재구도 조작이라 제외. 핀치 시작점 등록은 그대로 이어간다. */
+    if (S.tool && S.tool !== 'layout') _closeToolPanel();
     pinchPts[e.pointerId] = { x: e.clientX, y: e.clientY };
     var ids = Object.keys(pinchPts);
     if (ids.length === 2) { var a = pinchPts[ids[0]], b = pinchPts[ids[1]]; pinch0 = { d: pdist(a, b), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, s: S.pz.scale, tx: S.pz.tx, ty: S.pz.ty }; }
@@ -959,15 +964,30 @@
 
   /* ── 텍스트 ── */
   function addText() {
+    /* [2026-09-05 원영 모바일 실사용] 텍스트 2건 수정.
+       ③ 키보드 안 뜸: editText 를 setTimeout(30ms)으로 미루면 focus 가 탭 제스처 밖에서
+          일어나 iOS/안드로이드가 소프트 키보드를 안 올린다(PC 는 물리 키보드라 티가 안 났다).
+          → 아래에서 탭 제스처 안 동기 호출로 변경.
+       ④ 멈춤: 키보드가 안 뜨니 원장이 Aa 를 연타 → Aa 는 탭마다 새 레이어(보스#8 인스타식)라
+          placeholder 빈 레이어 + 자동초안 예약이 계속 쌓였다("터치 몇 번에 멈춤").
+          → 아직 안 쓴(placeholder/빈) 텍스트 레이어가 있으면 새로 만들지 않고 그걸 다시 연다.
+          내용을 입력한 레이어가 있을 땐 기존대로 항상 새 텍스트(보스#8 유지). */
+    var PLACEHOLDER = '내용을 입력하세요';
+    for (var _i = ((S && S.layers) || []).length - 1; _i >= 0; _i--) {
+      var _ex = S.layers[_i];
+      if (_ex.type === 'text' && (_ex.text === PLACEHOLDER || !String(_ex.text || '').trim())) {
+        selectLayer(_ex); editText(_ex); return _ex;
+      }
+    }
     var L = makeLayer('text');
-    L.font = FONTS[0]; L.color = COLORS[0]; L.align = 'center'; L.fontSize = 30; L.text = '내용을 입력하세요';
+    L.font = FONTS[0]; L.color = COLORS[0]; L.align = 'center'; L.fontSize = 30; L.text = PLACEHOLDER;
     // [2026-07-26 원영] white-space:pre — 편집 중 자동 줄바꿈 금지(엔터 친 곳만 줄바꿈).
     //   export 캔버스는 split('\n')으로 엔터만 줄바꿈이라, 편집 화면도 동일해야 WYSIWYG.
     var t = el('div', 'itl-text'); t.textContent = L.text; t.style.cssText = 'font-family:' + L.font.family + ';font-weight:' + L.font.weight + ';color:' + L.color + ';text-align:center;font-size:' + L.fontSize + 'px;white-space:pre';
     L.el.appendChild(t); L.tx = t;
     placeCenter(L, 180, 50); selectLayer(L);
     _pushOp({ op: 'add', L: L });   // [P1-3] 추가 되돌리기
-    setTimeout(function () { editText(L); }, 30);
+    editText(L);   // [2026-09-05] 동기 호출 필수 — setTimeout 으로 미루면 모바일 키보드가 안 올라온다(위 주석 ③)
     /* [2026-08-23] 이 장에 글자가 처음 생겼다 → 그 장 기준으로 자동 초안을 한 번 돌린다.
        캐러셀에선 자동 텍스트가 1번 장에만 붙으므로, 2~6번 장은 원장이 글자를 넣는 이 순간이
        초안이 돌 수 있는 **첫 시점**이다. 이미 돈 장이거나 원장이 옮긴 장이면 `_ps` 가 막는다.
