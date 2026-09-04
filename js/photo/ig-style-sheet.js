@@ -118,14 +118,36 @@
   }
 
   // ── 조각 ──────────────────────────────────────────────────────────
+  /* 팔레트 색은 **hex 만** 통과시킨다.
+     `_esc` 가 따옴표를 막아 속성 밖으로는 못 나가지만, style 속성 **안**에서는
+     `red;background-image:url(...)` 같은 CSS 를 여전히 밀어 넣을 수 있다.
+     이 값은 서버 왕복을 거치므로 손상·조작 가능성을 0 으로 만든다 — 모양이 아니면 안 쓴다. */
+  function _hexOnly(c) {
+    return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(c || '').trim()) ? String(c).trim() : null;
+  }
+
+  /* 썸네일 주소도 같은 이유로 모양을 본다. `_esc` 는 속성 밖으로 나가는 것만 막고,
+     `url(...)` **안**에서 `) ; background:...` 로 CSS 를 이어 붙이는 건 못 막는다.
+     실측(XSS 리허설)에서 이 경로만 뚫려 있었다.
+     주소는 인스타 CDN 에서 오지만 우리 손을 여러 번 거치므로 모양이 아니면 안 쓴다. */
+  function _safeUrl(u) {
+    var v = String(u || '').trim();
+    if (!/^https?:\/\//i.test(v)) return null;
+    if (/[)"'\s;\\]/.test(v)) return null;    // url() 을 닫거나 선언을 이어붙일 수 있는 문자
+    return v;
+  }
+
   function _dots(profile) {
     var pal = (profile && profile.visual && profile.visual.palette) || [];
     if (!pal.length) {
       return '<span style="width:34px;height:34px;border-radius:11px;background:#F2F4F6;flex-shrink:0;"></span>';
     }
-    var cells = pal.slice(0, 3).map(function (c) {
-      return '<span style="flex:1;background:' + _esc(c) + ';"></span>';
+    var cells = pal.slice(0, 3).map(_hexOnly).filter(Boolean).slice(0, 3).map(function (c) {
+      return '<span style="flex:1;background:' + c + ';"></span>';
     }).join('');
+    if (!cells) {
+      return '<span style="width:34px;height:34px;border-radius:11px;background:#F2F4F6;flex-shrink:0;"></span>';
+    }
     return '<span style="display:flex;width:34px;height:34px;border-radius:11px;overflow:hidden;' +
       'flex-shrink:0;border:1px solid var(--border);">' + cells + '</span>';
   }
@@ -166,14 +188,14 @@
     }
     return '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px;">' +
       ids.map(function (id) {
-        var t = _thumbOf(id);
+        var t = _safeUrl(_thumbOf(id));
         var on = opts.selectable ? (_picked.indexOf(id) >= 0) : false;
         var cover = opts.cover === id;
         return '<button type="button" ' + (opts.selectable ? 'data-igs-pick="' : 'data-igs-cover="') + _esc(id) + '" ' +
           'aria-pressed="' + (on ? 'true' : 'false') + '" ' +
           'style="position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;border:' +
           (on || cover ? '2.5px solid var(--brand-strong)' : '1px solid var(--border)') +
-          ';background:' + (t ? '#F2F4F6 url(' + _esc(t) + ') center/cover' : '#F2F4F6') +
+          ';background:' + (t ? '#F2F4F6 url(' + t + ') center/cover' : '#F2F4F6') +
           ';padding:0;cursor:pointer;">' +
           (on ? '<span style="position:absolute;right:5px;top:5px;width:20px;height:20px;border-radius:50%;' +
             'background:var(--brand-strong);color:#fff;display:flex;align-items:center;justify-content:center;">' +

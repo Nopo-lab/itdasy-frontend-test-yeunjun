@@ -161,15 +161,23 @@
      이름 옆 색점은 그 스타일의 실제 팔레트다 — 이모지(🤍🤎)는 OS 마다 다르게 렌더돼서 금지.
      목록이 비어도 '만들기' 는 항상 보인다: 자동 그룹이 안 만들어지는 원장(톤이 제각각)이
      그렇다고 이 기능을 못 쓰면 안 된다. */
+  /* 팔레트 색은 **hex 만**. `_esc` 는 속성 밖으로 나가는 것만 막고,
+     style 속성 *안*에서 `red;background-image:url(...)` 로 CSS 를 이어 붙이는 건 못 막는다.
+     서버 왕복을 거치는 값이라 모양이 아니면 아예 안 쓴다. */
+  function _hexOnly(c) {
+    return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(c || '').trim()) ? String(c).trim() : null;
+  }
+
   function _swatch(g) {
-    var pal = (g && g.profile && g.profile.visual && g.profile.visual.palette) || [];
+    var pal = ((g && g.profile && g.profile.visual && g.profile.visual.palette) || [])
+      .map(_hexOnly).filter(Boolean).slice(0, 3);
     if (!pal.length) {
       return '<span style="width:26px;height:26px;border-radius:9px;background:#F2F4F6;flex-shrink:0;"></span>';
     }
     return '<span style="display:flex;width:26px;height:26px;border-radius:9px;overflow:hidden;' +
       'flex-shrink:0;border:1px solid var(--border);">' +
-      pal.slice(0, 3).map(function (c) {
-        return '<span style="flex:1;background:' + _esc(c) + ';"></span>';
+      pal.map(function (c) {
+        return '<span style="flex:1;background:' + c + ';"></span>';
       }).join('') + '</span>';
   }
 
