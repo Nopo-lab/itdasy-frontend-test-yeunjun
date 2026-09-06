@@ -90,7 +90,14 @@
       canPublish: caps ? !!caps.publish : true,
     };
 
-    if (needsReconnect) return Object.assign(base, { state: STATE.RECONNECT_REQUIRED });
+    if (needsReconnect) {
+      // [실 Meta 게이트 2026-09-06] 백엔드가 준 사유를 그대로 들고 간다.
+      //   구버전 백엔드는 이 필드가 없다 → '' (describe 가 기존 문구로 떨어진다).
+      return Object.assign(base, {
+        state: STATE.RECONNECT_REQUIRED,
+        reconnectReason: (typeof data.reconnect_reason === 'string') ? data.reconnect_reason : '',
+      });
+    }
     if (remainMs === null) return Object.assign(base, { state: STATE.VALID });
     // 만료됐는데 아직 무효 판정이 아니다 = 백엔드가 유예 안에서 자동갱신 중.
     if (remainMs <= 0) return Object.assign(base, { state: STATE.REFRESHING });
@@ -135,6 +142,31 @@
                  cta: '인스타그램 연결하기', showCta: true, badge: '미연결' };
 
       case STATE.RECONNECT_REQUIRED:
+        /* [실 Meta 게이트 2026-09-06] **재연동으로 안 풀리는 경우가 있다.**
+         *   실제 Meta 를 불러 보니 code 10 =
+         *   "instagram account type is not business or creator" 가 돌아왔다.
+         *   이건 인스타 앱에서 계정을 프로페셔널로 되돌려야 한다 — 그런데 화면은
+         *   "다시 연결하기" 만 띄웠다. 눌러도 같은 오류로 실패하는 버튼이다.
+         *   원장님이 "왜 안 되지 / 무엇을 해야 하지" 에 답을 얻지 못한다. */
+        if (st.reconnectReason === 'account_type') {
+          return {
+            tone: 'danger',
+            title: '인스타그램 계정 설정을 바꿔야 해요',
+            detail: '지금 계정이 개인 계정이라 잇데이가 연결할 수 없어요. '
+              + '인스타그램 앱 → 설정 → 계정 유형에서 프로페셔널(비즈니스·크리에이터) '
+              + '계정으로 바꾼 뒤 다시 연결해주세요.',
+            cta: '바꾸고 다시 연결하기', showCta: true, badge: '계정 유형',
+          };
+        }
+        if (st.reconnectReason === 'app_removed') {
+          return {
+            tone: 'danger',
+            title: '인스타그램 연결이 해제됐어요',
+            detail: '인스타그램에서 잇데이 앱 연결이 해제됐어요. '
+              + '다시 연결하면 DM 자동응답과 게시를 이어서 쓸 수 있어요.',
+            cta: '인스타그램 다시 연결하기', showCta: true, badge: '연결 해제됨',
+          };
+        }
         return {
           tone: 'danger',
           title: '인스타그램 재연동이 필요해요',

@@ -215,3 +215,54 @@ describe('서버 시각 보정 — 기기 시계가 틀어져도 이상해지지
     expect(st.state).toBe(S.STATE.EXPIRING);
   });
 });
+
+/* ── [실 Meta 게이트 2026-09-06] 재연동 사유별 안내 ─────────────────────────
+ *
+ * 실제 Meta 를 불러 보니 code 10 이 왔다:
+ *   "Access is denied because the instagram account type is not business or creator"
+ * 이건 **재연동으로 안 풀린다** — 인스타 앱에서 계정 유형을 바꿔야 한다.
+ * 그런데 화면은 "다시 연결하기" 만 띄우고 있었다(눌러도 같은 오류로 실패하는 버튼).
+ */
+describe('재연동 사유별 안내', () => {
+  const opts = { nowMs: Date.parse('2026-09-06T00:00:00Z') };
+  const reconnect = (reason) => S.resolve({
+    connected: true, token_valid: false, reconnect_required: true,
+    reconnect_reason: reason, expires_at: '2026-10-10T00:00:00Z', handle: '@x',
+  }, opts);
+
+  test('account_type — 계정 유형을 바꾸라고 안내한다 (재연동만 시키지 않는다)', () => {
+    const d = S.describe(reconnect('account_type'));
+    expect(d.title).toContain('계정 설정');
+    expect(d.detail).toContain('프로페셔널');
+    expect(d.showCta).toBe(true);
+    expect(d.tone).toBe('danger');
+  });
+
+  test('app_removed — 연결이 해제된 것으로 안내', () => {
+    const d = S.describe(reconnect('app_removed'));
+    expect(d.title).toContain('해제');
+    expect(d.showCta).toBe(true);
+  });
+
+  test('사유 없음/모름 — 기존 문구 그대로 (구버전 백엔드 호환)', () => {
+    const d = S.describe(reconnect(''));
+    expect(d.title).toBe('인스타그램 재연동이 필요해요');
+    const noField = S.describe(S.resolve({
+      connected: true, token_valid: false, reconnect_required: true, handle: '@x',
+    }, opts));
+    expect(noField.title).toBe('인스타그램 재연동이 필요해요');
+  });
+
+  test('사유가 있어도 상태는 RECONNECT_REQUIRED 그대로', () => {
+    expect(reconnect('account_type').state).toBe(S.STATE.RECONNECT_REQUIRED);
+    expect(S.needsBanner(reconnect('account_type'))).toBe(true);
+  });
+
+  test('개발자 용어는 노출하지 않는다', () => {
+    for (const r of ['account_type', 'app_removed', '']) {
+      const d = S.describe(reconnect(r));
+      const all = d.title + d.detail + d.cta;
+      expect(all).not.toMatch(/OAuth|code 10|190|API|token/i);
+    }
+  });
+});
