@@ -266,3 +266,48 @@ describe('재연동 사유별 안내', () => {
     }
   });
 });
+
+/* ── [실 Meta 게이트 2026-09-07] 만료 전 무효 상태의 문구 ────────────────────
+ *
+ * 백엔드에 생존 확인이 들어간 뒤로 **만료일이 미래인 채 재연동 필요**인 상태가
+ * 정상적으로 생긴다(계정 유형 변경·권한 철회·비번 변경).
+ * 그때 "10월 11일에 만료됐어요"(오늘 9월 7일) 라고 하면 원장님께 거짓말이다.
+ */
+describe('만료 전에 끊긴 경우의 문구', () => {
+  const nowMs = Date.parse('2026-09-07T00:00:00Z');
+  const st = (expires) => S.resolve({
+    connected: true, token_valid: false, reconnect_required: true,
+    expires_at: expires, handle: '@x',
+  }, { nowMs });
+
+  test('만료일이 미래면 "만료됐어요" 라고 하지 않는다', () => {
+    const d = S.describe(st('2026-10-10T16:12:45Z'));
+    expect(d.detail).not.toContain('만료');
+    expect(d.detail).toContain('끊어졌어요');
+  });
+
+  test('만료일이 미래면 그 날짜를 문장에 넣지 않는다', () => {
+    const d = S.describe(st('2026-10-10T16:12:45Z'));
+    expect(d.detail).not.toContain('10월');
+  });
+
+  test('진짜 만료된 경우는 날짜와 함께 만료라고 말한다 (회귀 방지)', () => {
+    const d = S.describe(st('2026-06-25T05:28:50Z'));
+    expect(d.detail).toContain('만료됐어요');
+    expect(d.detail).toContain('6월 25일');
+  });
+
+  test('만료일을 모르면 끊어졌다고만 말한다', () => {
+    const d = S.describe(S.resolve({
+      connected: true, token_valid: false, reconnect_required: true, handle: '@x',
+    }, { nowMs }));
+    expect(d.detail).toContain('끊어졌어요');
+    expect(d.detail).not.toContain('만료');
+  });
+
+  test('어느 경우든 무엇이 멈췄는지는 알려준다', () => {
+    for (const e of ['2026-10-10T16:12:45Z', '2026-06-25T05:28:50Z']) {
+      expect(S.describe(st(e)).detail).toContain('DM 자동응답과 게시가 멈춰');
+    }
+  });
+});
