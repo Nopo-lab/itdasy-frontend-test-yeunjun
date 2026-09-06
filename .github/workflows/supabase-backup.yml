@@ -44,9 +44,16 @@ jobs:
             exit 0
           fi
           FILE="backup/itdasy_PROD_${BACKUP_TS}.sql.gz"
-          /usr/lib/postgresql/17/bin/pg_dump --no-owner --no-acl --format=plain "$DB_URL" | gzip > "$FILE"
+          # 실패하면 파일을 지운다 — 20바이트짜리 빈 gzip 이 artifact 에 섞이면
+          # 나중에 그걸 백업인 줄 알고 집는다. 없는 편이 낫다.
+          if ! /usr/lib/postgresql/17/bin/pg_dump --no-owner --no-acl --format=plain "$DB_URL" | gzip > "$FILE"; then
+            rm -f "$FILE"
+            echo "::error::PROD 덤프 실패 (접속·인증 확인)"
+            exit 1
+          fi
           ls -lh "$FILE"
           if [ $(stat -c%s "$FILE") -lt 1024 ]; then
+            rm -f "$FILE"
             echo "::error::PROD 덤프 파일이 너무 작습니다 (빈 백업). 1KB 이상이어야 정상."
             exit 1
           fi
@@ -64,9 +71,14 @@ jobs:
             exit 0
           fi
           FILE="backup/itdasy_STAGING_${BACKUP_TS}.sql.gz"
-          /usr/lib/postgresql/17/bin/pg_dump --no-owner --no-acl --format=plain "$DB_URL" | gzip > "$FILE"
+          if ! /usr/lib/postgresql/17/bin/pg_dump --no-owner --no-acl --format=plain "$DB_URL" | gzip > "$FILE"; then
+            rm -f "$FILE"
+            echo "::error::STAGING 덤프 실패 (접속·인증 확인)"
+            exit 1
+          fi
           ls -lh "$FILE"
           if [ $(stat -c%s "$FILE") -lt 1024 ]; then
+            rm -f "$FILE"
             echo "::error::STAGING 덤프 파일이 너무 작습니다 (빈 백업). 1KB 이상이어야 정상."
             exit 1
           fi
