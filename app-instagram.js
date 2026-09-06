@@ -104,6 +104,21 @@ function _purgeIgTextStyleIDB() {
 const _IG_STYLE_COOLDOWN_KEY = 'itdasy:ig_style_cooldown';
 const _IG_STYLE_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
+/* [2026-09-04] 게시물별 분석 → 자동 스타일 그룹 → 서버 저장.
+   실패는 전부 조용히 넘긴다 — 인스타 연동/말투 분석 흐름을 이것 때문에 막지 않는다.
+   그룹이 안 만들어져도(표본 부족·톤이 제각각) 그건 정상적인 결과다. 지어내지 않는다. */
+function _buildIgStyleGroups(media) {
+  return window.IgPostAnalysis.collect(media)
+    .then((posts) => {
+      if (!window.IgStyleGrouping || !posts || !posts.length) return null;
+      const r = window.IgStyleGrouping.group(posts);
+      try { window.dispatchEvent(new CustomEvent('itdasy:ig-style-grouped', { detail: r })); } catch (_e) { void _e; }
+      if (!r.groups.length || !window.IgStyleLibrary) return r;
+      return window.IgStyleLibrary.saveAuto(r.groups).then(() => r).catch(() => r);
+    })
+    .catch(() => null);
+}
+
 function _kickIgTextStyleBuild(force) {
   try {
     if (!window.InstagramTextStyle) return;
@@ -124,6 +139,12 @@ function _kickIgTextStyleBuild(force) {
       .then((j) => {
         const media = j && Array.isArray(j.media) ? j.media : null;
         if (!media || !media.length) return null;
+        /* [2026-09-04] 게시물별 분석 + 자동 스타일 그룹.
+           `IgPostAnalysis.collect` 는 **Vision 을 새로 부르지 않는다** — 안에서
+           `InstagramTextStyle.build(media, {onPost})` 를 그대로 부르고, 여태 버려지던
+           게시물별 결과를 media_id 에 붙여 남길 뿐이다(비용 가드는 그쪽에 그대로 있다).
+           모듈이 아직 안 실렸으면 예전 경로로 간다 — 말투 분석이 이것 때문에 막히면 안 된다. */
+        if (window.IgPostAnalysis) return _buildIgStyleGroups(media);
         return window.InstagramTextStyle.build(media);         // 필드명은 thumb — 모듈이 처리
       })
       .catch(() => {})
@@ -350,6 +371,24 @@ async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
     } catch (_e) { /* ignore */ }
   } catch(_e) { /* ignore */ }
 }
+
+// [IG 게이트 2026-09-06 §28 멀티탭] 탭이 다시 보일 때 IG 상태를 새로 읽는다.
+//
+//   IGState 는 탭마다 따로 사는 메모리(window._lastIgState)라 탭간 동기화가 없었다.
+//   탭 A 에서 재연동을 끝내도 탭 B 는 계속 "재연동이 필요해요" 배너를 띄운다 —
+//   원장님 입장에선 **고쳤는데 안 고쳐진 것처럼** 보인다("복구됐는가?" 에 답을 못 준다).
+//
+//   ⚠️ 새 visibilitychange 리스너를 또 달지 않는다. app-core 의 focus-sync 가 이미
+//      **5분 스로틀**로 `itdasy:data-changed`(kind:'focus_sync')를 쏘고 있고,
+//      예전에 복귀마다 무방비로 요청을 쏴서 문제가 됐던 전례가 있다(app-perf-recovery 주석).
+//      그래서 있는 신호에 얹기만 한다 — 추가 요청은 5분에 한 번뿐이다.
+window.addEventListener('itdasy:data-changed', (e) => {
+  try {
+    if (!e || !e.detail || e.detail.kind !== 'focus_sync') return;
+    if (typeof getToken === 'function' && !getToken()) return;   // 로그아웃 상태면 부르지 않는다
+    checkInstaStatus();
+  } catch (_e) { /* 상태 갱신 실패는 화면을 깨뜨리지 않는다 */ }
+});
 
 // [QA #8] 외부 컴포넌트용 IG 상태 store — 현재 상태 read + 변경 구독.
 window.IGState = {
@@ -592,9 +631,14 @@ function renderDetailedPopup(data) {
     let page2 = '';
     try {
         const prof = (window.InstagramTextStyle && window.InstagramTextStyle.get()) || null;
-        if (window.IgStyleCardPage2 && prof) {
-            page2 = window.IgStyleCardPage2.render(prof)
-                || (window.IgStyleCardPage2.renderInsufficient ? window.IgStyleCardPage2.renderInsufficient(prof) : '');
+        const P2 = window.IgStyleCardPage2;
+        if (P2 && prof) {
+            page2 = P2.render(prof) || (P2.renderInsufficient ? P2.renderInsufficient(prof) : '');
+        } else if (P2 && P2.renderNotAnalyzed) {
+            /* [2026-09-04] 분석 전에도 페이지 2 를 만든다(§27).
+               예전엔 프로필이 없으면 페이지 2 를 통째로 안 그려서, 원장은 이 기능이
+               있는지조차 몰랐다 — '숨겨진 기능' 은 없는 기능과 같다. */
+            page2 = P2.renderNotAnalyzed();
         }
     } catch (_e) { page2 = ''; }
 
@@ -631,6 +675,12 @@ function renderDetailedPopup(data) {
     // 카드 = flex column. 이게 있어야 pager 의 flex:1 이 먹고 점이 하단에 고정된다.
     body.setAttribute('style', 'display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden;');
     body.innerHTML = html;
+
+    /* [2026-09-04] 페이지 2 의 '내 스타일' 버튼들. innerHTML 로 새로 만든 노드라
+       매번 다시 붙여야 한다 — 안 붙이면 **버튼은 보이는데 눌러도 아무 일이 없다**
+       (이 앱에서 가장 자주 난 종류의 결함이라 여기 못 박는다). */
+    try { if (window.IgStyleCardPage2 && window.IgStyleCardPage2.bind) window.IgStyleCardPage2.bind(body); }
+    catch (_bindErr) { void _bindErr; }
 
     // [2026-06-26] '내 말투로 글 써보기' CTA 제거 유지 — 작업실/글쓰기 진입 차단(중복·혼동 방지).
     //   닫기는 헤더 X(analyze-result-close).
@@ -1273,15 +1323,27 @@ async function connectInstagram() {
     //   대신 헤더 인증으로 60초짜리 1회용 티켓을 받아 그걸 주소에 싣는다.
     //   티켓이 로그에 남아도 연동 화면 진입 외엔 아무것도 못 한다.
     //   티켓 발급이 실패하면 옛 방식으로 폴백한다 — 연동이 아예 막히는 것보다 낫다.
+    //   [IG 게이트 2026-09-06] 티켓 발급을 **한 번 더 시도**한다.
+    //     폴백(`?token=`)은 로그에 JWT 를 남기는 바로 그 경로다. 없애면 티켓이 실패할 때
+    //     연동이 통째로 막히니 남기되, **일시적 실패로 폴백하는 일이 없게** 재시도를 넣는다.
+    //     실패 원인 대부분은 순간적인 네트워크 흔들림이고, 그건 한 번 더 부르면 대개 붙는다.
+    //     (BE 가 아예 죽어 있으면 어차피 그다음 단계도 실패하므로 폴백해도 소용없다.)
     let _entry = '';
-    try {
-      const tr = await apiFetch('/instagram/go-ticket', { method: 'POST' });
-      if (tr.ok) {
-        const tj = await tr.json();
-        if (tj && tj.ticket) _entry = `ticket=${encodeURIComponent(tj.ticket)}`;
-      }
-    } catch (_e) { void _e; }
-    if (!_entry) _entry = `token=${encodeURIComponent(token)}`;
+    for (let _try = 0; _try < 2 && !_entry; _try++) {
+      if (_try) await new Promise((r) => setTimeout(r, 400));
+      try {
+        const tr = await apiFetch('/instagram/go-ticket', { method: 'POST' });
+        if (tr.ok) {
+          const tj = await tr.json();
+          if (tj && tj.ticket) _entry = `ticket=${encodeURIComponent(tj.ticket)}`;
+        }
+      } catch (_e) { void _e; }
+    }
+    if (!_entry) {
+      // 여기까지 오면 JWT 가 주소에 실린다 — 왜 그랬는지 흔적을 남긴다(로그 노출 추적용).
+      console.warn('[instagram] go-ticket 2회 실패 — 레거시 token= 폴백 사용');
+      _entry = `token=${encodeURIComponent(token)}`;
+    }
     const goUrl = `${API}/instagram/go?${_entry}&origin=${origin}&return_to=${returnToEnc}`;
 
     if (_IG_BROWSER && isNative && window.Capacitor?.Plugins?.Browser) {

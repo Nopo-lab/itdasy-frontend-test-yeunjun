@@ -361,8 +361,24 @@
   // [v591·#6] 사진에서 대표 색 추출 — 클라이언트 canvas(서버/AI 비용 0). 28px 다운샘플 후
   //   근사 흰/검 제외하고 5비트 버킷 빈도순 상위색 반환. 폰트/로고 자동추출은 부정확해 미지원(수동).
   // [v587·C] 우리샵 스타일 레이어 빌더 — 편집기 진입과 헤드리스 자동합성이 공유.
+  /* 스타일 선택이 붙는 키. **저장 전에도 존재해야** 한다(위 _workId 주석 참조). */
+  function _workKey() {
+    try { return (d && d._workId) || (d && d.slot && d.slot.id) || null; }
+    catch (_e) { void _e; return null; }
+  }
+
   function _buildShopStyleLayers() {
-    var ss = (window.ShopStyle && window.ShopStyle.getActive) ? window.ShopStyle.getActive() : null;
+    /* [2026-09-04] 우선순위: **이 작업에 고른 스타일** > 전역 기본값.
+       원장이 '내 스타일'에서 하나를 골랐으면 이번 게시물엔 그게 이긴다(§21).
+       고른 게 없으면 예전 그대로 — `setActive` 를 안 건드리므로 다음 새 글까지
+       이번 선택이 따라가지 않는다(§22. last-used 강제 적용 방지). */
+    var ss = null;
+    try {
+      if (window.IgStyleLibrary && window.IgStyleLibrary.styleForWork) {
+        ss = window.IgStyleLibrary.styleForWork(_workKey());
+      }
+    } catch (_igs) { void _igs; }
+    if (!ss) ss = (window.ShopStyle && window.ShopStyle.getActive) ? window.ShopStyle.getActive() : null;
     var roleText = _splitServiceForLayers(d.service);   // [v583·A] 시술명/시술내용 분리
     var layers = [];
     var autoArranged = false;
@@ -620,7 +636,13 @@
     //   (예전 fresh: editedDataUrl(텍스트 구워진 사진)을 베이스로 써서 "합쳐진 느낌" + 실기기서 사진이 안 뜨던 문제.)
     //   누끼(배경제거) 적용본은 fgCutout/bgSpec 합성을 보존해야 하므로 기존 방식(구워진 editedDataUrl 베이스) 유지.
     var _hasBg = !!(p0 && p0.bgSpec && p0.fgCutout);
-    var _restore = (!_hasBg && p0 && p0.editState) || null;
+    /* [2026-09-04 P0] 원장이 **방금 스타일을 골랐으면** 저장된 스냅샷을 한 번 건너뛴다.
+       안 그러면 "B 를 골랐는데 화면은 계속 A" 가 된다 — 실측으로 잡았다.
+       한 번만이다: 그 뒤 원장이 그 위에 한 편집은 다음 열기에서 정상 복원된다(§20 유지). */
+    var _IGL = window.IgStyleLibrary;
+    var _freshPick = !!(_IGL && _IGL.isFreshPick && _IGL.isFreshPick(_workKey()));
+    var _restore = (!_freshPick && !_hasBg && p0 && p0.editState) || null;
+    if (_freshPick) { try { _IGL.markApplied(_workKey()); } catch (_mp) { void _mp; } }
     // [ws-hyper] 레이아웃 활성 시: 프리셋 매칭되면 편집기 콜라주(슬롯 재조정 가능), 아니면 합성본 단일 이미지로 레이아웃 보존.
     //   (예전엔 항상 원본 단일 사진으로 열려 레이아웃이 통째 사라졌음 — 2026-07-10 버그수정)
     // [v779 재오픈] d.wsLayout 은 레이아웃 화면을 방문해야만 채워지는 세션 별칭 → 재오픈 초안엔 없다.
@@ -668,8 +690,12 @@
     // [audit#3] 텍스트 역할 레이어는 type 필드가 없다(roleText 배치) — 'text'로만 필터하면 항상 빈 배열이라 '지운 레이어 기억' 기능이 죽어 있었음.
     d._editorOpenRoles = layers.filter(function (l) { return l.role && (l.type === 'text' || l.type == null); }).map(function (l) { return l.role; });
     // 최종 editState 계산 후, 오케스트레이션 레이어를 editState.layers 에도 병합(콜라주는 editState.layers 를 쓰고 layers 파라미터를 무시하므로).
+    /* 🔴 여기서 `p0.editState` 를 **한 번 더** 읽는다. 위에서 `_restore` 만 비우면
+       이 줄이 같은 스냅샷을 다시 집어와서 "스타일을 골랐는데 화면은 그대로" 가 된다.
+       (게이트가 둘인데 하나만 고친 것 — 이 레포에서 반복해서 나온 패턴이라 명시해 둔다.
+        실측: A 저장 → B 선택 → 편집기가 여전히 A. `_restore` 는 null 이었는데도.) */
     var _finalEs = (_wsEd && _wsEd.mode === 'collage') ? _mergeWmLayers(_wsEd.editState, _wmEd)
-      : (_restore || (o.fresh ? _wmEd : ((p0 && p0.editState) || _wmEd)));
+      : (_restore || ((o.fresh || _freshPick) ? _wmEd : ((p0 && p0.editState) || _wmEd)));
     if (_orchLayers.length && _finalEs) {
       try {
         var _esL = _finalEs.layers || [];
@@ -1325,11 +1351,38 @@
     var s = el && el.querySelector('[data-fs="edit"] [data-ed-zoompct]');
     if (s) s.textContent = Math.round((((d.zoom && d.zoom.s) || 1)) * 100) + '%';
   }
+  /* [2026-09-04] '내 스타일' 진입점(§17).
+     스타일이 하나도 없으면 **안 보여준다** — 누르면 빈 목록만 나오는 버튼은 없느니만 못하다.
+     지금 이 작업에 걸린 스타일이 있으면 그 이름을 보여준다(뭘 쓰고 있는지 모르면 불안하다). */
+  function _myStyleBarHtml() {
+    try {
+      var L = window.IgStyleLibrary;
+      if (!L || !L.cached) return '';
+      var gs = L.cached();
+      if (!gs.length) return '';
+      var picked = L.styleForWork && L.styleForWork(_workKey());
+      var label = picked ? esc(picked.name || '내 스타일') : '스타일 고르기';
+      return '<div class="ed-sec"><button type="button" data-fl="mystyle" ' +
+        'style="width:100%;display:flex;align-items:center;gap:10px;padding:11px 14px;min-height:48px;' +
+        'background:var(--surface,#fff);border:1px solid var(--border);border-radius:14px;cursor:pointer;text-align:left;">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--brand-strong);flex-shrink:0;">' +
+        '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/>' +
+        '<path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>' +
+        '<span style="flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--text);' +
+        'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">내 스타일 · ' + label + '</span>' +
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-subtle);flex-shrink:0;">' +
+        '<path d="m9 6 6 6-6 6"/></svg></button></div>';
+    } catch (_e) { void _e; return ''; }
+  }
+
   function renderEdit() {
     d.zoom = { s: 1, tx: 0, ty: 0 };   // 편집화면 새로 그릴 때(진입/사진전환) 줌 초기화
     var pu = _editPhotoUrls();
     return '' +
       '<div class="ed-sec" data-ed-switcher>' + _editSwitcherHtml() + '</div>' +
+      _myStyleBarHtml() +
       '<div class="ed-photo-vp" data-fl-edvp><div class="ed-photo" data-fl-edphoto style="background-image:url(' + esc(pu.url) + ');filter:' + pu.preview + '"></div><canvas class="ed-mask-ov" data-fl-maskov hidden></canvas></div>' + _vpToolsHtml() +
       '<div class="ed-sec" data-ed-basic>' + _mainAdjustHtml() + '</div>' +
       '<div class="ed-sec" data-ed-bottom>' + _editBottomHtml() + '</div>' +
@@ -2952,6 +3005,15 @@
       // [S4] 레이아웃 화면 전용(dellayout·layoutpick·trayph·savelayout·skiplayout)은 layout.handleClick 로 이관 — 아래 스텝 위임에서 처리됨.
       // [v560] 편집 화면 우측 CTA — 현재 보정 굽고 '템플릿 선택' 화면으로.
       if (a === 'cta2') { return bakeEdit().then(function () { setScreen('template'); }); }
+      /* [2026-09-04] '내 스타일' — 시트를 연다. 시트가 apply 하면 이 작업에만 걸리고,
+         다음에 편집기를 열 때 `_buildShopStyleLayers` 가 그 스타일을 집는다. */
+      if (a === 'mystyle') {
+        try {
+          if (window.IgStyleSheet && window.IgStyleSheet.openList) window.IgStyleSheet.openList();
+          else toast('잠시 후 다시 시도해 주세요');
+        } catch (_mse) { toast('잠시 후 다시 시도해 주세요'); }
+        return;
+      }
       // [refactor S4] 스텝 전용 클릭 핸들러 위임 — 현재 스텝(STEP_FX[cur])이 처리하면 종료. 스텝 제거 시 핸들러도 함께 제거(고아 방지).
       //   버튼이 해당 스텝 화면(render)에서만 렌더되는 '스텝 전용'만 이관(공유 핸들러는 아래 인라인 유지).
       var _fx4 = STEP_FX[cur]; if (_fx4 && _fx4.handle && _fx4.handle(t, a, e) === true) return;
@@ -4768,6 +4830,15 @@
     var hadRoles = !!(slot && slot.photos && slot.photos.some(function (p) { return p && p.role; }));
     d = {
       slot: slot,
+      /* [2026-09-04 P0] 이 작업의 **세션 식별자**.
+         `d.slot` 은 `buildSlot()` — 즉 **저장·발행 시점**에야 생긴다. 그런데 원장이
+         '내 스타일' 을 고르는 건 그 한참 전(사진 올린 직후)이다. slot.id 를 작업키로 쓰면
+         그때는 null 이라 선택이 **아무 데도 안 걸리고**, 편집기는 기본 스타일로 연다
+         — "골랐는데 안 먹는다" 가 된다(실측으로 잡음).
+         그래서 열릴 때 만들어서 세션 내내 안 바뀌는 키를 따로 둔다. 저장 여부와 무관하다.
+         작업을 닫았다 다시 열면 새 키가 된다 — 그게 §22 가 원하는 '이번 작업에만' 이다
+         (재오픈 시엔 저장된 editState 스냅샷이 이긴다). */
+      _workId: 'wk_' + uid(),
       photos: slot && slot.photos ? slot.photos.map(function (p, i) { return { id: p.id || uid(), dataUrl: p.dataUrl, editedDataUrl: p.editedDataUrl, role: p.role || 'hero', cropMeta: p.cropMeta || null, editState: p.editState || null, baseUrl: p.baseUrl || null, storyEdited: !!p.storyEdited, selected: true, selSeq: i + 1 }; }) : [],   // [#11] editState 복원 · [2026-07-17] storyEdited 복원(자동합성이 직접 꾸민 사진을 덮지 않게)
       _selSeq: (slot && slot.photos ? slot.photos.length : 0),
       baMode: purpose === 'before_after',
@@ -5032,6 +5103,12 @@
     var p0 = curPhoto();
     return {
       open: true, screen: cur, cat: d.cat || null, service: d.service || '',
+      // [2026-09-04] 작업 식별자 2종.
+      //   slotId : 저장된 슬롯 id. **저장 전에는 null** 이다.
+      //   workId : 열릴 때 생기는 세션 키. 스타일 선택은 **이것**에 건다 —
+      //            slotId 로 걸면 저장 전에 고른 스타일이 통째로 무시된다(실측 P0).
+      slotId: (d.slot && d.slot.id) || null,
+      workId: _workKey(),
       photoCount: (d.photos || []).length,
       coverUrl: (p0 && (p0.editedDataUrl || p0.dataUrl)) || null,
       hasCaption: !!String(d.caption || '').trim()
