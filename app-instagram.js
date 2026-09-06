@@ -104,6 +104,21 @@ function _purgeIgTextStyleIDB() {
 const _IG_STYLE_COOLDOWN_KEY = 'itdasy:ig_style_cooldown';
 const _IG_STYLE_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
+/* [2026-09-04] 게시물별 분석 → 자동 스타일 그룹 → 서버 저장.
+   실패는 전부 조용히 넘긴다 — 인스타 연동/말투 분석 흐름을 이것 때문에 막지 않는다.
+   그룹이 안 만들어져도(표본 부족·톤이 제각각) 그건 정상적인 결과다. 지어내지 않는다. */
+function _buildIgStyleGroups(media) {
+  return window.IgPostAnalysis.collect(media)
+    .then((posts) => {
+      if (!window.IgStyleGrouping || !posts || !posts.length) return null;
+      const r = window.IgStyleGrouping.group(posts);
+      try { window.dispatchEvent(new CustomEvent('itdasy:ig-style-grouped', { detail: r })); } catch (_e) { void _e; }
+      if (!r.groups.length || !window.IgStyleLibrary) return r;
+      return window.IgStyleLibrary.saveAuto(r.groups).then(() => r).catch(() => r);
+    })
+    .catch(() => null);
+}
+
 function _kickIgTextStyleBuild(force) {
   try {
     if (!window.InstagramTextStyle) return;
@@ -124,6 +139,12 @@ function _kickIgTextStyleBuild(force) {
       .then((j) => {
         const media = j && Array.isArray(j.media) ? j.media : null;
         if (!media || !media.length) return null;
+        /* [2026-09-04] 게시물별 분석 + 자동 스타일 그룹.
+           `IgPostAnalysis.collect` 는 **Vision 을 새로 부르지 않는다** — 안에서
+           `InstagramTextStyle.build(media, {onPost})` 를 그대로 부르고, 여태 버려지던
+           게시물별 결과를 media_id 에 붙여 남길 뿐이다(비용 가드는 그쪽에 그대로 있다).
+           모듈이 아직 안 실렸으면 예전 경로로 간다 — 말투 분석이 이것 때문에 막히면 안 된다. */
+        if (window.IgPostAnalysis) return _buildIgStyleGroups(media);
         return window.InstagramTextStyle.build(media);         // 필드명은 thumb — 모듈이 처리
       })
       .catch(() => {})
@@ -592,9 +613,14 @@ function renderDetailedPopup(data) {
     let page2 = '';
     try {
         const prof = (window.InstagramTextStyle && window.InstagramTextStyle.get()) || null;
-        if (window.IgStyleCardPage2 && prof) {
-            page2 = window.IgStyleCardPage2.render(prof)
-                || (window.IgStyleCardPage2.renderInsufficient ? window.IgStyleCardPage2.renderInsufficient(prof) : '');
+        const P2 = window.IgStyleCardPage2;
+        if (P2 && prof) {
+            page2 = P2.render(prof) || (P2.renderInsufficient ? P2.renderInsufficient(prof) : '');
+        } else if (P2 && P2.renderNotAnalyzed) {
+            /* [2026-09-04] 분석 전에도 페이지 2 를 만든다(§27).
+               예전엔 프로필이 없으면 페이지 2 를 통째로 안 그려서, 원장은 이 기능이
+               있는지조차 몰랐다 — '숨겨진 기능' 은 없는 기능과 같다. */
+            page2 = P2.renderNotAnalyzed();
         }
     } catch (_e) { page2 = ''; }
 
@@ -631,6 +657,12 @@ function renderDetailedPopup(data) {
     // 카드 = flex column. 이게 있어야 pager 의 flex:1 이 먹고 점이 하단에 고정된다.
     body.setAttribute('style', 'display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden;');
     body.innerHTML = html;
+
+    /* [2026-09-04] 페이지 2 의 '내 스타일' 버튼들. innerHTML 로 새로 만든 노드라
+       매번 다시 붙여야 한다 — 안 붙이면 **버튼은 보이는데 눌러도 아무 일이 없다**
+       (이 앱에서 가장 자주 난 종류의 결함이라 여기 못 박는다). */
+    try { if (window.IgStyleCardPage2 && window.IgStyleCardPage2.bind) window.IgStyleCardPage2.bind(body); }
+    catch (_bindErr) { void _bindErr; }
 
     // [2026-06-26] '내 말투로 글 써보기' CTA 제거 유지 — 작업실/글쓰기 진입 차단(중복·혼동 방지).
     //   닫기는 헤더 X(analyze-result-close).

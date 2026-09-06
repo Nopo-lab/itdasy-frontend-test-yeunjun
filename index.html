@@ -2632,7 +2632,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
 <!-- [2026-08-30] 내샵관리 메뉴 정본. defer 아님 — 아래 하이드레이션 스크립트가 바로 쓴다. -->
 <script src="js/myshop-menu.js?v=20260830-menu"></script>
 <script src="js/channel-mark.js?v=local-260831v5"></script>
-<script src="js/load-groups.js?v=20260904-uxqa6" defer></script>
+<script src="js/load-groups.js?v=local-260906-merge1" defer></script>
 <script src="js/loader.js?v=local-260831v5" defer></script>
 <script src="js/navigation/entrypoints.js?v=local-260831v5" defer></script>
 <script src="format-money.js?v=local-260831v5"></script>
@@ -2643,7 +2643,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
 <!-- [2026-08-26] 자동화 켜기 전 안내+승인 시트(공용). app-dm-menu.js 와
      lazy 로 뜨는 app-comment-reply-queue.js 가 같이 쓰므로 **먼저** 로드한다. -->
 <script src="js/automation-consent.js?v=20260826-consent" defer></script>
-<script src="app-dm-menu.js?v=20260816-dmunify" defer></script>
+<script src="app-dm-menu.js?v=local-260906-merge1" defer></script>
 <script src="app-perf-recovery.js?v=20260805-customer-search-space" defer></script>
 <script src="app-spec-validator.js" defer></script>
 <!-- [2026-08-31] 인스타 토큰 상태 판정 — app-instagram.js·연동관리 허브가 공유.
@@ -2653,10 +2653,21 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
      · instagram-text-style.js : 사진편집 스타일 관찰 프로필(build/get/clear). 여태 로드 자체가 빠져 있었다.
      · ig-style-card-page2.js  : 분석카드 페이지 2 렌더러 (window.IgStyleCardPage2)
      · app-ig-connect-warn.js  : 계정 교체 경고 카드 (window.IgConnectWarn) -->
-<script src="js/photo/instagram-text-style.js?v=local-260902v1" defer></script>
-<script src="js/photo/ig-style-card-page2.js?v=local-260902v1" defer></script>
+<script src="js/photo/instagram-text-style.js?v=local-260904v1" defer></script>
+<!-- [2026-09-04] 사진편집 스타일 라이브러리 4종 — app-instagram.js 보다 먼저.
+     · ig-post-analysis.js  : 게시물별 분석 보존 (window.IgPostAnalysis) — Vision 새 호출 0
+     · ig-style-grouping.js : 비슷한 것끼리 묶기 (window.IgStyleGrouping) — 순수함수
+     · ig-style-library.js  : 서버 CRUD + ShopStyle 다리 (window.IgStyleLibrary)
+     · ig-style-sheet.js    : 전체보기·상세·직접만들기 시트 (window.IgStyleSheet)
+     ⚠️ ig-style-library 는 shop-style.js(window.ShopStyle)를 쓴다. 그건 photo 그룹에서
+        지연 로드되지만, 여기선 **호출 시점에만** 참조하므로 로드 순서에 걸리지 않는다. -->
+<script src="js/photo/ig-post-analysis.js?v=local-260906-merge1" defer></script>
+<script src="js/photo/ig-style-grouping.js?v=local-260906-merge1" defer></script>
+<script src="js/photo/ig-style-library.js?v=local-260906-merge1" defer></script>
+<script src="js/photo/ig-style-sheet.js?v=local-260906-merge1" defer></script>
+<script src="js/photo/ig-style-card-page2.js?v=local-260906-merge1" defer></script>
 <script src="app-ig-connect-warn.js?v=local-260902v1" defer></script>
-<script src="app-instagram.js?v=local-260831v5" defer></script>
+<script src="app-instagram.js?v=local-260906-merge1" defer></script>
 <script src="components/scenario-selector.js?v=local-260831v5" defer></script>
 <!-- [B-분할] 캡션 기능 모듈 — app-caption.js(코어 엔진) 보다 먼저 로드(전역 함수 정의) -->
 <!-- [2026-07-23] 시술 분류 사전(백엔드 config/services.py 복제본). app-caption 이 참조하므로 먼저. -->
