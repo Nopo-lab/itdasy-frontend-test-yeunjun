@@ -146,36 +146,67 @@
      캐시를 지우면 통째로 날아갔다(원장은 저장된 줄 알고 있었다).
      로컬 저장은 그대로 유지(즉시 반영·오프라인). 서버는 '기기 간 보관용 정본'.
      PUT /instagram/comment-reply-settings — 실패해도 로컬엔 남으므로 조용히 넘어간다. */
-  var _srvSaving = false;
-  var _srvPending = null;
+  /* [2026-09-06] 저장 중이어도 **새 요청을 만든다.** 앞의 것 뒤에 줄을 세울 뿐이다.
+
+     예전엔 진행 중 promise 를 그대로 돌려줬다(`if (_srvSaving) return _srvPending`).
+     '바쁨과 실패는 다르다' 는 의도는 맞았는데, 그게 **마지막 의도를 통째로 버렸다**:
+       켜기 PUT 이 나가 있는 동안 원장이 다시 끄면, 끄기는 새 PUT 을 못 쏘고
+       켜기의 결과를 받아 `saved=true` 로 끝났다 — **화면은 꺼짐, 서버는 켜짐.**
+       (재현: __tests__/automation-toggle-off-desync.test.js ②)
+     자동화에서 화면과 서버가 어긋나면 원장은 껐다고 믿는데 손님 댓글은 계속 돈다.
+
+     보내는 값은 **호출 시점에 굳힌다**(snapshot). 체인이 늦게 돌 때 `_settings` 를 그대로
+     읽으면 그 사이 바뀐 값이 실려 순서가 뒤집힌다. */
+  var _masterSeq = 0;                        // 마스터 토글 연속 클릭 — 마지막 의도만 이긴다
+  var _srvChain = Promise.resolve(false);
   function _pushSettingsToServer() {
     if (!window.apiFetch || !window.authHeader || !window.apiUrl) return Promise.resolve(false);
-    // [2026-08-26] 저장 중이면 **false 를 돌려주지 않는다.** 예전엔 그랬는데, 마스터 토글이
-    //   그 false 를 '서버 저장 실패' 로 읽고 화면을 되돌리게 됐다(= 켰는데 도로 꺼짐).
-    //   '바쁨' 과 '실패' 는 다르다 — 진행 중인 저장의 결과를 그대로 준다.
-    if (_srvSaving && _srvPending) return _srvPending;
-    _srvSaving = true;
     var h = window.authHeader() || {};
-    if (!h.Authorization) { _srvSaving = false; return Promise.resolve(false); }
+    if (!h.Authorization) return Promise.resolve(false);
     h['Content-Type'] = 'application/json';
-    _srvPending = window.apiFetch(window.apiUrl('/instagram/comment-reply-settings'), {
-      method: 'PUT', headers: h, body: JSON.stringify({ settings: _settings }),
-    }).then(function (r) { return !!(r && r.ok); })
-      .catch(function () { return false; })
-      .then(function (ok) { _srvSaving = false; _srvPending = null; return ok; });
-    return _srvPending;
+    var snapshot;
+    try { snapshot = JSON.parse(JSON.stringify(_settings)); } catch (_e) { snapshot = _settings; }
+    function _run() {
+      return window.apiFetch(window.apiUrl('/instagram/comment-reply-settings'), {
+        method: 'PUT', headers: h, body: JSON.stringify({ settings: snapshot }),
+      }).then(function (r) { return !!(r && r.ok); })
+        .catch(function () { return false; });
+    }
+    _srvChain = _srvChain.then(_run, _run);   // 앞이 실패해도 뒤는 나간다
+    return _srvChain;
   }
   /* 서버에 저장된 설정을 가져와 로컬에 덮어쓴다. 새 기기·캐시 삭제 후 첫 진입용.
-     서버가 빈 값({})이면 아무것도 안 한다 — 한 번도 저장 안 한 원장의 로컬 설정을 지우면 안 된다. */
+     세부 설정(문의 종류·시간대·제외 단어)은 서버가 비었으면 건드리지 않는다 —
+     한 번도 저장 안 한 원장의 로컬 값을 지우면 안 된다.
+
+     [2026-09-06] 🔴 단, **켜짐/꺼짐만은 서버가 정본이다.**
+       백엔드 `_crq_enabled` 는 crq_settings_json 의 `enabled is True` 를 요구한다.
+       그러니 **서버가 비었다 = 자동화는 확실히 꺼져 있다.** 그런데 로컬에 옛 ON 이
+       남아 있으면(계정 전환 purge 가 requestIdleCallback 이라 늦거나 못 돌 수 있다)
+       화면만 켜진 것으로 보였다 — 원장은 "댓글 모아주는 중" 이라고 믿는데 큐는
+       영원히 비어 있고, 앞 원장의 상태가 다음 원장 화면에 뜬 것이기도 하다.
+       (재현: __tests__/automation-toggle-off-desync.test.js ③)
+       GET 이 **실패**했을 땐 아무것도 안 한다 — 모르는 걸 껐다고 단정하지 않는다. */
   function _pullSettingsFromServer() {
     if (!window.apiFetch || !window.authHeader || !window.apiUrl) return Promise.resolve(false);
     var h = window.authHeader() || {};
     if (!h.Authorization) return Promise.resolve(false);
+    /* 이 GET 이 도는 사이에 원장이 토글을 누르면 응답은 **누르기 전** 상태다.
+       그걸 그대로 쓰면 방금 누른 걸 되돌린다(PUT 은 이미 나갔으므로 또 어긋난다).
+       마스터 토글과 같은 seq 로 "내가 뜬 뒤 눌렸나" 를 본다. */
+    var _seq = _masterSeq;
     return window.apiFetch(window.apiUrl('/instagram/comment-reply-settings'), { headers: h })
       .then(function (r) { return r && r.ok ? r.json() : null; })
       .then(function (j) {
-        var s = j && j.settings;
-        if (!s || typeof s !== 'object' || !Object.keys(s).length) return false;
+        if (!j || typeof j !== 'object') return false;      // 통신 실패 — 판단하지 않는다
+        if (_seq !== _masterSeq) return false;              // 그 사이 원장이 눌렀다 — 그쪽이 최신
+        var s = j.settings;
+        if (!s || typeof s !== 'object' || !Object.keys(s).length) {
+          if (!_settings.enabled) return false;             // 이미 꺼짐 — 바꿀 게 없다
+          _settings.enabled = false;
+          _saveSettings();
+          return true;
+        }
         try { localStorage.setItem('itdasy:crq_settings', JSON.stringify(s)); } catch (_e) { void _e; }
         _settings = _loadSettings();
         return true;
@@ -695,16 +726,20 @@
     var SUB = 'font-size:13px;color:#8B95A1;';
     function _chip(key, label) {
       var on = S.intents[key] !== false;
-      return '<span class="crq-intent" data-intent="' + key + '" style="cursor:pointer;font-size:15px;font-weight:' + (on ? 700 : 500) + ';padding:10px 18px;border-radius:14px;' +
+      return '<span class="crq-intent" role="switch" tabindex="0" aria-checked="' + (on ? 'true' : 'false') + '" data-intent="' + key + '" style="cursor:pointer;font-size:15px;font-weight:' + (on ? 700 : 500) + ';padding:10px 18px;border-radius:14px;' +
         (on ? 'background:#F7EFF0;color:#BC6675;box-shadow:inset 0 0 0 1px rgba(188,102,117,.18);' : 'background:#F7F8FA;color:#B0B8C1;') + '">' + label + '</span>';
     }
     function _emojiOpt(e) {
       var on = S.emoji === e;
-      return '<span class="crq-emoji" data-emoji="' + e + '" style="cursor:pointer;min-width:36px;text-align:center;font-size:' + (e ? '16px' : '15px') + ';padding:8px 10px;border-radius:12px;' +
+      return '<span class="crq-emoji" role="radio" tabindex="0" aria-checked="' + (on ? 'true' : 'false') + '" data-emoji="' + e + '" style="cursor:pointer;min-width:36px;text-align:center;font-size:' + (e ? '16px' : '15px') + ';padding:8px 10px;border-radius:12px;' +
         (on ? 'background:#191F28;color:#fff;' : 'background:#F7F8FA;color:#8B95A1;box-shadow:inset 0 0 0 1px #E5E8EB;') + '">' + (e || '없음') + '</span>';
     }
     // 마스터 토글 — 카드 토글(crq-tg)과 같은 생김새, 설정 전용 클래스(핸들러 분리)
-    var mtg = '<span class="crq-master" role="switch" aria-checked="' + (S.enabled ? 'true' : 'false') + '" style="cursor:pointer;flex-shrink:0;display:inline-block;width:32px;height:19px;border-radius:10px;position:relative;transition:background .15s;background:' + (S.enabled ? '#16B55E' : '#D1D6DB') + ';">' +
+    /* [2026-09-06] `role="switch"` 만 있고 tabindex 가 없어서 **키보드로 못 닿았다.**
+       DM 쪽 토글은 <button> 이라 되는데 여기만 <span> 이라 빠졌다 — 하필 **끄는 길**이다.
+       마크업을 <button> 으로 바꾸면 기본 여백·테두리 때문에 생김새가 틀어지므로
+       tabindex + aria-label + Enter/Space 처리로 맞춘다(핸들러는 클릭과 같은 경로). */
+    var mtg = '<span class="crq-master" role="switch" tabindex="0" aria-label="댓글 문의 응대 켜기" aria-checked="' + (S.enabled ? 'true' : 'false') + '" style="cursor:pointer;flex-shrink:0;display:inline-block;width:32px;height:19px;border-radius:10px;position:relative;transition:background .15s;background:' + (S.enabled ? '#16B55E' : '#D1D6DB') + ';">' +
       '<span style="position:absolute;top:2px;left:' + (S.enabled ? '15px' : '2px') + ';width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.15);transition:left .15s;"></span></span>';
     return '<div style="' + CARD + 'display:flex;align-items:center;gap:10px;">' +
         '<div style="flex:1;"><div style="' + TITLE + '">댓글 문의 응대</div>' +
@@ -717,7 +752,7 @@
       '<div style="' + CARD + '"><div style="display:flex;align-items:center;gap:10px;margin-bottom:' + (S.quiet_outside ? '13px' : '2px') + ';">' +
         '<div style="flex:1;"><div style="' + TITLE + '">응답 시간대</div>' +
         '<div style="' + SUB + 'margin-top:3px;">' + (S.quiet_outside ? '이 시간 밖엔 조용히 모아뒀다 알려드려요' : '언제든 바로 알려드려요') + '</div></div>' +
-        '<span class="crq-quiet" role="switch" aria-checked="' + (S.quiet_outside ? 'true' : 'false') + '" style="cursor:pointer;flex-shrink:0;display:inline-block;width:32px;height:19px;border-radius:10px;position:relative;transition:background .15s;background:' + (S.quiet_outside ? '#16B55E' : '#D1D6DB') + ';">' +
+        '<span class="crq-quiet" role="switch" tabindex="0" aria-label="응답 시간대 밖에는 조용히 모아두기" aria-checked="' + (S.quiet_outside ? 'true' : 'false') + '" style="cursor:pointer;flex-shrink:0;display:inline-block;width:32px;height:19px;border-radius:10px;position:relative;transition:background .15s;background:' + (S.quiet_outside ? '#16B55E' : '#D1D6DB') + ';">' +
           '<span style="position:absolute;top:2px;left:' + (S.quiet_outside ? '15px' : '2px') + ';width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.15);transition:left .15s;"></span></span></div>' +
         (S.quiet_outside ? '<div style="display:flex;align-items:center;gap:10px;">' +
           '<input class="crq-time" type="time" data-field="start" value="' + _esc(S.active_hours.start) + '" style="flex:1;padding:11px 12px;border:none;border-radius:12px;font-size:15px;background:#F7F8FA;color:#191F28;box-sizing:border-box;font-family:inherit;text-align:center;">' +
@@ -772,6 +807,18 @@
       '<div class="ss-body" style="padding:14px;"></div>';
     document.body.appendChild(el);
 
+    /* [2026-09-06] 키보드로 마스터 토글 누르기 — Enter/Space 를 클릭으로 넘긴다.
+       설정칩(문의 종류·이모지·방해금지)도 같은 <span> 이라 함께 태운다.
+       Space 는 기본동작이 스크롤이라 반드시 막는다(누를 때마다 화면이 튄다). */
+    el.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+      var sw = e.target.closest
+        ? e.target.closest('.crq-master,.crq-intent,.crq-emoji,.crq-quiet') : null;
+      if (!sw) return;
+      e.preventDefault();
+      sw.click();
+    });
+
     // 이벤트 위임
     el.addEventListener('click', function (e) {
       // [2026-08-15] 묶음 답장 — crq-chip(게시물 칩)보다 먼저 본다. 헤더 바로 밑에 있어 오탐 방지.
@@ -806,24 +853,31 @@
           // [2026-08-26] 켜는 건 안내 + 체크 + 서버 승인 기록을 거친다.
           //   끄는 건 안 묻는다 — 끄는 쪽은 언제나 안전하다.
           //   승인 없이 켜면 서버가 PUT 을 403 으로 막으므로, 화면만 켜 두면 거짓말이 된다.
-          if (_settings.enabled) { _settings.enabled = false; _saveSettings(); _pushSettingsToServer(); _render(); return; }
-          var _ac = window.AutomationConsent;
-          if (!_ac || typeof _ac.ask !== 'function') { _toast('잠시 뒤 다시 눌러주세요'); return; }
-          _ac.ask(_ac.COMMENT_AUTOREPLY).then(function (ok) {
-            if (!ok) return;
-            _settings.enabled = true;
+          /* [2026-09-06] 🔴 **끄기도 결과를 본다.** 예전엔 `_pushSettingsToServer()` 를
+             쏘기만 하고 결과를 안 봤다 — PUT 이 실패해도 화면은 그냥 꺼졌다.
+             그러면 원장은 껐다고 믿는데 서버는 켜진 채라 **댓글 자동화가 계속 돈다.**
+             (재현: __tests__/automation-toggle-off-desync.test.js ①)
+             켜기 실패는 이미 되돌리고 있었는데 끄기만 빠져 있었다 — 더 위험한 쪽이 빠졌다.
+             seq 는 연속 클릭 대비: 늦게 온 응답이 최신 의도를 뒤집지 않게 한다. */
+          var _apply = function (on) {
+            var _seq = ++_masterSeq;
+            _settings.enabled = on;
             _saveSettings();
             _render();
             _pushSettingsToServer().then(function (saved) {
+              if (_seq !== _masterSeq) return;   // 그 뒤 또 눌렀다 — 최신 클릭이 상태 주인
               if (saved) return;
-              // 서버가 못 받았으면(403 포함) 화면도 되돌린다 —
-              // 켜진 것처럼 보이는데 큐가 안 도는 게 최악이다.
-              _settings.enabled = false;
+              _settings.enabled = !on;
               _saveSettings();
               _render();
-              _toast('켜기에 실패했어요 — 다시 시도해 주세요');
+              _toast(on ? '켜기에 실패했어요 — 다시 시도해 주세요'
+                        : '끄기에 실패했어요 — 아직 켜져 있어요. 다시 시도해 주세요');
             });
-          });
+          };
+          if (_settings.enabled) { _apply(false); return; }
+          var _ac = window.AutomationConsent;
+          if (!_ac || typeof _ac.ask !== 'function') { _toast('잠시 뒤 다시 눌러주세요'); return; }
+          _ac.ask(_ac.COMMENT_AUTOREPLY).then(function (ok) { if (ok) _apply(true); });
           return;
         }
         else if (sc.classList.contains('crq-intent')) { var k = sc.getAttribute('data-intent'); _settings.intents[k] = (_settings.intents[k] === false); }

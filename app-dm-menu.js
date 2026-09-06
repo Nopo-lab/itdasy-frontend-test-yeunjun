@@ -425,7 +425,7 @@
         //   (버튼 탭 → 써둔 답이 그대로 발송). 끄는 건 안 묻는다 — 끄는 쪽은 언제나 안전하다.
         const _next = !_menu.enabled;
         _haptic();
-        const _apply = () => { _menu.enabled = _next; _render(); _syncDmMenuEnabled(_next); };
+        const _apply = () => { _stateSeq++; _menu.enabled = _next; _render(); _syncDmMenuEnabled(_next); };
         // 끄는 건 안 묻는다 — 끄는 쪽은 언제나 안전하다.
         if (!_next) { _apply(); return; }
         // [2026-08-26] 안내 + 체크박스 + 서버 승인 기록까지 끝난 뒤에만 켠다.
@@ -441,7 +441,7 @@
         if (!_ai) _ai = {};
         const _next = !_ai.enabled;
         _haptic();
-        const _apply = () => { _ai.enabled = _next; _render(); _syncAiDraftEnabled(_next); };
+        const _apply = () => { _stateSeq++; _ai.enabled = _next; _render(); _syncAiDraftEnabled(_next); };
         if (!_next) {
           // 초안을 끄면 자동발송은 보낼 게 없어진다. 화면도 같이 내려 준다
           //   (서버도 `autoreply_disabled` 로 막지만, 켜진 것처럼 보이는 게 최악이다).
@@ -468,7 +468,7 @@
         }
         const _next = !_ai.dm_autosend_enabled;
         _haptic();
-        const _apply = () => { _ai.dm_autosend_enabled = _next; _render(); _syncAutosendEnabled(_next); };
+        const _apply = () => { _stateSeq++; _ai.dm_autosend_enabled = _next; _render(); _syncAutosendEnabled(_next); };
         if (!_next) { _apply(); return; }
         _consentThenApply(_AC().DM_AUTOSEND, _apply);
         return;
@@ -624,6 +624,12 @@
 
   // ── B묶음 토글 백엔드 반영. ⚠️ POST /settings 는 부분 저장이 아니다 — 빠진 필드는 기본값으로 덮인다.
   //   반드시 GET 결과 전체를 동봉하고 enabled 만 바꾼다(_syncDmMenuEnabled 와 같은 규칙).
+  /* [2026-09-06] 화면을 처음 채우는 hydrate 가 **늦게 와서 방금 누른 토글을 되돌리던 것.**
+     실측(jsdom): 화면을 열자마자 '버튼 자동 안내'를 끄면 PUT(enabled:false)은 정상으로 나가는데,
+     뒤늦게 도착한 `_hydrate()` 가 서버의 **누르기 전** 값으로 `_menu` 를 통째로 갈아끼워
+     화면이 다시 켜짐으로 보였다 — 서버는 꺼졌는데 원장은 켜진 줄 안다.
+     hydrate 는 유지하되(항목·인사말은 서버 것이 맞다) **켜짐/꺼짐만** 최신 의도로 되돌린다. */
+  let _stateSeq = 0;
   let _aiSyncSeq = 0;
   /* [2026-08-26] 자동화 켜기 = 안내 → 체크 → 서버 승인 기록 → 그다음 설정 저장.
 
@@ -723,10 +729,18 @@
   }
 
   async function _hydrateAi() {
+    const seq = _stateSeq;
     try {
       const res = await apiFetch(apiUrl('/instagram/dm-reply/settings'), { headers: window.authHeader ? window.authHeader() : {} });
       const d = await res.json().catch(() => null);
-      if (d && typeof d === 'object') { _ai = d; _render(); }
+      if (d && typeof d === 'object') {
+        // 이 GET 이 도는 사이 원장이 토글을 눌렀으면 그쪽이 최신이다 — 켜짐/꺼짐만 지킨다.
+        if (seq !== _stateSeq && _ai) {
+          d.enabled = _ai.enabled;
+          d.dm_autosend_enabled = _ai.dm_autosend_enabled;
+        }
+        _ai = d; _render();
+      }
     } catch (_e) { void _e; }
   }
 
@@ -741,11 +755,18 @@
   }
 
   async function _hydrate() {
+    const seq = _stateSeq;
+    let d = null;
     try {
       const res = await apiFetch(apiUrl('/shop/dm-menu'), { headers: window.authHeader ? window.authHeader() : {} });
-      const d = await res.json().catch(() => null);
-      _menu = (d && typeof d === 'object' && Array.isArray(d.items)) ? d : _defaultMenu();
-    } catch (_e) { _menu = _defaultMenu(); }
+      d = await res.json().catch(() => null);
+    } catch (_e) { d = null; }
+    /* hydrate 가 도는 사이 원장이 마스터를 눌렀으면 그쪽이 최신이다.
+       ⚠️ 그 값은 **응답이 온 지금** 읽어야 한다 — hydrate 시작 시점의 값은 누르기 *전* 이라
+       그걸 되살리면 방금 누른 걸 정확히 되돌린다(처음 고칠 때 여기서 한 번 틀렸다). */
+    const _wish = (seq !== _stateSeq && _menu) ? !!_menu.enabled : null;
+    _menu = (d && typeof d === 'object' && Array.isArray(d.items)) ? d : _defaultMenu();
+    if (_wish !== null) _menu.enabled = _wish;
     if (!Array.isArray(_menu.items) || !_menu.items.length) _menu.items = _defaultMenu().items;
     // 영업시간/주소/가격표 — 저장된 resp 끝의 숨은 토큰 제거 → 편집칸엔 인사 멘트만
     _items().forEach(it => { if (_isFixedData(it.key)) it.resp = _stripToken(it.resp, it.key); });

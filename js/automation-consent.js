@@ -226,20 +226,41 @@
         + 'background:rgba(0,0,0,.45);opacity:0;transition:opacity .18s ease;';
       ov.innerHTML = sheetHtml(cfg);
 
+      /* [2026-09-06] `aria-modal="true"` 라고 써 놨으면 그대로 동작해야 한다.
+         전엔 열어도 포커스가 뒤 화면(body)에 그대로 있었다 — 스크린리더는 시트를 못 읽고,
+         키보드 사용자는 Tab 을 한참 눌러야 체크박스에 닿았다. 그리고 Esc 가 안 먹었다.
+         (실측: __tests__/automation-consent-a11y.test.js)
+         돌아갈 자리도 기억한다 — 취소하면 방금 누른 토글로 포커스가 돌아와야
+         "어디였지" 를 다시 찾지 않는다. */
+      var returnTo = document.activeElement;
+
       document.body.appendChild(ov);
       requestAnimationFrame(function () {
         ov.style.opacity = '1';
         var card = ov.firstElementChild;
         if (card) card.style.transform = 'translateY(0)';
       });
+      // 첫 포커스는 **체크박스**다. 원장이 해야 할 일이 그거고, 거기서 Tab 한 번이면 CTA 다.
+      try {
+        var first = ov.querySelector('[data-ac="agree"]');
+        if (first && first.focus) first.focus();
+      } catch (_e) { void _e; }
+
+      function onKey(e) {
+        if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); finish(false); }
+      }
+      document.addEventListener('keydown', onKey);
 
       var done = false;
       function finish(v) {
         if (done) return;
         done = true;
+        document.removeEventListener('keydown', onKey);
         ov.style.opacity = '0';
         setTimeout(function () { ov.remove(); }, 180);
         if (typeof window._markSheetClosed === 'function') window._markSheetClosed(ID);
+        try { if (returnTo && returnTo.focus && document.contains(returnTo)) returnTo.focus(); }
+        catch (_e) { void _e; }
         resolve(v);
       }
       // 뒤로가기 등록 — 빠뜨리면 안드로이드에서 뒤로가기가 앱을 종료시킨다

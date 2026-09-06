@@ -82,6 +82,16 @@
         "8166"
       ],
       "port": 8166
+    },
+    {
+      "name": "itdasy-consentqa-8194",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8194"
+      ],
+      "port": 8194
     }
   ]
 }
