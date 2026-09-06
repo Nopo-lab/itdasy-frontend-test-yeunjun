@@ -888,26 +888,29 @@ function getToken() {
 }
 // [2026-04-24] 디바이스 간 데이터 불일치 방어 — 토큰 변경 감지 시 SWR 캐시 일괄 클리어.
 // 폰·노트북·태블릿 같은 계정으로 들어왔을 때 다른 디바이스의 stale 스냅샷이 보이는 문제 해결.
-// [PerfFix] 같은 프레임 안에서 N번 호출돼도 rAF로 1번만 실행.
-let _swrClearScheduled = false;
+/* [인증감사 2026-09-06 P1] rAF 지연을 **없앴다 — 이건 계정 경계라 미루면 안 된다.**
+   예전엔 rAF 로 미뤘는데, 이 함수를 부르는 두 곳이 하필 프레임을 기다려주지 않는다:
+     · logout() 은 곧바로 location.replace 로 나간다 → 다음 프레임이 영영 안 온다.
+     · 숨은 탭·백그라운드 탭은 rAF 자체가 멈춘다.
+   실측(로컬 2계정, 원장A uid49 → 원장B uid50): 로그아웃 뒤에도
+   `hv41_cache::brief` 에 원장A 의 {this_month_total:1665000, total_customers:3} 이 그대로 남았다.
+   app-home-v41.js 의 render() 는 이 캐시를 **먼저 그리고**(_hydrateHome), 60초 안이면
+   `swr.fresh && !force` 로 **네트워크 요청조차 하지 않고 return** 한다 →
+   다음 원장 홈에 앞 원장 매출·고객수가 뜬 채 스스로 고쳐지지도 않는다.
+   비용은 localStorage 키 순회 한 번이라 미룰 이유가 없다. */
 function _clearAllSWRCache() {
-  if (_swrClearScheduled) return;
-  _swrClearScheduled = true;
-  requestAnimationFrame(() => {
-    _swrClearScheduled = false;
-    const prefixes = ['pv_cache::', 'itdasy:cache', 'dash_cache::', 'hv41_cache::', 'mv3_cache::'];
-    const exactKeys = ['ch_cache', 'ih_cache', 'rh_cache'];
-    [localStorage, sessionStorage].forEach(store => {
-      try {
-        const keys = Object.keys(store);
-        for (let i = 0; i < keys.length; i++) {
-          const k = keys[i];
-          if (exactKeys.indexOf(k) !== -1 || prefixes.some(p => k.startsWith(p))) {
-            try { store.removeItem(k); } catch (_e) { void _e; }
-          }
+  const prefixes = ['pv_cache::', 'itdasy:cache', 'dash_cache::', 'hv41_cache::', 'mv3_cache::'];
+  const exactKeys = ['ch_cache', 'ih_cache', 'rh_cache'];
+  [localStorage, sessionStorage].forEach(store => {
+    try {
+      const keys = Object.keys(store);
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i];
+        if (exactKeys.indexOf(k) !== -1 || prefixes.some(p => k.startsWith(p))) {
+          try { store.removeItem(k); } catch (_e) { void _e; }
         }
-      } catch (_e) { void _e; }
-    });
+      }
+    } catch (_e) { void _e; }
   });
 }
 window._clearAllSWRCache = _clearAllSWRCache;
@@ -930,7 +933,16 @@ const _USER_KEY_PREFIXES = ['itdasy_', 'itdasy:', 'pv_cache::', 'persona_'];
    전환 조건이 거짓 → purge 를 안 함 → **B 원장의 초안(고객명·사진)이 C 계정 화면에 그대로 떴다.**
    값 자체는 서버 발급 숫자 id 라 민감정보가 아니고, 로그인마다 applyNewSession 이 덮어쓴다.
    로그아웃 후 남는 것이 **의도**다 — 남아 있어야 다음 로그인이 '계정이 바뀌었나'를 판정한다. */
+/* [인증감사 2026-09-06 P2] `shop_name`·`shop_type` 추가 — 바로 아래 주석이
+   "shop_* 는 user 데이터 → 제거" 라고 못박아 뒀는데 **정작 목록엔 `shop_id` 만** 있었다.
+   두 키는 어느 prefix 에도 안 걸려서(`itdasy_`·`itdasy:`·`pv_cache::`·`persona_`)
+   로그아웃·계정전환을 그대로 통과했다. 실측: 원장A 로그아웃 뒤에도
+   localStorage.shop_name === '원장A의 뷰티샵'.
+   applyNewSession 의 /auth/me 덮어쓰기는 구멍을 못 막는다 —
+   `if (typeof me.shop_name === 'string' && me.shop_name)` 이라 **새 계정의 매장명이
+   아직 비어 있으면(온보딩 전 신규 원장) 덮어쓰지 않고 앞 원장 상호가 그대로 남는다.** */
 const _USER_KEY_EXACT = ['last_login_email', 'user_oauth_provider', 'shop_id',
+  'shop_name', 'shop_type',
   'assistant_session_id'];
 // [2026-05-07 26차] user 변경 시 보존 키는 "디바이스 단위 UI 설정"만.
 // shop_* / onboarding_done 은 user 데이터 → 제거.
@@ -972,17 +984,12 @@ function _purgeUserScopedStorage() {
   }
   // SWR 캐시는 즉시 (동기) — 직후 fetch 가 stale 보지 않게
   _clearAllSWRCache();
-  // 사용자 prefix 키 정리는 idle 시점에 수행 (UI 안 막힘)
-  if (typeof requestIdleCallback === 'function') {
-    requestIdleCallback(() => {
-      _doPurgeStorage(localStorage);
-      _doPurgeStorage(sessionStorage);
-    }, { timeout: 1500 });
-  } else {
-    // rIC 미지원 브라우저는 즉시 동기 (구버전 사파리)
-    _doPurgeStorage(localStorage);
-    _doPurgeStorage(sessionStorage);
-  }
+  /* [인증감사 2026-09-06 P1] rIC 지연도 없앴다. _clearAllSWRCache 와 같은 이유다 —
+     logout() 은 곧 location.replace 로 나가고, 숨은 탭은 rIC 도 늦춰진다. timeout:1500 이
+     있어도 "그 전에 페이지가 사라지면" 아무 소용이 없다. 계정 경계를 지우는 일이
+     '한가할 때 하는 일' 목록에 있으면 안 된다. */
+  _doPurgeStorage(localStorage);
+  _doPurgeStorage(sessionStorage);
 }
 window._purgeUserScopedStorage = _purgeUserScopedStorage;
 
@@ -1708,6 +1715,15 @@ async function submitChangePw() {
       body: JSON.stringify({ current_password: cur, new_password: nw }),
     });
     if (res.ok) {
+      /* [인증감사 2026-09-06 P2] 서버가 준 **새 토큰으로 갈아끼운다.**
+         비번 변경은 users.min_valid_iat 를 올려 기존 토큰을 전부 죽인다 — 지금 이 기기 것까지.
+         그래서 예전엔 "다른 기기에서는 다시 로그인해주세요" 라고 안내해 놓고 정작 이 기기가
+         다음 API 호출에서 401 → 잠금화면 + "세션이 만료됐어요" 로 튕겼다.
+         (구버전 백엔드는 access_token 을 안 준다 → 그때는 예전처럼 튕기지만 더 나빠지진 않는다.) */
+      try {
+        const data = await res.json();
+        if (data && data.access_token) setToken(data.access_token);
+      } catch (_e) { void _e; }
       closeChangePwModal();
       showToast('비밀번호를 바꿨어요. 다른 기기에서는 다시 로그인해주세요');
       return;
