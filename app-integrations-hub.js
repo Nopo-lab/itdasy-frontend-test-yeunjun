@@ -57,9 +57,33 @@
      판정은 js/instagram/token-status.js 한 곳에서만 한다 — 여기서 다시 계산하지 말 것. */
   function _statusCardHTML() {
     const S = window.IgTokenStatus;
-    const st = S ? S.resolve(window.IGState && window.IGState.get
-      ? _fromStore() : null, { skewMs: window._igServerSkewMs || 0 }) : null;
-    if (!S || !st) return '';
+    if (!S) return '';
+    const raw = (window.IGState && window.IGState.get) ? _fromStore() : null;
+
+    /* [IG 감사 2026-09-06 P2-1] 상태를 **아직 모르는 것**과 **미연결**은 다르다.
+       IGState 가 비어 있는 건 /instagram/status 가 아직 안 왔거나 재시도까지 실패한
+       경우다. 그걸 resolve(null) 에 넘기면 NOT_CONNECTED 로 떨어져서 카드가
+       "인스타그램 미연결 · 연결하기" 를 띄운다 — **연결돼 있는 원장님한테 거짓말**이다.
+       홈 화면은 이미 같은 이유로 캐시를 보고 방어한다(app-instagram.js _igStatusGiveUp).
+       두 경로 중 한쪽만 고쳐져 있던 것이라 여기도 같은 규칙으로 맞춘다. */
+    if (!raw) {
+      let _wasConnected = false;
+      try { _wasConnected = localStorage.getItem('itdasy:ig_connected_cache') === '1'; } catch (_e) { /* ignore */ }
+      const _detail = _wasConnected
+        ? '연결 상태를 불러오지 못했어요. 잠시 후 다시 열어보시면 최신 상태가 보여요.'
+        : '연결 상태를 확인하고 있어요.';
+      return `
+      <div id="ihIgStatus" style="background:var(--bg-subtle, #F6F6F7);border-radius:14px;padding:14px 16px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="font-weight:800;font-size:14px;color:var(--text-muted, #667);flex:1;">인스타그램 연결 확인 중</div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted, #667);opacity:.85;">확인 중</div>
+        </div>
+        <div class="ms-sh__meta" style="margin-top:6px;line-height:1.55;">${_esc(_detail)}</div>
+      </div>`;
+    }
+
+    const st = S.resolve(raw, { skewMs: window._igServerSkewMs || 0 });
+    if (!st) return '';
     const info = S.describe(st);
     const toneBg = {
       danger: 'var(--danger-soft, #FDECEC)', info: 'var(--info-soft, #EAF2FE)',
