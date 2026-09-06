@@ -268,9 +268,34 @@
   // [출시감사 2026-08-05 P0-1] 캐시 밖 손님을 찾기 위한 서버 검색.
   //   프론트 search() 는 캐시(최대 200건)를 filter 할 뿐이라, 201번째부터의 손님은
   //   이름으로도 전화로도 절대 못 찾았다. CRM 에서 이건 기능 부재다.
-  async function searchServer(q) {
-    const d = await _api('GET', '/customers?limit=200&q=' + encodeURIComponent(q));
+  async function searchServer(q, offset) {
+    const off = Number(offset) || 0;
+    const d = await _api('GET', '/customers?limit=200&offset=' + off + '&q=' + encodeURIComponent(q));
     return { items: d.items || [], total: Number(d.total) || 0, hasMore: !!d.has_more };
+  }
+
+  // [고객관리 릴리즈게이트 2026-09-06] 검색 결과도 이어받는다.
+  //   예전엔 `searchServer` 가 `limit=200` 한 장만 받고 끝이라, 검색어에 걸리는 손님이
+  //   200명을 넘으면 **201번째부터는 화면에 나올 방법이 아예 없었다.**
+  //   실측(고객 1,014명): `TEST_SCALE` 은 DB 에 699명이 걸리는데 화면은 200명에서 멈췄고
+  //   "+150명 더 보기" 라고 **틀린 수**까지 보여줬다.
+  //   한국 이름은 성이 몰려 있어(김·이·박) 1,000명 샵에서 성 한 글자 검색이면 실제로 넘는다.
+  let _searchingMore = false;
+  async function searchMore(q) {
+    if (_searchingMore || !_serverHits || _serverHits.q !== q || !_serverHits.hasMore) return false;
+    _searchingMore = true;
+    try {
+      const r = await searchServer(q, _serverHits.items.length);
+      const have = new Set(_serverHits.items.map(c => String(c.id)));
+      const fresh = (r.items || []).filter(c => !have.has(String(c.id)));
+      _serverHits.items = _serverHits.items.concat(fresh);
+      _serverHits.total = r.total || _serverHits.total;
+      // 서버가 has_more 를 안 주더라도 total 로 다시 판정한다 (loadMore 와 같은 규칙).
+      _serverHits.hasMore = (!!r.hasMore || _serverHits.total > _serverHits.items.length)
+                            && (r.items || []).length > 0;
+      return fresh.length > 0;
+    } catch (_e) { void _e; return false; }
+    finally { _searchingMore = false; }
   }
 
   // [출시 종결 2026-08-12] 201번째 손님부터 **목록에서** 볼 방법이 없었다.
@@ -926,8 +951,15 @@
     //   검색·세그먼트 필터가 걸린 상태에서는 서버 페이지네이션을 이어붙이면 안 된다
     //   (필터는 캐시 위에서 도는 계산이라 페이지가 섞인다). 전체 목록일 때만 켠다.
     const serverMore = _serverHasMore() && !q && seg === 'all';
+    // 검색 중에도 서버에 다음 장이 남았으면 이어받을 수 있다 (위 searchMore 참고).
+    //   ⚠️ `q` 는 입력창 **원문**이다(trim·소문자 안 됨). `_serverHits.q` 는 소문자로 저장하므로
+    //      그대로 비교하면 `'TEST_SCALE' !== 'test_scale'` 로 항상 어긋나 버튼이 안 산다.
+    //      `search()` 가 쓰는 정규화와 **같은 규칙**으로 맞춘다.
+    const qKey = String(q || '').trim().toLowerCase();
+    const searchMoreAvail = !!qKey && !!_serverHits && _serverHits.q === qKey
+                            && !!_serverHits.hasMore && seg === 'all';
     const visible = items.slice(0, _windowSize);
-    const hasMore = totalLen > _windowSize || serverMore;
+    const hasMore = totalLen > _windowSize || serverMore || searchMoreAvail;
 
     // [v208] 가나다 그룹 + v4 row 마크업
     const isPC = _isPC();
@@ -964,7 +996,8 @@
     box.innerHTML = _dupBannerHTML()
       + groupsHtml
       + (hasMore
-          ? `<button id="customerLoadMore" type="button" style="width:calc(100% - 20px);min-height:44px;margin:12px 10px;padding:11px;border:1px dashed hsl(220,15%,80%);border-radius:12px;background:var(--surface-2);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;">+ ${Math.max(1, (serverMore ? Math.max(shopTotal, totalLen) : totalLen) - _windowSize)}명 더 보기</button>`
+          ? `<button id="customerLoadMore" type="button" style="width:calc(100% - 20px);min-height:44px;margin:12px 10px;padding:11px;border:1px dashed hsl(220,15%,80%);border-radius:12px;background:var(--surface-2);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;">+ ${Math.max(1, (searchMoreAvail ? Math.max(Number(_serverHits.total) || 0, totalLen)
+                              : serverMore ? Math.max(shopTotal, totalLen) : totalLen) - _windowSize)}명 더 보기</button>`
           : '');
 
     // 우측 인덱스바 (모바일만)
@@ -990,6 +1023,10 @@
           more.disabled = true;
           more.textContent = '불러오는 중…';
           await loadMore();
+        } else if (searchMoreAvail && _windowSize > _serverHits.items.length) {
+          more.disabled = true;
+          more.textContent = '불러오는 중…';
+          await searchMore(qKey);
         }
         _rerender();
       }, { once: true });
