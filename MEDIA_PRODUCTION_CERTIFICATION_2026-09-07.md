@@ -14,9 +14,10 @@ TOP RISK:           수정본 GC 의 운영 dry-run 숫자를 아직 모른다(�
 ## DEPLOYMENT
 
 ```
-Backend SHA        : e0815c6c   (미디어 커밋 4개 전부 포함)
-Frontend SHA       : 2376ef9    (GitHub Pages 반영 확인)
-Cloud Run revision : itdasy-backend-staging-00563-l9f
+Backend SHA        : 9579ec25   (재검증 시점 · 미디어 커밋 4개 전부 조상으로 포함)
+                     (최초 반영 e0815c6c → 이후 타 세션 배포 4회 연속 성공하며 전진)
+Frontend SHA       : 9623154    (번들 ?v=20260907-1624-9623154 확인)
+Cloud Run revision : 배포 성공 후 traffic 100%
 Traffic            : 100%
 Database           : production (secret itdasy_database_url)
 Storage            : Supabase hsxxqomfbdernepykils / user-uploads
@@ -97,8 +98,9 @@ e0815c6  piexif 를 쓰는 바람에 CI 가 또 깨지던 것 — Pillow 내장 
 
 ```
 배포 전 (0166af84) : 1.50 s      ← 거부할 이미지를 다 디코드하고 나서 거부
-배포 후 (e0815c6c) : 0.118 s     ← 헤더만 읽고 거부  (5회: .118 .117 .116 .119 .125)
-                     12.7배 빠름
+배포 후 (9579ec25) : 0.111 s     ← 헤더만 읽고 거부
+                     8회 실측 .116 .109 .109 .110 .110 .122 .119 .111 → 중앙값 0.111s
+                     **13.5배 빠름**
 ```
 
 ### 프론트 — 운영 페이지 실측
@@ -289,4 +291,26 @@ BE 3791 / FE 1742 테스트 통과 · OOM 0건 · GC 는 OFF 그대로.
 2. 후보 표본을 DB/Storage 와 대조 (§14 항목별)
 3. 전부 PASS 면 그때 ITDASY_WS_GC_ENABLED 를 켤지 결정
 4. 별건: Cloud Run memory 2GiB 상향 검토
+```
+
+---
+
+## 재검증 (배포 파이프라인 복구 확인)
+
+내 CI 수정 이후 배포가 **4회 연속 성공**했다 — 파이프라인이 완전히 복구됐다.
+
+```
+16:15 10de45d success   16:21 205d947 success
+16:36 3c46531 success   16:52 9579ec2 success   ← 현재 서빙
+(실패/취소 0건. 내 결함으로 막혀 있던 구간 15:14~15:57 종료)
+```
+
+현재 서빙 `9579ec25` 기준 재검증:
+```
+운영 smoke              20/20 PASS
+F-2 67MP 거부           0.111s 중앙값 (8회, 0.109~0.122) — 배포 전 1.50s 대비 13.5배
+FE 번들                 ?v=20260907-1624-9623154
+  깨진 사진 폴백          표시 + "다시 시도" 버튼 ✅
+  업로드 재시도           FormData 7,984ms / JSON 7,000ms — 둘 다 재시도 ✅
+  HEIC octet-stream     true ✅
 ```
