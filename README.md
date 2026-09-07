@@ -205,11 +205,19 @@ ANDROID_KEYSTORE_PASSWORD
 ANDROID_KEY_ALIAS
 ANDROID_KEY_PASSWORD
 
-# DB 백업
-SUPABASE_PROD_DB_URL
-SUPABASE_STAGING_DB_URL
-SUPABASE_DB_URL
+# DB 백업 (supabase-backup.yml)
+SUPABASE_STAGING_DB_URL   # 🔴 실사용자 데이터 (itdasy-staging / hsxxqomfbdernepykils)
+SUPABASE_PROD_DB_URL      # ⚪ beauty-platform / wlwauinqvmegnqdtbrtg — 현재 쓰는 서비스 없음
+SUPPORT_DISCORD_WEBHOOK   # 백업 실패 시 알림 (없으면 알림만 건너뜀)
+
+# Android 푸시 (Firebase)
+GOOGLE_SERVICES_JSON      # ⚠️ 등록만 돼 있고 android-build.yml 이 아직 안 씀
 ```
+
+⚠️ **이름과 실체가 반대다.** `STAGING` 이 실데이터고 `PROD` 는 현재 아무도 안 쓴다.
+시크릿 이름은 옛 이름 그대로 두되(바꾸면 값을 다시 넣어야 함), 백업 파일은
+`itdasy_LIVE_*` / `itdasy_ARCHIVE_*` 로 나가고 artifact 안 `README.txt` 가 어느 걸
+복구해야 하는지 적어둔다. 자세한 매핑표는 `.github/workflows/supabase-backup.yml` 상단.
 
 **Keystore 파일 (`*.jks`) 은 레포에 없음.** Secrets 에서만 접근 가능.
 
