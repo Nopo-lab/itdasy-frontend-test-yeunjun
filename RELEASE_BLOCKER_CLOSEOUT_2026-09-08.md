@@ -40,28 +40,37 @@
 
 ## STORE
 
+> **[2026-09-08 정정]** 이 절의 앞 버전은 "기존 상품 `itdasy_membership_monthly_6900` 의
+> 콘솔 가격을 ₩9,900 으로 올려라" 고 적었다. **그 조언은 틀렸다.**
+> 기존 자동갱신 구독의 가격을 올리면 **이미 구독 중인 원장님이 전부 가격 인상 대상**이 되고,
+> Apple 은 동의를 못 받으면 구독을 끊는다(Google 도 통지 의무). 표준은 **신규 상품을 따로
+> 등록하고 기존 구독자는 옛 가격에 두는 것**이다. 다른 세션(`b02947a`)이 이 방향으로
+> 코드·문서를 정정했고, 연준님도 앞서 같은 방향으로 확정했다.
+
 | | |
 |---|---|
 | Monthly displayed | **9,900** (실계정·실배포본 플랜팝업에서 확인) |
 | Monthly backend | **9,900** (`/subscription/plans` 실응답) |
 | Monthly PG | **9,900** (`app-billing.js`) |
-| **Monthly store** | **UNKNOWN — NOT VERIFIED** |
+| **판매할 상품 (정본)** | `itdasy_pro_monthly_9900` · `itdasy_pro_yearly_99000` — **둘 다 아직 콘솔 미등록** |
 | Annual displayed | **99,000** (118,800 취소선·2개월 무료) |
-| Annual product | **없음** — 네이티브 IAP 상품 미등록 |
-| Product ID | `itdasy_membership_monthly_6900` (이름만 옛 가격인 레거시 식별자) |
+| 폐기 상품 | `itdasy_membership_monthly_6900` — **재사용·가격인상 금지, 판매중지만** |
 
-**PRICE CONSISTENCY: 부분 PASS / 스토어는 UNKNOWN**
+**PRICE CONSISTENCY: 코드/백엔드 PASS · 스토어 등록 미완료**
 
-조사한 것 — 레포에 `.storekit` 설정·상품 fixture **없음**, 백엔드 `/iap/products`·`/iap/config`·
-`/subscription/products` **전부 404**, App Store Connect / Play Console 접근 수단 **없음**.
-→ 추측하지 않고 **NOT VERIFIED** 로 남긴다.
+FE·BE·웹PG 는 9,900 / 99,000 으로 일치한다. 남은 건 "옛 상품 가격이 얼마인가" 가 아니라
+**새 상품 2개를 콘솔에 등록하는 일**이다. 등록 전까지 네이티브 연간은
+`store.get()` → `no_product` 로 "준비 중" 안내가 나가고, **잘못된 금액이 청구되지 않는다.**
 
 **중요 정정** — 지난 라운드에 "IAP 플러그인 미설치라 잠복" 이라고 적었는데 **틀렸다.**
 `cordova-plugin-purchase@^13.18.0` 이 package.json 에 있고 iOS·Android 번들에 실제로
-포함·등록돼 있다(`cordova_plugins.js`). `isAvailable()` 은 네이티브 빌드에서 **true** 다.
+포함·등록돼 있다. `isAvailable()` 은 네이티브 빌드에서 **true** 다.
 즉 연간→월간 오청구는 **잠복이 아니라 네이티브 빌드에서 살아 있던 P1** 이었다.
 
----
+**내 수정과 최종 수정의 관계** — 나는 연간 선택을 **통째로 막는** 가드를 넣었다(029d44c).
+오청구는 확실히 막지만 원인(구매 함수가 고른 플랜을 안 받음)은 그대로라 연간이 영영 죽는다.
+`b02947a` 가 원인을 고치고(`PRODUCTS` 매핑 + `purchaseMembership(plan)`) 내 가드를
+**조건부**(`no_product` 일 때만 안내)로 바꿨다. 지금 main 은 그쪽이 반영된 상태이고, 그게 옳다.
 
 ## AUTHENTICATED BACKEND (실계정 · 실서버 · iOS Safari)
 
@@ -147,17 +156,23 @@
 이번 세션으로 **P1 두 개 중 하나가 닫혔다** — 인증 백엔드 E2E 는 연준님 로그인 덕에 실계정·실서버로
 고객·예약·매출·멤버십·백·새로고침까지 전부 PASS 했고, 반응형·시뮬레이터·에뮬레이터는 그대로
 GREEN 이며 회귀 354/354 다. 그럼에도 GREEN 이 아닌 이유는 **딱 하나** 다 —
-**스토어 콘솔의 실제 구독 가격을 확인하지 못했다.** 화면은 9,900 을 말하는데 상품ID 는
-`..._6900` 이고, 앱 스스로 "가격은 스토어 정책에 따라 표시돼요" 라고 고지한다. 콘솔이 아직
-₩6,900 이면 **표시 ≠ 청구** 로 즉시 출시 차단(RED)이고, ₩9,900 이면 STORE·PAYMENT 가 GREEN 이
-되어 **전체 GREEN 으로 승격**된다. 이건 코드로 확인할 수 없고 사람이 콘솔을 열어야 한다.
+**팔아야 할 상품 2개가 아직 스토어에 없다.** 코드·백엔드·웹PG 는 9,900/99,000 으로 이미
+일치하고, 상품이 없는 동안 잘못된 금액이 청구되지 않도록 `no_product` 안내로 막아 뒀다.
+다만 상품이 없으면 **네이티브 결제 자체가 성립하지 않는다** — 결제로 먹고사는 앱이라
+이 상태를 GREEN 이라 부를 수 없다. 콘솔에 2개를 등록하면 STORE·PAYMENT 가 GREEN 이 되고
+**전체 GREEN 으로 승격**된다. 이건 코드로 못 하고 사람이 콘솔을 열어야 한다.
 
 ### GREEN 까지 남은 일 — 1개
 
-1. **App Store Connect / Play Console** 에서 `itdasy_membership_monthly_6900` 의 실제 구독 가격이
-   **₩9,900** 인지 확인 (연간 상품 등록 여부도 같이)
-   - ₩9,900 이면 → 알려주시면 STORE/PAYMENT/OVERALL 을 GREEN 으로 갱신
-   - ₩6,900 이면 → **RED**. 콘솔 가격을 9,900 으로 올리거나, 9,900 짜리 새 상품ID 를 만들고
-     `app-iap.js` + 백엔드 `PRODUCT_TO_PLAN` 을 같이 바꿔야 한다(둘을 반드시 같은 배포에)
+1. **App Store Connect / Play Console 에 신규 구독 상품 2개 등록**
+   | | 상품 ID | 가격 | 무료체험 |
+   |---|---|---|---|
+   | 월간 | `itdasy_pro_monthly_9900` | ₩9,900 / 월 | 10일 |
+   | 연간 | `itdasy_pro_yearly_99000` | ₩99,000 / 년 | 없음 |
+   - 🔴 **둘을 같은 구독 그룹(Apple) / 같은 구독의 base plan(Google)** 에 넣을 것 —
+     갈리면 **이중청구**가 난다.
+   - 폐기 상품 `itdasy_membership_monthly_6900` 은 **삭제도 가격인상도 하지 말고 판매중지만**
+     (기존 구독자 보호). 코드는 `LEGACY_PRODUCT_IDS` 로 복원용 등록만 한다.
+   - 등록되면 네이티브 연간이 자동으로 열린다(코드 변경 불필요).
 
-(선택) 실기기 1대 · iOS 15 계열 · AI/DM 인증 플로우는 GREEN 차단 사유가 아니다.
+(선택) 실기기 1대 · iOS 15 계열 · AI/DM 인증 플로우 · 쓰기 경로는 GREEN 차단 사유가 아니다.
