@@ -15,7 +15,15 @@
 
   // ── schemas.json 1회 비동기 로드 ──────────────────────────────────
   // 상대 경로 사용 — GitHub Pages, localhost 양쪽 호환
-  fetch('shared/schemas.json')
+  /* [AI 클로즈아웃 2026-09-07] **캐시 버스터가 없었다.**
+     이 fetch 만 `?v=` 가 없어서(배포 스크립트 `bump_cache_busters.py` 는 .js/.css 만 고친다)
+     서비스워커·브라우저가 옛 schemas.json 을 계속 물고 있었다. 실측: 디스크의 파일은
+     2026-09-07 판(tone 14종)인데 페이지가 읽은 건 2026-04-16 판(3종)이었다.
+     그 결과 캡션이 **정상 생성될 때마다** "⚠ 스키마 불일치" 토스트가 떴다 —
+     성공한 작업에 경고를 띄우는 건 실패를 성공처럼 보이게 하는 것만큼 나쁘다.
+     배포 때 갱신되는 __LATEST_BUILD__ 를 붙여 배포마다 한 번은 반드시 새로 받게 한다. */
+  var _specV = (window.__LATEST_BUILD__ || window.APP_BUILD || 'dev');
+  fetch('shared/schemas.json?v=' + encodeURIComponent(_specV), { cache: 'no-cache' })
     .then(function (r) {
       if (!r.ok) return null; // 404 등 — 조용히 무시
       return r.json();

@@ -42,6 +42,35 @@ async function _personaFetch(method, path, body) {
   return data;
 }
 
+/* ═══ [AI 릴리스 게이트 2026-09-07] 200 이라고 다 캡션이 아니다 ═══════════════
+   백엔드가 두 가지 200 을 준다:
+     status:'generated'     → AI 가 실제로 쓴 캡션.
+     status:'clarification' → 입력에 시술 신호가 없어 **LLM 을 아예 안 부르고** 되돌려준 안내문.
+                              (한도도 안 깎였다 — 서버가 예약분을 환불한다)
+   예전엔 둘이 구분되지 않아서, 안내문("입력하신 키워드만으로는…")이 본문 textarea 에
+   꽂히고 작업실 슬롯이 '완료' 로 바뀌고 '첫 캡션 완성' 플래그까지 켜졌다.
+   글을 못 받았는데 화면은 다 됐다고 말하는 상태다 — 그래서 여기서 갈라낸다.
+
+   실패(빈응답·타임아웃·429)는 애초에 200 으로 오지 않는다(502/504/429). */
+const _CAP_CLARIFY = 'CAPTION_CLARIFICATION';
+function _capAssertGenerated(data) {
+  if (data && data.status === 'clarification') {
+    const err = new Error(String(data.caption || '시술 내용을 조금만 더 알려주시면 글을 써드릴게요.'));
+    err.code = _CAP_CLARIFY;
+    throw err;
+  }
+  return data;
+}
+
+/* 서버가 주는 실패 코드 → 원장님 말. 무엇이 실패했고 지금 뭘 하면 되는지까지 말한다.
+   (PHASE 10 — "오류가 발생했습니다" 같은 무의미한 문구 금지) */
+function _capServerErrorMessage(raw) {
+  if (/ai_empty_response|ai_failed/i.test(raw)) return 'AI가 이번엔 글을 만들지 못했어요. [다시 만들기]를 눌러 주세요.';
+  if (/ai_timeout/i.test(raw))                  return 'AI 응답이 평소보다 오래 걸려요. 잠시 후 [다시 만들기]를 눌러 주세요.';
+  if (/ai_busy/i.test(raw))                     return '지금 AI 사용량이 가득 찼어요. 1~2분 뒤에 다시 만들어 주세요.';
+  return null;
+}
+
 // ===== 시술 키워드 태그(SHOP_KEYWORDS+localStorage+UI) → js/caption/caption-keyword-tags.js 로 분리(B-분할) =====
 
 // ===== 해시태그 셔플 믹싱 =====
@@ -267,7 +296,26 @@ function _closeCaptionScenarioPopup(overlay) {
   if (btn) { btn.innerHTML = '만들기'; btn.disabled = false; }
 }
 
+/* [AI 릴리스 게이트 2026-09-07] 캡션 생성은 **동시에 하나만**.
+   `#captionBtn` 의 disabled 만으로는 부족하다 — 시나리오 시트·작업실 플로우·잇비 등
+   진입점이 여러 개고 서로의 상태를 모른다. 새는 건 돈이다(1회 = Gemini 1회 + 한도 1회).
+   문은 함수 자체에 단다. 본체는 return 지점이 많아 finally 로 확실히 푼다. */
+let _capGenerateInFlight = false;
+
 async function _doGenerateCaption(scenario, closePopup, inlineHost) {
+  if (_capGenerateInFlight) {
+    if (window.showToast) showToast('이미 만들고 있어요. 잠시만요!');
+    return;
+  }
+  _capGenerateInFlight = true;
+  try {
+    return await _doGenerateCaptionImpl(scenario, closePopup, inlineHost);
+  } finally {
+    _capGenerateInFlight = false;
+  }
+}
+
+async function _doGenerateCaptionImpl(scenario, closePopup, inlineHost) {
   const btn = document.getElementById('captionBtn');
 
   // [2026-09-03] 한도 소진이면 로더 돌리기 전에 즉시 안내
@@ -331,7 +379,7 @@ async function _doGenerateCaption(scenario, closePopup, inlineHost) {
     // 기존 코드는 res.json() 을 한 번 더 호출해서 TypeError 가 나면서 '잠시 후 다시 시도'
     // 폴백 토스트가 떴다. 본질적인 캡션 생성 실패 메시지를 사용자에게 정확히 노출하기 위해
     // 직접 data 로 받는다. (HTTP 에러는 _personaFetch 내부에서 throw → catch 블록에서 처리)
-    const data = await _personaFetch('POST', '/persona/generate', payload);
+    const data = _capAssertGenerated(await _personaFetch('POST', '/persona/generate', payload));
 
     const finalCaption = data.caption || '';
     // 2026-05-01 ── 백엔드 GenerateResponse 에 hashtags 필드 추가 후 반영.
@@ -417,6 +465,16 @@ async function _doGenerateCaption(scenario, closePopup, inlineHost) {
     });
   } catch(e) {
     if (e && e.message === '401') return; // _personaFetch가 401 처리
+    // [AI 릴리스 게이트 2026-09-07] 안내문(clarification)은 '실패' 가 아니라 '아직 못 만듦' 이다.
+    //   본문 textarea·슬롯을 건드리지 않은 채 무엇을 더 적어야 하는지만 알려준다.
+    if (e && e.code === _CAP_CLARIFY) {
+      hideCaptionLoader(false, () => {
+        closePopup();
+        showToast(String(e.message || '').split('\n')[0]);
+      });
+      if (btn) { btn.innerHTML = '만들기'; btn.disabled = false; }
+      return;
+    }
     // [2026-04-24] 명확한 에러 진단 — '일시적 오류' 일괄 표시 제거
     // [2026-04-26] raw 메시지를 항상 console.error 로 남겨 개발자 디버깅 가능하게.
     console.error('[caption.generate] 실패 raw:', e);
@@ -484,6 +542,10 @@ async function _doGenerateCaption(scenario, closePopup, inlineHost) {
       userMsg = '프로필을 완성하면 더 정교한 말투로 만들 수 있어요.';
     } else if (/insufficient_posts|fingerprint_missing/i.test(raw)) {
       userMsg = '인스타 게시물이 더 모이면 사장님 말투에 맞춰 글이 나와요.';
+    } else if (_capServerErrorMessage(raw)) {
+      // [AI 릴리스 게이트 2026-09-07] 502/504/429 를 "서버가 불안정" 으로 뭉개지 않는다 —
+      //   AI 가 못 만든 것 / 오래 걸리는 것 / 사용량이 찬 것은 원장님이 할 행동이 다르다.
+      userMsg = _capServerErrorMessage(raw);
     } else if (/HTTP 5\d\d/i.test(raw)) {
       userMsg = '서버가 잠깐 불안정해요. 1분 후 다시 시도해주세요.';
     } else {
@@ -638,7 +700,7 @@ async function regenerateCaption(overrides = {}) {
   if (ta) { ta.value = '새로 쓰는 중...'; _capAutoGrow(ta); }
   try {
     // [2026-04-26 픽스] _personaFetch 는 이미 파싱된 JSON 반환. res.json() 재호출 버그 제거.
-    const data = await _personaFetch('POST', '/persona/generate', payload);
+    const data = _capAssertGenerated(await _personaFetch('POST', '/persona/generate', payload));
     _capAiDraft = data.caption || '';
     _lastLogId = data.log_id || null;
     if (ta) { ta.value = _capAiDraft; _capAutoGrow(ta); }
@@ -666,7 +728,11 @@ async function regenerateCaption(overrides = {}) {
     // [2026-04-26] 재생성 에러도 정확한 원인 노출. raw 는 console 로 디버깅 보조.
     console.error('[caption.regenerate] 실패 raw:', e);
     const raw = (e && (e.message || e.toString())) || '';
+    // [AI 릴리스 게이트 2026-09-07] 재생성이 실패했으면 **이전 본문을 지우지 않는다.**
+    //   예전엔 실패 경로에서 ta.value = '' 로 비워서, 잘 나와 있던 캡션이 실패 한 번에 사라졌다.
+    if (ta) { ta.value = _capAiDraft || ''; _capAutoGrow(ta); }
     let userMsg;
+    if (e && e.code === _CAP_CLARIFY) { showToast(String(e.message || '').split('\n')[0]); return; }
     const quotaMatch = raw.match(/quota_exceeded:caption(?::(\d+))?/i);
     if (quotaMatch) {
       const limit = quotaMatch[1] || '1';
@@ -674,12 +740,13 @@ async function regenerateCaption(overrides = {}) {
       userMsg = `오늘 캡션 한도(${limit}회) 다 쓰셨어요. 내일 다시 시도하거나 잇데이 Pro를 확인해 주세요.`;
     } else if (/^캡션 생성 실패/.test(raw)) {
       userMsg = raw;
+    } else if (_capServerErrorMessage(raw)) {
+      userMsg = _capServerErrorMessage(raw);
     } else if (/Failed to fetch|Load failed|NetworkError/i.test(raw)) {   // Load failed = 사파리/WebKit 문구
       userMsg = '네트워크 오류. 다시 시도해주세요.';
     } else {
       userMsg = '재생성 실패. 잠시 후 다시 시도해주세요.';
     }
-    if (ta) ta.value = '';
     showToast(userMsg);
   }
 }
@@ -1008,7 +1075,7 @@ window.CaptionEngine = {
     payload.strict_user_context = (opts.strict_user_context !== false);
     // [v567] 원장님 말투 반영 토글 — 명시 ON 일 때만 페르소나/인스타 말투분석 반영(기본 OFF).
     payload.use_persona = (opts.use_persona === true);
-    const data = await _personaFetch('POST', '/persona/generate', payload);
+    const data = _capAssertGenerated(await _personaFetch('POST', '/persona/generate', payload));
     // [v568·A-5] data.caption 은 '저장 꼬리말 포함' 최종본 → 우선 표시(꼬리말이 안 붙던 버그 수정).
     //   data.body 는 꼬리말 미포함이라 caption 이 비었을 때만 fallback.
     const _rawBody = (typeof data.caption === 'string' && data.caption.trim()) ? data.caption : data.body;

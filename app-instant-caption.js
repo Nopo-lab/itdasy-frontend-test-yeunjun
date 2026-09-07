@@ -127,6 +127,11 @@
     };
 
     const data = await _fetchJson('POST', '/persona/generate', payload);
+    // [AI 릴리스 게이트 2026-09-07] status:'clarification' 은 캡션이 아니라 안내문이다
+    //   (LLM 미호출·한도 미차감). 캡션으로 취급하면 화면엔 생성 성공처럼 보인다.
+    if (data && data.status === 'clarification') {
+      throw new Error(String(data.caption || '시술 내용을 조금만 더 알려주시면 글을 써드릴게요.'));
+    }
     return data.caption || '';
   }
 
