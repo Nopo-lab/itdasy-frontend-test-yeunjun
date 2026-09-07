@@ -549,9 +549,23 @@
     const strike = dim ? 'text-decoration:line-through;' : '';
     const dot = (sz) => '<span style="width:' + sz + 'px;height:' + sz + 'px;border-radius:50%;background:' + dotC + ';flex-shrink:0;display:inline-block;"></span>';
     if (isPC) {
+      // [전수감사 2026-09-08] 좁은 창에서 **고객명만** 짜부라지던 것.
+      //   예전엔 이름이 `flex:1`(하한 없음) · 시간이 `flex-shrink:0`(절대 안 줆) 이라
+      //   폭이 모자라면 이름이 전부 내주고 "강…" 이 됐다. 실측(브라우저에서 칼럼 폭을 좁혀가며):
+      //     칼럼 165px → 이름 90px (정상)
+      //     칼럼 110px → 이름 35px (정상, 필요 33px)
+      //     칼럼  95px → 이름 20px / 필요 33px → **잘림**   ← 창 폭 ≈950px 이하
+      //     칼럼  80px → 이름  5px → "…"
+      //   시간은 68px 를 그대로 유지했다. 우선순위가 거꾸로다 —
+      //   **여긴 시간 격자다.** 블록의 세로 위치가 이미 시각을 말한다.
+      //   반면 이름은 그 칸이 누구 예약인지 알려주는 유일한 정보다.
+      //   그래서 이름에 **하한(min-width)** 만 준다. 나머지는 그대로 뒀다 —
+      //   넓은 폭 레이아웃을 안 건드리는 최소 변경이다. 폭이 정말 모자라면
+      //   시간이 블록 경계에서 잘리는데, 이름을 잃는 것보다 낫다.
+      //   (모바일은 반대로 시간을 윗줄에 고정한다 — 칼럼 49px 에선 그게 맞다. 아래 분기 유지.)
       return '<div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;">'
         + dot(8)
-        + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;color:' + nameColor + ';letter-spacing:-0.2px;' + strike + '">' + _esc(it.cust) + '</span>'
+        + '<span style="flex:1;min-width:3.4em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;color:' + nameColor + ';letter-spacing:-0.2px;' + strike + '">' + _esc(it.cust) + '</span>'
         + '<span style="flex-shrink:0;font-size:11px;color:#8B95A1;' + strike + '">' + tm + '</span>'
         + (done ? '<span style="flex-shrink:0;color:#16B55E;display:inline-flex;align-items:center;"><svg width="13" height="13" aria-hidden="true"><use href="#ic-check"/></svg></span>' : '')
         + '</div>';

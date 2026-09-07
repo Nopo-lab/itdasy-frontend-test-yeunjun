@@ -90,3 +90,46 @@ describe('라벨 동작 (함수를 실제로 실행)', () => {
     expect(C('completed')).not.toBe(C('confirmed'));
   });
 });
+
+/**
+ * [전수감사 2026-09-08] PC 주간 뷰에서 고객명만 짜부라지던 것 (연준님 PHOTO 1).
+ *
+ * 실브라우저 실측 — 주간 칩의 이름 요소를 칼럼 폭별로 측정:
+ *   칼럼 165px → 이름 90px (필요 33) 정상
+ *   칼럼 110px → 이름 35px 정상
+ *   칼럼  95px → 이름 20px → **잘림**   ← 창 폭 약 950px 이하
+ *   칼럼  80px → 이름  5px → "…"
+ *   같은 구간에서 시간 라벨은 폭을 그대로 유지했다.
+ *
+ * 이름이 `flex:1`(하한 없음)이고 시간이 `flex-shrink:0` 이라 압력을 이름이 전부 받았다.
+ * 여긴 시간 격자다 — 블록의 세로 위치가 이미 시각을 말한다.
+ * 반면 이름은 그 칸이 누구 예약인지 알려주는 유일한 정보다.
+ *
+ * ⚠️ 수정 후 브라우저 재측정은 셀렉터가 리로드 후 달라져 **깨끗하게 반복하지 못했다.**
+ *    그래서 여기서는 스타일 계약만 못박는다(하한이 사라지면 잡힌다).
+ */
+describe('PC 주간 칩 — 고객명이 0 으로 짜부라지지 않는다', () => {
+  const PC_CHIP = SRC.match(/if \(isPC\) \{[\s\S]*?return '<div style="display:flex[\s\S]*?<\/div>';/);
+
+  test('PC 분기를 찾을 수 있다', () => {
+    expect(PC_CHIP).toBeTruthy();
+  });
+
+  test('이름 span 에 min-width 하한이 있다', () => {
+    const nameSpan = PC_CHIP[0].match(/<span style="flex:1;[^"]*"/);
+    expect(nameSpan).toBeTruthy();
+    expect(nameSpan[0]).toMatch(/min-width:\s*[\d.]+em/);
+  });
+
+  test('하한이 한글 3자를 담을 만큼은 된다 (3em 이상)', () => {
+    const m = PC_CHIP[0].match(/min-width:\s*([\d.]+)em/);
+    expect(m).toBeTruthy();
+    expect(parseFloat(m[1])).toBeGreaterThanOrEqual(3);
+  });
+
+  test('이름은 여전히 ellipsis 로 넘침 처리된다 (하한을 넘어서면)', () => {
+    const nameSpan = PC_CHIP[0].match(/<span style="flex:1;[^"]*"/)[0];
+    expect(nameSpan).toContain('text-overflow:ellipsis');
+    expect(nameSpan).toContain('white-space:nowrap');
+  });
+});
