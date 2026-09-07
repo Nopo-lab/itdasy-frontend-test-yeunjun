@@ -53,6 +53,42 @@ jobs:
       - name: Install npm deps
         run: npm install --no-audit --no-fund
 
+      # google-services.json 은 .gitignore 로 레포에서 빠져 있다(보안감사 8bd456e 결정).
+      # 레포가 public 이라 그 판단을 유지하고, 키스토어와 같은 방식으로 시크릿에서 주입한다.
+      # 이 파일이 없으면 android/app/build.gradle 맨 아래의 조건부 apply 가 플러그인을
+      # 건너뛰고, 그 상태로 푸시를 등록하면 앱이 죽는다
+      # (FATAL: Default FirebaseApp is not initialized in this process com.y2do.itdasy).
+      # 네이티브 스레드 FATAL 이라 app-push.js 의 try/catch 로 **못 잡는다** —
+      # 알림을 "허용" 한 사용자만 앱이 벽돌이 된다.
+      # app-push.js:64 의 ANDROID_FIREBASE_READY 가 true 인 한, 여기서 반드시 성공해야 한다.
+      #
+      # ⚠️ 이 스텝은 2026-08-15 에 운영 레포(itdasy-frontend)에만 들어갔고 이 레포엔
+      #   빠져 있었다. 시크릿은 두 레포에 같이 등록됐는데(12:13:13 / 12:13:23) 워크플로만
+      #   한쪽에 안 왔다 → 여기서 뽑은 APK/AAB 는 전부 Firebase 설정 없이 나갔다.
+      #   운영 레포 쪽과 **같은 내용을 유지**할 것. 한쪽만 고치면 같은 사고가 재발한다.
+      - name: Inject google-services.json
+        env:
+          GS_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GS_JSON" ]; then
+            echo "::error::GOOGLE_SERVICES_JSON secret 누락 — 이대로 빌드하면 푸시 등록 시 앱이 죽는다"
+            exit 1
+          fi
+          printf '%s' "$GS_JSON" > android/app/google-services.json
+          # 파일이 있어도 applicationId 가 그 안에 없으면 플러그인은 적용되는데 런타임에
+          # 초기화가 실패한다 — 같은 벽돌이 조용히 나가므로 여기서 잘라낸다.
+          python3 - <<'PYCHK'
+          import json, sys
+          d = json.load(open('android/app/google-services.json'))
+          pkgs = [c['client_info']['android_client_info']['package_name'] for c in d['client']]
+          print('Firebase project =', d['project_info']['project_id'])
+          print('packages =', pkgs)
+          if 'com.y2do.itdasy' not in pkgs:
+              print('::error::google-services.json 에 com.y2do.itdasy 가 없다 '
+                    '— Firebase 콘솔에서 이 패키지를 등록하고 시크릿을 다시 넣어라')
+              sys.exit(1)
+          PYCHK
+
       - name: Capacitor sync
         run: npx cap sync android
 
