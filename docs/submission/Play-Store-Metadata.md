@@ -89,7 +89,7 @@ AI Instagram marketing for solo beauty salon owners. Captions, photo editing, sc
 |---|---|
 | Target age group | 13+ (Teen / Everyone) |
 | Contains ads | ❌ No |
-| In-app purchases | ✅ Yes — single subscription ($6.99 / ₩9,900 monthly) |
+| In-app purchases | ✅ Yes — one subscription group: ₩9,900 monthly / ₩99,000 yearly |
 | Access to sensitive permissions | Camera, Photos, Microphone, Face ID, Contacts (all with rationale) |
 | COPPA compliance | ✅ Not directed at children under 13 |
 | Government apps | ❌ No |
@@ -107,7 +107,9 @@ Both products are billed monthly with auto-renewal. 1-week free trial on first s
 
 | Product ID | Base Plan | Pricing (KR) | Pricing (US) | Description |
 |---|---|---|---|---|
-| `itdasy_membership_monthly_6900` | monthly-autorenew | ₩9,900 | $6.99 | Itdasy Membership — all features for solo beauty shop owners (10-day free trial) |
+| `itdasy_pro_monthly_9900` | monthly-autorenew | ₩9,900 | $6.99 | Itdasy Pro — all features for solo beauty shop owners (10-day free trial) |
+| `itdasy_pro_yearly_99000` | yearly-autorenew | ₩99,000 | — | Itdasy Pro (annual) — 2 months free. **Same subscription group as monthly** (required for plan switching) |
+| ~~`itdasy_membership_monthly_6900`~~ | monthly-autorenew | (legacy price) | — | ⚠️ **DEPRECATED 2026-09-02 — deactivate, do NOT delete, do NOT re-price.** Existing subscribers' renewal receipts still arrive; deleting it drops them to free, and raising its price would force an increase on them |
 
 **Note**: Single membership only. The legacy IDs `itdasy_pro_monthly_19900` / `itdasy_premium_monthly_39900` remain in the backend (`routers/iap.py`) **solely as a compatibility mapping for users who already paid** — do not register them as new products.
 

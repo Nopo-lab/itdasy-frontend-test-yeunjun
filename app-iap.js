@@ -21,8 +21,32 @@
 (function () {
   'use strict';
 
-  // 정본 단일 멤버십 product id (App Store Connect / Play Console 에 동일 id 로 등록).
-  var PRODUCT_ID = 'itdasy_membership_monthly_6900';
+  // 스토어 상품 ID — 결제창의 플랜 카드(app-plan.js `_selectedPlan`)와 1:1로 대응한다.
+  //   App Store Connect / Play Console 에 **이 id 그대로** 등록돼 있어야 한다.
+  //
+  // [결제 게이트 2026-09-07] 예전엔 `itdasy_membership_monthly_6900` **하나뿐**이었고
+  //   purchaseMembership() 이 선택한 플랜을 아예 안 받았다. 2026-09-02 에 결제창이
+  //   월 9,900 / 연 99,000 두 장으로 바뀌었는데 여기가 안 따라와서,
+  //   **"연 99,000원으로 시작하기" 를 눌러도 6,900원짜리 월간 상품이 결제됐다.**
+  //   화면 금액·기간·상품이 셋 다 다른 결제라, 발견 즉시 출시 블로커로 잡았다.
+  //   ⚠️ 카드를 새로 추가하면 여기 매핑도 같이 추가해야 한다 — 안 하면 조용히 월간이 팔린다.
+  //      (백엔드도 모르는 상품이면 409 로 거절한다: routers/iap.py `_assert_known_product`)
+  var PRODUCTS = {
+    pro:        'itdasy_pro_monthly_9900',   // ₩9,900 / 월 (10일 무료체험 오퍼는 스토어 설정)
+    pro_yearly: 'itdasy_pro_yearly_99000',   // ₩99,000 / 년 (체험 없음)
+  };
+  var DEFAULT_PLAN = 'pro';
+  // 폐기된 ₩6,900 상품. 스토어엔 아직 등록돼 있어 이미 구독 중인 사용자의 갱신/복원
+  //   영수증이 들어올 수 있다. 그래서 **읽기(복원·검증)는 되게** 등록만 해 둔다 — 팔지는 않는다.
+  var LEGACY_PRODUCT_IDS = ['itdasy_membership_monthly_6900'];
+
+  function _productIdFor(plan) {
+    return PRODUCTS[plan] || PRODUCTS[DEFAULT_PLAN];
+  }
+  function _allProductIds() {
+    return Object.keys(PRODUCTS).map(function (k) { return PRODUCTS[k]; })
+      .concat(LEGACY_PRODUCT_IDS);
+  }
 
   var _initialized = false;
   var _pending = null;      // { resolve, reject } — 진행 중인 구매 1건
@@ -92,8 +116,8 @@
   function _productIdOf(tx) {
     try {
       return (tx && tx.products && tx.products[0] && tx.products[0].id) ||
-             (tx && tx.productId) || PRODUCT_ID;
-    } catch (_e) { return PRODUCT_ID; }
+             (tx && tx.productId) || _productIdFor(DEFAULT_PLAN);
+    } catch (_e) { return _productIdFor(DEFAULT_PLAN); }
   }
 
   // 승인된 트랜잭션을 백엔드에 검증 → 성공 시 true(그리고 _pending resolve)
@@ -129,7 +153,11 @@
       var ProductType = CdvPurchase.ProductType;
       var plat = _platform() === 'apple' ? Platform.APPLE_APPSTORE : Platform.GOOGLE_PLAY;
 
-      store.register([{ id: PRODUCT_ID, type: ProductType.PAID_SUBSCRIPTION, platform: plat }]);
+      // 파는 상품 2개 + 폐기 상품(기존 구독자 복원용)을 전부 등록한다.
+      //   등록 안 된 상품은 store.get() 이 못 찾아서 **복원이 조용히 실패**한다.
+      store.register(_allProductIds().map(function (id) {
+        return { id: id, type: ProductType.PAID_SUBSCRIPTION, platform: plat };
+      }));
 
       // 승인 → 백엔드 검증 → 성공 시에만 finish()(스토어에 소비 확정).
       //   검증 실패면 finish 하지 않아 다음 기회(restore/재기동)에 재검증된다(과금 후 미활성 자가복구).
@@ -156,14 +184,16 @@
 
   // ─── 공개 API ────────────────────────────────────────────────
   // 멤버십 구매. 반환: Promise<{ok, plan}|{ok:false, reason, message}>
-  function purchaseMembership() {
+  function purchaseMembership(plan) {
     if (!isAvailable()) return Promise.resolve({ ok: false, reason: 'unavailable' });
     if (!_ensureInit()) return Promise.resolve({ ok: false, reason: 'init_failed', message: _lastError });
     if (_pending) return Promise.resolve({ ok: false, reason: 'in_progress' });
 
+    // [결제 게이트 2026-09-07] 선택한 플랜의 상품을 산다. 인자가 없으면 월간(기존 동작).
+    var productId = _productIdFor(plan);
     var CdvPurchase = _cdv();
     var store = CdvPurchase.store;
-    var product = store.get(PRODUCT_ID);
+    var product = store.get(productId);
     var offer = product && (product.getOffer ? product.getOffer() : (product.offers && product.offers[0]));
     if (!offer) return Promise.resolve({ ok: false, reason: 'no_product', message: '상품 정보를 불러오지 못했어요' });
 
@@ -220,6 +250,9 @@
     purchaseMembership: purchaseMembership,
     restore: restore,
     refreshStatus: refreshStatus,
-    PRODUCT_ID: PRODUCT_ID,
+    PRODUCTS: PRODUCTS,
+    productIdFor: _productIdFor,
+    // 하위호환 — app-plan.js 의 Play 구독관리 딥링크가 sku 폴백으로 쓴다.
+    PRODUCT_ID: _productIdFor(DEFAULT_PLAN),
   };
 })();

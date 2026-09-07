@@ -218,7 +218,7 @@
 
 ### 허브·결제·설정
 - 허브: **app-customer-hub.js**(30)·**app-integrations-hub.js**(126)·**app-inventory-hub.js**(594)·**app-kakao-hub.js**(137, 알림톡 UI 스텁)·**app-settings-hub.js**(321). **js/hubs/prototype-render.js**(187).
-- 결제: **app-billing.js**(150, PortOne — ⚠️`/billing/config.enabled=false` 라 **웹 결제는 현재 도달 불가**, 버튼이 "결제 준비 중" 으로 비활성)·**app-plan.js**(471, 월6,900원 단일멤버십 + **IAP 구매·복원 + 스토어/웹PG 해지 분기**)·**app-membership.js**(259, 회원권)·**app-iap.js**(225, StoreKit/Play Billing → 백엔드 영수증 교차검증).
+- 결제: **app-billing.js**(150, PortOne — ⚠️`/billing/config.enabled=false` 라 **웹 결제는 현재 도달 불가**, 버튼이 "결제 준비 중" 으로 비활성)·**app-plan.js**(월 9,900 / 연 99,000 잇데이 Pro + **IAP 구매·복원 + 월↔연 전환(스토어 구독관리) + 스토어/웹PG 해지 분기**)·**app-membership.js**(259, 회원권)·**app-iap.js**(StoreKit/Play Billing → 백엔드 영수증 교차검증. `PRODUCTS` = 월간 `itdasy_pro_monthly_9900` · 연간 `itdasy_pro_yearly_99000`, 폐기 6,900 은 복원 전용).
   - **[2026-07-31~08-01 돈 P0]** 회원권 결제 시 **잔액이 안 빠지고 매출이 이중으로 잡히던 것**(`cb62ce7`) · `/billing` 재시도 금지로 **이중청구 차단**(`6a1cf3a`) · `membership` 을 유료 플랜으로 인식(`isPaidPlan`·구독 메타) · 가격 6,900원 단일 멤버십으로 문구 통일 + 무료체험 7일 통일.
 - 설정: **app-shop-settings.js**(460)·**app-backup.js**(224)·**app-support.js**(258)·**app-autocomplete.js**(58).
 

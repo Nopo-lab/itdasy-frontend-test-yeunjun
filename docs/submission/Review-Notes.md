@@ -41,7 +41,9 @@ Web and Android may continue to show Google/Kakao login during staging, but the 
 
 ## IAP Products (if subscribed plans are active)
 
-- `itdasy_membership_monthly_6900` — Itdasy Membership (₩6,900 KRW / $4.99 USD per month, 7-day free trial)
+- `itdasy_pro_monthly_9900` — Itdasy Pro (₩9,900 KRW per month, 10-day free trial)
+- `itdasy_pro_yearly_99000` — Itdasy Pro annual (₩99,000 KRW per year, no trial), same subscription group
+- `itdasy_membership_monthly_6900` — deprecated 2026-09-02; kept active only so existing subscribers keep renewing
 - 1-week free trial on first subscription (Introductory Offer), no credit card required
 
 ## Korean law compliance
