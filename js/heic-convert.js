@@ -16,8 +16,14 @@
     if (!file) return false;
     const t = (file.type || '').toLowerCase();
     if (t.indexOf('image/heic') === 0 || t.indexOf('image/heif') === 0) return true;
-    /* 일부 브라우저/웹뷰는 HEIC 의 MIME 을 비워서 줌 → 확장자로 폴백 판별 */
-    return !t && HEIC_EXT_RE.test(file.name || '');
+    /* 브라우저/웹뷰가 HEIC 의 MIME 을 제대로 안 주는 경우 → 확장자로 폴백 판별.
+       [미디어감사 2026-09-07] 예전엔 `!t`(MIME 이 **완전히 빈** 경우)만 폴백했다.
+       그런데 MIME 을 비워서 주는 웹뷰도 있고 `application/octet-stream` 으로 주는 웹뷰도 있다.
+       후자는 폴백을 못 타서 변환 없이 <img>/canvas 로 넘어가 "사진을 불러오지 못했어요" 로 끝났고,
+       드래그앤드롭(app-gallery-workshop.js:291)에서는 `type.startsWith('image/')` 도 실패해
+       **아무 안내 없이 목록에서 사라졌다.** 이미지 MIME 이 아닌데 확장자가 HEIC 면 HEIC 로 본다. */
+    if (t.indexOf('image/') === 0) return false;   // 이미 다른 이미지 포맷이면 건드리지 않는다
+    return HEIC_EXT_RE.test(file.name || '');
   }
 
   let _libPromise = null;

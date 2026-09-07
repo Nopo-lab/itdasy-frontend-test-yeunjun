@@ -572,8 +572,19 @@
     if (file.size > 10 * 1024 * 1024) { _toast('10MB 이하 이미지만 가능해요'); return; }
     _toast('사진 올리는 중…');
     try {
+      /* [미디어감사 2026-09-07] 올리기 전에 줄인다.
+         여기만 클라 축소가 없어서 **원본 최대 10MB 를 그대로** 올리고 있었다(다른 경로는
+         전부 축소한다 — 작업실 1440px·잇비 1024px·영수증 1024px). 10MB 를 제한 시간 안에
+         올리려면 수 Mbps 를 계속 유지해야 하는데 지하철·엘리베이터에선 안 된다.
+         서버도 어차피 2000px 로 줄여 저장하므로 원본을 보낼 이유가 없다.
+         압축 함수가 아직 안 실려 있으면(지연 로드 그룹) 원본 그대로 — 기존 동작. */
+      let up = file;
+      if (typeof window.compressImageForUpload === 'function') {
+        try { up = (await window.compressImageForUpload(file, 1600, 0.85)) || file; }
+        catch (_e) { up = file; }
+      }
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', up, (file.name || 'photo.jpg'));
       const res = await apiFetch(apiUrl('/image/upload'), {
         method: 'POST',
         headers: { ...(window.authHeader ? window.authHeader() : {}) },  // Content-Type 은 브라우저가 multipart 로 설정
