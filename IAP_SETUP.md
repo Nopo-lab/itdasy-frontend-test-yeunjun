@@ -1,5 +1,12 @@
 # 인앱결제(IAP) 셋업 — 남은 단계 (C-1)
 
+> ⚠️ [2026-09-07] 가격 정본은 **월 ₩9,900 / 연 ₩99,000 (USD $6.99), 월간 10일 무료체험**이다.
+> 근거: 백엔드 `/subscription/plans` (`price:9900`, `price_yearly:99000`, `price_usd:6.99`) ·
+> `index.html` 페이월 · `terms.html` · `landing/index.html` (2026-09-02 가격 개편).
+> 상품ID `itdasy_membership_monthly_6900` 은 **이름만 옛 가격이 남은 레거시 식별자**다 —
+> 스토어 연결이 끊기므로 이름은 바꾸지 않는다. **콘솔의 실제 가격이 ₩9,900 인지 반드시 확인할 것.**
+
+
 프론트 연동 코드는 **완료**됐다(`app-iap.js`, `app-plan.js` 네이티브 분기, 구매 복원 버튼).
 백엔드 검증 엔드포인트도 구현돼 있다(`itdasy_backend routers/iap.py`: `/iap/apple-verify`,
 `/iap/google-verify`, `/iap/status`). 아래는 **코드가 아니라 스토어/네이티브/크레덴셜** 작업이라
@@ -26,11 +33,11 @@ npx cap sync                      # ios/android 네이티브에 플러그인 반
 
 - **App Store Connect** → 앱 → 구독 → 구독 그룹 생성 → 자동 갱신 구독
   - 참조명/상품ID: `itdasy_membership_monthly_6900`
-  - 가격: ₩6,900 / 월, **무료 체험 7일**(introductory offer) 설정
+  - 가격: **₩9,900 / 월**, **무료 체험 10일**(introductory offer) 설정
   - 지역화(한국어) 표시명·설명 입력 → **심사 제출**(구독은 앱과 함께 심사)
 - **Google Play Console** → 수익 창출 → 구독 → 구독 만들기
   - 상품ID: `itdasy_membership_monthly_6900`
-  - 기본 요금제 ₩6,900/월, **무료 체험 7일** 추가
+  - 기본 요금제 **₩9,900/월**, **무료 체험 10일** 추가
   - 활성화
 
 ## 3. 백엔드 크레덴셜 주입 (Cloud Run 환경변수)

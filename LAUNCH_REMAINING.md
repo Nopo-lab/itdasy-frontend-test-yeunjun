@@ -1,5 +1,12 @@
 # 출시 남은 작업 체크리스트 (2026-07-27 감사 후속)
 
+> ⚠️ [2026-09-07] 가격 정본은 **월 ₩9,900 / 연 ₩99,000 (USD $6.99), 월간 10일 무료체험**이다.
+> 근거: 백엔드 `/subscription/plans` (`price:9900`, `price_yearly:99000`, `price_usd:6.99`) ·
+> `index.html` 페이월 · `terms.html` · `landing/index.html` (2026-09-02 가격 개편).
+> 상품ID `itdasy_membership_monthly_6900` 은 **이름만 옛 가격이 남은 레거시 식별자**다 —
+> 스토어 연결이 끊기므로 이름은 바꾸지 않는다. **콘솔의 실제 가격이 ₩9,900 인지 반드시 확인할 것.**
+
+
 전면 감사(6도메인)에서 프론트로 고칠 수 있는 건 전부 라이브 반영됨. 아래는 **코드로 못 끝내는**
 것 + **프론트로 이어서 할** 것. 완료되면 체크.
 
@@ -8,7 +15,8 @@
 ## 🔴 A. IAP 인앱결제 — 콘솔/시크릿 (Claude 불가, 사장님/원영)
 상세: `IAP_SETUP.md`. 프론트 연동·플러그인·lockfile 은 완료(라이브).
 
-- [ ] App Store Connect: 자동갱신구독 `itdasy_membership_monthly_6900` (₩6,900/월, 7일 무료체험) 등록·심사제출
+- [ ] App Store Connect: 자동갱신구독 `itdasy_membership_monthly_6900` (**₩9,900/월, 10일 무료체험**) 등록·심사제출
+      ⚠️ 상품ID 이름의 `6900` 은 레거시 — 콘솔 가격이 ₩9,900 인지 확인
 - [ ] Play Console: 동일 상품ID 구독 등록·활성화
 - [ ] Cloud Run(itdasy-backend-staging, asia-northeast3, itdasy-495513) env:
       `APPLE_IAP_SHARED_SECRET`, `APPLE_APP_BUNDLE_ID`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`(base64), `GOOGLE_PLAY_PACKAGE_NAME`

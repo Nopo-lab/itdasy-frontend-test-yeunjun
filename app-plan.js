@@ -357,6 +357,18 @@
 
     // 네이티브 앱: 앱스토어 IAP 만 사용 (Apple/Google anti-steering — 웹 PG 호출 금지).
     if (_isNative()) {
+      // [2026-09-07 결제 정합성] 연간을 고른 채로 여기 오면 **월간이 청구된다**.
+      //   `ItdasyIAP.purchaseMembership()` 은 플랜 인자를 받지 않고 단일 상품
+      //   (`PRODUCT_ID` = 월간 자동갱신) 하나만 구매한다. 그런데 위 _updateActionButton()
+      //   은 연간 선택 시 버튼에 "연 99,000원으로 시작하기" 라고 쓴다.
+      //   → 화면에 적힌 금액과 실제 청구 금액이 달라진다(스토어 심사·환불 분쟁 사유).
+      //   스토어에 연간 상품이 등록되기 전까지는 **조용히 월간을 태우지 않는다.**
+      if (_selectedPlan === 'pro_yearly') {
+        if (typeof window.showToast === 'function') {
+          window.showToast('연간 결제는 앱에서 준비 중이에요. 월간으로 시작하거나 웹에서 결제해 주세요');
+        }
+        return;
+      }
       if (window.hapticMedium) window.hapticMedium();
       // [C-1 2026-07-27] IAP 플러그인(cordova-plugin-purchase)이 설치된 빌드에서만 실제 결제.
       //   플러그인 없으면(현재 빌드) isAvailable()=false → 기존 '준비중' 안내 유지(무회귀).

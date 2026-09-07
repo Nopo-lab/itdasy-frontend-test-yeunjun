@@ -1010,3 +1010,91 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .hv5-slots .hv5-s-more-ic { transition: none; }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   [2026-09-08 BUG-5] 손가락 히트 영역 44×44 확보 — **보이는 크기는 그대로**.
+
+   실측(390×844, 오버레이 걷어낸 깨끗한 상태에서 elementFromPoint 로 히트 영역을
+   바깥으로 훑어 잰 값):
+     .hv5-itbi-input-icon  32×33
+     .hv5-itbi-swap        34×35
+     .hv5-itbi-all         48×14
+     .hv5-card-link        45×15
+     .hv5-bell             40×41
+     #planBadge            44×33
+   HIG 44pt · WCAG 2.5.5 미달이다. 시각 크기를 키우면 헤더/입력줄 레이아웃이 밀리므로
+   `::after` 로 히트 영역만 넓힌다 (레포 선례: customer-v4.css `.cv4-chip::after`).
+
+   ⚠️ 위아래로 붙어 있는 **행(row)** 은 일부러 제외했다 — `.hv5-itbi-mini`(37px),
+      `.hv5-itbi-rest`(30px) 는 세로로 겹쳐 있어서 넓히면 옆(위/아래) 행을 먹는다
+      = 오탭. 행 자체를 키우는 건 디자인 변경이라 별도 판단 사항으로 남긴다.
+   ⚠️ `.logo` 도 제외 — 브랜드 워드마크라 탭 타깃으로 키울 대상이 아니다.
+   ───────────────────────────────────────────────────────────── */
+.hv5-itbi-input-icon,
+.hv5-itbi-swap,
+.hv5-itbi-all,
+.hv5-card-link,
+.hv5-hdr .hv5-bell,
+#planBadge {
+  position: relative;
+}
+.hv5-itbi-input-icon::after,
+.hv5-itbi-swap::after,
+.hv5-itbi-all::after,
+.hv5-card-link::after,
+.hv5-hdr .hv5-bell::after,
+#planBadge::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  /* 시각적으로 아무것도 그리지 않는다 — 히트 영역만 넓힌다 */
+}
+/* 가로로 나란한 것들은 세로만 넓힌다 — 옆 타깃을 먹지 않게.
+   (전체보기/캘린더 링크는 카드 헤더에서 제목과 같은 줄에 있다) */
+.hv5-itbi-all::after,
+.hv5-card-link::after {
+  width: 100%;
+  min-width: 44px;
+}
+
+/* [2026-09-08 BUG-5 이어서] 고객 메시지 카드의 작은 컨트롤.
+   실측 간격: refresh ↔ more = 가로 14px (넓혀도 안 겹침).
+   `#hv5CmsgWhy` 는 **아래 형제와 5px** 뿐이라 44 로 키우면 오탭이 난다 →
+   위쪽(24px 여유)으로만 비대칭 확장한다. 44 에는 못 미치지만
+   "겹쳐서 잘못 눌리는 것" 보다 낫다. 남은 미달은 리포트에 남긴다. */
+.hv5-cmsg-refresh,
+.hv5-cmsg-more,
+#hv5CmsgWhy {
+  position: relative;
+}
+.hv5-cmsg-refresh::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+.hv5-cmsg-more::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  min-width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+#hv5CmsgWhy::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;      /* 아래 형제와 5px 뿐 — 4px 만 */
+  height: 34px;      /* 나머지는 위쪽 여유(24px)로 */
+}
