@@ -1098,3 +1098,13 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
   bottom: -4px;      /* 아래 형제와 5px 뿐 — 4px 만 */
   height: 34px;      /* 나머지는 위쪽 여유(24px)로 */
 }
+
+/* [2026-09-08 BUG-5 마무리] 세로로 붙은 행은 ::after 로 넓히면 옆 행을 먹는다.
+   이 둘은 **행 자체를 44px 로** 키우는 게 정답이다 — 서로 밀어내므로 겹침이 없다.
+   실측 높이: mini 37px · rest 30px (둘 다 <button>, 서로 다른 곳으로 이동한다).
+   가로는 332px 라 이미 충분하고, 부족한 건 높이뿐이다. */
+.hv5-itbi-mini,
+.hv5-itbi-rest {
+  min-height: 44px;
+  box-sizing: border-box;
+}

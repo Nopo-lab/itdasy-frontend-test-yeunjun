@@ -93,6 +93,7 @@ p {
   color: var(--text, #191F28);
   letter-spacing: -0.06em;
   flex-shrink: 0;
+  position: relative;   /* [2026-09-08] 아래 .logo::after 히트 영역 기준점 */
 }
 
 .logo span {
@@ -423,4 +424,18 @@ textarea:focus, input[type="text"]:focus {
 .bk-confirm-toast__ok {
   padding: 10px 20px; border: none; border-radius: 10px;
   background: var(--brand); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+
+/* [2026-09-08 BUG-5] 헤더 워드마크는 `data-static-action="tab-home"` 이라 **실제로 눌리는 요소**다
+   (index.html:1047 · cursor:pointer). 실측 52×31 로 세로가 모자랐다.
+   글자 크기는 그대로 두고 ::after 로 히트 영역만 세로 44px 로 넓힌다.
+   가로는 52px 로 충분하고, 오른쪽 플랜배지와는 떨어져 있어 겹치지 않는다. */
+.logo::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
 }
