@@ -1,5 +1,12 @@
 # 릴리즈 승인 체크리스트
 
+> ⚠️ [2026-09-07] 가격 정본은 **월 ₩9,900 / 연 ₩99,000 (USD $6.99), 월간 10일 무료체험**이다.
+> 근거: 백엔드 `/subscription/plans` (`price:9900`, `price_yearly:99000`, `price_usd:6.99`) ·
+> `index.html` 페이월 · `terms.html` · `landing/index.html` (2026-09-02 가격 개편).
+> 상품ID `itdasy_membership_monthly_6900` 은 **이름만 옛 가격이 남은 레거시 식별자**다 —
+> 스토어 연결이 끊기므로 이름은 바꾸지 않는다. **콘솔의 실제 가격이 ₩9,900 인지 반드시 확인할 것.**
+
+
 > **출시 버튼 누르기 직전** 한 번에 훑는 목록. 위에서부터 순서대로.
 > 하나라도 ☐ 면 출시하지 않는다.
 
@@ -33,7 +40,8 @@
 ## 게이트 B — 연준님 수동 작업 (앱 밖)
 
 ### 스토어
-- [ ] App Store Connect: `itdasy_membership_monthly_6900` (₩6,900/월, 7일 무료체험) 등록·심사제출
+- [ ] App Store Connect: `itdasy_membership_monthly_6900` (**₩9,900/월, 10일 무료체험**) 등록·심사제출
+      ⚠️ 상품ID 이름의 `6900` 은 레거시 — 콘솔 가격이 ₩9,900 인지 확인
 - [ ] Play Console: 같은 상품 등록. **패키지명 `com.y2do.itdasy`** 확인
 - [ ] Cloud Run env: `APPLE_IAP_SHARED_SECRET` · `APPLE_APP_BUNDLE_ID` · `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` · `GOOGLE_PLAY_PACKAGE_NAME`
 - [ ] 실기기 샌드박스 결제 1회 성공

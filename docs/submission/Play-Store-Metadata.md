@@ -1,5 +1,12 @@
 # Google Play Console Metadata — 잇데이 / Itdasy
 
+> ⚠️ [2026-09-07] 가격 정본은 **월 ₩9,900 / 연 ₩99,000 (USD $6.99), 월간 10일 무료체험**이다.
+> 근거: 백엔드 `/subscription/plans` (`price:9900`, `price_yearly:99000`, `price_usd:6.99`) ·
+> `index.html` 페이월 · `terms.html` · `landing/index.html` (2026-09-02 가격 개편).
+> 상품ID `itdasy_membership_monthly_6900` 은 **이름만 옛 가격이 남은 레거시 식별자**다 —
+> 스토어 연결이 끊기므로 이름은 바꾸지 않는다. **콘솔의 실제 가격이 ₩9,900 인지 반드시 확인할 것.**
+
+
 **Package Name**: `com.nopolab.itdasy`
 **Category**: Business
 **Content Rating**: Everyone
@@ -82,7 +89,7 @@ AI Instagram marketing for solo beauty salon owners. Captions, photo editing, sc
 |---|---|
 | Target age group | 13+ (Teen / Everyone) |
 | Contains ads | ❌ No |
-| In-app purchases | ✅ Yes — single subscription ($4.99 / ₩6,900 monthly) |
+| In-app purchases | ✅ Yes — single subscription ($6.99 / ₩9,900 monthly) |
 | Access to sensitive permissions | Camera, Photos, Microphone, Face ID, Contacts (all with rationale) |
 | COPPA compliance | ✅ Not directed at children under 13 |
 | Government apps | ❌ No |
@@ -100,7 +107,7 @@ Both products are billed monthly with auto-renewal. 1-week free trial on first s
 
 | Product ID | Base Plan | Pricing (KR) | Pricing (US) | Description |
 |---|---|---|---|---|
-| `itdasy_membership_monthly_6900` | monthly-autorenew | ₩6,900 | $4.99 | Itdasy Membership — all features for solo beauty shop owners (7-day free trial) |
+| `itdasy_membership_monthly_6900` | monthly-autorenew | ₩9,900 | $6.99 | Itdasy Membership — all features for solo beauty shop owners (10-day free trial) |
 
 **Note**: Single membership only. The legacy IDs `itdasy_pro_monthly_19900` / `itdasy_premium_monthly_39900` remain in the backend (`routers/iap.py`) **solely as a compatibility mapping for users who already paid** — do not register them as new products.
 

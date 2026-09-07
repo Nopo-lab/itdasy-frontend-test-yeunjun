@@ -267,3 +267,47 @@ describe('BUG-5 — 시트 닫기 버튼 히트 영역 44px', () => {
     expect(css).toMatch(/#plClose \{[\s\S]{0,200}width:\s*32px/);
   });
 });
+
+describe('BUG-5 — 홈 화면 작은 컨트롤 히트 영역', () => {
+  /* 실측(390×844 · 오버레이 걷어낸 상태 · elementFromPoint 로 히트 영역을 바깥으로 훑음)에서
+     44 미만이던 것들. 시각 크기는 그대로 두고 ::after 로만 넓혔다.
+     ⚠️ 이 테스트는 **정적 검사**다 — 실제 히트 영역은 브라우저에서만 잴 수 있고,
+        그 측정은 세션 로그(오탭 0건)에 남겼다. 여기서는 확장 규칙이 사라지는 걸 막는다. */
+  const HOME = () => read('css/screens/home-v41.css');
+
+  test.each([
+    'hv5-itbi-input-icon', 'hv5-itbi-swap', 'hv5-itbi-all',
+    'hv5-card-link', 'hv5-cmsg-refresh', 'hv5-cmsg-more',
+  ])('.%s 에 히트 확장 ::after 가 있다', (cls) => {
+    expect(HOME()).toMatch(new RegExp(`\\.${cls}::after`));
+  });
+
+  test('벨·플랜배지도 확장돼 있다', () => {
+    expect(HOME()).toMatch(/\.hv5-hdr \.hv5-bell::after/);
+    expect(HOME()).toMatch(/#planBadge::after/);
+  });
+
+  test('확장 블록이 44px 를 목표로 한다', () => {
+    const css = HOME();
+    const i = css.indexOf('.hv5-itbi-input-icon::after');
+    expect(i).toBeGreaterThan(-1);
+    expect(css.slice(i, i + 400)).toMatch(/width:\s*44px[\s\S]{0,120}height:\s*44px/);
+  });
+
+  test('세로로 붙은 행은 일부러 확장하지 않는다 (오탭 방지)', () => {
+    const css = HOME();
+    // 위아래로 겹쳐 있는 행을 넓히면 옆 행을 먹는다 — 확장 대상에서 빠져 있어야 한다
+    expect(css).not.toMatch(/\.hv5-itbi-mini::after/);
+    expect(css).not.toMatch(/\.hv5-itbi-rest::after/);
+    // 왜 뺐는지 근거가 코드에 남아 있어야 다음 사람이 되살리지 않는다
+    expect(css).toMatch(/오탭/);
+  });
+
+  test('이웃 간격이 좁은 것은 비대칭으로만 넓힌다', () => {
+    const css = HOME();
+    const i = css.indexOf('#hv5CmsgWhy::after');
+    expect(i).toBeGreaterThan(-1);
+    // 아래 형제와 5px 뿐 → 아래로는 조금만
+    expect(css.slice(i, i + 300)).toMatch(/bottom:\s*-4px/);
+  });
+});
