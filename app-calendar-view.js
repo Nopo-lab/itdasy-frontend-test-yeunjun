@@ -1419,8 +1419,33 @@
   }
 
   // [Phase4] 예약 카드 탭 → 읽기전용 상세 시트(완료/매출 UI 가 바로 열리지 않음). 버튼으로 수정/완료/취소/닫기.
+  // [전수감사 2026-09-08] 이 함수가 `'done'` 을 보고 있었는데 **백엔드에 그런 status 는 없다.**
+  //   models.py: status = confirmed / completed / cancelled / no_show
+  //   그래서 `'done'` 분기는 한 번도 안 탄 죽은 코드였고, 완료된 예약이 기본값
+  //   '예약 확정' 으로 떨어졌다. 실측(스테이징 · 예약 843, DB status=completed, 매출 15만원 기록됨):
+  //     캘린더 칩엔 ✓ · 사이드바엔 "완료 1" 인데
+  //     상세를 열면 파란 **"예약 확정"** 배지 + **"시술 완료"** 버튼이 다시 떴다.
+  //   바로 아래 `_resolved` 는 ['cancelled','no_show','done','completed'] 로 completed 를
+  //   제대로 나열하고 있다 — 한쪽만 고치고 라벨은 안 고친 흔적이다.
+  var _BOOKING_STATUS_LABEL = {
+    cancelled: '취소됨',
+    no_show: '노쇼',
+    completed: '완료',
+    done: '완료',        // 레거시 별칭 — 서버는 안 보내지만 오면 완료로 읽는다
+    confirmed: '예약 확정',
+  };
+  var _BOOKING_STATUS_COLOR = {
+    cancelled: '#BC6675',
+    no_show: '#8B95A1',
+    completed: '#16B55E',
+    done: '#16B55E',
+    confirmed: '#3182F6',
+  };
   function _bookingStatusLabel(s) {
-    return s === 'cancelled' ? '취소됨' : s === 'no_show' ? '노쇼' : s === 'done' ? '완료' : '예약 확정';
+    return _BOOKING_STATUS_LABEL[s] || '예약 확정';
+  }
+  function _bookingStatusColor(s) {
+    return _BOOKING_STATUS_COLOR[s] || '#3182F6';
   }
   function _openBookingDetail(raw) {
     if (!raw) return;
@@ -1437,7 +1462,15 @@
       ? window.fmtKRange(raw.starts_at, raw.ends_at || null)
       : (() => { try { const d = new Date(raw.starts_at); return (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + (d.getHours() < 12 ? '오전' : '오후') + ' ' + ((d.getHours() % 12) || 12) + ':' + _pad(d.getMinutes()); } catch (_e) { return ''; } })();
     const statusLabel = _bookingStatusLabel(raw.status);
-    const statusColor = raw.status === 'cancelled' ? '#BC6675' : raw.status === 'no_show' ? '#8B95A1' : raw.status === 'done' ? '#16B55E' : '#3182F6';
+    const statusColor = _bookingStatusColor(raw.status);
+    // [전수감사 2026-09-08] 이 모달은 **이미 끝난 예약**(완료/취소/노쇼)에만 열린다(_resolved).
+    //   그런데 '시술 완료' 버튼을 status 와 무관하게 항상 그렸다.
+    //   · 완료 예약 → 다시 누르면 완료 시트가 뜨고 금액을 또 입력하게 된다.
+    //     서버는 `became_completed` 전이에서만 매출을 만들어 **돈은 안전**하지만,
+    //     원장님은 새로 넣은 금액이 반영된 줄 안다(조용히 버려진다).
+    //   · 취소/노쇼 예약 → 서버가 400 으로 막는다(bookings.py:318). 누를 수 있는 게 잘못이다.
+    //   위 주석이 상정한 "읽기용 상세(수정/복구)" 로 되돌린다.
+    const _canComplete = !['completed', 'done', 'cancelled', 'no_show'].includes(raw.status);
     const old = document.getElementById('cv-booking-detail'); if (old) old.remove();
     const ov = document.createElement('div');
     ov.id = 'cv-booking-detail';
@@ -1464,7 +1497,7 @@
         <div style="margin-bottom:16px;">${info.join('')}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <button type="button" data-bd="edit" data-haptic style="padding:12px;border-radius:14px;border:1px solid var(--accent2,#e26a85);background:transparent;color:var(--accent2,#e26a85);font-weight:800;cursor:pointer;">수정</button>
-          <button type="button" data-bd="done" data-haptic style="padding:12px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent,#D58A95),var(--accent2,#e26a85));color:#fff;font-weight:800;cursor:pointer;">시술 완료</button>
+          ${_canComplete ? `<button type="button" data-bd="done" data-haptic style="padding:12px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent,#D58A95),var(--accent2,#e26a85));color:#fff;font-weight:800;cursor:pointer;">시술 완료</button>` : ''}
           <button type="button" data-bd="cancel" data-haptic style="padding:12px;border-radius:14px;border:1px solid var(--line,#ddd);background:transparent;color:var(--text-subtle,#888);font-weight:700;cursor:pointer;">예약 취소</button>
           <button type="button" data-bd="close2" data-haptic style="padding:12px;border-radius:14px;border:1px solid var(--line,#ddd);background:transparent;color:var(--text,#444);font-weight:700;cursor:pointer;">닫기</button>
         </div>
