@@ -217,6 +217,45 @@ describe('BUG-1 — stylelint 가 :not() 체인을 리스트로 되돌리지 못
   });
 });
 
+// ── BUG-6 ──────────────────────────────────────────────────────────
+describe('BUG-6 — 키보드가 뜨면 떠다니는 탭바/FAB 를 숨긴다', () => {
+  /* iOS 시뮬레이터(iPhone 17 · iOS 26.4) 실측으로 잡은 것:
+       innerH=696 vv.h=377 vv.top=337
+       기존 식 innerH - vv.h - vv.offsetTop = **-18** → 보정이 아예 안 걸림
+       실제 키보드 높이 = innerH - vv.h = **319**
+     그래서 position:fixed 인 #bottomNavGroup 이 화면 한가운데 떠서 잇비 입력창을 덮었다.
+     `vv.offsetTop` 은 **스크롤량**이라 키보드 높이에서 빼면 안 된다. */
+  test('키보드 높이 계산에서 offsetTop 을 빼지 않는다', () => {
+    const m = CORE.match(/const kb = \(window\.innerHeight - vv\.height\)[^;]*;/);
+    expect(m).not.toBeNull();
+    expect(m[0]).not.toMatch(/offsetTop/);
+  });
+
+  test('kb-open 클래스를 토글한다', () => {
+    expect(CORE).toMatch(/classList\.toggle\('kb-open'/);
+  });
+
+  test('CSS 가 kb-open 일 때 #bottomNavGroup 을 숨긴다', () => {
+    const css = read('style-components.css');
+    expect(css).toMatch(/html\.kb-open #bottomNavGroup/);
+    expect(css).toMatch(/html\.kb-open #bottomNavGroup[\s\S]{0,200}visibility:\s*hidden/);
+  });
+
+  test('style.css 의 style-components @import 버전이 갱신돼 있다 (자동범프 제외 파일)', () => {
+    expect(read('style.css')).not.toContain('style-components.css?v=20260816-chip-taparea');
+  });
+
+  // 계산 자체를 잠근다 — 실측값으로
+  test('실측값 재현: iOS 는 319 로 잡히고 안드로이드는 0 에 가깝다', () => {
+    const kb = (innerH, vvh) => innerH - vvh;
+    expect(kb(696, 377)).toBe(319);          // iOS 시뮬레이터 실측
+    expect(kb(651, 279)).toBe(372);          // 안드로이드 에뮬레이터 실측
+    // 옛 식이었다면 iOS 에서 0 으로 뭉개졌다는 것도 같이 잠근다
+    const old = (innerH, vvh, top) => innerH - vvh - top;
+    expect(old(696, 377, 337)).toBeLessThan(100);   // → 보정 안 걸림 = 버그
+  });
+});
+
 // ── BUG-5 (정적 근거만) ────────────────────────────────────────────
 describe('BUG-5 — 시트 닫기 버튼 히트 영역 44px', () => {
   test('보이는 크기는 32px 그대로, ::after 로 44x44 확보', () => {

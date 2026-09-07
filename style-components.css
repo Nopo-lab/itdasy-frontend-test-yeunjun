@@ -586,3 +586,16 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
 /* [2026-09-02] 인스타분석카드 v5 — 페이지 스와이프 스크롤바 숨김.
    scrollbar-width/-ms-overflow-style 은 인라인으로 넣었지만 webkit 은 의사요소라 여기서만 가능. */
 [data-ig-pager]::-webkit-scrollbar { display: none; }
+
+/* [2026-09-07 iOS 시뮬레이터 실측] 키보드가 올라온 동안 떠다니는 탭바+잇비 FAB 숨김.
+   근거: iPhone 17 / iOS 26.4 실기 시뮬레이터에서 한글 키보드를 띄우면
+   #bottomNavGroup(position:fixed)이 화면 중앙에 떠서 잇비 입력창 위에 겹쳤다.
+   키보드가 떠 있는 동안 하단 내비게이션을 보여줄 이유가 없다.
+   `kb-open` 은 app-core.js 의 visualViewport 핸들러가 iOS 에서만 켠다
+   (안드로이드는 innerHeight 가 같이 줄어 조건에 안 걸린다 = 기존 동작 유지). */
+html.kb-open #bottomNavGroup {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}

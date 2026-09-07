@@ -183,7 +183,14 @@ describe('추천칩 터치 영역(모바일)', () => {
 
   test('style.css 의 @import ?v= 를 손으로 올렸다(자동범프 제외 대상)', () => {
     const s = read('style.css');
-    expect(s).toMatch(/style-components\.css\?v=20260816-chip-taparea/);
+    // [2026-09-07] 원래는 `?v=20260816-chip-taparea` 를 그대로 박아뒀는데,
+    //   그러면 **다음 사람이 style-components.css 를 고치고 버전을 올리는 순간 이 테스트가 깨진다**
+    //   (실제로 깨졌다 — 키보드 대응으로 20260907-kbopen 으로 올렸을 때).
+    //   지키려는 계약은 "이 파일은 배포 자동범프 대상이 아니니 ?v= 가 반드시 붙어 있어야 한다" 이지
+    //   "특정 문자열이어야 한다" 가 아니다. 계약 쪽으로 다시 쓴다.
+    const m = s.match(/style-components\.css\?v=([^"')]+)/);
+    expect(m).not.toBeNull();
+    expect(m[1].length).toBeGreaterThan(3);
   });
 });
 
