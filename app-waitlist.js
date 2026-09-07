@@ -131,9 +131,24 @@
     }
   }
 
+  // [2026-09-07 반응형 게이트 BUG-8] 배경 스크롤 잠금.
+  //   이 시트는 잠금이 없어서 시트를 스와이프하면 뒤 화면이 같이 밀렸다(고객관리·리포트·알림·
+  //   잇비는 이미 잠근다 — 시트마다 동작이 달랐다).
+  //   ⚠️ 기존 코드들은 닫을 때 `overflow=''` 로 되돌리는데, 그러면 **다른 시트 위에 겹쳐 열렸을 때**
+  //      내가 닫히면서 남의 잠금까지 풀어버린다. 그래서 이전 값을 저장했다가 되돌린다.
+  let _prevOverflow = null;
+  function _lockBg() {
+    if (_prevOverflow === null) _prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+  }
+  function _unlockBg() {
+    if (_prevOverflow !== null) { document.body.style.overflow = _prevOverflow; _prevOverflow = null; }
+  }
+
   async function openWaitlist() {
     _ensure();
     document.getElementById('waitlistSheet').style.display = 'flex';
+    _lockBg();
     /* [2026-08-31] 뒤로가기 스택 등록 — 미등록 시 하드웨어 back 이 아래 화면까지 닫던 버그 */
     if (typeof window._registerSheet === 'function') window._registerSheet('waitlist', closeWaitlist);
     if (typeof window._markSheetOpen === 'function') window._markSheetOpen('waitlist');
@@ -145,6 +160,7 @@
   function closeWaitlist() {
     const el = document.getElementById('waitlistSheet');
     if (el) el.style.display = 'none';
+    _unlockBg();
     if (typeof window._markSheetClosed === 'function') window._markSheetClosed('waitlist');
   }
 

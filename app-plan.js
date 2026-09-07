@@ -31,6 +31,10 @@
 
     _selectedPlan = 'pro';
     pop.style.display = 'flex';
+    _lockBg();
+    // [2026-09-07 반응형 릴리즈게이트] 뒤로가기 등록. 결제 화면인데 history 엔트리가 0이라
+    //   안드로이드 하드웨어 백이 팝업을 닫는 대신 **앱을 종료**했다 (실측).
+    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('plan');
     _updatePlanCardHighlight();
     _stylePopularCard();
     if (window.hapticLight) window.hapticLight();
@@ -58,21 +62,38 @@
       });
     });
 
+    // [2026-09-07] ✕·배경 클릭이 display 를 직접 껐다 → _markSheetClosed 가 안 불려서
+    //   닫아도 history 엔트리가 남고, 다음 뒤로가기가 "눌러도 아무 일 없는" 칸이 됐다.
+    //   모든 닫기 경로를 closePlanPopup() 하나로 모은다.
     const closeBtn = document.getElementById('planCloseBtn');
     if (closeBtn && !closeBtn._bound) {
       closeBtn._bound = true;
-      closeBtn.addEventListener('click', () => { pop.style.display = 'none'; });
+      closeBtn.addEventListener('click', () => { closePlanPopup(); });
     }
     // 배경 클릭으로 닫기
     if (!pop._bgBound) {
       pop._bgBound = true;
-      pop.addEventListener('click', (e) => { if (e.target === pop) pop.style.display = 'none'; });
+      pop.addEventListener('click', (e) => { if (e.target === pop) closePlanPopup(); });
     }
+  }
+
+  // [2026-09-07 반응형 게이트 BUG-8] 배경 스크롤 잠금 — 이전 값 저장/복구로 중첩 안전.
+  //   플랜은 설정허브·잇비 위에 겹쳐 열린다. 닫을 때 `overflow=''` 로 밀면
+  //   **아직 열려 있는 아래 시트의 잠금까지** 풀려서 뒤 화면이 밀리기 시작한다.
+  let _prevOverflow = null;
+  function _lockBg() {
+    if (_prevOverflow === null) _prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+  }
+  function _unlockBg() {
+    if (_prevOverflow !== null) { document.body.style.overflow = _prevOverflow; _prevOverflow = null; }
   }
 
   function closePlanPopup() {
     const pop = document.getElementById('planPopup');
     if (pop) pop.style.display = 'none';
+    _unlockBg();
+    if (typeof window._markSheetClosed === 'function') window._markSheetClosed('plan');
   }
 
   // [2026-09-02 가격 개편] 카드 디자인은 index.html(pw- 클래스)이 정본 — JS 덧칠 제거.
@@ -486,6 +507,7 @@
   // 전역 노출 (index.html onclick 에서 참조)
   window.openPlanPopup = openPlanPopup;
   window.closePlanPopup = closePlanPopup;
+  if (typeof window._registerSheet === 'function') window._registerSheet('plan', closePlanPopup);
   window.doPlanAction = doPlanAction;
   window.doCancelSubscription = doCancelSubscription;
   window.refreshPlanStatus = _loadStatus;   // 결제/취소 성공 후 app-billing 이 호출

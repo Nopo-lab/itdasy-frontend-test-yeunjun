@@ -101,13 +101,18 @@
     const el = _ensure();
     _hydrate();
     el.style.display = 'flex';
+    // [2026-09-07 반응형 릴리즈게이트] 뒤로가기 등록. 없으면 안드로이드 하드웨어 백이
+    //   이 시트를 닫는 대신 **앱을 종료**한다 (실측: history 엔트리 0).
+    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('reminder');
   }
 
   function closeReminderSettings() {
     const el = document.getElementById('reminderSheet');
     if (el) el.style.display = 'none';
+    if (typeof window._markSheetClosed === 'function') window._markSheetClosed('reminder');
   }
 
   window.openReminderSettings = openReminderSettings;
   window.closeReminderSettings = closeReminderSettings;
+  if (typeof window._registerSheet === 'function') window._registerSheet('reminder', closeReminderSettings);
 })();

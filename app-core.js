@@ -390,10 +390,40 @@ let _toastHideTimer = null;
 let _toastNextTimer = null;
 const TOAST_MAX_DURATION = 5000; // duration 상한 캡
 
+// [2026-09-07 반응형 게이트 BUG-4] JS 내부 오류 문구가 원장님 화면에 그대로 뜨던 것.
+//   실측: 리포트에서 `불러오기 실패: Cannot read properties of undefined (reading 'total')`.
+//   원인은 두 갈래다 —
+//     (1) `_humanError()` 의 마지막 줄이 `return raw` 라 **80자 미만 예외는 원문 통과**
+//     (2) 아예 `_humanError` 를 안 거치고 `showToast('... ' + e.message)` 하는 곳이 20군데 넘음
+//   20군데를 각각 고치면 다른 세션 파일까지 건드리게 되고 또 빠뜨린다.
+//   그래서 **길목 두 곳**(_humanError · showToast)에서 흡수한다.
+//   개발자용 정보는 console 로 그대로 남긴다 — 사용자 화면에서만 바꾼다.
+window._isInternalErrorText = function (s) {
+  return /Cannot read propert|is not a function|is not defined|undefined is not|null is not|is not iterable|TypeError|ReferenceError|SyntaxError|RangeError|Unexpected token|circular structure|of undefined|of null/i
+    .test(String(s == null ? '' : s));
+};
+
+// 사용자 문구에서 내부 오류 조각만 걷어낸다. "저장 실패: TypeError..." → "저장 실패: 일시적인 오류예요"
+window._sanitizeUserText = function (msg) {
+  const s = String(msg == null ? '' : msg);
+  if (!window._isInternalErrorText(s)) return s;
+  // "…실패: <내부문구>" 형태면 앞의 한국어 라벨은 살린다 (원장님이 무슨 작업인지 알아야 하므로)
+  const m = s.match(/^([^:]{1,24}):\s*/);
+  const label = m && /[가-힣]/.test(m[1]) ? m[1] : '';
+  return label ? label + '. 잠시 후 다시 시도해 주세요' : '일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요';
+};
+
 function showToast(msg, opts) {
   const o = typeof opts === 'object' ? opts : { type: opts || 'info' };
   const d = Math.min(Number(o.duration) || 2400, TOAST_MAX_DURATION);
-  _toastQueue.push({ msg, type: o.type || 'info', duration: d });
+  let safe = msg;
+  try {
+    if (window._isInternalErrorText(msg)) {
+      console.warn('[toast] 내부 오류 문구 차단:', msg);   // 개발자용 원문은 보존
+      safe = window._sanitizeUserText(msg);
+    }
+  } catch (_e) { void _e; }
+  _toastQueue.push({ msg: safe, type: o.type || 'info', duration: d });
   if (!_toastActive) _nextToast();
 }
 
@@ -3657,18 +3687,29 @@ window._humanError = function (e) {
     return '아직 준비 중인 기능이에요';
   if (/HTTP\s*409/i.test(raw))
     return '이미 다른 값이 있어요. 잠시 후 다시 시도해주세요';
-  if (/HTTP\s*413|too large|exceeded/i.test(raw))
+  // [2026-09-07 반응형 게이트] 429 를 413 보다 **먼저** 본다.
+  //   기존엔 413 패턴의 `exceeded` 가 "quota exceeded" 를 먼저 잡아서,
+  //   AI 한도 초과(429)인데 화면엔 "파일이 너무 커요 (최대 10MB)" 가 떴다. 실측으로 확인.
+  //   이 앱에서 Vertex 429 는 드문 일이 아니라 원장님이 실제로 보게 되는 문구다.
+  if (/HTTP\s*429|quota|rate.?limit/i.test(raw))
+    return '요청이 너무 많아요. 잠시 후 다시 시도해주세요';
+  if (/HTTP\s*413|too large|size.*exceeded|exceeds.*size/i.test(raw))
     return '파일이 너무 커요 (최대 10MB)';
   if (/HTTP\s*422/i.test(raw))
     return '입력 형식을 확인해주세요';
-  if (/HTTP\s*429|quota|rate.limit/i.test(raw))
-    return '요청이 너무 많아요. 잠시 후 다시 시도해주세요';
   if (/HTTP\s*402|payment/i.test(raw))
     return '플랜 한도 초과예요. 업그레이드가 필요해요';
   // [§11] DB/PostgREST 원문(예: "already has another value", "duplicate key", "unique constraint") 누출 차단
   if (/already\s+has|already\s+exist|duplicate|unique\s+constraint|conflict|overlap/i.test(raw))
     return '이미 등록된 값이 있어요. 다시 확인해주세요';
   if (raw.length > 80) return '일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요';
+  // [2026-09-07 BUG-4] 80자 미만 JS 내부 예외가 여기로 그대로 빠져나가고 있었다.
+  //   (예: "Cannot read properties of undefined (reading 'total')" = 52자)
+  //   원장님 화면에 영문 스택 용어를 띄우지 않는다. 원인은 console 에 남는다.
+  if (window._isInternalErrorText && window._isInternalErrorText(raw)) {
+    console.warn('[_humanError] 내부 오류 원문:', raw);
+    return '일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요';
+  }
   return raw;
 };
 
@@ -4024,6 +4065,52 @@ window.refreshLastSyncBadges = function () {
     if (typeof closeFn !== 'function') return;
     registry.set(name, { close: closeFn });
   };
+
+  // ── [2026-09-07 반응형 게이트 BUG-7] 새로고침 뒤 남는 유령 hash 청소 ──
+  //   재현: 고객관리를 열면 주소가 `#customers` 가 된다 → 새로고침 → 앱은 **홈으로** 뜨는데
+  //   `#customers` 는 그대로 남는다. 그 상태에서 뒤로가기를 누르면 화면은 그대로이고
+  //   주소만 바뀐다 = "눌러도 아무 일 없는" 한 칸. 실측으로 확인했다.
+  //
+  //   ⚠️ hash 공간은 시트만 쓰는 게 아니다. 잘못 지우면 로그인·가입 흐름이 깨진다.
+  //   그래서 **아래를 전부 만족할 때만** 지운다(하나라도 애매하면 그냥 둔다 — fail closed):
+  //     1) 라우터 스택이 비어 있다 = 이 세션에서 연 시트가 하나도 없다
+  //     2) hash 가 `_registerSheet` 로 등록된 시트 이름과 **정확히** 일치한다
+  //        (등록 전이면 못 지운다 — 안전한 쪽으로 실패)
+  //     3) `=`·`&` 가 없다 (OAuth 콜백류 `#access_token=…` 방어)
+  //     4) 시스템 예약어가 아니다 (register/connected/auth/bio/revenuehub …)
+  //   `#revenuehub` 는 이미 app-core 위쪽 DOMContentLoaded 핸들러가 따로 지운다.
+  const _SYSTEM_HASHES = ['register', 'connected', 'login', 'signup', 'auth', 'bio',
+    'biometric', 'revenuehub', 'oauth', 'callback', 'error', 'success'];
+  // 시트 이름 정본. `registry` 만 보면 **lazy 모듈이 아직 로드 전이라 비어 있어서**
+  //   정작 흔한 화면(고객관리·예약 등)의 유령 hash 를 못 지운다(실측 확인).
+  //   그래서 코드에 실재하는 시트 등록 이름을 목록으로 갖는다.
+  //   ⚠️ 목록이 낡으면 조용히 효과가 사라진다 → 드리프트 테스트가 저장소 전체를 훑어 강제한다
+  //      (`__tests__/responsive-gate-ios15-and-back-2026-09-07.test.js`).
+  window.__SHEET_HASHES = ['assistant', 'backupScreen', 'booking', 'captionWork', 'changePw',
+    'crq', 'crqPeek', 'customerDash', 'customers', 'cvBookingDetail', 'cvBookingForm',
+    'dataExport', 'dmConfirmQueue', 'dmList', 'dmManual', 'dmMenu', 'dmPreview', 'dmThread',
+    'genericsheet', 'import', 'insights', 'integrationsHub', 'kakaoHub', 'nav', 'naverLink',
+    'naverTalkLink', 'notifications', 'plan', 'pricelist', 'reminder', 'report', 'revenue',
+    'reviewRequests', 'settingsHub', 'shopSettings', 'supportChat', 'waitlist', 'wsSettings',
+    'wshcLightbox', 'wsperf', 'wsv2Drawer', 'wsv2flow'];
+  function _normalizeStaleHash() {
+    try {
+      if (stack.length) return;                                  // (1) 열린 시트 있음 → 손대지 않음
+      const raw = (window.location.hash || '').replace(/^#/, '');
+      if (!raw) return;
+      if (/[=&/?]/.test(raw)) return;                            // (3) 파라미터형 → 남의 것
+      const low = raw.toLowerCase();
+      if (_SYSTEM_HASHES.some((s) => low === s || low.includes(s))) return;   // (4)
+      // (2) 등록됐거나(이미 로드됨) 알려진 시트 이름이거나 — 둘 다 아니면 건드리지 않는다
+      if (!registry.has(raw) && window.__SHEET_HASHES.indexOf(raw) === -1) return;
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    } catch (_e) { void _e; }
+  }
+  // lazy 모듈이 _registerSheet 를 부른 뒤에 판단해야 한다 → load 이후 한 박자 늦게.
+  //   (등록 전에 보면 registry 가 비어 있어 아무것도 못 지운다 = 무해하지만 효과도 없다)
+  if (document.readyState === 'complete') setTimeout(_normalizeStaleHash, 2500);
+  else window.addEventListener('load', () => setTimeout(_normalizeStaleHash, 2500));
+  window.__normalizeStaleHash = _normalizeStaleHash;   // 테스트/수동 확인용
 
   // 스와이프 다운 닫기 — sheet 컨테이너에 부착. 핸들 영역(상단 60px) 에서만 트리거.
   // close 함수를 인자로 받음. threshold deltaY > 50px.

@@ -78,6 +78,27 @@
   align-items: center;
   justify-content: center;
   transition: background 0.15s ease;
+  /* [2026-09-07 반응형 게이트 BUG-5] 히트 영역 확보용 기준점 */
+  position: relative;
+}
+/* [2026-09-07 BUG-5] 시트 닫기 버튼이 32×32 라 HIG(44pt)·WCAG 2.5.5 미달이다.
+   닫기는 모든 시트에서 제일 자주 누르는 버튼인데 제일 작았다.
+   **보이는 원의 크기는 그대로 두고**(디자인 유지) ::after 로 히트 영역만 44×44 로 넓힌다.
+   같은 방식이 이미 이 레포에 있다 — customer-v4.css 의 `.cv4-chip::after`.
+   레이아웃에 영향 없음: position:absolute 라 형제 배치·헤더 높이를 바꾸지 않는다. */
+#aihClose::after,
+#shClose::after,
+#scClose::after,
+#uhsClose::after,
+#afsClose::after,
+#plClose::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 #aihClose:hover,
 #shClose:hover,

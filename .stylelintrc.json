@@ -1,6 +1,7 @@
 {
   "extends": ["stylelint-config-standard"],
   "rules": {
+    "selector-not-notation": "simple",
     "max-nesting-depth": 4,
     "no-duplicate-selectors": true,
     "declaration-block-no-duplicate-properties": [
