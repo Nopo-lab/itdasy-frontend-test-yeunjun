@@ -106,16 +106,50 @@
     _updateActionButton();
   }
 
+  // 지금 결제 중인 게 월간인가 연간인가.
+  //   DB 의 plan 은 둘 다 'pro' 라 **plan 만으로는 구분이 안 된다.** 서버가 같이 주는
+  //   product_id 로만 알 수 있다(app-iap.js PRODUCTS 의 역매핑).
+  //   웹 PortOne·폐기된 6,900 상품·데모 계정은 알 수 없으므로 null 을 돌려준다.
+  function _currentBillingKey() {
+    const map = (window.ItdasyIAP && window.ItdasyIAP.PRODUCTS) || null;
+    if (!map || !_productId) return null;
+    return Object.keys(map).find((k) => map[k] === _productId) || null;
+  }
+
   function _updateActionButton() {
     const btn = document.getElementById('planActionBtn');
     if (!btn) return;
-    // pro_yearly 는 결제 키일 뿐 저장 플랜은 'pro' — 이미 유료면 둘 다 "이용 중" 처리
     const paidNow = ['pro', 'premium', 'membership'].includes(_currentPlan);
-    if (_selectedPlan === _currentPlan || (paidNow && (_selectedPlan === 'pro' || _selectedPlan === 'pro_yearly'))) {
+    const billingKey = _currentBillingKey();
+
+    // [결제 게이트 2026-09-07] 예전엔 유료이기만 하면 월간·연간 **어느 카드를 골라도**
+    //   "현재 이용 중인 플랜입니다" 를 띄우고 버튼을 잠갔다. 실측(브라우저):
+    //     월간 결제자가 '연 99,000원' 카드를 누름 → 버튼 "현재 이용 중인 플랜입니다"(disabled)
+    //   ① 사실이 아니다 — 연간을 이용 중인 게 아니다.
+    //   ② 연간으로 올릴 길이 아예 없다. 연간 카드를 만든 이유(LTV)가 통째로 죽는다.
+    //   plan 컬럼은 둘 다 'pro' 라 구분이 안 되지만 product_id 는 구분된다 → 그걸 쓴다.
+    const sameAsNow = (_selectedPlan === _currentPlan)
+      || (paidNow && billingKey !== null && _selectedPlan === billingKey)
+      // 결제 주체를 모르는 유료 구독(웹 PG·폐기 상품·데모)은 예전처럼 보수적으로 '이용 중'.
+      || (paidNow && billingKey === null && (_selectedPlan === 'pro' || _selectedPlan === 'pro_yearly'));
+
+    if (sameAsNow) {
       btn.textContent = '현재 이용 중인 플랜입니다';
       btn.disabled = true;
       btn.style.opacity = '0.5';
       btn.style.cursor = 'not-allowed';
+      return;
+    }
+
+    // 유료인데 다른 주기를 골랐다 = 플랜 전환. 스토어 구독은 **스토어에서만** 바꿀 수 있다
+    //   (같은 구독 그룹 안의 업/다운그레이드는 Apple/Google 이 비례배분까지 처리한다).
+    //   앱에서 새로 order() 하면 그룹 설정이 어긋났을 때 **구독 2개가 동시에 살아** 이중청구가 된다.
+    //   그래서 여기선 구독관리 화면으로 보낸다 — 안전하고, 스토어 정책상으로도 이게 정답이다.
+    if (paidNow && billingKey !== null) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.textContent = (_selectedPlan === 'pro_yearly') ? '연간 결제로 바꾸기' : '월간 결제로 바꾸기';
       return;
     }
     btn.disabled = false;
@@ -349,6 +383,18 @@
 
   async function doPlanAction() {
     if (_selectedPlan === _currentPlan) return;
+
+    // [결제 게이트 2026-09-07] 주기 전환(월↔연)은 **새로 결제하지 않는다.**
+    //   스토어 구독은 같은 구독 그룹 안에서만 바꿀 수 있고, 그 처리는 스토어가 한다
+    //   (비례배분·즉시전환/다음주기 여부까지). 앱에서 order() 를 다시 태우면 그룹 설정이
+    //   어긋났을 때 구독 2개가 동시에 살아 **이중청구**가 된다. 그래서 구독관리로 보낸다.
+    const _billingKey = _currentBillingKey();
+    const _paidNow = ['pro', 'premium', 'membership'].includes(_currentPlan);
+    if (_paidNow && _billingKey !== null && _selectedPlan !== _billingKey) {
+      _openStoreSubs();
+      return;
+    }
+
     if (_selectedPlan === 'free') {
       if (window.hapticMedium) window.hapticMedium();
       if (typeof window.showToast === 'function') window.showToast('체험 상태 변경은 설정에서 진행해주세요');
@@ -357,18 +403,15 @@
 
     // 네이티브 앱: 앱스토어 IAP 만 사용 (Apple/Google anti-steering — 웹 PG 호출 금지).
     if (_isNative()) {
-      // [2026-09-07 결제 정합성] 연간을 고른 채로 여기 오면 **월간이 청구된다**.
-      //   `ItdasyIAP.purchaseMembership()` 은 플랜 인자를 받지 않고 단일 상품
-      //   (`PRODUCT_ID` = 월간 자동갱신) 하나만 구매한다. 그런데 위 _updateActionButton()
-      //   은 연간 선택 시 버튼에 "연 99,000원으로 시작하기" 라고 쓴다.
-      //   → 화면에 적힌 금액과 실제 청구 금액이 달라진다(스토어 심사·환불 분쟁 사유).
-      //   스토어에 연간 상품이 등록되기 전까지는 **조용히 월간을 태우지 않는다.**
-      if (_selectedPlan === 'pro_yearly') {
-        if (typeof window.showToast === 'function') {
-          window.showToast('연간 결제는 앱에서 준비 중이에요. 월간으로 시작하거나 웹에서 결제해 주세요');
-        }
-        return;
-      }
+      // [2026-09-07 결제 정합성 → 2026-09-08 갱신] 연간을 고르면 월간이 청구되던 문제.
+      //   원래 조치는 "연간이면 무조건 막기" 였다. 그건 원인이 아니라 증상을 막은 것이고,
+      //   연간 카드를 영영 죽은 채로 둔다. 원인은 `purchaseMembership()` 이 **고른 플랜을
+      //   받지 않고** 단일 상품만 사던 것이었고, 그건 아래에서 인자를 넘겨 고쳤다.
+      //   (app-iap.js `PRODUCTS`: pro → 월간 / pro_yearly → 연간)
+      //
+      //   다만 **스토어에 연간 상품이 아직 없으면** store.get() 이 못 찾아
+      //   `reason:'no_product'` 로 돌아온다. 그 경우만 아래 결과 처리에서 안내한다.
+      //   → 잘못된 금액이 청구될 일은 없고(상품 자체가 다르니), 등록되는 순간 자동으로 열린다.
       if (window.hapticMedium) window.hapticMedium();
       // [C-1 2026-07-27] IAP 플러그인(cordova-plugin-purchase)이 설치된 빌드에서만 실제 결제.
       //   플러그인 없으면(현재 빌드) isAvailable()=false → 기존 '준비중' 안내 유지(무회귀).
@@ -379,7 +422,10 @@
       var _btn = document.getElementById('planActionBtn');
       var _orig = _btn ? _btn.textContent : '';
       if (_btn) { _btn.disabled = true; _btn.style.opacity = '0.6'; _btn.textContent = '결제 진행 중…'; }
-      window.ItdasyIAP.purchaseMembership().then(function (r) {
+      // [결제 게이트 2026-09-07] **고른 플랜을 넘긴다.** 예전엔 인자 없이 불렀고
+      //   app-iap.js 는 상품 ID 를 하나만 알고 있어서, "연 99,000원" 을 눌러도
+      //   폐기된 6,900원 월간 상품이 결제됐다(금액·기간·상품이 전부 달랐다).
+      window.ItdasyIAP.purchaseMembership(_selectedPlan).then(function (r) {
         if (r && r.ok) {
           if (window.hapticSuccess) window.hapticSuccess();
           _currentPlan = r.plan || 'membership';
@@ -391,6 +437,14 @@
           if (_btn) { _btn.disabled = false; _btn.style.opacity = '1'; _btn.textContent = _orig; }
           if (r && r.reason === 'cancelled') return; // 사용자가 취소 — 조용히
           if (typeof window.showToast === 'function') {
+            // 스토어에 그 상품이 아직 없을 때. "결제 실패" 라고 하면 원장님이 카드 문제로
+            //   오해한다 — 무엇이 없고 무엇을 하면 되는지 말한다.
+            if (r && r.reason === 'no_product') {
+              window.showToast(_selectedPlan === 'pro_yearly'
+                ? '연간 결제는 스토어에 아직 준비 중이에요. 월간으로 시작해 주세요'
+                : '상품 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요');
+              return;
+            }
             window.showToast(r && r.message ? ('결제 실패: ' + r.message) : '결제를 완료하지 못했어요. 잠시 후 다시 시도해 주세요');
           }
         }

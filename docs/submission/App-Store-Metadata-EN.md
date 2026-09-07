@@ -68,7 +68,7 @@ TLS 1.3 for all traffic. Customer data is fully isolated per salon — never exp
 💎 Pricing
 ━━━━━━━━━━━━━━━━━━━━
 Free: 50 customers · 5 AI captions/month
-Itdasy Membership ($4.99/mo, ₩6,900): Everything — AI captions, Itbi assistant, photo editing, Instagram integration
+Itdasy Pro (₩9,900/mo or ₩99,000/yr): Everything — AI captions, Itbi assistant, photo editing, Instagram integration
 
 1-week free trial · No credit card required · Cancel anytime
 ```
@@ -142,7 +142,7 @@ Use `docs/submission/_gen_iap_screenshot.py` as starting template and add EN ove
 
 **Competitive Positioning**: Unlike Vagaro/Booksy/Fresha (multi-staff booking), Itdasy is built for **solo practitioners** who handle everything themselves and need voice/natural-language shortcuts because their hands are occupied during treatments.
 
-**Pricing Rationale**: At $4.99/mo (₩6,900) the single membership sits far below Vagaro ($39/mo minimum) — an affordable entry point for indie beauty professionals, with no tier confusion.
+**Pricing Rationale**: At ₩9,900/mo (about $6.99) Itdasy Pro sits far below Vagaro ($39/mo minimum) — an affordable entry point for indie beauty professionals, with no tier confusion. The annual plan (₩99,000) gives two months free.
 
 ---
 

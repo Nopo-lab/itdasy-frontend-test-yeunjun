@@ -40,8 +40,11 @@
 ## 게이트 B — 연준님 수동 작업 (앱 밖)
 
 ### 스토어
-- [ ] App Store Connect: `itdasy_membership_monthly_6900` (**₩9,900/월, 10일 무료체험**) 등록·심사제출
-      ⚠️ 상품ID 이름의 `6900` 은 레거시 — 콘솔 가격이 ₩9,900 인지 확인
+- [ ] App Store Connect: `itdasy_pro_monthly_9900` (₩9,900/월, 10일 무료체험) + `itdasy_pro_yearly_99000` (₩99,000/년, 체험 없음) **같은 구독 그룹**으로 등록·심사제출
+- [ ] App Store Connect: `itdasy_membership_monthly_6900` **판매중지** (삭제 금지 — 기존 구독자 갱신 영수증이 계속 온다)
+      ⚠️ 기존 `itdasy_membership_monthly_6900` 의 **가격을 올리지 않는다.** 그 상품의 가격을
+         바꾸면 이미 구독 중인 원장님들도 인상 대상이 되고, Apple 은 동의를 받지 못하면
+         구독을 끊는다. 신규 상품을 따로 등록해 기존 구독자를 그대로 두는 게 표준이다.
 - [ ] Play Console: 같은 상품 등록. **패키지명 `com.y2do.itdasy`** 확인
 - [ ] Cloud Run env: `APPLE_IAP_SHARED_SECRET` · `APPLE_APP_BUNDLE_ID` · `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` · `GOOGLE_PLAY_PACKAGE_NAME`
 - [ ] 실기기 샌드박스 결제 1회 성공

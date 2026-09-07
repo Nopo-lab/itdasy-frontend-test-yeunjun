@@ -3,8 +3,12 @@
 > ⚠️ [2026-09-07] 가격 정본은 **월 ₩9,900 / 연 ₩99,000 (USD $6.99), 월간 10일 무료체험**이다.
 > 근거: 백엔드 `/subscription/plans` (`price:9900`, `price_yearly:99000`, `price_usd:6.99`) ·
 > `index.html` 페이월 · `terms.html` · `landing/index.html` (2026-09-02 가격 개편).
-> 상품ID `itdasy_membership_monthly_6900` 은 **이름만 옛 가격이 남은 레거시 식별자**다 —
-> 스토어 연결이 끊기므로 이름은 바꾸지 않는다. **콘솔의 실제 가격이 ₩9,900 인지 반드시 확인할 것.**
+>
+> [2026-09-08 정정] 앱이 파는 상품은 **`itdasy_pro_monthly_9900` · `itdasy_pro_yearly_99000`**
+> 두 개다. 폐기된 `itdasy_membership_monthly_6900` 을 **재사용하지 않는다** —
+> 그 상품의 가격을 올리면 이미 구독 중인 원장님들이 전부 인상 대상이 되고, Apple 은
+> 동의를 못 받으면 구독을 끊는다. 신규 상품을 따로 등록해 기존 구독자를 옛 가격에
+> 그대로 두는 것이 가격 인상의 표준 방식이다.
 
 
 프론트 연동 코드는 **완료**됐다(`app-iap.js`, `app-plan.js` 네이티브 분기, 구매 복원 버튼).
@@ -27,18 +31,40 @@ npx cap sync                      # ios/android 네이티브에 플러그인 반
 - iOS: Xcode 에서 **Signing & Capabilities → In-App Purchase** capability 추가.
 - Android: `com.android.billingclient` 는 플러그인이 자동 포함. Play 결제 권한도 자동.
 
-## 2. 스토어에 상품 등록 — product id `itdasy_membership_monthly_6900`
+## 2. 스토어에 상품 등록 — 월간 + 연간 **2개**, 같은 구독 그룹
 
-**정확히 이 id 여야 함**(백엔드 `PRODUCT_TO_PLAN` · 프론트 `app-iap.js PRODUCT_ID` 와 일치).
+**정확히 이 id 여야 함**(백엔드 `routers/iap.py PRODUCT_TO_PLAN` · 프론트 `app-iap.js PRODUCTS` 와 일치).
+`__tests__/paywall-plan-product-map.test.js` 와 `tests/test_price_change_9900_gate_2026_09_07.py`
+가 이 값을 양쪽에서 잠그고 있으니, 바꾸려면 세 곳을 같이 바꿔야 한다.
 
-- **App Store Connect** → 앱 → 구독 → 구독 그룹 생성 → 자동 갱신 구독
-  - 참조명/상품ID: `itdasy_membership_monthly_6900`
-  - 가격: **₩9,900 / 월**, **무료 체험 10일**(introductory offer) 설정
-  - 지역화(한국어) 표시명·설명 입력 → **심사 제출**(구독은 앱과 함께 심사)
+| 용도 | Product ID | 가격 | 무료체험 |
+|---|---|---|---|
+| 월간 | `itdasy_pro_monthly_9900` | ₩9,900 / 월 | **10일** |
+| 연간 | `itdasy_pro_yearly_99000` | ₩99,000 / 년 | 없음 |
+
+🔴 **둘을 같은 구독 그룹(Apple) / 같은 구독의 base plan(Google)** 에 넣어야 한다.
+   앱은 월↔연 전환을 **직접 결제하지 않고 스토어 구독관리로 보낸다**(`app-plan.js doPlanAction`).
+   그룹이 갈리면 스토어가 전환으로 처리하지 못해 **구독 2개가 동시에 살아 이중청구**가 난다.
+
+- **App Store Connect** → 앱 → 구독 → 구독 그룹(`itdasy_subscriptions`) → 자동 갱신 구독 2개
+  - 각 상품의 지역화(한국어) 표시명·설명 입력 → **심사 제출**(구독은 앱과 함께 심사)
+  - 월간에만 Introductory Offer → Free Trial 10일
 - **Google Play Console** → 수익 창출 → 구독 → 구독 만들기
-  - 상품ID: `itdasy_membership_monthly_6900`
-  - 기본 요금제 **₩9,900/월**, **무료 체험 10일** 추가
-  - 활성화
+  - 월간 기본 요금제 ₩9,900 + 무료 체험 10일 / 연간 기본 요금제 ₩99,000
+  - 둘 다 활성화
+
+### ⚠️ 폐기 상품 — 삭제하지 말 것
+
+`itdasy_membership_monthly_6900` (구 단일 멤버십, 2026-05-19 ~ 2026-09-02)
+
+- 콘솔에서 **판매만 중지**한다. **삭제 금지.**
+- 이유: 이미 구독 중인 원장님의 **갱신·복원 영수증이 계속 이 id 로 들어온다.**
+  백엔드 매핑(`PRODUCT_TO_PLAN`)에도 호환용으로 남겨 뒀는데, 콘솔에서 상품을 지우면
+  스토어 쪽 검증이 실패해 그분들이 유료를 잃는다.
+- 앱도 이 id 를 `LEGACY_PRODUCT_IDS` 로 `store.register` 한다 — **팔지는 않고 복원만** 되게.
+- 🔴 **이 상품의 가격을 ₩9,900 으로 올려 재사용하지 않는다.** 가격을 바꾸면 이미 구독 중인
+  원장님들이 전부 인상 대상이 되고, Apple 은 동의를 못 받으면 구독을 끊는다(Google 도 통지 의무).
+  신규 상품을 따로 등록해 기존 구독자를 옛 가격에 그대로 두는 것이 표준 방식이다.
 
 ## 3. 백엔드 크레덴셜 주입 (Cloud Run 환경변수)
 

@@ -69,24 +69,48 @@ describe('가격 정본 — 월 9,900 / 연 99,000', () => {
 });
 
 describe('네이티브 연간 결제 — 표시와 청구가 어긋나지 않는다', () => {
-  /* `ItdasyIAP.purchaseMembership()` 은 플랜 인자를 안 받고 단일 월간 상품만 산다.
-     그런데 연간을 고르면 버튼이 "연 99,000원으로 시작하기" 가 된다.
-     스토어에 연간 상품이 없는 동안 연간 선택으로 IAP 를 태우면 **월간이 청구**된다. */
-  test('IAP 는 여전히 단일 상품이다 (전제 확인)', () => {
+  /* [2026-09-08 계약 재정의]
+   *
+   * 원래 이 describe 는 두 가지를 **전제로 고정**하고 있었다:
+   *     ① IAP 는 단일 상품이다 (`PRODUCT_ID` 하나, `purchaseMembership()` 인자 없음)
+   *     ② 그러니 네이티브에서 연간은 IAP 로 넘기지 말고 막아라
+   *
+   * ②는 옳았지만 ①은 **고쳐야 할 결함이지 지켜야 할 계약이 아니었다.** 원인은
+   * "연간 상품이 없다" 가 아니라 "구매 함수가 고른 플랜을 안 받는다" 였고,
+   * 그걸 그대로 둔 채 연간만 막으면 연간 카드가 영영 죽은 채로 남는다.
+   *
+   * 그래서 원인을 고쳤다(app-iap.js `PRODUCTS` 매핑 + `purchaseMembership(plan)`).
+   * 이제 잠글 계약은 바뀐다 — **고른 카드의 상품이 그대로 주문되는가.**
+   * 그 검증은 `paywall-plan-product-map.test.js` 가 결제창을 실제로 눌러서 한다
+   * (뮤테이션 4종으로 가드가 진짜 깨지는지도 확인했다).
+   *
+   * 여기서는 "원래 막으려던 사고" 만 다시 못 나게 잠근다:
+   *   잘못된 금액이 청구되는 일 = 카드와 상품이 어긋나는 일.
+   */
+  test('구매 함수가 고른 플랜을 받는다 — 단일 상품 하드코딩으로 되돌아가지 않는다', () => {
     const iap = read('app-iap.js');
-    expect(iap).toMatch(/var PRODUCT_ID = 'itdasy_membership_monthly_\d+'/);
-    expect(iap).toMatch(/function purchaseMembership\(\)/);   // 인자 없음
+    expect(iap).toMatch(/function purchaseMembership\(plan\)/);
+    expect(iap).not.toMatch(/var PRODUCT_ID = '/);   // 단일 상품 상수 부활 금지
   });
 
-  test('네이티브 분기에서 pro_yearly 는 IAP 로 안 넘어간다', () => {
+  test('연간 카드에는 연간 상품이 매핑돼 있다', () => {
+    const iap = read('app-iap.js');
+    const block = iap.slice(iap.indexOf('var PRODUCTS'), iap.indexOf('var DEFAULT_PLAN'));
+    expect(block).toMatch(/pro_yearly:\s*'itdasy_pro_yearly_\d+'/);
+    expect(block).toMatch(/pro:\s*'itdasy_pro_monthly_\d+'/);
+  });
+
+  test('네이티브 분기가 고른 플랜을 그대로 넘긴다 (월간 하드코딩 금지)', () => {
     const src = read('app-plan.js');
     const i = src.indexOf('if (_isNative()) {', src.indexOf('async function doPlanAction'));
     expect(i).toBeGreaterThan(-1);
-    const nativeBlock = src.slice(i, i + 1800);
-    const guard = nativeBlock.indexOf("_selectedPlan === 'pro_yearly'");
-    // 실제 호출만 본다 — 설명 주석에도 purchaseMembership 이라는 낱말이 나온다
-    const buy = nativeBlock.indexOf('window.ItdasyIAP.purchaseMembership(');
-    expect(guard).toBeGreaterThan(-1);
-    expect(guard).toBeLessThan(buy);     // 가드가 구매보다 먼저
+    const nativeBlock = src.slice(i, i + 2600);
+    expect(nativeBlock).toContain('window.ItdasyIAP.purchaseMembership(_selectedPlan)');
+  });
+
+  test('스토어에 상품이 없을 때는 "결제 실패" 가 아니라 준비중이라고 말한다', () => {
+    // 카드 문제로 오해하게 만들면 원장님이 카드를 바꾸러 간다 — 원인이 아닌데.
+    const src = read('app-plan.js');
+    expect(src).toContain("r.reason === 'no_product'");
   });
 });
