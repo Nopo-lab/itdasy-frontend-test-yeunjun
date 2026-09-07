@@ -1246,6 +1246,9 @@ function authHeader() {
   // 화면이 멈춤. 첫 시도는 넉넉히 20초, 재시도는 12초 (인스턴스 warm 이면 빠름).
   const FETCH_TIMEOUT_FIRST_MS = 20000;
   const FETCH_TIMEOUT_RETRY_MS = 12000;
+  // 사진 업로드 전용 — 위 20초는 '응답을 기다리는' 시간 기준이라 '바이트를 올리는' 시간엔 짧다.
+  const UPLOAD_TIMEOUT_FIRST_MS = 90000;
+  const UPLOAD_TIMEOUT_RETRY_MS = 60000;
 
   // [2026-07-22 보스] AI(LLM) 호출은 20초로 끊으면 안 된다 — 잇비 답변·캡션 생성은 15~60초가 정상이다.
   //   기존 동작: 20초에 abort → 12초짜리 재시도 3회(재시도마다 서버에서 '진짜 LLM 호출'이 새로 돌아 돈이 나감)
@@ -1266,6 +1269,11 @@ function authHeader() {
   // 호출자 signal 보존하면서 timeout 까지 보호하는 fetch 헬퍼.
   // timeout 으로 abort 된 경우는 wrapper 의 retry 분기가 받아서 재시도하도록
   // 호출자의 init.signal 은 건드리지 않는다 (catch 에서 caller-abort 판단 그대로 유지).
+  function _timeoutReason(ms) {
+    const msg = '네트워크가 느려서 ' + Math.round(ms / 1000) + '초 안에 끝나지 않았어요. 신호가 좋은 곳에서 다시 시도해 주세요.';
+    try { return new DOMException(msg, 'AbortError'); } catch (_) { const e = new Error(msg); e.name = 'AbortError'; return e; }
+  }
+
   function _fetchWithTimeout(input, init, timeoutMs) {
     const ctl = new AbortController();
     const callerSignal = init && init.signal;
@@ -1274,7 +1282,12 @@ function authHeader() {
       if (callerSignal.aborted) ctl.abort();
       else callerSignal.addEventListener('abort', onCallerAbort, { once: true });
     }
-    const timer = setTimeout(() => ctl.abort(), timeoutMs);
+    /* [미디어감사 2026-09-07] abort 에 **사유**를 실어준다.
+       이유가 없으면 브라우저 기본 사유가 그대로 사용자에게 보인다. 실측: DM 빠른안내 사진
+       업로드가 20초에 끊기면 토스트가 `사진 업로드 실패: signal is aborted without reason`.
+       원장님이 읽을 수 있는 말이 아니다. name 은 'AbortError' 그대로라 기존 분기(호출자 abort
+       판별·재시도 판단)는 아무것도 안 바뀐다. */
+    const timer = setTimeout(() => ctl.abort(_timeoutReason(timeoutMs)), timeoutMs);
     const newInit = { ...(init || {}), signal: ctl.signal };
     return _origFetch(input, newInit).finally(() => {
       clearTimeout(timer);
@@ -1322,7 +1335,9 @@ function authHeader() {
   //   서버가 이미 커밋했는데 응답이 돌아오는 길에 끊기면(WiFi↔LTE 핸드오프·지하철) 래퍼가
   //   같은 POST 를 다시 쏴서 같은 예약/매출이 2건 생긴다(멱등키 없음 → 돈 숫자·이중예약 사고).
   //   GET(?쿼리)·PATCH/{id}·DELETE/{id} 는 읽기/멱등이라 안전 → 재시도 유지. 컬렉션 POST 만 막는다.
-  const CREATE_NO_RETRY_RE = /\/(bookings|revenue|customers)(\?|$)/;
+  //   [미디어감사 2026-09-07] portfolio·background 추가 — 둘 다 컬렉션 POST 로 **DB 행을 만든다.**
+  //   위에서 FormData 재시도를 열었으므로 여기 안 넣으면 응답만 유실된 경우 사진이 2장 생긴다.
+  const CREATE_NO_RETRY_RE = /\/(bookings|revenue|customers|portfolio|background)(\?|$)/;
   function _isNonIdempotentCreate(input, init) {
     try {
       const m = (init && init.method ? String(init.method).toUpperCase() : 'GET');
@@ -1331,18 +1346,38 @@ function authHeader() {
       return CREATE_NO_RETRY_RE.test(String(u));
     } catch (_) { return false; }
   }
+  /* [미디어감사 2026-09-07] FormData·Blob 은 **여러 번 재사용된다.**
+     예전 주석("FormData/Blob/ReadableStream 은 한 번만 읽을 수 있어서")은 사실이 아니었다.
+     브라우저는 fetch 를 부를 때마다 FormData/Blob 을 새로 직렬화한다 — 같은 객체를 3번
+     넘겨도 서버는 3번 다 온전한 바디를 받는다(실측: 같은 FormData 로 3회 POST → 서버 수신 3회).
+     한 번만 읽히는 건 ReadableStream(과 이미 쓴 Request) 뿐이다.
+
+     이 오해 때문에 **앱의 모든 사진 업로드가 재시도 0회**였다. 실측 대조:
+       JSON body + 503  → 5회 요청(1+재시도, 백오프 8초)
+       FormData + 503   → 1회 요청, 즉시 실패
+       FormData + 무응답 → 20초에 abort, 재시도 없음, **토스트도 없음**
+     (토스트는 `if (retryable && attempt >= 1)` 안에 있어서 retryable=false 면 아예 안 뜬다.)
+     Cloud Run 콜드스타트 503 한 번에 원장 사진이 그냥 안 올라갔다. */
   function _isRetryableMethod(init) {
     const m = (init && init.method ? String(init.method).toUpperCase() : 'GET');
     if (m === 'GET' || m === 'HEAD') return true;
-    // JSON body(string) POST 는 body 재사용 가능 → 재시도 허용
-    if (m === 'POST' && init && typeof init.body === 'string') return true;
+    if (m === 'POST') return _bodyReusable(init);
     return false;
+  }
+  function _isUploadBody(init) {
+    const b = init && init.body;
+    if (!b) return false;
+    return (typeof FormData !== 'undefined' && b instanceof FormData)
+        || (typeof Blob !== 'undefined' && b instanceof Blob);
   }
   function _bodyReusable(init) {
     if (!init || !init.body) return true;
     const b = init.body;
     if (typeof b === 'string') return true;
-    return false; // FormData/Blob/ReadableStream 은 한 번만 읽을 수 있어서 재시도 시 body 재사용 불가
+    if (_isUploadBody(init)) return true;                       // 매번 새로 직렬화된다
+    if (typeof ArrayBuffer !== 'undefined' && (b instanceof ArrayBuffer || ArrayBuffer.isView(b))) return true;
+    if (typeof URLSearchParams !== 'undefined' && b instanceof URLSearchParams) return true;
+    return false;   // ReadableStream 등 진짜 1회성만 제외
   }
 
   function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -1467,8 +1502,15 @@ function authHeader() {
     while (true) {
       // [fix] 캐러셀(여러장) 인스타 발행은 컨테이너 순차 폴링으로 25~50초+ → 호출부가 itdasyTimeoutMs 로 타임아웃 상향 가능(기본 20초는 abort됨)
       const _customTmo = init && init.itdasyTimeoutMs;
+      /* [미디어감사 2026-09-07] 업로드는 20초로 못 끝난다.
+         `/image/upload`(DM 빠른안내 사진)는 클라 축소 없이 **원본 최대 10MB** 를 그대로 올린다.
+         20초 안에 끝내려면 4Mbps 를 계속 유지해야 하는데 지하철·엘리베이터·시골에선 안 된다.
+         받는 쪽 한도가 20MB 라 넉넉히 잡아도 서버가 알아서 거른다. */
+      const _isUp = _isUploadBody(init);
       const _tmo = _customTmo
-        || (isLlm ? LLM_TIMEOUT_MS : (attempt === 0 ? FETCH_TIMEOUT_FIRST_MS : FETCH_TIMEOUT_RETRY_MS));
+        || (isLlm ? LLM_TIMEOUT_MS
+           : _isUp ? (attempt === 0 ? UPLOAD_TIMEOUT_FIRST_MS : UPLOAD_TIMEOUT_RETRY_MS)
+           : (attempt === 0 ? FETCH_TIMEOUT_FIRST_MS : FETCH_TIMEOUT_RETRY_MS));
       try {
         const res = await _fetchWithTimeout(input, init, _tmo);
         if (res.ok) _resetConnFail();   // [버그2] 성공 응답 = 연결 정상 — 실패 카운터 리셋
