@@ -294,13 +294,28 @@ describe('BUG-5 — 홈 화면 작은 컨트롤 히트 영역', () => {
     expect(css.slice(i, i + 400)).toMatch(/width:\s*44px[\s\S]{0,120}height:\s*44px/);
   });
 
-  test('세로로 붙은 행은 일부러 확장하지 않는다 (오탭 방지)', () => {
+  test('세로로 붙은 행은 ::after 가 아니라 행 높이로 확보한다 (오탭 방지)', () => {
     const css = HOME();
-    // 위아래로 겹쳐 있는 행을 넓히면 옆 행을 먹는다 — 확장 대상에서 빠져 있어야 한다
+    // 위아래로 겹쳐 있는 행을 ::after 로 넓히면 옆 행을 먹는다 → min-height 로 키운다
     expect(css).not.toMatch(/\.hv5-itbi-mini::after/);
     expect(css).not.toMatch(/\.hv5-itbi-rest::after/);
-    // 왜 뺐는지 근거가 코드에 남아 있어야 다음 사람이 되살리지 않는다
+    expect(css).toMatch(/\.hv5-itbi-mini,\s*\n\.hv5-itbi-rest \{[\s\S]{0,120}min-height:\s*44px/);
+    // 왜 이렇게 했는지 근거가 코드에 남아 있어야 다음 사람이 되살리지 않는다
     expect(css).toMatch(/오탭/);
+  });
+
+  test('헤더 워드마크(.logo)도 눌리는 요소라 히트 영역을 갖는다', () => {
+    // index.html 에서 data-static-action="tab-home" 이라 실제로 홈으로 이동한다
+    expect(read('index.html')).toMatch(/class="logo"[^>]*data-static-action="tab-home"/);
+    const base = read('style-base.css');
+    expect(base).toMatch(/\.logo::after/);
+    expect(base).toMatch(/\.logo::after[\s\S]{0,300}height:\s*44px/);
+    expect(base).toMatch(/\.logo \{[\s\S]{0,260}position:\s*relative/);
+  });
+
+  test('style-base.css @import 버전이 갱신돼 있다 (자동범프 제외 파일)', () => {
+    expect(read('style.css')).not.toContain('style-base.css?v=20260610-qafix');
+    expect(read('style.css')).toMatch(/style-base\.css\?v=/);
   });
 
   test('이웃 간격이 좁은 것은 비대칭으로만 넓힌다', () => {
