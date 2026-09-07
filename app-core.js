@@ -2641,6 +2641,20 @@ window.startAppleLogin = async function () {
       '--tab-bar-bottom',
       `calc(${BASE}px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + ${offset}px)`
     );
+
+    // ── [2026-09-07 iOS 시뮬레이터 실측] 키보드가 뜨면 떠다니는 탭바+잇비 FAB 를 숨긴다 ──
+    //   위 `raw` 는 키보드 높이가 **아니다**. iOS 는 키보드가 뜨면 페이지를 같이 스크롤하는데
+    //   `vv.offsetTop` 이 그 스크롤량이라, 빼는 순간 키보드 높이가 상쇄된다.
+    //   실측(iPhone 17 · iOS 26.4 · 한글 키보드): innerH=696 vv.h=377 vv.top=337
+    //     → raw = 696-377-337 = **-18** → offset 0 (보정이 아예 안 걸린다)
+    //     → 실제 키보드 높이 = innerH - vv.h = **319**
+    //   그 결과 `position:fixed` 인 #bottomNavGroup 이 화면 한가운데 떠서
+    //   **잇비 입력창 위에 겹쳐 보였다**(스크린샷으로 확인).
+    //   키보드가 올라온 동안엔 탭바를 보여줄 이유가 없다 → 숨긴다.
+    //   ⚠️ 안드로이드는 키보드가 뜨면 innerHeight 자체가 줄어 `innerH - vv.h ≈ 0` 이라
+    //      이 분기에 걸리지 않는다 = 기존 동작 그대로. (에뮬레이터로 확인)
+    const kb = (window.innerHeight - vv.height) | 0;
+    root.classList.toggle('kb-open', kb > 100 && kb < 600);
   };
   const schedule = () => { if (!raf) raf = requestAnimationFrame(update); };
   vv.addEventListener('resize', schedule, { passive: true });
