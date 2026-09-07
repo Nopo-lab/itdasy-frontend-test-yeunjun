@@ -352,8 +352,8 @@
       <div class="dmm-grp a">
         <div class="dmm-ghd">
           <div class="tx">
-            <div class="dmm-gh">바로 나가요</div>
-            <div class="dmm-gs">손님이 버튼을 누르면 · 내가 써둔 답이 그대로 · 요금 안 써요</div>
+            <div class="dmm-gh">버튼·기본 안내가 바로 나가요</div>
+            <div class="dmm-gs">손님이 버튼을 누르거나 영업시간·위치를 물어보면 · 내가 써둔 답이 손님에게 바로 나가요 · 요금 안 써요</div>
           </div>
           ${_tgHtml(!!_menu.enabled, 'master', '')}
         </div>
@@ -378,8 +378,12 @@
       <div class="dmm-grp b">
         <div class="dmm-ghd">
           <div class="tx">
-            <div class="dmm-gh">나한테 먼저 와요</div>
-            <div class="dmm-gs">버튼에 없는 걸 글로 물어보면 · 잇비가 초안을 써요 · 요금 써요</div>
+            <div class="dmm-gh">${autoSendOn
+              ? '잇비 답장이 바로 나가요'
+              : '잇비 초안이 나한테 먼저 와요'}</div>
+            <div class="dmm-gs">버튼에 없는 걸 글로 물어보면 · 잇비가 ${autoSendOn
+              ? '답장을 써서 <b>손님에게 바로 보내요</b>'
+              : '초안을 쓰고 내가 확인한 뒤 나가요'} · 요금 써요</div>
           </div>
           ${_tgHtml(aiOn, 'draft', '')}
         </div>
