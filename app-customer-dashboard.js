@@ -341,7 +341,7 @@
         _fillPhotoTimeline(mountEl, fb);
         if (typeof window.showToast === 'function') window.showToast('기본 정보로 표시 중이에요');
       } catch (_) {
-        mountEl.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--danger);font-size:13px;">불러오기 실패<br><span style="color:#888;font-size:11px;">${_esc(e?.message || '네트워크 오류')}</span></div>`;
+        mountEl.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--danger);font-size:13px;">불러오기 실패<br><span style="color:#888;font-size:11px;">${_esc((window._humanError ? window._humanError(e) : (e?.message || '네트워크 오류')))}</span></div>`;
       }
     }
   };

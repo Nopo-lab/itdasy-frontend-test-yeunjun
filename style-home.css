@@ -298,7 +298,9 @@
 .lock-overlay > * { flex-shrink: 0; }
 .lock-overlay.hidden { display: none; }
 body.itdasy-locked { overflow: hidden; }
-body.itdasy-locked > :not(#lockOverlay, #signupOverlay, script, style, svg) {
+/* [2026-09-07] `:not(a, b)` 는 Safari 16.4+ — iOS 최소 지원 15.0 에서는 이 규칙이 통째로
+   무효가 돼서 **로그인 게이트 뒤의 앱 화면이 안 숨는다**. 체인 `:not()` 으로 쪼갬(결과 동일, 63/63 실측). */
+body.itdasy-locked > :not(#lockOverlay):not(#signupOverlay):not(script):not(style):not(svg) {
   display: none !important;
 }
 .lock-title { font-family: Pretendard, sans-serif; font-size: 26px; font-weight: 700; color: var(--accent); margin-bottom: 6px; letter-spacing: -0.04em; }

@@ -119,8 +119,14 @@ select:focus-visible {
    [2026-08-12 정정] max-width:768px 조건 삭제 — 좁은 PC 창(마우스)에서도 발동해서
    샵정보·DM 수정칸 글씨가 "갑자기 커지는" 회귀를 만들었다. 자동 확대는 터치 기기 문제라
    (pointer: coarse) 만으로 iOS/안드로이드가 전부 잡힌다. PC는 창 폭과 무관하게 원래 크기. */
+/* [2026-09-07 반응형 릴리즈게이트] `:not(a, b)` (셀렉터 리스트) 는 Safari 16.4 부터다.
+   그런데 이 앱의 iOS 최소 지원은 15.0 (ios/App/Podfile · pbxproj IPHONEOS_DEPLOYMENT_TARGET).
+   CSS 는 콤마 그룹 안에 무효 셀렉터가 하나라도 있으면 **규칙 전체를 버린다**(실측 확인).
+   즉 iOS 15.0~16.3 에서는 input 뿐 아니라 textarea·select·contenteditable 까지
+   이 블록이 통째로 죽어서 자동 확대 방어가 **완전히 사라진다**.
+   → `:not()` 을 체인으로 쪼갠다. 현재 브라우저에서 선택 결과 동일함을 실측(28/28)했다. */
 @media (pointer: coarse) {
-  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]),
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
   textarea,
   select,
   [contenteditable="true"] {

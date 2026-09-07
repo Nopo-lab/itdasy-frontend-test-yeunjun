@@ -304,12 +304,24 @@
     } catch (_e) { void _e; }
   }
 
+  // [2026-09-07 반응형 게이트 BUG-8] 배경 스크롤 잠금 — 이전 값 저장/복구로 중첩 안전.
+  //   (닫을 때 `overflow=''` 로 밀어버리면 아래 깔린 시트의 잠금까지 풀린다)
+  let _prevOverflow = null;
+  function _lockBg() {
+    if (_prevOverflow === null) _prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+  }
+  function _unlockBg() {
+    if (_prevOverflow !== null) { document.body.style.overflow = _prevOverflow; _prevOverflow = null; }
+  }
+
   // ─── open / close ────────────────────────────────────────
   function open() {
     const sheet = _ensureSheet();
     const card = sheet.querySelector('#shCard');
     if (window.SheetAnim) window.SheetAnim.open(sheet, card);
     else sheet.style.display = 'block';
+    _lockBg();
     _refreshLabels();
     // [출시감사 2026-08-02] 안드로이드 뒤로가기 등록. 갤럭시 에뮬레이터 실측 —
     //   이 시트를 열고 뒤로가기를 누르면 **아무 반응이 없다**(시트가 그대로 떠 있다).
@@ -324,6 +336,7 @@
     const card = sheet.querySelector('#shCard');
     if (window.SheetAnim) window.SheetAnim.close(sheet, card);
     else sheet.style.display = 'none';
+    _unlockBg();
     // [출시감사 2026-08-02] 열 때 쌓은 history 엔트리 되돌리기. 안 부르면 닫은 뒤에도
     //   스택에 남아 "눌러도 아무 일 없는 뒤로가기"가 누적된다.
     if (typeof window._markSheetClosed === 'function') window._markSheetClosed('settingsHub');

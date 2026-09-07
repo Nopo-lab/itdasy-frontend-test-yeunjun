@@ -210,6 +210,8 @@
     _items = _cached();
     _render();
     el.style.display = 'flex';
+    // [2026-09-07 반응형 릴리즈게이트] 뒤로가기 등록 — 없으면 하드웨어 백이 앱을 종료한다.
+    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('reviewRequests');
     await _loadFromServer();
     _render();
   }
@@ -217,8 +219,10 @@
   function closeReviewRequests() {
     const el = document.getElementById('reviewRequestSheet');
     if (el) el.style.display = 'none';
+    if (typeof window._markSheetClosed === 'function') window._markSheetClosed('reviewRequests');
   }
 
   window.openReviewRequests = openReviewRequests;
   window.closeReviewRequests = closeReviewRequests;
+  if (typeof window._registerSheet === 'function') window._registerSheet('reviewRequests', closeReviewRequests);
 })();

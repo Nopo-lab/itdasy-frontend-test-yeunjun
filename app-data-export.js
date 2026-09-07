@@ -101,7 +101,7 @@
       }
       closeDataExport();
     } catch (e) {
-      err.textContent = e.message || '다운로드 중 오류';
+      err.textContent = (window._humanError ? window._humanError(e) : e.message) || '다운로드 중 오류';
       err.style.display = 'block';
     } finally {
       btns.forEach(b => { if (b) b.disabled = false; });
@@ -112,10 +112,14 @@
     _ensureModal();
     document.getElementById('dataExportModal').style.display = 'flex';
     const err = document.getElementById('__dx_error'); if (err) err.style.display = 'none';
+    // [2026-09-07 반응형 릴리즈게이트] 뒤로가기 등록 — 없으면 하드웨어 백이 앱을 종료한다.
+    if (typeof window._markSheetOpen === 'function') window._markSheetOpen('dataExport');
     _loadSummary();
   };
   window.closeDataExport = function () {
     const m = document.getElementById('dataExportModal');
     if (m) m.style.display = 'none';
+    if (typeof window._markSheetClosed === 'function') window._markSheetClosed('dataExport');
   };
+  if (typeof window._registerSheet === 'function') window._registerSheet('dataExport', window.closeDataExport);
 })();

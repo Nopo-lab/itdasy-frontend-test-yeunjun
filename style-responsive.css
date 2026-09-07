@@ -357,8 +357,11 @@
   body:has(#revenueSheet[style*="display:flex"]) .tab.active,
   body:has(#cal-overlay) .tab.active,
   body:has(#revenue-hub-overlay) .tab.active,
-  body:has(#aiHubSheet[style*="display"]:not([style*="display: none"], [style*="display:none"])) .tab.active,
-  body:has(#settingsHubSheet[style*="display"]:not([style*="display: none"], [style*="display:none"])) .tab.active,
+  /* [2026-09-07] 체인 `:not()` — `:not(a, b)` 는 Safari 16.4+ 라 iOS 15.x 에서 무효가 되는데,
+     콤마 그룹은 하나만 무효여도 **그룹 전체가 버려진다**. 그러면 매출·캘린더·플랜·도움말·
+     네비시트까지 전부 탭바가 안 숨는다. 결과는 동일하고 구형 사파리에서도 산다. */
+  body:has(#aiHubSheet[style*="display"]:not([style*="display: none"]):not([style*="display:none"])) .tab.active,
+  body:has(#settingsHubSheet[style*="display"]:not([style*="display: none"]):not([style*="display:none"])) .tab.active,
   body:has(#planPopup[style*="display: flex"]) .tab.active,
   body:has(#supportChatModal[style*="display: flex"]) .tab.active,
   body:has(#navSheet[style*="display: flex"]) .tab.active {
