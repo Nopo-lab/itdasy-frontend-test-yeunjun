@@ -229,6 +229,62 @@
     addphoto: svg('<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="9" cy="9" r="1.6"/>'),
     cut: svg('<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.1 8.1 20 18M8.1 15.9 20 6"/>')
   };
+  /* ── [성능 2026-09-09] 표시용 축소본 — 확대(scale) 시 프레임 붕괴의 원인 ──────────────
+     실측(실 Chrome, dpr1, 2400x1800, 확대 scale(4) + 확대/축소 반복 3회):
+       JPEG 430KB → 59fps(median 16.6ms)
+       알파 PNG 1.8MB → 43fps(26.6ms)  ※ 앞선 조건에 따라 16.6 으로도 나옴(디코드 캐시 여유)
+       불투명 PNG 5MB → 29fps(median 50.5ms, 33ms 초과 프레임 103개)  ← 3회 재현
+       같은 5MB PNG 를 긴 변 2000px JPEG(339KB)로 축소 → 59fps(16.4ms, 초과 0개)
+     원인은 누끼도 filter 도 2겹 오버레이도 아니다(전부 대조군에서 60fps). **바이트 크기**다 —
+     큰 이미지가 Chrome 디코드 캐시에서 밀려나 raster scale 이 바뀔 때마다 재디코드된다.
+     실사용 경로: workspace-crop.js 가 "소스가 PNG면 PNG 유지"(MAX_EDGE 2048)라 원장이 PNG
+     (스크린샷·투명 소재)를 올리면 수 MB dataURL 이 그대로 편집기 배경이 된다.
+     내보내기는 stage×dpr(최대 2.5) 캔버스로 다시 그리므로(exportComposite) 표시용을 줄여도
+     **발행 화질은 안 떨어진다** — S.photoUrl(원본)은 export 전용으로 그대로 둔다. */
+  var _dispCache = {}, _dispBusy = {};
+  var DISP_MAX_EDGE = 2000, DISP_BYTES = 1200000, DISP_PIXELS = 3200000;
+  function _disp(url) {
+    if (!url) return url;
+    if (_dispCache[url]) return _dispCache[url];
+    _prepDisp(url);
+    return url;   // 준비 전엔 원본 그대로(깜빡임 없음). 준비되면 _refreshDisp 가 바꿔 끼운다.
+  }
+  function _prepDisp(url) {
+    if (!url || _dispCache[url] || _dispBusy[url]) return;
+    var isData = /^data:/i.test(url);
+    if (isData && url.length <= DISP_BYTES) { _dispCache[url] = url; return; }   // 작으면 그대로
+    _dispBusy[url] = 1;
+    var im = new Image();
+    im.crossOrigin = 'anonymous';
+    im.onload = function () {
+      try {
+        var big = (isData && url.length > DISP_BYTES) || (im.width * im.height > DISP_PIXELS);
+        if (!big) { _dispCache[url] = url; _dispBusy[url] = 0; return; }
+        var sc = Math.min(1, DISP_MAX_EDGE / Math.max(im.width, im.height));
+        var cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(im.width * sc)); cv.height = Math.max(1, Math.round(im.height * sc));
+        cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+        // 투명(누끼 PNG)은 PNG 로 유지해야 배경이 안 깨진다. 그 외는 JPEG 로 — 바이트가 관건이다.
+        var out = /^data:image\/png/i.test(url) ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.9);
+        _dispCache[url] = (out && out.length < url.length) ? out : url;   // 안 줄면 원본 유지
+      } catch (_e) { _dispCache[url] = url; }
+      _dispBusy[url] = 0;
+      _refreshDisp(url);
+    };
+    im.onerror = function () { _dispCache[url] = url; _dispBusy[url] = 0; };
+    im.src = url;
+  }
+  // 축소본이 준비되면, 지금 그 사진을 보여주고 있을 때만 바꿔 끼운다.
+  function _refreshDisp(url) {
+    try {
+      if (!S || S.photoUrl !== url || !refs || !refs.photo) return;
+      S.photoCss = _cssUrl(url);
+      refs.photo.style.backgroundImage = S.photoCss;
+      if (refs.photofx && !refs.photofx.hidden) refs.photofx.style.backgroundImage = S.photoCss;
+    } catch (_e) { void _e; }
+  }
+  function _cssUrl(url) { return 'url("' + _disp(url) + '")'; }
+
   // [보정] 사진별 보정값 — CSS filter / canvas ctx.filter 동일 문법으로 라이브·내보내기 일치.
   function defAdj() { return { b: 100, c: 100, s: 100, w: 0, sh: 0, rot: 0 }; }
   function filterStr(a) {
@@ -719,7 +775,7 @@
     if (op.op === 'photo') {
       var st = undo ? op.before : op.after, pi = op.idx;
       S.photos[pi] = st.url; S.cutSet = S.cutSet || {}; S.cutSet[pi] = !!st.cut;
-      if (isSingleL(S.layout) && pi === S.adjSel) { S.photoUrl = st.url; S.photoCss = 'url("' + st.url + '")'; if (refs.photo) refs.photo.style.backgroundImage = S.photoCss; }
+      if (isSingleL(S.layout) && pi === S.adjSel) { S.photoUrl = st.url; S.photoCss = _cssUrl(st.url); if (refs.photo) refs.photo.style.backgroundImage = S.photoCss; }
       renderAdjust(); renderLayoutStrip(); renderCollage(); applyAdjToDisplay();
       return;
     }
@@ -1701,7 +1757,7 @@
   function onLayThumb(idx) {
     if (isSingleL(S.layout)) {
       if (idx !== S.adjSel) { _switchPhotoDraw(S.adjSel, idx); _switchPhotoLayers(S.adjSel, idx); S.adjSel = idx; }   // [#9] 그리기 + [#5/#6] 텍스트·스티커도 사진별로
-      S.photoUrl = S.photos[idx]; S.photoCss = 'url("' + S.photos[idx] + '")';
+      S.photoUrl = S.photos[idx]; S.photoCss = _cssUrl(S.photos[idx]);
       refs.photo.style.backgroundImage = S.photoCss;
       applyAdjToDisplay();   // [#11] 사진 바꾸면 배경-제외 오버레이(photofx)도 이 사진 기준으로 다시
       renderLayoutStrip(); renderLayoutHint();
@@ -1941,7 +1997,7 @@
        두 경로를 같은 함수로 통일한다. */
     _switchPhotoLayers(S.adjSel, i);
     S.adjSel = i;
-    if ((S.layout.kind || 'single') === 'single') { S.photoUrl = S.photos[i]; S.photoCss = 'url("' + S.photos[i] + '")'; refs.photo.style.backgroundImage = S.photoCss; }
+    if ((S.layout.kind || 'single') === 'single') { S.photoUrl = S.photos[i]; S.photoCss = _cssUrl(S.photos[i]); refs.photo.style.backgroundImage = S.photoCss; }
     applyAdjToDisplay(); applyStraighten(); renderAdjust();
     _planForCurrentPhoto();   // 이 장 기준 자동 초안(이미 돌았거나 원장이 손댄 장이면 _ps 가 막는다)
   }
@@ -2025,7 +2081,7 @@
       //   (예전엔 누끼 시작 시점의 장이 그대로 표시 중일 때만 갱신해서, 대기 중 전환하면 사진이 안 바뀌어 보였음)
       if (isSingleL(S.layout)) {
         var _curU = S.photos[S.adjSel];
-        if (_curU) { S.photoUrl = _curU; S.photoCss = 'url("' + _curU + '")'; refs.photo.style.backgroundImage = S.photoCss; }
+        if (_curU) { S.photoUrl = _curU; S.photoCss = _cssUrl(_curU); refs.photo.style.backgroundImage = S.photoCss; }
       }
       renderAdjust(); renderLayoutStrip(); renderCollage(); applyAdjToDisplay(); applyPhotoTransform();   // [#7] 누끼 후에도 수평(회전) 유지·반영
       // [#9] 사용자가 직접 누른 누끼만 되돌리기 스택에 기록(배경변경 재합성=silent은 제외).
@@ -2064,7 +2120,7 @@
     var _preUrl = S.photos[i], _preCut = !!(S.cutSet && S.cutSet[i]);   // [#9] 되돌리기용 스냅샷
     S.photos[i] = orig; if (S.cutSet) S.cutSet[i] = false;
     if (S.fgMask) delete S.fgMask[i];   // [#11] 원본 복원 = 배경 교체 해제 → 보정을 다시 사진 전체에
-    if (wasShown) { S.photoUrl = orig; S.photoCss = 'url("' + orig + '")'; refs.photo.style.backgroundImage = S.photoCss; }
+    if (wasShown) { S.photoUrl = orig; S.photoCss = _cssUrl(orig); refs.photo.style.backgroundImage = S.photoCss; }
     renderAdjust(); renderLayoutStrip(); renderCollage(); applyAdjToDisplay();
     // [#9] '원본으로' 도 ↩ 되돌리기 스택에 — ↩ 누르면 다시 누끼 상태로.
     if (_preUrl !== orig) _pushOp({ op: 'photo', idx: i, before: { url: _preUrl, cut: _preCut }, after: { url: orig, cut: false } });
@@ -2723,7 +2779,7 @@
     if (st.photoDraw) S.photoDraw = Object.assign({}, st.photoDraw);
     if (st.photoBg) S.photoBg = Object.assign({}, st.photoBg);
     if (st.pz) S.pz = Object.assign({ scale: 1, tx: 0, ty: 0 }, st.pz);   // [버그수정 2026-07-06] 재편집 시 사진 구도(핀치줌/이동) 복원
-    if (Array.isArray(st.photos) && st.photos.length) { S.photos = st.photos.slice(); S.photoUrl = S.photos[0]; S.photoCss = 'url("' + S.photos[0] + '")'; }
+    if (Array.isArray(st.photos) && st.photos.length) { S.photos = st.photos.slice(); S.photoUrl = S.photos[0]; S.photoCss = _cssUrl(S.photos[0]); }
   }
   // stage 크기 — 레이아웃 flush 전(rect=0)엔 fitStageToRatio 가 박아둔 explicit px 로 폴백.
   function _stageWH() {
@@ -2767,7 +2823,7 @@
       collageBg: (loadBgPref().color || '#FFFFFF'), collageBgImg: null, cellCrop: [], cellSel: -1, fitMode: 'contain',   // [#5] 배경색만 기억, 배경'이미지'는 매번 초기화(예전 stale 배경이 누끼에 자동적용되던 문제)
       ratio: _safeRatio(opts.ratio), undo: [], redo: [], photoDraw: {}, photoBg: {}, layersByPhoto: {},   // [#5/#6] 사진별 레이어 보관
       matte: {}, fgMask: {},   // [#11 2026-07-18] matte=누끼 PNG(재합성 캐시) · fgMask[i]=합성본 정렬 사람 마스크(배경 보정 제외용). 매트처럼 세션 전용.
-      photoUrl: photo, photoCss: 'url("' + photo + '")', photos: photos,
+      photoUrl: photo, photoCss: _cssUrl(photo), photos: photos,
       shopName: (opts.shopName || '').trim(),
       pz: { scale: 1, tx: 0, ty: 0 }, incoming: (opts.layers || []),
       onDone: opts.onDone, onCancel: opts.onCancel,
@@ -2902,7 +2958,7 @@
       brush: 'pen', brushSize: 10, drawColor: COLORS[2], shapeColor: COLORS[2], shapeFill: false, shapeThick: 6,
       adj: photos.map(function () { return defAdj(); }), adjSel: 0, collageGap: 3, collageBg: '#FFFFFF', collageBgImg: null, cellCrop: [], cellSel: -1, fitMode: 'contain',
       ratio: (opts.ratio || '4:5'),
-      photoUrl: photo, photoCss: 'url("' + photo + '")', photos: photos, shopName: '', pz: { scale: 1, tx: 0, ty: 0 }, incoming: (opts.layers || []) };
+      photoUrl: photo, photoCss: _cssUrl(photo), photos: photos, shopName: '', pz: { scale: 1, tx: 0, ty: 0 }, incoming: (opts.layers || []) };
     refs.layers.innerHTML = ''; refs.frame.className = 'itded__frame';
     refs.photo.style.backgroundImage = S.photoCss; refs.photo.style.filter = ''; refs.photo.style.backgroundSize = S.fitMode; refs.photo.style.backgroundColor = (S.fitMode === 'contain' ? (S.collageBg || '#fff') : 'transparent');
     refs.collage.hidden = true; refs.collage.innerHTML = ''; refs.photowrap.style.transform = '';
