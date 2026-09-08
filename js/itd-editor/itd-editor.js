@@ -242,7 +242,20 @@
      내보내기는 stage×dpr(최대 2.5) 캔버스로 다시 그리므로(exportComposite) 표시용을 줄여도
      **발행 화질은 안 떨어진다** — S.photoUrl(원본)은 export 전용으로 그대로 둔다. */
   var _dispCache = {}, _dispBusy = {};
-  var DISP_MAX_EDGE = 2000, DISP_BYTES = 1200000, DISP_PIXELS = 3200000;
+  var DISP_MAX_EDGE = 2000, DISP_SMALL_EDGE = 1400, DISP_BYTES = 1200000, DISP_PIXELS = 3200000;
+  /* 실제 투명 픽셀이 있는지 — 확장자(.png)는 증거가 아니다. 전수는 비싸니 격자 샘플링.
+     누끼 결과는 배경 전체가 투명이라 성긴 격자로도 반드시 걸린다. */
+  function _hasAlpha(cv) {
+    try {
+      var g = cv.getContext('2d'), W2 = cv.width, H2 = cv.height;
+      var step = Math.max(1, Math.floor(Math.min(W2, H2) / 64));
+      for (var y = 0; y < H2; y += step) {
+        var row = g.getImageData(0, y, W2, 1).data;
+        for (var x2 = 3; x2 < row.length; x2 += 4 * step) { if (row[x2] < 250) return true; }
+      }
+      return false;
+    } catch (_e) { return true; }   // 못 읽으면 안전하게 PNG 유지(투명 깨짐 방지)
+  }
   function _disp(url) {
     if (!url) return url;
     if (_dispCache[url]) return _dispCache[url];
@@ -264,8 +277,24 @@
         var cv = document.createElement('canvas');
         cv.width = Math.max(1, Math.round(im.width * sc)); cv.height = Math.max(1, Math.round(im.height * sc));
         cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
-        // 투명(누끼 PNG)은 PNG 로 유지해야 배경이 안 깨진다. 그 외는 JPEG 로 — 바이트가 관건이다.
-        var out = /^data:image\/png/i.test(url) ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.9);
+        /* 투명(누끼 PNG)만 PNG 로 유지한다. **확장자가 아니라 실제 알파를 본다** —
+           1차 수정에서 "data:image/png 면 PNG 유지"로 했더니, 알파가 하나도 없는 5MB PNG 의
+           축소본이 3.4MB PNG 로 남아 42fps 에서 더 안 올라갔다(실측). 불투명이면 JPEG 가 맞다.
+           알파가 진짜로 있는데도 여전히 크면 한 단계 더 줄인다(PNG 는 사진에서 안 줄어든다). */
+        var out;
+        if (_hasAlpha(cv)) {
+          out = cv.toDataURL('image/png');
+          if (out.length > DISP_BYTES) {
+            var sc2 = Math.min(1, DISP_SMALL_EDGE / Math.max(im.width, im.height));
+            var cv2 = document.createElement('canvas');
+            cv2.width = Math.max(1, Math.round(im.width * sc2)); cv2.height = Math.max(1, Math.round(im.height * sc2));
+            cv2.getContext('2d').drawImage(im, 0, 0, cv2.width, cv2.height);
+            var out2 = cv2.toDataURL('image/png');
+            if (out2.length < out.length) out = out2;
+          }
+        } else {
+          out = cv.toDataURL('image/jpeg', 0.9);
+        }
         _dispCache[url] = (out && out.length < url.length) ? out : url;   // 안 줄면 원본 유지
       } catch (_e) { _dispCache[url] = url; }
       _dispBusy[url] = 0;
