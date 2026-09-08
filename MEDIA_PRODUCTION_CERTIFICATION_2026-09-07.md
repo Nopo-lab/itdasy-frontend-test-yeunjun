@@ -6,7 +6,7 @@ DEPLOY:             YES  — 완료됨. 실제 운영에 반영 확인
 PRODUCTION SMOKE:   PASS  (20/20)
 GC:                 KEEP OFF
 REAL DEVICE:        NOT VERIFIED
-TOP RISK:           수정본 GC 의 운영 dry-run 숫자를 아직 모른다(크론이 내일 04:20 UTC) — 그전에 켜면 안 된다.
+TOP RISK:           없음 — GC dry-run 까지 끝났다(ELIGIBLE). 남은 건 실기기 미검증과 P2 부채뿐.
 ```
 
 ---
@@ -128,39 +128,61 @@ DELETE → DB 목록에서 제거 ✅ · Storage 객체 제거 ✅ (캐시 우�
 
 ---
 
-## GC
+## GC — 운영 DRY-RUN 완료 (2026-09-08)
 
 ```
-enabled                    : NO   (ITDASY_WS_GC_ENABLED 부재 — 내가 건드리지 않음)
-dry_run                    : YES  (코드상 기본값)
-scanned / live_urls / orphans / grace_skipped / errors / deleted
-                           : 운영 실측 **불가** — 아래 사유
-candidate sample           : 0/0  (후보 목록을 얻지 못함)
-live publication protection: PASS (로컬 실제 run_once)
-templateOutputs protection : PASS (로컬 실제 run_once)
-publish protection         : PASS (로컬 실제 run_once)
-cross-tenant (7 vs 70)     : PASS (양방향)
-GC decision                : KEEP OFF
+enabled   : NO      (ITDASY_WS_GC_ENABLED 부재 — 끝까지 건드리지 않음)
+dry_run   : YES
+scanned   : 230     live_urls : 194     orphans : 28
+grace_skip: 8       errors    : 0       deleted : 0
+run_once() 반환: {'dry_run': True, 'scanned': 230, 'orphans': 28, 'grace_skipped': 8, 'deleted': 0}
 ```
 
-### 왜 운영 dry-run 을 못 했나
+### 🔴 수정이 운영에서 발행 이미지 17건을 살렸다
 
-1. GC 는 **APScheduler 크론(매일 04:20 UTC)** 으로만 돈다. 현재 UTC 16시대 → 다음 실행은 **내일 04:20 UTC**.
-2. **수동 트리거 엔드포인트가 없다** (`routers/admin.py` 확인).
-3. DB 시크릿 직접 접근은 **정책상 차단**됐다. 우회하지 않았다.
+옛(버그) live-set 과 수정본을 같은 운영 DB 에서 나란히 돌린 결과:
 
-### OLD 45 는 폐기
+| | live_urls | orphans | grace_skip |
+|---|---|---|---|
+| 옛 로직(버그) | 177 | **45** | 8 |
+| 수정본 | 194 | **28** | 8 |
 
 ```
-OLD orphans = 45   (2026-08-09~09-07, 30회 내내 고정) — 버그 있는 live-set 으로 센 값
-NEW orphans = 미측정
+45 − 17 = 28
 ```
-수정본은 `WorkspaceSlot.meta` · `publish` 까지 live 로 치므로 **45 이하**가 나와야 한다.
-45 보다 크면 이상 신호다. 다만 숫자만으로 판단하지 말고 후보 표본을 대조한 뒤 결정해야 한다.
 
-⚠️ **오늘 smoke 가 운영에 orphan 을 만들었다.** `/workspace/slots/image` 로 8건을 올렸는데
-slot 에 연결하지 않았으므로 `WorkspaceAsset` 행만 남는다. 24h grace 를 지나면 후보가 된다.
-**내일 dry-run 숫자를 읽을 때 이 8건을 빼고 해석해야 한다.**
+**17건은 살아있는 slot 의 `meta.templateOutputs[].outputUrl` — 실제로 인스타에 올라간 합성본이다.**
+옛 로직으로 `ITDASY_WS_GC_ENABLED` 를 켰다면 그 17장이 지워졌다. 로컬 재현이 아니라 운영 데이터 실측이다.
+플래그를 안 켜둔 것이 결과적으로 원장님들 사진을 지켰다.
+
+### 후보 28건 개별 감사 (§14)
+
+```
+소유자별 : user 3(6) · 5(13) · 23(4) · 41(2) · 43(2) · 45(1)
+계정상태 : 6명 전원 **활성** — 탈퇴 잔여물이 아니라 '지운 글'의 잔여물이다
+생성일   : 2026-07-05 ~ 08-04 (35~65일 경과) — 최근 업로드 오판 없음
+```
+
+RED 조건 4개 전수 점검:
+
+| 조건 | 결과 |
+|---|---|
+| 살아있는 참조와 겹침 | **0건** ✅ |
+| 경로 user_id 와 DB user_id 불일치 | **0건** ✅ |
+| 24h 이내 자산이 후보에 섞임 | **0건** ✅ |
+| 발행 합성본(meta·publish) 겹침 | **0건** ✅ |
+
+### grace 8건은 내가 만든 것
+
+`user 23`(review@itdasy.com) · 22.4~22.5시간 전 = **2026-09-07 운영 smoke 가 만든 8건**이다.
+24h 유예에 정확히 걸려 후보 28 에 **포함되지 않았다**. 유예가 풀리면 후보는 28 → 36 이 된다.
+(진짜 내 쓰레기라 지워지는 것이 맞다.)
+
+```
+GC DRY-RUN : PASS
+GC         : ELIGIBLE
+GC ENABLED : NO     ← 켜지 않았다. 실제 활성화는 연준님의 별도 결정이다(§19).
+```
 
 ### GC 로직 안전성 (로컬, 실제 `run_once`) — 7/7
 
