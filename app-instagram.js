@@ -1,18 +1,26 @@
 // Itdasy Studio - Instagram 연동 & 말투분석
 
-// [보안감사 H-7 준비 2026-07-27] 인스타 OAuth 시작을 (네이티브에서) 인앱 웹뷰 이동 대신
-//   Browser 플러그인(SFSafariViewController)으로 열기 위한 플래그. 기본 OFF.
+// [보안감사 H-7 준비 2026-07-27 · 2026-09-09 기본 ON] 인스타 OAuth 시작을 (네이티브에서)
+//   인앱 웹뷰 이동 대신 Browser 플러그인(SFSafariViewController / Chrome Custom Tabs)으로 연다.
 //   ▶ 켜야 iOS App-Bound Domains(H-7)를 걸어도 인스타 로그인이 안 깨진다(웹뷰가 우리 도메인 밖으로 안 나감).
-//   ▶ 기본 OFF 이므로 웹·현재 모든 네이티브 설치본은 기존 window.location.href 경로 그대로(바이트 동일).
-//   ▶ 실제 ON 은 기기/시뮬 E2E 검증하는 별도 빌드 세션에서. 그 전엔 아무 동작 변화 없음.
+//
+//   [2026-09-09] 기본을 ON 으로 바꿨다. 폰에서 연동을 누르면 **인스타 앱만 켜지고
+//   아무 동작이 없던** 실사용 장애 때문이다. 원인은 인스타가 자기 도메인 전 경로를
+//   앱에 넘기도록 선언해 둔 것 —
+//     iOS  AASA        com.burbn.instagram    → 전 경로 클레임 (/oauth/authorize 제외목록에 없음)
+//     Android assetlinks com.instagram.android → handle_all_urls
+//   웹뷰에서 window.location.href 로 나가면 OS 가 그대로 인스타 앱에 넘겨버린다.
+//   Browser 플러그인으로 열면 브라우저 컨텍스트라 앱으로 안 넘어간다(구글·카카오와 같은 방식).
+//   백엔드도 authorize URL 에 #weblink 를 붙여 같은 납치를 막는다(instagram.py) — 둘 다 필요하다.
+//   ▶ 웹은 isNative 가 false 라 이 플래그와 무관하게 기존 경로 그대로다.
 //   오버라이드(?securetoken 과 동일 패턴, 1회 쿼리→localStorage 고정):
-//     ?igbrowser=1 강제 ON(테스트) · ?igbrowser=0 강제 OFF(킬스위치) · 기본 null(OFF).
+//     ?igbrowser=1 강제 ON · ?igbrowser=0 강제 OFF(킬스위치) · 기본 ON.
 const _IG_BROWSER = (function () {
   try {
     if (/[?&]igbrowser=1/.test(location.search)) { try { localStorage.setItem('itdasy_igbrowser', '1'); } catch (_p) { void _p; } return true; }  // 쿼리 1회 → 리로드에도 유지
     if (/[?&]igbrowser=0/.test(location.search)) { try { localStorage.setItem('itdasy_igbrowser', '0'); } catch (_p) { void _p; } return false; }
-    return localStorage.getItem('itdasy_igbrowser') === '1';
-  } catch (_e) { return false; }
+    return localStorage.getItem('itdasy_igbrowser') !== '0';   // 명시적 OFF 만 끈다 — 기본 ON
+  } catch (_e) { return true; }
 })();
 
 // ===== 인스타 토큰 만료 배너 =====
