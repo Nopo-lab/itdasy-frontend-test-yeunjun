@@ -1508,7 +1508,26 @@
       const newNameEl = pop.querySelector('[data-pick-new-name]');
       const newPhoneEl = pop.querySelector('[data-pick-new-phone]');
       const createBtn = pop.querySelector('[data-pick-create]');
-      const close = (val) => { pop.remove(); resolve(val); };
+      /* [P1 2026-09-09] 이 창은 `position:fixed; inset:0; z-index:10800` 전체화면 오버레이인데
+         **뒤로가기 레지스트리에 등록돼 있지 않았다.** 실측(실 Chrome, 배포본):
+           예약 폼(#cvBookingForm) → 고객 선택창 열기 → 브라우저 뒤로가기 1회
+           → hash 가 #booking 으로 바뀌며 **작성 중이던 예약 폼이 닫히고**,
+             정작 위에 떠 있던 고객 선택창은 **그대로 남는다.**
+         원장이 날짜·시간·시술까지 골라 둔 예약이 통째로 날아간다(작업 유실).
+         안드로이드 하드웨어 백은 같은 경로라 시트 스택이 비면 앱이 그대로 꺼진다.
+         앱의 규약은 `_registerSheet('닫는 방법')` → `_markSheetOpen` → 닫을 때 `_markSheetClosed` 다
+         (app-core.js changePw · app-calendar-view.js cvBookingForm/cvBookingDetail 등 전부 이 규약). */
+      const SHEET_ID = 'customerPick';
+      let _closed = false;
+      const close = (val) => {
+        if (_closed) return; _closed = true;
+        try { if (typeof window._markSheetClosed === 'function') window._markSheetClosed(SHEET_ID); } catch (_e) { void _e; }
+        pop.remove(); resolve(val);
+      };
+      try {
+        if (typeof window._registerSheet === 'function') window._registerSheet(SHEET_ID, () => close(null));
+        if (typeof window._markSheetOpen === 'function') window._markSheetOpen(SHEET_ID);
+      } catch (_e) { void _e; }
 
       const render = () => {
         const q = searchEl.value;
