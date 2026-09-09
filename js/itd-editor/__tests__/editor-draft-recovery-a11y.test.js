@@ -52,6 +52,34 @@ describe('BUG-02 · 편집 중 리로드로 작업을 잃지 않는다', () => {
     expect(SRC).toMatch(/_restoreSaveUi\(\);\s*\n\s*_draftClear\(\);/);   // 저장 성공 경로
   });
 
+  /* [라이브 실측 2026-09-10] 복구 초안을 **새 세션이 2초 만에 덮어썼다.**
+     편집기를 열면 주기 스냅샷이 곧바로 DRAFT_KEY 를 현재(복구 전) 상태로 갈아엎어서,
+     '이어서 편집' 을 누르기도 전에 되살릴 대상이 사라졌다(배너도 그래서 안 떴다).
+     순서가 계약이다: 격리(_draftStash) → 타이머 시작(_draftStart). 뒤집히면 같은 버그가 돌아온다. */
+  test('열 때 기존 초안을 pending 으로 격리한 뒤에야 타이머를 시작한다', () => {
+    const open = SRC.slice(SRC.indexOf('function open(opts)'));
+    const iStash = open.indexOf('_draftStash()');
+    const iStart = open.indexOf('_draftStart()');
+    expect(iStash).toBeGreaterThan(-1);
+    expect(iStart).toBeGreaterThan(-1);
+    expect(iStash).toBeLessThan(iStart);          // 격리가 먼저
+    // 진행 중 세션은 DRAFT_KEY 에만 쓰고, pending 은 건드리지 않는다
+    const snap = SRC.slice(SRC.indexOf('function _draftSnap'), SRC.indexOf('function _draftStart'));
+    expect(snap).toMatch(/setItem\(DRAFT_KEY/);
+    expect(snap).not.toMatch(/DRAFT_PENDING_KEY/);
+  });
+
+  test('복구 초안은 pending 을 먼저 읽는다 — 진행 중 초안에 가려지지 않게', () => {
+    const read = SRC.slice(SRC.indexOf('function _draftRead'), SRC.indexOf('function _draftLoadMedia'));
+    expect(read).toMatch(/getItem\(DRAFT_PENDING_KEY\) \|\| sessionStorage\.getItem\(DRAFT_KEY\)/);
+  });
+
+  test('TTL 만료는 pending 만 버린다 — 진행 중 세션 초안까지 날리지 않는다', () => {
+    const read = SRC.slice(SRC.indexOf('function _draftRead'), SRC.indexOf('function _draftLoadMedia'));
+    expect(read).toMatch(/DRAFT_TTL_MS\) \{ _draftDropPending\(\)/);
+    expect(read).not.toMatch(/DRAFT_TTL_MS\) \{ _draftClear\(\)/);
+  });
+
   test('TTL 이 있어 오래된 초안이 영원히 되살아나지 않는다', () => {
     expect(SRC).toMatch(/DRAFT_TTL_MS/);
     expect(SRC).toMatch(/Date\.now\(\) - o\.ts\) > DRAFT_TTL_MS/);

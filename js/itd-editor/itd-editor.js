@@ -2911,6 +2911,7 @@
      변경 지점을 일일이 훅하지 않고 **주기 스냅샷**을 쓴다 — 새 기능이 생겨도 자동으로 덮인다
      (실제로 색·폰트·정렬은 되돌리기 히스토리에서 빠져 있었다. 같은 종류의 누락을 원천 차단). */
   var DRAFT_KEY = 'itdasy:itd_draft_v1';
+  var DRAFT_PENDING_KEY = 'itdasy:itd_draft_pending_v1';
   var DRAFT_ASSET = 'itdasy_itd_draft_media_v1';
   var DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
   var DRAFT_TICK_MS = 2000;
@@ -2933,7 +2934,7 @@
     } catch (_e) { return String(Math.random()); }
   }
   function _draftClear() {
-    try { sessionStorage.removeItem(DRAFT_KEY); } catch (_e) { void _e; }
+    try { sessionStorage.removeItem(DRAFT_KEY); sessionStorage.removeItem(DRAFT_PENDING_KEY); } catch (_e) { void _e; }
     try { if (window.saveAssetToDB) window.saveAssetToDB(DRAFT_ASSET, null); } catch (_e2) { void _e2; }
     _draftLastJson = ''; _draftMediaSig = '';
   }
@@ -2977,13 +2978,25 @@
     _draftTimer = setInterval(function () { _draftSnap(false); }, DRAFT_TICK_MS);
   }
   function _draftStop() { if (_draftTimer) { clearInterval(_draftTimer); _draftTimer = null; } }
-  /** 저장된 초안 읽기 — TTL 지났거나 사진이 다르면 무시. */
+  /* [BUG-02 후속 2026-09-10 · 라이브 실측으로 잡음] 복구 초안을 **새 세션이 2초 만에 덮어썼다.**
+     편집기를 열면 _draftStart 의 주기 스냅샷이 곧바로 DRAFT_KEY 를 현재(=복구 전) 상태로 갈아엎어서,
+     원장이 '이어서 편집' 을 누르기도 전에 되살릴 대상이 사라졌다. 배너가 안 뜬 것도 같은 원인이다.
+     → 열 때 기존 초안을 **pending 키로 옮겨** 격리한다. 진행 중 세션은 DRAFT_KEY 에만 쓴다.
+     pending 도 sessionStorage 라 리로드를 한 번 더 겪어도 살아남는다(복구를 미뤄도 안 잃는다). */
+  function _draftStash() {
+    try {
+      var cur = sessionStorage.getItem(DRAFT_KEY);
+      if (cur) { sessionStorage.setItem(DRAFT_PENDING_KEY, cur); sessionStorage.removeItem(DRAFT_KEY); }
+    } catch (_e) { void _e; }
+  }
+  function _draftDropPending() { try { sessionStorage.removeItem(DRAFT_PENDING_KEY); } catch (_e) { void _e; } }
+  /** 저장된 초안 읽기 — TTL 지났거나 사진이 다르면 무시. pending(격리본)을 먼저 본다. */
   function _draftRead() {
     try {
-      var raw = sessionStorage.getItem(DRAFT_KEY); if (!raw) return null;
+      var raw = sessionStorage.getItem(DRAFT_PENDING_KEY) || sessionStorage.getItem(DRAFT_KEY); if (!raw) return null;
       var o = JSON.parse(raw);
       if (!o || o.v !== 1 || !o.state) return null;
-      if (!o.ts || (Date.now() - o.ts) > DRAFT_TTL_MS) { _draftClear(); return null; }
+      if (!o.ts || (Date.now() - o.ts) > DRAFT_TTL_MS) { _draftDropPending(); return null; }
       return o;
     } catch (_e) { return null; }
   }
@@ -3001,7 +3014,7 @@
       '<button type="button" class="itded__recover-y">이어서 편집</button>' +
       '<button type="button" class="itded__recover-n">새로 시작</button>';
     b.querySelector('.itded__recover-y').addEventListener('click', function () { _hideDraftBar(); onRestore(); });
-    b.querySelector('.itded__recover-n').addEventListener('click', function () { _hideDraftBar(); _draftClear(); });
+    b.querySelector('.itded__recover-n').addEventListener('click', function () { _hideDraftBar(); _draftDropPending(); });
     root.appendChild(b); _draftBar = b;
   }
   /** 초안 identity = 사진. 다른 게시물의 초안을 엉뚱하게 되살리지 않게 이걸로 대조한다. */
@@ -3172,14 +3185,16 @@
     /* [BUG-02] 리로드 복구 — 비정상 종료(리로드·배포·크래시)로 남은 초안이 있고
        **같은 사진**이면 되살릴지 물어본다. 정상 저장/취소 때는 초안을 지우므로 여기 안 걸린다.
        자동으로 덮지 않는 이유: 원장이 그 사이 새로 시작했을 수 있다(되돌리기 어려운 쪽으로 틀리지 않는다). */
-    _hideDraftBar(); _draftStart();
+    _hideDraftBar();
+    _draftStash();      // [BUG-02 후속] 타이머가 덮기 전에 격리 — 순서가 핵심이다
+    _draftStart();
     try {
       var _dr = _draftRead();
       if (_dr && _dr.state && _dr.sig && _dr.sig === _photosSig(S.photos)) {
         _showDraftBar(function () {
           _draftLoadMedia().then(function (media) {
             var st = Object.assign({}, _dr.state, media || {});
-            if (_draftRestore(st)) { _draftClear(); toastIt('편집하던 내용을 되살렸어요'); }
+            if (_draftRestore(st)) { _draftDropPending(); toastIt('편집하던 내용을 되살렸어요'); }
             else toastIt('되살리지 못했어요 — 그대로 이어서 편집해 주세요');
           });
         });
