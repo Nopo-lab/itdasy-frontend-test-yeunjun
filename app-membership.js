@@ -16,9 +16,56 @@
       body: body ? JSON.stringify(body) : undefined,
     }).then(async (r) => {
       const data = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(data.detail || ('HTTP ' + r.status));
+      if (!r.ok) {
+        // [돈감사 2026-09-07] status 를 실어 보낸다 — 아래 `_moneyError` 가
+        //   "서버가 분명히 거절함(4xx)" 과 "결과를 모름(네트워크/5xx)" 을 갈라야 한다.
+        const err = new Error(typeof data.detail === 'string' ? data.detail : ('HTTP ' + r.status));
+        err.status = r.status;
+        throw err;
+      }
       return data;
     });
+  }
+
+  // ── 돈 오류 문구 (돈감사 2026-09-07) ─────────────────────────────
+  //
+  // 왜 고쳤나 — 전엔 무조건 `'충전 실패: ' + e.message` 였다. 실측(로컬 실서버,
+  // 커밋 직후 응답만 유실시킴):
+  //
+  //     화면:  "충전 실패: Failed to fetch"
+  //     서버:  membership_balance = 70,000원  (이미 커밋됨)
+  //
+  // 원장님은 안 된 줄 안다. 실제로는 들어갔다. 이 상황에서 "실패" 라고 단정하면
+  // 원장님이 손님에게 "다시 결제해 주세요" 라고 말하게 된다.
+  //
+  // 🔑 돈은 **멱등키로** 이미 안전하다 — 같은 시도의 키는 성공할 때까지 재사용되므로
+  //    같은 버튼을 다시 눌러도 두 번 반영되지 않는다(실측: 같은 키 재전송 → 잔액 그대로).
+  //    그러니 문구도 사실대로 "모른다 + 다시 눌러도 안전하다" 여야 한다.
+  const _MONEY_UNKNOWN = '처리 결과를 확인하고 있어요. 같은 버튼을 다시 눌러도 두 번 처리되지 않아요.';
+
+  function _moneyError(e, verb) {
+    const st = e && e.status;
+    const msg = (e && e.message) || '';
+    // 서버가 **분명히 거절**한 것들 — 돈은 움직이지 않았다. 사유를 그대로 전한다.
+    if (st === 400) return { text: msg || (verb + '할 수 없어요.'), certain: true };
+    if (st === 404) return { text: '고객을 찾을 수 없어요. 목록을 새로고침해 주세요.', certain: true };
+    if (st === 422) return { text: '입력값을 다시 확인해 주세요.', certain: true };
+    if (st === 401 || st === 403) return { text: '로그인이 만료됐어요. 다시 로그인해 주세요.', certain: true };
+    if (st === 429) return { text: '요청이 잠깐 몰렸어요. 몇 초 뒤 다시 눌러 주세요.', certain: true };
+    // 여기서부터는 **결과를 모른다.** 5xx 는 커밋 뒤 끊겼을 수 있고, 네트워크 오류는
+    //   요청이 서버에 닿았는지조차 알 수 없다. 실패라고 단정하지 않는다.
+    return { text: _MONEY_UNKNOWN, certain: false };
+  }
+
+  // 처리 중 표시 (돈감사 2026-09-07 · §30 · §49)
+  //   전엔 버튼이 흐려지기만 하고 글자는 "충전하기" 그대로였다. 느린 망에서 원장님은
+  //   눌린 건지 아닌지 알 수 없고, 스크린리더는 아무것도 읽어 주지 않는다(aria-busy 없음).
+  function _busy(btn, on, busyText, idleText) {
+    if (!btn) return;
+    btn.disabled = !!on;
+    btn.setAttribute('aria-busy', on ? 'true' : 'false');
+    btn.textContent = on ? busyText : idleText;
+    btn.style.opacity = on ? '.7' : '';
   }
 
   function _toast(msg, opts) {
@@ -71,7 +118,10 @@
           </div>
           <div style="flex:1;min-width:0;">
             <h3 id="msTitle" style="font-size:17px;font-weight:800;margin:0;">회원권</h3>
-            <div id="msSub" style="font-size:12.5px;color:var(--text-subtle);margin-top:2px;"></div>
+            <!-- [돈감사 2026-09-07] word-break:keep-all — 320px 에서 "630,000원" 이
+                 "630,000" / "원" 으로 갈려 줄바꿈됐다. 금액과 단위가 떨어지면 한순간
+                 다른 숫자로 읽힌다. 돈 화면에서 단위는 숫자에 붙어 있어야 한다. -->
+            <div id="msSub" style="font-size:12.5px;color:var(--text-subtle);margin-top:2px;word-break:keep-all;"></div>
           </div>
           <button class="ss-close" id="msClose" style="background:transparent;border:none;font-size:24px;cursor:pointer;line-height:1;color:var(--text-subtle);"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
@@ -134,7 +184,7 @@
   }
 
   // ── 충전 시트 ───────────────────────────────────────────────
-  function openTopupSheet(customerId, customerName) {
+  function openTopupSheet(customerId, customerName, currentBalance) {
     const html = `
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
         ${[30000, 50000, 100000, 200000, 300000, 500000].map(amt => `
@@ -155,7 +205,15 @@
       <!-- [2026-04-29 B4] 최근 사용 history -->
       <div id="msHistoryWrap" style="margin-top:18px;"></div>
     `;
-    _open('회원권 충전', html, `${customerName || '고객'}님 회원권 충전`);
+    // [돈감사 2026-09-07 §28] 현재 잔액을 보여준다.
+    //   호출부(app-customer.js:1150)는 예전부터 `currentBalance` 를 넘기고 있었는데
+    //   이 함수가 **인자로 받지도 않아** 통째로 버려졌다. 그래서 충전 화면 어디에도
+    //   "지금 얼마 남았는지" 가 없었다 — 얼마를 채워 줘야 할지 모른 채 금액을 고른다.
+    const _balTxt = (currentBalance != null && !Number.isNaN(Number(currentBalance)))
+      ? `현재 잔액 ${formatMoney(Number(currentBalance))}`
+      : '';
+    _open('회원권 충전', html,
+      `${customerName || '고객'}님 회원권 충전${_balTxt ? ' · ' + _balTxt : ''}`);
     const sheet = document.getElementById('membershipSheet');
     sheet.querySelectorAll('.ms-quick-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -173,7 +231,7 @@
         _toast('충전 금액을 입력해주세요 (1,000원 이상)', { error: true });
         return;
       }
-      btn.disabled = true;
+      _busy(btn, true, '충전 중…', '충전하기');
       // [F-3] 같은 시도의 재시도면 같은 키를 다시 쓴다 — 서버가 중복을 흡수한다.
       const { sig: _sig, key: _txn } = _txnFor('topup', customerId, amount, method);
       try {
@@ -196,17 +254,27 @@
         sheet.style.display = 'none';
         try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'membership_topup' } })); } catch (_) { void 0; }
       } catch (e) {
-        _toast('충전 실패: ' + e.message, { error: true });
+        // [돈감사 2026-09-07] 결과를 모르는 실패를 "충전 실패" 라고 단정하지 않는다.
+        //   시트도 닫지 않는다 — 같은 버튼(=같은 멱등키)을 다시 누를 수 있어야 한다.
+        const _m = _moneyError(e, '충전');
+        _toast(_m.certain ? ('충전 실패 — ' + _m.text) : _m.text, { error: true });
       } finally {
-        btn.disabled = false;
+        _busy(btn, false, '충전 중…', '충전하기');
       }
     });
   }
 
   // ── 사용 시트 ───────────────────────────────────────────────
   // [P0-2 2026-08-30] bookingId(선택) — 예약 맥락에서 차감하면 넘겨준다.
-  //   BE 가 차감 기록에 booking_id 를 남겨, 그 예약이 취소될 때 잔액을 자동 복구한다.
-  //   없으면 기존과 동일(연결 없는 차감 — 취소 자동복구 대상 아님).
+  //
+  // ⚠️ [돈 마감감사 2026-09-07 정정] 예전 주석은 "그 예약이 취소될 때 잔액을 자동 복구한다"
+  //    고 적혀 있었는데 **사실이 아니다.** 백엔드에 회원권 자동 복구 코드는 0줄이고
+  //    (bookings.py 전수 확인), 취소는 잔액을 되돌리지 않는다.
+  //    이번 출시 정책은 **자동 복구 미지원(A안)** 이다 — 취소 후 잔액을 되돌리려면
+  //    원장님이 충전으로 직접 정산한다.
+  //    지금 booking_id 가 하는 일은 하나뿐이다: **이 차감이 어느 예약에서 나왔는지
+  //    원장에 남겨 나중에 설명할 수 있게 하는 것.**
+  //    (백엔드는 이 값이 내 원장·이 손님의 예약일 때만 기록하고, 아니면 조용히 버린다.)
   function openUseSheet(customerId, customerName, currentBalance, bookingId) {
     const balanceTxt = currentBalance != null ? `현재 잔액 ${formatMoney(currentBalance)}` : '';
     const html = `
@@ -232,7 +300,7 @@
         _toast('차감 금액을 입력해주세요', { error: true });
         return;
       }
-      btn.disabled = true;
+      _busy(btn, true, '차감 중…', '차감하기');
       // [F-3] 차감도 동일 — 재시도로 손님 잔액이 두 번 빠지면 안 된다.
       // [P0-2] 예약이 다르면 다른 시도다 — bookingId 를 서명에 포함해 키를 분리한다.
       const { sig: _sig, key: _txn } = _txnFor('use', customerId, amount, svc + '|bk' + (bookingId || ''));
@@ -242,9 +310,10 @@
           amount,
           service_name: svc || null,
           client_txn_id: _txn,
-          booking_id: bookingId || null,   // [P0-2] 취소 시 자동 복구 근거
+          booking_id: bookingId || null,   // [P0-2] 이 차감이 나온 예약 (기록용 — 자동 복구는 없다)
         });
         _txnDone(_sig);
+        _busy(btn, false, '차감 중…', '차감하기');
         _toast(`사용 완료! 잔액 ${formatMoney(r.membership_balance)}`);
         sheet.style.display = 'none';
         // [2026-04-29] 잔액 부족 경고 토스트 (백엔드가 warning 필드 반환)
@@ -253,8 +322,10 @@
         }
         try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'membership_use' } })); } catch (_) { void 0; }
       } catch (e) {
-        _toast('차감 실패: ' + e.message, { error: true });
-        btn.disabled = false;   // [2026-07-22 fix] 실패 시 재활성화 — 안 하면 버튼 영구 잠김(충전 시트엔 있던 로직)
+        const _m = _moneyError(e, '차감');
+        _toast(_m.certain ? ('차감 실패 — ' + _m.text) : _m.text, { error: true });
+        // [2026-07-22 fix] 실패 시 재활성화 — 안 하면 버튼 영구 잠김(충전 시트엔 있던 로직)
+        _busy(btn, false, '차감 중…', '차감하기');
       }
     });
   }
