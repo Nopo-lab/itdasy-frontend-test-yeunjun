@@ -171,7 +171,7 @@ jobs:
         continue-on-error: true
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.NEGTEST_MISSING_GCS_KEY }}
+          credentials_json: ${{ secrets.GCP_BACKUP_SA_KEY }}
 
       - name: Upload backups to GCS
         id: gcs
