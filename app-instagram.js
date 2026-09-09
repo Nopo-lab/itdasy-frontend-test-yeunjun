@@ -468,6 +468,9 @@ function showDetailedAnalysis() {
     // [2026-06-10 #5] 팝업이 다른 시트 아래에 깔리는 버그 — body 최상위로 이동해서 stacking context 이슈 완전 해결
     if (pop.parentElement !== document.body) document.body.appendChild(pop);
     pop.style.display = 'flex';
+    /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+       안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+    try { window._bindSheetBack && window._bindSheetBack('instagramAnalyzeReport', pop, () => { pop.style.display = 'none'; }); } catch (_bsb) { void _bsb; }
   } else if (window.showToast) window.showToast('리포트 영역을 찾을 수 없어요');
 }
 
@@ -1386,6 +1389,9 @@ function showInstaConflictModal(handle) {
     </div>
   `;
   document.body.appendChild(modal);
+  /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+     안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+  try { window._bindSheetBack && window._bindSheetBack('instagram1', modal, () => { modal.remove(); }); } catch (_bsb) { void _bsb; }
 
   document.getElementById('igConflictClose').addEventListener('click', () => {
     modal.remove();

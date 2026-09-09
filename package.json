@@ -17,7 +17,8 @@
     "smoke": "node scripts/smoke-check.js",
     "smoke:flow": "node scripts/ws-flow-smoke.js",
     "gc": "node scripts/gc-weekly.js",
-    "prepare": "husky"
+    "prepare": "husky",
+    "audit:overlay": "node scripts/overlay-back-audit.js"
   },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "^8.0.0",

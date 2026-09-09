@@ -314,6 +314,9 @@
       </div>
     `;
     document.body.appendChild(p);
+    /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+       안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+    try { window._bindSheetBack && window._bindSheetBack('instantcaption', p, () => { p.remove(); }); } catch (_bsb) { void _bsb; }
 
     p.addEventListener('click', (e) => { if (e.target === p) _close(); });
     p.querySelector('#_icClose').addEventListener('click', _close);

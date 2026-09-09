@@ -74,6 +74,9 @@
     const err = document.getElementById('aiReportError'); if (err) err.style.display = 'none';
     const btn = document.getElementById('aiReportSubmitBtn'); if (btn) { btn.disabled = false; btn.textContent = '신고 제출'; }
     document.getElementById('aiContentReportModal').style.display = 'flex';
+    /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+       안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+    try { window._bindSheetBack && window._bindSheetBack('aiContentReport', document.getElementById('aiContentReportModal'), () => { document.getElementById('aiContentReportModal').style.display = 'none'; }); } catch (_bsb) { void _bsb; }
   };
 
   window.closeContentReport = function () {
