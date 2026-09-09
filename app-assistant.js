@@ -2786,6 +2786,10 @@
     } catch (_e) { void _e; }
   }
 
+  // [P0 2026-09-09] 진행 중인 시도의 멱등키 — 내용 서명 → 키.
+  //   성공하면 지운다. 회원권 시트(`app-membership.js` `_txnFor`)와 같은 계약이다.
+  const _pendingTxn = new Map();
+
   // 순수 실행기 — action 객체만 받아 POST, 결과 반환. UI 갱신은 호출자가.
   // [QA-NEXT #4] action._ai_original (AI 추출 시점 payload 스냅샷) 있으면 original_payload 동봉 →
   // 백엔드에서 final vs original diff 를 UserCorrection 으로 학습.
@@ -2809,11 +2813,28 @@
     //   백엔드에 멱등이 없어서 같은 요청 5발이 매출 5건이 됐다(실측). 더블탭·타임아웃 후
     //   재시도·모바일 재전송이면 원장님은 한 번 눌렀는데 장부가 여러 줄이 된다.
     //   키를 **액션 객체에 붙여** 재시도해도 같은 값이 가게 한다 (매번 새로 만들면 무의미).
+    // [P0 2026-09-09 2차] 키를 **액션 객체에만** 붙이면 카드가 새로 만들어질 때 새 키가 된다.
+    //   실측한 사고가 정확히 그 경로였다: 응답이 유실돼 화면이 멈춤 → 원장이 같은 요청을
+    //   다시 함 → 새 카드 → 새 키 → 서버가 중복인 줄 모르고 **또 충전**(30,000 → 60,000).
+    //
+    //   형제 경로인 회원권 시트(app-membership.js `_txnFor`)는 이미 **내용 서명**으로 키를 잡고
+    //   성공했을 때만 버린다. 같은 계약을 여기에도 맞춘다 — 한쪽에만 있던 가드를 정렬하는 것이다.
+    //   · 같은 내용(kind + payload)의 재시도 = 같은 키 → 서버가 흡수
+    //   · 성공하면 키를 버린다 → 일부러 같은 금액을 또 충전하는 건 새 시도로 처리된다
+    const _txnSig = (() => {
+      try {
+        const p = { ...(action.payload || {}) };
+        delete p.client_txn_id;
+        return action.kind + '|' + JSON.stringify(Object.keys(p).sort().map((k) => [k, p[k]]));
+      } catch (_e) { return action.kind + '|' + Math.random(); }
+    })();
+    if (!action._txn_id) action._txn_id = _pendingTxn.get(_txnSig);
     if (!action._txn_id) {
       action._txn_id = (window.crypto && window.crypto.randomUUID)
         ? window.crypto.randomUUID().replace(/-/g, '').slice(0, 32)
         : 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
     }
+    _pendingTxn.set(_txnSig, action._txn_id);
     body.payload = { ...body.payload, client_txn_id: action._txn_id };
     if (action._ai_original && typeof action._ai_original === 'object') {
       body.original_payload = action._ai_original;
@@ -2872,6 +2893,7 @@
       throw e2;
     }
     const d = await res.json();
+    _pendingTxn.delete(_txnSig);   // 성공했으니 이 키는 버린다 — 다음 요청은 새 시도다
     _invalidateCachesFor(d.kind || action.kind);
     if (d.kind === 'generate_bulk_message' && d.message_draft) {
       try {

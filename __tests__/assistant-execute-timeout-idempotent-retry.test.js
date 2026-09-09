@@ -104,3 +104,63 @@ describe('멱등키 계약 (회귀)', () => {
     expect(SRC).toMatch(/client_txn_id: action\._txn_id/);
   });
 });
+
+/* ── 2차: 카드가 새로 만들어져도 같은 내용이면 같은 멱등키 ────────────────
+ *
+ * 1차 수정(타임아웃 + 같은 키 재시도)은 **한 번의 실행 안**에서만 보호한다.
+ * 실측 사고의 나머지 절반은 그 밖에서 일어났다:
+ *   응답 유실로 화면이 멈춤 → 원장이 같은 요청을 **다시 입력** → 새 카드 → 새 키
+ *   → 서버가 중복인 줄 모르고 또 충전(30,000 → 60,000).
+ *
+ * 형제 경로인 회원권 시트(app-membership.js `_txnFor`)는 이미 **내용 서명**으로 키를 잡고
+ * 성공했을 때만 버린다. 잇비만 그 계약이 빠져 있었다 — 정렬한다.
+ */
+describe('같은 내용의 재요청은 같은 멱등키를 쓴다 (회원권 시트와 같은 계약)', () => {
+  function loadSigLogic() {
+    const start = SRC.indexOf('    const _txnSig = (() => {');
+    const end = SRC.indexOf('    body.payload = { ...body.payload, client_txn_id: action._txn_id };');
+    if (start < 0 || end < 0) throw new Error('멱등키 서명 블록을 못 찾음 — 제거됐거나 이름이 바뀜');
+    const block = SRC.slice(start, end);
+    // eslint-disable-next-line no-new-func
+    return new Function('action', '_pendingTxn', 'window',
+      '"use strict";' + block + 'return { key: action._txn_id, sig: _txnSig };');
+  }
+  const run = loadSigLogic();
+  const WIN2 = { crypto: { randomUUID: () => 'uuid-' + Math.random().toString(36).slice(2) } };
+
+  test('내용이 같으면 새 액션 객체라도 키가 같다', () => {
+    const map = new Map();
+    const a1 = { kind: 'charge_membership', payload: { customer_name: '박지우', amount: 30000 } };
+    const a2 = { kind: 'charge_membership', payload: { amount: 30000, customer_name: '박지우' } };  // 키 순서만 다름
+    const r1 = run(a1, map, WIN2);
+    const r2 = run(a2, map, WIN2);
+    expect(r2.key).toBe(r1.key);
+  });
+
+  test('금액이 다르면 다른 키다', () => {
+    const map = new Map();
+    const k1 = run({ kind: 'charge_membership', payload: { customer_name: '박지우', amount: 30000 } }, map, WIN2).key;
+    const k2 = run({ kind: 'charge_membership', payload: { customer_name: '박지우', amount: 50000 } }, map, WIN2).key;
+    expect(k2).not.toBe(k1);
+  });
+
+  test('고객이 다르면 다른 키다 (다른 손님 충전이 막히면 안 된다)', () => {
+    const map = new Map();
+    const k1 = run({ kind: 'charge_membership', payload: { customer_name: '박지우', amount: 30000 } }, map, WIN2).key;
+    const k2 = run({ kind: 'charge_membership', payload: { customer_name: '김호영', amount: 30000 } }, map, WIN2).key;
+    expect(k2).not.toBe(k1);
+  });
+
+  test('성공해서 키를 버리면 다음 같은 요청은 새 키다 (일부러 두 번 충전 가능)', () => {
+    const map = new Map();
+    const a = { kind: 'charge_membership', payload: { customer_name: '박지우', amount: 30000 } };
+    const r1 = run(a, map, WIN2);
+    map.delete(r1.sig);                       // 성공 처리 = _pendingTxn.delete(_txnSig)
+    const k2 = run({ kind: 'charge_membership', payload: { customer_name: '박지우', amount: 30000 } }, map, WIN2).key;
+    expect(k2).not.toBe(r1.key);
+  });
+
+  test('성공 시 키를 버리는 코드가 실제로 있다', () => {
+    expect(SRC).toMatch(/_pendingTxn\.delete\(_txnSig\)/);
+  });
+});
