@@ -1424,8 +1424,25 @@
     if (swr) {
       _cache = swr.items;
       _rerender();  // 즉시 표시
-      // 오래된 캐시면 백그라운드 갱신 (list() 내부에서 자동 처리)
-      list().then(() => _rerender()).catch(() => {});
+      /* [2026-09-09] 화면을 **여는 순간**에는 캐시가 신선해도 서버와 한 번 맞춘다.
+         예전엔 `list()` 를 불렀는데, `list()` 는 `swr.fresh`(2분 이내)면 네트워크를 아예
+         안 친다 → 이름은 stale-while-revalidate 인데 실제로는 그냥 2분 TTL 캐시였다.
+
+         실측(실 Chrome, 운영 DB): 다른 경로로 손님을 만들고(`POST /customers` 201)
+         홈 → 고객관리로 재진입해도 **목록에 안 나온다.** 세션 9 에서는 10초를 기다려도
+         수렴하지 않았다(DB 5명 · 화면 4행 · 그 사이 `GET /customers` 는 나갔는데도).
+
+         원장이 겪는 모습: 폰에서 손님을 추가하고 PC 를 보면 없다. 명함 스캔·DM 자동 등록·
+         잇비가 만든 손님도 마찬가지다. "저장은 됐다는데 목록에 없다" 가 된다.
+
+         그래서 목록을 여는 이 경로에서만 강제로 갱신한다(비용: 진입당 GET 1회.
+         서버도 `customers_list:{user}` 를 5분 캐시하므로 대부분 캐시 히트다).
+         내용이 같으면 다시 그리지 않는다 — 스크롤·검색 상태를 건드리지 않기 위해서다. */
+      _fetchFresh().then((fresh) => {
+        if (!Array.isArray(fresh)) return;
+        const sig = (arr) => (arr || []).map((c) => c && c.id).join(',');
+        if (sig(fresh) !== sig(_cache)) { _cache = fresh; _rerender(); }
+      }).catch(() => {});
     } else {
       box.innerHTML = (typeof window._renderSkeleton === 'function')
         ? window._renderSkeleton(6)
