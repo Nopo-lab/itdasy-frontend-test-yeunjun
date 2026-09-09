@@ -124,8 +124,32 @@ describe('⑦ 도구 패널이 레이어 순서 줄을 덮어 "보이는데 안 
     expect(editorSrc).toContain("root.classList.toggle('itded--panel', !!tool);");
     expect(editorSrc).toContain("root.classList.remove('itded--panel');");
   });
-  test('CSS 가 그때 줄을 감춘다', () => {
-    expect(editorCss).toMatch(/\.itded\.itded--panel \.itded__lyr \{\s*display:\s*none/);
+  /* [계약 변경 2026-09-09 · BUG-04] 예전 계약은 "패널이 열리면 줄을 **감춘다**" 였다.
+     의도는 옳았다(덮여서 '보이는데 안 눌리는' 상태 방지). 그런데 그 해법이 새 결함을 만들었다:
+       · selectLayer() 는 텍스트 레이어를 고르면 **항상** setTool('text') 를 부른다(itd-editor.js).
+         → 텍스트는 "고르면 숨고, 안 고르면 버튼이 비활성" 이라 앞/뒤로 보내기가 구조적으로 불가능했다.
+       · 게다가 PC 실측(1440×812)에서 이 줄은 flex 흐름에 있어 뷰포트 **밖**(y=812)으로 밀려 있었다
+         (.itded clientH 812 / scrollH 1430, position:fixed 라 스크롤로도 도달 불가).
+     새 계약: **감추지 말고 패널 위로 올린다.** 원래 위험(덮여서 안 눌림)은 z-index 로 막는다.
+     아래 검사는 옛 검사보다 약해지지 않게 '패널 아래에 깔리지 않는다'를 직접 고정한다. */
+  test('패널이 열려도 줄을 감추지 않고 패널 위로 올린다', () => {
+    const panelRule = editorCss.match(/\.itded\.itded--panel \.itded__lyr \{[^}]*\}/)[0];
+    expect(panelRule).not.toMatch(/display:\s*none/);          // 옛 해법으로 되돌아가면 실패
+    expect(panelRule).toMatch(/bottom:\s*var\(--itpanel-h/);   // 패널 높이만큼 띄운다
+  });
+  test('줄이 패널보다 위에 있다 — 덮여서 안 눌리던 원래 위험을 z-index 로 막는다', () => {
+    const panelZ = Number(editorCss.match(/\.itpanel\{[^}]*z-index:\s*(\d+)/)[1]);
+    const lyrZ = Number(editorCss.match(/\.itded__lyr \{[^}]*z-index:\s*(\d+)/)[1]);
+    expect(lyrZ).toBeGreaterThan(panelZ);
+  });
+  test('줄이 flex 흐름이 아니라 오버레이다 — 예전엔 흐름에 있어 PC 에서 화면 밖으로 밀렸다', () => {
+    const base = editorCss.match(/\.itded__lyr \{[^}]*\}/)[0];
+    expect(base).toMatch(/position:\s*absolute/);
+    expect(base).toMatch(/bottom:\s*0/);
+  });
+  test('열린 패널 높이를 setTool 이 --itpanel-h 로 넣고, 닫히면 지운다', () => {
+    expect(editorSrc).toContain("root.style.setProperty('--itpanel-h'");
+    expect(editorSrc).toContain("root.style.removeProperty('--itpanel-h')");
   });
 });
 

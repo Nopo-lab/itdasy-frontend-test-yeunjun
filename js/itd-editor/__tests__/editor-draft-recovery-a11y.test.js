@@ -1,0 +1,93 @@
+'use strict';
+
+/* [BUG-02 / BUG-06 · 2026-09-09] 편집 중 리로드 복구 + 접근성/키보드 회귀 고정.
+ *
+ * BUG-02 가 왜 P1 이었나(실제로 당함):
+ *   텍스트를 넣은 상태에서 새 배포가 떨어지자 app-core 의 'SW 버전 불일치 → 캐시 삭제 후 reload'
+ *   가 돌아 편집기·초안이 통째로 사라졌다. 편집기는 진행 중 작업을 어디에도 저장하지 않았고,
+ *   beforeunload 가드는 standalone PWA + 시트 열림일 때만 동작해 일반 웹에선 아무것도 못 막았다.
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+const ROOT = path.join(__dirname, '..', '..', '..');
+const SRC = fs.readFileSync(path.join(ROOT, 'js/itd-editor/itd-editor.js'), 'utf8');
+const CSS = fs.readFileSync(path.join(ROOT, 'css/itd-editor.css'), 'utf8');
+
+describe('BUG-02 · 편집 중 리로드로 작업을 잃지 않는다', () => {
+  test('주기 스냅샷 + pagehide/visibilitychange 동기 저장이 모두 걸려 있다', () => {
+    expect(SRC).toMatch(/setInterval\(function \(\) \{ _draftSnap\(false\); \}, DRAFT_TICK_MS\)/);
+    expect(SRC).toMatch(/addEventListener\('pagehide', function \(\) \{ _draftSnap\(true\); \}\)/);
+    expect(SRC).toMatch(/visibilityState === 'hidden'\) _draftSnap\(true\)/);
+  });
+
+  test('사진(dataURL)은 sessionStorage 에 넣지 않는다 — quota 로 저장 자체가 실패한다', () => {
+    const split = SRC.slice(SRC.indexOf('function _splitDraft'));
+    expect(split).toMatch(/delete light\.photos/);
+    expect(split).toMatch(/delete light\.photoDraw/);
+    expect(split).toMatch(/delete light\.collageBgImg/);
+    // 큰 것은 기존 IDB assets store 재사용(새 store 를 만들면 스키마 가드도 같이 고쳐야 한다)
+    expect(SRC).toMatch(/window\.saveAssetToDB\(DRAFT_ASSET/);
+  });
+
+  test('입력 중인 글자도 초안에 들어간다 — L.text 는 blur 에서만 갱신되기 때문', () => {
+    // 이걸 빠뜨리면 "원장이 방금 치던 문구" 정확히 그것만 플레이스홀더로 복구된다(실측으로 잡음)
+    expect(SRC).toMatch(/function _flushEditingText/);
+    const snap = SRC.slice(SRC.indexOf('function _draftSnap'), SRC.indexOf('function _draftStart'));
+    expect(snap).toMatch(/_flushEditingText\(\);[\s\S]*_exportState\(\)/);
+  });
+
+  test('자동으로 덮어쓰지 않고 물어본다 (Restore / Discard)', () => {
+    expect(SRC).toMatch(/_showDraftBar\(/);
+    expect(SRC).toContain('이어서 편집');
+    expect(SRC).toContain('새로 시작');
+    // 사진이 다른 게시물이면 제안하지 않는다
+    expect(SRC).toMatch(/_dr\.sig === _photosSig\(S\.photos\)/);
+  });
+
+  test('정상 종료(저장·취소·back)에서는 초안을 지운다 — 유령 복구 배너 방지', () => {
+    const clears = (SRC.match(/_draftClear\(\)/g) || []).length;
+    expect(clears).toBeGreaterThanOrEqual(4);           // 저장 / 취소 / back / 새로시작
+    expect(SRC).toMatch(/_restoreSaveUi\(\);\s*\n\s*_draftClear\(\);/);   // 저장 성공 경로
+  });
+
+  test('TTL 이 있어 오래된 초안이 영원히 되살아나지 않는다', () => {
+    expect(SRC).toMatch(/DRAFT_TTL_MS/);
+    expect(SRC).toMatch(/Date\.now\(\) - o\.ts\) > DRAFT_TTL_MS/);
+  });
+});
+
+describe('BUG-06 · 접근성 / 키보드', () => {
+  test('아이콘 전용 도구 버튼 5개 전부 접근성 이름이 있다', () => {
+    for (const tool of ['text', 'adjust', 'sticker', 'shape', 'draw']) {
+      const m = new RegExp('data-tool="' + tool + '"[^>]*aria-label="');
+      expect(SRC).toMatch(m);
+    }
+  });
+
+  test('정렬 버튼 3개에 접근성 이름이 있다', () => {
+    for (const a of ['left', 'center', 'right']) {
+      expect(SRC).toMatch(new RegExp('data-aln="' + a + '"[^>]*aria-label="'));
+    }
+  });
+
+  test('레이어 핸들에 접근성 이름이 있다', () => {
+    for (const c of ['itl__del', 'itl__dup', 'itl__rot', 'itl__rs']) {
+      expect(SRC).toMatch(new RegExp('class="' + c + '"[^>]*aria-label="'));
+    }
+  });
+
+  test('레이어 핸들 손가락 타깃이 44px 이상이다 (아이콘 24 + inset 10*2)', () => {
+    const m = CSS.match(/\.itl__del::after[^{]*\{content:"";position:absolute;inset:(-?\d+)px\}/);
+    expect(m).toBeTruthy();
+    expect(24 + Math.abs(Number(m[1])) * 2).toBeGreaterThanOrEqual(44);
+  });
+
+  test('Escape 로 단계적으로 빠져나간다 — 입력 → 패널 → 편집기', () => {
+    const h = SRC.slice(SRC.indexOf("e.key !== 'Escape'"));
+    expect(h).toMatch(/editing\.tx\.blur\(\)/);        // ① 글자 입력만 종료
+    expect(h).toMatch(/_closeToolPanel\(\)/);          // ② 패널만 닫기
+    expect(h).toMatch(/S\._cancelled = true/);         // ③ 편집기 취소
+  });
+});

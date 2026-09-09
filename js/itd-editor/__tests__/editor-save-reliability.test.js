@@ -217,10 +217,32 @@ describe('[Editor 신뢰성] 기존 계약 회귀', () => {
     expect(SRC).toMatch(/base\.type = \(L\.type === 'badge'\) \? 'badge' : 'text';/);
     expect(SRC).toMatch(/base\.font = L\.font && L\.font\.key;/);
   });
-  test('_pushOp 종류가 늘지 않았다', () => {
-    const ops = [...SRC.matchAll(/_pushOp\(\{\s*op:\s*'([a-zA-Z]+)'/g)].map((m) => m[1]);
-    const allowed = ['add', 'del', 'move', 'resize', 'wrap', 'photo', 'cellcrop', 'wmApply', 'wmRemove'];
-    ops.forEach((o) => expect(allowed).toContain(o));
+  /* [계약 강화 2026-09-09 · BUG-03] 예전 계약은 "op 종류가 늘지 않았다"(화이트리스트)였다.
+     진짜 지키려던 건 **_applyInverse 가 모르는 op 이 쌓이면 ↩ 가 조용히 아무 일도 안 한다**는 것.
+     화이트리스트는 그 근사치라, 새 op 을 정당하게 추가할 때마다 막기만 하고 실제 불변식은 안 봤다.
+     (실제로 폰트·색·정렬·크기·보정이 히스토리에서 통째로 빠져 있었는데 이 테스트는 초록이었다 —
+      색을 바꾸고 ↩ 를 누르면 글자가 통째로 지워졌다.)
+     이제 '쌓는 op' ⊆ '되돌릴 줄 아는 op' 을 직접 검사한다. */
+  test('_pushOp 하는 모든 op 을 _applyInverse 가 처리한다', () => {
+    const pushed = [...new Set([...SRC.matchAll(/_pushOp\(\{\s*op:\s*'([a-zA-Z]+)'/g)].map((m) => m[1]))];
+    const inv = SRC.slice(SRC.indexOf('function _applyInverse'));
+    const handled = [...new Set([...inv.matchAll(/op\.op === '([a-zA-Z]+)'/g)].map((m) => m[1]))];
+    // 'add'/'del' 은 분기 대신 공통 경로에서 처리된다 — 소스에 존재하는지로 확인
+    const known = new Set([...handled, 'add', 'del']);
+    const unhandled = pushed.filter((o) => !known.has(o));
+    expect(unhandled).toEqual([]);
+    expect(pushed.length).toBeGreaterThanOrEqual(9);
+  });
+  test('사용자가 바꾸는 스타일이 되돌리기 대상이다 (BUG-03 회귀)', () => {
+    // 폰트·색·정렬은 각 apply 함수가 _pushStyle 로 확정한다
+    expect(SRC).toMatch(/function applyFont\(key\)[\s\S]{0,400}?_pushStyle\(L, _b\);/);
+    expect(SRC).toMatch(/function applyColor\(c\)[\s\S]{0,400}?_pushStyle\(L, _b\);/);
+    expect(SRC).toMatch(/function applyAlign\(a\)[\s\S]{0,400}?_pushStyle\(L, _b\);/);
+    // 크기·보정은 드래그가 끝날 때(change) 한 번만 쌓는다
+    expect(SRC).toContain("_pushStyle(_sizeStyleSnap.L, _sizeStyleSnap.v)");
+    expect(SRC).toContain("_pushAdj(_adjSnap.idx, _adjSnap.v)");
+    // 보정 초기화도 되돌릴 수 있어야 한다
+    expect(SRC).toMatch(/adjReset[\s\S]{0,200}?_pushAdj\(S\.adjSel, _ab\)/);
   });
   test('T8-A system scope 래핑 유지', () => {
     expect(SRC).toMatch(/WMSignals\.system\(function \(\) \{ return _restoreLayersInner/);

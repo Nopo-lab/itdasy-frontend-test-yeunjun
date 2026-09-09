@@ -130,7 +130,10 @@
 .iteyed{position:absolute;inset:0;z-index:8;cursor:crosshair;touch-action:none}
 .iteyed__ring{position:absolute;display:none;width:46px;height:46px;border-radius:50%;border:3px solid #fff;
   box-shadow:0 0 0 1px rgba(0,0,0,.25),0 4px 14px rgba(0,0,0,.35);transform:translate(-50%,-140%);pointer-events:none}
-.iteyed__tip{position:absolute;left:50%;top:12px;transform:translateX(-50%);padding:7px 14px;border-radius:999px;
+/* [BUG-05 2026-09-09] top:12px 이면 상단 아이콘 묶음(.itded__hist, z-index 9)과 거의 완전히 겹쳤다.
+   실측 tip[754,12,191,33] vs hist[777,15,124,36] — 아이콘이 위라서 '사' … '돼요' 파편만 보였고
+   스포이드의 **유일한 사용 안내가 통째로 소실**됐다. 헤더 아래로 내린다(레일 top 과 같은 기준). */
+.iteyed__tip{position:absolute;left:50%;top:calc(64px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 6px);transform:translateX(-50%);padding:7px 14px;border-radius:999px;
   background:rgba(20,12,16,.72);color:#fff;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none}
 
 /* ── 스티커 시트 — 인스타식 어두운 반투명 + 스티커는 타일 없이 '떠 있게' ── */
@@ -357,11 +360,21 @@
    화면 맨 아래에 붙는다. padding-bottom 이 2px 뿐이라 iPhone 홈 인디케이터(≈34px) 안에 통째로 들어갔다
    — 실측(375×812): 버튼 4개가 뷰포트 바닥에서 2px, 크기 38×34. 누르면 iOS 홈 제스처가 먼저 먹는다.
    safe-area 를 더하고 터치 타깃을 44px(HIG 최소)로 올린다. 아이콘 크기는 그대로 두고 높이만 키운다. */
-.itded__lyr { display:flex; gap:6px; justify-content:center;
+/* [BUG-04 2026-09-09] 예전엔 flex 흐름에 있었는데, fitStageToRatio 가 스테이지 높이를
+   root.clientHeight **전체**로 잡아서 이 줄이 뷰포트 아래로 밀려났다.
+   실측 1440x812: .itded clientH 812 / scrollH 1430, 줄 rect y=812 — position:fixed 라 스크롤로도 못 감.
+   게다가 패널이 열리면 display:none 이라, 텍스트 레이어는 (선택하면 항상 텍스트 패널이 열리므로)
+   앞/뒤로 보내기가 **구조적으로 불가능**했다.
+   → 레일(.itded__rail)과 같은 오버레이로 바꾸고, 패널이 열리면 그 위로 띄운다(--itpanel-h 는 setTool 이 넣는다).
+   스테이지 크기는 건드리지 않는다 — 바꾸면 레이어 px 좌표가 통째로 움직인다. */
+.itded__lyr { position:absolute; left:0; right:0; bottom:0; z-index:11;
+  display:flex; gap:6px; justify-content:center;
   padding:6px 10px calc(8px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
 /* [2026-09-03] 도구 패널이 열리면 이 줄은 패널에 완전히 덮인다 — 보이는 채로 두면
    눌러도 패널의 다른 버튼이 먹는다(실측). 패널 닫으면 그대로 돌아온다. */
-.itded.itded--panel .itded__lyr { display:none; }
+/* 패널이 열려도 숨기지 않는다 — 대신 패널 위로 올린다.
+   (예전 display:none 의 원래 의도는 '패널에 덮여 보이는데 안 눌리는' 상태 방지였다. 위로 띄우면 그 문제도 없다.) */
+.itded.itded--panel .itded__lyr { bottom: var(--itpanel-h, 180px); }
 .itlyr {
   width:44px; height:44px; display:grid; place-items:center;
   border:1px solid rgba(255,255,255,.16); border-radius:12px;
@@ -370,3 +383,21 @@
 .itlyr:disabled { opacity:.3; cursor:default; }
 .itlyr svg { width:19px; height:19px; }
 .itl-arrowhead { pointer-events:none; }
+
+
+/* [BUG-02 2026-09-09] 리로드 복구 제안 바 — 자동으로 덮지 않고 원장이 고른다. */
+.itded__recover{position:absolute;left:50%;top:calc(64px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 6px);
+  transform:translateX(-50%);z-index:12;display:flex;align-items:center;gap:8px;
+  max-width:calc(100% - 24px);padding:8px 10px 8px 14px;border-radius:14px;
+  background:rgba(22,16,18,.94);box-shadow:0 8px 24px rgba(0,0,0,.35);backdrop-filter:blur(6px)}
+.itded__recover-t{color:#fff;font-size:13px;font-weight:600;white-space:nowrap}
+.itded__recover button{min-height:32px;padding:0 12px;border:0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
+.itded__recover-y{background:var(--accent,#C4737F);color:#fff}
+.itded__recover-n{background:rgba(255,255,255,.14);color:#fff}
+@media (width < 380px){ .itded__recover{gap:6px;padding:8px} .itded__recover-t{font-size:12px;white-space:normal} }
+
+
+/* [BUG-06 2026-09-09] 레이어 핸들 손가락 타깃 — 아이콘은 24px 그대로 두고 히트영역만 44px 로.
+   실측: 삭제·복제·회전·크기·폭 5개가 전부 24×24 였다(권장 44 미달). 시각 디자인은 안 건드린다.
+   inset:-10px → 24 + 10*2 = 44. 기존 .itded__ic::after 와 같은 방식. */
+.itl__del::after,.itl__dup::after,.itl__rot::after,.itl__rs::after,.itl__w::after{content:"";position:absolute;inset:-10px}
