@@ -67,3 +67,44 @@ describe('고객 추가 가드가 다른 도메인을 삼키지 않는다', () =
     }
   });
 });
+
+describe('같은 계열 분류기들의 제외 목록이 어긋나지 않는다', () => {
+  /* [§11 2026-09-09] 같은 목록을 복붙해 쓰는 분류기가 셋이다.
+     그 중 하나만 갱신되어 '메모' 가 두 곳에서 빠져 있었다(실제로 두 번 다 사고가 났다).
+     여기서 세 목록이 같은 도메인 단어를 갖고 있는지 기계가 본다. */
+  const PHONE = fs.readFileSync(
+    path.join(__dirname, '..', 'js', 'assistant', 'core', 'customer-phone-intent.js'), 'utf8');
+  const CREATE = fs.readFileSync(
+    path.join(__dirname, '..', 'js', 'assistant', 'core', 'create-intent.js'), 'utf8');
+
+  const MUST_EXCLUDE = ['메모', '예약', '매출', '캡션'];
+
+  test.each(MUST_EXCLUDE)('customer-add-guard 제외 목록에 %s 가 있다', (w) => {
+    const m = SRC.match(/return !\/\(([^)]*)\)\/\.test\(t\);/);
+    expect(m[1]).toContain(w);
+  });
+
+  test.each(MUST_EXCLUDE)('customer-phone-intent 제외 목록에 %s 가 있다', (w) => {
+    const m = PHONE.match(/return !\/\(([^)]*)\)\/\.test\(t\);/);
+    expect(m).toBeTruthy();
+    expect(m[1]).toContain(w);
+  });
+
+  test('create-intent 의 NOT_CREATE_RE 에도 메모가 있다(원래 있던 쪽 — 회귀 방지)', () => {
+    const m = CREATE.match(/var NOT_CREATE_RE = \/\(([^)]*)\)\//);
+    expect(m).toBeTruthy();
+    expect(m[1]).toContain('메모');
+  });
+
+  test('전화번호 경로도 메모 요청을 고객 생성으로 보지 않는다', () => {
+    const m = PHONE.match(/return !\/\(([^)]*)\)\/\.test\(t\);/);
+    const EX = new RegExp('(' + m[1] + ')');
+    const looks = (t) => {
+      if (!/01[016789][-\s]?\d{3,4}[-\s]?\d{4}/.test(t)) return false;
+      if (!/(추가|등록|저장|넣어|만들)/.test(t)) return false;
+      return !EX.test(t);
+    };
+    expect(looks('박서준 010-9911-0001 메모에 알러지 추가해줘')).toBe(false);
+    expect(looks('박서준 010-9911-0001 추가해줘')).toBe(true);
+  });
+});

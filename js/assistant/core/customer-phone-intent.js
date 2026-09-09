@@ -35,7 +35,13 @@
     const t = _trim(q);
     if (!PHONE_RE.test(t)) return false;
     if (!/(추가|등록|저장|넣어|만들)/.test(t)) return false;
-    return !/(예약|매출|사진|기록|문자|메시지|메세지|캡션|홍보|가격표|템플릿|바꿔|바꾸|변경|수정)/.test(t);
+    /* [P1 2026-09-09] 제외 목록에 **메모류가 빠져 있었다** — customer-add-guard.js 와 같은 사고다.
+       "박서준 010-9911-0001 메모에 알러지 추가해줘" 처럼 전화번호 + '추가' 가 같이 오면
+       고객 생성으로 분류돼 메모를 못 남긴다.
+       같은 계열 3개 중 create-intent.js 의 NOT_CREATE_RE 에는 '메모' 가 이미 있었고,
+       customer-add-guard.js 와 여기만 빠져 있었다 — 목록을 복붙하면서 한쪽만 갱신된 것이다.
+       두 목록이 다시 어긋나지 않게 __tests__/customer-add-guard-scope.test.js 가 동기화를 검사한다. */
+    return !/(예약|매출|사진|기록|문자|메시지|메세지|캡션|홍보|가격표|템플릿|바꿔|바꾸|변경|수정|메모|노트|알러지|알레르기|주의사항|특이사항|회원권|잔액|충전)/.test(t);
   }
   function _looksPhoneChange(q) {
     const t = _trim(q);
