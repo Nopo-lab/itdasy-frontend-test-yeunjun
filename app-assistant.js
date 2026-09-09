@@ -4444,6 +4444,22 @@
 
   function _runSheetShortcut(input, fn) {
     _clearAssistantInput(input);
+    // [P1 2026-09-09 실측] 잇비 시트를 **먼저 닫는다**. 안 닫으면 목표 화면이
+    //   잇비(z-index 10500) 뒤(z-index 9000대)에 열려서 **사용자에겐 아무 일도 안 일어난 것처럼 보인다.**
+    //
+    //   실측(배포본 6be453c, 실 Chrome, 각각 깨끗한 상태에서 1건씩):
+    //     "회원권 만료 임박한 사람 있어?" → membershipSheet 열림 · 잇비 그대로 위 · elementFromPoint=asstBody
+    //     "인사이트 보여줘"              → insightsSheet  열림 · 잇비 그대로 위
+    //     "백업 화면 열어줘"             → backupScreen   열림 · 잇비 그대로 위
+    //     "리뷰 요청 보내줘"             → wsv2Flow       열림 · 잇비 **닫힘** (보임)
+    //     "이탈 고객 관리"               → retentionSheet 열림 · 잇비 **닫힘** (보임)
+    //   즉 목표 화면 **일부만** 스스로 잇비를 닫고 있었다 — 전형적인 "한 경로엔 가드가 있고
+    //   형제 경로엔 없다". 그래서 각 목표가 아니라 **공용 헬퍼**에서 한 번에 닫는다.
+    //
+    //   특히 나쁜 건 "회원권 만료 임박한 사람 있어?" 가 **백엔드가 내려준 추천칩**이라는 점이다.
+    //   원장이 칩을 눌렀는데 답변도 안 나오고 화면도 안 바뀐다(사용자 말풍선조차 안 생긴다).
+    //   게다가 history 만 하나 쌓여서 **다음 뒤로가기가 보이지도 않는 시트를 닫는 데 소모된다.**
+    try { if (typeof window.closeAssistant === 'function') window.closeAssistant(); } catch (_c) { void _c; }
     try { fn(); } catch (_e) { void _e; }
   }
 
