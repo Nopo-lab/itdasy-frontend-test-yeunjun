@@ -114,7 +114,12 @@
         return `${verb} 실패 — 다시 시도해주세요`;
     }
   }
-  window.CustomerErrorText = _friendlyError;  // 편집 모달(app-customer-dashboard.js)이 함께 쓴다
+  window.CustomerErrorText = _friendlyError;
+  // [2026-09-09] 삭제 계약 공유 — app-customer-dashboard.js 의 '삭제' 버튼이 같은 문구·가드를 쓴다.
+  window.CustomerDeleteContract = {
+    confirmMessage: () => _deleteConfirmMsg(),
+    blockedByBalance: (c) => _deleteBlockedByBalance(c),
+  };  // 편집 모달(app-customer-dashboard.js)이 함께 쓴다
 
   // ── Stale-while-revalidate 캐시 — localStorage persistent (앱 재시작 후에도 즉시 렌더)
   const _SWR_KEY = 'pv_cache::customers';
@@ -1158,17 +1163,38 @@
     });
   }
 
+  /* [2026-09-09] 삭제 계약 한 곳 — 스와이프·대시보드·편집시트 세 경로가 같은 문구/가드를 쓴다. */
+  function _deleteConfirmMsg() {
+    return '고객 목록에서만 사라져요. 지난 매출·시술 기록은 그대로 남아요.\n삭제할까요?';
+  }
+  function _deleteBlockedByBalance(c) {
+    const bal = Number(c && c.membership_balance) || 0;
+    if (bal <= 0) return false;
+    if (window.showToast) {
+      window.showToast(`${c.name}님은 회원권 잔액이 ${bal.toLocaleString()}원 남아 있어요. 먼저 환불·정산한 뒤에 삭제할 수 있어요.`);
+    }
+    return true;
+  }
+
   function _confirmDelete(customerId) {
     // [P0 2026-09-09] 위와 같은 문자열/숫자 불일치 — 왼쪽 스와이프 삭제가 조용히 아무 일도 안 했다.
     const c = (_cache || []).find(x => String(x.id) === String(customerId));
     if (!c) return;
-    // [A7] 삭제 확인 메시지 통일
-    window._inlineConfirm('이 고객을 삭제하면 시술 기록도 함께 삭제돼요. 계속할까요?', () => {
+    /* [2026-09-09] 삭제 경로가 3개인데 계약이 서로 달랐다.
+       · 문구: 여기와 대시보드는 "시술 기록도 함께 삭제돼요" 였는데 **사실과 반대**다.
+         서버는 지난 예약·매출을 일부러 남긴다(customers.py delete 주석: "장부는 손님을 지워도 남아야 한다").
+         2026-08-05 P1-7 이 `_customerDelete` 한 곳만 고치고 나머지 둘을 놔둬서 다시 갈렸다.
+       · 잔액 가드: `_customerDelete` 에만 있었다.
+       · 409 처리: 서버가 `membership_balance_remains` 와 사람이 읽을 메시지까지 주는데
+         여기선 '삭제 실패' 로 뭉개서 원장이 이유도 모르고 계속 다시 눌렀다.
+       → 셋을 한 계약으로 모은다. 문구·가드·에러문구 모두 `_customerDelete` 기준. */
+    if (_deleteBlockedByBalance(c)) return;
+    window._inlineConfirm(_deleteConfirmMsg(), () => {
       remove(customerId).then(() => {
         if (window.showToast) window.showToast('삭제됨');
         _rerender();
-      }).catch(() => {
-        if (window.showToast) window.showToast('삭제 실패');
+      }).catch((err) => {
+        if (window.showToast) window.showToast(_friendlyError(err, '삭제'));
       });
     });
     return;
@@ -1285,15 +1311,8 @@
        "잔액 있음" 경고 없이 삭제 확인창으로 직행했다.
        실측(운영 DB, 테스트 고객): 잔액 50,000원인데 이 표현식은 못 찾아 0 으로 판정했다. */
     const c = (_cache || []).find(x => String(x.id) === String(id));
-    const bal = Number(c && c.membership_balance) || 0;
-    const msg = bal > 0
-      ? `${c.name}님은 회원권 잔액이 ${bal.toLocaleString()}원 남아 있어요.\n먼저 환불·정산한 뒤에 삭제할 수 있어요.`
-      : '고객 목록에서만 사라져요. 지난 매출·시술 기록은 그대로 남아요.\n삭제할까요?';
-    if (bal > 0) {
-      if (window.showToast) window.showToast(msg.replace(/\n/g, ' '));
-      return;
-    }
-    window._inlineConfirm(msg, async () => {
+    if (_deleteBlockedByBalance(c)) return;
+    window._inlineConfirm(_deleteConfirmMsg(), async () => {
       try {
         await remove(id);
         if (window.hapticLight) window.hapticLight();

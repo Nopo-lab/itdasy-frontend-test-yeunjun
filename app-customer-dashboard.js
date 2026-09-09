@@ -281,8 +281,14 @@
         } else if (act === 'call') {
           if (c.phone) window.location.href = 'tel:' + String(c.phone).replace(/[^0-9+]/g, '');
         } else if (act === 'delete') {
-          // [A7] 삭제 확인 메시지 통일 + [A8] 1번만 확인 후 API 직접 호출 (4중 확인 방지)
-          window._inlineConfirm('이 고객을 삭제하면 시술 기록도 함께 삭제돼요. 계속할까요?', () => {
+          /* [2026-09-09] 문구·가드·에러안내를 app-customer.js 의 삭제 계약과 공유한다.
+             예전 문구 "시술 기록도 함께 삭제돼요" 는 **사실과 반대**였다 — 서버는 지난 예약·매출을
+             일부러 남긴다(customers.py: "장부는 손님을 지워도 남아야 한다").
+             2026-08-05 P1-7 이 `_customerDelete` 한 곳만 고쳐서 이 경로만 옛 문구로 남아 있었다. */
+          const _dc = window.CustomerDeleteContract;
+          if (_dc && _dc.blockedByBalance && _dc.blockedByBalance(c)) return;
+          window._inlineConfirm((_dc && _dc.confirmMessage) ? _dc.confirmMessage()
+            : '고객 목록에서만 사라져요. 지난 매출·시술 기록은 그대로 남아요.\n삭제할까요?', () => {
             // [A8] Customer.remove 직접 호출 — _customerDelete 는 자체 confirm 이 있어서 중복됨
             const removeFn = (window.Customer && window.Customer.remove) ? window.Customer.remove : null;
             if (!removeFn) {
@@ -300,7 +306,15 @@
               })
               .catch((err) => {
                 console.warn('[customer delete]', err);
-                if (window.showToast) window.showToast('삭제 실패 — 다시 시도해주세요');
+                /* [2026-09-09] 서버는 회원권 잔액이 남으면 409 `membership_balance_remains` 와
+                   "회원권 잔액 110,000원이 남아 있어요. 먼저 환불하거나 정산해 주세요." 까지 준다.
+                   그런데 여기서 '다시 시도해주세요' 로 뭉개서 원장이 이유도 모른 채 계속 다시 눌렀다.
+                   `CustomerErrorText` 는 이미 이 코드를 처리하도록 만들어져 있었다(app-customer.js
+                   _friendlyError case 409) — 붙이기만 안 돼 있었다. */
+                const _txt = (typeof window.CustomerErrorText === 'function')
+                  ? window.CustomerErrorText(err, '삭제')
+                  : '삭제 실패 — 다시 시도해주세요';
+                if (window.showToast) window.showToast(_txt);
               });
           });
         } else if (act === 'edit') {
