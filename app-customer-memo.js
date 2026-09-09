@@ -361,6 +361,8 @@
   function openSearch() {
     const sheet = _ensureSearchSheet();
     sheet.style.display = 'block';
+    // [2026-09-09] 뒤로가기 등록 — 안 하면 back 이 이 시트 대신 고객 화면을 닫는다.
+    try { window._bindSheetBack && window._bindSheetBack('cmMemoSearch', sheet, closeSearch); } catch (_e) { void _e; }
     document.body.style.overflow = 'hidden';
     const input = sheet.querySelector('[data-cm-q]');
     if (input) setTimeout(() => input.focus(), 50);

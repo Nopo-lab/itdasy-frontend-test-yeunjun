@@ -181,6 +181,11 @@
     subEl.style.display = sub ? 'block' : 'none';
     sheet.querySelector('#msBody').innerHTML = htmlBody;
     sheet.style.display = 'flex';
+    /* [2026-09-09] 뒤로가기로 닫히게 등록. 안 하면 back 이 이 시트 대신 뒤 화면을 닫아
+       충전하려던 흐름이 통째로 날아간다(돈 화면이라 더 위험하다).
+       닫기 지점이 4곳(× · 배경탭 · 충전성공 · 사용성공)이라 각각에 _markSheetClosed 를
+       붙이면 하나 빠질 때 유령 hash 가 남는다 → DOM 에서 사라짐을 관찰하는 헬퍼를 쓴다. */
+    try { window._bindSheetBack && window._bindSheetBack('membershipSheet', sheet, () => { sheet.style.display = 'none'; }); } catch (_e) { void _e; }
   }
 
   // ── 충전 시트 ───────────────────────────────────────────────

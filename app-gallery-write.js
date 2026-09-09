@@ -348,6 +348,8 @@ function _showCaptionPublishPreview(photos, caption) {
   pop.querySelector('[data-write-preview-close]')?.addEventListener('click', () => { pop.style.display = 'none'; });
   pop.querySelector('[data-write-publish]')?.addEventListener('click', doPublishFromCaption);
   pop.style.display = 'flex';
+  // [2026-09-09] 뒤로가기 등록 — 발행 미리보기가 열린 채 back 이면 뒤 화면이 닫혔다.
+  try { window._bindSheetBack && window._bindSheetBack('writePublishPreview', pop, () => { pop.style.display = 'none'; }); } catch (_e) { void _e; }
   window._pubPhotos     = photos;
   window._pubPhotoTotal = total;
 

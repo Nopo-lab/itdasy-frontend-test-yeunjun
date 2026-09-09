@@ -275,6 +275,10 @@ function openCaptionScenarioPopup() {
 
   overlay.appendChild(sheet);
   document.body.appendChild(overlay);
+  /* [2026-09-09] 뒤로가기 등록. 이 팝업은 캡션 시나리오 선택 중이라 back 으로 뒤 화면이
+     닫히면 고르던 내용이 통째로 날아간다. 닫기 경로가 배경탭·완료·취소로 갈려 있어
+     DOM 사라짐을 관찰하는 헬퍼를 쓴다. */
+  try { window._bindSheetBack && window._bindSheetBack('captionScenario', overlay, () => _closeCaptionScenarioPopup(overlay)); } catch (_e) { void _e; }
 
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) _closeCaptionScenarioPopup(overlay);
@@ -685,6 +689,8 @@ function _previewCaptionOnInsta() {
     pop.style.display = 'none';
   });
   pop.style.display = 'flex';
+  // [2026-09-09] 발행 직전 화면 — back 으로 뒤가 닫히면 발행 흐름이 끊긴다.
+  try { window._bindSheetBack && window._bindSheetBack('captionPublishPreview', pop, closePublishPreview); } catch (_e) { void _e; }
 }
 
 async function regenerateCaption(overrides = {}) {

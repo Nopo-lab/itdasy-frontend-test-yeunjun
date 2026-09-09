@@ -4138,6 +4138,55 @@ window.refreshLastSyncBadges = function () {
     registry.set(name, { close: closeFn });
   };
 
+  /* ── [2026-09-09] 오버레이 한 줄 등록 헬퍼 ──────────────────────────────────
+     전수 조사 결과: `position:fixed; inset:0` 전체화면 오버레이를 쓰는 파일 50개 중
+     **32개가 뒤로가기 레지스트리에 미등록**이었다. 미등록이면 원장이 뒤로가기를 눌렀을 때
+     그 오버레이는 그대로 남고 **뒤에 있던 화면이 대신 닫힌다** — 작성 중이던 내용이 날아간다
+     (실측: 예약 폼 → 고객 선택창 → back → 예약 폼이 닫히고 선택창만 남음).
+     안드로이드 하드웨어 백은 같은 경로라, 스택이 비면 앱이 그대로 꺼진다.
+
+     왜 하나씩 못 고쳤나: 파일마다 닫는 방법이 제각각이다.
+       `pop.remove()` · `sheet.style.display='none'` · 이름 있는 close 함수 ·
+       배경 클릭 익명 핸들러 · × 버튼 · ESC — 한 파일에 닫기 지점이 4~7곳씩 있다.
+       전부에 `_markSheetClosed` 를 손으로 붙이면 하나만 빠져도 유령 hash 가 남는다
+       (그게 "뒤로가기 한 번이 먹통" 의 원인이었다 — _markSheetClosed 주석 참고).
+
+     그래서 **여는 곳 한 줄만** 부르면 닫힘은 DOM 에서 직접 관찰한다:
+       화면에서 사라짐(제거 or display:none or hidden) = 닫힘.
+     닫기 경로가 몇 개든, 나중에 새 경로가 생기든 자동으로 잡힌다.
+
+       window._bindSheetBack('membershipSheet', el, () => closeFn());
+
+     ⚠️ 이미 규약을 지키는 18개 파일은 건드리지 않는다. 두 번 등록하면 스택이 어긋난다. */
+  window._bindSheetBack = function (name, el, closeFn) {
+    try {
+      if (!name || !el || typeof closeFn !== 'function') return;
+      if (el.dataset && el.dataset.sheetBound === name) return;   // 같은 창 재오픈 시 중복 등록 방지
+      window._registerSheet(name, closeFn);
+      window._markSheetOpen(name);
+      if (el.dataset) el.dataset.sheetBound = name;
+
+      const gone = () => {
+        if (!el.isConnected) return true;
+        if (el.hidden) return true;
+        const cs = window.getComputedStyle(el);
+        return cs.display === 'none' || cs.visibility === 'hidden';
+      };
+      let done = false;
+      const finish = () => {
+        if (done) return; done = true;
+        try { obs.disconnect(); } catch (_e) { void _e; }
+        try { if (el.dataset) delete el.dataset.sheetBound; } catch (_e) { void _e; }
+        try { window._markSheetClosed(name); } catch (_e) { void _e; }
+      };
+      const obs = new MutationObserver(() => { if (gone()) finish(); });
+      obs.observe(el, { attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
+      if (el.parentNode) obs.observe(el.parentNode, { childList: true });
+      // 열자마자 이미 숨겨져 있으면(잘못된 호출) 바로 정리한다 — 유령 항목을 남기지 않는다.
+      if (gone()) finish();
+    } catch (_e) { void _e; }
+  };
+
   // ── [2026-09-07 반응형 게이트 BUG-7] 새로고침 뒤 남는 유령 hash 청소 ──
   //   재현: 고객관리를 열면 주소가 `#customers` 가 된다 → 새로고침 → 앱은 **홈으로** 뜨는데
   //   `#customers` 는 그대로 남는다. 그 상태에서 뒤로가기를 누르면 화면은 그대로이고
