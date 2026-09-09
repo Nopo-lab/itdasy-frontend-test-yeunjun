@@ -154,7 +154,11 @@ jobs:
             backup/*.sql.gz
             backup/README.txt
           retention-days: 30
-          if-no-files-found: warn
+          # [2026-09-08] warn -> error. 이번 사고가 정확히 이 계열이었다 —
+          #   업로드할 파일이 없는데 warning 만 내고 잡이 초록으로 끝나던 것.
+          #   README.txt 는 if: always() 로 항상 쓰이므로 정상 실행에서 이게 걸릴 일은 없다.
+          #   걸린다면 그건 진짜로 뭔가 잘못된 것이고, 그때 빨간불이어야 한다.
+          if-no-files-found: error
 
       # 알림을 게이트보다 먼저 — 게이트가 job 을 끝내버리기 전에 보낸다.
       - name: Notify Discord on failure
@@ -187,6 +191,14 @@ jobs:
         if: always()
         run: |
           FAILED=0
+          # [2026-09-08] 스텝 outcome 만 믿지 않고 **파일이 실제로 있는지** 본다.
+          #   덤프가 success 인데 아티팩트에 실데이터 백업이 없는 상태를 초록으로
+          #   내보내지 않기 위한 마지막 확인이다. outcome 과 실물이 어긋나면 실물을 믿는다.
+          LIVE_FILE="backup/itdasy_LIVE_${LIVE_REF}_${BACKUP_TS}.sql.gz"
+          if [ "${{ steps.live.outcome }}" = "success" ] && [ ! -s "$LIVE_FILE" ]; then
+            echo "::error::LIVE 덤프는 success 인데 파일이 없다 ($LIVE_FILE) — 백업이 만들어지지 않았다"
+            FAILED=1
+          fi
           if [ "${{ steps.live.outcome }}" = "failure" ]; then
             echo "::error::LIVE(실데이터) 백업 실패 — 최우선 확인"; FAILED=1
           fi
