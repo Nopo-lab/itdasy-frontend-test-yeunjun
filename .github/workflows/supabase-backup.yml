@@ -145,6 +145,46 @@ jobs:
           echo "ARCHIVE         : ${{ steps.archive.outcome }}"
           ls -lh backup/ 2>/dev/null | tail -5 || echo "(생성된 파일 없음)"
 
+      # ── GCS 업로드 (2026-09-09) ────────────────────────────────────────────
+      #
+      # 왜 아티팩트만으로 부족한가: GitHub artifact 는 백업 저장소가 아니라 CI 부산물이다.
+      #   · retention 30일이 지나면 자동 소멸한다. 실제로 이 레포에서 19개가 이미 만료돼
+      #     영구 소실됐다 (8/10 이전 복구점이 없다).
+      #   · repo 를 지우면 백업도 같이 사라진다 — 백업이 원본과 같은 운명에 묶인다.
+      #   · 수명주기·버전관리·삭제 방어가 없다.
+      #
+      # Supabase 는 현재 Free 플랜이라 PITR·일일 백업이 **없다**. 즉 이 백업이
+      #   실사용자 데이터의 유일한 복구 수단이다. 30일 만료에 맡길 수 없다.
+      #
+      # 버킷 gs://itdasy-db-backups (asia-northeast3, Cloud Run 과 같은 리전):
+      #   버전관리 ON · publicAccessPrevention=enforced · soft-delete 7일
+      #   itdasy_LIVE_*    30일 뒤 NEARLINE, 400일 뒤 삭제
+      #   itdasy_ARCHIVE_*  90일 뒤 삭제
+      #   (수명주기 접두사는 **실제 객체명**과 맞춰야 한다. 폴더처럼 live/ 로 걸어놨다가
+      #    parent:false 로 루트에 올라가서 규칙이 하나도 안 걸리던 걸 잡았다)
+      #
+      # 서비스계정 itdasy-db-backup 은 이 버킷에 roles/storage.objectCreator **만** 갖는다.
+      #   키가 새도 기존 백업을 읽거나 지울 수 없다. 넣기만 된다.
+      - name: Auth to GCS
+        id: gcsauth
+        if: always()
+        continue-on-error: true
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_BACKUP_SA_KEY }}
+
+      - name: Upload backups to GCS
+        id: gcs
+        if: always() && steps.gcsauth.outcome == 'success'
+        continue-on-error: true
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
+          path: backup
+          destination: itdasy-db-backups
+          parent: false
+          glob: '*.sql.gz'
+          process_gcloudignore: false
+
       - name: Upload artifact
         if: always()
         uses: actions/upload-artifact@v6
@@ -204,5 +244,12 @@ jobs:
           fi
           if [ "${{ steps.archive.outcome }}" = "failure" ]; then
             echo "::error::ARCHIVE 백업 실패"; FAILED=1
+          fi
+          # GCS 업로드가 조용히 실패하면 30일 뒤 사라지는 아티팩트만 남는다.
+          #   LIVE 덤프가 성공했는데 GCS 로 못 올라갔으면 그건 실패다.
+          if [ "${{ steps.live.outcome }}" = "success" ] \
+             && [ "${{ steps.gcs.outcome }}" != "success" ]; then
+            echo "::error::LIVE 백업이 GCS 로 올라가지 않았다 (auth=${{ steps.gcsauth.outcome }} upload=${{ steps.gcs.outcome }}) — 아티팩트는 30일 뒤 사라진다"
+            FAILED=1
           fi
           exit $FAILED
