@@ -492,6 +492,23 @@
   function _nameMatches(target, candidate) {
     if (!target || !candidate) return false;
     if (target === candidate) return 100;
+    // [P1 2026-09-09 실측] DB 이름에 **접두사**가 붙어 있으면 정확히 부른 이름도 '유사'로 떨어졌다.
+    //   실 Chrome: "E2E_A_박지우님 모레 오후 3시에 커트 예약 잡아줘"
+    //     → "🔍 정확히 일치하는 고객이 없어요. 비슷한 이름 후보예요:
+    //        · E2E_B_박지우현 · E2E_A_박지우"        ← 정확한 이름을 댔는데 되묻는다
+    //   이름 추출이 `[가-힣]{2,5}` 라 "박지우" 만 뽑고, `candidate.includes(target)` = 90 점이
+    //   되어 자동 확정(100)에 못 미친다. 게다가 "박지우현" 도 같은 90 이라 **다른 고객이
+    //   후보 1번으로 올라온다.** 되묻기 문구는 "정확한 이름으로 다시 알려주세요" 인데
+    //   이미 정확한 이름을 댔으므로 다시 말해도 같은 답이 나온다 — 빠져나갈 길이 없다.
+    //
+    //   운영 데이터에도 접두사 이름이 실제로 있다("(샘플) 이수민" — 시드·별칭 표기).
+    //   그래서 **이름 경계에서 끝나는 접두사형은 같은 사람**으로 본다.
+    //   백엔드 `_customer_ids_by_name` 이 쓰는 규칙과 같은 계약이다(형제 경로 정렬).
+    //   "박지우현" 은 "박지우" 로 끝나지 않으므로 여전히 90 — 동명 유사자는 안 올라온다.
+    if (candidate.endsWith(target) && candidate.length > target.length) {
+      const sep = candidate.charAt(candidate.length - target.length - 1);
+      if (/[^가-힣]/.test(sep)) return 100;
+    }
     if (candidate.includes(target)) return 90;
     if (target.includes(candidate)) return 80;
     // 끝 2글자 매칭 (성 제외 이름)
