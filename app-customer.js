@@ -1110,7 +1110,12 @@
 
   // [2026-04-29 E1] 스와이프 액션 메뉴
   function _openSwipeActions(customerId) {
-    const c = (_cache || []).find(x => x.id === customerId);
+    // [P0 2026-09-09] `row.dataset.id` 는 **문자열**("682"), `_cache[].id` 는 서버 JSON 의 **숫자**(682).
+    //   `===` 라서 항상 못 찾고 `if (!c) return` 으로 조용히 끝났다 → 이 시트가 한 번도 안 열렸다.
+    //   그 결과 **회원권 충전의 유일한 진입점이 죽어** 앱에서 회원권을 못 썼다(매출 입력·예약 잡기도 같이).
+    //   실 Chrome 실측: 스와이프 핸들러는 정상 도달(row 가 translateX 120px 까지 움직임)하는데 시트만 안 떴다.
+    //   같은 저장소의 다른 경로(app-calendar-view.js·app-dm-manual-replies.js)는 이미 String() 정규화를 쓴다.
+    const c = (_cache || []).find(x => String(x.id) === String(customerId));
     if (!c) return;
     const old = document.getElementById('custSwipeActions');
     if (old) old.remove();
@@ -1154,7 +1159,8 @@
   }
 
   function _confirmDelete(customerId) {
-    const c = (_cache || []).find(x => x.id === customerId);
+    // [P0 2026-09-09] 위와 같은 문자열/숫자 불일치 — 왼쪽 스와이프 삭제가 조용히 아무 일도 안 했다.
+    const c = (_cache || []).find(x => String(x.id) === String(customerId));
     if (!c) return;
     // [A7] 삭제 확인 메시지 통일
     window._inlineConfirm('이 고객을 삭제하면 시술 기록도 함께 삭제돼요. 계속할까요?', () => {
@@ -1274,7 +1280,11 @@
     //   실제로는 매출·시술 기록이 하나도 안 지워진다(실측: 삭제 전후 이번달 매출 927,000원 동일,
     //   매출 목록엔 그 손님 이름이 그대로 남음). 지워진다고 겁주는 건 안 지워지고,
     //   정작 되돌릴 수 없는 것(회원권 잔액)은 말하지 않았다.
-    const c = (_cache || []).find(x => x.id === id);
+    /* [P0 2026-09-09 · 돈] 호출부가 `t.dataset.customerId`(문자열)를 넘기는데 `_cache[].id` 는 숫자라
+       `===` 가 항상 false → `c`=undefined → **bal 이 늘 0** 이었다. 그래서 회원권 잔액이 남은 손님도
+       "잔액 있음" 경고 없이 삭제 확인창으로 직행했다.
+       실측(운영 DB, 테스트 고객): 잔액 50,000원인데 이 표현식은 못 찾아 0 으로 판정했다. */
+    const c = (_cache || []).find(x => String(x.id) === String(id));
     const bal = Number(c && c.membership_balance) || 0;
     const msg = bal > 0
       ? `${c.name}님은 회원권 잔액이 ${bal.toLocaleString()}원 남아 있어요.\n먼저 환불·정산한 뒤에 삭제할 수 있어요.`
