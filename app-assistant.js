@@ -2819,11 +2819,52 @@
       body.original_payload = action._ai_original;
     }
     if (action._source_question) body.source_question = action._source_question;
-    const res = await apiFetch('/assistant/execute', {
-      method: 'POST',
-      headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    // [P0 2026-09-09 실측] 여기엔 **타임아웃이 없었다.**
+    //   `apiFetch` 는 비-GET 이면 그냥 `fetch(url, opts)` 라 AbortController 도 없다.
+    //   요청이 멈추면 카드가 "저장 중…" 에서 **영원히** 머문다(실측: 60초 넘게 그대로).
+    //   `/assistant/ask` 는 AbortController 를 쓰는데 execute 만 빠져 있었다 — 형제 경로 누락.
+    //
+    //   그리고 그게 **이중 청구**로 이어졌다. 실측(실 Chrome · 운영 DB · 서빙 d1f2884):
+    //     잔액 0 → "회원권 30000원 충전" → 확인 → 서버는 커밋(잔액 30,000)
+    //     → 응답만 유실 → 화면은 계속 "저장 중…"
+    //     → 원장이 결과를 모르니 같은 요청을 다시 함 → 확인 → **잔액 60,000**
+    //   돈이 두 번 들어갔다.
+    //
+    //   서버 멱등은 멀쩡하다 — 같은 `client_txn_id` 로 재전송하면 잔액이 안 움직인다(실측:
+    //   65,000 → 65,000, 같은 응답 반환). 문제는 **클라이언트가 그 키로 재시도할 방법이 없던 것**이다.
+    //   화면이 멈춰 있으니 원장은 새 요청을 만들고, 새 카드는 새 키를 받는다.
+    //
+    //   그래서: 타임아웃을 두고, 끊기면 **같은 `_txn_id` 로 한 번 자동 재시도**한다.
+    //   서버가 멱등이므로 이미 커밋됐다면 그 결과를 그대로 돌려주고(중복 없음),
+    //   아직 안 갔다면 그때 실행된다. 둘 다 안 되면 "결과를 확인하지 못했어요" 로 알린다 —
+    //   타임아웃은 "안 갔다" 가 아니라 **"모른다"** 이므로 실패로 단정하지 않는다.
+    const EXEC_TIMEOUT_MS = 25000;
+    async function _postExec() {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), EXEC_TIMEOUT_MS);
+      try {
+        return await apiFetch('/assistant/execute', {
+          method: 'POST',
+          headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: ctrl.signal,
+        });
+      } finally { clearTimeout(timer); }
+    }
+    let res;
+    try {
+      res = await _postExec();
+    } catch (_e1) {
+      // 끊겼다 — 결과를 모른다. 같은 멱등키로 한 번만 다시 물어본다.
+      try {
+        res = await _postExec();
+      } catch (_e2) {
+        const e0 = new Error('결과를 확인하지 못했어요. 연결이 끊겨서 처리됐는지 알 수 없어요. '
+          + '회원권·매출 화면에서 반영됐는지 확인한 뒤 다시 시도해 주세요.');
+        e0.unknownOutcome = true;
+        throw e0;
+      }
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       const e2 = new Error(_executeErrorMessage(err, res.status));
