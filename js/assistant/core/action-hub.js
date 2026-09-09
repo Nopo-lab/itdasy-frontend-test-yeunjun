@@ -324,6 +324,10 @@
   }
 
   var PRICE_INTENT = /가격표|메뉴판|가격\s*안내|가격\s*정리|시술가|가격.*(만들|올려|정리|안내|보여)/;
+  // 돈을 **쓰는** 요청은 가격표가 아니다 — 명사와 동작이 같이 있을 때만 제외한다
+  //   (가격표에 '회원권 10만원' 을 적는 건 정상이라 명사만으로 막으면 진짜 가격표가 죽는다)
+  var MONEY_NOUN = /(회원권|잔액|선불금|정액권|매출|환불|정산|결제|예약금)/;
+  var MONEY_WRITE_VERB = /(충전|차감|사용|추가|입력|기록|등록|환불|정산|빼줘|빼주|넣어|깎아)/;
   var PRICE_TOKEN = /(\d+(?:\.\d+)?\s*만\s*원?|\d[\d,]*\s*원?)/;
   var PHONE_TOKEN = /01[016789][-\s]?\d{3,4}[-\s]?\d{4}/;
   var INDUSTRIES = [
@@ -399,7 +403,26 @@
   }
   function parsePriceListRequest(text) {
     var raw = String(text || '').trim();
+    // [P0 2026-09-09 실측] 돈을 **쓰는** 요청이 가격표 초안으로 통째로 새고 있었다.
+    //   배포본 6be453c · 실 Chrome:
+    //     "오늘 매출 50000원 입력해줘"        → "가격표 초안을 만들었어요 / - 오늘 매출 50,000원 / - 원 입력해줘"
+    //     "E2E_A_박지우님 회원권 30000원 충전해줘" → 같은 가격표 초안
+    //     "…회원권에서 30000원 사용해줘" · "…50000원 매출 추가해줘" · "…30000원 환불해줘" 전부 matched:true
+    //   매출도 회원권도 DB 는 그대로였다 — **요청이 조용히 사라지고 엉뚱한 기능이 답한다.**
+    //   원장이 하루 매출을 넣으려 할 때마다 이렇게 된다.
+    //
+    //   원인은 아래 `rows.length >= 2` 다. "…50000원 입력해줘" 가 금액 토큰에서 잘려
+    //   "오늘 매출 | 50,000원" + "원 입력해줘" 두 줄이 되어 **가격표 두 줄로 보인다.**
+    //   바로 이 줄 위에 `예약` 제외가 이미 있었는데 **예약 하나만** 막고 있었다 —
+    //   또 그 패턴이다(한 경로엔 가드, 형제 경로엔 없음).
+    //
+    //   막는 기준은 명사가 아니라 **동작**이다. 가격표에 "회원권 10만원" 을 적는 건 정상이므로
+    //   `회원권` 만으로 막으면 진짜 가격표를 죽인다. 돈 명사 + 쓰기 동사가 함께 있을 때만 뺀다.
+    //   가격표 의도(PRICE_INTENT)가 명시돼 있으면 예전처럼 가격표로 본다.
     if (/예약/.test(raw) && !PRICE_INTENT.test(raw)) {
+      return { matched: false, priceMissing: false, priced: 0, industry: null, rows: [], raw: raw };
+    }
+    if (MONEY_NOUN.test(raw) && MONEY_WRITE_VERB.test(raw) && !PRICE_INTENT.test(raw)) {
       return { matched: false, priceMissing: false, priced: 0, industry: null, rows: [], raw: raw };
     }
     if (PHONE_TOKEN.test(raw) && !_hasPriceValue(raw.replace(PHONE_TOKEN, ' '))) {
