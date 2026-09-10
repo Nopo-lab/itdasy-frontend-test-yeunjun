@@ -1211,6 +1211,29 @@
     if (spec.opacity != null) css += ';opacity:' + spec.opacity;
     t.style.cssText = css; L.el.appendChild(t); L.tx = t;
     // [#2c] 긴 시술내용/두 줄 이상도 안 잘리게 — 텍스트 블록이 사진 높이의 ~1/3을 넘으면 폰트를 줄여 자동으로 맞춘다.
+    /* [BUG-07 2026-09-10] 저장 당시 줄 수를 지킨다.
+       폰트 메트릭이 크기에 선형이 아니라(실측 4%), 상대폭으로 되살린 max-width 가 몇 px 모자라
+       한 줄짜리가 두 줄로 접히는 일이 있었다. 줄이 **늘어난 경우에만** 폭을 넓혀 되돌린다 —
+       의도해서 두 줄로 만든 문구는 건드리지 않는다. 스테이지 폭을 넘지 않게 상한을 둔다.
+       (wrapW 는 원장이 직접 정한 고정폭이라 여기서 손대지 않는다.) */
+    if (spec.lines > 0 && spec.wrapW == null && spec.w != null && R.width) {
+      var _want = spec.lines, _cap = Math.floor(R.width * 0.98), _cur = Math.ceil(spec.w * R.width) + 1;
+      if (_want === 1) {
+        /* 한 줄이었으면 **자연 폭을 직접 재서** 정확히 맞춘다 — 루프보다 정확하고 한 번에 끝난다.
+           (줄바꿈을 잠깐 끄고 재고 되돌린다. 대부분의 접힘 사고가 이 경우다.) */
+        var _ws = t.style.whiteSpace, _mw = t.style.maxWidth;
+        t.style.whiteSpace = 'pre'; t.style.maxWidth = 'none';
+        var _nat = Math.ceil(t.getBoundingClientRect().width) + 1;
+        t.style.whiteSpace = _ws || 'pre-wrap'; t.style.maxWidth = _mw;
+        if (_nat > _cur) { _cur = Math.min(_cap, _nat); t.style.maxWidth = _cur + 'px'; }
+      } else {
+        var _guard = 0;
+        while (_lineCount(t, L.fontSize) > _want && _cur < _cap && _guard++ < 40) {
+          _cur = Math.min(_cap, Math.ceil(_cur * 1.08) + 1);
+          t.style.maxWidth = _cur + 'px';
+        }
+      }
+    }
     if (spec.w != null && R.height) { var _maxH = R.height * 0.34, _g = 0; while (L.el.offsetHeight > _maxH && L.fontSize > 13 && _g++ < 16) { L.fontSize -= 2; t.style.fontSize = L.fontSize + 'px'; } }
     /* [2026-09-03 P3 실측] offsetWidth/Height 는 **정수로 반올림**된 값이고, _serLayer 는
        getBoundingClientRect 의 **소수 값**으로 중심을 계산한다. 두 척도가 달라서
@@ -2857,6 +2880,21 @@
 
   // [#4/#8/#11/#16] 재편집 이어가기 — 편집기 '전체 상태'를 직렬화/복원.
   //   metaLayers 는 '우리샵 학습'용이라 도형·스티커를 버린다. 재편집은 전부 보존해야 하므로 별도 직렬화.
+  /* [BUG-07 2026-09-10] 줄바꿈을 **모델 속성**으로 고정한다.
+     복원은 저장된 상대폭으로 max-width 를 걸고 폰트도 상대크기로 되살리는데,
+     폰트 메트릭이 크기에 **선형이 아니다** — 실측: 같은 글자의 렌더 폭 비율이
+     스테이지 505→675 에서 0.2398 → 0.2302 (4% 변동). 여유가 적은 문구는 이 4% 때문에
+     한 줄이 두 줄로 접힌다(2026-09-03 에 0.47px 부족으로 같은 사고가 이미 있었고 +1px 로 땜질했다).
+     그래서 '몇 줄이었는지'를 같이 저장하고, 복원 후 줄 수가 늘었으면 폭을 넓혀 되돌린다.
+     늘어난 경우에만 넓히므로 **의도한 줄바꿈은 그대로** 유지된다. */
+  function _lineCount(el, fontSizePx) {
+    try {
+      var h = el.getBoundingClientRect().height || el.offsetHeight || 0;
+      var lh = parseFloat(getComputedStyle(el).lineHeight);
+      if (!isFinite(lh) || lh <= 0) lh = (fontSizePx || 30) * 1.16;
+      return Math.max(1, Math.round(h / lh));
+    } catch (_e) { return 1; }
+  }
   function _serLayer(L) {
     var R = refs.stage.getBoundingClientRect(); if (!R.width) return null;
     var b = L.el.getBoundingClientRect();
@@ -2891,6 +2929,8 @@
     base.size = fs; base.weight = L.weight || (L.font && L.font.weight); base.stroke = !!L.stroke; base.shadow = !!L.shadow;
     // 원장이 '가로 늘리기' 로 직접 정한 폭 — 안 실으면 재편집 때 줄바꿈 폭이 통째로 날아간다.
     if (L.wrapW) base.wrapW = L.wrapW / R.width;
+    // [BUG-07] 이 순간 실제로 몇 줄이었는지. 복원이 이걸 지킨다(늘어난 경우에만 폭을 넓힘).
+    if (L.tx) base.lines = _lineCount(L.tx, L.fontSize);
     return base;
   }
   // [#5/#6] 사진별 레이어 수집 — 단일모드에서 각 장(현재 장 포함)이 가진 텍스트/스티커 레이어를 { idx, photoUrl, layers } 로.

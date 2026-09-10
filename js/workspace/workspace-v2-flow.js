@@ -1391,6 +1391,49 @@
   }
   // 특정 섹션만 교체 (전체 재렌더 회피)
   function _setEditSection(sel, html) { if (!el) return; var c = el.querySelector('[data-fs="edit"] ' + sel); if (c) c.innerHTML = html; }
+  /* [Editor A 2026-09-10 실측] 보정 도구를 눌러도 **조절 슬라이더가 화면에 안 나왔다.**
+     780×844 에서 대비를 누르면 슬라이더가 y=780 에 그려지는데 그 자리는 CTA 액션바(763~844) 뒤라
+     `elementFromPoint` 가 actionbar 를 준다 = 보이지도 눌리지도 않는다. 자동 스크롤도 없어서
+     원장 눈에는 '눌러도 아무 일 없는 버튼' 이다(기능이 죽은 걸로 보인다).
+     → 도구를 고르면 그 조절부를 **사진 아래 ~ 액션바 위** 밴드로 끌어온다.
+     이미 그 밴드 안에 있으면 건드리지 않는다(불필요한 튐 방지). */
+  function _scrollAdjIntoView(sel) {
+    try {
+      if (!el) return;
+      var sec = el.querySelector('[data-fs="edit"] ' + (sel || '[data-ed-basic]'));
+      if (!sec) return;
+      var ctl = sec.querySelector('input[type=range]') || sec.querySelector('button') || sec;
+      var sc = ctl.closest('.wsv2flow__s'); if (!sc) return;
+      var ph = el.querySelector('[data-fs="edit"] .ed-photo');
+      var bar = el.querySelector('.wsv2flow__actionbar');
+      var top = ph ? ph.getBoundingClientRect().bottom : sc.getBoundingClientRect().top;
+      var bot = bar ? bar.getBoundingClientRect().top : sc.getBoundingClientRect().bottom;
+      if (!(bot > top)) return;
+      /* [2026-09-10 2차 실측] 주 컨트롤만 기준으로 잡았더니, 배경 패널처럼 **아래로 더 긴** 섹션에서
+         색상 스와치 10개가 전부 CTA 버튼에 가려 도달 불가였다(y=768 vs 액션바 763).
+         🔑 그런데 섹션 래퍼(`[data-ed-basic]`) 자체는 **높이 0 으로 collapse** 한다(실측 rect [0,0,0]).
+            그걸 그대로 쓰면 delta 가 -755 로 나와 오히려 맨 위로 튄다 — 자식들의 **합집합**으로 잰다. */
+      var kids = Array.prototype.filter.call(sec.querySelectorAll('*'), function (n) {
+        var rr = n.getBoundingClientRect(); return rr.width > 0 && rr.height > 0;
+      });
+      var sTop = Infinity, sBot = -Infinity;
+      kids.forEach(function (n) { var rr = n.getBoundingClientRect(); if (rr.top < sTop) sTop = rr.top; if (rr.bottom > sBot) sBot = rr.bottom; });
+      if (!isFinite(sTop) || !isFinite(sBot)) { sTop = ctl.getBoundingClientRect().top; sBot = ctl.getBoundingClientRect().bottom; }
+      /* 규칙 하나로 둔다: **컨트롤이 있는 아래쪽**을 액션바 위로 올린다.
+         섹션이 밴드에 들어가는 짧은 경우에만 위로 넘치지 않게 클램프한다
+         (긴 섹션에서 클램프하면 정작 조절부가 계속 가려진다 — 배경 패널 스와치 10개가 그랬다). */
+      var band = bot - top - 8;
+      if (sTop >= top && sBot <= bot - 8) return;                // 이미 다 보이면 그대로
+      var fits = (sBot - sTop) <= band;
+      /* 짧은 섹션 = 하단(조절부)을 액션바 위로. 긴 섹션 = **상단**을 밴드 위쪽에.
+         긴 걸 하단 정렬하면 정작 먼저 누르는 버튼(원본/인물만/배경흐림)이 사진 뒤로 숨는다 —
+         실측에서 스와치 10/10 은 보이는데 버튼 0/3, 도구 0/6 이 됐다. 나머지는 스크롤로 닿는다. */
+      var delta = fits ? (sBot - (bot - 8)) : (sTop - (top + 8));
+      if (fits && (sTop - delta) < top) delta = sTop - top;
+      if (!isFinite(delta) || Math.abs(delta) < 1) return;
+      sc.scrollTop = Math.max(0, Math.min(sc.scrollHeight - sc.clientHeight, sc.scrollTop + delta));
+    } catch (_e) { void _e; }
+  }
   function _paintEditPhoto() {
     var p = el && el.querySelector('[data-fs="edit"] [data-fl-edphoto]'); if (!p) return;
     var pu = _editPhotoUrls();
@@ -3156,9 +3199,9 @@
       var fold = t.closest('[data-fl-fold]'); if (fold) { var fk = fold.getAttribute('data-fl-fold'); if (fk === 'bg') { d.bgOpen = !d.bgOpen; _setEditSection('[data-ed-basic]', _mainAdjustHtml()); } else if (fk === 'tpl') { d.tplOpen = !d.tplOpen; _renderTplSection(); } return; }
       var edsel = t.closest('[data-fl-editsel]'); if (edsel) { return switchEditPhoto(+edsel.getAttribute('data-fl-editsel')); }
       var edswipe = t.closest('[data-fl-edswipe]'); if (edswipe) { return _stepEditPhoto(edswipe.getAttribute('data-fl-edswipe') === 'next' ? 1 : -1); }   // [v550] PC 화살표
-	      var basictool = t.closest('[data-fl-basictool]'); if (basictool) { d.basicTool = basictool.getAttribute('data-fl-basictool'); _setEditSection('[data-ed-basic]', _mainAdjustHtml()); return; }
+	      var basictool = t.closest('[data-fl-basictool]'); if (basictool) { d.basicTool = basictool.getAttribute('data-fl-basictool'); _setEditSection('[data-ed-basic]', _mainAdjustHtml()); /* [Editor A] 배경 패널은 세로가 길다 — 사진을 줄여 조절부 자리를 만든다(CSS is-tallpanel). */ try { if (el) el.classList.toggle('is-tallpanel', d.basicTool === 'background'); } catch (_tp) { void _tp; } _scrollAdjIntoView('[data-ed-basic]'); return; }
 	      var edtab = t.closest('[data-fl-edtab]'); if (edtab) { d.editTab = edtab.getAttribute('data-fl-edtab'); _setEditSection('[data-ed-adv]', _advFoldHtml()); _renderVpTools(); if (d.maskView || d.maskPaint) _renderMaskOverlay(); return; }
-	      var beautytool = t.closest('[data-fl-beautytool]'); if (beautytool) { d.precTool = beautytool.getAttribute('data-fl-beautytool'); _setEditSection('[data-ed-adv]', _advFoldHtml()); return; }
+	      var beautytool = t.closest('[data-fl-beautytool]'); if (beautytool) { d.precTool = beautytool.getAttribute('data-fl-beautytool'); _setEditSection('[data-ed-adv]', _advFoldHtml()); _scrollAdjIntoView('[data-ed-adv]'); return; }
       if (t.closest('[data-fl-bgpick]')) { el.querySelector('[data-fl-bgfile]').click(); return; }
       var bgb = t.closest('[data-fl-bg]'); if (bgb) { return applyBg(bgb.getAttribute('data-fl-bg')); }
       var bgc = t.closest('[data-fl-bgcolor]'); if (bgc) { d.bgColor = bgc.getAttribute('data-fl-bgcolor'); return applyBg('color'); }
@@ -5017,16 +5060,28 @@
   // ── [구조 통합] 프로그램/자연어 명령 API — 잇비가 작업실 전 기능을 호출하는 단일 진입점 ──
   //   기존 내부 함수만 재사용(로직/저장 스키마 미변경). 화면 안 열렸을 때 'open' 외 명령은 무시.
   function _flowReady() { return !!(el && el.classList.contains('is-open') && d); }
+  /* [2026-09-10 실측] 예전엔 **아무것도 안 바꾸고도 항상 ok:true** 였다.
+     `{type:'adjust', brightness:60}`(set/delta 없이 평평한 키)나 존재하지 않는 키를 보내도
+     ok:true 라, 잇비는 원장에게 "밝기 낮췄어요" 라고 말하는데 화면은 그대로였다.
+     (2026-09-08 잇비 정직성 감사에서 잡은 것과 같은 계열 — 실행기가 안 한 걸 했다고 보고한다.)
+     → 인식한 키가 하나도 없으면 실패로 돌려준다. 되돌리기 스냅샷도 그때는 쌓지 않는다
+       (안 그러면 헛 커맨드가 ↩ 스택을 오염시킨다). */
   function _applyAdjustPatch(opts) {
     if (!_flowReady()) return { ok: false, reason: 'not_open' };
+    opts = opts || {};
+    var set = opts.set || null, delta = opts.delta || null, beauty = opts.beauty || null;
+    var applied = [];
+    if (set) Object.keys(set).forEach(function (k) { if (k in d.adjust) applied.push(k); });
+    if (delta) Object.keys(delta).forEach(function (k) { if (k in d.adjust) applied.push(k); });
+    if (beauty) Object.keys(beauty).forEach(function (k) { if (k in d.beauty) applied.push('beauty.' + k); });
+    if (!applied.length) return { ok: false, reason: 'no_known_adjust_key', got: Object.keys(opts).filter(function (k) { return k !== 'type'; }) };
     d.undo = d.undo || []; d.undo.push(_snapEdit()); if (d.undo.length > 30) d.undo.shift(); d.redo = [];
-    var set = opts.set || null, delta = opts.delta || null;
     if (set) Object.keys(set).forEach(function (k) { if (k in d.adjust) d.adjust[k] = Math.max(-100, Math.min(100, +set[k] || 0)); });
     if (delta) Object.keys(delta).forEach(function (k) { if (k in d.adjust) d.adjust[k] = Math.max(-100, Math.min(100, (+d.adjust[k] || 0) + (+delta[k] || 0))); });
-    if (opts.beauty) Object.keys(opts.beauty).forEach(function (k) { if (k in d.beauty) d.beauty[k] = Math.max(0, Math.min(100, +opts.beauty[k] || 0)); });
+    if (beauty) Object.keys(beauty).forEach(function (k) { if (k in d.beauty) d.beauty[k] = Math.max(0, Math.min(100, +beauty[k] || 0)); });
     if (cur === 'edit') { _paintEditPhoto(); _setEditSection('[data-ed-basic]', _mainAdjustHtml()); _setEditSection('[data-ed-adv]', _advFoldHtml()); _setEditSection('[data-ed-bottom]', _editBottomHtml()); }
     _refreshPreview();
-    return { ok: true };
+    return { ok: true, applied: applied };
   }
   // 이름으로 고객 연결 — 전역 Customer.search 우선, 없으면 최근 고객 매칭. 못 찾으면 connect 화면 안내.
   // [T-104 P4] _connectByName → flow/connect.js
