@@ -235,9 +235,14 @@ describe('[Editor 신뢰성] 기존 계약 회귀', () => {
   });
   test('사용자가 바꾸는 스타일이 되돌리기 대상이다 (BUG-03 회귀)', () => {
     // 폰트·색·정렬은 각 apply 함수가 _pushStyle 로 확정한다
-    expect(SRC).toMatch(/function applyFont\(key\)[\s\S]{0,400}?_pushStyle\(L, _b\);/);
-    expect(SRC).toMatch(/function applyColor\(c\)[\s\S]{0,400}?_pushStyle\(L, _b\);/);
-    expect(SRC).toMatch(/function applyAlign\(a\)[\s\S]{0,400}?_pushStyle\(L, _b\);/);
+    /* [2026-09-11] 400자 창 → **함수 본문**으로. 자리 보정이 들어가 본문이 길어졌다.
+       계약은 '각 apply 가 _pushStyle 로 확정한다' 이지 '400자 안에 있다'가 아니다. */
+    ['applyFont(key)', 'applyColor(c)', 'applyAlign(a)'].forEach((sig) => {
+      const i = SRC.indexOf('function ' + sig);
+      expect(i).toBeGreaterThan(0);
+      const body = SRC.slice(i, SRC.indexOf('\n  function ', i + 10));
+      expect(body).toContain('_pushStyle(L, _b);');
+    });
     // 크기·보정은 드래그가 끝날 때(change) 한 번만 쌓는다
     expect(SRC).toContain("_pushStyle(_sizeStyleSnap.L, _sizeStyleSnap.v)");
     expect(SRC).toContain("_pushAdj(_adjSnap.idx, _adjSnap.v)");

@@ -77,8 +77,14 @@ describe('③ 비율 검증 — 손상된 editState 가 화면을 뭉개던 것 
 
 describe('④ 저장→복원 왕복 무손실 (P1/P3)', () => {
   test('텍스트 폭을 반올림이 아니라 올림+1 로 복원한다 (한 줄이 두 줄로 접히던 것)', () => {
-    expect(editorSrc).toContain("css += ';max-width:' + (Math.ceil(spec.w * R.width) + 1) + 'px'");
+    expect(editorSrc).toContain('Math.ceil(spec.w * R.width) + 1');
     expect(editorSrc).not.toContain("';max-width:' + Math.round(spec.w * R.width)");
+  });
+  /* [2026-09-11] `+1` 은 **왕복마다 누적된다** — 실측(Chrome, 스테이지 533px):
+     저장→재편집 3회에 max-width 가 469 → 470 → 471px. 상한이 없으면 반복 재편집만으로
+     상자가 스테이지보다 넓어져 BUG-07 이전처럼 다시 잘리기 시작한다. */
+  test('그 +1 이 무한히 누적되지 않게 스테이지 폭으로 막는다', () => {
+    expect(editorSrc).toMatch(/max-width:'\s*\+\s*Math\.min\(Math\.ceil\(spec\.w \* R\.width\) \+ 1, Math\.round\(R\.width\)\)/);
   });
   test('실측 수치로 재현 — 145.469px 를 반올림하면 부족, 올림+1 이면 충분', () => {
     const need = 0.3879166666666667 * 375;   // 실제 렌더 폭

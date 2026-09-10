@@ -678,6 +678,23 @@
     S.layers.push(L);
     return L;
   }
+  /* [2026-09-11] 글자 박스를 스테이지 안에 유지한다.
+     🔴 예전 동작: `placeCenter(L, 180, 50)` 이 **글자를 치기 전 180px 기준**으로 왼쪽 좌표를 잡고,
+     그 뒤로 글자가 오른쪽으로만 자랐다. 줄바꿈도 클램프도 없어서(white-space:pre · max-width:none)
+     21자짜리 평범한 한글 문장이 스테이지를 넘어갔다 — 화면에서도, **발행본에서도 잘렸다**
+     (실측: 스테이지 656px 에서 21자 → 오른쪽 끝 1.056 / 36자 → 1.499).
+     규칙: 원장이 아직 안 옮긴 글자는 가로 가운데를 지킨다(치는 대로 좌우로 같이 자란다).
+     한 번 옮긴 뒤에는 그 위치를 존중하되, 박스가 스테이지 밖으로 나가면 되돌려 넣는다. */
+  function _fitTextInStage(L) {
+    if (!L || !L.el || !refs.stage) return;
+    var R = refs.stage.getBoundingClientRect(); if (!R.width) return;
+    var w = L.el.offsetWidth * (L.scale || 1), h = L.el.offsetHeight * (L.scale || 1);
+    if (!L._moved) L.x = (R.width - w) / 2;
+    // 박스가 스테이지보다 크면 클램프가 의미 없다 — 그때는 가운데로 둔다.
+    L.x = (w >= R.width) ? (R.width - w) / 2 : Math.max(0, Math.min(R.width - w, L.x));
+    L.y = (h >= R.height) ? (R.height - h) / 2 : Math.max(0, Math.min(R.height - h, L.y));
+    applyXf(L);
+  }
   function placeCenter(L, w, h) {
     var r = refs.stage.getBoundingClientRect();
     L.x = r.width / 2 - (w || L.el.offsetWidth) / 2;
@@ -1082,6 +1099,7 @@
     }
     if (!drag) return;
     if (S) _ps().moved = true;   // [P2-1] 사용자가 직접 옮기면 자동 회피 우선권 해제 — **이 장에 한해서**
+    drag.L._moved = true;   // [2026-09-11] 한 번 옮기면 자동 가운데 정렬을 멈춘다(원장 배치 존중)
     drag.L.x = drag.ox + (e.clientX - drag.sx);
     drag.L.y = drag.oy + (e.clientY - drag.sy);
     drag.moved = true;   // [#9] 실제로 움직였을 때만 되돌리기 스택에 남긴다(탭만 하면 안 남김)
@@ -1212,7 +1230,17 @@
     L.tstyle = 'shadow';   // [2026-09-11] 예전엔 CSS 가 전원에게 그림자를 강제했다 — 기본값을 맞춰 보이는 건 그대로.
     // [2026-07-26 원영] white-space:pre — 편집 중 자동 줄바꿈 금지(엔터 친 곳만 줄바꿈).
     //   export 캔버스는 split('\n')으로 엔터만 줄바꿈이라, 편집 화면도 동일해야 WYSIWYG.
-    var t = el('div', 'itl-text'); t.textContent = L.text; t.style.cssText = 'font-family:' + L.font.family + ';font-weight:' + L.font.weight + ';color:' + L.color + ';text-align:center;font-size:' + L.fontSize + 'px;white-space:pre';
+    /* [2026-09-11] 예전엔 `white-space:pre` 라 자동 줄바꿈이 없었다. 그 주석의 근거는
+       "export 가 split('\n') 이라 화면도 같아야 한다" 였는데, 지금 굽기는 `_textLines` 로
+       **실제 렌더된 줄 박스**를 재므로 그 전제가 사라졌다(소프트 줄바꿈도 그대로 잡는다).
+       복원 경로(_addShopLayerText)는 이미 pre-wrap + keep-all 이라 타이핑과 복원이 갈라져 있었다.
+       max-width 는 스테이지의 88% — 넘치면 잘리는 게 아니라 어절 단위로 접힌다. */
+    var _stR = refs.stage.getBoundingClientRect();
+    var t = el('div', 'itl-text'); t.textContent = L.text;
+    t.style.cssText = 'font-family:' + L.font.family + ';font-weight:' + L.font.weight + ';color:' + L.color
+      + ';text-align:center;font-size:' + L.fontSize + 'px'
+      + ';white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere'
+      + (_stR.width ? ';max-width:' + Math.round(_stR.width * 0.88) + 'px' : '');
     L.el.appendChild(t); L.tx = t;
     _applyTextStyle(L);
     placeCenter(L, 180, 50); selectLayer(L);
@@ -1237,7 +1265,10 @@
       //   두 줄 입력이 한 줄로 뭉쳤다(미리보기·export·재편집 3곳 불일치). innerText 는 개행을 \n 으로 보존.
       var _t = (L.tx.innerText != null ? L.tx.innerText : L.tx.textContent) || '';
       L.text = _t.replace(/ /g, ' ').replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '');
+      _fitTextInStage(L);   // [2026-09-11] 다 치고 나면 박스를 스테이지 안으로(안 그러면 발행본에서 잘린다)
     }, { once: true });
+    // 치는 동안에도 따라오게 — blur 까지 기다리면 원장이 잘린 상태를 보면서 입력하게 된다
+    L.tx.addEventListener('input', function () { _fitTextInStage(L); });
   }
   /* ── 우리샵 스타일 입력 레이어 렌더(학습 round-trip용) ── */
   function fontByKey(k) { for (var i = 0; i < FONTS.length; i++) { if (FONTS[i].key === k) return FONTS[i]; } return null; }
@@ -1298,7 +1329,10 @@
        [wrapW] 원장이 '가로 늘리기' 핸들로 **직접 정한 폭**은 max-width 가 아니라 고정 width 다.
        예전엔 _serLayer 가 이 값을 안 실어서 재편집 때 통째로 사라졌다. */
     if (spec.wrapW != null) { L.wrapW = Math.max(40, Math.round(spec.wrapW * R.width)); css += ';width:' + L.wrapW + 'px'; }
-    else if (spec.w != null) css += ';max-width:' + (Math.ceil(spec.w * R.width) + 1) + 'px';
+    /* [2026-09-11] `+1` 은 BUG-07 의 반올림 보정인데 **왕복마다 누적**된다(실측 3회: 469→470→471px).
+       상한이 없으면 반복 재편집으로 상자가 스테이지보다 넓어져 다시 잘리기 시작한다.
+       스테이지 폭으로 막는다 — 그 안에서의 여유는 겉보기에 영향이 없다. */
+    else if (spec.w != null) css += ';max-width:' + Math.min(Math.ceil(spec.w * R.width) + 1, Math.round(R.width)) + 'px';
     // [2026-09-11] 외곽선·그림자·배경은 _applyTextStyle 이 아래에서 한 번에 건다(값 단일화).
     if (isBadge) css += ';background:' + (spec.bg || 'rgba(0,0,0,.32)') + ';padding:4px 10px;border-radius:8px';
     if (spec.opacity != null) css += ';opacity:' + spec.opacity;
@@ -1343,7 +1377,14 @@
        저장했다 다시 열면 똑바로 돌아왔다(_serLayer 는 rot 를 실어 보내고 있었다).
        실측으로 잡았다: -12° 로 완료 → 재편집하니 transform 이 matrix(1,0,0,1,…) 이었다. */
     L.rot = spec.rot || 0;
+    /* [2026-09-11] 저장된 좌표는 원장의 배치다 — 자동 가운데로 덮지 않는다.
+       (`moved` 가 없는 옛 초안도 좌표는 저장돼 있으니 존중한다.)
+       다만 스테이지 밖으로 나간 상태로 저장됐다면 되돌려 넣는다 — 그대로 두면 발행본에서 잘린다. */
+    L._moved = (spec.moved != null) ? !!spec.moved : true;
+    // 원장이 고른 축 표식 복원 — 이게 없으면 자동 보정이 다시 덮는다(위 _serLayer 주석 참고)
+    if (spec.own && spec.own.length) { L._own = {}; for (var _oi = 0; _oi < spec.own.length; _oi++) L._own[spec.own[_oi]] = 1; }
     applyXf(L);
+    _fitTextInStage(L);
     return L;
   }
   // [#14] 우리샵 스타일에서 들어온 구분선 → 편집 가능한 line 도형 레이어로.
@@ -1795,7 +1836,12 @@
     try { if (L && L._planAxes && L._planAxes[k] && window.DraftQuality) window.DraftQuality.corrected(k, L.role || L.type); }
     catch (_e) { void _e; }
   }
-  function applyFont(key) { var L = activeText(); if (!L) return; var _b = _styleOf(L); var f = FONTS.filter(function (x) { return x.key === key; })[0]; _sig('font_changed', { layerKey: L.role || L.type, before: L.font && L.font.key, after: key }); L.font = f; L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight; _own(L, 'font');  _pushStyle(L, _b); }
+  function applyFont(key) { var L = activeText(); if (!L) return; var _b = _styleOf(L); var f = FONTS.filter(function (x) { return x.key === key; })[0]; _sig('font_changed', { layerKey: L.role || L.type, before: L.font && L.font.key, after: key }); L.font = f; L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight;
+    /* [2026-09-11] 폰트가 바뀌면 글자 폭이 바뀐다. 상자는 왼쪽 끝이 고정이라 그대로 두면
+       가운데 있던 글자가 옆으로 밀린다(실측: 손글씨 폰트로 바꾸니 중심 0.500 → 0.466).
+       발행본은 화면을 정확히 따라가므로 **발행본까지 같이 밀린다.** 옮긴 적 없는 글자는 다시 가운데로. */
+    _fitTextInStage(L);
+    _own(L, 'font');  _pushStyle(L, _b); }
   function applyColor(c) { var L = activeText(); if (!L) return; var _b = _styleOf(L); _sig('color_changed', { layerKey: L.role || L.type, before: L.color, after: c }); L.color = c; L.tx.style.color = c; _applyTextStyle(L); _own(L, 'color');  _pushStyle(L, _b); }
   function applyAlign(a) { var L = activeText(); if (!L) return; var _b = _styleOf(L); _sig('alignment_changed', { layerKey: L.role || L.type, before: L.align, after: a }); L.align = a; L.tx.style.textAlign = a; _own(L, 'align');  _pushStyle(L, _b); }
   function applyScale(v) { var L = S.active; if (!L) return; L.scale = parseFloat(v); applyXf(L); }
@@ -1806,6 +1852,7 @@
     var _b = _styleOf(L);
     _sig('textstyle_changed', { layerKey: L.role || L.type, before: _tstyleOf(L), after: k });
     L.tstyle = k; _applyTextStyle(L);
+    _fitTextInStage(L);   // 배경박스는 패딩이 붙어 폭이 변한다 — 폰트와 같은 이유로 자리를 다시 잡는다
     _own(L, 'tstyle'); _own(L, 'stroke'); _own(L, 'shadow');
     _pushStyle(L, _b); syncTextControls(L);
   }
@@ -3097,6 +3144,14 @@
        자동배치가 준 얇은 글씨(600)가 재편집 후 800 으로 굵어졌다(복제·undo 는 이미 L.weight 를 쓰고 있었다). */
     base.size = fs; base.weight = L.weight || (L.font && L.font.weight); base.stroke = !!L.stroke; base.shadow = !!L.shadow;
     base.tstyle = _tstyleOf(L);   // [2026-09-11] 정본. stroke/shadow 는 옛 소비자를 위해 남긴다.
+    /* 원장이 손으로 옮겼는지. 안 실으면 재편집 때 '한 번도 안 옮긴 글자'로 되살아나
+       다음 편집에서 제멋대로 가운데로 튄다(반대로 항상 옮긴 걸로 치면 자동 가운데가 영영 안 돈다). */
+    base.moved = !!L._moved;
+    /* 🔴 [2026-09-11] 원장이 **직접 고른 축**(_own)도 실어 보낸다.
+       `_own` 은 "자동 보정이 절대 안 덮는 축" 표식인데 저장이 안 돼서, 재편집하면 표식이 사라지고
+       가독성 자동보정이 원장의 선택을 덮어썼다. 실측: '기본'(그림자 없음)을 고르고 저장 →
+       다시 열면 'shadow' 로 돌아왔다. 자동이 취향을 이기면 안 된다는 원칙이 왕복에서 깨져 있었다. */
+    try { var _ow = Object.keys(L._own || {}); if (_ow.length) base.own = _ow; } catch (_oe) { void _oe; }
     // 원장이 '가로 늘리기' 로 직접 정한 폭 — 안 실으면 재편집 때 줄바꿈 폭이 통째로 날아간다.
     if (L.wrapW) base.wrapW = L.wrapW / R.width;
     // [BUG-07] 이 순간 실제로 몇 줄이었는지. 복원이 이걸 지킨다(늘어난 경우에만 폭을 넓힘).

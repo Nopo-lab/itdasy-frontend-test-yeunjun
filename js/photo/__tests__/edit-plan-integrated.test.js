@@ -73,9 +73,14 @@ describe('🔑 기본값을 취향으로 오인하지 않는다', () => {
   test('원장이 고른 축은 고르는 순간 도장을 찍는다', () => {
     // 값으로 추측하면 틀린다 — 새 텍스트는 흰색·가운데정렬로 미리 채워져 나온다.
     expect(edSrc).toMatch(/function _own\(L, k\)/);
+    /* [2026-09-11] 한 줄 검사에서 **함수 본문 검사**로 바꿨다 — 이 함수들은 한 줄로 붙어 있었는데
+       자리 보정(_fitTextInStage)이 들어가며 여러 줄이 됐다. 계약은 '고르는 순간 도장을 찍는다'
+       이지 '한 줄로 적혀 있다'가 아니다. */
     ['applyFont', 'applyColor', 'applyAlign'].forEach((fn) => {
-      const line = edSrc.split('\n').find((l) => l.includes('function ' + fn + '('));
-      expect(line).toMatch(/_own\(L, '/);
+      const i = edSrc.indexOf('function ' + fn + '(');
+      expect(i).toBeGreaterThan(0);
+      const body = edSrc.slice(i, edSrc.indexOf('\n  function ', i + 10));
+      expect(body).toMatch(/_own\(L, '/);
     });
   });
 
