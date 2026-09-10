@@ -1389,6 +1389,23 @@
         }
       }
     }
+    /* [2026-09-11] 🔴 **한 단어는 절대 쪼개지 않는다.**
+       실측(라이브): 'BEFORE' 배지가 발행본에서 `BEFOR / E` 로 갈라져 나왔다.
+       자연 폭 102px, 복원된 max-width 102px — **1px 미만 차이**로 접히고
+       `overflow-wrap:anywhere` 가 단어 중간을 끊었다.
+       위 BUG-07 가드는 `spec.lines` 가 있어야 도는데, 자동 초안이 넣는 레이어에는 그 값이 없어
+       배지·짧은 라벨이 무방비였다. 공백 없는 한 덩어리가 두 줄 이상이면 자연 폭으로 넓힌다
+       (스테이지 폭이 상한 — 진짜로 화면보다 긴 단어는 예전대로 anywhere 가 끊는다). */
+    if (spec.wrapW == null && R.width && !/\s/.test(String(L.text || ''))) {
+      if (_lineCount(t, L.fontSize) > 1) {
+        var _ws0 = t.style.whiteSpace, _mw0 = t.style.maxWidth;
+        t.style.whiteSpace = 'pre'; t.style.maxWidth = 'none';
+        var _nat1 = Math.ceil(t.getBoundingClientRect().width) + 1;
+        t.style.whiteSpace = _ws0 || 'pre-wrap'; t.style.maxWidth = _mw0;
+        var _cap1 = Math.floor(R.width * 0.98);
+        if (_nat1 <= _cap1) t.style.maxWidth = _nat1 + 'px';
+      }
+    }
     if (spec.w != null && R.height) { var _maxH = R.height * 0.34, _g = 0; while (L.el.offsetHeight > _maxH && L.fontSize > 13 && _g++ < 16) { L.fontSize -= 2; t.style.fontSize = L.fontSize + 'px'; } }
     /* [2026-09-03 P3 실측] offsetWidth/Height 는 **정수로 반올림**된 값이고, _serLayer 는
        getBoundingClientRect 의 **소수 값**으로 중심을 계산한다. 두 척도가 달라서
