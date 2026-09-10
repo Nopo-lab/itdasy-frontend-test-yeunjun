@@ -50,8 +50,11 @@
 .itl__dup{position:absolute;right:-20px;top:-20px;width:24px;height:24px;border-radius:50%;background:rgba(20,12,16,.7);color:#fff;display:none;place-items:center;z-index:5;cursor:pointer;border:none;padding:0;transform-origin:bottom left}
 .itl.is-active .itl__dup{display:grid}
 .itl__dup svg{width:12px;height:12px;stroke:#fff;fill:none;stroke-width:2.1}
+/* [2026-09-11] text-shadow 를 여기서 빼고 _applyTextStyle 이 레이어별로 건다.
+   예전엔 CSS 가 **모든 글자에** 그림자를 강제해서 끌 수가 없었고, canvas 내보내기 값과도 달랐다.
+   새 글자의 기본값은 'shadow' 라 보이는 모습은 그대로다. */
 .itl-text{color:#fff;font-weight:800;line-height:1.16;text-align:center;white-space:pre-wrap;outline:none;
-  text-shadow:0 1px 12px rgba(0,0,0,.4);padding:6px 10px;min-width:30px}
+  padding:6px 10px;min-width:30px}
 /* [캐럿 버그 2026-07-27] 편집 중엔 레이어 박스(.itl)의 grab 커서 대신 text 커서 — is-editing 은 editText()가 붙임 */
 .itl.is-editing,.itl.is-editing .itl-text,.itl-text[contenteditable="true"]{cursor:text}
 .itl-sticker{font-size:64px;line-height:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,.3))}
@@ -109,6 +112,23 @@
 .italn button.on svg{stroke:#1c1316}
 .itsize{display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:11px;font-weight:700}
 .itsize input{width:108px;accent-color:#fff}
+/* [2026-09-11] 글자 스타일 행 — 정렬 세그(.italn)와 폰트 칩(.itfont) 의 시각 언어를 그대로 쓴다. */
+.ittext__row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 2px 10px}
+.ittst{display:inline-flex;gap:6px}
+/* 칩은 **그 효과를 실제로 미리 보여준다** — 이름표가 없으므로 눈으로 골라야 한다.
+   칩 배경을 중간톤으로 둬야 그림자(어두움)와 외곽선(검은 테두리)이 둘 다 읽힌다.
+   어두운 배경에 검은 외곽선을 그렸더니 3번 칩이 그냥 흐릿한 글자로 보였다(실측). */
+.ittst__b{position:relative;width:38px;height:34px;border-radius:10px;border:1.5px solid rgba(255,255,255,.45);
+  background:rgba(255,255,255,.22);color:#fff;font-size:16px;font-weight:900;line-height:1;cursor:pointer;padding:0;
+  display:grid;place-items:center;flex:none}
+.ittst__b::after{content:"";position:absolute;inset:-6px}   /* 손가락 타깃 확보 */
+.ittst__b--none{text-shadow:none}
+.ittst__b--shadow{text-shadow:0 2px 5px rgba(0,0,0,1)}
+.ittst__b--outline{-webkit-text-stroke:1.2px rgba(0,0,0,.95);paint-order:stroke fill}
+.ittst__b--bg{background:#fff;color:#1c1316;border-color:#fff;text-shadow:none}
+.ittst__b.on{box-shadow:0 0 0 2px #1c1316,0 0 0 4px #fff}
+.itsize--tilt input{width:78px}
+.itsize--tilt b{min-width:30px;text-align:right;font-variant-numeric:tabular-nums}
 .itfonts{display:flex;gap:9px;overflow-x:auto;padding:0 0 12px;scrollbar-width:none}
 .itfonts::-webkit-scrollbar{display:none}
 .itfont{flex:none;height:46px;padding:0 17px;border-radius:12px;border:1.5px solid rgba(255,255,255,.6);

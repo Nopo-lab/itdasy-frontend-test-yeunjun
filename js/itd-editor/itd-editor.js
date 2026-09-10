@@ -405,6 +405,16 @@
           '</span>' +
           '<span class="itsize">크기<input type="range" min="0.5" max="8" step="0.02" value="1" data-r="size"></span>' +
         '</div>' +
+        /* [2026-09-11] 글자 스타일 — 미리보기 '가' 를 그 효과 그대로 렌더한다(이름표 없이 눈으로 고른다).
+           오른쪽은 기울기. 회전 핸들이 이미 있지만 눈에 안 띄고 미세조정이 안 돼서 슬라이더를 같이 둔다. */
+        '<div class="ittext__row">' +
+          '<span class="ittst" data-r="tstyle">' +
+            TSTYLES.map(function (t) {
+              return '<button class="ittst__b ittst__b--' + t.key + '" data-tstyle="' + t.key + '" aria-label="' + t.label + '">가</button>';
+            }).join('') +
+          '</span>' +
+          '<span class="itsize itsize--tilt">기울기<input type="range" min="-45" max="45" step="1" value="0" data-r="tilt"><b data-r="tiltout">0\u00B0</b></span>' +
+        '</div>' +
         '<div class="itfonts" data-r="fonts">' + fonts + '</div>' +
         '<div class="itcolors" data-r="colors">' + colors + _rbSw('text', 'itsw') + _pipSw('text', 'itsw') + '</div>' +
       '</div>';
@@ -581,7 +591,8 @@
   }
 
   function cacheRefs() {
-    ['stage', 'photowrap', 'photo', 'photofx', 'collage', 'frame', 'draw', 'layers', 'rail', 'cancel', 'done', 'aln', 'size', 'fonts', 'colors', 'stkSheet', 'layHint', 'layStrip', 'layGap', 'layAdd', 'brushSize', 'featLocTx', 'myStk', 'stkUpload', 'stkTabs', 'stkBody', 'shapeThick', 'adjStrip', 'adjReset', 'adjRot', 'adjRotOut', 'grid', 'adjCut', 'adjUncut', 'adjCutBg', 'adjBgImg', 'layFit', 'layBgImg', 'undo', 'redo', 'peek', 'drawClear', 'addText'].forEach(function (k) {
+    ['tstyle', 'tilt', 'tiltout',
+      'stage', 'photowrap', 'photo', 'photofx', 'collage', 'frame', 'draw', 'layers', 'rail', 'cancel', 'done', 'aln', 'size', 'fonts', 'colors', 'stkSheet', 'layHint', 'layStrip', 'layGap', 'layAdd', 'brushSize', 'featLocTx', 'myStk', 'stkUpload', 'stkTabs', 'stkBody', 'shapeThick', 'adjStrip', 'adjReset', 'adjRot', 'adjRotOut', 'grid', 'adjCut', 'adjUncut', 'adjCutBg', 'adjBgImg', 'layFit', 'layBgImg', 'undo', 'redo', 'peek', 'drawClear', 'addText'].forEach(function (k) {
       refs[k] = root.querySelector('[data-r="' + k + '"]');
     });
     refs.panels = {};
@@ -811,15 +822,92 @@
      폰트·색·정렬·크기·보정은 **하나도 안 담겨서**, 색을 바꾼 뒤 ↩ 를 누르면
      '색이 되돌아가는' 게 아니라 **그 앞 op(=레이어 추가)이 취소돼 글자가 통째로 사라졌다**
      (브라우저 실측: ↩ 1회=이동취소, 2회=레이어 삭제). 원장 입장에선 파괴적이고 예측 불가다. */
+
+  /* ─────────────────────────────────────────────────────────────────────
+     [2026-09-11] 인스타식 글자 스타일 — 그림자/외곽선/배경박스를 원장이 고른다.
+
+     왜: 지금까지 `.itl-text` CSS 가 **모든 글자에** `text-shadow:0 1px 12px rgba(0,0,0,.4)` 를
+     강제했다. 끌 수도 키울 수도 없었고, 밝은 배경에 깔끔한 납작 글씨를 쓰고 싶어도 방법이 없었다.
+     게다가 canvas 내보내기는 `shadowBlur 8 / rgba(0,0,0,.35) / 오프셋 0` 이라 **화면과 값이 달랐다.**
+
+     기본값은 'shadow' 다 — 기존 작업물·자동초안이 보이던 그대로 나온다(회귀 0).
+     ⚠️ DOM 과 canvas 는 렌더러가 달라서 **한쪽만 고치면 발행본에서 조용히 사라진다**(이 파일에서
+     외곽선으로 이미 한 번 겪었다). 그래서 값을 상수 하나로 묶고 양쪽이 같은 걸 읽게 한다. */
+  var TSTYLES = [
+    { key: 'none', label: '기본' }, { key: 'shadow', label: '그림자' },
+    { key: 'outline', label: '외곽선' }, { key: 'bg', label: '배경' }
+  ];
+  var TS = {
+    shadowCss: '0 2px 10px rgba(0,0,0,.45)',
+    shadowRgba: 'rgba(0,0,0,.45)', shadowBlur: 10, shadowDy: 2,
+    strokeCss: '1px rgba(0,0,0,.55)', strokeRgba: 'rgba(0,0,0,.55)', strokeW: 2,
+    /* 좌우 패딩은 기본(.itl-text 의 10px)과 **같아야 한다**. 키웠더니 같은 max-width 안에서
+       글자가 쓸 수 있는 폭이 줄어 '배경'으로 바꾸는 순간 한 줄이 두 줄로 접혔다(실측).
+       넉넉한 느낌은 세로 패딩과 모서리로 낸다 — 세로는 줄바꿈에 영향이 없다. */
+    bgPadX: 10, bgPadY: 9, bgRadius: 12
+  };
+  /** 구버전 초안 호환 — tstyle 이 없으면 예전 stroke/shadow 플래그로 유추한다. */
+  function _tstyleOf(L) {
+    if (!L) return 'shadow';
+    if (L.tstyle) return L.tstyle;
+    if (L.bg) return 'bg';
+    if (L.stroke) return 'outline';
+    /* tstyle 이 없는 **옛 초안**은 예전 CSS 가 전원에게 그림자를 줬으므로 'shadow' 가 맞다.
+       L.shadow=false 를 'none' 으로 읽으면 예전에 저장한 글자들이 재편집에서 납작해진다
+       (`_serLayer` 가 base.shadow=false 로 저장해 왔다). 'none' 은 새로 고른 사람만 갖는다. */
+    return 'shadow';
+  }
+  /** 색 문자열(#rgb·#rrggbb·rgb()) → 그 위에서 읽히는 글자색. 못 읽으면 흰색. */
+  function _inkOn(col) {
+    try {
+      var r, g, b, c = String(col || '').trim();
+      var m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(c);
+      if (m) {
+        var h = m[1];
+        if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+        r = parseInt(h.slice(0, 2), 16); g = parseInt(h.slice(2, 4), 16); b = parseInt(h.slice(4, 6), 16);
+      } else {
+        var n = c.match(/[\d.]+/g); if (!n || n.length < 3) return '#ffffff';
+        r = +n[0]; g = +n[1]; b = +n[2];
+      }
+      // sRGB 상대휘도 — 0.5 를 경계로 검/흰
+      return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.55 ? '#1c1316' : '#ffffff';
+    } catch (_e) { void _e; return '#ffffff'; }
+  }
+  /** 글자 레이어의 스타일을 DOM 에 반영. 예전 플래그(L.stroke/L.shadow)도 같이 맞춘다 —
+      가독성 자동보정과 _serLayer 가 그 둘을 읽기 때문. */
+  function _applyTextStyle(L) {
+    if (!L || !L.tx) return;
+    var k = _tstyleOf(L), st = L.tx.style;
+    L.tstyle = k;
+    L.stroke = (k === 'outline'); L.shadow = (k === 'shadow'); L.bg = (k === 'bg');
+    /* 외곽선에도 그림자를 남긴다 — 예전엔 CSS 가 모든 글자에 그림자를 줬고 canvas 도 fill 에
+       그림자를 씌웠다. 여기서 빼면 기존 작업물의 외곽선 글씨가 조용히 납작해진다.
+       납작한 글씨를 원하면 '기본'을 고르면 된다(그게 이번에 새로 생긴 선택지다). */
+    st.textShadow = (k === 'shadow' || k === 'outline') ? TS.shadowCss : 'none';
+    st.webkitTextStroke = (k === 'outline') ? TS.strokeCss : '';
+    if (k === 'bg') {
+      st.background = L.color; st.color = _inkOn(L.color);
+      st.padding = TS.bgPadY + 'px ' + TS.bgPadX + 'px';
+      st.borderRadius = TS.bgRadius + 'px';
+      st.boxDecorationBreak = 'clone'; st.webkitBoxDecorationBreak = 'clone';
+    } else {
+      st.background = 'transparent'; st.color = L.color;
+      st.padding = '6px 10px'; st.borderRadius = '0';
+    }
+  }
   function _styleOf(L) {
     if (!L) return null;
     return { font: (L.font && L.font.key) || null, color: L.color, align: L.align,
-      scale: L.scale, fontSize: L.fontSize };
+      scale: L.scale, fontSize: L.fontSize, tstyle: _tstyleOf(L), rot: L.rot || 0 };
   }
   function _applyStyleTo(L, v) {
     if (!L || !v) return;
     if (v.font) { var f = fontByKey(v.font); if (f) { L.font = f; if (L.tx) { L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight; } } }
     if (v.color != null) { L.color = v.color; if (L.tx) L.tx.style.color = v.color; }
+    if (v.tstyle != null) { L.tstyle = v.tstyle; }
+    if (v.rot != null) L.rot = v.rot;
+    if (L.type === 'text' && L.tx) _applyTextStyle(L);   // 색이 바뀌면 배경박스/잉크색도 다시 계산
     if (v.align != null) { L.align = v.align; if (L.tx) L.tx.style.textAlign = v.align; }
     if (v.fontSize != null) { L.fontSize = v.fontSize; if (L.tx) L.tx.style.fontSize = v.fontSize + 'px'; }
     if (v.scale != null) L.scale = v.scale;
@@ -834,6 +922,7 @@
     _pushOp({ op: 'style', L: L, before: before, after: after });
   }
   var _adjSnap = null;
+  var _tiltSnap = null;   // 기울기 드래그 시작 시점 스냅(되돌리기 한 칸)
   function _pushAdj(idx, before) {
     if (before == null) return;
     var after = Object.assign({}, adjOf(idx));
@@ -1120,10 +1209,12 @@
     }
     var L = makeLayer('text');
     L.font = FONTS[0]; L.color = COLORS[0]; L.align = 'center'; L.fontSize = 30; L.text = PLACEHOLDER;
+    L.tstyle = 'shadow';   // [2026-09-11] 예전엔 CSS 가 전원에게 그림자를 강제했다 — 기본값을 맞춰 보이는 건 그대로.
     // [2026-07-26 원영] white-space:pre — 편집 중 자동 줄바꿈 금지(엔터 친 곳만 줄바꿈).
     //   export 캔버스는 split('\n')으로 엔터만 줄바꿈이라, 편집 화면도 동일해야 WYSIWYG.
     var t = el('div', 'itl-text'); t.textContent = L.text; t.style.cssText = 'font-family:' + L.font.family + ';font-weight:' + L.font.weight + ';color:' + L.color + ';text-align:center;font-size:' + L.fontSize + 'px;white-space:pre';
     L.el.appendChild(t); L.tx = t;
+    _applyTextStyle(L);
     placeCenter(L, 180, 50); selectLayer(L);
     _pushOp({ op: 'add', L: L });   // [P1-3] 추가 되돌리기
     editText(L);   // [2026-09-05] 동기 호출 필수 — setTimeout 으로 미루면 모바일 키보드가 안 올라온다(위 주석 ③)
@@ -1188,6 +1279,9 @@
     L.text = spec.text || '';
     L.stroke = !!(spec.outline && spec.outline.on) || !!spec.stroke;
     L.shadow = isBadge || !!(spec.shadow && spec.shadow.on) || !!spec.shadow;
+    /* [2026-09-11] tstyle 이 있으면 그게 정본. 없는 옛 초안은 stroke/shadow 로 유추한다
+       (배지는 자기 배경을 이미 갖고 있으므로 'bg' 로 승격시키지 않는다). */
+    L.tstyle = spec.tstyle || (isBadge ? 'shadow' : _tstyleOf(L));
     var t = el('div', 'itl-text'); t.textContent = L.text;
     /* [2026-07-23 보스] 한글 줄바꿈 — word-break:keep-all 로 **어절(띄어쓰기) 단위**로 끊는다.
        기본값(normal)은 한글을 글자 단위로 끊어서 '속눈썹 연/장', '뿌리염/색' 처럼 어색하게 잘렸다.
@@ -1205,11 +1299,11 @@
        예전엔 _serLayer 가 이 값을 안 실어서 재편집 때 통째로 사라졌다. */
     if (spec.wrapW != null) { L.wrapW = Math.max(40, Math.round(spec.wrapW * R.width)); css += ';width:' + L.wrapW + 'px'; }
     else if (spec.w != null) css += ';max-width:' + (Math.ceil(spec.w * R.width) + 1) + 'px';
-    if (L.stroke) css += ';-webkit-text-stroke:1px rgba(0,0,0,.5)';
-    if (L.shadow) css += ';text-shadow:0 2px 8px rgba(0,0,0,.35)';
+    // [2026-09-11] 외곽선·그림자·배경은 _applyTextStyle 이 아래에서 한 번에 건다(값 단일화).
     if (isBadge) css += ';background:' + (spec.bg || 'rgba(0,0,0,.32)') + ';padding:4px 10px;border-radius:8px';
     if (spec.opacity != null) css += ';opacity:' + spec.opacity;
     t.style.cssText = css; L.el.appendChild(t); L.tx = t;
+    if (!isBadge) _applyTextStyle(L);   // 배지는 자기 배경/패딩이 있어 건드리지 않는다
     // [#2c] 긴 시술내용/두 줄 이상도 안 잘리게 — 텍스트 블록이 사진 높이의 ~1/3을 넘으면 폰트를 줄여 자동으로 맞춘다.
     /* [BUG-07 2026-09-10] 저장 당시 줄 수를 지킨다.
        폰트 메트릭이 크기에 선형이 아니라(실측 4%), 상대폭으로 되살린 max-width 가 몇 px 모자라
@@ -1244,6 +1338,11 @@
     var bw = _bb.width || L.el.offsetWidth, bh = _bb.height || L.el.offsetHeight;
     L.x = (spec.x != null ? spec.x : 0.5) * R.width - bw / 2;
     L.y = (spec.y != null ? spec.y : 0.5) * R.height - bh / 2;
+    /* [2026-09-11] 기울기 복원 — **글자만 빠져 있었다.** 스티커(_addShopLayerSticker)와
+       도형은 `L.rot = spec.rot` 을 하는데 텍스트 경로에만 없어서, 기울여 놓은 글자가
+       저장했다 다시 열면 똑바로 돌아왔다(_serLayer 는 rot 를 실어 보내고 있었다).
+       실측으로 잡았다: -12° 로 완료 → 재편집하니 transform 이 matrix(1,0,0,1,…) 이었다. */
+    L.rot = spec.rot || 0;
     applyXf(L);
     return L;
   }
@@ -1498,8 +1597,14 @@
         });
         if (!fix) return;                       // 이미 잘 보인다 — 아무것도 안 한다
         if (fix.color && !isRole && !own.color) { L.color = fix.color; L.tx.style.color = fix.color; _planAxis(L, 'color'); }
-        if (fix.stroke && !L.stroke) { L.stroke = true; L.tx.style.webkitTextStroke = '1px rgba(0,0,0,.5)'; _planAxis(L, 'stroke'); }
-        if (fix.shadow && !L.shadow) { L.shadow = true; L.tx.style.textShadow = '0 2px 8px rgba(0,0,0,.35)'; _planAxis(L, 'shadow'); }
+        /* [2026-09-11] 가독성 자동보정도 _applyTextStyle 을 거친다 — 값을 여기서 따로 적으면
+           화면과 발행본이 갈라진다. 원장이 스타일을 직접 골랐으면(_own) 건드리지 않는다:
+           자동이 취향을 이기면 안 된다. 배경박스는 이미 대비가 확보돼 있어 손대지 않는다. */
+        var _ownTs = !!(L._own && L._own.tstyle), _curTs = _tstyleOf(L);
+        if (!_ownTs && _curTs !== 'bg') {
+          if (fix.stroke && _curTs !== 'outline') { L.tstyle = 'outline'; _applyTextStyle(L); _planAxis(L, 'stroke'); }
+          else if (fix.shadow && _curTs !== 'shadow') { L.tstyle = 'shadow'; _applyTextStyle(L); _planAxis(L, 'shadow'); }
+        }
         L._src = L._src || 'plan';
         L._planRead = fix;                      // 왜 바꿨는지 남긴다(디버그·되돌리기)
         fixed++;
@@ -1663,6 +1768,11 @@
     root.querySelectorAll('[data-color]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-color') === L.color); });
     refs.aln.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-aln') === L.align); });
     refs.size.value = L.scale;
+    // [2026-09-11] 스타일 칩·기울기도 현재 레이어를 따라간다 — 안 하면 레이어를 바꿔도 옛 선택이 켜져 보인다.
+    var _k = _tstyleOf(L);
+    root.querySelectorAll('[data-tstyle]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tstyle') === _k); });
+    if (refs.tilt) refs.tilt.value = Math.round(L.rot || 0);
+    if (refs.tiltout) refs.tiltout.textContent = Math.round(L.rot || 0) + '\u00B0';
   }
   /* [T8-A 2026-08-19] 원장 조작 관찰 — undo 스택(_pushOp)과 완전히 분리된 경로다.
      _pushOp 에 속성변경을 넣으면 ↩ 동작이 바뀌어 T4 계약이 깨지므로 여기서만 기록한다.
@@ -1686,9 +1796,26 @@
     catch (_e) { void _e; }
   }
   function applyFont(key) { var L = activeText(); if (!L) return; var _b = _styleOf(L); var f = FONTS.filter(function (x) { return x.key === key; })[0]; _sig('font_changed', { layerKey: L.role || L.type, before: L.font && L.font.key, after: key }); L.font = f; L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight; _own(L, 'font');  _pushStyle(L, _b); }
-  function applyColor(c) { var L = activeText(); if (!L) return; var _b = _styleOf(L); _sig('color_changed', { layerKey: L.role || L.type, before: L.color, after: c }); L.color = c; L.tx.style.color = c; _own(L, 'color');  _pushStyle(L, _b); }
+  function applyColor(c) { var L = activeText(); if (!L) return; var _b = _styleOf(L); _sig('color_changed', { layerKey: L.role || L.type, before: L.color, after: c }); L.color = c; L.tx.style.color = c; _applyTextStyle(L); _own(L, 'color');  _pushStyle(L, _b); }
   function applyAlign(a) { var L = activeText(); if (!L) return; var _b = _styleOf(L); _sig('alignment_changed', { layerKey: L.role || L.type, before: L.align, after: a }); L.align = a; L.tx.style.textAlign = a; _own(L, 'align');  _pushStyle(L, _b); }
   function applyScale(v) { var L = S.active; if (!L) return; L.scale = parseFloat(v); applyXf(L); }
+  /* [2026-09-11] 글자 스타일(기본/그림자/외곽선/배경) — 원장이 고른 건 _own 도장을 찍어
+     가독성 자동보정이 나중에 덮어쓰지 못하게 한다(자동이 취향을 이기면 안 된다). */
+  function applyTStyle(k) {
+    var L = activeText(); if (!L) return;
+    var _b = _styleOf(L);
+    _sig('textstyle_changed', { layerKey: L.role || L.type, before: _tstyleOf(L), after: k });
+    L.tstyle = k; _applyTextStyle(L);
+    _own(L, 'tstyle'); _own(L, 'stroke'); _own(L, 'shadow');
+    _pushStyle(L, _b); syncTextControls(L);
+  }
+  /* 기울기 — 회전 핸들·두 손가락과 같은 L.rot 를 쓴다(값이 갈리면 화면과 발행본이 어긋난다). */
+  function applyTilt(deg) {
+    var L = S.active; if (!L) return;
+    L.rot = Math.max(-45, Math.min(45, parseFloat(deg) || 0));
+    applyXf(L);
+    var o = root.querySelector('[data-r=tiltout]'); if (o) o.textContent = Math.round(L.rot) + '\u00B0';
+  }
   function activeText() { return S.active && S.active.type === 'text' ? S.active : null; }
 
   /* ── 스티커 ── */
@@ -2546,20 +2673,56 @@
              webkit 은 획 중앙 기준이라 lineWidth 를 2배로 잡고 **fill 전에** 그린다
              (안쪽 절반은 글자가 덮어서 화면과 비슷해진다). 그림자는 끄고 그린다 —
              외곽선에까지 그림자가 붙으면 화면보다 훨씬 두꺼워 보인다. */
-          if (L.stroke) {
+          /* [2026-09-11] 스타일은 화면(_applyTextStyle)과 **같은 상수(TS)** 를 읽는다.
+             예전엔 여기서 그림자를 무조건 넣고 화면은 CSS 로 다른 값을 넣어 둘이 어긋났다.
+             DOM 과 canvas 가 다른 렌더러라 값을 따로 적으면 반드시 갈라진다 — 이 파일에서
+             외곽선이 발행본에서만 사라진 사고가 이미 있었다. */
+          var _ts = _tstyleOf(L);
+          var _lh = fs * 1.16;
+
+          // 배경박스 — 줄마다 실제 글자폭을 재서 라운드 사각형을 깔고, 글자는 대비색으로 얹는다.
+          /* 배경박스는 **레이어 박스 하나**를 그대로 깐다(줄마다 따로 그리지 않는다).
+             화면에서는 .itl-text 의 background 라 여러 줄이어도 박스가 하나다 — 줄마다 그리면
+             두 줄부터 화면과 다르게 보인다. ow/oh 는 그 요소의 실제 박스(패딩 포함)라 정확히 일치한다. */
+          if (_ts === 'bg') {
+            var _bw = ow, _bh = oh;
+            var _rd = Math.min(TS.bgRadius * (L.scale || 1), _bh / 2, _bw / 2);
+            c.save(); c.shadowBlur = 0; c.shadowColor = 'transparent'; c.fillStyle = L.color;
+            c.beginPath();
+            if (c.roundRect) c.roundRect(-_bw / 2, -_bh / 2, _bw, _bh, _rd);
+            else {
+              var _x0 = -_bw / 2, _y0 = -_bh / 2;
+              c.moveTo(_x0 + _rd, _y0); c.arcTo(_x0 + _bw, _y0, _x0 + _bw, _y0 + _bh, _rd);
+              c.arcTo(_x0 + _bw, _y0 + _bh, _x0, _y0 + _bh, _rd); c.arcTo(_x0, _y0 + _bh, _x0, _y0, _rd);
+              c.arcTo(_x0, _y0, _x0 + _bw, _y0, _rd); c.closePath();
+            }
+            c.fill(); c.restore();
+            c.font = L.font.weight + ' ' + fs + 'px ' + L.font.family;
+            c.fillStyle = _inkOn(L.color); c.textAlign = _al; c.textBaseline = 'middle';
+          }
+
+          /* 외곽선 — webkit 은 획 중앙 기준이라 lineWidth 를 2배로 잡고 **fill 전에** 그린다
+             (안쪽 절반은 글자가 덮어 화면과 비슷해진다). 그림자는 끄고 그린다 — 외곽선에까지
+             그림자가 붙으면 화면보다 훨씬 두꺼워 보인다. */
+          if (_ts === 'outline') {
             c.save();
             c.shadowBlur = 0; c.shadowColor = 'transparent';
-            c.lineWidth = Math.max(1, 2 * (L.scale || 1));
-            c.strokeStyle = 'rgba(0,0,0,.5)';
+            c.lineWidth = Math.max(1, TS.strokeW * (L.scale || 1));
+            c.strokeStyle = TS.strokeRgba;
             c.lineJoin = 'round'; c.miterLimit = 2;
-            lines.forEach(function (ln, i) { c.strokeText(ln, _ax, sy + i * fs * 1.16); });
+            lines.forEach(function (ln, i) { c.strokeText(ln, _ax, sy + i * _lh); });
             c.restore();
             c.font = L.font.weight + ' ' + fs + 'px ' + L.font.family; c.fillStyle = L.color;
             c.textAlign = _al; c.textBaseline = 'middle';
           }
-          c.shadowBlur = 8; c.shadowColor = 'rgba(0,0,0,.35)';
-          lines.forEach(function (ln, i) { c.fillText(ln, _ax, sy + i * fs * 1.16); });
-          c.shadowBlur = 0;
+
+          if (_ts === 'shadow' || _ts === 'outline') {
+            c.shadowBlur = TS.shadowBlur * (L.scale || 1);
+            c.shadowOffsetY = TS.shadowDy * (L.scale || 1);
+            c.shadowColor = TS.shadowRgba;
+          } else { c.shadowBlur = 0; c.shadowOffsetY = 0; c.shadowColor = 'transparent'; }
+          lines.forEach(function (ln, i) { c.fillText(ln, _ax, sy + i * _lh); });
+          c.shadowBlur = 0; c.shadowOffsetY = 0;
         }
         c.restore();
       });
@@ -2622,6 +2785,12 @@
     // 텍스트 컨트롤
     refs.fonts.addEventListener('click', function (e) { var b = e.target.closest('[data-font]'); if (!b) return; applyFont(b.getAttribute('data-font')); root.querySelectorAll('[data-font]').forEach(function (x) { x.classList.toggle('on', x === b); }); });
     refs.colors.addEventListener('click', function (e) { var b = e.target.closest('[data-color]'); if (!b) return; applyColor(b.getAttribute('data-color')); root.querySelectorAll('[data-color]').forEach(function (x) { x.classList.toggle('on', x === b); }); });
+    if (refs.tstyle) refs.tstyle.addEventListener('click', function (e) { var b = e.target.closest('[data-tstyle]'); if (!b) return; applyTStyle(b.getAttribute('data-tstyle')); });
+    /* 기울기: 드래그 중엔 화면만 바꾸고(input), 손 떼면 되돌리기 한 칸(change) — 크기 슬라이더와 같은 계약. */
+    if (refs.tilt) {
+      refs.tilt.addEventListener('input', function (e) { if (_tiltSnap == null && S.active) _tiltSnap = _styleOf(S.active); applyTilt(e.target.value); });
+      refs.tilt.addEventListener('change', function () { if (_tiltSnap && S.active) { _pushStyle(S.active, _tiltSnap); } _tiltSnap = null; });
+    }
     refs.aln.addEventListener('click', function (e) { var b = e.target.closest('[data-aln]'); if (!b) return; applyAlign(b.getAttribute('data-aln')); refs.aln.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); }); });
     /* [2026-08-23] 크기 취향은 **핀치에서만** 잡히고 있었다 — 슬라이더로 바꾸면 학습이 0 이었다.
        슬라이더가 안 잡히면 크기 개인화는 핀치를 쓰는 원장에게만 붙는다.
@@ -2927,6 +3096,7 @@
     /* [2026-09-03] weight 는 **L.weight 우선**. 예전엔 항상 폰트 기본값을 실어보내서,
        자동배치가 준 얇은 글씨(600)가 재편집 후 800 으로 굵어졌다(복제·undo 는 이미 L.weight 를 쓰고 있었다). */
     base.size = fs; base.weight = L.weight || (L.font && L.font.weight); base.stroke = !!L.stroke; base.shadow = !!L.shadow;
+    base.tstyle = _tstyleOf(L);   // [2026-09-11] 정본. stroke/shadow 는 옛 소비자를 위해 남긴다.
     // 원장이 '가로 늘리기' 로 직접 정한 폭 — 안 실으면 재편집 때 줄바꿈 폭이 통째로 날아간다.
     if (L.wrapW) base.wrapW = L.wrapW / R.width;
     // [BUG-07] 이 순간 실제로 몇 줄이었는지. 복원이 이걸 지킨다(늘어난 경우에만 폭을 넓힘).

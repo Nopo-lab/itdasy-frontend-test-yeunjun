@@ -54,15 +54,41 @@ function recordingCtx() {
   return { ctx, calls, state };
 }
 
+/* [2026-09-11] 굽기 블록이 쓰는 헬퍼도 **진짜 소스에서 떼어낸다**.
+   여기에 사본을 두면 진짜와 갈라져도 초록불이 뜬다 — 이 파일이 처음부터 경계하던 그 함정이다. */
+function extractHelpers() {
+  const names = ['var TSTYLES = [', 'var TS = {', 'function _tstyleOf(L) {', 'function _inkOn(col) {'];
+  return names.map((mark) => {
+    const i = ed.indexOf(mark);
+    if (i < 0) throw new Error('헬퍼를 못 찾았다: ' + mark + ' — itd-editor 구조가 바뀌었나?');
+    // 중괄호/대괄호 균형으로 선언 하나를 통째로 집는다
+    const open = mark.includes('[') && !mark.includes('{') ? '[' : '{';
+    const close = open === '[' ? ']' : '}';
+    let j = ed.indexOf(open, i), d = 0;
+    for (; j < ed.length; j++) {
+      if (ed[j] === open) d++;
+      else if (ed[j] === close) { d--; if (d === 0) break; }
+    }
+    const end = ed.indexOf('\n', j);
+    return ed.slice(i, end);
+  }).join('\n');
+}
+
+/* 굽기가 쓰는 상수(TS)를 소스에서 그대로 읽는다 — 숫자를 여기 적어두면 값을 조정할 때
+   테스트만 빨개지고, 정작 **DOM 과 canvas 가 갈라진 것**은 못 잡는다. 계약은 '둘이 같다' 이다. */
+function styleConsts() {
+  return new Function(extractHelpers() + '\n return { TS: TS, TSTYLES: TSTYLES, _tstyleOf: _tstyleOf, _inkOn: _inkOn };')();
+}
+
 function bake(layer, opts) {
   const { ctx, calls, state } = recordingCtx();
   const L = Object.assign({
     text: '속눈썹 연장', fontSize: 40, scale: 1, color: '#FFFFFF', align: 'center',
     font: { weight: 800, family: 'Pretendard, sans-serif' }, stroke: false, shadow: false
   }, layer);
-  const fn = new Function('c', 'L', 'ow', '_textLines', 'Math',
-    extractBakeBlock() + '\n return true;');
-  fn(ctx, L, (opts && opts.ow) || 200, (l) => (l.text || '').split('\n'), Math);
+  const fn = new Function('c', 'L', 'ow', 'oh', '_textLines', 'Math',
+    extractHelpers() + '\n' + extractBakeBlock() + '\n return true;');
+  fn(ctx, L, (opts && opts.ow) || 200, (opts && opts.oh) || 60, (l) => (l.text || '').split('\n'), Math);
   return { calls, state,
     strokes: calls.filter((x) => x[0] === 'strokeText'),
     fills: calls.filter((x) => x[0] === 'fillText') };
@@ -94,16 +120,26 @@ describe('[굽기 실행] 외곽선이 실제로 그려진다', () => {
     expect(r.strokes[0][4]).toBe(0);          // strokeText 시점의 shadowBlur
   });
 
-  test('fill 에는 그림자가 있다 (기존 동작 유지)', () => {
-    expect(bake({ stroke: true }).fills[0][4]).toBe(8);
-    expect(bake({ stroke: false }).fills[0][4]).toBe(8);
+  /* [2026-09-11] 값을 리터럴로 박지 않는다 — 굽기와 화면이 **같은 상수(TS)** 를 읽는지가 계약이다.
+     예전엔 화면이 CSS 로 `0 1px 12px rgba(0,0,0,.4)`, 굽기가 `blur 8 / rgba(0,0,0,.35)` 를 써서
+     둘이 조용히 갈라져 있었다(둘 다 '그림자가 있다' 는 통과했다). */
+  test('fill 그림자가 화면과 같은 값이다', () => {
+    const { TS } = styleConsts();
+    expect(bake({ stroke: true }).fills[0][4]).toBe(TS.shadowBlur);
+    expect(bake({ shadow: true }).fills[0][4]).toBe(TS.shadowBlur);
+    // 화면 CSS 문자열에도 같은 blur 가 들어 있어야 한다
+    expect(TS.shadowCss).toContain(TS.shadowBlur + 'px');
   });
 
-  test('화면(DOM)과 같은 색을 쓴다 — DOM 은 rgba(0,0,0,.5)', () => {
-    expect(bake({ stroke: true }).strokes[0][6]).toBe('rgba(0,0,0,.5)');
+  test('외곽선 색이 화면과 같은 값이다', () => {
+    const { TS } = styleConsts();
+    expect(bake({ stroke: true }).strokes[0][6]).toBe(TS.strokeRgba);
+    expect(TS.strokeCss).toContain(TS.strokeRgba);
   });
 
   test('두께가 확대에 비례한다 (webkit 은 획 중앙 기준이라 2배)', () => {
+    const { TS } = styleConsts();
+    expect(TS.strokeW).toBe(2);
     expect(bake({ stroke: true, scale: 1 }).strokes[0][5]).toBe(2);
     expect(bake({ stroke: true, scale: 2 }).strokes[0][5]).toBe(4);
     expect(bake({ stroke: true, scale: 0.2 }).strokes[0][5]).toBe(1);   // 최소 1
