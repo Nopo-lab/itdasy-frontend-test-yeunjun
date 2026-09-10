@@ -1302,9 +1302,23 @@
     if (!S || _ps().safeApplied || _ps().moved) return;
     if (!(window.ItdSafeZone && window.ItdSafeZone.avoidBox)) return;
     var url = S.photoUrl; if (!url) return;
-    _ps().safeApplied = true;   // 장마다 1회만
+    /* [P1 2026-09-10 실측] `_psIdx` 가 **이 함수엔 없는 이름**이었다 — `_applyPlanSafety` 의
+       지역변수라 아래 콜백에서 `ReferenceError: _psIdx is not defined` 가 났다.
+       라이브 콘솔 실측(build 20260909-2330-924b7e1, 편집기 열 때마다):
+         itd-editor.js:1307  ReferenceError: _psIdx is not defined
+       비동기 `.then` 안이라 앱은 안 죽고 **이 기능만 조용히 죽는다** —
+       얼굴/피사체 위에 얹힌 자동배치 텍스트를 비켜놓는 동작이 한 번도 실행된 적이 없다.
+       (테스트가 통과하는데 코드가 안 도는 그 패턴이다.)
+
+       고치면서 형제 함수 `_applyPlanSafety` 의 계약을 그대로 가져온다 —
+       비동기 결과는 **자기 세대(세션+장 번호)** 일 때만 쓴다. 안 그러면
+       1번 장 판단이 3번 장에 얹힌다(이 파일이 이미 겪은 경로다). */
+    var _psIdx = (S.adjSel || 0);
+    var mySession = S;
+    _ps(_psIdx).safeApplied = true;   // 장마다 1회만
     window.ItdSafeZone.avoidBox(url).then(function (box) {
-      if (!box || !S || _ps(_psIdx).moved || (S.layout && (S.layout.kind || 'single') !== 'single')) return;
+      if (!box || !S || S !== mySession || (S.adjSel || 0) !== _psIdx) return;
+      if (_ps(_psIdx).moved || (S.layout && (S.layout.kind || 'single') !== 'single')) return;
       var R = refs.stage.getBoundingClientRect(); if (!R.height) return;
       var atop = box.y * R.height, abot = (box.y + box.h) * R.height;
       var faceUpper = (atop + (abot - atop) / 2) < R.height * 0.55;
