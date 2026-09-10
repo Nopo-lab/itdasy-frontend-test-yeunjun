@@ -909,14 +909,12 @@
       '<div class="wsv2flow__screens">' +
         '<section class="wsv2flow__s" data-fs="upload"></section>' +
         '<section class="wsv2flow__s" data-fs="layout"></section>' +   // 레이아웃 고르기 컨테이너
-        '<section class="wsv2flow__s" data-fs="edit"></section>' +
-        '<section class="wsv2flow__s" data-fs="template"></section>' +
         '<section class="wsv2flow__s" data-fs="caption"></section>' +
         '<section class="wsv2flow__s" data-fs="connect"></section>' +
         '<section class="wsv2flow__s" data-fs="preview"></section>' +
       '</div>' +
-      // [v560] 편집 화면은 CTA 2분할 — 좌:저장하고 게시글 쓰기 / 우:템플릿 선택하기(cta2). 그 외 화면은 단일.
-      '<footer class="wsv2flow__actionbar"><button class="wsv2flow__cta wsv2flow__cta--alt hidden" data-fl="cta2"></button><button class="wsv2flow__cta" data-fl="cta">다음</button></footer>' +
+      // [2026-09-10] cta2('템플릿 선택하기') 제거 — 편집(A)·템플릿 화면과 함께 도달 불가였다.
+      '<footer class="wsv2flow__actionbar"><button class="wsv2flow__cta" data-fl="cta">다음</button></footer>' +
       '<input type="file" accept="image/*" multiple data-fl-file hidden>' +
       '<input type="file" accept="image/*" data-fl-bgfile hidden>' +
       // 올리기 로딩 — 시안 B(잇비 봇 둥둥 + 점3개 + 단계 멘트/인디케이터)
@@ -1354,86 +1352,11 @@
   /* [2026-09-04] '내 스타일' 진입점(§17).
      스타일이 하나도 없으면 **안 보여준다** — 누르면 빈 목록만 나오는 버튼은 없느니만 못하다.
      지금 이 작업에 걸린 스타일이 있으면 그 이름을 보여준다(뭘 쓰고 있는지 모르면 불안하다). */
-  function _myStyleBarHtml() {
-    try {
-      var L = window.IgStyleLibrary;
-      if (!L || !L.cached) return '';
-      var gs = L.cached();
-      if (!gs.length) return '';
-      var picked = L.styleForWork && L.styleForWork(_workKey());
-      var label = picked ? esc(picked.name || '내 스타일') : '스타일 고르기';
-      return '<div class="ed-sec"><button type="button" data-fl="mystyle" ' +
-        'style="width:100%;display:flex;align-items:center;gap:10px;padding:11px 14px;min-height:48px;' +
-        'background:var(--surface,#fff);border:1px solid var(--border);border-radius:14px;cursor:pointer;text-align:left;">' +
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--brand-strong);flex-shrink:0;">' +
-        '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/>' +
-        '<path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>' +
-        '<span style="flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--text);' +
-        'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">내 스타일 · ' + label + '</span>' +
-        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-subtle);flex-shrink:0;">' +
-        '<path d="m9 6 6 6-6 6"/></svg></button></div>';
-    } catch (_e) { void _e; return ''; }
-  }
 
-  function renderEdit() {
-    d.zoom = { s: 1, tx: 0, ty: 0 };   // 편집화면 새로 그릴 때(진입/사진전환) 줌 초기화
-    var pu = _editPhotoUrls();
-    return '' +
-      '<div class="ed-sec" data-ed-switcher>' + _editSwitcherHtml() + '</div>' +
-      _myStyleBarHtml() +
-      '<div class="ed-photo-vp" data-fl-edvp><div class="ed-photo" data-fl-edphoto style="background-image:url(' + esc(pu.url) + ');filter:' + pu.preview + '"></div><canvas class="ed-mask-ov" data-fl-maskov hidden></canvas></div>' + _vpToolsHtml() +
-      '<div class="ed-sec" data-ed-basic>' + _mainAdjustHtml() + '</div>' +
-      '<div class="ed-sec" data-ed-bottom>' + _editBottomHtml() + '</div>' +
-      '<div class="ed-sec" data-ed-adv>' + _advFoldHtml() + '</div>' +
-      '<div class="ed-sec" data-ed-tpl>' + _tplFoldHtml() + '</div>';
-  }
+
   // 특정 섹션만 교체 (전체 재렌더 회피)
   function _setEditSection(sel, html) { if (!el) return; var c = el.querySelector('[data-fs="edit"] ' + sel); if (c) c.innerHTML = html; }
-  /* [Editor A 2026-09-10 실측] 보정 도구를 눌러도 **조절 슬라이더가 화면에 안 나왔다.**
-     780×844 에서 대비를 누르면 슬라이더가 y=780 에 그려지는데 그 자리는 CTA 액션바(763~844) 뒤라
-     `elementFromPoint` 가 actionbar 를 준다 = 보이지도 눌리지도 않는다. 자동 스크롤도 없어서
-     원장 눈에는 '눌러도 아무 일 없는 버튼' 이다(기능이 죽은 걸로 보인다).
-     → 도구를 고르면 그 조절부를 **사진 아래 ~ 액션바 위** 밴드로 끌어온다.
-     이미 그 밴드 안에 있으면 건드리지 않는다(불필요한 튐 방지). */
-  function _scrollAdjIntoView(sel) {
-    try {
-      if (!el) return;
-      var sec = el.querySelector('[data-fs="edit"] ' + (sel || '[data-ed-basic]'));
-      if (!sec) return;
-      var ctl = sec.querySelector('input[type=range]') || sec.querySelector('button') || sec;
-      var sc = ctl.closest('.wsv2flow__s'); if (!sc) return;
-      var ph = el.querySelector('[data-fs="edit"] .ed-photo');
-      var bar = el.querySelector('.wsv2flow__actionbar');
-      var top = ph ? ph.getBoundingClientRect().bottom : sc.getBoundingClientRect().top;
-      var bot = bar ? bar.getBoundingClientRect().top : sc.getBoundingClientRect().bottom;
-      if (!(bot > top)) return;
-      /* [2026-09-10 2차 실측] 주 컨트롤만 기준으로 잡았더니, 배경 패널처럼 **아래로 더 긴** 섹션에서
-         색상 스와치 10개가 전부 CTA 버튼에 가려 도달 불가였다(y=768 vs 액션바 763).
-         🔑 그런데 섹션 래퍼(`[data-ed-basic]`) 자체는 **높이 0 으로 collapse** 한다(실측 rect [0,0,0]).
-            그걸 그대로 쓰면 delta 가 -755 로 나와 오히려 맨 위로 튄다 — 자식들의 **합집합**으로 잰다. */
-      var kids = Array.prototype.filter.call(sec.querySelectorAll('*'), function (n) {
-        var rr = n.getBoundingClientRect(); return rr.width > 0 && rr.height > 0;
-      });
-      var sTop = Infinity, sBot = -Infinity;
-      kids.forEach(function (n) { var rr = n.getBoundingClientRect(); if (rr.top < sTop) sTop = rr.top; if (rr.bottom > sBot) sBot = rr.bottom; });
-      if (!isFinite(sTop) || !isFinite(sBot)) { sTop = ctl.getBoundingClientRect().top; sBot = ctl.getBoundingClientRect().bottom; }
-      /* 규칙 하나로 둔다: **컨트롤이 있는 아래쪽**을 액션바 위로 올린다.
-         섹션이 밴드에 들어가는 짧은 경우에만 위로 넘치지 않게 클램프한다
-         (긴 섹션에서 클램프하면 정작 조절부가 계속 가려진다 — 배경 패널 스와치 10개가 그랬다). */
-      var band = bot - top - 8;
-      if (sTop >= top && sBot <= bot - 8) return;                // 이미 다 보이면 그대로
-      var fits = (sBot - sTop) <= band;
-      /* 짧은 섹션 = 하단(조절부)을 액션바 위로. 긴 섹션 = **상단**을 밴드 위쪽에.
-         긴 걸 하단 정렬하면 정작 먼저 누르는 버튼(원본/인물만/배경흐림)이 사진 뒤로 숨는다 —
-         실측에서 스와치 10/10 은 보이는데 버튼 0/3, 도구 0/6 이 됐다. 나머지는 스크롤로 닿는다. */
-      var delta = fits ? (sBot - (bot - 8)) : (sTop - (top + 8));
-      if (fits && (sTop - delta) < top) delta = sTop - top;
-      if (!isFinite(delta) || Math.abs(delta) < 1) return;
-      sc.scrollTop = Math.max(0, Math.min(sc.scrollHeight - sc.clientHeight, sc.scrollTop + delta));
-    } catch (_e) { void _e; }
-  }
+
   function _paintEditPhoto() {
     var p = el && el.querySelector('[data-fs="edit"] [data-fl-edphoto]'); if (!p) return;
     var pu = _editPhotoUrls();
@@ -2674,7 +2597,7 @@
     if (_WSL.hasReviewCard && _WSL.hasReviewCard() && window.WorkspaceLayout) return _WSL.composeCards();
   }
   // 편집 전환 전: 현재 보정을 굽고(bake) 다음 단계.
-  function _exitEdit() { return bakeEdit(); }
+
   // [ws-hyper] 레이아웃 전환 전: 조정된 focal/zoom 으로 최종 이미지 합성 후 다음 단계.
   // [T-116] 카드(=올라갈 사진)마다 한 번씩 구워 templateOutputs 배열로. 레이아웃 없는 카드는 사진 그대로.
   function _exitLayout() {
@@ -2694,8 +2617,6 @@
   var STEP_FX = {
     upload:   { render: renderUpload,   onExit: _exitUpload },
     layout:   { render: renderLayout,   onEnter: function () { _wsMountStage(); }, onExit: _exitLayout, handle: _WSL.handleClick },
-    edit:     { render: renderEdit,     onEnter: function () { _warmEditMasks(); _rafFx(function () { _mountCarousel(); }); }, onExit: _exitEdit },
-    template: { render: renderTemplate, onEnter: function () { _rafFx(function () { _mountCarousel(); }); } },
     caption:  { render: renderCaption,  onEnter: function () { _mountCaption(); }, onExit: _exitCaption, onBack: _backCaption },
     connect:  { render: renderConnect,  onEnter: function () { loadRecent(); }, handle: _WSC.handleClick },
     preview:  { render: renderPreview,  onEnter: function () { _rafFx(function () { _mountCaption(); }); } },
@@ -2755,12 +2676,6 @@
     if (CTA[name]) { bar.classList.remove('hidden'); cta.textContent = CTA[name].l; } else bar.classList.add('hidden');
     // [2026-08-30 원영] ghost 스텝(캡션)은 하단 CTA 를 약한 회색으로 — 화면 안 로즈 주 CTA 와 경쟁시키지 않는다.
     cta.classList.toggle('wsv2flow__cta--ghost', !!(CTA[name] && CTA[name].ghost));
-    // [v560] 편집 화면에서만 CTA 2분할(좌:저장하고 게시글 쓰기 / 우:템플릿 선택하기). 그 외엔 단일.
-    var cta2 = el.querySelector('[data-fl="cta2"]');
-    if (cta2) {
-      if (name === 'edit') { cta2.classList.remove('hidden'); cta2.textContent = '템플릿 선택하기'; cta.classList.add('wsv2flow__cta--half'); cta2.classList.add('wsv2flow__cta--half'); }
-      else { cta2.classList.add('hidden'); cta.classList.remove('wsv2flow__cta--half'); }
-    }
     // [캡션] 생성 트리거는 아래 '시나리오 칩(상황 선택)' 하나로 통일.
     //  생성 전(결과 없음)엔 하단 CTA 숨김 → 칩을 눌러 생성. 생성 후 '고객 연결로' 노출.
     if (name === 'caption' && !String(d.caption || '').trim()) bar.classList.add('hidden');
@@ -3047,7 +2962,6 @@
       if (a === 'cta') { return onCta(); }
       // [S4] 레이아웃 화면 전용(dellayout·layoutpick·trayph·savelayout·skiplayout)은 layout.handleClick 로 이관 — 아래 스텝 위임에서 처리됨.
       // [v560] 편집 화면 우측 CTA — 현재 보정 굽고 '템플릿 선택' 화면으로.
-      if (a === 'cta2') { return bakeEdit().then(function () { setScreen('template'); }); }
       /* [2026-09-04] '내 스타일' — 시트를 연다. 시트가 apply 하면 이 작업에만 걸리고,
          다음에 편집기를 열 때 `_buildShopStyleLayers` 가 그 스타일을 집는다. */
       if (a === 'mystyle') {
@@ -3199,9 +3113,9 @@
       var fold = t.closest('[data-fl-fold]'); if (fold) { var fk = fold.getAttribute('data-fl-fold'); if (fk === 'bg') { d.bgOpen = !d.bgOpen; _setEditSection('[data-ed-basic]', _mainAdjustHtml()); } else if (fk === 'tpl') { d.tplOpen = !d.tplOpen; _renderTplSection(); } return; }
       var edsel = t.closest('[data-fl-editsel]'); if (edsel) { return switchEditPhoto(+edsel.getAttribute('data-fl-editsel')); }
       var edswipe = t.closest('[data-fl-edswipe]'); if (edswipe) { return _stepEditPhoto(edswipe.getAttribute('data-fl-edswipe') === 'next' ? 1 : -1); }   // [v550] PC 화살표
-	      var basictool = t.closest('[data-fl-basictool]'); if (basictool) { d.basicTool = basictool.getAttribute('data-fl-basictool'); _setEditSection('[data-ed-basic]', _mainAdjustHtml()); /* [Editor A] 배경 패널은 세로가 길다 — 사진을 줄여 조절부 자리를 만든다(CSS is-tallpanel). */ try { if (el) el.classList.toggle('is-tallpanel', d.basicTool === 'background'); } catch (_tp) { void _tp; } _scrollAdjIntoView('[data-ed-basic]'); return; }
+	      var basictool = t.closest('[data-fl-basictool]'); if (basictool) { d.basicTool = basictool.getAttribute('data-fl-basictool'); _setEditSection('[data-ed-basic]', _mainAdjustHtml()); return; }
 	      var edtab = t.closest('[data-fl-edtab]'); if (edtab) { d.editTab = edtab.getAttribute('data-fl-edtab'); _setEditSection('[data-ed-adv]', _advFoldHtml()); _renderVpTools(); if (d.maskView || d.maskPaint) _renderMaskOverlay(); return; }
-	      var beautytool = t.closest('[data-fl-beautytool]'); if (beautytool) { d.precTool = beautytool.getAttribute('data-fl-beautytool'); _setEditSection('[data-ed-adv]', _advFoldHtml()); _scrollAdjIntoView('[data-ed-adv]'); return; }
+	      var beautytool = t.closest('[data-fl-beautytool]'); if (beautytool) { d.precTool = beautytool.getAttribute('data-fl-beautytool'); _setEditSection('[data-ed-adv]', _advFoldHtml()); return; }
       if (t.closest('[data-fl-bgpick]')) { el.querySelector('[data-fl-bgfile]').click(); return; }
       var bgb = t.closest('[data-fl-bg]'); if (bgb) { return applyBg(bgb.getAttribute('data-fl-bg')); }
       var bgc = t.closest('[data-fl-bgcolor]'); if (bgc) { d.bgColor = bgc.getAttribute('data-fl-bgcolor'); return applyBg('color'); }
@@ -5105,22 +5019,18 @@
       case 'layoutopts':
         return { ok: true, options: (_WSL && _WSL.compOptions) ? _WSL.compOptions(+cmd.n || 0) : [] };
       case 'goto':
-        if (!_flowReady() || SCREENS.indexOf(cmd.screen) < 0) return { ok: false, reason: 'not_open' };
+        if (!_flowReady()) return { ok: false, reason: 'not_open' };
+        // [2026-09-10] '없는 화면' 과 '작업실이 안 열림' 을 구분한다 — 예전엔 둘 다 not_open 이라
+        //   잇비가 왜 실패했는지 원장에게 설명할 수 없었다(제거된 edit/template 요청이 여기로 온다).
+        if (SCREENS.indexOf(cmd.screen) < 0) return { ok: false, reason: 'unknown_screen', screen: cmd.screen };
         setScreen(cmd.screen); return { ok: true };
       case 'adjust':
         return _applyAdjustPatch(cmd);
       case 'edit':   // 되돌리기/다시실행/초기화 — [2026-07-22] 옛 슬라이더 화면(A) 안 띄우고 headless 로 상태만.
         if (!_flowReady()) return { ok: false, reason: 'not_open' };
         _editBottom(cmd.action); return { ok: true };   // _setEditSection 은 A DOM 없으면 no-op, _refreshPreview 로 결과만 갱신
-      case 'bg':
-        if (!_flowReady()) return { ok: false, reason: 'not_open' };
-        if (cur !== 'edit') setScreen('edit');
-        if (cmd.color) d.bgColor = cmd.color;
-        applyBg(cmd.action || 'removeBg'); return { ok: true };
-      case 'template':
-        if (!_flowReady()) return { ok: false, reason: 'not_open' };
-        if (cur !== 'edit') setScreen('edit');
-        applyTemplate(cmd.key); return { ok: true };
+      /* [2026-09-10] 'bg'·'template' 커맨드 제거 — 둘 다 setScreen('edit') 로 옛 편집기를 띄웠고,
+         레포 전체에 **발신처가 0건**이었다(잇비 NL 테이블에도 없다). 화면과 함께 걷어낸다. */
       case 'caption':
         if (!_flowReady()) return { ok: false, reason: 'not_open' };
         if (cmd.service != null) d.service = String(cmd.service);

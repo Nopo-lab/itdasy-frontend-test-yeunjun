@@ -120,16 +120,31 @@ describe('§54 — QA 하네스가 배포본에 안 들어간다', () => {
   });
 });
 
-describe('§17 — 작업실 진입점이 실제로 연결돼 있다', () => {
-  test('버튼이 있고 그 액션이 시트를 연다', () => {
-    expect(flow).toMatch(/data-fl="mystyle"/);
+/* [2026-09-10 정정] 이 describe 는 **가짜 초록이었다.**
+   "작업진입점이 실제로 연결돼 있다" 면서 소스에 `data-fl="mystyle"` 마크업이 있는지만 봤는데,
+   그 버튼을 그리던 `_myStyleBarHtml` 은 **옛 슬라이더 편집기(A)의 'edit' 화면에서만** 렌더됐다.
+   그 화면은 2026-07-22 에 진입이 끊겨(ItdEditor 로 이관) 원장이 열 수 없었다 —
+   즉 마크업은 있는데 **아무도 못 누르는 버튼**이었고, 테스트는 그걸 '연결됨' 이라고 통과시켰다.
+   (실측: `IgStyleSheet.openList()` 호출자는 그 버튼 하나뿐.)
+   'edit' 화면 제거와 함께 버튼도 사라졌으므로, 여기서는 **현재 사실**을 고정한다.
+
+   🔴 남은 제품 이슈: 우리샵 스타일 **엔진은 살아 있다**(편집기 열 때 `_buildShopStyleLayers` 가
+      활성 스타일을 자동 적용하고, 저장 시 `_learnShopStyle` 이 되학습한다).
+      그런데 원장이 그 스타일을 **보거나 바꿀 입구가 지금 없다.** 살릴 거면 진입 UX 를 새로 정해야 한다. */
+describe('§17 — 우리샵 스타일 시트: 엔진은 살아 있고 진입은 없다(현재 사실)', () => {
+  test('시트 자체와 핸들러는 남아 있다 — 되살릴 때 쓸 수 있다', () => {
     expect(flow).toMatch(/if \(a === 'mystyle'\)/);
     expect(flow).toMatch(/IgStyleSheet\.openList\(\)/);
   });
 
-  test('스타일이 없으면 버튼을 안 보여준다 — 빈 목록만 나오는 버튼은 없느니만 못하다', () => {
-    const fn = flow.slice(flow.indexOf('function _myStyleBarHtml()'));
-    expect(fn.slice(0, 900)).toMatch(/if \(!gs\.length\) return '';/);
+  test('버튼을 그리던 렌더러는 죽은 화면과 함께 제거됐다', () => {
+    expect(flow).not.toContain('data-fl="mystyle"');
+    expect(flow).not.toContain('function _myStyleBarHtml()');
+  });
+
+  test('자동 적용·되학습 엔진은 그대로다 — 원장 화면에 계속 영향을 준다', () => {
+    expect(flow).toMatch(/_buildShopStyleLayers/);
+    expect(flow).toMatch(/function _learnShopStyle/);
   });
 });
 

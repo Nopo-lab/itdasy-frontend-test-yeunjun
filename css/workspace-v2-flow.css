@@ -960,9 +960,3 @@ body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
    tokens.css 로 이동·전역화(전 화면 input/textarea/select/contenteditable 16px).
    작업실 한정이던 이 블록은 중복이라 삭제 병합. */
 
-
-/* [Editor A 2026-09-10 실측] 사진 뷰포트가 64vh 고정(844 화면에서 540px)이라 조절부에 141px 밖에 안 남는다.
-   그 밴드에 도구줄(67) + 배경 버튼(40) + 색상 10개(40) 가 다 못 들어가서, 배경 패널을 열면
-   '원본/인물만/배경 흐림' 버튼과 색상 스와치가 CTA·사진 뒤로 숨었다(실측 0/3, 0/10).
-   사진을 늘 줄이면 주 화면이 손해라, **긴 패널이 열렸을 때만** 줄인다. */
-.wsv2flow.is-tallpanel .ed-photo-vp { height: clamp(280px, 46vh, 520px); }
