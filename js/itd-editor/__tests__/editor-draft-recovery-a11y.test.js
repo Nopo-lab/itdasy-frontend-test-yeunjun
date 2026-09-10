@@ -27,8 +27,10 @@ describe('BUG-02 · 편집 중 리로드로 작업을 잃지 않는다', () => {
     expect(split).toMatch(/delete light\.photos/);
     expect(split).toMatch(/delete light\.photoDraw/);
     expect(split).toMatch(/delete light\.collageBgImg/);
-    // 큰 것은 기존 IDB assets store 재사용(새 store 를 만들면 스키마 가드도 같이 고쳐야 한다)
-    expect(SRC).toMatch(/window\.saveAssetToDB\(DRAFT_ASSET/);
+    /* 큰 것은 기존 IDB assets store 재사용(새 store 를 만들면 스키마 가드도 같이 고쳐야 한다).
+       ⚠️ 이 단언은 원래 `saveAssetToDB(DRAFT_ASSET` 이었는데, 그건 **버그 형태를 고정한 것**이었다 —
+          그 함수는 인자를 1개만 받는다. 아래 'IDB 규약대로 저장한다' describe 가 올바른 형태를 지킨다. */
+    expect(SRC).toMatch(/window\.saveAssetToDB\(\{ id: DRAFT_ASSET/);
   });
 
   test('입력 중인 글자도 초안에 들어간다 — L.text 는 blur 에서만 갱신되기 때문', () => {
@@ -117,5 +119,30 @@ describe('BUG-06 · 접근성 / 키보드', () => {
     expect(h).toMatch(/editing\.tx\.blur\(\)/);        // ① 글자 입력만 종료
     expect(h).toMatch(/_closeToolPanel\(\)/);          // ② 패널만 닫기
     expect(h).toMatch(/S\._cancelled = true/);         // ③ 편집기 취소
+  });
+});
+
+
+/* [2026-09-10 콘솔 실측] 복구 초안의 **사진이 IDB 에 한 번도 안 들어가고 있었다.**
+   `saveAssetToDB(DRAFT_ASSET, media)` 로 2개 인자를 넘겼는데 이 함수는 **인자 1개**를 받는다
+   (assets store 는 keyPath:'id'). 그래서 `DataError: key path did not yield a value` 로 조용히 실패했고,
+   레이어는 sessionStorage 라 복구가 되는 것처럼 보였지만 **붓그림·배경사진은 되살릴 수 없었다.**
+   토스트도 에러도 사용자에겐 안 보였다 — 콘솔을 읽어서 잡았다. */
+describe('BUG-02 · 초안 사진을 IDB 규약대로 저장한다', () => {
+  const DB = require('fs').readFileSync(require('path').join(ROOT, 'app-gallery-db.js'), 'utf8');
+
+  test('app-gallery-db 의 saveAssetToDB 는 인자 1개(keyPath 객체)를 받는다', () => {
+    expect(DB).toMatch(/async function saveAssetToDB\(asset\)/);
+    expect(DB).toMatch(/objectStore\(_ASSET_STORE\)\.put\(asset\)/);
+  });
+
+  test('편집기는 id 를 가진 객체로 저장한다 — 2인자 호출이 없다', () => {
+    expect(SRC).toMatch(/saveAssetToDB\(\{ id: DRAFT_ASSET, media:/);
+    expect(SRC).not.toMatch(/saveAssetToDB\(DRAFT_ASSET,/);   // 옛 2인자 호출이 돌아오면 실패
+  });
+
+  test('읽을 때 레코드에서 media 만 꺼낸다', () => {
+    const fn = SRC.slice(SRC.indexOf('function _draftLoadMedia'), SRC.indexOf('function _draftLoadMedia') + 700);
+    expect(fn).toMatch(/rec && rec\.media/);
   });
 });

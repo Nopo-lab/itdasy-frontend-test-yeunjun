@@ -2989,7 +2989,7 @@
   }
   function _draftClear() {
     try { sessionStorage.removeItem(DRAFT_KEY); sessionStorage.removeItem(DRAFT_PENDING_KEY); } catch (_e) { void _e; }
-    try { if (window.saveAssetToDB) window.saveAssetToDB(DRAFT_ASSET, null); } catch (_e2) { void _e2; }
+    try { if (window.saveAssetToDB) window.saveAssetToDB({ id: DRAFT_ASSET, media: null, createdAt: Date.now() }); } catch (_e2) { void _e2; }
     _draftLastJson = ''; _draftMediaSig = '';
   }
   /* [BUG-02 후속] 입력 중인 글자를 모델로 밀어넣는다.
@@ -3022,7 +3022,12 @@
       var msig = _mediaSig(sp.media);
       if (msig !== _draftMediaSig && window.saveAssetToDB) {     // 사진은 바뀔 때만(무거움)
         _draftMediaSig = msig;
-        try { window.saveAssetToDB(DRAFT_ASSET, sp.media); } catch (_me) { void _me; }
+        /* [2026-09-10 콘솔 실측] `saveAssetToDB(id, obj)` 로 불렀는데 이 함수는 **인자 1개**다
+           (assets store 는 keyPath:'id'). 그래서 DataError 로 조용히 실패했고, **사진이 IDB 에
+           한 번도 안 들어갔다** — 레이어는 sessionStorage 라 복구가 되는 것처럼 보였지만
+           붓그림(photoDraw)·배경사진(collageBgImg)은 되살릴 수 없었다. 규약대로 감싼다. */
+        try { window.saveAssetToDB({ id: DRAFT_ASSET, media: sp.media, createdAt: Date.now() }); }
+        catch (_me) { void _me; }
       }
     } catch (_e) { void _e; }
   }
@@ -3055,8 +3060,13 @@
     } catch (_e) { return null; }
   }
   function _draftLoadMedia() {
-    try { if (window.getAssetFromDB) return Promise.resolve(window.getAssetFromDB(DRAFT_ASSET)).catch(function () { return null; }); }
-    catch (_e) { void _e; }
+    try {
+      if (window.getAssetFromDB) {
+        return Promise.resolve(window.getAssetFromDB(DRAFT_ASSET))
+          .then(function (rec) { return (rec && rec.media) || null; })   // 레코드에서 media 만
+          .catch(function () { return null; });
+      }
+    } catch (_e) { void _e; }
     return Promise.resolve(null);
   }
   function _hideDraftBar() { if (_draftBar) { try { _draftBar.remove(); } catch (_e) { void _e; } _draftBar = null; } }
