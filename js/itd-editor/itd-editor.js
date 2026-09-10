@@ -695,6 +695,26 @@
     L.y = (h >= R.height) ? (R.height - h) / 2 : Math.max(0, Math.min(R.height - h, L.y));
     applyXf(L);
   }
+  /* [2026-09-11] 글자 내용이 바뀌면 **저장 당시 폭 제한을 풀고** 상자를 다시 맞춘다.
+     🔴 안 풀면: 저장→재편집한 글자에 내용을 더할 때 상자가 안 커지고 잘게 접힌다.
+     실측(스테이지 533px) — 복원된 상자 max-width 71px 에서 38자를 치니 **16줄**,
+     같은 문장을 새 글자에 치면 469px 에서 2줄이었다.
+     복원이 폭을 지키는 건 BUG-07(안 건드린 글자의 줄바꿈 보존) 때문이고 그 근거는
+     '저장 당시의 그 글자'다. 글자가 바뀌면 근거가 사라진다.
+     '가로 늘리기'(L.wrapW)로 원장이 직접 정한 폭은 손대지 않는다 — 명시적 선택이다.
+     ⚠️ editText 가 아니라 **레이어를 만들 때** 붙인다. 편집 진입 경로가 여러 개라
+        한 곳에만 붙이면 나머지 경로에선 안 돈다(이 레포에서 반복된 실수다). */
+  function _bindTextGrow(L) {
+    if (!L || !L.tx || L._growBound) return;
+    L._growBound = 1;
+    L.tx.addEventListener('input', function () {
+      if (!L.wrapW) {
+        var _R = refs.stage && refs.stage.getBoundingClientRect();
+        if (_R && _R.width) L.tx.style.maxWidth = Math.round(_R.width * 0.88) + 'px';
+      }
+      _fitTextInStage(L);
+    });
+  }
   function placeCenter(L, w, h) {
     var r = refs.stage.getBoundingClientRect();
     L.x = r.width / 2 - (w || L.el.offsetWidth) / 2;
@@ -1267,8 +1287,15 @@
       L.text = _t.replace(/ /g, ' ').replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '');
       _fitTextInStage(L);   // [2026-09-11] 다 치고 나면 박스를 스테이지 안으로(안 그러면 발행본에서 잘린다)
     }, { once: true });
-    // 치는 동안에도 따라오게 — blur 까지 기다리면 원장이 잘린 상태를 보면서 입력하게 된다
-    L.tx.addEventListener('input', function () { _fitTextInStage(L); });
+    /* (아래 규칙은 _bindTextGrow 로 옮겼다 — 편집 진입 경로가 여럿이라 여기에만 붙이면 샌다.)
+       [2026-09-11] 글자를 고치기 시작하면 **저장 당시 폭 제한을 푼다.**
+       🔴 그러지 않으면: 저장→재편집한 글자에 내용을 더할 때 상자가 안 커지고 잘게 접힌다.
+       실측(스테이지 533px) — 복원된 상자 max-width 178px 에서 38자를 치니 **8줄**,
+       같은 문장을 새 글자에 치면 469px 에서 2줄이었다.
+       복원이 폭을 지키는 건 BUG-07(안 건드린 글자의 줄바꿈 보존) 때문이고, 그 근거는
+       '저장 당시의 그 글자'다. 글자가 바뀌면 그 근거가 사라진다.
+       '가로 늘리기'(L.wrapW)로 원장이 직접 정한 폭은 손대지 않는다 — 그건 명시적 선택이다. */
+    _bindTextGrow(L);
   }
   /* ── 우리샵 스타일 입력 레이어 렌더(학습 round-trip용) ── */
   function fontByKey(k) { for (var i = 0; i < FONTS.length; i++) { if (FONTS[i].key === k) return FONTS[i]; } return null; }
@@ -1381,6 +1408,7 @@
        (`moved` 가 없는 옛 초안도 좌표는 저장돼 있으니 존중한다.)
        다만 스테이지 밖으로 나간 상태로 저장됐다면 되돌려 넣는다 — 그대로 두면 발행본에서 잘린다. */
     L._moved = (spec.moved != null) ? !!spec.moved : true;
+    _bindTextGrow(L);
     // 원장이 고른 축 표식 복원 — 이게 없으면 자동 보정이 다시 덮는다(위 _serLayer 주석 참고)
     if (spec.own && spec.own.length) { L._own = {}; for (var _oi = 0; _oi < spec.own.length; _oi++) L._own[spec.own[_oi]] = 1; }
     applyXf(L);
