@@ -529,7 +529,11 @@
     var t = el('div', 'itl-text'); t.textContent = text;
     t.style.cssText = 'font-family:' + L.font.family + ';font-weight:' + L.font.weight + ';color:' + L.color + ';text-align:center;font-size:' + L.fontSize + 'px;white-space:pre;text-shadow:0 2px 8px rgba(0,0,0,.35)';
     L.el.appendChild(t); L.tx = t;
-    placeCenter(L, 200, 60); selectLayer(L);
+    L.tstyle = 'shadow'; _applyTextStyle(L);
+    placeCenter(L, 200, 60);
+    _fitTextInStage(L);   // [2026-09-11] 글자 스티커도 스테이지 안에 — 긴 문구가 화면 밖으로 나가면 발행본에서 잘린다
+    _bindTextGrow(L);     // 나중에 고쳐도 폭이 따라오게(생성 경로마다 붙인다)
+    selectLayer(L);
     _pushOp({ op: 'add', L: L });
     closeStickerSheet();
     return L;
