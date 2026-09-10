@@ -281,6 +281,22 @@
 - **표시 한도 ≠ 강제 한도**(표시 3회 / 실제 100회 두 벌) → 플랜 한도 **단일 소스화**(`7234855`).
 - **회원 탈퇴가 FK 위반으로 통째로 실패**(Apple 심사 블로커, `79b116a`) · 회원권 해지 환불정산 · 0원 매출 지표오염 · 완료매출 취소/삭제 시 미삭제(P0 돈) · PATCH `customer_id` **IDOR**.
 - ⚠️ **`STAGING_BYPASS_ALL` 이 라이브였다**(전원 premium) → OFF. 검증은 **정규식 말고 AST·실DB**로.
+- **[2026-09-11 예약·매출·회원권·고객 전수감사]** 🔴 **완료 → 취소 → 되살리기 → 재완료 = 장부 합계 0원**
+  (회원권이면 잔액이 안 빠져 시술이 공짜). `sprint_e._create_auto_revenue` 가 "행이 있나" 만 보고
+  **"이미 환불·복구로 상계됐나"** 를 안 봤다 → 실제 상태 전이일 때만 **재청구/재차감**(행 추가, 삭제 아님).
+  `UNIQUE(booking_id,revenue_kind)` 탓에 재청구 행은 `revenue_kind=None` + memo 마커로 판정을 잇는다.
+  같이 고친 것: **방문 판정**(노쇼 위약금·회원권 충전/복구행이 방문으로 세어짐 → `membership_delta` 컬럼 판정 ·
+  **방문 단위 = `COALESCE(booking_id,-id)`** 로 한 예약 1회 · SQL `visit_filters()` 와 파이썬 `is_visit()` 동시 수정) ·
+  **예약 삭제가 시술기록·`next_retouch_date` 를 안 지워 안 한 시술의 리터치 알림이 나가던 것**
+  (`sprint_e.revert_completion_effects`, `settle_booking_revenues` 안에서 `deleted_at` 게이트) ·
+  `ai_brief._last_amount` 무필터(환불행 −80,000·충전액을 '최근 시술 금액' 으로) ·
+  `PATCH /revenue` 가 수수료·실수령 재계산을 안 하던 것 · **환불 붙은 매출 삭제 시 고아 음수행**
+  (`refund_of_id` 가 `ON DELETE SET NULL`) · **고객 병합·삭제가 `bookings_list` 캐시를 안 비우던 것** ·
+  `POST /bookings` 가 `payment_method` 를 받고 버리던 것.
+  ⚠️ **취소(cancelled)는 방문·시술기록을 그대로 둔다**(계약 — `test_cancel_visit_semantics_2026_09_07.py`).
+  잘못 완료 처리한 걸 되돌리는 길은 **예약 삭제**다.
+  회귀: `backend/tests/test_booking_money_reactivation_2026_09_11.py`(13건). 정본 =
+  루트 `BOOKING_REVENUE_MEMBERSHIP_CUSTOMER_AUDIT_2026-09-11.md`.
 
 ### 모델 (models.py · **60 클래스**)
 - 계정/샵: User·ShopSettings·Persona·Portfolio·BackgroundAsset·ApiUsageLog.
