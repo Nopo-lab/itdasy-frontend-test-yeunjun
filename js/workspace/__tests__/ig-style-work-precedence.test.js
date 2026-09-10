@@ -132,9 +132,17 @@ describe('§54 — QA 하네스가 배포본에 안 들어간다', () => {
       활성 스타일을 자동 적용하고, 저장 시 `_learnShopStyle` 이 되학습한다).
       그런데 원장이 그 스타일을 **보거나 바꿀 입구가 지금 없다.** 살릴 거면 진입 UX 를 새로 정해야 한다. */
 describe('§17 — 우리샵 스타일 시트: 엔진은 살아 있고 진입은 없다(현재 사실)', () => {
-  test('시트 자체와 핸들러는 남아 있다 — 되살릴 때 쓸 수 있다', () => {
-    expect(flow).toMatch(/if \(a === 'mystyle'\)/);
-    expect(flow).toMatch(/IgStyleSheet\.openList\(\)/);
+  /* [2026-09-10 scope-lock] 핸들러(`a === 'mystyle'`)도 제거했다.
+     버튼(=유일한 emit)이 없어 어떤 클릭으로도 도달할 수 없었다(실측: 라이브 DOM 에서
+     [data-fl="mystyle"] 0개). 시트 모듈 IgStyleSheet 자체는 별도 파일로 그대로 있다 —
+     되살릴 땐 진입 UX 를 정하고 버튼과 핸들러를 같이 만든다. */
+  test('작업실 안의 mystyle 진입(버튼·핸들러)은 둘 다 없다', () => {
+    expect(flow).not.toMatch(/if \(a === 'mystyle'\)/);
+    expect(flow).not.toContain('data-fl="mystyle"');
+  });
+
+  test('시트 모듈은 별도 파일로 살아 있다 — 되살릴 때 쓸 수 있다', () => {
+    expect(fs.existsSync(path.join(ROOT, 'js/photo/ig-style-sheet.js'))).toBe(true);
   });
 
   test('버튼을 그리던 렌더러는 죽은 화면과 함께 제거됐다', () => {
