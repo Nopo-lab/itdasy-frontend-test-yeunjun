@@ -2105,6 +2105,8 @@
     root.querySelectorAll('.itlaytype').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-lay') === i); });
     // [#2] 콜라주는 칸에 '꽉 채움(cover)'이 기본 — 칸을 채우고, 잘리는 부분은 칸을 드래그해 보일 곳을 고른다(재구도).
     //   전체보기(contain)를 원하면 fit 토글. 단일은 전체.
+    /* [2026-09-11] 업로드 화면에서 원장이 '사진 채우기'를 골랐으면 그게 정본이다.
+       예전엔 여기서 단일=contain 으로 덮어써서, 원장이 '꽉 채움'을 골라도 편집기에선 여백이 다시 생겼다. */
     if (!S._fitManual) { S.fitMode = isSingleL(S.layout) ? 'contain' : 'cover'; _syncFitToggle(); }
     _syncBaLabels();   // [전/후] 전/후 레이아웃이면 BEFORE·AFTER 라벨 자동, 아니면 제거
     applyPhotoTransform();   // [#2] 단일↔콜라주 전환 시 photowrap 회전 리셋(콜라주 전체 휘어짐 방지)
@@ -3558,6 +3560,9 @@
          → 학습에 쓰는 그 context 를 그대로 들고 있다가 조회에도 쓴다. */
       planCategory: (opts.category || (opts.wmContext && opts.wmContext.service) || null),
       wmContext: opts.wmContext || null };
+    /* [2026-09-11] 업로드 화면의 '사진 채우기' 선택을 수동 선택으로 받는다.
+       `_fitManual` 을 세워야 `selectLayout` 의 기본값(단일=contain)이 이걸 덮지 않는다. */
+    if (opts.fitMode === 'cover' || opts.fitMode === 'contain') { S.fitMode = opts.fitMode; S._fitManual = true; }
     var _ed = (opts.editState && opts.editState.v) ? opts.editState : null;   // [#4/#8/#11/#16] 재편집 이어가기
     if (_ed) { try { _restoreState(_ed); } catch (_re) { _ed = null; } }   // 복원 실패 시 일반 열기로 폴백(앱 안전)
     // [T8-A] 관찰 세션 시작 — 이 편집기 오픈 = 게시물 1개 작업 = observation 1개(batch).

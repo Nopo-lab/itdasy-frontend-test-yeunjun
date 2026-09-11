@@ -244,6 +244,31 @@
         _stripHtml(eps) + '</div>';
     }
 
+    /* 🔴 [2026-09-11 실사진 게이트] **사진을 가득 채울지 전체를 보일지 고를 데가 없었다.**
+       업로드 미리보기(.wsc-one)는 cover 로 꽉 차게 보여주는데 편집기·발행본은 contain 이라
+       원장이 본 것과 결과가 달랐고, 바꿀 버튼은 편집기 레이아웃 패널 안에 있는데
+       그 패널을 여는 진입점이 2026-07-13 `ce00d20`(요청4)로 사라져 **어디에도 없었다.**
+       실측(LIVE, 실제 업로드): 1:1 사진 → 발행본 1080×1350 에 흰 여백 19%,
+       가로 1.45:1 사진 → **흰 여백 45%**(위아래 301px씩). 사진은 55%만 남는다.
+       요청4 의 전제("갤러리에서 이미 선택")를 fit 축에서도 실제로 충족시킨다 — 여기서 고른다. */
+    function _fitOf() { var d = D(); return d._wsFit === 'cover' ? 'cover' : 'contain'; }
+    function _fitRowHtml() {
+      var cur = _fitOf();
+      var opts = [
+        { k: 'cover', n: '꽉 채움', d: '여백 없이 가득 — 위아래가 조금 잘려요' },
+        { k: 'contain', n: '전체 보이기', d: '사진 전부 — 남는 자리는 흰 여백' }
+      ];
+      return '<div><div class="wsc-sec">사진 채우기 <span>여백 없이 채울지, 전부 보일지</span></div>' +
+        '<div class="wsc-opts wsc-opts--fit">' + opts.map(function (o) {
+          var on = o.k === cur;
+          return '<button type="button" class="wsc-opt' + (on ? ' on' : '') + '" data-fl-fit="' + o.k + '"' +
+            ' data-haptic="light" aria-pressed="' + on + '">' +
+            '<span class="wsc-fitmini wsc-fitmini--' + o.k + '" aria-hidden="true"></span>' +
+            '<span class="wsc-opt-t"><b>' + esc(o.n) + '</b><span>' + esc(o.d) + '</span></span>' +
+          '</button>';
+        }).join('') + '</div></div>';
+    }
+
     function renderLayout() {
       _ensureCards();
       var eps = editablePhotos() || [], n = eps.length;
@@ -253,7 +278,7 @@
       if (n === 1) {
         var p1 = eps[0];
         return '<div class="wsc-wrap">' +
-          '<div class="wsc-one" style="background-image:url(' + esc(disp(photoUrl(p1))) + ')" role="img" aria-label="올릴 사진"></div>' +
+          '<div class="wsc-one" style="background-image:url(' + esc(disp(photoUrl(p1))) + ');background-size:' + _fitOf() + ';background-color:#fff" role="img" aria-label="올릴 사진"></div>' +
           '<div class="wsc-onemsg">' +
             '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>' +
             // [2026-09-03] '사진 더하기는 이전 화면에서' 라고 써놨지만 **이전 화면으로 갈 방법이 없었다**(뒤로=플로우 종료).
@@ -261,6 +286,7 @@
             '<div><b>사진이 1장이라 그대로 올라가요</b><span>레이아웃은 2장부터 — 아래에서 사진을 더하거나 바꿔요</span></div>' +
           '</div>' +
           _stripSecHtml(eps) +
+          _fitRowHtml() +
         '</div>';
       }
 
@@ -287,6 +313,7 @@
           '<p class="wsc-count">이대로 <b>' + cards.length + '장</b>이 올라가요</p></div>' +
         '<div><div class="wsc-sec">구성 <span>썸네일 눌러 골라요 · 한 컷에 모으거나 한 장씩</span></div>' +
           '<div class="wsc-opts">' + opts + '</div></div>' +
+        _fitRowHtml() +
       '</div>';
     }
 
@@ -453,6 +480,17 @@
         return true;
       }
       if (t.closest('[data-fl-lyredit]')) { setScreen('upload'); return true; }
+      /* [2026-09-11] 사진 채우기(꽉 채움 / 전체) — 여기서 고른 값이 미리보기와 편집기·발행본에
+         **같이** 적용된다. 합성본은 무효화해야 새 값으로 다시 굽는다(안 그러면 옛 여백본이 남는다). */
+      var ft = t.closest('[data-fl-fit]');
+      if (ft) {
+        var dF = D(), fk = ft.getAttribute('data-fl-fit') === 'cover' ? 'cover' : 'contain';
+        if (_fitOf() === fk) return true;
+        dF._wsFit = fk;
+        dF.templateOutput = null; dF.templateOutputs = []; dF.previewUrl = null;
+        if (CUR() === 'layout') setScreen('layout', { push: false });
+        return true;
+      }
       var op = t.closest('[data-fl-comp]');
       if (op) {
         var d = D(), key = op.getAttribute('data-fl-comp');

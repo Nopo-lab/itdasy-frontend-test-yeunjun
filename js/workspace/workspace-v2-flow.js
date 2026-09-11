@@ -691,6 +691,10 @@
       }
     } catch (_pe) { void _pe; }
     Editor.open({
+      /* [2026-09-11] 업로드 화면에서 고른 '사진 채우기'를 그대로 넘긴다.
+         안 넘기면 편집기가 단일 사진을 늘 contain 으로 열어 **원장이 본 미리보기와 달라진다**
+         (실측: 가로 사진 발행본의 45%가 흰 여백이었고 바꿀 방법이 화면에 없었다). */
+      fitMode: (d._wsFit === 'cover' ? 'cover' : (d._wsFit === 'contain' ? 'contain' : null)),
       photoUrl: photo,
       photos: (_wsEd && _wsEd.mode === 'collage') ? _wsEd.photos : (editablePhotos() || []).map(function (p) { return p.editedDataUrl || _cleanBase(p) || photoUrl(p); }),   // [itd][#5] 콜라주 셀은 편집본 우선 · [ws-hyper] 레이아웃 매칭 시 슬롯 순서대로
       ratio: built.ratio,

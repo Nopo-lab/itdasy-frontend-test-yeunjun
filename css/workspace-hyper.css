@@ -155,3 +155,23 @@
   .wsc-opt, .wsc-opt:active, .wsc-mini i { transition: none !important; transform: none !important; }
   .wsc-frames, .wsc-strip { scroll-behavior: auto; }
 }
+
+/* 🔴 [2026-09-11] 사진 채우기(꽉 채움 / 전체) — 기존 구성 칩(.wsc-opt)과 같은 시각 언어를 그대로 쓴다.
+   새 디자인 언어를 만들지 않는다. 미니 썸네일만 '여백 있음/없음'을 한눈에 보여준다. */
+.wsc-opts--fit { flex-direction: row; gap: 8px; }
+.wsc-opts--fit .wsc-opt { flex: 1 1 0; min-width: 0; gap: 10px; padding: 10px 12px; }
+.wsc-fitmini {
+  width: 34px; height: 42px; border-radius: 7px; flex: none;
+  background: var(--surface-2, #F7F8FA); border: 1px solid var(--border, #E9EBEE);
+  display: block; position: relative; overflow: hidden;
+}
+/* 꽉 채움 — 칸을 가득 채운 사진 */
+.wsc-fitmini--cover::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(135deg, #C9CED6, #9AA3AE);
+}
+/* 전체 보이기 — 위아래 흰 여백이 남는 사진 */
+.wsc-fitmini--contain::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 25%; height: 50%;
+  background: linear-gradient(135deg, #C9CED6, #9AA3AE);
+}
