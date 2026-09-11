@@ -176,7 +176,10 @@ describe('⑧ 모바일 터치 타깃 — 아이콘이 아니라 히트박스 �
     expect(Math.abs(Number(m[1]))).toBeLessThanOrEqual(13 / 2 + 0.5);
   });
   test('레이어 순서 버튼은 44x44 이고 safe-area 를 더한다', () => {
-    const lyr = editorCss.match(/\.itlyr \{[^}]*\}/)[0];
+    /* [2026-09-11] `.itded__lyr .itlyr { … }` 규칙이 생기면서 이 정규식이 **그쪽을 먼저 잡았다.**
+       계약은 '순서 버튼이 44×44' 이지 파일에 그 문자열이 몇 번 나오느냐가 아니다 —
+       줄 첫머리에 오는 진짜 `.itlyr` 규칙만 잡도록 앵커를 건다. */
+    const lyr = editorCss.match(/(?:^|\n)\.itlyr \{[^}]*\}/)[0];
     expect(Number(lyr.match(/width:\s*(\d+)px/)[1])).toBeGreaterThanOrEqual(44);
     expect(Number(lyr.match(/height:\s*(\d+)px/)[1])).toBeGreaterThanOrEqual(44);
     expect(editorCss.match(/\.itded__lyr \{[^}]*\}/)[0]).toContain('safe-area-inset-bottom');

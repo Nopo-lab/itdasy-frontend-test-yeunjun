@@ -32,6 +32,15 @@
 .itded__draw{position:absolute;inset:0;z-index:3;touch-action:none}
 .itded__draw.is-armed{cursor:crosshair}
 .itded__layers{position:absolute;inset:0;z-index:4}
+/* 🔴 [2026-09-11 실기기] 도구 패널이 열리면 레이어 순서 줄이 사진 위로 올라오는데(z 11),
+   레이어는 z 4 라 **선택한 레이어의 회전·크기 핸들이 그 줄에 가려 안 눌렸다.**
+   스티커는 기본이 가운데 배치라 '스티커 넣고 패널 열면 못 돌린다' 가 기본 동선이었다.
+   실측(402×714, iOS WebKit·Chrome 동일): rot @241,397 / rs @161,397 → itlyr 로 가로채임.
+   → 레이어가 선택돼 있을 때만 레이어 판을 줄 위로 올린다. 판 자체는 탭을 통과시키고
+   실제 레이어 상자만 받으므로, 순서 줄 버튼은 레이어가 겹치지 않는 곳에서 그대로 눌린다.
+   (:has 미지원 브라우저는 지금 동작 그대로 — 나빠지지 않는다.) */
+.itded__layers:has(.itl.is-active){z-index:12;pointer-events:none}
+.itded__layers:has(.itl.is-active) .itl{pointer-events:auto}
 .itded__scrim{position:absolute;inset:0;z-index:1;pointer-events:none;
   background:linear-gradient(180deg,rgba(20,12,16,.34),transparent 16%,transparent 60%,rgba(20,12,16,.4))}
 
@@ -389,7 +398,15 @@
    스테이지 크기는 건드리지 않는다 — 바꾸면 레이어 px 좌표가 통째로 움직인다. */
 .itded__lyr { position:absolute; left:0; right:0; bottom:0; z-index:11;
   display:flex; gap:6px; justify-content:center;
-  padding:6px 10px calc(8px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
+  padding:6px 10px calc(8px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  /* 🔴 [2026-09-11 실기기] 이 줄은 **전폭이고 배경이 없다.** 보이는 건 버튼 4개뿐인데
+     컨테이너가 사진 위 58px 띠 전체의 탭을 먹고 있었다.
+     실측(iPhone 402×714 WebKit · Chrome 402×714 동일): 가운데 스티커의
+     회전 핸들 @241,397 → `itded__lyr`, 크기 핸들 @161,397 → `itlyr` 로 가로채여
+     **핸들이 보이는데 안 눌렸다**(원장 입장: 도구 패널 열고 가운데 글자를 못 돌린다).
+     컨테이너는 탭을 통과시키고 버튼만 받는다 — 화면은 1px도 안 변한다. */
+  pointer-events:none; }
+.itded__lyr .itlyr { pointer-events:auto; }
 /* [2026-09-03] 도구 패널이 열리면 이 줄은 패널에 완전히 덮인다 — 보이는 채로 두면
    눌러도 패널의 다른 버튼이 먹는다(실측). 패널 닫으면 그대로 돌아온다. */
 /* 패널이 열려도 숨기지 않는다 — 대신 패널 위로 올린다.
