@@ -137,12 +137,16 @@ describe('BUG-02 · 초안 사진을 IDB 규약대로 저장한다', () => {
   });
 
   test('편집기는 id 를 가진 객체로 저장한다 — 2인자 호출이 없다', () => {
-    expect(SRC).toMatch(/saveAssetToDB\(\{ id: DRAFT_ASSET, media:/);
+    /* [2026-09-11] `sig:` 가 id 와 media 사이에 들어가면서 문구 고정 정규식이 깨졌다.
+       계약은 '객체 1개로 저장한다(2인자 아님)' 이지 필드 순서가 아니다 — 순서에 안 묶이게 쓴다. */
+    expect(SRC).toMatch(/saveAssetToDB\(\{\s*id:\s*DRAFT_ASSET,[\s\S]{0,80}?media:/);
     expect(SRC).not.toMatch(/saveAssetToDB\(DRAFT_ASSET,/);   // 옛 2인자 호출이 돌아오면 실패
   });
 
   test('읽을 때 레코드에서 media 만 꺼낸다', () => {
     const fn = SRC.slice(SRC.indexOf('function _draftLoadMedia'), SRC.indexOf('function _draftLoadMedia') + 700);
-    expect(fn).toMatch(/rec && rec\.media/);
+    /* 레코드 통째가 아니라 media 만 — 조기 반환(!rec || !rec.media)도 같은 계약이다. */
+    expect(fn).toMatch(/rec\.media/);
+    expect(fn).not.toMatch(/return\s+rec\s*;/);
   });
 });
