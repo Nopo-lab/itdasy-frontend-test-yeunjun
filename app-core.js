@@ -2962,6 +2962,20 @@ window.addEventListener('load', async function() {
           const _lastBtn = document.querySelector('.tab-bar [data-tab="' + _lastTab + '"]')
             || document.querySelector('.ms-side__item[data-side-tab="' + _lastTab + '"]');
           showTab(_lastTab, _lastBtn);
+          /* [2026-09-11] 복원은 **탭을 켜기만 하고 내용을 안 그렸다.**
+             showTab 안의 init 은 home·dashboard 두 개뿐이라, 작업실로 복원되면
+             빈 탭(innerHTML 33자)이 활성화되고 원장은 **흰 화면**을 본다 — 껐다 켠 뒤 첫 화면이다.
+             실측(라이브 d4dbfed): 부팅 직후 tab-workshop ACTIVE·내용 없음, 정작 홈은 32,934자가
+             그려진 채 숨어 있었다. 하단 '작업실' 을 한 번 눌러야 비로소 목록이 나타났다.
+             다른 작업실 진입 경로는 전부 showTab 과 initWorkshopTab 을 **짝으로** 부른다
+             (app-ai.js·app-gallery-finish.js·_backToWorkshopFromCaption). 복원만 뒤를 빠뜨렸다.
+             init 을 showTab 안으로 넣지 않은 이유: 기존 호출부가 이미 직접 부르고 있어서
+             거기 넣으면 작업실로 갈 때마다 두 번 그린다(중복 렌더·중복 조회).
+             스텁이어도 그대로 부른다 — 스텁이 photo 그룹을 불러온 뒤 진짜 함수를 이어서 부른다. */
+          if (_lastTab === 'workshop' && typeof window.initWorkshopTab === 'function') {
+            try { Promise.resolve(window.initWorkshopTab()).catch(function () { /* 복원 실패가 부팅을 막지 않는다 */ }); }
+            catch (_wi) { void _wi; }
+          }
         }
       } catch (_e) { void _e; }
     }
