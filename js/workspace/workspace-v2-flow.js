@@ -790,7 +790,15 @@
         _persistEditQuiet();
         // [워크플로 재정렬] 편집기 완료 후 다음 목적지(예: 캡션→편집기→미리보기). 없으면 캡션 유지.
         if (d._editorNext) { var _nx = d._editorNext; d._editorNext = null; setScreen(_nx); }
-        else if (cur === 'caption') setScreen('caption');
+        /* [2026-09-11 ZH-UX] 돌아온 화면을 **반드시 다시 그린다.**
+           예전엔 `caption` 일 때만 다시 그려서, '사진 확인(layout)' 에서 편집기를 연 원장은
+           [완료] 뒤에 **편집 전 사진**을 보게 됐다. 저장은 멀쩡한데 화면만 옛것이다.
+           라이브 실측(2026-09-11, slot mtws7ssfjm7ac): 글자를 '첫 방문 이벤트'→'9월 한정 이벤트'
+           로 고치고 완료 → 저장본 editState.layers 는 '9월 한정 이벤트' 인데 화면은 옛 글자.
+           해시 대조로 확정 — 화면이 그리는 blob 286,657B(2e05dd…) vs 저장본 293,630B(a62695…).
+           "수정이 안 됐네" 로 읽히고, 같은 편집을 반복하게 만든다.
+           setScreen 은 name===cur 이면 히스토리를 쌓지 않고 스크롤도 보존한다(기존 재렌더 관용구). */
+        else setScreen(cur);
         // [2026-07-22 오케스트레이션] 편집 반영 후 시술내용으로 캡션 자동생성(1회). 그 뒤 브리핑 소진.
         if (d._orch) {
           var _svc = d._orch.service; d._orch = null; d._orchApplied = false;
