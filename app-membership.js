@@ -164,6 +164,22 @@
     container.innerHTML = '<div style="font-size:12px;color:#888;text-align:center;padding:8px;">최근 내역 불러오는 중…</div>';
     try {
       const r = await _fetch('GET', `/memberships/${customerId}/history?limit=8`);
+      /* [BUG-N3 2026-09-11] 머리글의 잔액을 **서버 값으로 덮는다.**
+         예전엔 호출부가 넘긴 `currentBalance` 만 썼는데, 그건 화면이 들고 있던 옛 값이다.
+         실측(라이브 ec4cf71): 30,000원을 충전하고(POST /memberships/topup 200,
+         토스트 "잔액 30,000원", 내역 "+30,000원") 시트를 다시 열었더니
+         머리글만 **"현재 잔액 0원"** 이었다. 서버는 `current_balance: 30000` 이었고
+         그 값은 **바로 이 응답 안에 들어 있었는데 안 쓰고 있었다.**
+         원장이 0원으로 보고 또 충전하면 이중 충전이 된다 — 돈 화면에서 제일 위험한 표기다.
+         호출부 값은 응답이 오기 전 한순간을 메우는 용도로만 남긴다(즉시 그려지는 게 낫다). */
+      try {
+        if (r && r.current_balance != null && !Number.isNaN(Number(r.current_balance))) {
+          const _sub = document.querySelector('#membershipSheet #msSub');
+          if (_sub && /현재 잔액/.test(_sub.textContent || '')) {
+            _sub.textContent = (_sub.textContent || '').replace(/현재 잔액\s*[^·]*/, '현재 잔액 ' + formatMoney(Number(r.current_balance)));
+          }
+        }
+      } catch (_be) { void _be; }
       const items = r.history || r.items || [];   // [2026-07-22 fix] BE는 {history:[]} 반환 — 키 불일치로 항상 빈칸이던 버그
       if (!items.length) {
         container.innerHTML = '<div style="font-size:12px;color:#888;text-align:center;padding:10px;">아직 내역이 없어요.</div>';
