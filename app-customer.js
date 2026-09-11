@@ -1488,12 +1488,26 @@
   //   캘린더·매출 등에서 호출 — 항상 최신 전체 목록 보장 (페이징 누락 방지)
     async function pick(opts) {
       opts = opts || {};
-      // 2026-05-04 ── 고객 누락 보고 대응: 캐시가 너무 작거나 stale하면 강제 재조회
+      // [원장 QA 2026-09-11] 목록을 **못 불러온 것**과 **정말 0명인 것**을 구분한다.
+      //   실측(라이브): 고객이 15명 있는데 매출 입력 → 고객 선택이
+      //     "등록된 고객이 없어요. 아래에서 바로 추가할 수 있어요." 를 띄우고,
+      //     "김" 으로 검색해도 "'김' 고객을 찾을 수 없어요" + **"새 고객으로 '김' 추가"** 를 권했다.
+      //   원장이 그걸 누르면 **이미 있는 손님이 중복으로 또 생긴다.**
+      //   (실제로 목록에 `E2E_G_김민수` 가 2건 있다.)
+      //   당시 `/services` 무한루프(app-revenue.js)가 rate limit 을 태워 `/customers` 까지
+      //   429 로 실패한 상태였다. 그 루프는 따로 고쳤지만, **실패를 '0명' 으로 표시하는 것**은
+      //   그 자체가 결함이라 여기서 막는다.
+      let _pickLoadFailed = false;
       try {
         const swr = _readSWR();
         const minItems = 5; // 최소 5명은 있어야 캐시로 인정 (신규 가입자 제외)
         if (!_cache || _cache.length < minItems || !swr || !swr.fresh) {
-          try { await _fetchFresh(); } catch (_e) { await list().catch(() => {}); }
+          try {
+            await _fetchFresh();
+          } catch (_e) {
+            try { await list(); }
+            catch (_e2) { if (!_cache || !_cache.length) _pickLoadFailed = true; }
+          }
         }
       } catch (_) { /* ignore */ }
     return new Promise((resolve) => {
@@ -1551,7 +1565,22 @@
         const trimmed = q.trim();
         const hits = search(q);
         if (!hits.length) {
-          if (trimmed) {
+          // 로드 실패 판정이 **가장 먼저**다 — 검색 중이어도 '추가' 를 권하면 중복이 생긴다.
+          if (_pickLoadFailed) {
+            // 못 불러온 것이지 0명이 아니다 — 여기서 '추가' 를 권하면 중복 고객이 생긴다.
+            listEl.innerHTML = '<div style="padding:26px 14px 8px;text-align:center;color:var(--text-subtle);font-size:13px;line-height:1.6;">' +
+              '고객 목록을 불러오지 못했어요.<br>잠시 후 다시 열어 주세요.' +
+              '</div>' +
+              '<button data-pick-retry style="display:block;width:100%;padding:13px;margin:8px 0 10px;border:1px solid #E5E8EB;border-radius:14px;background:#fff;color:#4E5968;font-weight:600;font-size:13px;cursor:pointer;">다시 불러오기</button>';
+            createRow.style.display = 'none';
+            const retryBtn = listEl.querySelector('[data-pick-retry]');
+            if (retryBtn) retryBtn.addEventListener('click', async () => {
+              retryBtn.disabled = true; retryBtn.textContent = '불러오는 중…';
+              try { await _fetchFresh(); _pickLoadFailed = false; }
+              catch (_e) { try { await list(); if (_cache && _cache.length) _pickLoadFailed = false; } catch (_e2) { void _e2; } }
+              render();
+            });
+          } else if (trimmed) {
             // 검색어 있는데 결과 0건 → 즉석 신규 추가 UI 노출 + 1탭 버튼
             listEl.innerHTML = `
               <div style="padding:18px 12px 12px;text-align:center;color:#888;font-size:13px;">'${_esc(trimmed)}' 고객을 찾을 수 없어요</div>
@@ -1559,8 +1588,8 @@
             `;
             createRow.style.display = 'block';
             newNameEl.value = trimmed;
-            const quickBtn = listEl.querySelector('[data-pick-quick-add]');
-            if (quickBtn) quickBtn.addEventListener('click', () => onCreate());
+            const quickBtn2 = listEl.querySelector('[data-pick-quick-add]');
+            if (quickBtn2) quickBtn2.addEventListener('click', () => onCreate());
           } else {
             listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-subtle);font-size:13px;">' +
               '등록된 고객이 없어요. 아래에서 바로 추가할 수 있어요.' +

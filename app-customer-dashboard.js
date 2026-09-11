@@ -148,10 +148,29 @@
           <button class="d-act primary" data-cv4-act="booking">예약 잡기</button>
           ${m.phone ? `<button class="d-act ghost" data-cv4-act="call">전화</button>` : ''}
           <button class="d-act ghost" data-cv4-act="edit">정보수정</button>
+          ${_mbBtn(m)}
           <button class="d-act danger" data-cv4-act="delete">삭제</button>
         </div>
       </div>
     `;
+  }
+
+  /* [원장 QA 2026-09-11] 고객 상세에 **회원권 진입점**을 붙인다.
+     실측(라운드1·2, 실 Chrome): `openTopupSheet`/`openUseSheet` 를 부르는 곳이 앱 전체에서
+     **스와이프 액션 시트 한 곳뿐**이었다(app-customer.js `_openSwipeActions`).
+       · PC 에서 마우스로 행을 스와이프하는 건 사실상 불가능하고
+       · 설정 → 회원권 은 '만료 임박 목록' 이라 **0건이면 아무것도 못 연다**
+     그래서 고객 상세·고객 목록·필터 어디를 뒤져도 잔액조차 볼 수 없었다.
+     회원권을 파는 샵이면 **손님 잔액을 확인할 방법이 없다**는 뜻이다.
+     차감은 시술 완료 시트의 결제수단 '회원권' 으로 이미 되므로, 여기서는 충전/잔액을 연다. */
+  function _mbBal(m) {
+    const v = Number(m && m.c && m.c.membership_balance);
+    return Number.isFinite(v) && v > 0 ? v : 0;
+  }
+  function _mbBtn(m) {
+    const bal = _mbBal(m);
+    const label = bal > 0 ? ('회원권 ' + Math.floor(bal / 10000) + '만') : '회원권';
+    return '<button class="d-act ghost" data-cv4-act="membership">' + _esc(label) + '</button>';
   }
 
   function _renderDetailCards(m) {
@@ -278,6 +297,13 @@
           window._pendingBookingCustomer = { id: c.id, name: c.name };
           if (typeof window.openCalendarView === 'function') window.openCalendarView();
           else if (typeof window.openBooking === 'function') window.openBooking();
+        } else if (act === 'membership') {
+          const _bal = Number(c.membership_balance) || 0;
+          if (typeof window.openMembershipCharge === 'function') {
+            window.openMembershipCharge(c.id, c.name, _bal);
+          } else if (window.showToast) {
+            window.showToast('회원권 화면을 불러오지 못했어요');
+          }
         } else if (act === 'call') {
           if (c.phone) window.location.href = 'tel:' + String(c.phone).replace(/[^0-9+]/g, '');
         } else if (act === 'delete') {

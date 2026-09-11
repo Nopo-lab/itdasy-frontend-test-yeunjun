@@ -941,8 +941,22 @@
       if (match) _selectChip(match);
       else { customInput.style.display = 'block'; customInput.value = ctx.service_name; _selectChip(null); }
     }
-    // 캐시 비었으면 비동기 로드 후 재렌더
-    if (!list.length && typeof window.loadServiceTemplates === 'function') {
+    // 캐시 비었으면 비동기 로드 후 재렌더 — **딱 한 번만.**
+    //
+    // [원장 QA 2026-09-11] 여기가 무한 재귀였다. 실측(라이브, 매출 입력 창을 연 채 10초):
+    //     GET /services  ×570건  (초당 약 57회, 전부 429)
+    //   모달을 닫아도, 고객 선택 시트를 닫아도 멈추지 않고 **새로고침해야** 멎었다.
+    //   그 사이 rate limit 이 소진돼 다른 화면까지 "요청이 잠깐 몰렸어요" 로 막히고,
+    //   모바일 메뉴가 "오늘 0건 · 매출 0원" 이라는 **거짓 숫자**를 보여줬다.
+    //
+    // 왜 멈추지 않았나 — `loadServiceTemplates()` 는 실패해도 예외를 던지지 않고 `[]` 를
+    //   돌려준다(app-service-templates.js). 그래서 429 로 실패해도 `.then()` 이 돌고,
+    //   캐시는 여전히 비어 있으니 이 분기가 또 타서 스스로를 무한히 다시 부른다.
+    //   `.catch()` 는 애초에 불릴 일이 없었다.
+    //
+    // 재시도 1회면 충분하다 — 정상이면 그 한 번에 캐시가 차고, 실패면 '+ 직접' 으로 적으면 된다.
+    if (!list.length && !modal._rfSvcRetried && typeof window.loadServiceTemplates === 'function') {
+      modal._rfSvcRetried = true;
       window.loadServiceTemplates().then(() => _renderServiceChips(modal, ctx, hooks)).catch(() => {});
     }
   }

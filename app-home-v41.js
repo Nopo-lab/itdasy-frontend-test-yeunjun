@@ -259,9 +259,21 @@
     const fileInput = container.querySelector('[data-itbi-file]');
     const bar = container.querySelector('.hv5-itbi-input');
     const swapBtn = container.querySelector('[data-itbi-act="swap"]');
+    // [원장 QA 2026-09-11] 열지 **못했는지**를 호출부가 알아야 한다.
+    //   실측(실 Chrome 배포본): 홈 잇비 카드가 접힌 상태에서 질문을 치고 Enter →
+    //     화면에 질문도, 답변도, 로딩도 없고 **입력창만 비워졌다.**
+    //     `run.app/assistant/*` 호출 0건 — 서버로 아예 안 갔다.
+    //   원인: 잇비 시트 모듈이 아직 로드 전이면 `open` 이 undefined 라 아무 일도 안 하는데,
+    //   아래 호출부는 성공 여부와 무관하게 `input.value = ''` 를 실행해 **질문을 지웠다.**
+    //   원장은 자기가 뭘 물었는지도 잃는다.
     const openSheet = (opts) => {
       const open = (window.AssistantSheet && window.AssistantSheet.open) || window.openAssistant;
-      if (typeof open === 'function') open(opts || {});
+      if (typeof open !== 'function') {
+        if (window.showToast) window.showToast('잇비를 준비 중이에요. 잠시 후 다시 눌러 주세요.');
+        return false;
+      }
+      open(opts || {});
+      return true;
     };
     const startVoice = () => {
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -281,7 +293,7 @@
         } else if (act === 'swap') {
           const text = (input?.value || '').trim();
           if (!text) { startVoice(); return; }
-          openSheet({ sendImmediate: text });
+          if (openSheet({ sendImmediate: text }) === false) return;   // 못 열었으면 입력 보존
           input.value = '';
           if (bar) bar.classList.remove('has-text');
           if (swapBtn) swapBtn.setAttribute('aria-label', '음성 입력');
@@ -299,7 +311,7 @@
         if (ev.key === 'Enter' && !ev.shiftKey) {
           ev.preventDefault();
           const text = input.value.trim();
-          openSheet(text ? { sendImmediate: text } : {});
+          if (openSheet(text ? { sendImmediate: text } : {}) === false) return;   // 못 열었으면 입력 보존
           input.value = '';
           if (bar) bar.classList.remove('has-text');
           if (swapBtn) swapBtn.setAttribute('aria-label', '음성 입력');

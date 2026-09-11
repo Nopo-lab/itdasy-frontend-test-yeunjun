@@ -2004,6 +2004,34 @@
         const idx = rows.indexOf(row);
         wheel.scrollTo({ top: idx * ROW_H, behavior: 'smooth' });
       });
+
+      // [원장 QA 2026-09-11] **마우스 휠로는 시간을 바꾸지 않는다.** 폼 스크롤로 넘긴다.
+      //
+      //   무엇이 문제였나 (실측, 실 Chrome 배포본):
+      //     예약 폼은 화면보다 길어서 아래 시술·금액을 보려면 스크롤해야 한다.
+      //     그런데 이 시간 선택기가 `overflow:hidden auto` 라, 커서가 그 위에 있으면
+      //     휠이 **폼이 아니라 시간 선택기**를 굴린다. 실측:
+      //       예상 종료 오전 10:00 → 휠 3틱 → 오전 11:00 → 다시 → 오후 12:00
+      //       그동안 `window.scrollY = 0`  (페이지는 한 픽셀도 안 내려갔다)
+      //     그리고 그 값이 그대로 저장됐다:
+      //       토스트 "QA0911_김테스트님 2026-09-11 **11:00** 예약 추가됨"  (의도는 9:00)
+      //     원장은 아래 칸을 보려고 굴렸을 뿐인데 **손님이 다른 시간에 온다.**
+      //
+      //   시간 변경 수단은 그대로 남는다 — **탭(클릭)** 과 **터치 스와이프**.
+      //   `wheel` 은 터치에서 발생하지 않으므로 모바일 동작은 영향이 없다.
+      wheel.addEventListener('wheel', e => {
+        // 실제로 스크롤되는 조상을 찾아 거기로 넘긴다 (폼 루트가 PC/모바일에서 다르다)
+        let sc = wheel.parentElement;
+        while (sc && sc !== document.body) {
+          const oy = getComputedStyle(sc).overflowY;
+          if ((oy === 'auto' || oy === 'scroll') && sc.scrollHeight > sc.clientHeight) break;
+          sc = sc.parentElement;
+        }
+        if (!sc || sc === document.body) sc = document.scrollingElement || document.documentElement;
+        if (!sc) return;
+        e.preventDefault();
+        sc.scrollTop += e.deltaY;
+      }, { passive: false });
     });
 
     // --- 고객 카드 ---
