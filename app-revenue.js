@@ -1154,7 +1154,7 @@
       });
     });
     sheet.querySelector('[data-rv-del]').addEventListener('click', () => {
-      window._inlineConfirm('이 매출을 삭제할까요?', async () => {
+      window._inlineConfirm(_deleteConfirmMsg(item), async () => {
         try {
           await remove(item.id);
           if (window.showToast) window.showToast('삭제됐어요');
@@ -1167,11 +1167,39 @@
     });
   };
 
+
+  /* [2026-09-11 BUG-A] 매출 삭제 확인창 문구 — **금전 효과를 먼저 말한다.**
+
+     원래 문구는 "이 매출을 삭제할까요?" 한 줄이었다. 그런데 서버의 DELETE 는
+     그 한 번으로 두 가지를 더 한다:
+       ① `membership_delta` 만큼 **손님 회원권 잔액을 되돌린다**(차감행이면 잔액이 늘고,
+          충전행이면 잔액이 줄어든다)
+       ② 그 매출에 붙은 **환불 기록도 같이 지운다**(고아 음수행 방지)
+     둘 다 손님 돈인데 확인창이 한마디도 안 했다. 원장님은 무엇이 움직이는지 모르고 누른다.
+
+     ⚠️ 모르면 말하지 않는다. `membership_delta` 가 없는(옛 서버·일반 매출) 행에
+     "잔액이 돌아와요" 라고 쓰면 그게 더 나쁜 거짓말이다. 값이 있을 때만 덧붙인다. */
+  function _deleteConfirmMsg(item, info) {
+    const lines = ['이 매출을 삭제할까요?'];
+    const d = item && item.membership_delta;
+    if (typeof d === 'number' && d !== 0) {
+      const won = Math.abs(d).toLocaleString('ko-KR');
+      lines.push(d < 0
+        ? `회원권에서 차감한 ${won}원이 손님 잔액으로 되돌아가요.`
+        : `충전한 ${won}원이 손님 잔액에서 빠져요.`);
+    }
+    const rf = info && Number(info.refunded_total);
+    if (rf > 0) lines.push(`이 매출에 붙은 환불 기록 ${rf.toLocaleString('ko-KR')}원도 같이 지워져요.`);
+    lines.push('되돌릴 수 없어요.');
+    return lines.join('\n');
+  }
+  window._revenueDeleteMsg = _deleteConfirmMsg;
+
   // ── public 객체 + 내부 API export (today/month 가 참조) ─
   window.Revenue = {
     list, create, update, remove,
     // 내부 헬퍼·유틸 (분할 파일이 참조)
-    _esc, _formatMan, _isPC, _tagHTML, _rvShopExample,
+    _esc, _formatMan, _isPC, _tagHTML, _rvShopExample, _deleteConfirmMsg,
     PERIODS, PERIOD_LABEL, TAG_LABEL,
     get _items() { return _items; },
     get _currentPeriod() { return _currentPeriod; },
