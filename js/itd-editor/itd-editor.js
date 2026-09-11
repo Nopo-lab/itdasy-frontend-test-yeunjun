@@ -3558,6 +3558,15 @@
     root.querySelectorAll('.itlaytype').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-lay') === LAYOUTS.indexOf(S.layout)); });
     S._fitManual = true; _syncFitToggle();
     applyPhotoTransform(); if (!isSingleL(S.layout)) renderCollage();
+    /* 🔴 [2026-09-11] 복원이 **사진 보정을 화면에 반영하지 않고 있었다.**
+       `_restoreState` 는 `S.adj` 를 되살리는데(밝기·대비·채도·온도·선명도·수평),
+       그걸 화면에 거는 `applyAdjToDisplay`/`applyStraighten` 은 아무도 안 불렀다.
+       슬라이더는 보정 패널을 열 때 `renderAdjust()` 가 맞춰주니 **+30 이라고 적혀 있는데
+       큰 사진은 무보정**이었고, 발행본은 보정이 들어간 채로 나갔다 — 화면 ≠ 발행본.
+       실측(스테이지 533×666): 밝기+30·대비+20·채도+50 으로 저장 후 재편집하면
+       스테이지 사진 filter=none / 회색패치 64(원본값), 발행본은 74(보정값)였다.
+       필터가 걸린 요소는 보정 패널 썸네일(.itadjthumb) 하나뿐이었다. */
+    applyAdjToDisplay(); applyStraighten();
     renderLayoutStrip(); renderLayoutHint();
     _restoreLayers(st.layers);
   }
