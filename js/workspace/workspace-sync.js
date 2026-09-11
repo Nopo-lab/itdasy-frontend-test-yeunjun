@@ -236,6 +236,11 @@
             image_url: (typeof img === 'string' && img.indexOf('data:') !== 0) ? img : null,
             base_url: (typeof p.baseUrl === 'string' && p.baseUrl.indexOf('data:') !== 0) ? p.baseUrl : null,
             edit_state: p.editState || null,
+            /* [BUG-2 2026-09-11] '원장이 직접 꾸민 사진' 표식을 서버에도 보낸다.
+               여태 payload 에 없어서 서버를 한 번 왕복하면 이 값이 통째로 사라졌다
+               (실측: 저장 직후 true → 새로고침도 필요 없이 화면만 옮겨도 false).
+               자동합성이 원장 작업을 덮지 않게 막는 첫 겹(`_cardWasEdited`)이 이 값을 본다. */
+            story_edited: !!p.storyEdited,
             sort_order: i,
           };
         }).filter(function (p) { return !!p.image_url; });   // 이미지 없는 사진은 스킵
@@ -273,6 +278,7 @@
         editedDataUrl: p.image_url,
         baseUrl: p.base_url || p.image_url,
         editState: p.edit_state || null,
+        storyEdited: !!p.story_edited,   // [BUG-2] 서버가 돌려준 표식을 복원한다 — 없으면 왕복마다 사라진다
       };
     });
     var slot = Object.assign({}, rs.meta || {}, {
