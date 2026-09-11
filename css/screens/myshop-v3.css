@@ -290,7 +290,10 @@ body:has(#tab-dashboard.active) #tab-dashboard.tab { max-width: none !important;
   line-height: 1;
   flex-shrink: 0;
 }
-.ms-sheet__body { flex: 1; overflow-y: auto; padding: 4px 18px 22px; }
+/* [2026-09-11 파괴검증] 시트 내용이 화면을 다 안 채우면 **마지막 행이 제스처 바에 2px 걸쳤다**
+   (Galaxy 실측: 연결된 서비스 '카카오톡 채널 연동' bottom 764 > 한계 762).
+   내용이 짧아 스크롤이 없을 때는 스크롤로 피할 수도 없다 → 아래 패딩에 safe-area 를 더한다. */
+.ms-sheet__body { flex: 1; overflow-y: auto; padding: 4px 18px calc(22px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
 .ms-sheet__body::-webkit-scrollbar { width: 0; }
 
 /* ─────────────────────────────────────────────────────────────
