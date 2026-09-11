@@ -263,6 +263,56 @@
    "root_cause": "전화번호 뒷자리에만 의존 — 둘 다 번호가 없으면 '연락처 없음 / 연락처 없음'",
    "fix": "`_ambiguous_answer()` — 번호가 없으면 마지막 방문·방문 횟수로 구분",
    "regression_test": null
+  },
+  {
+   "id": "CASE-014",
+   "severity": "P1",
+   "quality_label": "irrelevant",
+   "area": "잇비가 시킨 말을 못 알아들음",
+   "conversation": [
+    "회원권 잔액 남은 손님 알려줘",
+    "그 고객 마지막 방문은?",
+    "첫 번째 손님 마지막 방문은?"
+   ],
+   "observed": "3번째 턴 → \"새로 만들려면 '후기 카드 만들어줘'처럼, 저장한 걸 고치려면 '저장된 카드 보여줘'라고 해주세요…\"",
+   "expected_behavior": "2번째 턴의 되묻기가 \"'첫 번째 손님' 처럼 말씀해 주세요\" 라고 안내했으므로 그대로 알아들어야 한다",
+   "root_cause": "`unsupported-intent` RETRY_ALT_RE 의 `첫\\s*번째` 가 먼저 매칭. 원래 '첫 번째가 나았어'(디자인 대안)용이라 사람을 가리키는 말이 아니다. **내가 되묻기 문구를 만들면서 같이 만든 결함**",
+   "fix": "서수 뒤에 사람 명사(손님·고객·분·님)가 오면 가드가 양보 → 백엔드 `_session_customer_id` 가 해석",
+   "regression_test": "__tests__/itbi-question-routing-2026-09-11.test.js › 서수로 고객 지목",
+   "verified_live": "2026-09-12 — '첫 번째 손님 마지막 방문은?' → 'E2E_F_회원권만님 아직 방문 기록이 없어요' (목록 1번, ground truth 방문 0회)"
+  },
+  {
+   "id": "CASE-015",
+   "severity": "P1",
+   "quality_label": "unsafe_response",
+   "area": "질문이 영구 기억으로 저장 + PII",
+   "conversation": [
+    "김호영님 010-7001-0012 이메일 qa-test@example.com 메모해둔 거 있어?"
+   ],
+   "observed": "\"기억했어요 🧠 '김호영님 010-7001-0012 이메일 qa-test@example.com' — 앞으로 참고할게요.\" (facts id 16 으로 실제 저장됨)",
+   "expected_behavior": "조회 질문이다 — 저장하지 말고 고객 메모를 답해야 한다",
+   "root_cause": "`memory-intent` 의 고객범위 가드가 `님 … 메모` 사이 24자만 허용했고, 경계가 `[^.!?\\n]` 이라 **이메일의 `.` 에서 창이 끊겼다**. 가드를 지나자 '메모해' 글자만 보고 저장으로 갔다",
+   "fix": "창 60자 + 경계를 `[^\\n]` 로. 그리고 원칙 추가 — **묻는 문장은 저장이 아니다**(ASKING_RE). ⚠️ 의문 표지에 '확인·알려·보여' 를 넣었다가 뺐다: '보정 전에 항상 확인하는 거 기억해줘' 같은 정상 저장문이 막혔다",
+   "cleanup": "테스트로 생긴 facts id 16 삭제 완료",
+   "regression_test": "__tests__/itbi-question-routing-2026-09-11.test.js › 메모 인텐트",
+   "verified_live": "2026-09-12 — 같은 문장이 이제 `/assistant/ask` 로 도달(llm), 저장 안 됨"
+  },
+  {
+   "id": "CASE-016",
+   "severity": "P0",
+   "quality_label": "unsafe_response",
+   "area": "관측 로그에 고객 이름 평문",
+   "conversation": [
+    "(관측 배포 후 gcloud logging read 로 실제 로그 확인)"
+   ],
+   "observed": "`[ITBI]` 로그의 답변 필드에 고객 이름이 그대로: \"🙋 'E2E_G_김민수' 님이 2분 계세요\" · \"• E2E_A_박지우 — 37,000원\" · \"A / B / C / D\". 질문도 호칭 없으면 샘(\"김호영 고객 알려줘\")",
+   "expected_behavior": "기본 로그에 고객 전체 이름이 남지 않는다 (스펙이 그렇게 약속했다)",
+   "root_cause": "마스킹이 `○○님/씨` 인접만 봤다. 답변은 우리 템플릿이 이름을 목록·따옴표·슬래시로 박아 넣어 **금지목록 방식으로는 구조적으로 안 끝난다**",
+   "fix": "① 금지목록 → **허용목록**(아는 업무 낱말만 남기고 나머지 2~4자 한글·밑줄 식별자는 전부 [NAME]) ② **답변 본문은 아예 안 남긴다**(a → a_len·a_empty)",
+   "note": "\"만들었다\" 와 \"안 샌다\" 는 다르다 — 실제 로그를 읽고서야 드러났다",
+   "regression_test": "tests/test_itbi_qa_2026_09_11.py › test_no_customer_name_survives_sanitize (그때 실제로 찍힌 문자열을 그대로 박아 둠)",
+   "verified_live": "2026-09-12 — 21 레코드 스캔, PII leak 0 · raw 'a' 필드 0"
   }
- ]
+ ],
+ "post_deploy_round": "2026-09-12 · 배포 후 라이브 재검증에서 새로 발견된 3건 (전부 수정·재배포됨)"
 }
