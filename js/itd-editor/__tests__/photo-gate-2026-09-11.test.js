@@ -170,3 +170,29 @@ describe('🔴 초안 사진은 그 초안의 것일 때만 되살린다 (탭 �
     expect(strip(ed)).toContain('_draftLoadMedia(_dr.sig)');
   });
 });
+
+/* 🔴 [2026-09-11 · §40 뮤테이션] **사진 수평(회전)이 화면에 반영되는 경로에 가드가 없었다.**
+   `applyPhotoTransform` 안에서 `deg` 를 0 으로 만들어도 편집기 테스트 9개 스위트가
+   전부 초록이었다 — 보정(밝기·대비)은 가드가 있는데 회전만 비어 있었다.
+   증상은 보정 미반영과 같은 계열이다: 슬라이더엔 8.5° 라고 적혀 있는데 큰 사진은 안 기울고,
+   발행본에서만 기울어 나간다(화면≠발행본).
+   그래서 "활성 사진의 adj.rot 을 읽어 photowrap 에 rotate 로 건다" 를 가드로 박는다. */
+describe('🔴 사진 수평(회전)이 화면에 걸린다', () => {
+  const apt = fn('applyPhotoTransform');
+  test('활성 사진의 adj.rot 을 읽는다 (0 으로 굳히면 안 된다)', () => {
+    expect(apt).toMatch(/deg\s*=\s*\(?\s*adjOf\(/);
+  });
+  test('읽은 각도를 photowrap 의 rotate 로 건다', () => {
+    expect(apt).toMatch(/refs\.photowrap\.style\.transform/);
+    expect(apt).toMatch(/rotate\('\s*\+\s*deg\s*\+\s*'deg\)/);
+  });
+  test('회전 시 여백이 보이지 않게 cover 배율을 같이 건다', () => {
+    expect(apt).toMatch(/coverScaleForRot\(deg\)/);
+  });
+  test('수평 슬라이더 변경이 applyStraighten → applyPhotoTransform 으로 이어진다', () => {
+    expect(fn('applyStraighten')).toContain('applyPhotoTransform()');
+  });
+  test('복원도 수평을 화면에 다시 건다', () => {
+    expect(fn('_applyRestore')).toContain('applyStraighten()');
+  });
+});
