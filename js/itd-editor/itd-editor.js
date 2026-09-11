@@ -3560,11 +3560,15 @@
          → 학습에 쓰는 그 context 를 그대로 들고 있다가 조회에도 쓴다. */
       planCategory: (opts.category || (opts.wmContext && opts.wmContext.service) || null),
       wmContext: opts.wmContext || null };
-    /* [2026-09-11] 업로드 화면의 '사진 채우기' 선택을 수동 선택으로 받는다.
-       `_fitManual` 을 세워야 `selectLayout` 의 기본값(단일=contain)이 이걸 덮지 않는다. */
-    if (opts.fitMode === 'cover' || opts.fitMode === 'contain') { S.fitMode = opts.fitMode; S._fitManual = true; }
     var _ed = (opts.editState && opts.editState.v) ? opts.editState : null;   // [#4/#8/#11/#16] 재편집 이어가기
     if (_ed) { try { _restoreState(_ed); } catch (_re) { _ed = null; } }   // 복원 실패 시 일반 열기로 폴백(앱 안전)
+    /* [2026-09-11] 업로드 화면의 '사진 채우기' 선택을 수동 선택으로 받는다.
+       🔴 **복원 뒤에** 적용해야 한다. `_restoreState` 가 `st.fitMode` 로 덮어쓰기 때문에
+       앞에 두면 원장이 방금 고른 값이 **옛 저장값에 먹힌다**(실측: 꽉 채움을 눌렀는데
+       편집기가 contain 으로 열렸다 — opts.fitMode='cover' 는 분명히 전달됐는데도).
+       원장이 조금 전에 누른 것이 저장본보다 최신 의사다.
+       `_fitManual` 을 세워야 `selectLayout` 의 기본값(단일=contain)도 안 덮는다. */
+    if (opts.fitMode === 'cover' || opts.fitMode === 'contain') { S.fitMode = opts.fitMode; S._fitManual = true; }
     // [T8-A] 관찰 세션 시작 — 이 편집기 오픈 = 게시물 1개 작업 = observation 1개(batch).
     //   baseline 은 자동적용 직후 상태(diff 기준). 학습 계산은 여기서 안 한다(critical path 보호).
     try {

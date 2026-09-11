@@ -74,6 +74,15 @@ describe('🔴 고른 값이 미리보기·편집기·발행본에 똑같이 간
     expect(E).toMatch(/opts\.fitMode === 'cover' \|\| opts\.fitMode === 'contain'/);
     expect(E).toMatch(/S\._fitManual = true/);
   });
+  /* 🔴 처음엔 복원보다 **앞**에 뒀다가 실패했다. `_restoreState` 가 `st.fitMode` 로 덮어써서
+     원장이 방금 누른 '꽉 채움'이 옛 저장값에 먹혔다(라이브 실측: opts.fitMode='cover' 는
+     전달됐는데 편집기는 contain 으로 열림). 조금 전에 누른 것이 저장본보다 최신 의사다. */
+  test('🔴 복원 **뒤에** 적용한다 (옛 저장값이 방금 고른 값을 덮으면 안 된다)', () => {
+    const iRestore = E.indexOf('_restoreState(_ed)');
+    const iFit = E.indexOf("opts.fitMode === 'cover'");
+    expect(iRestore).toBeGreaterThan(-1);
+    expect(iFit).toBeGreaterThan(iRestore);
+  });
   test('수동 선택이면 레이아웃 기본값이 덮지 않는다 (단일=contain 강제 금지)', () => {
     expect(E).toMatch(/if \(!S\._fitManual\) \{ S\.fitMode = isSingleL\(S\.layout\)/);
   });
