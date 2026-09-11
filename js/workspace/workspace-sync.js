@@ -22,17 +22,31 @@
 
   // ── 보조 메타 DB (itdasy-sync) ─────────────────────────────
   var _sdb = null;
+  /* [2026-09-11 SESS-2] 여는 데 상한을 둔다. `itdasy-sync` 는 잠기면 success·error·blocked
+     **어느 이벤트도 안 온다**(2026-09-03 실측 기록: readyState=pending 인 채 영영).
+     상한이 없으면 이 DB 를 건드리는 모든 단계가 같이 멈춘다 — `sync()` 의
+     migrateIfNeeded → flushTombstones → pushAll → pull 이 통째로 정지해서
+     **서버에 작업물이 멀쩡한데도 작업실이 0건으로 굳었다**(라이브 실측: 서버 4 / 화면 0).
+     열리지 않으면 거절해서 각 단계가 자기 catch 로 넘어가게 한다(정리와 같은 best-effort). */
+  var SYNC_OPEN_TIMEOUT_MS = 3000;
   function openSyncDB() {
     return new Promise(function (resolve, reject) {
       if (_sdb) return resolve(_sdb);
+      var settled = false;
+      var timer = setTimeout(function () {
+        if (settled) return; settled = true;
+        log('sync db open timeout — 잠김으로 보고 접는다');
+        reject(new Error('sync_db_open_timeout'));
+      }, SYNC_OPEN_TIMEOUT_MS);
       var req = indexedDB.open('itdasy-sync', 1);
       req.onupgradeneeded = function (e) {
         var db = e.target.result;
         if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'k' });
         if (!db.objectStoreNames.contains('tombstones')) db.createObjectStore('tombstones', { keyPath: 'slot_id' });
       };
-      req.onsuccess = function (e) { _sdb = e.target.result; resolve(_sdb); };
-      req.onerror = function () { reject(req.error); };
+      req.onsuccess = function (e) { if (settled) { try { e.target.result.close(); } catch (_c) { void _c; } return; } settled = true; clearTimeout(timer); _sdb = e.target.result; resolve(_sdb); };
+      req.onerror = function () { if (settled) return; settled = true; clearTimeout(timer); reject(req.error); };
+      req.onblocked = function () { if (settled) return; settled = true; clearTimeout(timer); reject(new Error('sync_db_blocked')); };
     });
   }
   function _tx(store, mode) { return openSyncDB().then(function (db) { return db.transaction(store, mode).objectStore(store); }); }
@@ -608,9 +622,12 @@
     // [H5 수정 2026-07-16] coalesce 로 pushAll 을 건너뛰어도 삭제(tombstone)는 반드시 보낸다.
     //   pushAll 이 flushTombstones 의 유일한 호출자였어서, 편집 중엔 삭제가 서버에 안 나가고
     //   그 상태로 pull 이 돌아 지운 글이 되살아났다. (pushAll 도 안에서 또 부르지만 idempotent)
-    return migrateIfNeeded()
+    /* [2026-09-11 SESS-2] 앞 단계가 하나 엎어져도 **pull 까지는 반드시 간다.**
+       예전엔 migrateIfNeeded / pushAll 이 거절하면 체인이 그대로 catch 로 빠져
+       pull 이 아예 안 돌았다 — 서버에 있는 작업물을 받아올 기회가 사라진다. */
+    return migrateIfNeeded().catch(function (e) { log('migrate skip', e); })
       .then(function () { return flushTombstones().catch(function () {}); })
-      .then(function () { return (COALESCE() && _flowOpen) ? null : pushAll(); })
+      .then(function () { return (COALESCE() && _flowOpen) ? null : pushAll().catch(function (e) { log('push skip', e); }); })
       .then(pull).catch(function (e) { log('sync err', e); }).then(function () { _syncing = false; });
   }
   var _pushTimer = null;

@@ -153,3 +153,46 @@ describe('③ 잠긴 sync DB 에서도 pull 은 끝난다', () => {
     await expect(readOr(Promise.reject(new Error('x')), [])).resolves.toEqual([]);   // 거절도 fallback
   });
 });
+
+describe('④ 잠긴 sync DB 가 sync() 체인을 통째로 멈추면 안 된다', () => {
+  test('openSyncDB 에 여는 상한이 있고 timeout·blocked 둘 다 거절로 끝난다', () => {
+    const src = strip(SYNC);
+    const i = src.indexOf('function openSyncDB()');
+    expect(i).toBeGreaterThan(0);
+    const seg = src.slice(i, i + 1400);
+    expect(seg).toMatch(/setTimeout\(/);
+    expect(seg).toMatch(/SYNC_OPEN_TIMEOUT_MS/);
+    expect(seg).toMatch(/req\.onblocked\s*=/);
+    // 상한이 무한대면 의미가 없다
+    const ms = Number((src.match(/SYNC_OPEN_TIMEOUT_MS\s*=\s*(\d+)/) || [])[1]);
+    expect(ms).toBeGreaterThan(0);
+    expect(ms).toBeLessThanOrEqual(10000);
+  });
+
+  test('openSyncDB 는 이벤트가 하나도 안 와도 **끝난다**', async () => {
+    const src = strip(SYNC);
+    const i = src.indexOf('var SYNC_OPEN_TIMEOUT_MS');
+    const j = src.indexOf('function _tx(', i);
+    const body = src.slice(i, j);
+    // 아무 이벤트도 안 내는 IndexedDB (2026-09-03 실측과 같은 상태)
+    const deadIDB = { open() { return { onupgradeneeded: null, onsuccess: null, onerror: null, onblocked: null, error: null }; } };
+    // eslint-disable-next-line no-new-func
+    const make = new Function('indexedDB', 'log', '_sdb', body.replace(/var SYNC_OPEN_TIMEOUT_MS\s*=\s*\d+;/, 'var SYNC_OPEN_TIMEOUT_MS = 30;') + '; return openSyncDB;');
+    const open = make(deadIDB, () => {}, null);
+    await expect(open()).rejects.toThrow(/timeout/);
+  });
+
+  test('sync() 는 앞 단계가 엎어져도 pull 까지 간다', () => {
+    const src = strip(SYNC);
+    const i = src.indexOf('function sync()');
+    const seg = src.slice(i, i + 900);
+    expect(seg).toMatch(/migrateIfNeeded\(\)\.catch\(/);          // 마이그레이션 실패해도 계속
+    expect(seg).toMatch(/pushAll\(\)\.catch\(/);                  // 업로드 실패해도 계속
+    expect(seg).toMatch(/\.then\(pull\)/);                        // 그리고 pull 로 간다
+    // pull 앞에 catch 가 없으면(=체인이 통째로 빠지면) 의미가 없다
+    const pullAt = seg.indexOf('.then(pull)');
+    const migAt = seg.indexOf('migrateIfNeeded().catch(');
+    expect(migAt).toBeGreaterThan(-1);
+    expect(pullAt).toBeGreaterThan(migAt);
+  });
+});
