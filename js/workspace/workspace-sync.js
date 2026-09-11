@@ -700,11 +700,26 @@
       }
       var timer = setTimeout(function () { finish(false); }, CLEAR_LOCAL_TIMEOUT_MS);
       try {
-        if (_sdb) { try { _sdb.close(); } catch (_e) { void 0; } _sdb = null; }
         try { _uploadCache.clear(); } catch (_e2) { void 0; }
         try { if (typeof _hydrateCache !== 'undefined' && _hydrateCache) _hydrateCache.clear(); } catch (_e3) { void 0; }
-        var req = indexedDB.deleteDatabase('itdasy-sync');
-        req.onsuccess = req.onerror = req.onblocked = function () { clearTimeout(timer); finish(true); };
+        /* [2026-09-11 BUG-F2] **deleteDatabase 를 쓰지 않는다.** 위 주석이 기록한 "이벤트가 안 온다" 는
+           증상이었고, 원인은 **취소 불가능한 delete 요청이 큐에 눌러앉는 것**이다. 한 번 blocked 되면
+           이 DB 에 대한 이후 모든 open 이 origin 전역으로 잠긴다(2026-09-11 탭 2개 실측: 갤러리 쪽
+           open 20건 전부 pending, 로그아웃한 탭까지 리로드해야 풀림). 여기도 같은 뿌리다.
+           → store 를 비운다. clear() 는 평범한 readwrite 라 blocked 자체가 없다.
+           ⚠️ 연결을 미리 닫지 않는다 — 닫으면 곧바로 다시 열어야 하고, 그 open 이 잠길 수 있다. */
+        openSyncDB().then(function (db) {
+          var names = [];
+          try { names = Array.prototype.slice.call(db.objectStoreNames || []); } catch (_e4) { names = []; }
+          if (!names.length) { clearTimeout(timer); finish(true); return; }
+          var tx = db.transaction(names, 'readwrite');
+          names.forEach(function (n) { try { tx.objectStore(n).clear(); } catch (_e5) { void 0; } });
+          // 성공은 oncomplete 하나뿐이다. 예전 코드는 onerror·onblocked 에도 true 를 줘서
+          // **못 지웠는데 재시도 플래그를 지웠다** — 그러면 다음 부팅에서 다시 시도하지도 않는다.
+          tx.oncomplete = function () { clearTimeout(timer); finish(true); };
+          tx.onerror    = function () { clearTimeout(timer); finish(false); };
+          tx.onabort    = function () { clearTimeout(timer); finish(false); };
+        }, function () { clearTimeout(timer); finish(false); });
       } catch (_e) { clearTimeout(timer); finish(false); }
     });
   }
