@@ -104,7 +104,28 @@
     el = document.createElement('div');
     el.id = 'membershipSheet';
     el.className = 'sheet-overlay';
-    el.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:flex-end;justify-content:center;';
+    /* [BUG-1 2026-09-11] z-index 9000 → 10650.
+       원장이 고객 화면에서 [회원권]을 눌러도 **아무 일도 안 일어나는 것처럼 보였다.**
+       시트는 정상적으로 만들어지고 `/memberships/{id}/history` 도 200 인데,
+       9000 이라 고객 화면들 **뒤에** 깔려서 화면에 안 보인 것이다.
+       실측(라이브 c3bf4ca, 실 Chrome): `elementFromPoint(시트 중앙)` 이 시트가 아니라
+       고객 상세의 `.cd-memory-head` 를 돌려줬다. 가리는 것은 둘:
+         #customerSheet     z=9998   (고객 목록)
+         #customerDashSheet z=10600  (고객 상세)
+       회원권 충전은 **그 화면 위에 얹히는 모달**이다(닫으면 원래 고객 화면으로 돌아와야 한다).
+       그래서 잇비처럼 '먼저 닫기'가 아니라 **위로 올리는 게** 맞는 처리다.
+
+       10650 을 고른 이유 — 이 앱의 오버레이 사다리에 맞춘 값이다:
+         9998  고객 목록 · 10500 잇비 · 10600 고객 상세 · **10650 회원권** · 10700 DM 미리보기 ·
+         10800 고객 픽커 · 12000 자동화 동의 · 99999 토스트
+       고객 상세(10600)보다는 위, DM 미리보기(10700)보다는 아래 — 기존 관계를 하나도 안 건드린다.
+
+       🔴 이건 이 레포에서 **네 번째** 같은 결함이다. 앞의 셋은 이미 고쳐져 있었다:
+         핫픽스D #3  customerDashSheet → 10600 ("채팅에서 고객 기록 열기 시 뒤에 깔리던 버그")
+         2026-06-11  고객 픽커        → 10800 ("잇비(10500) 위로 — 픽커 가림 픽스")
+         2026-09-09  잇비 단축키      → 여는 쪽을 먼저 닫음 (app-assistant.js `_runSheetShortcut`)
+       그 주석의 표현 그대로 "한 경로엔 가드가 있고 형제 경로엔 없다" 였다. */
+    el.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10650;align-items:flex-end;justify-content:center;';
     el.innerHTML = `
       <style>
         #membershipSheet .ms-cta:active { transform: scale(.985); }
