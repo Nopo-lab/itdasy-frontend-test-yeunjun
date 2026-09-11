@@ -83,12 +83,37 @@
     if (vc >= 3)  return 'b2';
     return 'b1';
   }
-  function _topService(rows) {
+  /* [2026-09-12 BUG-C1] '선호 시술' — **시술인 행만 센다.**
+
+     실측: QA 고객의 선호 시술이 "회원권 충전" 으로 떴다. 매출행의 service_name 을
+     그냥 세고 있어서, 돈만 받은 회원권 충전·환불행·취소 복구행이 전부 후보가 됐다.
+     원장 눈엔 "이 손님이 제일 좋아하는 시술 = 회원권 충전" 이다. 그건 시술이 아니다.
+
+     판정 규칙은 서버 SSOT(services/customer_visits) 하나뿐이어야 한다.
+     서버가 이미 그 규칙으로 계산한 `top_services` 를 주면 그걸 쓴다.
+     옛 응답·오프라인 캐시를 위해서만 같은 규칙을 여기서 한 번 더 적용한다
+     (두 벌이 아니라 **폴백**이다 — 서버 값이 있으면 그게 이긴다). */
+  const _NON_TREATMENT = ['회원권 충전', '회원권 해지 환불', '회원권 되돌리기'];
+  function _isTreatmentRow(r) {
+    if (!r) return false;
+    if (Number(r.amount) < 0) return false;               // 환불행
+    if (r.refund_of_id != null) return false;             // 환불행(금액 0 인 경우)
+    const d = r.membership_delta;
+    if (typeof d === 'number' && d > 0) return false;     // 충전·복구 = 돈만 받음
+    const n = String((r && r.service_name) || '').trim();
+    if (!n) return false;
+    if (_NON_TREATMENT.indexOf(n) >= 0) return false;     // 옛 행 폴백(컬럼 없던 시절)
+    if (/\s(환불|취소 복구)$/.test(n)) return false;
+    return true;
+  }
+  function _topService(rows, serverTop) {
+    if (Array.isArray(serverTop) && serverTop.length) return serverTop[0];
     if (!Array.isArray(rows) || !rows.length) return null;
     const count = {};
     rows.forEach(r => {
-      const n = (r && r.service_name) ? String(r.service_name).trim() : '';
-      if (n) count[n] = (count[n] || 0) + 1;
+      if (!_isTreatmentRow(r)) return;
+      const n = String(r.service_name).trim();
+      count[n] = (count[n] || 0) + 1;
     });
     let best = null, bestCount = 0;
     for (const k in count) { if (count[k] > bestCount) { best = k; bestCount = count[k]; } }
@@ -267,7 +292,7 @@
 
   function _buildDetailHTMLv4(d) {
     const m = _detailModel(d);
-    const top = _topService(m.revenues);
+    const top = _topService(m.revenues, d && d.top_services);
     const pref = top ? `<div class="d-sec"><span>선호 시술</span></div><div class="d-pref">${_esc(top)}</div>` : '';
     const memo = m.c.memo ? `<div class="d-sec"><span>메모</span></div><div class="memo">${_esc(m.c.memo)}</div>` : '';
     return `
