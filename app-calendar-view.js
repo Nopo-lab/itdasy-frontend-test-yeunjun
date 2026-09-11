@@ -1526,7 +1526,11 @@
       closeDetail();
       if (typeof window._markSheetClosed === 'function') window._markSheetClosed('cvBookingDetail');
     };
-    let _cancelBusy = false;   // [Phase3-B #8] 중복 클릭 방지
+    /* 취소 확인 문구는 app-core 의 공용 헬퍼 하나만 쓴다(취소 경로가 3곳이라 두 벌이면 한쪽만 고쳐진다).
+     헬퍼가 없으면 예전 문구로 안전하게 축퇴한다. */
+  const _cancelMsg = (bk) => (typeof window._bookingCancelMsg === 'function'
+    ? window._bookingCancelMsg(bk) : '이 예약을 취소할까요?');
+  let _cancelBusy = false;   // [Phase3-B #8] 중복 클릭 방지
     ov.addEventListener('click', (e) => {
       if (e.target === ov) return close();
       const t = e.target.closest('[data-bd]'); if (!t) return;
@@ -1537,7 +1541,7 @@
       if (act === 'cancel') {
         if (_cancelBusy) return;
         // [Phase3-B #8] 즉시 취소 금지 — 확인 후에만. '아니요' 면 상세 유지(닫지 않음).
-        window._inlineConfirm('이 예약을 취소할까요?', async () => {
+        window._inlineConfirm(_cancelMsg(raw), async () => {
           if (_cancelBusy) return;
           _cancelBusy = true;
           try {
@@ -2529,7 +2533,7 @@
         };
         // [핫픽스D #6] 모든 취소 경로 확인 통일 — 상태 '취소'는 확인 후에만 반영.
         if (newStatus === 'cancelled') {
-          window._inlineConfirm('이 예약을 취소할까요?', _applyStatus, function () { /* 아니요 — 그대로 */ }, { okText: '예약 취소', cancelText: '아니요' });
+          window._inlineConfirm(_cancelMsg(existing), _applyStatus, function () { /* 아니요 — 그대로 */ }, { okText: '예약 취소', cancelText: '아니요' });
           return;
         }
         await _applyStatus();

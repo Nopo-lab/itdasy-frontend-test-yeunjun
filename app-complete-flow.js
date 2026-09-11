@@ -537,8 +537,12 @@
   async function _cancelBooking() {
     if (!_ctx.booking_id) { _close(); return; }
     // [2026-06-10] 네이티브 confirm → 인라인 다이얼로그 (UI 전체 블로킹 + 디자인 이질감 제거)
-    if (window._inlineConfirm) { window._inlineConfirm('이 예약을 취소할까요?', () => _doCancelBooking()); return; }
-    if (!window.confirm('이 예약을 취소할까요?')) return;
+    // 완료된 예약이면 기록된 매출이 환불로 상계된다 — 문구가 그 사실을 말한다(공용 헬퍼).
+    const _msg = (typeof window._bookingCancelMsg === 'function')
+      ? window._bookingCancelMsg({ status: _ctx.status, amount: _ctx.amount })
+      : '이 예약을 취소할까요?';
+    if (window._inlineConfirm) { window._inlineConfirm(_msg, () => _doCancelBooking()); return; }
+    if (!window.confirm(_msg)) return;
     return _doCancelBooking();
   }
 
@@ -601,6 +605,9 @@
         amount: _num(booking.amount) || _servicePriceFor(booking.service_name),
         method: booking.payment_method || 'card',
         starts_at: booking.starts_at || null,
+        // [2026-09-11 BUG-A2] 취소 확인창이 "완료된 예약인가" 를 알아야 돈 이야기를 할 수 있다.
+        //   이 값을 안 실으면 헬퍼의 조건이 영영 거짓이라 문구가 예전과 똑같아진다(조용한 무효화).
+        status: booking.status || null,
         deposit: _num(booking.deposit) || 0,
         visit_count: booking.visit_count != null ? Number(booking.visit_count) : null,
       });

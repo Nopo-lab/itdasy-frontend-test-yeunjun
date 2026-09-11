@@ -3879,6 +3879,29 @@ window._askConfirm = function (msg, onYes) {
   if (confirm(msg)) onYes();
 };
 
+/* [2026-09-11 BUG-A2] 예약 취소 확인창 문구 — **완료된 예약이면 돈이 움직인다는 걸 말한다.**
+
+   라이브 실측: 예약을 '시술 완료' 하면 매출이 자동 기록되고(385,000 → 395,000),
+   그 예약을 취소하면 서버가 **환불행으로 상계**해 합계가 되돌아간다(395,000 → 385,000).
+   그런데 확인창은 "이 예약을 취소할까요?" 한 줄이라, 원장님은 이번달 매출이 바뀌는 줄 모르고 누른다.
+   매출 삭제 확인창(BUG-A)과 같은 결함이 취소 경로에도 있었다.
+
+   ⚠️ 모르면 말하지 않는다. 완료가 아닌 예약(확정·대기)은 매출이 없으므로 덧붙이지 않는다.
+   금액을 모르면 금액 없이 사실만 말한다 — 없는 숫자를 지어내는 게 더 나쁘다. */
+window._bookingCancelMsg = function (booking) {
+  const lines = ['이 예약을 취소할까요?'];
+  try {
+    const st = String((booking && booking.status) || '');
+    if (st === 'completed') {
+      const amt = Number(booking && booking.amount) || 0;
+      lines.push(amt > 0
+        ? `완료된 예약이에요. 기록된 매출 ${amt.toLocaleString('ko-KR')}원이 환불로 상계돼 합계에서 빠져요.`
+        : '완료된 예약이에요. 기록된 매출이 환불로 상계돼 합계에서 빠져요.');
+    }
+  } catch (_e) { void _e; }
+  return lines.join('\n');
+};
+
 // 2중 확인 유틸 — 레거시 호환 stub (호출처는 _inlineConfirm 으로 교체 완료)
 window._confirm2 = function (_msg) {
   console.warn('[_confirm2] deprecated — use _inlineConfirm');
