@@ -3136,6 +3136,11 @@
         //   0 = 통째 빼기(자동화 거부, 문구 판단 아님) / 1+ = 자동화는 수용했는데 특정 문구만 지움.
         meta.wmKept = (S.layers || []).filter(function (L) { return L && L._src === 'wm'; }).length;
         meta.perPhoto = _collectPerPhoto();   // [#5/#6] 사진별 레이어(단일모드) — 플로우가 각 장을 자기 레이어로 합성
+        /* [2026-09-12 ZH] **지금 보고 있던 장이 몇 번인지** 알려준다.
+           플로우는 지금까지 '편집기를 열 때 잡은 장'에 합성본을 넣었다. 원장이 편집기 안에서
+           사진을 바꾸면 그 둘이 어긋나서, 1번(네일)에서 열고 2번(헤어)을 보다가 [완료] 하면
+           **1번 자리에 헤어 합성본**이 들어갔다(실측 2026-09-12: 캐러셀에서 네일이 사라지고 헤어가 두 장). */
+        meta.photoIdx = (isSingleL(S.layout) && S.adjSel != null) ? S.adjSel : null;
         // [캐러셀] 콜라주(다중 셀)가 아니면서 편집기에서 새로 추가한 사진 → 플로우가 여러 장 게시(캐러셀) 후보로 반영.
         //   콜라주면 이미 한 장으로 합성되므로 별도 추가 안 함.
         meta.newPhotos = (isSingleL(S.layout) && S.photos && S.photos.length > (S._initPhotoN || 0)) ? S.photos.slice(S._initPhotoN || 0) : [];

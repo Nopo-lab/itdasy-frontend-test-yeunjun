@@ -31,7 +31,9 @@ describe('편집기 완료 → 초안 슬롯 영속화', () => {
   test('호출이 _learnShopStyle 뒤, 화면 전환 전에 일어난다', () => {
     // setScreen 이 먼저 돌면 d 가 다음 단계 값으로 바뀐 뒤 저장될 수 있다.
     const learn = SRC.indexOf('_learnShopStyle(meta && meta.layers)');
-    const call = SRC.indexOf('_persistEditQuiet();');
+    // [2026-09-12] 장별 합성(비동기) 쪽에도 같은 호출이 생겼다 — 계약은 "**주 저장**이
+    //   학습 뒤·전환 전" 이므로 _learnShopStyle **이후**의 호출을 찾는다(첫 일치가 아니라).
+    const call = SRC.indexOf('_persistEditQuiet();', SRC.indexOf('_learnShopStyle(meta && meta.layers)'));
     const nav = SRC.indexOf("if (d._editorNext) { var _nx = d._editorNext;");
     expect(learn).toBeGreaterThan(-1);
     expect(call).toBeGreaterThan(learn);

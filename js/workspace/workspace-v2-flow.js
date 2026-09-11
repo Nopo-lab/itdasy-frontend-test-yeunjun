@@ -745,6 +745,16 @@
           }
         } catch (_tde) { void _tde; }
         var p = p0 || _activeEditPhoto();   // [#5] 열 때 잡은 '보던 장'에 저장(편집 중 바뀌지 않게 고정)
+        /* [2026-09-12 ZH] 다만 **편집기 안에서 장을 바꿨으면 그 장이 맞다.**
+           p0 고정은 '편집 중 플로우 쪽 상태가 흔들려도 엉뚱한 장에 쓰지 않게' 하려던 것인데,
+           원장이 편집기 썸네일로 사진을 바꾸는 정상 동선까지 같이 막았다.
+           실측(2026-09-12, 3장 캐러셀 · 장마다 다른 글자): [완료] 후 발행본이
+           [헤어+B2hair, 헤어, 속눈썹] — **네일 사진이 통째로 사라지고** 헤어가 두 장 나왔다.
+           편집기가 알려준 번호가 있으면 그걸 쓴다(없으면 기존 동작 그대로). */
+        if (meta && meta.photoIdx != null) {
+          var _tpNow = (editablePhotos() || [])[meta.photoIdx];
+          if (_tpNow) p = _tpNow;
+        }
         if (p) { p.editedDataUrl = dataUrl; p.storyEdited = true; if (meta && meta.editState) p.editState = meta.editState; }   // [#11] 편집 상태 보존 → 재편집 이어가기
         if (_wsEd) { d.templateOutput = dataUrl; d.previewUrl = null; }   // [ws-hyper] 편집한 레이아웃 합성본을 대표 이미지로 → 미리보기/발행/저장에 반영
         _syncOutputForEdit(p, dataUrl, !!_wsEd);   // [버그수정 2026-07-17] 결과물 배열에도 반영(안 하면 발행이 편집 전 합성본을 올림)
@@ -772,6 +782,10 @@
                 _syncOutputForEdit(tp, u, false);   // [버그수정 2026-07-17] 사진별 레이어 합성도 결과물 배열에 반영
                 tp.editState = { v: 1, layoutIdx: 0, layoutOrder: [], cellCrop: [], fitMode: 'contain', ratio: _rt, adj: [], photoDraw: {}, photoBg: {}, photos: [_cb], layers: e.layers };
                 d.previewUrl = null;   // [#3] 편집 중간에는 내 콘텐츠 저장 안 함 — 최종(발행/연결/저장)에서만. 데이터는 메모리 유지.
+                /* [2026-09-12 ZH] 장별 합성은 **비동기**다 — 아래 `_persistEditQuiet()` 는 이미 지나갔다.
+                   그래서 저장본엔 다른 장들의 글자가 하나도 없었다(실측: 3장 중 2장의 글자 소실).
+                   합성이 끝난 이 시점에 한 번 더 적는다. buildSlot 이 d.slot 을 고정하므로 같은 id 를 덮어쓴다. */
+                try { _persistEditQuiet(); } catch (_pq) { void _pq; }
               });
             });
           }

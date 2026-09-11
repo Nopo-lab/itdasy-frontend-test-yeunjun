@@ -139,7 +139,12 @@ describe('[Editor 신뢰성 3·4·5] 저장 실패가 데드락이 아니다 —
   const doneBlock = (() => {
     const i = SRC.indexOf('refs.done.addEventListener');
     if (i < 0) throw new Error('완료 버튼 핸들러를 못 찾음');
-    return SRC.slice(i, i + 2600);
+    /* [2026-09-12] 고정 2600자 슬라이스는 **핸들러에 줄이 늘면 뒤쪽 경로를 잘라먹는다**
+       (meta.photoIdx 5줄 추가에 4번째 _restoreSaveUi 가 구간 밖으로 나가 가드가 거짓 실패했다).
+       계약은 "모든 종료 경로가 _restoreSaveUi 를 부른다" 이므로 **핸들러 끝까지** 본다. */
+    const rest = SRC.slice(i);
+    const end = rest.indexOf('\n  function ');
+    return end > 0 ? rest.slice(0, end) : rest;
   })();
   test('🔴 _saving 해제가 모든 경로에서 보장된다', () => {
     /* 해제 지점을 여러 곳에 흩뿌리는 게 아니라 **한 곳(_restoreSaveUi)** 으로 모으고
