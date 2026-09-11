@@ -44,7 +44,18 @@
         if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'k' });
         if (!db.objectStoreNames.contains('tombstones')) db.createObjectStore('tombstones', { keyPath: 'slot_id' });
       };
-      req.onsuccess = function (e) { if (settled) { try { e.target.result.close(); } catch (_c) { void _c; } return; } settled = true; clearTimeout(timer); _sdb = e.target.result; resolve(_sdb); };
+      req.onsuccess = function (e) {
+        if (settled) { try { e.target.result.close(); } catch (_c) { void _c; } return; }
+        settled = true; clearTimeout(timer); _sdb = e.target.result;
+        /* [2026-09-11 BUG-F3] 다른 탭이 delete/upgrade 를 걸면 **즉시 양보한다.**
+           app-gallery-db.js 는 2026-08-17 부터 이 가드가 있는데 여기만 없었다.
+           양보하지 않으면 그 요청이 영구 blocked 되고, 그 뒤 이 DB 에 줄선 open 이 전부 얼어붙는다
+           (실측: 옛 빌드가 남긴 delete 하나 때문에 itdasy-sync 가 탭을 다 닫아도 안 열렸다.
+            같은 순간 itdasy-gallery 는 5ms 만에 열렸다 = DB 별 현상이지 브라우저 고장이 아니다).
+           배포 직후에는 옛 빌드를 띄운 탭이 남아 있을 수 있으므로 실제로 타는 경로다. */
+        _sdb.onversionchange = function () { try { _sdb.close(); } catch (_v) { void _v; } _sdb = null; };
+        resolve(_sdb);
+      };
       req.onerror = function () { if (settled) return; settled = true; clearTimeout(timer); reject(req.error); };
       req.onblocked = function () { if (settled) return; settled = true; clearTimeout(timer); reject(new Error('sync_db_blocked')); };
     });

@@ -187,3 +187,22 @@ describe('BUG-F2 · itdasy-sync clearLocal 도 같은 뿌리', () => {
     expect(store['itdasy_sync_purge_pending']).toBe('1');
   });
 });
+
+describe('BUG-F3 · 연결은 delete/upgrade 요청에 양보한다', () => {
+  /* 양보하지 않으면 그 요청이 영구 blocked 되고, 그 DB 에 줄선 open 이 전부 얼어붙는다.
+     실측: 옛 빌드가 남긴 delete 하나 때문에 itdasy-sync 가 탭을 다 닫아도 안 열렸다
+     (같은 순간 itdasy-gallery 는 5ms 만에 열렸다 = DB 별 현상이지 브라우저 고장이 아니다). */
+  test('itdasy-sync 연결에 onversionchange 가 달려 있고 닫는다', () => {
+    const open = SYNC_SRC.slice(SYNC_SRC.indexOf('function openSyncDB()'),
+      SYNC_SRC.indexOf('function _tx('));
+    expect(open).toMatch(/onversionchange\s*=/);
+    expect(open).toMatch(/onversionchange[\s\S]{0,200}close\(\)/);
+  });
+
+  test('itdasy-gallery 연결에도 그대로 있다 (양쪽이 같은 계약)', () => {
+    const open = GDB_SRC.slice(GDB_SRC.indexOf('function openGalleryDB()'),
+      GDB_SRC.indexOf('// ── [T6]'));
+    expect(open).toMatch(/onversionchange\s*=/);
+    expect(open).toMatch(/onversionchange[\s\S]{0,200}close\(\)/);
+  });
+});
