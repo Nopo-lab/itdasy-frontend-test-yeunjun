@@ -774,8 +774,16 @@
         } catch (_ppe) { void _ppe; }
         d.previewUrl = null;
         _learnShopStyle(meta && meta.layers);   // [v587·C] 편집 결과를 우리샵 스타일로 학습 · [T-115 P3] 기억 ON이면 '지운 역할'만
-        // [#3] 편집 완료 시점엔 내 콘텐츠에 저장하지 않음(중간본 쌓임 방지). 편집 결과는 d.photos 메모리에 유지되어
-        //   미리보기·발행에 그대로 쓰이고, 실제 저장은 워크플로 최종(발행/고객연결/저장)에서만.
+        /* [PE-01 2026-09-11] 편집 결과를 **초안 슬롯에 바로 적는다.**
+           예전 주석: "편집 완료 시점엔 내 콘텐츠에 저장하지 않음(중간본 쌓임 방지)".
+           그 의도 자체는 맞다 — 다만 그게 `내 콘텐츠(갤러리)` 얘기인데 **초안 슬롯 저장까지 같이 빠져서**,
+           편집 결과가 `d` 메모리에만 남았다. 그래서 원장이 [완료] 를 누르고 "사진을 꾸몄어요" 를 본 뒤
+           새로고침하거나 탭을 닫으면 **꾸민 게 통째로 사라졌다.**
+           실측(라이브 89bf71e): 텍스트 3개 저장 → 20초 뒤에도 IndexedDB 는 옛 레이어 4개 그대로,
+           새로고침 후 재진입하면 추가한 레이어 없음. 성공 토스트가 떠서 **원장은 잃은 걸 모른다.**
+           그래서 갤러리는 그대로 건드리지 않고(중간본 안 쌓임) **슬롯만** 조용히 갱신한다.
+           `buildSlot()` 이 `d.slot` 을 고정하므로 반복 편집은 같은 id 를 덮어쓴다(중복 슬롯 안 생김). */
+        _persistEditQuiet();
         // [워크플로 재정렬] 편집기 완료 후 다음 목적지(예: 캡션→편집기→미리보기). 없으면 캡션 유지.
         if (d._editorNext) { var _nx = d._editorNext; d._editorNext = null; setScreen(_nx); }
         else if (cur === 'caption') setScreen('caption');
@@ -3153,6 +3161,18 @@
     slot.source = slot.source || 'workspace_v2';
     d.slot = slot;   // [#13] 만든 슬롯을 고정 — 이후 저장(에디터 완료·발행 등)이 같은 id 를 갱신하게. 예전엔 매번 새 id 라 콘텐츠가 중복 저장됐음.
     return slot;
+  }
+
+  /* [PE-01 2026-09-11] 편집 결과만 조용히 영속화. `save()` 와 일부러 다르다:
+       토스트 없음 / 플로우 안 닫음 / **갤러리(saveToGallery) 안 씀** / 학습(WorkMemory·WMLearn) 안 돌림.
+     저 넷은 "원장이 작업을 끝냈다"는 신호인데, 사진 한 장 꾸민 건 그 신호가 아니다.
+     여기서 `WorkspaceAdapter.saveItem` 을 쓰면 갤러리에 중간본이 쌓인다 — 그래서 `saveSlotToDB` 만 직접 부른다. */
+  function _persistEditQuiet() {
+    try {
+      if (!d.photos || !d.photos.length) return;              // 적을 게 없으면 슬롯도 만들지 않는다
+      if (typeof window.saveSlotToDB !== 'function') return;   // 저장소 없으면 조용히 포기(편집기는 이미 닫혔다)
+      Promise.resolve(window.saveSlotToDB(buildSlot())).catch(function (_e) { void _e; });
+    } catch (_e) { void _e; }
   }
 
   function save() {
