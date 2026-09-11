@@ -143,3 +143,30 @@ describe('접근성 — 조작 요소에 읽어줄 이름이 있다', () => {
     expect(ed).toMatch(/data-adjthumb="' \+ i \+ '" aria-label="' \+ \(i \+ 1\) \+ '번째 사진"/);
   });
 });
+
+/* 🔴 [2026-09-11 · §37 동시성] 탭 두 개로 서로 다른 사진을 편집하면
+   **다른 탭 사진이 내 복구본에 들어왔다.**
+   가벼운 상태(글자·스티커·보정)는 sessionStorage 라 탭별인데,
+   사진은 `DRAFT_ASSET` **키 한 개**에 브라우저 전체가 겹쳐 쓴다 → 마지막에 쓴 탭이 이긴다.
+   `_draftRead` 는 sig 를 대조하는데 `_draftLoadMedia` 는 **아무 대조도 안 했다.**
+
+   실측(로컬 8199, build 20260911-pg5):
+     A 사진 1,115,874B 로 편집 → B 사진 530,558B 로 편집(공유 키 덮어씀)
+     → A 새로고침 → '이어서 편집' 을 **29ms 만에** 클릭(A 자신의 첫 2초 틱 이전)
+     → 글자 "AAAA"(A 것)인데 사진 photoLen=530,558(**B 것**).
+   수정 후 같은 재현: photoLen=1,115,874(A 것), 콘솔 오류 0.
+*/
+describe('🔴 초안 사진은 그 초안의 것일 때만 되살린다 (탭 간 오염)', () => {
+  test('초안 사진을 저장할 때 어느 초안 것인지 도장(sig)을 같이 남긴다', () => {
+    expect(strip(ed)).toMatch(/saveAssetToDB\(\{\s*id:\s*DRAFT_ASSET,\s*sig:\s*_photosSig\(sp\.media\.photos\)/);
+  });
+  test('_draftLoadMedia 가 기대 sig 를 인자로 받는다', () => {
+    expect(strip(ed)).toMatch(/function _draftLoadMedia\(expectSig\)/);
+  });
+  test('_draftLoadMedia 가 sig 불일치면 사진을 안 돌려준다', () => {
+    expect(fn('_draftLoadMedia')).toMatch(/expectSig\s*&&\s*rec\.sig\s*!==\s*expectSig/);
+  });
+  test('복구 호출부가 그 초안의 sig 를 넘긴다', () => {
+    expect(strip(ed)).toContain('_draftLoadMedia(_dr.sig)');
+  });
+});

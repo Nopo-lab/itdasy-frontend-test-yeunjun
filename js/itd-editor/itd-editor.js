@@ -3337,7 +3337,13 @@
            (assets store 는 keyPath:'id'). 그래서 DataError 로 조용히 실패했고, **사진이 IDB 에
            한 번도 안 들어갔다** — 레이어는 sessionStorage 라 복구가 되는 것처럼 보였지만
            붓그림(photoDraw)·배경사진(collageBgImg)은 되살릴 수 없었다. 규약대로 감싼다. */
-        try { window.saveAssetToDB({ id: DRAFT_ASSET, media: sp.media, createdAt: Date.now() }); }
+        /* 🔴 [2026-09-11] `DRAFT_ASSET` 는 **탭 하나가 아니라 브라우저 전체가 공유하는 키 한 개**다.
+           가벼운 상태(sessionStorage)는 탭별인데 사진은 여기 한 칸에 겹쳐 쓰므로,
+           탭 두 개로 서로 다른 사진을 편집하면 **나중에 쓴 탭이 이긴다.**
+           실측: A(사진 1,115,874B) 편집 중 B(547,622B)가 덮음 → A 새로고침 후 '이어서 편집'을
+           **2초 안에** 누르면(A 자신의 첫 틱 전) 글자는 A 것인데 **사진이 B 것**으로 복구됐다.
+           → 어느 초안의 사진인지 도장(sig)을 같이 남기고, 읽을 때 대조한다. */
+        try { window.saveAssetToDB({ id: DRAFT_ASSET, sig: _photosSig(sp.media.photos), media: sp.media, createdAt: Date.now() }); }
         catch (_me) { void _me; }
       }
     } catch (_e) { void _e; }
@@ -3370,11 +3376,18 @@
       return o;
     } catch (_e) { return null; }
   }
-  function _draftLoadMedia() {
+  /** 초안 사진 읽기 — **되살리려는 그 초안의 사진일 때만** 돌려준다.
+      expectSig 가 안 맞으면 null: 사진은 지금 열려 있는 것(=sig 대조를 이미 통과한 그 사진)이 남는다.
+      다른 탭 사진으로 바꿔치기하느니, 되살릴 수 있는 것만 되살리는 쪽이 안전하다. */
+  function _draftLoadMedia(expectSig) {
     try {
       if (window.getAssetFromDB) {
         return Promise.resolve(window.getAssetFromDB(DRAFT_ASSET))
-          .then(function (rec) { return (rec && rec.media) || null; })   // 레코드에서 media 만
+          .then(function (rec) {
+            if (!rec || !rec.media) return null;
+            if (expectSig && rec.sig !== expectSig) return null;   // 다른 탭이 덮어쓴 사진 — 쓰지 않는다
+            return rec.media;
+          })
           .catch(function () { return null; });
       }
     } catch (_e) { void _e; }
@@ -3568,7 +3581,7 @@
       var _dr = _draftRead();
       if (_dr && _dr.state && _dr.sig && _dr.sig === _photosSig(S.photos)) {
         _showDraftBar(function () {
-          _draftLoadMedia().then(function (media) {
+          _draftLoadMedia(_dr.sig).then(function (media) {
             var st = Object.assign({}, _dr.state, media || {});
             if (_draftRestore(st)) { _draftDropPending(); toastIt('편집하던 내용을 되살렸어요'); }
             else toastIt('되살리지 못했어요 — 그대로 이어서 편집해 주세요');
