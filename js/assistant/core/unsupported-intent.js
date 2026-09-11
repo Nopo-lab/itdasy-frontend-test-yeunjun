@@ -24,9 +24,23 @@
   // (c) 문맥 부족 — 대명사만 있고 대상 못 찾음(드묾: 보통 activeCard/saved 가 먼저 잡음).
   var CONTEXT_LOST_RE = /^(그거|이거|저거|그것|방금\s*거|아까\s*거|마지막\s*거)\s*[?!.]*$/;
 
+  /* [잇비 배포후 라이브 게이트 2026-09-12 · P1] **잇비가 시킨 말을 잇비가 못 알아들었다.**
+
+     목록 뒤에 "그 고객 마지막 방문은?" 하면 잇비가 되묻는다 —
+       "누구를 말씀하시는 걸까요? … (이름을 그대로 말씀하시거나 "첫 번째 손님" 처럼 말씀해 주세요)"
+     그대로 "첫 번째 손님 마지막 방문은?" 이라고 하면 아래 RETRY_ALT_RE 의 `첫\s*번째` 가
+     먼저 잡아서 **"새로 만들려면 '후기 카드 만들어줘'처럼…"** 이라는 엉뚱한 안내가 나왔다.
+     그 정규식은 원래 "첫 번째가 나았어"(디자인 대안)를 위한 것이지 사람을 가리키는 말이 아니다.
+
+     원장 입장에선 앱이 알려준 대로 말했는데 못 알아듣는 것이라, 그냥 못 알아듣는 것보다 나쁘다.
+     그래서 **서수 뒤에 사람 명사(손님·고객·분·님)가 오면 여기서 손을 뗀다** — 백엔드가
+     `_session_customer_id` 로 그 자리의 고객을 집는다. */
+  var ORDINAL_PERSON_RE = /(첫|두|세|네|다섯|[1-5])\s*번째\s*(손님|고객|분(?![야음])|님)/;
+
   function classify(q) {
     var t = String(q || '').trim();
     if (!t) return null;
+    if (ORDINAL_PERSON_RE.test(t)) return null;   // '첫 번째 손님' = 고객 지시 → 백엔드가 해석
     if (EDIT_DETAIL_RE.test(t)) return { kind: 'edit_detail' };
     if (RETRY_ALT_RE.test(t)) return { kind: 'retry_alt' };
     if (CONTEXT_LOST_RE.test(t)) return { kind: 'context_lost' };

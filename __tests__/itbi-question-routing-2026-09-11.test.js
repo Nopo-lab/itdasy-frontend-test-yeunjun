@@ -188,3 +188,30 @@ describe('화면이동 지름길은 명령에만', () => {
     expect((block.match(/askOnly \? \[\] :/g) || []).length).toBe(4);
   });
 });
+
+
+// ── 9. 잇비가 시킨 말을 잇비가 알아들어야 한다 (배포후 라이브 게이트에서 발견) ──────
+describe('서수로 고객 지목 — "첫 번째 손님"', () => {
+  const UNSUP_SRC = fs.readFileSync(path.join(CORE, 'unsupported-intent.js'), 'utf8');
+  const U = build(UNSUP_SRC, ['classify']);
+
+  /* 목록 뒤 "그 고객 …" 에 잇비가 되묻는다:
+       "(이름을 그대로 말씀하시거나 "첫 번째 손님" 처럼 말씀해 주세요)"
+     그대로 따라 말했더니 **"새로 만들려면 '후기 카드 만들어줘'처럼…"** 이 나왔다.
+     앱이 알려준 대로 했는데 못 알아듣는 건, 그냥 못 알아듣는 것보다 나쁘다. */
+  test.each([
+    '첫 번째 손님 마지막 방문은?',
+    '두 번째 고객 예약 있어?',
+    '세 번째 분 잔액 얼마야?',
+    '첫번째 손님 누구야?',
+  ])('사람을 가리키는 서수는 가로채지 않는다: %s', (q) => {
+    expect(U.classify(q)).toBeNull();
+  });
+
+  test.each([
+    ['첫 번째가 나았어', 'retry_alt'],
+    ['두 번째 디자인으로 바꿔', 'retry_alt'],
+  ])('디자인 대안 서수는 그대로 안내한다: %s', (q, kind) => {
+    expect(U.classify(q)).toEqual({ kind });
+  });
+});
