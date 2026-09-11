@@ -112,3 +112,34 @@ describe('🔴 치던 글자가 사진 전환·저장에서 사라지지 않는�
     expect(b).toMatch(/L\.text = _t/);
   });
 });
+
+describe('접근성 — 조작 요소에 읽어줄 이름이 있다', () => {
+  /* 실측(편집기 열고 5개 도구 패널 전부 펼침): 조작 요소 144개 중 **63개에 이름이 없었다.**
+     대부분 색 스와치였고, 슬라이더 7개도 옆의 글자만 있고 프로그램적 이름이 없었다.
+     화면·크기·색은 그대로 두고 aria-label 만 붙였다(디자인 변경 아님). 63 → 0. */
+  test('색 스와치가 aria-label 을 단다', () => {
+    expect(fn('_swRow')).toMatch(/aria-label="' \+ _colorName\(c\) \+ '"/);
+  });
+  test('색 이름표가 팔레트 8색을 모두 덮는다', () => {
+    const i = ed.indexOf('var COLOR_NAMES');
+    expect(i).toBeGreaterThan(0);
+    const seg = ed.slice(i, i + 400);
+    ['#FFFFFF', '#15181D', '#BC6675', '#E08A6E', '#E6B45A', '#86B06E', '#6E9BC4', '#A98AC4']
+      .forEach((c) => expect(seg).toContain(c));
+  });
+  test.each([
+    ['data-r="size"', '글자 크기'], ['data-r="tilt"', '글자 기울기'],
+    ['data-r="adjRot"', '사진 수평'], ['data-r="shapeThick"', '도형 굵기'],
+    ['data-r="layGap"', '사진 간격'], ['data-r="brushSize"', '붓 굵기'],
+  ])('%s 슬라이더에 이름이 있다', (attr, name) => {
+    const i = ed.indexOf(attr);
+    expect(i).toBeGreaterThan(0);
+    expect(ed.slice(i, i + 120)).toContain('aria-label="' + name + '"');
+  });
+  test('보정 슬라이더 5종은 라벨을 그대로 이름으로 쓴다', () => {
+    expect(ed).toMatch(/data-adj="' \+ c\.k \+ '" aria-label="' \+ c\.label \+ '"/);
+  });
+  test('사진 썸네일에 몇 번째 사진인지 이름이 있다', () => {
+    expect(ed).toMatch(/data-adjthumb="' \+ i \+ '" aria-label="' \+ \(i \+ 1\) \+ '번째 사진"/);
+  });
+});

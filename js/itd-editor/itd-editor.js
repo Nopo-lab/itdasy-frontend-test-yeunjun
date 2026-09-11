@@ -28,10 +28,23 @@
     return '<button type="button" class="' + (cls || 'itsw') + ' itsw--rb" data-colorpick="' + target + '" title="색 직접 고르기" aria-label="색 직접 고르기"></button>';
   }
   // [팔레트 통일 2026-07-27] 색 스와치 한 줄 렌더 — 텍스트/도형/그리기/배경 팔레트 공용(파일 내 중복 렌더 제거).
+  /* [2026-09-11 접근성] 색 스와치에 **읽어줄 이름**을 붙인다.
+     실측: 편집기 안 조작 요소 144개 중 63개에 이름이 없었고 대부분이 이 스와치였다.
+     화면·크기·색은 그대로 — aria-label 만 추가한다(디자인 변경 아님). */
+  var COLOR_NAMES = {
+    '#FFFFFF': '흰색', '#15181D': '검정', '#BC6675': '로즈', '#E08A6E': '코랄',
+    '#E6B45A': '골드', '#86B06E': '그린', '#6E9BC4': '블루', '#A98AC4': '퍼플'
+  };
+  function _colorName(c) {
+    var k = String(c || '').toUpperCase();
+    return COLOR_NAMES[k] || ('색 ' + k.replace('#', ''));
+  }
   function _swRow(colors, attr, cls, onIdx, extraCls) {
     return colors.map(function (c, i) {
       var x = extraCls ? (extraCls(c, i) || '') : '';
-      return '<button type="button" class="' + cls + (i === onIdx ? ' on' : '') + (x ? ' ' + x : '') + '" ' + attr + '="' + c + '" style="background:' + c + '"></button>';
+      return '<button type="button" class="' + cls + (i === onIdx ? ' on' : '') + (x ? ' ' + x : '') + '" ' + attr + '="' + c + '"'
+        + ' aria-label="' + _colorName(c) + '" title="' + _colorName(c) + '"'
+        + ' style="background:' + c + '"></button>';
     }).join('');
   }
   // [스포이드] 파이펫 스와치 — 편집 중인 사진에서 색을 찍어 적용(EyeDropper API 미지원 모바일 대응, 자체 구현).
@@ -403,7 +416,7 @@
             '<button data-aln="center" aria-label="\uac00\uc6b4\ub370 \uc815\ub82c">' + IC.alnC + '</button>' +
             '<button data-aln="right" aria-label="\uc624\ub978\ucabd \uc815\ub82c">' + IC.alnR + '</button>' +
           '</span>' +
-          '<span class="itsize">크기<input type="range" min="0.5" max="8" step="0.02" value="1" data-r="size"></span>' +
+          '<span class="itsize">크기<input type="range" min="0.5" max="8" step="0.02" value="1" data-r="size" aria-label="글자 크기"></span>' +
         '</div>' +
         /* [2026-09-11] 글자 스타일 — 미리보기 '가' 를 그 효과 그대로 렌더한다(이름표 없이 눈으로 고른다).
            오른쪽은 기울기. 회전 핸들이 이미 있지만 눈에 안 띄고 미세조정이 안 돼서 슬라이더를 같이 둔다. */
@@ -413,7 +426,7 @@
               return '<button class="ittst__b ittst__b--' + t.key + '" data-tstyle="' + t.key + '" aria-label="' + t.label + '">가</button>';
             }).join('') +
           '</span>' +
-          '<span class="itsize itsize--tilt">기울기<input type="range" min="-45" max="45" step="1" value="0" data-r="tilt"><b data-r="tiltout">0\u00B0</b></span>' +
+          '<span class="itsize itsize--tilt">기울기<input type="range" min="-45" max="45" step="1" value="0" data-r="tilt" aria-label="글자 기울기"><b data-r="tiltout">0\u00B0</b></span>' +
         '</div>' +
         '<div class="itfonts" data-r="fonts">' + fonts + '</div>' +
         '<div class="itcolors" data-r="colors">' + colors + _rbSw('text', 'itsw') + _pipSw('text', 'itsw') + '</div>' +
@@ -423,7 +436,7 @@
   function buildAdjust() {
     var sliders = ADJ_CTRLS.map(function (c) {
       return '<div class="itadj__row"><span>' + c.label + '</span>' +
-        '<input type="range" min="' + c.min + '" max="' + c.max + '" step="1" data-adj="' + c.k + '">' +
+        '<input type="range" min="' + c.min + '" max="' + c.max + '" step="1" data-adj="' + c.k + '" aria-label="' + c.label + '">' +
         '<b data-adjout="' + c.k + '">0</b></div>';
     }).join('');
     return '<div class="itpanel itadj" data-panel="adjust">' +
@@ -444,7 +457,7 @@
         '<button class="itlaybg itlaybg--more" data-cutmore aria-label="색 더 보기">+</button>' +
       '</div>' +
       '<div class="itadj__row itadj__rotrow"><span>수평</span>' +
-        '<input type="range" min="-15" max="15" step="0.5" value="0" data-r="adjRot"><b data-r="adjRotOut">0°</b></div>' +
+        '<input type="range" min="-15" max="15" step="0.5" value="0" data-r="adjRot" aria-label="사진 수평"><b data-r="adjRotOut">0°</b></div>' +
       sliders +
       '<button class="itadj__reset" data-r="adjReset">이 사진 보정 초기화</button>' +
     '</div>';
@@ -549,7 +562,7 @@
               '<div class="itshape__row">' + chips + '</div>' +
       '<div class="itshape__opts">' +
         '<span class="itshape__fill" data-r="shapeFill"><button data-shapefill="0" class="on">선만</button><button data-shapefill="1">채움</button></span>' +
-        '<span class="itshape__thick">굵기<input type="range" min="2" max="26" step="1" value="6" data-r="shapeThick"></span>' +
+        '<span class="itshape__thick">굵기<input type="range" min="2" max="26" step="1" value="6" data-r="shapeThick" aria-label="도형 굵기"></span>' +
       '</div>' +
       '<div class="itshape__colors">' + colors + _rbSw('shape', 'itscw') + '</div>' +
     '</div>';
@@ -571,7 +584,7 @@
       '<div class="itlay2__strip" data-r="layStrip"></div>' +
       '<div class="itlay2__ctrls">' +
         '<span class="itlay2__fit" data-r="layFit"><button data-fit="cover">꽉 채움</button><button data-fit="contain" class="on">전체</button></span>' +
-        '<span class="itlay2__gap">간격<input type="range" min="0" max="24" step="1" value="3" data-r="layGap"></span>' +
+        '<span class="itlay2__gap">간격<input type="range" min="0" max="24" step="1" value="3" data-r="layGap" aria-label="사진 간격"></span>' +
         '<span class="itlay2__bg">' + bg + _rbSw('layout', 'itlaybg') + '</span>' +
         '<label class="itlay2__add itlay2__bgimg">' + IC.addphoto + '배경<input type="file" accept="image/*" data-r="layBgImg" hidden></label>' +
         '<label class="itlay2__add">' + IC.addphoto + '사진<input type="file" accept="image/*" data-r="layAdd" hidden></label>' +
@@ -589,7 +602,7 @@
       '<div class="itgrip itgrip--p" data-pgrip></div>' +
       '<div class="itdrawp__tools">' + brushes +
         '<button class="itdrawp__clear" data-r="drawClear">' + svg('<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>', 2) + '전체 지우기</button></div>' +
-      '<div class="itdrawp__size"><span class="itdrawp__lbl">굵기</span><input type="range" min="3" max="40" step="1" value="10" data-r="brushSize"></div>' +
+      '<div class="itdrawp__size"><span class="itdrawp__lbl">굵기</span><input type="range" min="3" max="40" step="1" value="10" data-r="brushSize" aria-label="붓 굵기"></div>' +
       '<div class="itdrawp__colors">' + colors + _rbSw('draw', 'itdsw') + _pipSw('draw', 'itdsw') + '</div>' +
     '</div>';
   }
@@ -2364,7 +2377,7 @@
   function renderAdjust() {
     if (!refs.adjStrip) return;
     refs.adjStrip.innerHTML = (S.photos || []).map(function (u, i) {
-      return '<button class="itadjthumb' + (i === S.adjSel ? ' on' : '') + '" data-adjthumb="' + i + '" style="background-image:url(\'' + u + '\');filter:' + filterStr(adjOf(i)) + '"></button>';
+      return '<button class="itadjthumb' + (i === S.adjSel ? ' on' : '') + '" data-adjthumb="' + i + '" aria-label="' + (i + 1) + '번째 사진" style="background-image:url(\'' + u + '\');filter:' + filterStr(adjOf(i)) + '"></button>';
     }).join('');
     syncAdjSliders();
   }
