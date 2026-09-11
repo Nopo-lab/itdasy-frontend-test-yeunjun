@@ -552,8 +552,8 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
   letter-spacing: .3px; flex-shrink: 0;
 }
 
-/* PC: 카드 보임, FAB 숨김, 챗봇 패널이 사이드바 안 가리게 */
-@media (width >= 768px) {
+/* PC: 카드 보임, FAB 숨김, 챗봇 패널이 사이드바 안 가리게 (폰 가로 제외 — 높이 게이트) */
+@media (width >= 768px) and (height >= 600px) {
   #assistantFab { display: none !important; }
   #assistantSheetPanel {
     padding-left: var(--side-nav-width) !important;
@@ -561,8 +561,8 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
   }
 }
 
-/* 모바일: 카드 숨김, FAB 유지 */
-@media (width <= 767px) {
+/* 모바일(+폰 가로처럼 높이가 짧은 화면): 카드 숨김, FAB 유지 */
+@media (width <= 767px), (height < 600px) {
   .cw-chatbot-card { display: none !important; }
 }
 

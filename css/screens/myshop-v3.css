@@ -33,7 +33,7 @@ body:has(#tab-dashboard.active) #headerPersona { display: none !important; }
 }
 
 /* 2026-05-01 ── 글로벌 #sideNav (.side-nav.ms-side) 는 768px 부터 보임 (style-responsive.css 와 동기). */
-@media (width >= 768px) {
+@media (width >= 768px) and (height >= 600px) {
   #sideNav.ms-side { display: flex; }
 }
 

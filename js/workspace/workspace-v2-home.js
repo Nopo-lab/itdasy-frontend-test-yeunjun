@@ -104,10 +104,12 @@
     //   필터 줄 오른쪽 끝에 같은 pill 로: 새 줄을 만들면 피드가 밀려 내려가고, ⋯ 안에 두면 '설정 옆에 숨은 것'이 된다.
     var perf = '<button type="button" class="wf-perf" data-wsv2-perf data-haptic="light" aria-label="성과 보기">' +
       '<svg width="14" height="14" aria-hidden="true"><use href="#ic-trending-up"/></svg>성과</button>';
-    return '<div class="wf-segs">' + F.map(function (f) {
+    // [2026-09-11] 필터 3개는 스크롤 래퍼 안으로 — 320px 에서 줄 전체가 페이지를 밀어냈다.
+    //   핸들러는 delegated closest('[data-wsv2-filter]') 라 래퍼가 생겨도 그대로 동작한다.
+    return '<div class="wf-segs"><div class="wf-segs__scroll">' + F.map(function (f) {
       return '<button type="button" class="wf-seg' + (_filter === f[0] ? ' on' : '') + '" data-wsv2-filter="' + f[0] + '">' +
         f[1] + '<span class="wf-seg__n">' + f[2] + '</span></button>';
-    }).join('') + perf + '</div>';
+    }).join('') + '</div>' + perf + '</div>';
   }
   // [개편 2026-07-15] 이어서 카드 — 썸네일 + 제목 + 상태 한 줄 + 검정 '이어서' 버튼(목업 ① 톤).
   function _resumeMsg(slot) {

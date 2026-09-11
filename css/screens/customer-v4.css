@@ -70,12 +70,23 @@
 #customerSheet .sec-hd {
   font-size:12px;color:#BBB;font-weight:600;padding:8px 0 4px;letter-spacing:1px;margin-top:4px;
 }
+/* [2026-09-11 전기기 감사] 예전엔 `top:200px` 고정 + 9px 글자 + 15×16px 히트영역이었다.
+   ① 200px 은 검색창 세로 구간과 겹쳐서, 검색창 오른쪽 끝을 누르면 자음이 잡혔다.
+      → top 은 JS 가 칩 줄 아래로 실측해서 넣는다(app-customer.js). 여기 값은 폴백.
+   ② 자음 14개를 44px 로 키우는 건 물리적으로 불가능(616px). 대신
+      - 세로: 남는 높이를 14칸이 나눠 갖게(space-evenly) → 844 화면에서 칸당 ~40px
+      - 가로: 보이는 글자는 그대로, **열 전체(26px)** 를 눌리게
+      로 실제 조준 난이도를 낮춘다. iOS 연락처 인덱스와 같은 방식. */
 #customerSheet .idx-bar {
-  position:absolute;right:4px;top:200px;display:flex;flex-direction:column;align-items:center;gap:1px;z-index:10;
+  position:absolute;right:0;top:200px;bottom:24px;
+  display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:0;
+  width:26px;z-index:10;
   user-select:none;-webkit-user-select:none;
 }
 #customerSheet .idx-bar span {
-  font-size:9px;color:#BBB;padding:1px 4px;cursor:pointer;font-weight:500;
+  font-size:10px;color:#BBB;cursor:pointer;font-weight:600;
+  flex:1 1 auto;min-height:20px;max-height:34px;
+  display:flex;align-items:center;justify-content:center;
 }
 #customerSheet .idx-bar span:active,
 #customerSheet .idx-bar span.is-on { color:var(--text,#111);font-weight:700; }
@@ -84,7 +95,7 @@
 #customerSheet .c-row {
   display:flex;align-items:center;padding:13px 0;border-bottom:1px solid var(--border,#F5F5F7);
   cursor:pointer;transition:background .12s;position:relative;padding-left:16px;
-  padding-right:18px; /* [2026-07-08] 우측 마지막방문 텍스트가 인덱스바에 안 겹치게 */
+  padding-right:26px; /* [2026-07-08] 우측 마지막방문 텍스트가 인덱스바에 안 겹치게 (2026-09-11: 인덱스바 폭 26px 과 일치) */
 }
 #customerSheet .c-row:active { background:var(--surface-2,#FAFAFA); }
 #customerSheet .c-row:last-child { border-bottom:none; }

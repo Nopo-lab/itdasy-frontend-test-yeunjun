@@ -7,7 +7,7 @@
   font-family:Pretendard,-apple-system,"Apple SD Gothic Neo",sans-serif;-webkit-font-smoothing:antialiased;
   touch-action:none;-webkit-user-select:none;user-select:none;overscroll-behavior:contain}
 .itded.is-open{display:flex}
-@media (width >= 768px){ .itded{left:var(--side-nav-width)} }   /* PC 사이드바 가림 방지 [v716] SSOT */
+@media (width >= 768px) and (height >= 600px){ .itded{left:var(--side-nav-width)} }   /* PC 사이드바 가림 방지 [v716] SSOT */
 
 /* 스테이지 — 사진 + 레이어 + 드로잉 */
 .itded__stage{position:relative;flex:1 1 auto;overflow:hidden;display:flex;align-items:center;justify-content:center;transition:margin .2s ease}

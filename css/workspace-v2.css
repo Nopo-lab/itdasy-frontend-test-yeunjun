@@ -186,7 +186,7 @@
 .wsv2-bulkbar__del { border-color: #F3C2C2 !important; color: #C0392B !important; }
 
 /* PC: 고정 사이드바 가림 방지. [v716] var(--side-nav-width) — ≥768px 232 / ≥1200px 260 자동 정합 */
-@media (width >= 768px) {
+@media (width >= 768px) and (height >= 600px) {
   .wsv2 { max-width: 780px; }
   .wsv2-list { grid-template-columns: 1fr 1fr; }
   .wsv2-drawer { left: var(--side-nav-width); }
