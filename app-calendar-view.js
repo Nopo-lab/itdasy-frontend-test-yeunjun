@@ -2720,8 +2720,41 @@
     });
   }
 
+  /* [2026-09-12 BUG-R1] 캘린더를 덮는 고객 시트를 **여기서** 먼저 닫는다.
+
+     이 오버레이는 z-index 9988 인데 고객 목록(#customerSheet)은 9998, 고객 상세는 그 위다.
+     그래서 고객 화면에서 캘린더를 열면 **폼이 멀쩡히 렌더된 채 뒤에 깔려**
+     원장 눈엔 "눌렀는데 아무 일도 안 일어난다" 로 보인다(주소만 #cvBookingForm 으로 바뀐다).
+
+     같은 사고를 2026-08-15(#40)에 app-customer.js 의 액션시트 경로에서 이미 한 번 고쳤다.
+     그런데 그 뒤에 생긴 고객 상세 v4 의 '예약 잡기' 는 **고객 상세만 닫고 목록은 안 닫아서**
+     같은 증상이 되살아났다(2026-09-12 라이브 실측: elementsFromPoint 최상단이 #customerSheet).
+
+     진입점이 10곳이 넘는다 — 호출부마다 붙이면 새 진입점이 생길 때마다 또 빠진다.
+     그래서 **캘린더를 여는 이 한 곳**에서 닫는다.
+     ⚠️ 안 보이는 시트는 건드리지 않는다(닫기가 라우터 스택을 건드리므로). */
+  function _closeCoveringCustomerSheets() {
+    const shown = (id) => {
+      try {
+        const el = document.getElementById(id);
+        return !!(el && getComputedStyle(el).display !== 'none');
+      } catch (_e) { return false; }
+    };
+    try {
+      if (shown('customerDashSheet') && typeof window.closeCustomerDashboard === 'function') {
+        window.closeCustomerDashboard();
+      }
+    } catch (_e) { void _e; }
+    try {
+      if (shown('customerSheet') && typeof window.closeCustomers === 'function') {
+        window.closeCustomers();
+      }
+    } catch (_e) { void _e; }
+  }
+
   window.openCalendarView = async function () {
     if (typeof window._perfMark === 'function') window._perfMark('calendar:open:start');
+    _closeCoveringCustomerSheets();
     const existing = _overlay(); if (existing) existing.remove();
 
     // [버그8] 예약관리 재진입 시 선택일은 항상 오늘로 초기화 — 이전 세션/선택 잔존으로
