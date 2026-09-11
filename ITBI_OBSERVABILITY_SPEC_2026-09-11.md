@@ -48,7 +48,7 @@
         "fallback_reason":null,"latency_ms":166,"recommendation_count":3,
         "entity_type":"customer","entity_hash":"47ff0dba152173f5",
         "q":"[NAME]님 마지막 방문 언제야?","q_fp":"de58d1319d30",
-        "a":"🗓️ [NAME]님 마지막 방문은 …"}
+        "a_len":34,"a_empty":false}
 ```
 
 | 필드 | 뜻 |
@@ -58,7 +58,8 @@
 | `handled_by` | `client` 일 때 **어느 FE 지름길이 가로챘나** (이번 결함군의 핵심 단서) |
 | `response_status` | `ok` / `fallback` / `error` — **fallback 은 200 이지만 성공이 아니다** |
 | `fallback_reason` | unknown_intent · ambiguous_entity · entity_not_found · missing_data · unsupported_capability · safety · tool_failure · model_failure |
-| `q` / `a` | **마스킹된** 질문·답변 (이름·전화·이메일·긴 숫자 치환, 120자) |
+| `q` | **마스킹된** 질문 (허용목록 밖 낱말은 `[NAME]`, 전화·이메일·긴 숫자 치환, 120자) |
+| `a_len` / `a_empty` | 답변 **본문은 안 남긴다** — 길이와 빈답 여부만 (아래 P0 참조) |
 | `q_fp` | 비슷한 질문을 묶는 지문 — 이름이 달라도 같은 모양이면 같은 값 |
 | `*_hash` | HMAC 스타일 해시 16자. 같은 값인지 비교는 되고 원래 값은 복원 불가 |
 
@@ -79,14 +80,42 @@
 | 입력 | 로그 |
 |---|---|
 | `김호영님 010-7001-0012 로 연락, a@b.com, 주민 8801011234567` | `[NAME]님 [PHONE] 로 연락, [EMAIL], 주민 [NUM]` |
+| `김호영 고객 알려줘` (호칭 없음) | `[NAME] 고객 알려줘` |
+| `오늘 예약 알려줘` | `오늘 예약 알려줘` (업무어는 그대로 — 과도한 마스킹은 '아무것도 못 봄'이다) |
+
+### 🔴 1차 배포 후 실측에서 잡은 것 (P0 — 고침)
+
+관측을 배포하고 **실제 `gcloud logging read` 로 읽어 보니** 질문은 가려졌는데
+**답변에 고객 이름이 평문으로** 남아 있었다.
+
+```
+"🙋 'E2E_G_김민수' 님이 2분 계세요…"     ← 따옴표+공백이 끼어 `○○님` 정규식이 빗나감
+"• E2E_A_박지우 — 37,000원"               ← 불릿 목록
+"A / B / C / D"                           ← 되묻기 후보 나열
+"김호영 고객 알려줘"                      ← 질문에 호칭이 아예 없음
+```
+
+두 가지를 바꿨다.
+
+1. **금지목록 → 허용목록.** '이름처럼 생긴 것'을 찾아 가리는 방식은 한국어에서 끝이 없다
+   (이 프로젝트가 FE·BE 에서 이미 두 번 실패한 방식이다). 이제 **아는 업무 낱말만 남기고
+   나머지 2~4자 한글 낱말은 전부 `[NAME]`** 으로 바꾼다. 밑줄 식별자(`E2E_A_…`)도 통째로.
+2. **답변 본문(`a`)은 아예 안 남긴다.** 새어 나온 이름은 전부 답변 쪽이었다 — 답변은 우리
+   템플릿이 이름을 목록·따옴표·슬래시로 박아 넣어 마스킹이 **구조적으로** 안 끝난다.
+   대신 `a_len`·`a_empty` 만 남긴다. 추적에 필요한 건 `intent`·`fallback_reason`·`q_fp` 다.
+
+가드는 **그때 실제로 찍힌 문자열**을 테스트에 그대로 박아 뒀다
+(`tests/test_itbi_qa_2026_09_11.py::test_no_customer_name_survives_sanitize`).
 
 **기본 로그에 절대 안 들어가는 것**: 고객 전화·주소·생년월일·raw 메모·전체 이름·
-상담 내용 전문·access/refresh token·Authorization 헤더·API 키·쿠키·비밀번호.
+**답변 본문**·상담 내용 전문·access/refresh token·Authorization 헤더·API 키·쿠키·비밀번호.
 
 식별자는 전부 해시. 원문이 꼭 필요한 진단은 **이 로그가 아니라** 별도 권한·보존기간을 가진
 저장소에서 한다 — 이 모듈은 그런 저장소를 만들지 않는다(무기한 원문 보관을 기본값으로 두지 않기 위해).
 
-가드: `tests/test_itbi_qa_2026_09_11.py::test_telemetry_redacts_pii` · `::test_telemetry_never_raises`
+가드: `test_telemetry_redacts_pii` · `test_no_customer_name_survives_sanitize` ·
+`test_bare_name_in_question_is_masked` · `test_sanitize_keeps_the_question_readable` ·
+`test_answer_body_is_not_logged` · `test_telemetry_never_raises`
 
 ---
 

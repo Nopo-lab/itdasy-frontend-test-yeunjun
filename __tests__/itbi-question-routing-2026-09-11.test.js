@@ -215,3 +215,47 @@ describe('서수로 고객 지목 — "첫 번째 손님"', () => {
     expect(U.classify(q)).toEqual({ kind });
   });
 });
+
+// ── 10. 질문이 영구 기억으로 저장되면 안 된다 (배포후 라이브 게이트 P1) ─────────
+describe('메모 인텐트 — 묻는 문장은 저장이 아니다', () => {
+  const MEM_SRC = fs.readFileSync(path.join(CORE, 'memory-intent.js'), 'utf8');
+  // CUSTOMER_SCOPE_RE 는 여러 줄 `new RegExp(...)` 이라 한 줄 상수 추출에 안 잡힌다 — 통째로 가져온다.
+  const M = (() => {
+    const multi = MEM_SRC.slice(MEM_SRC.indexOf('  var CUSTOMER_SCOPE_RE'),
+      MEM_SRC.indexOf('  function _isCustomerScoped'));
+    // SAVE_TRIG 는 여러 줄 배열 리터럴이라 역시 따로 가져온다.
+    const arr = MEM_SRC.slice(MEM_SRC.indexOf('  var SAVE_TRIG'),
+      MEM_SRC.indexOf('  // 회상(= "뭐 기억해?")'));
+    const code = [consts(MEM_SRC), arr, multi,
+      cut(MEM_SRC, '_stripTail'), cut(MEM_SRC, '_isCustomerScoped'),
+      cut(MEM_SRC, '_extractMemo'), cut(MEM_SRC, 'classify')].join('\n');
+    // eslint-disable-next-line no-new-func
+    return new Function(code + '\nreturn { classify };')();
+  })();
+
+  /* 실측(배포본 1fa49ff):
+       Q "김호영님 010-7001-0012 이메일 qa-test@example.com 메모해둔 거 있어?"
+       A "기억했어요 🧠 "김호영님 010-7001-0012 …" — 앞으로 참고할게요."
+     물어본 문장이 그대로 원장 기억에 박혔고, 거기 전화번호와 이메일이 들어 있었다. */
+  test.each([
+    '김호영님 010-7001-0012 이메일 qa-test@example.com 메모해둔 거 있어?',
+    '김호영님 메모해둔 거 있어?',
+    '메모해둔 거 뭐 있어?',
+    '박지우님 알러지 메모 있나?',
+  ])('질문은 저장하지 않는다: %s', (q) => {
+    const r = M.classify(q);
+    expect(r && r.mode).not.toBe('save');
+  });
+
+  test.each([
+    '보정 전에 항상 확인하는 거 기억해줘',
+    '월요일은 오후 2시부터라고 메모해줘',
+  ])('진짜 저장 요청은 그대로 저장한다: %s', (q) => {
+    expect(M.classify(q).mode).toBe('save');
+  });
+
+  test('고객 메모는 길어져도 원장 기억으로 새지 않는다 (창 24자 → 60자)', () => {
+    const long = '김호영님 010-7001-0012 이메일 qa-test@example.com 알러지 있다고 메모해줘';
+    expect(M.classify(long)).toBeNull();
+  });
+});
