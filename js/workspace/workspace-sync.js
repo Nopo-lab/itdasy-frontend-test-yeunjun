@@ -136,11 +136,41 @@
      base 는 사진 blob 을 안 담는다 — 텍스트 메타 + 사진 '서명'만(수백 바이트). */
   var MERGE_FIELDS = ['label', 'caption', 'hashtags', 'customer_id', 'order'];
 
-  /** 사진 집합의 서명 — id 순서 + 편집상태만. blob 없이 '바뀌었나'만 본다. */
+  /* [BUG-N1 2026-09-11] 편집상태를 **저장 위치와 무관한 모양**으로 normalize 한다.
+     예전엔 `JSON.stringify(editState).length` 를 썼는데, 같은 꾸밈이라도
+       로컬  = `data:image/jpeg;base64,...` 가 통째로 박혀 있어 수십~수백 KB
+       서버본 = 업로드된 `https://...supabase.../abc.jpg` 라 수십 자
+     라서 **길이가 항상 달랐다.** 그래서 `photoSig(local) !== photoSig(remote)` 가
+     내용과 무관하게 늘 참이 되고, merge3 의 사진 분기가 매번 '진짜 충돌' 로 떨어졌다.
+     결과: 원장이 저장 직후 화면을 옮기면 작업 카드가 `_conflict_` 사본으로 갈라지고
+     **최신 편집이 목록에 안 보이는 쪽에** 들어갔다(실측 2/2, 라이브 c3bf4ca).
+     같은 이유로 `sameBaseSig` 를 쓰는 '_pending(내 push 가 늦게 도착)' 가드도
+     _sig 가 영영 안 맞아 **한 번도 발동하지 못했다.**
+     이미지 참조를 토큰 하나로 바꾸면 양쪽이 같은 값을 낸다. 레이어·문구·개수가
+     진짜로 다르면 여전히 다른 값이 나오므로 **실제 충돌 감지는 그대로다.** */
+  function _imgAgnostic(es) {
+    try {
+      return JSON.stringify(es, function (k, v) {
+        if (typeof v === 'string' && (v.indexOf('data:image') === 0 || /^https?:\/\//.test(v))) return '<img>';
+        return v;
+      });
+    } catch (_e) { return ''; }
+  }
+  /** 짧고 안정적인 서명. 길이만 쓰면 서로 다른 내용이 같은 길이로 겹친다. */
+  function _hash(str) {
+    var h = 5381;
+    for (var i = 0; i < str.length; i++) { h = ((h * 33) ^ str.charCodeAt(i)) >>> 0; }
+    return str.length + '.' + h.toString(36);
+  }
+  /** 사진 집합의 서명 — id 순서 + 편집상태만. blob 없이 '바뀌었나'만 본다.
+      `v2:` 는 포맷 표식이다. 예전 포맷으로 저장된 `_base` 는 다음 동기화 한 번에
+      `makeBase` 가 새로 쓰므로 창이 한 주기로 닫힌다. */
   function photoSig(slot) {
     try {
-      return (slot && slot.photos || []).map(function (p) {
-        return String(p && p.id) + ':' + String(p && p.role || '') + ':' + (p && p.editState ? JSON.stringify(p.editState).length : 0);
+      var ps = (slot && slot.photos) || [];
+      if (!ps.length) return '';   // 기존 계약 유지 — 사진이 없으면 빈 문자열(workspace-sync-merge.test.js)
+      return 'v2:' + ps.map(function (p) {
+        return String(p && p.id) + ':' + String(p && p.role || '') + ':' + (p && p.editState ? _hash(_imgAgnostic(p.editState)) : '0');
       }).join('|');
     } catch (_e) { return ''; }
   }
