@@ -1474,14 +1474,14 @@
 	    if (!d.caption) {
 	      // [v558] 캡션 UX 리뉴얼 — 시나리오 버튼 제거. 사진 → 시술 문구 입력 → 말투 6칩 → 길이 → 해시태그 토글 → 단일 생성 버튼.
 	      // [ws-hyper] 레이아웃 합성본은 폭 꽉 차는 img로(레터박스 빈 여백 제거).
-	      /* [2026-09-12 ZH] 이 <img> 에는 width/height 도 aspect-ratio 도 없어서 **로드 전 높이가 0** 이었다.
-	         그래서 사진이 디코드되는 순간 아래 질문·시술·버튼이 통째로 **347px 아래로 밀렸다**
-	         (실측 2026-09-12, 606×717: '시술' 앵커 y 333 → 681). 답변 칩을 누르려던 손가락 밑에서
-	         화면이 움직여 오탭이 난다. 합성본 비율은 이미 알고 있으니(1:1 / 4:5) 칸을 미리 잡아 둔다.
-	         래퍼는 overflow:hidden 이라 로드 후 오차가 있어도 레이아웃이 다시 안 흔들린다. */
-	      var _capAr = (_wsRatio() === '1:1') ? '1 / 1' : '4 / 5';
+	      /* [2026-09-12 ZH] 이 <img> 는 width/height·aspect-ratio 가 없어 **로드 전 높이가 0** 이다.
+	         디코드되는 순간 아래 질문·시술·버튼이 밀린다(실측 606×717: '시술' 앵커 y 333 → 681).
+	         ⚠️ 한 번 `aspect-ratio: 4/5` 로 칸을 예약해 봤다가 **되돌렸다** —
+	         `d.templateOutput` 이 늘 4:5 합성본인 게 아니라 원본 사진(1920×1280 = 1.5:1)일 때도 있어서,
+	         칸만 4:5 로 잡히고 그 아래 300px 빈 흰칸이 남았다. 비율을 **추측하면 더 나빠진다.**
+	         남은 밀림은 보고서에 P3 로 기록한다(수정하려면 templateOutput 의 실제 비율을 알아야 한다). */
 	      var photoThumb = d.templateOutput   /* [버그수정 2026-07-06] 재오픈 초안도 합성본 썸네일 */
-	        ? '<div class="wsl-cap-preview" style="aspect-ratio:' + _capAr + '"><img src="' + esc(_blobDisp(d.templateOutput)) + '" alt="미리보기"></div>'
+	        ? '<div class="wsl-cap-preview"><img src="' + esc(_blobDisp(d.templateOutput)) + '" alt="미리보기"></div>'
 	        : (_capCarouselHtml() || ((!d.textOnly && url) ?
 	        '<div class="cap-photo cap-photo--sm" style="background-image:url(' + esc(_blobDisp(url)) + ')"></div>' : ''));
 	      // [캡션재설계 v2 2026-07-15] 자유 서술 텍스트영역(500자) 제거 — 질문 3카드 + 시술 칩(단일선택) + 특이사항 한 줄.

@@ -90,27 +90,19 @@ describe('§5 사진 편집 입구가 편집기의 주력 도구를 말한다', 
   });
 });
 
-describe('§8 캡션 화면 사진이 로드되며 아래를 밀어내지 않는다', () => {
-  /* 실측(606×717): 이 <img> 는 width/height·aspect-ratio 가 없어 로드 전 높이 0 →
-     디코드되는 순간 '시술' 앵커가 y 333 → 681 로 **347px** 밀렸다.
-     답변 칩을 누르려는 손가락 밑에서 화면이 움직인다. */
-  test('합성본 미리보기 칸이 비율로 높이를 미리 잡는다', () => {
+describe('§8 미리보기 칸의 비율을 **추측하지 않는다**', () => {
+  /* 실측: 이 <img> 는 로드 전 높이 0 이라 디코드 시 아래가 347px 밀린다(P3, 미수정).
+     한 번 `aspect-ratio: 4/5` 로 칸을 예약했다가 되돌렸다 —
+     `d.templateOutput` 이 원본 사진(1920×1280 = 1.5:1)일 때도 있어
+     칸만 4:5 로 잡히고 그 아래 **300px 빈 흰칸**이 남았다(라이브에서 눈으로 확인).
+     비율을 모르면서 고정하면 더 나빠진다는 걸 가드로 박아 둔다. */
+  test('wsl-cap-preview 에 하드코딩된 aspect-ratio 를 넣지 않는다', () => {
     const src = strip(FLOW);
     const i = src.indexOf('wsl-cap-preview');
     expect(i).toBeGreaterThan(0);
     const seg = src.slice(Math.max(0, i - 300), i + 260);
-    expect(seg).toMatch(/aspect-ratio:/);
-    expect(seg).toMatch(/_capAr/);
-  });
-
-  test('비율은 출력 규격(_wsRatio)에서 온다 — 하드코딩 금지', () => {
-    const src = strip(FLOW);
-    const i = src.indexOf('var _capAr =');
-    expect(i).toBeGreaterThan(0);
-    const line = src.slice(i, i + 120);
-    expect(line).toMatch(/_wsRatio\(\)/);
-    expect(line).toMatch(/1 \/ 1/);
-    expect(line).toMatch(/4 \/ 5/);
+    expect(seg).not.toMatch(/aspect-ratio:/);
+    expect(seg).not.toMatch(/_capAr/);
   });
 });
 
