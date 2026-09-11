@@ -149,3 +149,38 @@ describe('§12 누르지도 않았는데 뜨는 "준비 중" 안내', () => {
     expect(make({ userActivation: { isActive: false } }, 0)()).toBe(false);
   });
 });
+
+describe('§10b 전체 보이기를 고르면 미리보기에서 사진이 반복되던 것', () => {
+  /* 🔴 내가 지난 라운드에 넣은 '사진 채우기' 가 드러낸 결함.
+     `.wsc-one` 은 `background-size` 를 _fitOf() 로 쓰는데 `background-repeat` 선언이 없었다.
+     CSS 기본값이 repeat 라, 예전처럼 늘 cover 일 때는 안 보이다가 **contain 이 도달 가능해지자**
+     가로 사진이 세로로 3번 깔렸다(실측 2026-09-12: manicure 1.5:1 → 칸 298×373, repeat).
+     원장이 '전체 보이기' 를 고른 바로 그 화면에서 자기 사진이 타일로 보인다. */
+  const CSS = fs.readFileSync(path.join(__dirname, '../../../css/workspace-hyper.css'), 'utf8');
+  const LAYOUT = fs.readFileSync(path.join(__dirname, '../flow/layout.js'), 'utf8');
+
+  function rule(sel) {
+    const i = CSS.indexOf(sel + ' {');
+    expect(i).toBeGreaterThan(-1);
+    const j = CSS.indexOf('}', i);
+    return CSS.slice(i, j);
+  }
+
+  test('.wsc-one 에 background-repeat: no-repeat 가 있다', () => {
+    expect(rule('.wsc-one')).toMatch(/background-repeat:\s*no-repeat/);
+  });
+
+  test('그 칸의 background-size 는 여전히 선택값(_fitOf)로 바뀐다 — 기능은 그대로', () => {
+    const src = strip(LAYOUT);
+    const i = src.indexOf('class="wsc-one"');
+    expect(i).toBeGreaterThan(0);
+    expect(src.slice(i, i + 220)).toMatch(/background-size:'\s*\+\s*_fitOf\(\)/);
+  });
+
+  test('contain 을 쓰는 다른 배경들엔 원래 no-repeat 가 있다(이 선언이 표준이라는 근거)', () => {
+    const FLOWCSS = fs.readFileSync(path.join(__dirname, '../../../css/workspace-v2-flow.css'), 'utf8');
+    const HOMECSS = fs.readFileSync(path.join(__dirname, '../../../css/workspace-home-c.css'), 'utf8');
+    expect(FLOWCSS).toMatch(/\.ed-photo[^}]*background-size:\s*contain[^}]*background-repeat:\s*no-repeat/);
+    expect(HOMECSS).toMatch(/\.wshc-lb__slide[^}]*background-size:\s*contain[^}]*background-repeat:\s*no-repeat/);
+  });
+});
