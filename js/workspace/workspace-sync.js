@@ -104,7 +104,7 @@
 
   // [M2·M3] _rev/_base 는 순수 로컬 동기화 상태다 — meta 로 서버에 올라가면 안 된다(서버 오염 +
   //   다른 기기가 남의 base 를 물려받아 병합 판정이 틀어진다).
-  var META_SKIP = { id: 1, label: 1, caption: 1, hashtags: 1, publish: 1, customer_id: 1, order: 1, photos: 1, updatedAt: 1, syncState: 1, _rev: 1, _base: 1 };
+  var META_SKIP = { id: 1, label: 1, caption: 1, hashtags: 1, publish: 1, customer_id: 1, order: 1, photos: 1, updatedAt: 1, syncState: 1, _rev: 1, _base: 1, _pending: 1 };
   function buildMeta(slot) {
     var m = {};
     for (var k in slot) {
@@ -149,6 +149,15 @@
     var b = { _sig: photoSig(slot) };
     MERGE_FIELDS.forEach(function (k) { b[k] = slot ? slot[k] : undefined; });
     return b;
+  }
+  /** 두 지문이 같은 내용을 가리키나 — '서버본이 내가 보낸 그것인가' 판정용. */
+  function sameBaseSig(a, b) {
+    if (!a || !b) return false;
+    if (!sameVal(a._sig, b._sig)) return false;
+    for (var i = 0; i < MERGE_FIELDS.length; i++) {
+      if (!sameVal(a[MERGE_FIELDS[i]], b[MERGE_FIELDS[i]])) return false;
+    }
+    return true;
   }
   function sameVal(a, b) { return (a == null ? '' : String(a)) === (b == null ? '' : String(b)); }
 
@@ -333,8 +342,16 @@
   }
   function pushSlot(slot) {
     var startedAt = slot && slot.updatedAt;   // [버그수정 2026-07-09 TOCTOU] push 시작 스냅샷
+    /* 🔴 [2026-09-11 실측] **서버는 커밋했는데 응답이 유실되면** 로컬은 옛 base 를 그대로 들고
+       dirty 로 남는다. 원장이 "저장이 안 됐나" 하고 다시 저장하면 다음 push 가 옛 rev 를 보내
+       409 를 받고, 3-way 병합이 "둘 다 base 에서 바뀌었다" 로 읽어 **작업 카드를 하나 더 만든다**
+       ('다른 기기 수정본' — 쓴 사람은 나 하나뿐인데).
+       → 이번에 보낸 내용의 지문을 남겨 둔다. 나중에 서버본이 그 지문과 같으면
+       '남이 바꾼 것' 이 아니라 '내가 보낸 게 늦게 도착한 것' 이다. */
+    var _pendingBase = null;
     return buildPayload(slot).then(function (built) {
       var payload = built.payload, complete = built._complete;
+      _pendingBase = makeBase(slot);   // payload 를 만든 그 시점의 내용
       return window.apiFetch('/workspace/slots/upsert', {
         method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader()), body: JSON.stringify(payload),
       }).then(function (r) {
@@ -364,13 +381,23 @@
               var _srv = j && j.slot;
               if (_srv && _srv.server_updated_at) slot._rev = _srv.server_updated_at;
               slot._base = makeBase(slot);
+              delete slot._pending;   // 결과를 알았다 — 미확인 표시를 지운다
               if (_origSaveSlot) return Promise.resolve(_origSaveSlot(slot)).catch(function () {});   // synced 상태만 영속(재-dirty 안 함)
             });
           }
           log('pushSlot partial — keep dirty for retry', slot && slot.id);
         }
       });
-    }).catch(function (e) { log('pushSlot err', slot && slot.id, e); });
+    }).catch(function (e) {
+      log('pushSlot err', slot && slot.id, e);
+      /* 응답을 못 받았다 = 서버가 커밋했는지 **모른다.** 보낸 내용의 지문을 남겨
+         다음 409 에서 '내 것이 늦게 도착한 것' 인지 가릴 수 있게 한다.
+         새로고침을 겪어도 살아남아야 하므로 로컬에 영속한다(재-dirty 안 하는 원본 저장). */
+      if (slot && _pendingBase) {
+        slot._pending = _pendingBase;
+        if (_origSaveSlot) return Promise.resolve(_origSaveSlot(slot)).catch(function () {});
+      }
+    });
   }
   /**
    * [M3] 충돌 해소 — 서버가 409 로 준 remote 와 내 local 을 base 기준 3-way 병합.
@@ -381,6 +408,14 @@
   function resolveConflict(local, remoteRaw) {
     var remote = remoteToLocal(remoteRaw);
     var base = local && local._base;
+    /* [2026-09-11] 응답을 못 받은 내 push 가 서버에 늦게 도착했을 수 있다.
+       서버본이 그때 보낸 내용과 같으면 그건 **남의 변경이 아니라 내 것**이다.
+       base 를 그 지문으로 바꾸면 merge3 에서 remote===base 가 되어
+       내 새 편집만 남고 사본을 만들지 않는다(다른 기기가 진짜로 바꿨으면 지문이 달라 그대로 충돌). */
+    if (local && local._pending && sameBaseSig(local._pending, makeBase(remote))) {
+      log('conflict = my own un-acked push landed', local.id);
+      base = local._pending;
+    }
     var res = merge3(base, local, remote);
     var merged = res.slot;
     merged.id = local.id;
@@ -388,6 +423,7 @@
     merged.updatedAt = Date.now();
     merged.syncState = 'dirty';                           // 병합 결과를 다시 올려야 서버도 최신이 된다
     merged._base = makeBase(merged);
+    delete merged._pending;   // 충돌을 해소했다 — 미확인 표시를 지운다
 
     if (!res.conflicts.length) {
       log('conflict auto-merged', local.id);
@@ -398,8 +434,9 @@
     var mine = Object.assign({}, local, {
       id: String(local.id) + '_conflict_' + Date.now(),
       label: (local.label || '작업') + ' (다른 기기 수정본)',
-      _rev: null, _base: null, updatedAt: Date.now(), syncState: 'dirty',
+      _rev: null, _base: null, _pending: null, updatedAt: Date.now(), syncState: 'dirty',
     });
+    delete mine._pending;
     var srv = Object.assign({}, remote, {
       id: local.id, _rev: remoteRaw.server_updated_at || null, syncState: 'synced',
     });
