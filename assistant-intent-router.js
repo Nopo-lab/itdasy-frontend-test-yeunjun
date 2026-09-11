@@ -199,6 +199,22 @@
     return { from: start.toISOString(), to: end.toISOString() };
   }
 
+  /* [잇비 전수QA 2026-09-11 · P1] **취소·노쇼를 세고 있었다.**
+
+     실측(실 Chrome, 배포본 6926ff0, 오늘 예약 confirmed 2 + cancelled 1):
+       "오늘 예약 알려줘" → 머리글 "📅 오늘 예약 3건" · 카드는 **2장**
+     원장님은 3건을 준비한다. 숫자와 목록이 한 화면에서 서로 다른 말을 한다.
+
+     원인은 계산이 **두 갈래**였다는 것 — 머리글은 `_formatBookings(d.items)`(원본),
+     카드는 `app-assistant.js _runAsyncIntentRule` 의 `items.filter(status!=='cancelled')`.
+     한쪽에만 필터가 있었다. 백엔드 즉답(`today_bookings`)은 처음부터
+     `status.notin_(('cancelled','no_show'))` 로 맞게 세고 있었는데, FE 가 가로채서 틀린 값을 냈다.
+
+     그래서 필터를 **execAsyncRule 한 곳**으로 올린다. 머리글도 카드도 같은 배열만 본다. */
+  function activeBookings(items) {
+    return (items || []).filter((b) => b && b.status !== 'cancelled' && b.status !== 'no_show');
+  }
+
   function _formatBookings(items, label) {
     if (!items || !items.length) return `📅 ${label} 예약 없어요.`;
     const lines = items.slice(0, 8).map((b) => {
@@ -221,11 +237,27 @@
     return r.json();
   }
 
+  /* [잇비 전수QA 2026-09-11 · P1] **지출을 물었는데 매출을 답했다.**
+
+     실측(실 Chrome, 배포본 6926ff0):
+       "이번 달 지출 얼마야?" → "📊 이번 달 매출 385,000원 (21건)"
+       (실제 이번 달 지출은 **0원**이다 — 백엔드 `expense_summary` 로 확인)
+     원장님이 이 답을 그대로 믿으면 이번 달 재료비를 38만원 쓴 걸로 안다.
+
+     원인: 아래 매출 규칙들이 `(이번 달) + (얼마)` 만 보고 매칭한다. '지출'이라는 단어를
+     아무도 안 본다. 백엔드엔 `expense_summary` 즉답이 이미 있고 정확히 답한다 —
+     FE 가 가로채는 바람에 거기 닿지 못했을 뿐이다.
+
+     ⚠️ 이 목록은 **돈의 종류**를 가른다. 새 표현을 넣을 땐 매출/지출 양쪽을 같이 본다.
+        한쪽만 넣으면 같은 뜻의 다른 말이 또 반대편으로 샌다. */
+  const EXPENSE_WORD_RE = /(지출|비용|재료비|매입|경비|나간\s*돈|쓴\s*돈|얼마\s*썼|얼마나\s*썼|원가)/;
+  function _isExpenseQ(q) { return EXPENSE_WORD_RE.test(String(q || '')); }
+
   const ASYNC_RULES = [
     // 매출 — 오늘
     {
       type: 'revenue_today',
-      test: (q) => /^(오늘|금일)\s*(의)?\s*(매출|얼마|벌)/.test(q) || /오늘\s*얼마/.test(q),
+      test: (q) => !_isExpenseQ(q) && (/^(오늘|금일)\s*(의)?\s*(매출|얼마|벌)/.test(q) || /오늘\s*얼마/.test(q)),
       fetch: () => _fetchJson('/revenue?period=today'),
       format: (d) => {
         const t = d.total || 0;
@@ -237,21 +269,21 @@
     // 매출 — 이번 주
     {
       type: 'revenue_week',
-      test: (q) => /(이번|금)\s*주.*(매출|얼마|벌)/.test(q),
+      test: (q) => !_isExpenseQ(q) && /(이번|금)\s*주.*(매출|얼마|벌)/.test(q),
       fetch: () => _fetchJson('/revenue?period=week'),
       format: (d) => `📊 이번 주 매출 **${_krw(d.total || 0)}** (${d.count || 0}건)`,
     },
     // 매출 — 이번 달
     {
       type: 'revenue_month',
-      test: (q) => /((이번|금|이)\s*달|월\s*매출|이달).*(매출|얼마|벌)?/.test(q) && /(매출|얼마|벌)/.test(q),
+      test: (q) => !_isExpenseQ(q) && /((이번|금|이)\s*달|월\s*매출|이달).*(매출|얼마|벌)?/.test(q) && /(매출|얼마|벌)/.test(q),
       fetch: () => _fetchJson('/revenue?period=month'),
       format: (d) => `📊 이번 달 매출 **${_krw(d.total || 0)}** (${d.count || 0}건)`,
     },
     // 매출 — 지난 달
     {
       type: 'revenue_last_month',
-      test: (q) => /(지난|저번)\s*달.*(매출|얼마|벌)/.test(q),
+      test: (q) => !_isExpenseQ(q) && /(지난|저번)\s*달.*(매출|얼마|벌)/.test(q),
       fetch: () => _fetchJson('/revenue?period=last_month'),
       format: (d) => `📊 지난 달 매출 **${_krw(d.total || 0)}** (${d.count || 0}건)`,
     },
@@ -393,6 +425,11 @@
   // 매칭된 규칙 실행 — async. fetch 실패 시 throw → caller 가 LLM fallback 또는 에러 메시지 결정.
   async function execAsyncRule(rule) {
     const data = await rule.fetch();
+    // [2026-09-11 P1] 예약 조회는 **여기서 한 번** 취소·노쇼를 걷어낸다.
+    //   format(머리글)과 호출측(카드)이 같은 배열을 보게 하는 유일한 지점이다.
+    if (/^bookings_/.test(rule.type || '') && data && Array.isArray(data.items)) {
+      data.items = activeBookings(data.items);
+    }
     const response = rule.format(data);
     _bumpStats(rule.type);
     return { matched: true, type: rule.type, response, data };
@@ -491,7 +528,14 @@
   // 두 이름 유사도 — fuzzy match (포함 / 정확 / 끝글자 매칭)
   function _nameMatches(target, candidate) {
     if (!target || !candidate) return false;
-    if (target === candidate) return 100;
+    /* [잇비 전수QA 2026-09-11 · P2] **정확히 부른 이름이 접두사형과 동점(100)이 됐다.**
+       실측: 고객 목록에 "김호영" 과 "E2E_C_김호영" 이 둘 다 있을 때
+         "김호영님 예약 있어?" → "🔍 같은 이름 2명 있어요"
+       같은 이름이 아니다. 하나는 **완전히 같고** 하나는 접두사가 붙은 다른 사람이다.
+       백엔드(`_customer_ids_by_name`)는 exact 를 먼저 찾고 거기서 1명이면 확정한다 —
+       FE 만 둘을 같은 등급으로 봤다. 그래서 완전 일치에 한 단계 높은 점수를 준다.
+       (진짜 동명이인은 둘 다 110 이라 되묻기가 그대로 살아 있다.) */
+    if (target === candidate) return 110;
     // [P1 2026-09-09 실측] DB 이름에 **접두사**가 붙어 있으면 정확히 부른 이름도 '유사'로 떨어졌다.
     //   실 Chrome: "E2E_A_박지우님 모레 오후 3시에 커트 예약 잡아줘"
     //     → "🔍 정확히 일치하는 고객이 없어요. 비슷한 이름 후보예요:
@@ -523,9 +567,9 @@
   function _decideCustomer(scored) {
     const top = scored[0].score;
     const tied = scored.filter((x) => x.score === top);
-    if (top === 100 && tied.length === 1) return { customer: tied[0].c };
+    if (top >= 100 && tied.length === 1) return { customer: tied[0].c };
     const fmt = (x) => `· ${x.c.name}${x.c.phone ? ' (' + x.c.phone + ')' : ''}`;
-    if (top === 100) {  // 동명이인 — 전화번호로 구분 요청
+    if (top >= 100) {  // 동명이인 — 전화번호로 구분 요청
       return { askText: `🔍 같은 이름 ${tied.length}명 있어요. 전화번호 뒷자리나 순번(1·2…)으로 알려주세요:\n${tied.slice(0, 5).map((x, i) => `${i + 1}) ${x.c.name}${x.c.phone ? ' (' + x.c.phone + ')' : ''}`).join('\n')}`, candidates: tied.slice(0, 5).map((x) => x.c) };
     }
     // top < 100 — 유사 후보뿐. 자동 확정 금지(다른 고객 오선택 방지).
@@ -1167,6 +1211,7 @@
   // ─── public API ─────────────────────────────────────────
   window.AssistantIntent = {
     classifyObvious,
+    activeBookings,
     findAsyncRule,
     execAsyncRule,
     tryCreateBooking,

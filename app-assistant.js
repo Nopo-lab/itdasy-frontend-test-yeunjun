@@ -583,8 +583,12 @@
       : `<div style="padding:2px 2px 0;font-size:14px;line-height:1.55;color:#191F28;font-weight:500;white-space:pre-wrap;letter-spacing:-0.2px;">${_textInner}</div>`);
     // [2026-06-10] 타임아웃 메시지에 [다시 시도] 버튼 — 같은 질문 재타이핑 없이 1탭 재시도
     const retryHtml = m.retry_q ? `<div style="margin-top:8px;"><button type="button" data-asst-retry="${idx}" style="padding:9px 18px;border:1px solid #E5E8EB;border-radius:999px;background:#fff;color:#191F28;font-size:13px;font-weight:600;cursor:pointer;">다시 시도</button></div>` : '';
+    // [잇비 관측 2026-09-11] 신고에 **재현 좌표**를 같이 싣는다(대화·턴·intent·빌드·마스킹된 질문).
+    //   이게 없으면 "답이 틀렸어요" 를 받아도 다음 업데이트에 반영할 방법이 없다.
+    const _tr = (m && m.trace) || {};
     const reportHtml = promoResultHtml ? '' : `<div style="margin-top:4px;padding-left:2px;">
           <button data-report-ai="chat_answer" data-snippet="${_esc(m.text).replace(/"/g,'&quot;')}" data-source="/assistant/chat" aria-label="AI 답변 신고"
+            data-trace="${_esc(JSON.stringify(_tr)).replace(/"/g,'&quot;')}"
             style="background:transparent;border:none;cursor:pointer;font-size:11px;color:#C5CBD2;padding:2px 4px;display:inline-flex;align-items:center;gap:3px;">${_svg('ic-flag', 11)} 신고</button>
         </div>`;
     // [2026-08-16] 오늘의 브리핑 — 메시지 앞 중앙 날짜칩 (카톡 날짜칩 스타일)
@@ -4554,15 +4558,37 @@
     return false;
   }
 
+  /* [잇비 전수QA 2026-09-11 · P2] 아래 지름길은 **명령**("…열어줘")용인데 **질문**까지 삼켰다.
+
+     실측(실 Chrome, 배포본 6926ff0): "회원권 만료 임박한 사람 있어?" 를 누르면
+     잇비가 닫히고 회원권 시트만 뜬다. 채팅엔 질문도 답도 안 남는다.
+     하필 그 문장은 **백엔드가 내려준 추천칩**이다(`_READONLY_FOLLOWUPS.membership_balance`) —
+     우리가 추천해 놓고 우리가 대화를 끊는다.
+
+     백엔드엔 `expiring_membership`·`at_risk_customers` 즉답이 있고, 답 끝에
+     '고객 화면 열기' 버튼까지 붙여 준다(`_READONLY_HUB_ACTION`). 즉 질문을 양보하면
+     원장님은 **답 + 버튼** 을 둘 다 받는다. 화면만 여는 건 정보가 줄어드는 선택이다.
+
+     그래서 '상태를 묻는 말'이면 지름길을 쓰지 않는다. 여는 동사(열어/관리/화면/이동)가
+     같이 있으면 그건 명령이므로 그대로 연다("회원권 만료 관리 화면 열어줘"). */
+  const _ASK_RE = /(있어|있나|없어|누구|몇|얼마|언제|어때|현황|상태|알려\s*줘?|보여\s*줘?|\?$)/;
+  const _OPEN_VERB_RE = /(열어|열기|화면|이동|가자|관리\s*(화면|해)|띄워|보여\s*주는\s*화면)/;
+  function _isStatusQuestion(q) {
+    const t = String(q || '').trim();
+    return _ASK_RE.test(t) && !_OPEN_VERB_RE.test(t);
+  }
+
   function _trySimpleOpenShortcut(input, q) {
+    // 질문형이면 답을 주는 쪽(백엔드 즉답)으로 보낸다.
+    const askOnly = _isStatusQuestion(q);
     const pairs = [
       [/(브랜드\s*키트|brand\s*kit|샵\s*브랜드|워터마크\s*(설정|관리))/, () => window.BrandKit?.open?.()],
-      [/회원권.*(만료|임박)|만료.*회원권/, () => window.MembershipUI?.openExpiringList?.(30)],
+      ...(askOnly ? [] : [[/회원권.*(만료|임박)|만료.*회원권/, () => window.MembershipUI?.openExpiringList?.(30)]]),
       [/(dm|디엠|자동\s*응답|자동\s*답장).*(설정|관리|편집|룰)|자동\s*응답\s*(켜|꺼|on|off)/, window.openDMAutoreplySettings],
-      [/(통계|분석|인사이트|insight|매출\s*(요약|리포트|추이|분석))/, window.openInsights],
+      ...(askOnly ? [] : [[/(통계|분석|인사이트|insight|매출\s*(요약|리포트|추이|분석))/, window.openInsights]]),
       [/(백업|backup|데이터.*(복구|내보내|받|export))/, window.openBackupScreen],
-      [/(리뷰|후기)\s*(요청|보내|부탁|발송)/, window.openReviewRequests],
-      [/(이탈|위험|복귀|재방문)\s*(고객|손님|관리)?|retention/i, window.openRetentionAI],
+      ...(askOnly ? [] : [[/(리뷰|후기)\s*(요청|보내|부탁|발송)/, window.openReviewRequests]]),
+      ...(askOnly ? [] : [[/(이탈|위험|복귀|재방문)\s*(고객|손님|관리)?|retention/i, window.openRetentionAI]]),
     ];
     return _runFirstShortcutPair(input, q, pairs);
   }
@@ -4683,6 +4709,21 @@
     _notifyAnswerArrived();
   }
 
+  /* [잇비 관측 2026-09-11] 답변 1건의 **좌표**를 메시지에 붙여둔다.
+     신고를 받아도 어느 대화의 어느 턴인지 몰라 재현이 안 됐다 — 신고 버튼이 이 값을 싣는다. */
+  function _attachTrace(msg, data, q) {
+    try {
+      msg.trace = {
+        conversation_id: (data && data.session_id) || _sessionId || null,
+        turn_id: (data && data.turn_id) != null ? data.turn_id : null,
+        intent: (data && data.intent) || null,
+        user_question: q || '',
+        app_build: (window.__ITDASY_BUILD__ || window.APP_BUILD || document.body?.dataset?.build || ''),
+      };
+    } catch (_e) { void _e; }
+    return msg;
+  }
+
   function _textResponseMessage(data, actionsList) {
     const msg = { role: 'assistant', text: data.answer || '답을 만들지 못했어요.' };
     if (Array.isArray(data.related_questions) && data.related_questions.length) msg.related = data.related_questions.slice(0, 3);
@@ -4706,7 +4747,7 @@
       _pushFallbackAsk(q);
       return;
     }
-    _history.push(_textResponseMessage(data, actionsList));
+    _history.push(_attachTrace(_textResponseMessage(data, actionsList), data, q));
     _renderHistory();
     if (window.hapticLight) window.hapticLight();
     _clearChatPending();
@@ -4875,22 +4916,58 @@
     return true;
   }
 
+  /* [잇비 관측 2026-09-11] **프론트가 혼자 답한 턴을 서버 로그에서 볼 수 있게 한다.**
+
+     이번 전수 QA 에서 가장 나쁜 결함 6건이 전부 여기서 끝났다 — 백엔드엔 요청 자체가
+     안 갔으니 서버 로그엔 아무 흔적도 없고, 원장님이 신고하지 않으면 영영 모른다.
+     ("오늘 예약 3건"인데 카드 2장 · 지출을 물었는데 매출 · 추천칩이 화면만 열고 끝)
+     그래서 **어느 지름길이 가로챘는지**(`handled_by`)를 한 줄 남긴다.
+     보내는 건 마스킹된 질문 모양뿐이고(서버에서 한 번 더 마스킹), 실패해도 대화는 그대로다. */
+  const _SHORTCUTS = [
+    ['obvious_intent', (i, q) => _tryObviousIntent(i, q)],
+    ['affirm_action', _tryAffirmAction],
+    ['customer_phone_intent', _tryCustomerPhoneIntent],
+    ['customer_add_guard', _tryCustomerAddGuard],
+    ['caption_conversation', _tryCaptionConversation],
+    ['cancel_booking', _tryCancelBookingShortcut],
+    ['booking_context', _tryBookingContextShortcut],
+    ['lookup_booking', _tryLookupBookingShortcut],
+    ['create_booking', _tryCreateBookingShortcut],
+    ['draft_message', _tryDraftMessageShortcut],
+    ['closing_report', _tryClosingReportShortcut],
+    ['daily_briefing', _tryDailyBriefingShortcut],
+    ['customer_status_card', _tryCustomerStatusCard],
+    ['async_intent_rule', _tryAsyncIntentRule],
+    ['keyword_shortcut', (i, q) => _tryKeywordShortcut(i, q)],
+  ];
+
   async function _trySendShortcuts(input, q) {
-    if (_tryObviousIntent(input, q)) return true;
-    if (await _tryAffirmAction(input, q)) return true;
-    if (await _tryCustomerPhoneIntent(input, q)) return true;   // [Phase3] 연락처 자연어(add-guard 보다 먼저)
-    if (await _tryCustomerAddGuard(input, q)) return true;
-    if (await _tryCaptionConversation(input, q)) return true;     // [§2-5] 캡션 — 대화형 생성/재생성(1초캡션 팝업 금지)
-    if (await _tryCancelBookingShortcut(input, q)) return true;
-    if (await _tryBookingContextShortcut(input, q)) return true;
-    if (await _tryLookupBookingShortcut(input, q)) return true;
-    if (await _tryCreateBookingShortcut(input, q)) return true;
-    if (await _tryDraftMessageShortcut(input, q)) return true;   // [T-110] 메시지 초안(발송 아님)
-    if (await _tryClosingReportShortcut(input, q)) return true;  // [2026-07-05] 하루 마감 리포트(브리핑보다 먼저)
-    if (await _tryDailyBriefingShortcut(input, q)) return true;  // [T-114] 오늘 운영 브리핑(읽기 전용)
-    if (await _tryCustomerStatusCard(input, q)) return true;     // [J-3] 고객 상태 카드(읽기 전용 + 다음액션 버튼)
-    if (await _tryAsyncIntentRule(input, q)) return true;
-    return _tryKeywordShortcut(input, q);
+    for (const [name, fn] of _SHORTCUTS) {
+      // eslint-disable-next-line no-await-in-loop
+      if (await fn(input, q)) { _reportClientTurn(name, q); return true; }
+    }
+    return false;
+  }
+
+  // 로그 1건. 절대 대화를 깨뜨리지 않는다(실패는 조용히 버린다).
+  function _reportClientTurn(handledBy, q) {
+    try {
+      if (typeof apiFetch !== 'function') return;
+      const last = _history[_history.length - 1];
+      apiFetch('/assistant/client-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(window.authHeader ? window.authHeader() : {}) },
+        body: JSON.stringify({
+          event: 'turn',
+          conversation_id: _sessionId || null,
+          handled_by: handledBy,
+          question: String(q || '').slice(0, 500),
+          answer: (last && last.role === 'assistant' && typeof last.text === 'string')
+            ? last.text.slice(0, 500) : null,
+          app_build: (window.__ITDASY_BUILD__ || window.APP_BUILD || ''),
+        }),
+      }).catch(() => {});
+    } catch (_e) { void _e; }
   }
 
   // [P0a] 사진 직후 후속 텍스트가 "그 사진"에 대한 명령인지(누끼/배경/보정/템플릿/홍보/인스타/업로드/손님 등).

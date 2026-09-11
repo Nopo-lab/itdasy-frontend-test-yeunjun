@@ -228,22 +228,38 @@
       return { message: '여러 고객이 있어요: ' + names + '. 누구 상태를 볼까요? (자동으로 고르지 않아요)',
         hubActions: window.ItdasyActionHub ? window.ItdasyActionHub.normalizeActions(btns.slice(0, 5), 'hub') : btns };
     }
+    /* [잇비 전수QA 2026-09-11 · P1] '오래 안 온 손님' 은 **여기서 답하면 안 된다.**
+
+       실측(실 Chrome, 배포본 6926ff0): "오래 안 온 손님 누구야?" →
+         "한동안 안 오신 고객 정보는 고객 화면에서 확인할 수 있어요."
+       이름을 하나도 못 준다. 원인은 아래 `_listMessage` 가 at_risk 일 때 목록을
+       **`[]` 로 하드코딩**해 둔 것이고(`kind === 'retouch' ? (...) : []`),
+       애초에 그게 읽는 `/today/brief` 엔 **at_risk 고객 목록 자체가 없다**(개수만 있다).
+       즉 이 경로는 이탈 고객이 몇 명이든 항상 같은 회피 문장을 낸다 — 죽은 분기다.
+
+       그리고 이 질문은 **백엔드가 이미 제대로 답한다**(`at_risk_customers` 즉답).
+       판정기는 `services/retention_predictor.compute_at_risk` — 홈 브리핑·고객관리와
+       같은 함수다. 2026-08-17 에 "'오래 안 온 손님' 의 정의는 앱 전체에서 하나여야 한다"
+       고 정리한 그 함수다. 여기서 두 번째 정의를 만들 이유가 없다.
+
+       그래서 **가로채지 않고 양보한다**(null → 호출측이 false → 백엔드로). 리터치는
+       `/today/brief` 에 실제 목록(`retouch_due_customers`)이 있으므로 그대로 로컬 처리. */
+    if (r.list && r.kind === 'at_risk') return null;
     if (r.list) return await _listMessage(r.kind);
     var status = await buildCustomerStatus(r.customer, ctx);
     return { message: buildCustomerStatusMessage(status), hubActions: buildCustomerStatusActions(status) };
   }
 
-  async function _listMessage(kind) {
+  async function _listMessage(_kind) {   // at_risk 는 백엔드로 양보 → 여기 오는 건 리터치뿐
     try {
       var auth = (typeof window.authHeader === 'function') ? window.authHeader() : {};
       var res = (typeof window.apiFetch === 'function') ? await window.apiFetch('/today/brief', { headers: auth }) : null;
       var b = (res && res.ok) ? await res.json() : {};
-      var custs = (kind === 'retouch' ? (b.retouch_due_customers || []) : []).filter(function (c) { return c && c.name; }).slice(0, 5);
-      if (!custs.length) {
-        return { message: kind === 'retouch' ? '지금 리터치 안내 대상으로 잡힌 고객은 없어요.' : '한동안 안 오신 고객 정보는 고객 화면에서 확인할 수 있어요.' };
-      }
+      // at_risk 는 위에서 백엔드로 양보했다 — 여기 오는 건 리터치뿐이다.
+      var custs = (b.retouch_due_customers || []).filter(function (c) { return c && c.name; }).slice(0, 5);
+      if (!custs.length) return { message: '지금 리터치 안내 대상으로 잡힌 고객은 없어요.' };
       var btns = custs.map(function (c) { return { id: 'pick_' + c.id, kind: 'chat_suggest', label: c.name, phase: 'safe', payload: { text: c.name + '님 뭐 챙겨야 돼?' } }; });
-      return { message: (kind === 'retouch' ? '리터치 안내 대상: ' : '대상 고객: ') + custs.map(function (c) { return c.name; }).join(', ') + '. 누구 상태를 볼까요?',
+      return { message: '리터치 안내 대상: ' + custs.map(function (c) { return c.name; }).join(', ') + '. 누구 상태를 볼까요?',
         hubActions: window.ItdasyActionHub ? window.ItdasyActionHub.normalizeActions(btns, 'hub') : btns };
     } catch (_e) { return { message: '대상 고객 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' }; }
   }
