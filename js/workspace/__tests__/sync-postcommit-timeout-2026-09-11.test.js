@@ -90,8 +90,21 @@ describe('🔴 응답을 못 받은 내 push 가 늦게 도착해도 사본을 �
 describe('배선 — 지문이 실제로 남고, 지워지고, 서버로 안 나간다', () => {
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const S = strip(SRC);
-  test('응답을 못 받았을 때만 지문을 영속한다', () => {
-    expect(S).toMatch(/catch\(function \(e\) \{[\s\S]{0,300}slot\._pending = _pendingBase;[\s\S]{0,120}_origSaveSlot\(slot\)/);
+  /* 🔴 [2026-09-11 2차] 처음엔 **실패 콜백에서만** 지문을 남겼는데,
+     응답이 아예 안 오는(행) 경우엔 그 콜백이 안 돈다. 실측으로 잡았다:
+     forever-pending 응답으로 재현하니 `_pending` 이 안 남아 수정이 무력화됐다.
+     → 보내기 **전에** 남긴다. */
+  test('보내기 전에 지문을 영속한다 (행 걸려도 남아야 한다)', () => {
+    const i = S.indexOf('_pendingBase = makeBase(slot)');
+    const j = S.indexOf("apiFetch('/workspace/slots/upsert'", i);
+    expect(i).toBeGreaterThan(-1);
+    expect(j).toBeGreaterThan(i);
+    const between = S.slice(i, j);
+    expect(between).toMatch(/slot\._pending = _pendingBase/);
+    expect(between).toMatch(/_origSaveSlot\(slot\)/);
+  });
+  test('실패 콜백에도 남긴다 (이중 안전망)', () => {
+    expect(S).toMatch(/catch\(function \(e\) \{[\s\S]{0,300}slot\._pending = _pendingBase;/);
   });
   test('push 성공하면 지문을 지운다', () => {
     expect(S).toMatch(/slot\._base = makeBase\(slot\);\s*delete slot\._pending;/);

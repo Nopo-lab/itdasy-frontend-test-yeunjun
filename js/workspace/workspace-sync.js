@@ -352,7 +352,14 @@
     return buildPayload(slot).then(function (built) {
       var payload = built.payload, complete = built._complete;
       _pendingBase = makeBase(slot);   // payload 를 만든 그 시점의 내용
-      return window.apiFetch('/workspace/slots/upsert', {
+      /* 🔴 보내기 **전에** 남긴다. 응답이 아예 안 오는(행) 경우엔 실패 콜백도 안 돌고,
+         그 상태로 새로고침하면 흔적이 통째로 사라져 다음 409 에서 또 사본이 생긴다.
+         실측: forever-pending 응답으로 재현했더니 `_pending` 이 안 남았다.
+         `_origSaveSlot` 은 재-dirty 도, updatedAt 변경도 하지 않는다(TOCTOU 가드 무해). */
+      var _mark = (slot && _origSaveSlot)
+        ? Promise.resolve().then(function () { slot._pending = _pendingBase; return _origSaveSlot(slot); }).catch(function () {})
+        : Promise.resolve();
+      return _mark.then(function () { return window.apiFetch('/workspace/slots/upsert', {
         method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader()), body: JSON.stringify(payload),
       }).then(function (r) {
         // [M2·M3] 409 = 내가 본 리비전 이후 다른 기기가 바꿈 → 덮어쓰지 말고 3-way 병합.
@@ -361,7 +368,7 @@
           return remote ? resolveConflict(slot, remote).then(function () { return { _conflict: true }; }) : null;
         });
         return r.ok ? r.json() : null;
-      }).then(function (j) {
+      }); }).then(function (j) {
         if (j && j._conflict) return;   // 병합이 처리 — 이번 push 는 여기서 끝(병합본이 dirty 로 남아 다음 push)
         if (j && (j.ok || j.skipped)) {
           // [버그수정 2026-07-09 TOCTOU] push(업로드) 도중 사용자가 재편집(updatedAt 변경)했으면 그 편집분은
