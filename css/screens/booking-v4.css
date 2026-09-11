@@ -727,13 +727,19 @@
   letter-spacing: -0.2px;
   color: var(--text);
 }
+/* [전기종 파괴검증 2026-09-12] 이전/다음을 **보이는 크기 자체**로 키웠다.
+   예전엔 22×22 에 투명 히트박스만 44 로 덮었다가 '다음' 이 '이전' 의 자기 영역을 먹어
+   WRONG 이 떠서 되돌렸다(둘 사이 gap 이 2px 뿐이었다). 이번엔 반대로 간다 —
+   버튼 36×36 + gap 10px → **중심 간 거리 46px** 이라 44×44 히트영역을 줘도 1px 씩 남는다.
+   좌측 컬럼 폭 예산: 36+10+36=82 + 월 라벨 ~72 = 154 ≤ 내부폭 180. 여유 있다.
+   이 블록은 PC 셸 전용(.bk-pc__left)이라 모바일 헤더에 파급 없음. */
 .bk-mini__nav {
   display: flex;
-  gap: 2px;
+  gap: 10px;
 }
 .bk-mini__nav button {
-  width: 22px;
-  height: 22px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: none;
   display: flex;
