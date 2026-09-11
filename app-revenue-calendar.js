@@ -65,6 +65,9 @@
       .rvcal-grid .bk-month-m__cells{grid-auto-rows:48px}
       .rvcal-grid .bk-month-m__cell{padding:5px 3px 4px 4px}
       .rvcal-grid .bk-month-m__evt{font-size:11px;font-weight:600;padding:1px 4px;border-radius:4px;margin-top:3px;letter-spacing:-.3px;align-self:flex-start;line-height:1.35;font-variant-numeric:tabular-nums;background:var(--brand-bg,#F7EFF0);color:var(--brand-strong,#BC6675)}
+      /* [BUG-004] 환불(음수)·상계(0) 칩 — 매출 칩(로즈)과 한눈에 갈리게 무채색으로.
+         같은 로즈로 두면 "그날 2만 벌었다" 로 읽힌다. */
+      .rvcal-grid .bk-month-m__evt.is-minus{background:var(--surface-sunken,#F2F4F6);color:var(--text-subtle,#8B95A1)}
       @media(min-width:1100px){
         /* 기본: 캘린더 풀폭 + 칩 크게 */
         .rvcal-grid .bk-month-m__cells{grid-auto-rows:88px}
@@ -161,7 +164,18 @@
 
     gridEl.innerHTML = window.CalendarView.buildMonthGridHTML({
       year: opts.year, month: opts.month, selected,
-      dayChip: (ds) => { const t = totals[ds]; return t > 0 ? `<div class="bk-month-m__evt">${_man(t)}</div>` : ''; },
+      /* [2026-09-11 BUG-004] 예전엔 `t > 0` 일 때만 칩을 그렸다. 그래서 **환불로 합계가 음수인 날이
+         달력에서 통째로 사라졌다.** 원장이 달력 칩을 눈으로 더하면 위 헤더보다 큰 숫자가 나오는데,
+         어느 날이 빠졌는지 볼 방법이 없다 — 실측: 헤더 325,000 vs 칩 합계 340,000,
+         차이의 정체는 9/9 의 **−18,000원 환불일**이었다(나머지 3,000 은 만원 단위 반올림).
+         상계돼 0원이 된 날(매출 +5만 / 환불 −5만)도 같은 이유로 '아무 일 없던 날'로 보였다.
+         돈이 오간 날은 반드시 칩이 있어야 한다 — 그래야 눌러서 내역을 확인할 수 있다. */
+      dayChip: (ds) => {
+        const t = totals[ds];
+        if (t == null) return '';                       // 기록 자체가 없는 날 — 빈 칸이 맞다
+        if (t > 0) return `<div class="bk-month-m__evt">${_man(t)}</div>`;
+        return `<div class="bk-month-m__evt is-minus">${t < 0 ? '−' + _man(-t) : '0원'}</div>`;
+      },
     });
 
     function showDetail(dateStr) {
