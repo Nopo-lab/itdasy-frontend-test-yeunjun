@@ -21,7 +21,7 @@ describe('_bindSheetBack 헬퍼', () => {
   test('app-core 에 정의돼 있고 레지스트리 규약을 지킨다', () => {
     expect(CORE).toMatch(/window\._bindSheetBack\s*=\s*function/);
     const i = CORE.indexOf('window._bindSheetBack = function');
-    const body = CORE.slice(i, i + 2200);
+    const body = CORE.slice(i, i + 3200);
     expect(body).toMatch(/window\._registerSheet\(name, closeFn\)/);
     expect(body).toMatch(/window\._markSheetOpen\(name\)/);
     expect(body).toMatch(/window\._markSheetClosed\(name\)/);
@@ -29,23 +29,29 @@ describe('_bindSheetBack 헬퍼', () => {
 
   test('닫힘을 DOM 에서 관찰한다(닫기 지점을 손으로 안 붙여도 되게)', () => {
     const i = CORE.indexOf('window._bindSheetBack = function');
-    const body = CORE.slice(i, i + 2200);
+    const body = CORE.slice(i, i + 3200);
     expect(body).toMatch(/MutationObserver/);
     expect(body).toMatch(/isConnected/);
-    expect(body).toMatch(/display === 'none'/);
+    expect(body).toMatch(/display !== 'none'/);   // 가시성 판정 (BUG-D 로 방향이 뒤집힘)
     expect(body).toMatch(/childList: true/);
   });
 
   test('같은 창을 다시 열어도 중복 등록하지 않는다(스택 어긋남 방지)', () => {
     const i = CORE.indexOf('window._bindSheetBack = function');
-    const body = CORE.slice(i, i + 2200);
+    const body = CORE.slice(i, i + 3200);
     expect(body).toMatch(/sheetBound === name/);
   });
 
-  test('닫힘 처리가 한 번만 돈다', () => {
+  /* [2026-09-11 BUG-D 계약 재정의] 예전엔 `done` 래치로 "닫힘은 한 번만" 을 보장했다.
+     그 래치가 곧 결함이었다 — 한 번 닫히면 observer 를 끊어서, 유지형 시트가
+     **두 번째 오픈부터 미등록**으로 열렸다(back 이 뒤 화면을 닫는다).
+     지켜야 할 것은 그대로다: 같은 상태가 반복돼도 중복 통지하지 않는다.
+     수단만 래치 → **가시성 전이 가드**로 바꾼다. */
+  test('같은 상태가 반복돼도 중복 통지하지 않는다 (전이에서만 움직인다)', () => {
     const i = CORE.indexOf('window._bindSheetBack = function');
-    const body = CORE.slice(i, i + 2200);
-    expect(body).toMatch(/if \(done\) return;/);
+    const body = CORE.slice(i, i + 3200);
+    expect(body).toMatch(/if \(v !== open\)/);
+    expect(body).toMatch(/open = v;/);
   });
 });
 

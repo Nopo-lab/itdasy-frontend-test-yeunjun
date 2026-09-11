@@ -4182,32 +4182,57 @@ window.refreshLastSyncBadges = function () {
        window._bindSheetBack('membershipSheet', el, () => closeFn());
 
      ⚠️ 이미 규약을 지키는 18개 파일은 건드리지 않는다. 두 번 등록하면 스택이 어긋난다. */
+  /* [2026-09-11 BUG-D] **한 번 닫히면 등록이 영영 풀리던 것 — 보이는 동안만 등록되도록 재무장한다.**
+
+     재현(예약관리): 완료 시트를 열고 → 뒤로가기 → 시트는 그대로 남고 뒤 화면이 바뀐다.
+     그 뒤 예약관리로 돌아오면 시트가 유령처럼 떠 있다(`startFromBooking` 호출 0회 = 새로 연 게 아님).
+
+     원인: 예전 코드는 숨겨지는 순간 `finish()` 로 **observer 를 끊고 dataset 도장을 지웠다.**
+     그런데 유지형 시트(display 토글)는 `_ensureSheet()` 가 "이미 있으면 즉시 return" 이라
+     **재오픈 때 _bindSheetBack 을 다시 부르지 않는다** → 두 번째부터는 미등록 상태로 열린다.
+     미등록이면 back 이 이 창 대신 뒤 화면을 닫는다(이 파일 4165행 주석이 적은 바로 그 사고).
+     게다가 만들자마자(아직 display:none 일 때) 호출되면 그 자리에서 finish() 라
+     **첫 오픈조차 등록되지 않는** 경우가 있었다.
+
+     → observer 를 끊지 않고 **가시성 전이**를 따라간다. 보이면 등록, 숨으면 해제,
+       DOM 에서 빠지면 그때 정리. 호출부 40여 곳을 각각 고치는 대신 여기 한 곳에서 닫는다.
+       (`_markSheetOpen` 은 스택 top 검사로 멱등, `_registerSheet` 는 Map 덮어쓰기라 재호출이 안전하다) */
   window._bindSheetBack = function (name, el, closeFn) {
     try {
       if (!name || !el || typeof closeFn !== 'function') return;
-      if (el.dataset && el.dataset.sheetBound === name) return;   // 같은 창 재오픈 시 중복 등록 방지
-      window._registerSheet(name, closeFn);
-      window._markSheetOpen(name);
+      window._registerSheet(name, closeFn);      // 닫는 방법은 늘 최신 것으로
+
+      const visible = () => {
+        if (!el.isConnected) return false;
+        if (el.hidden) return false;
+        const cs = window.getComputedStyle(el);
+        return cs.display !== 'none' && cs.visibility !== 'hidden';
+      };
+
+      if (el.dataset && el.dataset.sheetBound === name) {
+        // 이미 관찰 중이다. 지금 보이는 상태면 열림으로 맞춰준다(재오픈 경로).
+        if (visible()) window._markSheetOpen(name);
+        return;
+      }
       if (el.dataset) el.dataset.sheetBound = name;
 
-      const gone = () => {
-        if (!el.isConnected) return true;
-        if (el.hidden) return true;
-        const cs = window.getComputedStyle(el);
-        return cs.display === 'none' || cs.visibility === 'hidden';
+      let open = false;
+      const sync = () => {
+        const v = visible();
+        if (v !== open) {
+          open = v;
+          if (v) { window._registerSheet(name, closeFn); window._markSheetOpen(name); }
+          else { try { window._markSheetClosed(name); } catch (_e) { void _e; } }
+        }
+        if (!el.isConnected) {
+          try { obs.disconnect(); } catch (_e) { void _e; }
+          try { if (el.dataset) delete el.dataset.sheetBound; } catch (_e) { void _e; }
+        }
       };
-      let done = false;
-      const finish = () => {
-        if (done) return; done = true;
-        try { obs.disconnect(); } catch (_e) { void _e; }
-        try { if (el.dataset) delete el.dataset.sheetBound; } catch (_e) { void _e; }
-        try { window._markSheetClosed(name); } catch (_e) { void _e; }
-      };
-      const obs = new MutationObserver(() => { if (gone()) finish(); });
+      const obs = new MutationObserver(sync);
       obs.observe(el, { attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
       if (el.parentNode) obs.observe(el.parentNode, { childList: true });
-      // 열자마자 이미 숨겨져 있으면(잘못된 호출) 바로 정리한다 — 유령 항목을 남기지 않는다.
-      if (gone()) finish();
+      sync();   // 지금 보이면 지금 등록, 아직 숨어 있으면 보일 때 등록된다
     } catch (_e) { void _e; }
   };
 

@@ -116,8 +116,11 @@
     sheet.addEventListener('click', (e) => { if (e.target === sheet) _close(); });
     /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
        안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
-    try { window._bindSheetBack && window._bindSheetBack('completeFlowSheet', sheet, () => { _close(); }); } catch (_bsb) { void _bsb; }
+    /* 스타일을 **먼저** 넣는다. 이 시트는 .cf-backdrop 의 display:none 으로 숨는데,
+       스타일시트가 없는 상태에서 바인드하면 그 순간엔 display:block 으로 보여서
+       열리지도 않은 시트가 열린 것으로 등록된다(유령 뒤로가기 한 칸). */
     _ensureStyles();
+    try { window._bindSheetBack && window._bindSheetBack('completeFlowSheet', sheet, () => { _close(); }); } catch (_bsb) { void _bsb; }
     return sheet;
   }
 
