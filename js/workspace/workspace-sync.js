@@ -598,7 +598,15 @@
           });
         }, Promise.resolve()).then(function () {
           // 하나라도 적용 실패면 since 를 전진시키지 않는다 → 다음 pull 이 그 delta 를 다시 받아 재시도.
-          if (resp.server_time && !applyFailed) setMeta('lastPulledAt', resp.server_time);
+          /* [2026-09-11] catch 를 붙인다. 이 호출은 결과를 안 기다리는데(fire-and-forget),
+             DB 가 잠겨 있으면 거절이 아무에게도 안 잡혀 **uncaught 예외로 Sentry 까지 올라간다**
+             (라이브 실측: 앱은 멀쩡한데 sync_db_open_timeout 이 EXCEPTION 으로 보고됨).
+             예상된 축퇴가 오류로 보고되면 진짜 오류가 그 잡음에 묻힌다.
+             커서를 못 남기면 다음 pull 이 전량을 받는다 — 느릴 뿐 안전한 쪽이다. */
+          if (resp.server_time && !applyFailed) {
+            Promise.resolve(setMeta('lastPulledAt', resp.server_time))
+              .catch(function (_e) { log('cursor save skip', _e); });
+          }
           if (changed) refreshHome();
         });
       });
@@ -642,7 +650,14 @@
       .then(pull).catch(function (e) { log('sync err', e); }).then(function () { _syncing = false; });
   }
   var _pushTimer = null;
-  function schedulePush() { if (!ready()) return; clearTimeout(_pushTimer); _pushTimer = setTimeout(function () { pushAll(); }, 1200); }
+  function schedulePush() {
+    if (!ready()) return;
+    clearTimeout(_pushTimer);
+    // 같은 이유로 catch 필수 — 타이머에서 부르는 fire-and-forget 이라 거절을 받을 사람이 없다.
+    _pushTimer = setTimeout(function () {
+      Promise.resolve(pushAll()).catch(function (_e) { log('push skip', _e); });
+    }, 1200);
+  }
 
   // ── coalesce(비용 방어) — 편집 중엔 매 저장마다 업로드하지 않고, '정착(settle)' 때 1회만 ──
   //   sub-flag ITDASY_SLOT_SYNC_COALESCE. off면 기존 eager 동작 그대로.

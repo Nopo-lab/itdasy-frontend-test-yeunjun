@@ -206,3 +206,22 @@ describe('BUG-F3 · 연결은 delete/upgrade 요청에 양보한다', () => {
     expect(open).toMatch(/onversionchange[\s\S]{0,200}close\(\)/);
   });
 });
+
+describe('잠긴 DB 의 축퇴가 uncaught 예외로 새지 않는다', () => {
+  /* 라이브 실측: 앱은 정상인데 sync_db_open_timeout 이 [EXCEPTION] 으로 Sentry 까지 올라갔다.
+     결과를 안 기다리는 호출(fire-and-forget)의 거절을 아무도 안 잡아서다.
+     예상된 축퇴가 오류로 보고되면 진짜 오류가 그 잡음에 묻힌다. */
+  test('pull 의 커서 저장(setMeta)에 catch 가 붙어 있다', () => {
+    const i = SYNC_SRC.indexOf("setMeta('lastPulledAt'");
+    expect(i).toBeGreaterThan(-1);
+    // 체인 끝의 무관한 catch 를 세지 않도록, 그 호출 자체가 감싸였는지를 본다.
+    const around = SYNC_SRC.slice(Math.max(0, i - 60), i + 160);
+    expect(around).toMatch(/Promise\.resolve\(setMeta\('lastPulledAt'[\s\S]{0,80}\.catch\(/);
+  });
+
+  test('schedulePush 의 pushAll 에 catch 가 붙어 있다', () => {
+    const body = SYNC_SRC.slice(SYNC_SRC.indexOf('function schedulePush()'),
+      SYNC_SRC.indexOf('function schedulePush()') + 420);
+    expect(body).toMatch(/pushAll\(\)\)?\s*\.catch\(|Promise\.resolve\(pushAll\(\)\)[\s\S]{0,60}catch/);
+  });
+});
