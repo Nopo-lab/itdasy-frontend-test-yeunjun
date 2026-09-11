@@ -1196,6 +1196,13 @@
       var txt = left >= _WIZ_STEPS.length ? '질문에 먼저 답해주세요' : (left === 1 ? '질문 하나 남았어요' : '질문 ' + left + '개 남았어요');
       return '<button type="button" class="capwiz__cta capwiz__cta--dis" data-fl-cgenlock>' + txt + '</button>';
     }
+    /* [2026-09-12 ZH] 시술 미선택은 **토스트로만** 막고 있었다 — 질문 3개는 버튼을 잠가서
+       막는데 시술만 달랐다. 버튼이 멀쩡해 보이니 원장은 누르고, 그제서야 거절당한다.
+       라이브 실측(2026-09-12): disabled=false · 라벨 "게시글 만들기" → 클릭 → 토스트 거절.
+       → 같은 방식으로 잠그고 **이유를 버튼에 적는다**(왜 못 가는지 누르기 전에 보이게). */
+    if (!String(d.service || '').trim()) {
+      return '<button type="button" class="capwiz__cta capwiz__cta--dis" data-fl-cgenlock="service">아래에서 시술을 골라주세요</button>';
+    }
     var hint = (String(d.service || '').trim() || String(d.specialNote || '').trim())
       ? '<p class="capwiz__ready">우리샵 말투로 더 정확하게 써드려요</p>' : '';
     return hint + '<button type="button" class="capwiz__cta" data-fl-cgen>게시글 만들기</button>';
@@ -1467,8 +1474,14 @@
 	    if (!d.caption) {
 	      // [v558] 캡션 UX 리뉴얼 — 시나리오 버튼 제거. 사진 → 시술 문구 입력 → 말투 6칩 → 길이 → 해시태그 토글 → 단일 생성 버튼.
 	      // [ws-hyper] 레이아웃 합성본은 폭 꽉 차는 img로(레터박스 빈 여백 제거).
+	      /* [2026-09-12 ZH] 이 <img> 에는 width/height 도 aspect-ratio 도 없어서 **로드 전 높이가 0** 이었다.
+	         그래서 사진이 디코드되는 순간 아래 질문·시술·버튼이 통째로 **347px 아래로 밀렸다**
+	         (실측 2026-09-12, 606×717: '시술' 앵커 y 333 → 681). 답변 칩을 누르려던 손가락 밑에서
+	         화면이 움직여 오탭이 난다. 합성본 비율은 이미 알고 있으니(1:1 / 4:5) 칸을 미리 잡아 둔다.
+	         래퍼는 overflow:hidden 이라 로드 후 오차가 있어도 레이아웃이 다시 안 흔들린다. */
+	      var _capAr = (_wsRatio() === '1:1') ? '1 / 1' : '4 / 5';
 	      var photoThumb = d.templateOutput   /* [버그수정 2026-07-06] 재오픈 초안도 합성본 썸네일 */
-	        ? '<div class="wsl-cap-preview"><img src="' + esc(_blobDisp(d.templateOutput)) + '" alt="미리보기"></div>'
+	        ? '<div class="wsl-cap-preview" style="aspect-ratio:' + _capAr + '"><img src="' + esc(_blobDisp(d.templateOutput)) + '" alt="미리보기"></div>'
 	        : (_capCarouselHtml() || ((!d.textOnly && url) ?
 	        '<div class="cap-photo cap-photo--sm" style="background-image:url(' + esc(_blobDisp(url)) + ')"></div>' : ''));
 	      // [캡션재설계 v2 2026-07-15] 자유 서술 텍스트영역(500자) 제거 — 질문 3카드 + 시술 칩(단일선택) + 특이사항 한 줄.
@@ -1626,7 +1639,10 @@
   function _triggerCaptionGenerate(axes) {
     syncServiceFromDom();
     if (axes) d.captionAxes = axes;
-    if (!String(d.service || '').trim()) { toast('시술 칩을 하나 골라주세요 — 없으면 + 추가로 만들 수 있어요'); return; }
+    /* [2026-09-12 ZH] 예전 문구는 **화면에 없는 것**을 가리켰다("없으면 + 추가로 만들 수 있어요").
+       실측: 시술 줄엔 시술명 칩만 8개, `+ 추가` 는 **관리 모드 안에만** 있고 관리는
+       **업종을 고른 뒤에야** 나타난다 — 토스트가 말하지 않는 3단계다. 실제 경로를 적는다. */
+    if (!String(d.service || '').trim()) { toast('아래 시술에서 하나만 골라주세요 — 없으면 업종을 고른 뒤 관리에서 추가할 수 있어요'); return; }
     // [위저드 선택형] 위에서 아무것도 안 골랐으면 강제 기본값 안 넣고 '고른 시술 그대로만' 생성.
     if (!d.captionAxes) d.captionAxes = {};
     doGenerate({}, null);
@@ -1850,7 +1866,11 @@
   function _finishActions(url) {
     var connected = window.WorkspaceAdapter ? window.WorkspaceAdapter.instagram().connected : false;
     var rows = '';
-    if (!d.textOnly && url) rows += _setRow('storyedit', 'ic-wand-sparkles', '사진 편집', '필터 · 자르기 · 밝기 · 대비', false);
+    /* [2026-09-12 ZH] 부제가 편집기의 **주력 도구를 하나도 말하지 않았다** — 실제 오른쪽 레일은
+       글자(T)·보정·스티커·누끼·그리기인데 부제는 "필터 · 자르기 · 밝기 · 대비" 였다.
+       "사진에 글자 넣고 싶다" 는 원장이 이 줄을 알아볼 단서가 없다(persona A: 사진 관련 줄이
+       이것 하나뿐이라 '찍어서' 들어갔다고 기록). 화면·동선은 그대로 두고 부제만 사실과 맞춘다. */
+    if (!d.textOnly && url) rows += _setRow('storyedit', 'ic-wand-sparkles', '사진 편집', '글자 · 스티커 · 밝기 · 자르기', false);
     if (connected) {
       rows += _setRow('pubopt', 'ic-calendar-check', '게시 옵션', '예약해서 올리기 · 다른 계정 태그', !!d._pubOptOpen);
       if (d._pubOptOpen) rows += '<div class="cap-optpanel">' + _schedHtml() + _tagsBlockHtml() + '</div>';
@@ -2500,7 +2520,17 @@
       if (a === 'hashaddopen') { d._hashAddOpen = true; return setScreen('caption', { push: false }); }
       var cg = t.closest('[data-fl-cgen]'); if (cg) { return _triggerCaptionGenerate(null); }
       // [아코디언] 잠긴 생성 버튼 탭 = 안내 + 첫 미답변 질문 펼치기
-      var cgl = t.closest('[data-fl-cgenlock]'); if (cgl) { syncServiceFromDom(); d._wizOpen = null; toast('질문에 먼저 답해주세요'); setScreen('caption'); return; }
+      var cgl = t.closest('[data-fl-cgenlock]'); if (cgl) {
+        syncServiceFromDom();
+        /* [2026-09-12 ZH] 잠금 사유를 구분한다 — 시술 미선택인데 '질문에 먼저 답해주세요' 가
+           뜨면(질문은 이미 다 답했는데) 원장은 더 헷갈린다. 시술 줄로 데려간다. */
+        if (cgl.getAttribute('data-fl-cgenlock') === 'service') {
+          toast('아래 시술에서 하나만 골라주세요');
+          try { var _sv = el.querySelector('.cap-svctags') || el.querySelector('.cap-svctags__hint'); if (_sv && _sv.scrollIntoView) _sv.scrollIntoView({ block: 'center' }); } catch (_es) { void _es; }
+          return;
+        }
+        d._wizOpen = null; toast('질문에 먼저 답해주세요'); setScreen('caption'); return;
+      }
       /* [2026-08-30 원영] data-fl-var(재생성 regen/short/long/insta) 위임 통째 제거 — 마지막 렌더러였던
          '피드글 다시 만들기' 버튼을 지우면서 도달 불가가 됐다. 캡션은 카드 안에서 직접 고쳐 쓰고,
          AI 재호출은 비용만 든다. 잇비 명령 쪽 재생성(cmd.variant → doGenerate)은 별도 경로라 그대로 산다. */
