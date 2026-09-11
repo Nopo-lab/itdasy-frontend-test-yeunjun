@@ -1034,7 +1034,23 @@
        ↪ 1회에 2개로 줄었다. 삭제도 같은 이유로 ↩ 가 복원 대신 재삭제였다.
        ⚠️ 이동/크기/wrap/사진교체/wmApply 는 위에서 이미 return 하므로 영향 없음 — add/del 만 해당. */
     var add = (op.op === 'add') !== undo;   // undo: add→제거, del→복원 / redo: 반대
-    if (add) { if (refs.layers && op.L.el) refs.layers.appendChild(op.L.el); if (S.layers.indexOf(op.L) < 0) { var at = (op.idx != null && op.idx <= S.layers.length) ? op.idx : S.layers.length; S.layers.splice(at, 0, op.L); } selectLayer(op.L); }
+    /* 🔴 [2026-09-11] 모델은 제자리(op.idx)에 되돌리는데 **DOM 은 항상 맨 뒤에 붙이고 있었다.**
+       굽기는 S.layers(모델 순서)로 그리므로, 실수로 지웠다가 ↩ 하면
+       **화면에선 그 레이어가 맨 위인데 발행본에선 원래 자리**로 나갔다 — 화면 ≠ 발행본.
+       실측: 같은 자리에 겹친 A·B·C 에서 B 를 지우고 ↩ →
+         화면 맨 위 = BBBB / 발행본 맨 위 = CCCC(박스색 rgb(110,155,196) 로 확인).
+       '실수 삭제 → 되돌리기' 는 흔한 동작이라 조용히 다른 사진이 나간다.
+       모델에 넣는 자리와 **같은 자리**에 DOM 도 끼워 넣는다. */
+    if (add) {
+      var at = (op.idx != null && op.idx <= S.layers.length) ? op.idx : S.layers.length;
+      if (S.layers.indexOf(op.L) < 0) S.layers.splice(at, 0, op.L);
+      if (refs.layers && op.L.el) {
+        var ref = S.layers[at + 1];                       // 모델상 바로 위 레이어
+        if (ref && ref.el && ref.el.parentNode === refs.layers) refs.layers.insertBefore(op.L.el, ref.el);
+        else refs.layers.appendChild(op.L.el);
+      }
+      selectLayer(op.L);
+    }
     else { var i = S.layers.indexOf(op.L); if (i >= 0) S.layers.splice(i, 1); op.L.el.remove(); if (S.active === op.L) S.active = null; }
   }
   function _undo() { if (!S.undo || !S.undo.length) return; var op = S.undo.pop(); _applyInverse(op, true); S.redo = S.redo || []; S.redo.push(op); _syncHist(); }

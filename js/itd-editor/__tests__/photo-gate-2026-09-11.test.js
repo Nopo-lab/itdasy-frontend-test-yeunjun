@@ -69,3 +69,24 @@ describe('초기화', () => {
     expect(ed.slice(i, i + 400)).toMatch(/_pushAdj|_pushOp/);
   });
 });
+
+describe('🔴 삭제를 되돌리면 레이어가 원래 자리로 돌아온다', () => {
+  /* 모델(S.layers)은 op.idx 로 제자리에 되돌리는데 DOM 은 항상 맨 뒤에 붙이고 있었다.
+     굽기는 모델 순서로 그리므로 **화면에선 맨 위인데 발행본에선 원래 자리**로 나갔다.
+     실측: 겹친 A·B·C 에서 B 삭제 → ↩ → 화면 맨 위 BBBB / 발행본 맨 위 CCCC. */
+  test('DOM 을 appendChild 가 아니라 모델과 같은 자리에 끼워 넣는다', () => {
+    const i = ed.indexOf("var add = (op.op === 'add') !== undo;");
+    expect(i).toBeGreaterThan(0);
+    const seg = ed.slice(i, i + 1400);
+    expect(seg).toContain('insertBefore(op.L.el');
+    expect(seg).toMatch(/var ref = S\.layers\[at \+ 1\]/);
+  });
+  test('모델 삽입 자리와 DOM 삽입 자리가 같은 at 을 쓴다', () => {
+    const i = ed.indexOf("var add = (op.op === 'add') !== undo;");
+    const seg = ed.slice(i, i + 1400);
+    expect(seg).toMatch(/var at = \(op\.idx != null[\s\S]{0,120}S\.layers\.splice\(at, 0, op\.L\)/);
+  });
+  test('삭제가 위치(idx)를 기록한다 — 없으면 되돌릴 자리를 모른다', () => {
+    expect(fn('removeLayer')).toMatch(/_pushOp\(\{ op: 'del', L: L, idx: i \}\)/);
+  });
+});
