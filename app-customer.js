@@ -923,7 +923,15 @@
     const offBadge = sheet.querySelector('#customerOfflineBadge');
     // [출시감사 2026-08-05 P0-1] 전체 수는 **서버가 센 값**(_total). 캐시 길이가 아니다.
     const shopTotal = Math.max(_total || 0, _cache ? _cache.length : 0);
-    count.textContent = shopTotal + '명' + (seg !== 'all' ? ` · ${items.length}명 표시` : '');
+    /* [BUG-N2 2026-09-11] 예전엔 `seg !== 'all'`(필터 칩) 일 때만 "N명 표시" 를 붙였다.
+       **검색은 세그먼트가 아니라서** 빠졌고, 그래서 같은 화면인데 규칙이 갈렸다:
+         필터(회원권) → 3명 보임 · footer "15명 · 3명 표시"   ✅
+         검색 "강"     → 1명 보임 · footer "15명"             ❌
+         검색 0건      → "검색 결과 없음" · footer "15명"     ❌ (특히 오해를 부른다)
+       조건을 '표시 수가 전체와 다르면' 으로 바꾸면 검색·필터·둘 다 켠 경우가 한 규칙이 된다.
+       아무것도 안 거른 상태에서 "15명 · 15명 표시" 같은 군더더기는 자연히 안 생긴다. */
+    const _shown = items.length;
+    count.textContent = shopTotal + '명' + (_shown !== shopTotal ? ` · ${_shown}명 표시` : '');
     offBadge.style.display = _isOffline ? 'inline-block' : 'none';
 
     // [2026-07-08 A안] 요약 스트립 숫자 갱신 (필터와 무관하게 전체 기준)
