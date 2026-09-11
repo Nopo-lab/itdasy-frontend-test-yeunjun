@@ -570,3 +570,19 @@ button.ss-close::after,
   height: 44px;
   transform: translateY(-50%);
 }
+
+/* 14-e. 결제 팝업 약관 링크 — 실기기(iOS Safari) 감사에서 나온 마지막 미달 [2026-09-11]
+   `#planPopup` 하단 '이용약관 37×14' · '개인정보처리방침 74×14' (11px 본문 안 inline 링크).
+   결제 화면의 법적 고지 링크라 안 눌리면 안 된다.
+   가로는 안 넓힌다 — 두 링크가 ' · ' 하나(8px)를 사이에 두고 나란히 있어 서로를 뺏는다.
+   세로만 44 로 넓힌다(위아래는 클릭 대상이 아닌 안내 문구라 덮어도 무해).
+   ⚠️ 로그인/회원가입의 같은 링크는 **일부러 제외** — 그쪽은 <label> 안이라 링크 영역을
+      넓히면 '필수 약관 동의' 체크박스 탭을 링크가 가로챈다. 지금이 더 안전하다. */
+.legal-link { position: relative; display: inline-block; }
+.legal-link::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 44px;
+  transform: translateY(-50%);
+}
