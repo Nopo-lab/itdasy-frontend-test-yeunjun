@@ -126,7 +126,11 @@ describe('③ 잠긴 sync DB 에서도 pull 은 끝난다', () => {
     const i = src.indexOf('function pull()');
     const seg = src.slice(i, i + 1800);
     expect(seg).toMatch(/_readOr\(\s*getMeta\('lastPulledAt'\)\s*,\s*null\s*\)/);
-    expect(seg).toMatch(/_readOr\(\s*listTombstones\(\)\s*,\s*\[\]\s*\)/);
+    // tombstone 읽기는 allTombstones() 로 옮겼다 — 계약(타임아웃 방어)은 그대로 그 안에 있어야 한다.
+    expect(seg).toMatch(/allTombstones\(\)/);
+    const at = src.indexOf('function allTombstones()');
+    expect(at).toBeGreaterThan(0);
+    expect(src.slice(at, at + 500)).toMatch(/_readOr\(\s*listTombstones\(\)\s*,\s*\[\]\s*\)/);
   });
 
   test('_readOr 는 응답이 영영 안 와도 fallback 으로 **끝난다**', async () => {

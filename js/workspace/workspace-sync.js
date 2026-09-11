@@ -79,8 +79,24 @@
   function getMeta(k) { return _tx('meta', 'readonly').then(function (s) { return new Promise(function (res) { var r = s.get(k); r.onsuccess = function () { res(r.result ? r.result.v : null); }; r.onerror = function () { res(null); }; }); }); }
   function setMeta(k, v) { return _tx('meta', 'readwrite').then(function (s) { return new Promise(function (res) { var r = s.put({ k: k, v: v }); r.onsuccess = function () { res(true); }; r.onerror = function () { res(false); }; }); }); }
   function addTombstone(slotId) { return _tx('tombstones', 'readwrite').then(function (s) { return new Promise(function (res) { var r = s.put({ slot_id: slotId, at: Date.now() }); r.onsuccess = function () { res(true); }; r.onerror = function () { res(false); }; }); }); }
-  function delTombstone(slotId) { return _tx('tombstones', 'readwrite').then(function (s) { return new Promise(function (res) { var r = s.delete(slotId); r.onsuccess = function () { res(true); }; r.onerror = function () { res(false); }; }); }); }
+  function delTombstone(slotId) { delete _memTombs[String(slotId)]; return _tx('tombstones', 'readwrite').then(function (s) { return new Promise(function (res) { var r = s.delete(slotId); r.onsuccess = function () { res(true); }; r.onerror = function () { res(false); }; }); }); }
   function listTombstones() { return _tx('tombstones', 'readonly').then(function (s) { return new Promise(function (res) { var r = s.getAll(); r.onsuccess = function () { res(r.result || []); }; r.onerror = function () { res([]); }; }); }); }
+
+  /* [2026-09-12 ZH] `itdasy-sync` 를 못 쓰는 프로필에서 **지운 글이 되살아나던 것**의 대비책.
+     tombstone 은 "서버에 아직 못 보낸 삭제" 를 적어 두는 재시도 기록인데, 그 기록 자체가
+     실패하면 ① 서버 DELETE 가 안 나가고 ② pull 의 부활 방지 가드도 빈 배열이 되어
+     서버에 남은 행이 그대로 다시 내려온다.
+     라이브 실측(2026-09-12): 삭제 → "콘텐츠를 삭제했어요" 토스트 → 새로고침하니 카드 복귀.
+     → 메모리에도 같이 적어 이번 세션의 pull 이 되살리지 못하게 한다(영속은 IDB 가 담당). */
+  var _memTombs = Object.create(null);
+  function allTombstones() {
+    return _readOr(listTombstones(), []).then(function (rows) {
+      var out = (rows || []).slice();
+      var seen = {}; out.forEach(function (t) { if (t && t.slot_id != null) seen[String(t.slot_id)] = 1; });
+      Object.keys(_memTombs).forEach(function (id) { if (!seen[id]) out.push({ slot_id: id, at: _memTombs[id] }); });
+      return out;
+    });
+  }
 
   // ── 이미지 dataURL → JPEG blob (최장축 1440, q0.86) — Cloud Run 32MB·저장비용 방어 ──
   function _dataUrlToJpegBlob(dataUrl, maxDim, q) {
@@ -533,7 +549,7 @@
   }
 
   function flushTombstones() {
-    return listTombstones().then(function (tombs) {
+    return allTombstones().then(function (tombs) {
       return (tombs || []).reduce(function (p, t) {
         return p.then(function () {
           return window.apiFetch('/workspace/slots/' + encodeURIComponent(t.slot_id), { method: 'DELETE', headers: authHeader() })
@@ -562,7 +578,7 @@
       return window.apiFetch(url, { method: 'GET', headers: authHeader() }).then(function (r) { return r.ok ? r.json() : null; });
     }).then(function (resp) {
       if (!resp || !Array.isArray(resp.slots)) return;
-      return Promise.all([loadAllLocal(), _readOr(listTombstones(), [])]).then(function (both) {
+      return Promise.all([loadAllLocal(), allTombstones()]).then(function (both) {
         var locals = both[0];
         // [H5 수정 2026-07-16] 로컬에서 지웠는데 아직 서버로 DELETE 를 못 보낸 슬롯(tombstone)은
         //   pull 이 되살리면 안 된다. 예전엔 local 이 없으니 가드를 통과해 삭제한 글이 부활했다.
@@ -688,7 +704,16 @@
       _origDeleteSlot = window.deleteSlotFromDB;
       var wrappedDel = function (id) {
         var out = _origDeleteSlot.apply(this, arguments);
-        Promise.resolve(out).then(function () { return addTombstone(String(id)); }).then(function () { if (ready()) flushTombstones(); }).catch(function () {});
+        var sid = String(id);
+        /* [2026-09-12 ZH] **기록이 실패해도 서버 삭제는 보낸다.**
+           예전엔 addTombstone() 이 거절하면 체인이 그대로 catch 로 빠져 flushTombstones() 가
+           아예 안 불렸다 — 서버는 지운 걸 영영 모르고 다음 pull 이 그 글을 되살린다.
+           실패는 `.catch(function () {})` 가 통째로 삼켜서 원장은 알 수도 없었다. */
+        _memTombs[sid] = Date.now();
+        Promise.resolve(out)
+          .then(function () { return addTombstone(sid).catch(function (e) { log('tombstone write failed', e); }); })
+          .then(function () { if (ready()) return flushTombstones(); })
+          .catch(function (e) { log('delete push failed', e); });
         return out;
       };
       wrappedDel.__wsSyncWrapped = true;
