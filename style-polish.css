@@ -626,3 +626,21 @@ button.ss-close::after,
   height: 44px;
   transform: translateY(-50%);
 }
+
+/* 14-h. PC 사이드바 하단 3개 — 아이패드는 여기를 **손가락으로** 누른다 [2026-09-11 파괴검증]
+   실측(iPad Air 11 · 실제 Safari · 820×1048):
+     .ms-side__fab(작업실) 39 · 고객센터 34 · 로그아웃 30
+   PC 사이드바라고 마우스 전용이 아니다. 가로(203px)는 충분하므로 세로만 44 로 넓힌다. */
+.ms-side__fab,
+.ms-side__logout,
+#sideNav a[data-static-action="support"] { position: relative; }
+
+.ms-side__fab::after,
+.ms-side__logout::after,
+#sideNav a[data-static-action="support"]::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 44px;
+  transform: translateY(-50%);
+}

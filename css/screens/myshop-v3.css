@@ -475,7 +475,10 @@ body:has(#tab-dashboard.active) #tab-dashboard.tab { max-width: none !important;
 .ms-side__item {
   appearance: none; -webkit-appearance: none;
   display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 9px 10px;
+  /* [2026-09-11 파괴검증] 아이패드(=PC 셸 + 손가락)에서 이 항목이 **38px** 이었다.
+     PC 사이드바라고 마우스만 오는 게 아니다 — 태블릿은 여기를 손가락으로 누른다.
+     보이는 모양은 그대로 두고 세로 패딩만 12px 로 올려 44px 를 만든다(203px 폭은 이미 충분). */
+  width: 100%; padding: 12px 10px;
   background: none; border: 0; outline: 0;
   border-radius: var(--r-sm);
   cursor: pointer;
