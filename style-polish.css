@@ -644,3 +644,42 @@ button.ss-close::after,
   height: 44px;
   transform: translateY(-50%);
 }
+
+/* 14-i. 태블릿(PC 셸 + 손가락) 마지막 3종 [2026-09-11 파괴검증 · iPad 가로 1180×688]
+     .bk-pc__nav-btn (PC 달력 이전/다음 달)  30×30 → 44×44
+     .ms-chart__link (매출관리 →)            69×22 → 세로 44
+   PC 달력의 월 이동은 원장이 매일 누르는 버튼인데, 아이패드에선 30px 였다.
+   월 이름이 사이에 있어 좌우를 넓혀도 서로를 안 뺏는다(실측 후 확장). */
+.bk-pc__nav-btn { position: relative; }
+.bk-pc__nav-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
+}
+.ms-chart__link { position: relative; }
+.ms-chart__link::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
+/* 14-j. 태블릿 달력 — `+ 예약 추가` 만 [2026-09-11]
+     .bk-pc__add-btn (+ 예약 추가) 87×33 → 세로 44 (가로는 이미 충분)
+
+   ⚠️ **미니 달력 이전/다음(.bk-mini__nav > button, 22×22)은 넓히려다 되돌렸다.**
+      44×44 를 주자마자 감사에서 WRONG 이 떴다 — '다음' 의 확장 영역이 '이전' 의 **자기 영역**을
+      먹었다(실측: 이전 버튼 중심 좌측 지점이 '다음' 에게 잡힘). 둘 사이가 그만큼 좁다.
+      숫자(44)를 채우는 것보다 **엉뚱한 게 안 눌리는 것**이 우선이라 22×22 로 둔다.
+      대신 같은 화면의 주 조작인 `.bk-pc__nav-btn`(월 이동)은 44×44 로 확보했다. */
+.bk-pc__add-btn { position: relative; }
+.bk-pc__add-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 44px;
+  transform: translateY(-50%);
+}
