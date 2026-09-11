@@ -2570,6 +2570,30 @@
   }
 
   /* ── 그리기 ── */
+  /* 🔴 [2026-09-11 실측] **붓그림이 저장본엔 있는데 화면엔 안 그려졌다.**
+     `_restoreState` 가 `S.photoDraw` 를 되살리지만 **캔버스에 다시 칠하는 건 아무도 안 했고**,
+     `initCanvas()` 는 width/height 를 세팅하면서 캔버스를 비운다.
+     발행(exportComposite)은 이 캔버스를 합성하므로 **재편집 한 번이면 발행본에서도 사라진다.**
+     실측(스테이지 714×893): 그린 직후 잉크 샘플 91 → 재편집 후 0,
+     발행본 55,131B → 46,571B. 보정 미반영(9/11 수정)과 같은 계열의 누락이다.
+     저장 당시 캔버스 픽셀 크기와 지금이 다를 수 있어(창 크기·dpr) 목적지 크기로 맞춰 그린다. */
+  function _restorePhotoDraw() {
+    try {
+      if (!S || !S.photoDraw || !refs.ctx || !refs.draw) return;
+      var idx = (S.adjSel != null) ? S.adjSel : 0;
+      var src = S.photoDraw[idx] || S.photoDraw[String(idx)];
+      if (!src) return;
+      var im = new Image();
+      im.onload = function () {
+        try {
+          var c = refs.ctx; c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
+          c.drawImage(im, 0, 0, refs.draw.width, refs.draw.height); c.restore();
+        } catch (_e2) { void _e2; }
+      };
+      im.src = src;
+      if (S) S._drawInk = true;   // 되살린 그림도 '있음' — 안 그러면 다음 저장에서 flush 를 건너뛴다
+    } catch (_e) { void _e; }
+  }
   function initCanvas() {
     var r = refs.stage.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     refs.draw.width = Math.round(r.width * dpr); refs.draw.height = Math.round(r.height * dpr);
@@ -2598,7 +2622,9 @@
     refs.ctx.beginPath(); refs.ctx.moveTo(dpos.x, dpos.y); refs.ctx.lineTo(x, y); refs.ctx.stroke();
     dpos = { x: x, y: y };
   }
-  function drawUp() { dpos = null; }
+  /* 🔴 [2026-09-11] 한 획이라도 그었으면 표시해 둔다 — 저장 때 캔버스를 상태로 옮길지 판단한다.
+     픽셀을 훑어 판정하면 얇은 획을 놓쳐 **그림을 지워버릴** 수 있어 플래그로 간다. */
+  function drawUp() { dpos = null; if (S) S._drawInk = true; }
 
   /* ── 합성 내보내기 (사진 줌·콜라주·레이어 회전 반영) ── */
   /* [신뢰성 2026-08-21] 이미지가 load 도 error 도 안 주면 예전엔 **영영 pending** 이었다.
@@ -3058,7 +3084,7 @@
     enableDragScroll(refs.adjStrip);
     // 그리기
     root.querySelector('[data-panel="draw"] .itdrawp__tools').addEventListener('click', function (e) {
-      if (e.target.closest('[data-r="drawClear"]')) { if (refs.ctx && refs.draw) { refs.ctx.clearRect(0, 0, refs.draw.width, refs.draw.height); toastIt('그림을 지웠어요'); } return; }   // [#6] 그리기 전체 지우기
+      if (e.target.closest('[data-r="drawClear"]')) { if (refs.ctx && refs.draw) { refs.ctx.clearRect(0, 0, refs.draw.width, refs.draw.height); if (S) { S._drawInk = false; try { delete S.photoDraw[(S.adjSel != null) ? S.adjSel : 0]; } catch (_dc) { void _dc; } } toastIt('그림을 지웠어요'); } return; }   // [#6] 그리기 전체 지우기
       var b = e.target.closest('[data-brush]'); if (!b) return; S.brush = b.getAttribute('data-brush'); root.querySelectorAll('[data-brush]').forEach(function (x) { x.classList.toggle('on', x === b); });
     });
     refs.brushSize.addEventListener('input', function () { S.brushSize = +refs.brushSize.value; });
@@ -3427,9 +3453,25 @@
       return true;
     } catch (_e) { void _e; return false; }
   }
+  /* 🔴 [2026-09-11 실측] 붓그림은 **캔버스에만** 있고 `S.photoDraw` 에는
+     사진을 전환할 때(`_switchPhotoDraw`)만 들어갔다. 사진이 한 장이면 그게 영영 안 돌아
+     `S.photoDraw` 가 **빈 채로** 저장된다. 발행은 캔버스를 합성하니 그때는 멀쩡하고,
+     **재편집하면 그림만 사라진다 — 그 상태로 다시 발행하면 발행본에서도 사라진다.**
+     실측: 잉크 133 인데 저장본 photoDraw 키 0개 / 발행본 55,131B → 재편집 후 46,571B.
+     입력 중인 글자를 `_flushEditingText` 로 모델에 밀어넣는 것과 같은 이유·같은 자리다. */
+  function _flushPhotoDraw() {
+    try {
+      if (!S || !refs.draw || !refs.ctx) return;
+      if (!S.photoDraw) S.photoDraw = {};
+      if (!S._drawInk) return;                       // 한 획도 안 그었으면 건드리지 않는다
+      var idx = (S.adjSel != null) ? S.adjSel : 0;
+      S.photoDraw[idx] = refs.draw.toDataURL();
+    } catch (_e) { void _e; }
+  }
   function _exportState() {
     try {
       _flushEditingText();   // [2026-09-11] 저장·재편집·초안이 모두 이 값을 쓴다 — 입력 중인 글자 포함
+      _flushPhotoDraw();     // [2026-09-11] 붓그림도 같은 이유 — 캔버스에만 있으면 재편집에서 사라진다
       return { v: 1, layoutIdx: LAYOUTS.indexOf(S.layout), layoutOrder: (S.layoutOrder || []).slice(),
         cellCrop: (S.cellCrop || []).slice(), collageBg: S.collageBg, collageBgImg: S.collageBgImg || null,
         collageGap: S.collageGap, fitMode: S.fitMode, ratio: S.ratio,
@@ -3591,6 +3633,7 @@
     } catch (_dre) { void _dre; }
     requestAnimationFrame(function () {
       initCanvas();
+      if (_ed) _restorePhotoDraw();   // [2026-09-11] initCanvas 가 캔버스를 비운 **뒤에** 붓그림을 다시 칠한다
       if (!_ed) renderIncoming(S.incoming);   // 복원 모드가 아니면 우리샵 자동배치 레이어
       else { if (!isSingleL(S.layout)) renderCollage(); _renderMissingIncoming(S.incoming); }   // [#2a] 복원했어도 없는 역할의 시술 텍스트는 추가
       // [T4] 작업 기억이 얹혔으면 undo 스택에 '한 덩어리'로 — ↩ 한 번이면 wm 레이어 전체가 원복된다

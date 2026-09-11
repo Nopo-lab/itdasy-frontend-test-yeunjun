@@ -196,3 +196,55 @@ describe('🔴 사진 수평(회전)이 화면에 걸린다', () => {
     expect(fn('_applyRestore')).toContain('applyStraighten()');
   });
 });
+
+/* 🔴 [2026-09-11 · §24 실측] **붓그림이 재편집에서 사라졌다 — 발행본에서도.**
+   `_exportState` 는 `photoDraw` 를 저장하고 `_restoreState` 는 `S.photoDraw` 로 되살린다.
+   그런데 **캔버스에 다시 칠하는 코드가 없었고**, `initCanvas()` 가 width/height 를
+   세팅하며 캔버스를 비운다. 발행은 이 캔버스를 합성하므로 그림이 통째로 빠진다.
+   실측(스테이지 714×893): 그린 직후 잉크 샘플 91 → 재편집 후 0,
+   발행본 55,131B → 46,571B. 보정 미반영과 같은 계열(상태는 있는데 화면에 안 건다). */
+describe('🔴 붓그림이 재편집에서 살아남는다', () => {
+  test('복원 경로에 붓그림 다시 칠하기가 있다', () => {
+    expect(strip(ed)).toContain('_restorePhotoDraw()');
+  });
+  test('initCanvas 가 캔버스를 비운 **뒤에** 칠한다 (순서가 핵심)', () => {
+    const src = strip(ed);
+    const i = src.indexOf('initCanvas();\n      if (_ed) _restorePhotoDraw();');
+    expect(i).toBeGreaterThan(-1);
+  });
+  test('복원 모드일 때만 칠한다 (새 편집에 옛 그림이 묻으면 안 된다)', () => {
+    expect(strip(ed)).toMatch(/if \(_ed\) _restorePhotoDraw\(\)/);
+  });
+  test('활성 사진의 그림을 고른다 (사진별 보관)', () => {
+    expect(fn('_restorePhotoDraw')).toMatch(/S\.photoDraw\[idx\]/);
+  });
+  test('저장 당시와 캔버스 크기가 달라도 맞춰 그린다', () => {
+    expect(fn('_restorePhotoDraw')).toMatch(/drawImage\(im, 0, 0, refs\.draw\.width, refs\.draw\.height\)/);
+  });
+  test('_exportState 는 붓그림을 계속 저장한다 (원천이 없으면 복원도 없다)', () => {
+    expect(fn('_exportState')).toMatch(/photoDraw: Object\.assign\(\{\}, S\.photoDraw\)/);
+  });
+
+  /* 🔴 2차: 복원 코드를 넣었는데도 그림이 안 돌아왔다. 한 단계 앞이 비어 있었다 —
+     붓그림은 **캔버스에만** 있고 `S.photoDraw` 에는 사진 전환 때만 들어갔다.
+     사진이 한 장이면 그게 영영 안 돌아 **빈 채로 저장**된다.
+     실측: 잉크 133 인데 저장본 photoDraw 키 0개. 입력 중 글자와 같은 자리·같은 이유. */
+  test('저장 직전에 캔버스를 상태로 옮긴다 (입력 중 글자와 같은 자리)', () => {
+    const es = fn('_exportState');
+    expect(es).toContain('_flushEditingText()');
+    expect(es).toContain('_flushPhotoDraw()');
+  });
+  test('한 획도 안 그었으면 건드리지 않는다 (빈 캔버스를 저장하지 않는다)', () => {
+    expect(fn('_flushPhotoDraw')).toMatch(/if \(!S\._drawInk\) return;/);
+  });
+  test('획이 끝나면 그림 있음으로 표시한다 (픽셀 훑기로 판정하면 얇은 획을 놓친다)', () => {
+    expect(fn('drawUp')).toMatch(/S\._drawInk = true/);
+  });
+  test('전체 지우기는 표시와 저장본을 함께 지운다', () => {
+    const src = strip(ed);
+    expect(src).toMatch(/drawClear[\s\S]{0,260}S\._drawInk = false[\s\S]{0,120}delete S\.photoDraw\[/);
+  });
+  test('되살린 그림도 있음으로 표시한다 (다음 저장에서 건너뛰면 안 된다)', () => {
+    expect(fn('_restorePhotoDraw')).toMatch(/S\._drawInk = true/);
+  });
+});
