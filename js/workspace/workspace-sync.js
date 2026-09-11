@@ -36,6 +36,21 @@
     });
   }
   function _tx(store, mode) { return openSyncDB().then(function (db) { return db.transaction(store, mode).objectStore(store); }); }
+  /* [2026-09-11 SESS-2] `itdasy-sync` 가 **잠기면 아무 이벤트도 안 온다.**
+     (2026-09-03 실측으로 이미 기록됨: deleteDatabase 가 success·error·blocked 무엇도 안 냄,
+      readyState=pending. 그때는 '로그인이 멈추지 않게' 까지만 고쳤다.)
+     그 뒤가 남아 있었다 — 잠긴 DB 를 읽는 `pull()` 이 **영영 안 끝나서**
+     서버에 작업물이 멀쩡히 있는데도 작업실이 0건으로 굳는다(2026-09-11 라이브 실측: 서버 4 / 화면 0,
+     하드 새로고침으로도 복구 안 됨). 정리와 마찬가지로 **읽기도 best-effort** 여야 한다.
+     못 읽으면 안전한 쪽으로 접는다 — 커서는 null(=전량 받기), tombstone 은 빈 배열. */
+  var SYNC_READ_TIMEOUT_MS = 3000;
+  function _readOr(p, fallback) {
+    return Promise.race([
+      Promise.resolve(p).catch(function () { return fallback; }),
+      new Promise(function (res) { setTimeout(function () { log('sync db read timeout — degrade'); res(fallback); }, SYNC_READ_TIMEOUT_MS); }),
+    ]);
+  }
+
   function getMeta(k) { return _tx('meta', 'readonly').then(function (s) { return new Promise(function (res) { var r = s.get(k); r.onsuccess = function () { res(r.result ? r.result.v : null); }; r.onerror = function () { res(null); }; }); }); }
   function setMeta(k, v) { return _tx('meta', 'readwrite').then(function (s) { return new Promise(function (res) { var r = s.put({ k: k, v: v }); r.onsuccess = function () { res(true); }; r.onerror = function () { res(false); }; }); }); }
   function addTombstone(slotId) { return _tx('tombstones', 'readwrite').then(function (s) { return new Promise(function (res) { var r = s.put({ slot_id: slotId, at: Date.now() }); r.onsuccess = function () { res(true); }; r.onerror = function () { res(false); }; }); }); }
@@ -509,12 +524,20 @@
   function pull() {
     if (!ready() || _pulling) return Promise.resolve();
     _pulling = true;
-    return getMeta('lastPulledAt').then(function (since) {
+    return Promise.all([_readOr(getMeta('lastPulledAt'), null), loadAllLocal()]).then(function (_cur) {
+      var since = _cur[0];
+      /* [2026-09-11 SESS-2] 로컬 슬롯이 통째로 비었는데 커서만 남아 있으면
+         델타(`?since=`) pull 로는 **영영** 돌아오지 않는다. 슬롯은 `itdasy-gallery`,
+         커서는 `itdasy-sync` 로 **DB 가 달라서** 한쪽만 비워지는 일이 실제로 난다.
+         (라이브 실측 2026-09-11: 강제 로그아웃 뒤 서버엔 4건인데 작업실이 0건으로 고정,
+          하드 새로고침으로도 복구 안 됨 — 원장 눈엔 작업물이 전부 사라진 것.)
+         로컬이 0건이면 커서를 버리고 전량 받는다. 이미 지운 글은 아래 tombstone 가드가 막는다. */
+      if (since && (!_cur[1] || _cur[1].length === 0)) { log('pull full — local empty, cursor dropped'); since = null; }
       var url = '/workspace/slots' + (since ? ('?since=' + encodeURIComponent(since)) : '');
       return window.apiFetch(url, { method: 'GET', headers: authHeader() }).then(function (r) { return r.ok ? r.json() : null; });
     }).then(function (resp) {
       if (!resp || !Array.isArray(resp.slots)) return;
-      return Promise.all([loadAllLocal(), listTombstones()]).then(function (both) {
+      return Promise.all([loadAllLocal(), _readOr(listTombstones(), [])]).then(function (both) {
         var locals = both[0];
         // [H5 수정 2026-07-16] 로컬에서 지웠는데 아직 서버로 DELETE 를 못 보낸 슬롯(tombstone)은
         //   pull 이 되살리면 안 된다. 예전엔 local 이 없으니 가드를 통과해 삭제한 글이 부활했다.

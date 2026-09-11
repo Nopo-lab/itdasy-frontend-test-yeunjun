@@ -1533,15 +1533,25 @@ function authHeader() {
              401 을 아무도 처리하지 않았다.** 잠금화면을 닫아 버린 사용자는 그 뒤로 영영
              "다시 로그인하라" 는 말을 못 듣고, 화면은 옛 데이터를 그대로 띄운 채 남았다. */
           if (!getToken()) { _handle401(); return res; }
+          /* [2026-09-11 SESS-2] 갱신에 **성공한 뒤**의 재시도 실패는 세션 만료가 아니다.
+             예전엔 `_tryRefresh()` 와 재시도를 한 try 로 묶어서, 재시도가 타임아웃·네트워크로
+             실패하면 `_handle401()` 이 돌아 원장을 **강제 로그아웃**시키고 작성 중이던 글을
+             통째로 버렸다. 정작 방금 발급된 토큰은 멀쩡한데 화면만 "세션이 만료되었습니다" 다.
+             (라이브 실측 2026-09-11: 캡션 생성 중 발생 → 질문 3개·업종·시술 입력분 전부 소실,
+              localStorage 의 토큰은 그 시점에 /auth/me 200 이었다.)
+             불을 지른 건 재시도 타임아웃을 12초로 **고정**한 것 — 원 호출이 LLM(120초)이나
+             업로드(90초)면 12초 안에 끝날 수가 없어서 **항상** 이 경로로 떨어진다.
+             → ① 갱신 자체가 실패했을 때만 _handle401 ② 재시도는 원 호출과 같은 타임아웃(_tmo).
+             재시도가 그래도 실패하면 throw 되어 아래 catch(err) 의 일반 네트워크 실패 처리로 간다. */
+          let newTok;
           try {
-            const newTok = await _tryRefresh();
-            // 갱신된 토큰으로 원 요청 재시도 (refresh 후 fetch 는 timeout 짧게)
-            const newInit = { ...init, headers: { ...(init && init.headers), 'Authorization': 'Bearer ' + newTok } };
-            return await _fetchWithTimeout(input, newInit, FETCH_TIMEOUT_RETRY_MS);
+            newTok = await _tryRefresh();
           } catch (_e) {
             _handle401();
             return res;
           }
+          const newInit = { ...init, headers: { ...(init && init.headers), 'Authorization': 'Bearer ' + newTok } };
+          return await _fetchWithTimeout(input, newInit, _tmo);
         }
         // [2026-07-22 보스] 서버가 Retry-After 로 "지금 다시 때리지 마"라고 하면 재시도하지 않는다.
         //   실제 사고: AI 쿼터가 마르면 잇비가 한 번 실패에 23~29초를 태우는데(백엔드가 Gemini 를
