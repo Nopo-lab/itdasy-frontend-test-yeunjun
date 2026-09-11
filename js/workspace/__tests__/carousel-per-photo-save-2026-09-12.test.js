@@ -96,3 +96,40 @@ describe('② 장별 합성이 끝난 뒤에도 저장한다(비동기 경주)',
     expect(src.indexOf('_persistEditQuiet();', learn)).toBeGreaterThan(learn);
   });
 });
+
+describe('③ 합성본은 **그 사진의 출력 자리**에 들어간다', () => {
+  /* 실측(2026-09-12, 3장 캐러셀): photos[2].editedDataUrl 은 P3lash 로 제대로 구워졌는데
+     templateOutputs[2] 는 합성 안 된 원본이었다 — 발행하면 3번째 장만 글자가 없다.
+     원인: `_syncOutputForEdit` 이 isWs 를 먼저 보고 `outs[0]` 으로 폴백해
+     3번 합성본을 1번 출력 자리에 넣었다(그 자리는 뒤이은 장별 합성이 덮어 자가치유). */
+  function syncFn() {
+    const src = strip(FLOW);
+    const i = src.indexOf('function _syncOutputForEdit(');
+    expect(i).toBeGreaterThan(0);
+    const j = src.indexOf('\n  }', i);
+    const b = src.slice(i, j);
+    expect(b.length).toBeLessThan(900);
+    return b;
+  }
+
+  test('사진(p)으로 찾는 분기가 isWs 폴백보다 **먼저** 온다', () => {
+    const b = syncFn();
+    const byPhoto = b.indexOf("(o.photoIds || []).indexOf(p.id) >= 0");
+    const wsFallback = b.indexOf('outs[0]');
+    expect(byPhoto).toBeGreaterThan(-1);
+    expect(wsFallback).toBeGreaterThan(byPhoto);
+  });
+
+  test('isWs 폴백은 사진으로 못 찾았을 때만 돈다', () => {
+    expect(syncFn()).toMatch(/if \(!tgt && isWs\)/);
+  });
+
+  test('옛 형태(isWs 를 먼저 보고 else if (p))가 남아 있지 않다', () => {
+    const b = syncFn();
+    expect(b).not.toMatch(/if \(isWs\) tgt =[\s\S]*else if \(p\)/);
+  });
+
+  test('첫 출력일 때 스칼라 미러를 맞추는 계약은 그대로', () => {
+    expect(syncFn()).toMatch(/tgt === outs\[0\][\s\S]{0,120}d\.templateOutput = dataUrl/);
+  });
+});

@@ -550,8 +550,14 @@
     var outs = (d && d.templateOutputs) || [];
     if (!outs.length || !dataUrl) return;
     var tgt = null;
-    if (isWs) tgt = (d.activeDisplayId && outs.filter(function (o) { return o && o.pairId === d.activeDisplayId; })[0]) || outs[0];
-    else if (p) tgt = outs.filter(function (o) { return o && !o.templateId && (o.photoIds || []).indexOf(p.id) >= 0; })[0];
+    /* [2026-09-12 ZH] **사진이 특정됐으면 그 사진의 출력을 먼저 찾는다.**
+       예전엔 isWs 를 먼저 보고 `outs[0]` 으로 폴백해서, 캐러셀에서 3번 장을 보다가 [완료] 하면
+       3번 합성본이 **1번 출력 자리**에 들어가고 3번 출력은 원본 그대로 남았다.
+       실측(2026-09-12, 3장 캐러셀): photos[2].editedDataUrl 은 P3lash 가 제대로 구워졌는데
+       templateOutputs[2] 는 합성 안 된 원본 — 원장이 발행하면 3번째 장만 글자가 없다.
+       콜라주(3장→1장)는 outs[0].photoIds 에 모든 사진 id 가 들어 있어 여기서도 같은 것을 고른다. */
+    if (p) tgt = outs.filter(function (o) { return o && !o.templateId && (o.photoIds || []).indexOf(p.id) >= 0; })[0] || null;
+    if (!tgt && isWs) tgt = (d.activeDisplayId && outs.filter(function (o) { return o && o.pairId === d.activeDisplayId; })[0]) || outs[0];
     if (tgt) {
       tgt.outputUrl = dataUrl;
       // [v779] 스칼라 미러 동기화 — outputUrl()·_displayItems 가 스칼라를 먼저 읽어, 안 맞추면
