@@ -2422,6 +2422,13 @@
   //   좌우(사진 스트립)로 넘기며 각 사진에 다른 글/스티커/링크를 얹을 수 있다(인스타 캐러셀 장별 편집).
   function _switchPhotoLayers(oldIdx, newIdx) {
     if (oldIdx === newIdx) return;
+    /* 🔴 [2026-09-11] **치던 글자가 사진 전환에서 사라졌다.**
+       `_serLayer` 는 모델(L.text)을 읽는데, contenteditable 로 입력 중인 내용은 blur 전까지
+       모델에 안 들어간다. 원장이 사진1에 문구를 치다가 사진2를 눌러보고 돌아오면
+       **방금 친 글자가 통째로 없고 '내용을 입력하세요' 로 돌아와 있었다.**
+       실측: 'REALTYPED' 입력(편집 모드 유지) → 썸네일로 2번 사진 → 1번 복귀 → 플레이스홀더.
+       `_flushEditingText()` 는 이미 있었지만 2초 초안 타이머만 불렀다. 직렬화 직전에 부른다. */
+    _flushEditingText();
     if (!S.layersByPhoto) S.layersByPhoto = {};
     S.layersByPhoto[oldIdx] = (S.layers || []).map(_serLayer).filter(Boolean);   // 현재 장 레이어 직렬화 보관
     S.layers.slice().forEach(function (L) { try { if (L.el && L.el.remove) L.el.remove(); } catch (_e) { void _e; } });
@@ -3227,6 +3234,7 @@
   //   플로우가 이걸로 각 장을 자기 레이어와 합성해 캐러셀 장별로 다른 글/스티커가 실제 게시되게 한다.
   function _collectPerPhoto() {
     try {
+      _flushEditingText();   // [2026-09-11] 위와 같은 이유 — 입력 중인 글자가 발행에서 빠지면 안 된다
       if (!isSingleL(S.layout)) return null;   // 콜라주는 한 장 합성(장별 아님)
       if (!S.layersByPhoto) S.layersByPhoto = {};
       S.layersByPhoto[S.adjSel] = (S.layers || []).map(_serLayer).filter(Boolean);   // 현재 장도 포함
@@ -3395,6 +3403,7 @@
   }
   function _exportState() {
     try {
+      _flushEditingText();   // [2026-09-11] 저장·재편집·초안이 모두 이 값을 쓴다 — 입력 중인 글자 포함
       return { v: 1, layoutIdx: LAYOUTS.indexOf(S.layout), layoutOrder: (S.layoutOrder || []).slice(),
         cellCrop: (S.cellCrop || []).slice(), collageBg: S.collageBg, collageBgImg: S.collageBgImg || null,
         collageGap: S.collageGap, fitMode: S.fitMode, ratio: S.ratio,

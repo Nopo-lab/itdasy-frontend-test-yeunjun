@@ -12,11 +12,16 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.resolve(__dirname, '../..');
 const ed = fs.readFileSync(path.join(ROOT, 'itd-editor/itd-editor.js'), 'utf8');
+/* 🔴 주석을 반드시 걷어낸다.
+   이 파일의 설명 주석에 `_flushEditingText()` 같은 **함수 이름이 그대로 적혀 있어서**,
+   주석만 보고 통과하는 가드가 됐다(실제로 호출을 지워도 14/14 초록이었다).
+   테스트가 초록인데 아무것도 안 보는 상태가 제일 위험하다. */
+const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const fn = (name) => {
   const i = ed.indexOf('function ' + name + '(');
   if (i < 0) throw new Error('함수를 못 찾았다: ' + name);
   const j = ed.indexOf('\n  function ', i + 10);
-  return ed.slice(i, j < 0 ? i + 4000 : j);
+  return strip(ed.slice(i, j < 0 ? i + 4000 : j));
 };
 
 describe('🔴 재편집 시 사진 보정이 화면에 반영된다', () => {
@@ -88,5 +93,22 @@ describe('🔴 삭제를 되돌리면 레이어가 원래 자리로 돌아온다
   });
   test('삭제가 위치(idx)를 기록한다 — 없으면 되돌릴 자리를 모른다', () => {
     expect(fn('removeLayer')).toMatch(/_pushOp\(\{ op: 'del', L: L, idx: i \}\)/);
+  });
+});
+
+describe('🔴 치던 글자가 사진 전환·저장에서 사라지지 않는다', () => {
+  /* `_serLayer` 는 모델(L.text)을 읽는데, contenteditable 로 입력 중인 내용은 blur 전까지
+     모델에 안 들어간다. 원장이 사진1에 문구를 치다가 사진2를 눌러보고 돌아오면
+     방금 친 글자가 통째로 없고 '내용을 입력하세요' 로 돌아와 있었다.
+     실측: 'REALTYPED' 입력(편집 모드 유지) → 썸네일로 2번 → 1번 복귀 → 플레이스홀더.
+     `_flushEditingText()` 는 이미 있었지만 **2초 초안 타이머만** 불렀다. */
+  test.each(['_switchPhotoLayers', '_collectPerPhoto', '_exportState'])(
+    '%s 가 직렬화 전에 _flushEditingText 를 부른다', (f) => {
+      expect(fn(f)).toContain('_flushEditingText()');
+    });
+  test('flush 는 편집 중(contenteditable=true)인 레이어만 건드린다', () => {
+    const b = fn('_flushEditingText');
+    expect(b).toMatch(/getAttribute\('contenteditable'\) !== 'true'/);
+    expect(b).toMatch(/L\.text = _t/);
   });
 });

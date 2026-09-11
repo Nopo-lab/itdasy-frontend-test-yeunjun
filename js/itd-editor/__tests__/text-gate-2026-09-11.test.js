@@ -9,11 +9,14 @@ const ROOT = path.resolve(__dirname, '../..');
 const ed = fs.readFileSync(path.join(ROOT, 'itd-editor/itd-editor.js'), 'utf8');
 /* 이름이 접두사인 다른 함수(addText vs addTextSticker)를 잡지 않게 여는 괄호까지 맞춘다 —
    실제로 addTextSticker 를 집어서 가드가 헛돌 뻔했다. */
+/* 🔴 주석을 걷어내고 본다 — 이 파일의 설명 주석에 함수 이름이 그대로 적혀 있어서
+   주석만 보고 통과하는 가드가 될 수 있다(photo-gate 에서 실제로 그랬다). */
+const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const fn = (name) => {
   const i = ed.indexOf('function ' + name + '(');
   if (i < 0) throw new Error('함수를 못 찾았다: ' + name);
   const j = ed.indexOf('\n  function ', i + 10);
-  return ed.slice(i, j < 0 ? i + 4000 : j);
+  return strip(ed.slice(i, j < 0 ? i + 4000 : j));
 };
 
 describe('🔴 글자가 화면 밖으로 나가 발행본에서 잘리던 것', () => {
