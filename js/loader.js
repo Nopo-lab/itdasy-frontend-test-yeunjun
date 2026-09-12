@@ -66,10 +66,33 @@
      유휴 선로딩이 끝나기 전(부팅 직후 수 초)에 사용자가 사진 기능에
      진입하면 그룹 로드 후 진짜 함수로 이어준다. 그룹 D 모듈이 로드되며
      아래 스텁을 자기 정의로 덮어쓰므로 1회성. */
+  /* [2026-09-12 ZH] 이 호출이 **사람의 조작에서 왔는가**. 앱이 부팅·복원 중 스스로 부른
+     호출까지 토스트를 띄우면 원장은 자기가 뭘 눌렀는지도 모르는 안내를 보게 된다.
+     userActivation 이 없는 웹뷰를 위해 마지막 실제 입력 시각도 같이 본다. */
+  let _lastGesture = 0;
+  try {
+    ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) {
+      window.addEventListener(ev, function () { _lastGesture = Date.now(); }, { capture: true, passive: true });
+    });
+  } catch (_eg) { void _eg; }
+  function _userGesture() {
+    try {
+      if (navigator.userActivation && typeof navigator.userActivation.isActive === 'boolean'
+          && navigator.userActivation.isActive) return true;
+    } catch (_eu) { void _eu; }
+    return (Date.now() - _lastGesture) < 3000;
+  }
+
   function _stub(name, group, toastMsg) {
     const stub = function () {
       const args = arguments;
-      if (window.showToast) window.showToast(toastMsg || '준비 중…');
+      /* [2026-09-12 ZH] 스텁은 **원장이 누르지도 않았는데** 안내를 띄웠다 —
+         부팅에서 마지막 탭을 복원하며 앱이 스스로 initWorkshopTab() 을 부르면
+         "사진 도구 준비 중…" 이 뜬다(실측 2026-09-12: 새로고침 직후·클릭 0회, 매번 재현).
+         처음 쓰는 원장에겐 무슨 말인지도, 얼마나 기다리라는 건지도 없는 메시지다.
+         → **사람이 방금 만졌을 때만** 알린다. '눌렀는데 아무 반응 없음' 은 그대로 막는다. */
+      const byUser = _userGesture();
+      if (byUser && window.showToast) window.showToast(toastMsg || '준비 중…');
       // 실함수 반환값(Promise 등)을 그대로 전달 — await window.openCalendarView() 같은 호출 대응.
       return ensure(group).then(() => {
         const real = window[name];
@@ -78,7 +101,7 @@
         //   예전엔 조용히 undefined 를 반환하고 끝나서 화면이 안 열리는데 **아무 표시도 없었다.**
         //   원장님은 손님 앞에서 몇 번을 눌러도 반응이 없는 걸 보게 된다.
         //   실패를 말해주고, ensure 가 _done 을 안 세웠으니 다시 누르면 재시도된다.
-        if (window.showToast) {
+        if (byUser && window.showToast) {
           window.showToast('화면을 불러오지 못했어요. 인터넷 확인 후 다시 눌러주세요');
         }
         return undefined;

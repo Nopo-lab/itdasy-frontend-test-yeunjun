@@ -301,6 +301,9 @@
         </div>
       </div>`;
     pv.style.display = 'flex';
+    /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+       안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+    try { window._bindSheetBack && window._bindSheetBack('photoeditortemplatesv22', pv, () => { pv.style.display = 'none'; }); } catch (_bsb) { void _bsb; }
     pv.onclick = (e) => { if (e.target === pv) pv.style.display = 'none'; };
     pv.querySelector('#tpv2PvClose').onclick = () => { pv.style.display = 'none'; };
     pv.querySelector('#tpv2PvApply').onclick = () => { pv.style.display = 'none'; _applyGated(tplId, isFree); };
@@ -347,6 +350,9 @@
     _renderTagFilter();
     _renderGrid();
     _sheetEl.style.display = 'flex';
+    /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+       안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+    try { window._bindSheetBack && window._bindSheetBack('tplMarketSheet', _sheetEl, () => { _sheetEl.style.display = 'none'; }); } catch (_bsb) { void _bsb; }
   }
 
   // [T1+T2 2026-06-06] 캔바식 갤러리 통합 — 패널 내 "더 많은 템플릿(30+)" 버튼 주입 중단.

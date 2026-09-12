@@ -16,6 +16,24 @@
 
   function _esc(s) { return window._esc(s); } /* [2026-06-11] 중복 제거 — app-core 정본 위임 */
   function _money(n) { return (+n || 0).toLocaleString('ko-KR'); }
+  /* [BUG-4 2026-09-11] 매출로 안 잡히는 행을 **"0" 으로 찍지 않는다.**
+     회원권 충전·사용 행은 회계상 amount=0 이다(충전 시점에 이미 매출로 잡혔다).
+     그런데 목록에 그대로 "0" 이 찍히니 원장이 "0원 받았다" 로 읽는다 —
+     실측: 10,000원을 회원권으로 결제한 행이 매출 목록에서 `0` 이었다.
+     백엔드가 memo 에 실제 금액을 남겨 두므로(회원권 내역 화면은 이미 그걸 쓴다)
+     읽히면 그 값을 괄호로 보여주고, 못 읽으면 숫자 대신 '미집계' 라고 적는다.
+     어느 쪽이든 **틀린 숫자를 보여주지 않는 것**이 목적이다. */
+  function _amText(r) {
+    const amt = +r.amount || 0;
+    if (amt !== 0) return _money(amt);
+    let m = null;
+    try { m = String(r.memo || '').match(/([+-]?)\s*([0-9][0-9,]*)\s*원/); } catch (_e) { m = null; }
+    if (m) {
+      const v = Number(String(m[2]).replace(/,/g, ''));
+      if (Number.isFinite(v) && v > 0) return `<span class="am-off">미집계 (${_money(v)})</span>`;
+    }
+    return '<span class="am-off">미집계</span>';
+  }
   // 만원 단위 칩 표기 (천 단위 반올림). 0원/내역 없는 날은 호출 안 함.
   function _man(total) {
     const m = Math.round((+total || 0) / 10000);
@@ -65,6 +83,11 @@
       .rvcal-grid .bk-month-m__cells{grid-auto-rows:48px}
       .rvcal-grid .bk-month-m__cell{padding:5px 3px 4px 4px}
       .rvcal-grid .bk-month-m__evt{font-size:11px;font-weight:600;padding:1px 4px;border-radius:4px;margin-top:3px;letter-spacing:-.3px;align-self:flex-start;line-height:1.35;font-variant-numeric:tabular-nums;background:var(--brand-bg,#F7EFF0);color:var(--brand-strong,#BC6675)}
+      /* [BUG-004] 환불(음수)·상계(0) 칩 — 매출 칩(로즈)과 한눈에 갈리게 무채색으로.
+         같은 로즈로 두면 "그날 2만 벌었다" 로 읽힌다. */
+      .rvcal-grid .bk-month-m__evt.is-minus{background:var(--surface-sunken,#F2F4F6);color:var(--text-subtle,#8B95A1)}
+      /* [BUG-4] 매출 미집계 행 — 금액처럼 안 읽히게 약하게. */
+      .rvcal-li .am-off{color:var(--text-subtle,#8B95A1);font-weight:600;font-size:12px;white-space:nowrap}
       @media(min-width:1100px){
         /* 기본: 캘린더 풀폭 + 칩 크게 */
         .rvcal-grid .bk-month-m__cells{grid-auto-rows:88px}
@@ -126,7 +149,7 @@
       // [버그2] 실제 매출 행만 인라인 편집 가능 — 예약금 합성 엔트리(_booking_deposit)는 예약에서 관리하므로 제외
       const editable = !r._booking_deposit && r.id != null;
       const attrs = editable ? ` data-rev-id="${_esc(String(r.id))}" style="cursor:pointer"` : '';
-      return `<div class="rvcal-li${editable ? ' is-editable' : ''}"${attrs}><span class="nm">${nm}</span><span class="pm">${pm}</span><span class="am">${_money(r.amount)}</span></div>`;
+      return `<div class="rvcal-li${editable ? ' is-editable' : ''}"${attrs}><span class="nm">${nm}</span><span class="pm">${pm}</span><span class="am">${_amText(r)}</span></div>`;
     }).join('');
     detailEl.className = 'rvcal-detail';
     detailEl.innerHTML = `
@@ -161,7 +184,18 @@
 
     gridEl.innerHTML = window.CalendarView.buildMonthGridHTML({
       year: opts.year, month: opts.month, selected,
-      dayChip: (ds) => { const t = totals[ds]; return t > 0 ? `<div class="bk-month-m__evt">${_man(t)}</div>` : ''; },
+      /* [2026-09-11 BUG-004] 예전엔 `t > 0` 일 때만 칩을 그렸다. 그래서 **환불로 합계가 음수인 날이
+         달력에서 통째로 사라졌다.** 원장이 달력 칩을 눈으로 더하면 위 헤더보다 큰 숫자가 나오는데,
+         어느 날이 빠졌는지 볼 방법이 없다 — 실측: 헤더 325,000 vs 칩 합계 340,000,
+         차이의 정체는 9/9 의 **−18,000원 환불일**이었다(나머지 3,000 은 만원 단위 반올림).
+         상계돼 0원이 된 날(매출 +5만 / 환불 −5만)도 같은 이유로 '아무 일 없던 날'로 보였다.
+         돈이 오간 날은 반드시 칩이 있어야 한다 — 그래야 눌러서 내역을 확인할 수 있다. */
+      dayChip: (ds) => {
+        const t = totals[ds];
+        if (t == null) return '';                       // 기록 자체가 없는 날 — 빈 칸이 맞다
+        if (t > 0) return `<div class="bk-month-m__evt">${_man(t)}</div>`;
+        return `<div class="bk-month-m__evt is-minus">${t < 0 ? '−' + _man(-t) : '0원'}</div>`;
+      },
     });
 
     function showDetail(dateStr) {

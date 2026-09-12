@@ -549,9 +549,23 @@
     const strike = dim ? 'text-decoration:line-through;' : '';
     const dot = (sz) => '<span style="width:' + sz + 'px;height:' + sz + 'px;border-radius:50%;background:' + dotC + ';flex-shrink:0;display:inline-block;"></span>';
     if (isPC) {
+      // [전수감사 2026-09-08] 좁은 창에서 **고객명만** 짜부라지던 것.
+      //   예전엔 이름이 `flex:1`(하한 없음) · 시간이 `flex-shrink:0`(절대 안 줆) 이라
+      //   폭이 모자라면 이름이 전부 내주고 "강…" 이 됐다. 실측(브라우저에서 칼럼 폭을 좁혀가며):
+      //     칼럼 165px → 이름 90px (정상)
+      //     칼럼 110px → 이름 35px (정상, 필요 33px)
+      //     칼럼  95px → 이름 20px / 필요 33px → **잘림**   ← 창 폭 ≈950px 이하
+      //     칼럼  80px → 이름  5px → "…"
+      //   시간은 68px 를 그대로 유지했다. 우선순위가 거꾸로다 —
+      //   **여긴 시간 격자다.** 블록의 세로 위치가 이미 시각을 말한다.
+      //   반면 이름은 그 칸이 누구 예약인지 알려주는 유일한 정보다.
+      //   그래서 이름에 **하한(min-width)** 만 준다. 나머지는 그대로 뒀다 —
+      //   넓은 폭 레이아웃을 안 건드리는 최소 변경이다. 폭이 정말 모자라면
+      //   시간이 블록 경계에서 잘리는데, 이름을 잃는 것보다 낫다.
+      //   (모바일은 반대로 시간을 윗줄에 고정한다 — 칼럼 49px 에선 그게 맞다. 아래 분기 유지.)
       return '<div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;">'
         + dot(8)
-        + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;color:' + nameColor + ';letter-spacing:-0.2px;' + strike + '">' + _esc(it.cust) + '</span>'
+        + '<span style="flex:1;min-width:3.4em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;color:' + nameColor + ';letter-spacing:-0.2px;' + strike + '">' + _esc(it.cust) + '</span>'
         + '<span style="flex-shrink:0;font-size:11px;color:#8B95A1;' + strike + '">' + tm + '</span>'
         + (done ? '<span style="flex-shrink:0;color:#16B55E;display:inline-flex;align-items:center;"><svg width="13" height="13" aria-hidden="true"><use href="#ic-check"/></svg></span>' : '')
         + '</div>';
@@ -1419,8 +1433,33 @@
   }
 
   // [Phase4] 예약 카드 탭 → 읽기전용 상세 시트(완료/매출 UI 가 바로 열리지 않음). 버튼으로 수정/완료/취소/닫기.
+  // [전수감사 2026-09-08] 이 함수가 `'done'` 을 보고 있었는데 **백엔드에 그런 status 는 없다.**
+  //   models.py: status = confirmed / completed / cancelled / no_show
+  //   그래서 `'done'` 분기는 한 번도 안 탄 죽은 코드였고, 완료된 예약이 기본값
+  //   '예약 확정' 으로 떨어졌다. 실측(스테이징 · 예약 843, DB status=completed, 매출 15만원 기록됨):
+  //     캘린더 칩엔 ✓ · 사이드바엔 "완료 1" 인데
+  //     상세를 열면 파란 **"예약 확정"** 배지 + **"시술 완료"** 버튼이 다시 떴다.
+  //   바로 아래 `_resolved` 는 ['cancelled','no_show','done','completed'] 로 completed 를
+  //   제대로 나열하고 있다 — 한쪽만 고치고 라벨은 안 고친 흔적이다.
+  var _BOOKING_STATUS_LABEL = {
+    cancelled: '취소됨',
+    no_show: '노쇼',
+    completed: '완료',
+    done: '완료',        // 레거시 별칭 — 서버는 안 보내지만 오면 완료로 읽는다
+    confirmed: '예약 확정',
+  };
+  var _BOOKING_STATUS_COLOR = {
+    cancelled: '#BC6675',
+    no_show: '#8B95A1',
+    completed: '#16B55E',
+    done: '#16B55E',
+    confirmed: '#3182F6',
+  };
   function _bookingStatusLabel(s) {
-    return s === 'cancelled' ? '취소됨' : s === 'no_show' ? '노쇼' : s === 'done' ? '완료' : '예약 확정';
+    return _BOOKING_STATUS_LABEL[s] || '예약 확정';
+  }
+  function _bookingStatusColor(s) {
+    return _BOOKING_STATUS_COLOR[s] || '#3182F6';
   }
   function _openBookingDetail(raw) {
     if (!raw) return;
@@ -1437,7 +1476,15 @@
       ? window.fmtKRange(raw.starts_at, raw.ends_at || null)
       : (() => { try { const d = new Date(raw.starts_at); return (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + (d.getHours() < 12 ? '오전' : '오후') + ' ' + ((d.getHours() % 12) || 12) + ':' + _pad(d.getMinutes()); } catch (_e) { return ''; } })();
     const statusLabel = _bookingStatusLabel(raw.status);
-    const statusColor = raw.status === 'cancelled' ? '#BC6675' : raw.status === 'no_show' ? '#8B95A1' : raw.status === 'done' ? '#16B55E' : '#3182F6';
+    const statusColor = _bookingStatusColor(raw.status);
+    // [전수감사 2026-09-08] 이 모달은 **이미 끝난 예약**(완료/취소/노쇼)에만 열린다(_resolved).
+    //   그런데 '시술 완료' 버튼을 status 와 무관하게 항상 그렸다.
+    //   · 완료 예약 → 다시 누르면 완료 시트가 뜨고 금액을 또 입력하게 된다.
+    //     서버는 `became_completed` 전이에서만 매출을 만들어 **돈은 안전**하지만,
+    //     원장님은 새로 넣은 금액이 반영된 줄 안다(조용히 버려진다).
+    //   · 취소/노쇼 예약 → 서버가 400 으로 막는다(bookings.py:318). 누를 수 있는 게 잘못이다.
+    //   위 주석이 상정한 "읽기용 상세(수정/복구)" 로 되돌린다.
+    const _canComplete = !['completed', 'done', 'cancelled', 'no_show'].includes(raw.status);
     const old = document.getElementById('cv-booking-detail'); if (old) old.remove();
     const ov = document.createElement('div');
     ov.id = 'cv-booking-detail';
@@ -1464,7 +1511,7 @@
         <div style="margin-bottom:16px;">${info.join('')}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <button type="button" data-bd="edit" data-haptic style="padding:12px;border-radius:14px;border:1px solid var(--accent2,#e26a85);background:transparent;color:var(--accent2,#e26a85);font-weight:800;cursor:pointer;">수정</button>
-          <button type="button" data-bd="done" data-haptic style="padding:12px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent,#D58A95),var(--accent2,#e26a85));color:#fff;font-weight:800;cursor:pointer;">시술 완료</button>
+          ${_canComplete ? `<button type="button" data-bd="done" data-haptic style="padding:12px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent,#D58A95),var(--accent2,#e26a85));color:#fff;font-weight:800;cursor:pointer;">시술 완료</button>` : ''}
           <button type="button" data-bd="cancel" data-haptic style="padding:12px;border-radius:14px;border:1px solid var(--line,#ddd);background:transparent;color:var(--text-subtle,#888);font-weight:700;cursor:pointer;">예약 취소</button>
           <button type="button" data-bd="close2" data-haptic style="padding:12px;border-radius:14px;border:1px solid var(--line,#ddd);background:transparent;color:var(--text,#444);font-weight:700;cursor:pointer;">닫기</button>
         </div>
@@ -1479,7 +1526,11 @@
       closeDetail();
       if (typeof window._markSheetClosed === 'function') window._markSheetClosed('cvBookingDetail');
     };
-    let _cancelBusy = false;   // [Phase3-B #8] 중복 클릭 방지
+    /* 취소 확인 문구는 app-core 의 공용 헬퍼 하나만 쓴다(취소 경로가 3곳이라 두 벌이면 한쪽만 고쳐진다).
+     헬퍼가 없으면 예전 문구로 안전하게 축퇴한다. */
+  const _cancelMsg = (bk) => (typeof window._bookingCancelMsg === 'function'
+    ? window._bookingCancelMsg(bk) : '이 예약을 취소할까요?');
+  let _cancelBusy = false;   // [Phase3-B #8] 중복 클릭 방지
     ov.addEventListener('click', (e) => {
       if (e.target === ov) return close();
       const t = e.target.closest('[data-bd]'); if (!t) return;
@@ -1490,7 +1541,7 @@
       if (act === 'cancel') {
         if (_cancelBusy) return;
         // [Phase3-B #8] 즉시 취소 금지 — 확인 후에만. '아니요' 면 상세 유지(닫지 않음).
-        window._inlineConfirm('이 예약을 취소할까요?', async () => {
+        window._inlineConfirm(_cancelMsg(raw), async () => {
           if (_cancelBusy) return;
           _cancelBusy = true;
           try {
@@ -1957,6 +2008,34 @@
         const idx = rows.indexOf(row);
         wheel.scrollTo({ top: idx * ROW_H, behavior: 'smooth' });
       });
+
+      // [원장 QA 2026-09-11] **마우스 휠로는 시간을 바꾸지 않는다.** 폼 스크롤로 넘긴다.
+      //
+      //   무엇이 문제였나 (실측, 실 Chrome 배포본):
+      //     예약 폼은 화면보다 길어서 아래 시술·금액을 보려면 스크롤해야 한다.
+      //     그런데 이 시간 선택기가 `overflow:hidden auto` 라, 커서가 그 위에 있으면
+      //     휠이 **폼이 아니라 시간 선택기**를 굴린다. 실측:
+      //       예상 종료 오전 10:00 → 휠 3틱 → 오전 11:00 → 다시 → 오후 12:00
+      //       그동안 `window.scrollY = 0`  (페이지는 한 픽셀도 안 내려갔다)
+      //     그리고 그 값이 그대로 저장됐다:
+      //       토스트 "QA0911_김테스트님 2026-09-11 **11:00** 예약 추가됨"  (의도는 9:00)
+      //     원장은 아래 칸을 보려고 굴렸을 뿐인데 **손님이 다른 시간에 온다.**
+      //
+      //   시간 변경 수단은 그대로 남는다 — **탭(클릭)** 과 **터치 스와이프**.
+      //   `wheel` 은 터치에서 발생하지 않으므로 모바일 동작은 영향이 없다.
+      wheel.addEventListener('wheel', e => {
+        // 실제로 스크롤되는 조상을 찾아 거기로 넘긴다 (폼 루트가 PC/모바일에서 다르다)
+        let sc = wheel.parentElement;
+        while (sc && sc !== document.body) {
+          const oy = getComputedStyle(sc).overflowY;
+          if ((oy === 'auto' || oy === 'scroll') && sc.scrollHeight > sc.clientHeight) break;
+          sc = sc.parentElement;
+        }
+        if (!sc || sc === document.body) sc = document.scrollingElement || document.documentElement;
+        if (!sc) return;
+        e.preventDefault();
+        sc.scrollTop += e.deltaY;
+      }, { passive: false });
     });
 
     // --- 고객 카드 ---
@@ -2454,7 +2533,7 @@
         };
         // [핫픽스D #6] 모든 취소 경로 확인 통일 — 상태 '취소'는 확인 후에만 반영.
         if (newStatus === 'cancelled') {
-          window._inlineConfirm('이 예약을 취소할까요?', _applyStatus, function () { /* 아니요 — 그대로 */ }, { okText: '예약 취소', cancelText: '아니요' });
+          window._inlineConfirm(_cancelMsg(existing), _applyStatus, function () { /* 아니요 — 그대로 */ }, { okText: '예약 취소', cancelText: '아니요' });
           return;
         }
         await _applyStatus();
@@ -2641,8 +2720,53 @@
     });
   }
 
+  /* [2026-09-12 BUG-R1] 캘린더를 덮는 고객 시트를 **여기서** 먼저 닫는다.
+
+     이 오버레이는 z-index 9988 인데 고객 목록(#customerSheet)은 9998, 고객 상세는 그 위다.
+     그래서 고객 화면에서 캘린더를 열면 **폼이 멀쩡히 렌더된 채 뒤에 깔려**
+     원장 눈엔 "눌렀는데 아무 일도 안 일어난다" 로 보인다(주소만 #cvBookingForm 으로 바뀐다).
+
+     같은 사고를 2026-08-15(#40)에 app-customer.js 의 액션시트 경로에서 이미 한 번 고쳤다.
+     그런데 그 뒤에 생긴 고객 상세 v4 의 '예약 잡기' 는 **고객 상세만 닫고 목록은 안 닫아서**
+     같은 증상이 되살아났다(2026-09-12 라이브 실측: elementsFromPoint 최상단이 #customerSheet).
+
+     진입점이 10곳이 넘는다 — 호출부마다 붙이면 새 진입점이 생길 때마다 또 빠진다.
+     그래서 **캘린더를 여는 이 한 곳**에서 닫는다.
+     ⚠️ 안 보이는 시트는 건드리지 않는다(닫기가 라우터 스택을 건드리므로). */
+  function _closeCoveringCustomerSheets() {
+    const shown = (id) => {
+      try {
+        const el = document.getElementById(id);
+        return !!(el && getComputedStyle(el).display !== 'none');
+      } catch (_e) { return false; }
+    };
+    try {
+      if (shown('customerDashSheet') && typeof window.closeCustomerDashboard === 'function') {
+        window.closeCustomerDashboard();
+      }
+    } catch (_e) { void _e; }
+    try {
+      if (shown('customerSheet') && typeof window.closeCustomers === 'function') {
+        window.closeCustomers();
+      }
+    } catch (_e) { void _e; }
+    /* [2026-09-12 BUG-D] 남아 있는 **완료 시트**도 여기서 치운다.
+       예약관리 진입은 언제나 달력에서 시작해야 한다. 이전에 열렸던 완료 시트가
+       display:flex 로 남아 있으면 원장 눈엔 "예약관리를 눌렀더니 웬 완료 창" 이다
+       (실측 당시 startFromBooking 호출 0회 = 새로 연 게 아니라 안 닫힌 것).
+       뒤로가기 등록은 따로 고쳤지만, 그건 back 경로 하나뿐이다 —
+       여기서 치우면 **어떤 경로로 남았든** 유령이 안 된다. */
+    try {
+      if (shown('completeFlowSheet') && window.CompleteFlow
+          && typeof window.CompleteFlow.close === 'function') {
+        window.CompleteFlow.close();
+      }
+    } catch (_e) { void _e; }
+  }
+
   window.openCalendarView = async function () {
     if (typeof window._perfMark === 'function') window._perfMark('calendar:open:start');
+    _closeCoveringCustomerSheets();
     const existing = _overlay(); if (existing) existing.remove();
 
     // [버그8] 예약관리 재진입 시 선택일은 항상 오늘로 초기화 — 이전 세션/선택 잔존으로

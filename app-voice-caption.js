@@ -136,6 +136,11 @@
     if (trimmed) payload.treatment_keyword = trimmed.slice(0, 80);
 
     const data = await _fetchJson('POST', '/persona/generate', payload);
+    // [AI 릴리스 게이트 2026-09-07] status:'clarification' 은 캡션이 아니라 안내문이다
+    //   (LLM 미호출·한도 미차감). 캡션으로 취급하면 화면엔 생성 성공처럼 보인다.
+    if (data && data.status === 'clarification') {
+      throw new Error(String(data.caption || '시술 내용을 조금만 더 알려주시면 글을 써드릴게요.'));
+    }
     return data.caption || '';
   }
 
@@ -579,6 +584,9 @@
     _setMicLabel(false);
 
     p.style.display = 'flex';
+    /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+       안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+    try { window._bindSheetBack && window._bindSheetBack('voiceCaption', p, () => { p.style.display = 'none'; }); } catch (_bsb) { void _bsb; }
 
     // 미지원 환경 안내
     if (!_voiceSupported()) {

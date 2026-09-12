@@ -1,18 +1,26 @@
 // Itdasy Studio - Instagram 연동 & 말투분석
 
-// [보안감사 H-7 준비 2026-07-27] 인스타 OAuth 시작을 (네이티브에서) 인앱 웹뷰 이동 대신
-//   Browser 플러그인(SFSafariViewController)으로 열기 위한 플래그. 기본 OFF.
+// [보안감사 H-7 준비 2026-07-27 · 2026-09-09 기본 ON] 인스타 OAuth 시작을 (네이티브에서)
+//   인앱 웹뷰 이동 대신 Browser 플러그인(SFSafariViewController / Chrome Custom Tabs)으로 연다.
 //   ▶ 켜야 iOS App-Bound Domains(H-7)를 걸어도 인스타 로그인이 안 깨진다(웹뷰가 우리 도메인 밖으로 안 나감).
-//   ▶ 기본 OFF 이므로 웹·현재 모든 네이티브 설치본은 기존 window.location.href 경로 그대로(바이트 동일).
-//   ▶ 실제 ON 은 기기/시뮬 E2E 검증하는 별도 빌드 세션에서. 그 전엔 아무 동작 변화 없음.
+//
+//   [2026-09-09] 기본을 ON 으로 바꿨다. 폰에서 연동을 누르면 **인스타 앱만 켜지고
+//   아무 동작이 없던** 실사용 장애 때문이다. 원인은 인스타가 자기 도메인 전 경로를
+//   앱에 넘기도록 선언해 둔 것 —
+//     iOS  AASA        com.burbn.instagram    → 전 경로 클레임 (/oauth/authorize 제외목록에 없음)
+//     Android assetlinks com.instagram.android → handle_all_urls
+//   웹뷰에서 window.location.href 로 나가면 OS 가 그대로 인스타 앱에 넘겨버린다.
+//   Browser 플러그인으로 열면 브라우저 컨텍스트라 앱으로 안 넘어간다(구글·카카오와 같은 방식).
+//   백엔드도 authorize URL 에 #weblink 를 붙여 같은 납치를 막는다(instagram.py) — 둘 다 필요하다.
+//   ▶ 웹은 isNative 가 false 라 이 플래그와 무관하게 기존 경로 그대로다.
 //   오버라이드(?securetoken 과 동일 패턴, 1회 쿼리→localStorage 고정):
-//     ?igbrowser=1 강제 ON(테스트) · ?igbrowser=0 강제 OFF(킬스위치) · 기본 null(OFF).
+//     ?igbrowser=1 강제 ON · ?igbrowser=0 강제 OFF(킬스위치) · 기본 ON.
 const _IG_BROWSER = (function () {
   try {
     if (/[?&]igbrowser=1/.test(location.search)) { try { localStorage.setItem('itdasy_igbrowser', '1'); } catch (_p) { void _p; } return true; }  // 쿼리 1회 → 리로드에도 유지
     if (/[?&]igbrowser=0/.test(location.search)) { try { localStorage.setItem('itdasy_igbrowser', '0'); } catch (_p) { void _p; } return false; }
-    return localStorage.getItem('itdasy_igbrowser') === '1';
-  } catch (_e) { return false; }
+    return localStorage.getItem('itdasy_igbrowser') !== '0';   // 명시적 OFF 만 끈다 — 기본 ON
+  } catch (_e) { return true; }
 })();
 
 // ===== 인스타 토큰 만료 배너 =====
@@ -104,6 +112,21 @@ function _purgeIgTextStyleIDB() {
 const _IG_STYLE_COOLDOWN_KEY = 'itdasy:ig_style_cooldown';
 const _IG_STYLE_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
+/* [2026-09-04] 게시물별 분석 → 자동 스타일 그룹 → 서버 저장.
+   실패는 전부 조용히 넘긴다 — 인스타 연동/말투 분석 흐름을 이것 때문에 막지 않는다.
+   그룹이 안 만들어져도(표본 부족·톤이 제각각) 그건 정상적인 결과다. 지어내지 않는다. */
+function _buildIgStyleGroups(media) {
+  return window.IgPostAnalysis.collect(media)
+    .then((posts) => {
+      if (!window.IgStyleGrouping || !posts || !posts.length) return null;
+      const r = window.IgStyleGrouping.group(posts);
+      try { window.dispatchEvent(new CustomEvent('itdasy:ig-style-grouped', { detail: r })); } catch (_e) { void _e; }
+      if (!r.groups.length || !window.IgStyleLibrary) return r;
+      return window.IgStyleLibrary.saveAuto(r.groups).then(() => r).catch(() => r);
+    })
+    .catch(() => null);
+}
+
 function _kickIgTextStyleBuild(force) {
   try {
     if (!window.InstagramTextStyle) return;
@@ -124,6 +147,12 @@ function _kickIgTextStyleBuild(force) {
       .then((j) => {
         const media = j && Array.isArray(j.media) ? j.media : null;
         if (!media || !media.length) return null;
+        /* [2026-09-04] 게시물별 분석 + 자동 스타일 그룹.
+           `IgPostAnalysis.collect` 는 **Vision 을 새로 부르지 않는다** — 안에서
+           `InstagramTextStyle.build(media, {onPost})` 를 그대로 부르고, 여태 버려지던
+           게시물별 결과를 media_id 에 붙여 남길 뿐이다(비용 가드는 그쪽에 그대로 있다).
+           모듈이 아직 안 실렸으면 예전 경로로 간다 — 말투 분석이 이것 때문에 막히면 안 된다. */
+        if (window.IgPostAnalysis) return _buildIgStyleGroups(media);
         return window.InstagramTextStyle.build(media);         // 필드명은 thumb — 모듈이 처리
       })
       .catch(() => {})
@@ -439,6 +468,9 @@ function showDetailedAnalysis() {
     // [2026-06-10 #5] 팝업이 다른 시트 아래에 깔리는 버그 — body 최상위로 이동해서 stacking context 이슈 완전 해결
     if (pop.parentElement !== document.body) document.body.appendChild(pop);
     pop.style.display = 'flex';
+    /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+       안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+    try { window._bindSheetBack && window._bindSheetBack('instagramAnalyzeReport', pop, () => { pop.style.display = 'none'; }); } catch (_bsb) { void _bsb; }
   } else if (window.showToast) window.showToast('리포트 영역을 찾을 수 없어요');
 }
 
@@ -610,9 +642,14 @@ function renderDetailedPopup(data) {
     let page2 = '';
     try {
         const prof = (window.InstagramTextStyle && window.InstagramTextStyle.get()) || null;
-        if (window.IgStyleCardPage2 && prof) {
-            page2 = window.IgStyleCardPage2.render(prof)
-                || (window.IgStyleCardPage2.renderInsufficient ? window.IgStyleCardPage2.renderInsufficient(prof) : '');
+        const P2 = window.IgStyleCardPage2;
+        if (P2 && prof) {
+            page2 = P2.render(prof) || (P2.renderInsufficient ? P2.renderInsufficient(prof) : '');
+        } else if (P2 && P2.renderNotAnalyzed) {
+            /* [2026-09-04] 분석 전에도 페이지 2 를 만든다(§27).
+               예전엔 프로필이 없으면 페이지 2 를 통째로 안 그려서, 원장은 이 기능이
+               있는지조차 몰랐다 — '숨겨진 기능' 은 없는 기능과 같다. */
+            page2 = P2.renderNotAnalyzed();
         }
     } catch (_e) { page2 = ''; }
 
@@ -649,6 +686,12 @@ function renderDetailedPopup(data) {
     // 카드 = flex column. 이게 있어야 pager 의 flex:1 이 먹고 점이 하단에 고정된다.
     body.setAttribute('style', 'display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden;');
     body.innerHTML = html;
+
+    /* [2026-09-04] 페이지 2 의 '내 스타일' 버튼들. innerHTML 로 새로 만든 노드라
+       매번 다시 붙여야 한다 — 안 붙이면 **버튼은 보이는데 눌러도 아무 일이 없다**
+       (이 앱에서 가장 자주 난 종류의 결함이라 여기 못 박는다). */
+    try { if (window.IgStyleCardPage2 && window.IgStyleCardPage2.bind) window.IgStyleCardPage2.bind(body); }
+    catch (_bindErr) { void _bindErr; }
 
     // [2026-06-26] '내 말투로 글 써보기' CTA 제거 유지 — 작업실/글쓰기 진입 차단(중복·혼동 방지).
     //   닫기는 헤더 X(analyze-result-close).
@@ -1346,6 +1389,9 @@ function showInstaConflictModal(handle) {
     </div>
   `;
   document.body.appendChild(modal);
+  /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+     안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+  try { window._bindSheetBack && window._bindSheetBack('instagram1', modal, () => { modal.remove(); }); } catch (_bsb) { void _bsb; }
 
   document.getElementById('igConflictClose').addEventListener('click', () => {
     modal.remove();

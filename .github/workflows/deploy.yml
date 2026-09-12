@@ -77,6 +77,11 @@ jobs:
       - name: Smoke check
 
         run: npm run smoke
+      # [2026-09-09] 전체화면 오버레이가 뒤로가기에 등록됐는지 — 사람이 기억하지 않게 기계가 본다.
+      #   실측: 예약 폼 → 고객 선택창 → back 하면 **예약 폼이 닫히고 선택창이 남았다**(작업 유실).
+      #   전수 조사 결과 오버레이 파일 50개 중 32개가 미등록이었다. 새로 만들 때마다 또 빠진다.
+      - name: Overlay back-stack audit
+        run: npm run audit:overlay
       # [출시 전 동결 2026-08-23] 테스트를 배포 게이트에 넣는다.
       #   그전까지 jest 가 **CI 에서 한 번도 안 돌았다** — pre-commit 은 lint-staged + smoke 만 본다.
       #   그래서 '조용한 무동작' 가드(silent-noop-guard 등)가 자동으로는 아무 것도 못 막고 있었다.

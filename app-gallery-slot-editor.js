@@ -93,6 +93,9 @@ function _showNextSlotGuide(nextSlot, doneCount, totalCount) {
     pop.style.cssText = 'position:fixed;inset:0;z-index:9400;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;justify-content:center;';
     pop.onclick = e => { if (e.target === pop) pop.style.display = 'none'; };
     document.body.appendChild(pop);
+    /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+       안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+    try { window._bindSheetBack && window._bindSheetBack('gallerysloteditor', pop, () => { pop.remove(); }); } catch (_bsb) { void _bsb; }
   }
   const nextLabel = nextSlot.label.replace('손님','손님 ');
   pop.innerHTML = `

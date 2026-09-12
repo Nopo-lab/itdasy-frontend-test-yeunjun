@@ -28,10 +28,23 @@
     return '<button type="button" class="' + (cls || 'itsw') + ' itsw--rb" data-colorpick="' + target + '" title="색 직접 고르기" aria-label="색 직접 고르기"></button>';
   }
   // [팔레트 통일 2026-07-27] 색 스와치 한 줄 렌더 — 텍스트/도형/그리기/배경 팔레트 공용(파일 내 중복 렌더 제거).
+  /* [2026-09-11 접근성] 색 스와치에 **읽어줄 이름**을 붙인다.
+     실측: 편집기 안 조작 요소 144개 중 63개에 이름이 없었고 대부분이 이 스와치였다.
+     화면·크기·색은 그대로 — aria-label 만 추가한다(디자인 변경 아님). */
+  var COLOR_NAMES = {
+    '#FFFFFF': '흰색', '#15181D': '검정', '#BC6675': '로즈', '#E08A6E': '코랄',
+    '#E6B45A': '골드', '#86B06E': '그린', '#6E9BC4': '블루', '#A98AC4': '퍼플'
+  };
+  function _colorName(c) {
+    var k = String(c || '').toUpperCase();
+    return COLOR_NAMES[k] || ('색 ' + k.replace('#', ''));
+  }
   function _swRow(colors, attr, cls, onIdx, extraCls) {
     return colors.map(function (c, i) {
       var x = extraCls ? (extraCls(c, i) || '') : '';
-      return '<button type="button" class="' + cls + (i === onIdx ? ' on' : '') + (x ? ' ' + x : '') + '" ' + attr + '="' + c + '" style="background:' + c + '"></button>';
+      return '<button type="button" class="' + cls + (i === onIdx ? ' on' : '') + (x ? ' ' + x : '') + '" ' + attr + '="' + c + '"'
+        + ' aria-label="' + _colorName(c) + '" title="' + _colorName(c) + '"'
+        + ' style="background:' + c + '"></button>';
     }).join('');
   }
   // [스포이드] 파이펫 스와치 — 편집 중인 사진에서 색을 찍어 적용(EyeDropper API 미지원 모바일 대응, 자체 구현).
@@ -242,7 +255,20 @@
      내보내기는 stage×dpr(최대 2.5) 캔버스로 다시 그리므로(exportComposite) 표시용을 줄여도
      **발행 화질은 안 떨어진다** — S.photoUrl(원본)은 export 전용으로 그대로 둔다. */
   var _dispCache = {}, _dispBusy = {};
-  var DISP_MAX_EDGE = 2000, DISP_BYTES = 1200000, DISP_PIXELS = 3200000;
+  var DISP_MAX_EDGE = 2000, DISP_SMALL_EDGE = 1400, DISP_BYTES = 1200000, DISP_PIXELS = 3200000;
+  /* 실제 투명 픽셀이 있는지 — 확장자(.png)는 증거가 아니다. 전수는 비싸니 격자 샘플링.
+     누끼 결과는 배경 전체가 투명이라 성긴 격자로도 반드시 걸린다. */
+  function _hasAlpha(cv) {
+    try {
+      var g = cv.getContext('2d'), W2 = cv.width, H2 = cv.height;
+      var step = Math.max(1, Math.floor(Math.min(W2, H2) / 64));
+      for (var y = 0; y < H2; y += step) {
+        var row = g.getImageData(0, y, W2, 1).data;
+        for (var x2 = 3; x2 < row.length; x2 += 4 * step) { if (row[x2] < 250) return true; }
+      }
+      return false;
+    } catch (_e) { return true; }   // 못 읽으면 안전하게 PNG 유지(투명 깨짐 방지)
+  }
   function _disp(url) {
     if (!url) return url;
     if (_dispCache[url]) return _dispCache[url];
@@ -264,8 +290,24 @@
         var cv = document.createElement('canvas');
         cv.width = Math.max(1, Math.round(im.width * sc)); cv.height = Math.max(1, Math.round(im.height * sc));
         cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
-        // 투명(누끼 PNG)은 PNG 로 유지해야 배경이 안 깨진다. 그 외는 JPEG 로 — 바이트가 관건이다.
-        var out = /^data:image\/png/i.test(url) ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.9);
+        /* 투명(누끼 PNG)만 PNG 로 유지한다. **확장자가 아니라 실제 알파를 본다** —
+           1차 수정에서 "data:image/png 면 PNG 유지"로 했더니, 알파가 하나도 없는 5MB PNG 의
+           축소본이 3.4MB PNG 로 남아 42fps 에서 더 안 올라갔다(실측). 불투명이면 JPEG 가 맞다.
+           알파가 진짜로 있는데도 여전히 크면 한 단계 더 줄인다(PNG 는 사진에서 안 줄어든다). */
+        var out;
+        if (_hasAlpha(cv)) {
+          out = cv.toDataURL('image/png');
+          if (out.length > DISP_BYTES) {
+            var sc2 = Math.min(1, DISP_SMALL_EDGE / Math.max(im.width, im.height));
+            var cv2 = document.createElement('canvas');
+            cv2.width = Math.max(1, Math.round(im.width * sc2)); cv2.height = Math.max(1, Math.round(im.height * sc2));
+            cv2.getContext('2d').drawImage(im, 0, 0, cv2.width, cv2.height);
+            var out2 = cv2.toDataURL('image/png');
+            if (out2.length < out.length) out = out2;
+          }
+        } else {
+          out = cv.toDataURL('image/jpeg', 0.9);
+        }
         _dispCache[url] = (out && out.length < url.length) ? out : url;   // 안 줄면 원본 유지
       } catch (_e) { _dispCache[url] = url; }
       _dispBusy[url] = 0;
@@ -330,12 +372,12 @@
       '</div>' +
       '<div class="itded__rail" data-r="rail">' +
         '<button class="itrb" data-tool="text" aria-label="글자 추가">' + IC.text + '</button>' +
-        '<button class="itrb" data-tool="adjust">' + IC.adjust + '</button>' +
-        '<button class="itrb" data-tool="sticker">' + IC.sticker + '</button>' +
+        '<button class="itrb" data-tool="adjust" aria-label="\uc0ac\uc9c4 \ubcf4\uc815">' + IC.adjust + '</button>' +
+        '<button class="itrb" data-tool="sticker" aria-label="\uc2a4\ud2f0\ucee4">' + IC.sticker + '</button>' +
         // [요청4 2026-07-13] 레이아웃(상하좌우 등) 재선택 도구 제거 — 레이아웃은 업로드 직후 작업실 갤러리에서 이미 고름.
         //   브리지(_matchItdPreset)로 넘어온 콜라주는 renderCollage 가 그대로 그리므로 도구 버튼만 숨김(panel/selectLayout/renderCollage 로직은 보존).
-        '<button class="itrb" data-tool="shape">' + IC.shape + '</button>' +
-        '<button class="itrb" data-tool="draw">' + IC.draw + '</button>' +
+        '<button class="itrb" data-tool="shape" aria-label="\ub3c4\ud615">' + IC.shape + '</button>' +
+        '<button class="itrb" data-tool="draw" aria-label="\uadf8\ub9ac\uae30">' + IC.draw + '</button>' +
       '</div>' +
       /* [2026-08-23] 레이어 순서 — 겹친 글자/도형을 앞뒤로 보낸다.
          레일에 끼우지 않고 **별도 줄**로 둔다: 레일은 '무엇을 추가할까'이고
@@ -370,11 +412,21 @@
         '<div class="itgrip itgrip--p" data-pgrip></div>' +
                 '<div class="ittext__top">' +
           '<span class="italn" data-r="aln">' +
-            '<button data-aln="left" class="on">' + IC.alnL + '</button>' +
-            '<button data-aln="center">' + IC.alnC + '</button>' +
-            '<button data-aln="right">' + IC.alnR + '</button>' +
+            '<button data-aln="left" class="on" aria-label="\uc67c\ucabd \uc815\ub82c">' + IC.alnL + '</button>' +
+            '<button data-aln="center" aria-label="\uac00\uc6b4\ub370 \uc815\ub82c">' + IC.alnC + '</button>' +
+            '<button data-aln="right" aria-label="\uc624\ub978\ucabd \uc815\ub82c">' + IC.alnR + '</button>' +
           '</span>' +
-          '<span class="itsize">크기<input type="range" min="0.5" max="8" step="0.02" value="1" data-r="size"></span>' +
+          '<span class="itsize">크기<input type="range" min="0.5" max="8" step="0.02" value="1" data-r="size" aria-label="글자 크기"></span>' +
+        '</div>' +
+        /* [2026-09-11] 글자 스타일 — 미리보기 '가' 를 그 효과 그대로 렌더한다(이름표 없이 눈으로 고른다).
+           오른쪽은 기울기. 회전 핸들이 이미 있지만 눈에 안 띄고 미세조정이 안 돼서 슬라이더를 같이 둔다. */
+        '<div class="ittext__row">' +
+          '<span class="ittst" data-r="tstyle">' +
+            TSTYLES.map(function (t) {
+              return '<button class="ittst__b ittst__b--' + t.key + '" data-tstyle="' + t.key + '" aria-label="' + t.label + '">가</button>';
+            }).join('') +
+          '</span>' +
+          '<span class="itsize itsize--tilt">기울기<input type="range" min="-45" max="45" step="1" value="0" data-r="tilt" aria-label="글자 기울기"><b data-r="tiltout">0\u00B0</b></span>' +
         '</div>' +
         '<div class="itfonts" data-r="fonts">' + fonts + '</div>' +
         '<div class="itcolors" data-r="colors">' + colors + _rbSw('text', 'itsw') + _pipSw('text', 'itsw') + '</div>' +
@@ -384,7 +436,7 @@
   function buildAdjust() {
     var sliders = ADJ_CTRLS.map(function (c) {
       return '<div class="itadj__row"><span>' + c.label + '</span>' +
-        '<input type="range" min="' + c.min + '" max="' + c.max + '" step="1" data-adj="' + c.k + '">' +
+        '<input type="range" min="' + c.min + '" max="' + c.max + '" step="1" data-adj="' + c.k + '" aria-label="' + c.label + '">' +
         '<b data-adjout="' + c.k + '">0</b></div>';
     }).join('');
     return '<div class="itpanel itadj" data-panel="adjust">' +
@@ -405,7 +457,7 @@
         '<button class="itlaybg itlaybg--more" data-cutmore aria-label="색 더 보기">+</button>' +
       '</div>' +
       '<div class="itadj__row itadj__rotrow"><span>수평</span>' +
-        '<input type="range" min="-15" max="15" step="0.5" value="0" data-r="adjRot"><b data-r="adjRotOut">0°</b></div>' +
+        '<input type="range" min="-15" max="15" step="0.5" value="0" data-r="adjRot" aria-label="사진 수평"><b data-r="adjRotOut">0°</b></div>' +
       sliders +
       '<button class="itadj__reset" data-r="adjReset">이 사진 보정 초기화</button>' +
     '</div>';
@@ -490,7 +542,11 @@
     var t = el('div', 'itl-text'); t.textContent = text;
     t.style.cssText = 'font-family:' + L.font.family + ';font-weight:' + L.font.weight + ';color:' + L.color + ';text-align:center;font-size:' + L.fontSize + 'px;white-space:pre;text-shadow:0 2px 8px rgba(0,0,0,.35)';
     L.el.appendChild(t); L.tx = t;
-    placeCenter(L, 200, 60); selectLayer(L);
+    L.tstyle = 'shadow'; _applyTextStyle(L);
+    placeCenter(L, 200, 60);
+    _fitTextInStage(L);   // [2026-09-11] 글자 스티커도 스테이지 안에 — 긴 문구가 화면 밖으로 나가면 발행본에서 잘린다
+    _bindTextGrow(L);     // 나중에 고쳐도 폭이 따라오게(생성 경로마다 붙인다)
+    selectLayer(L);
     _pushOp({ op: 'add', L: L });
     closeStickerSheet();
     return L;
@@ -506,7 +562,7 @@
               '<div class="itshape__row">' + chips + '</div>' +
       '<div class="itshape__opts">' +
         '<span class="itshape__fill" data-r="shapeFill"><button data-shapefill="0" class="on">선만</button><button data-shapefill="1">채움</button></span>' +
-        '<span class="itshape__thick">굵기<input type="range" min="2" max="26" step="1" value="6" data-r="shapeThick"></span>' +
+        '<span class="itshape__thick">굵기<input type="range" min="2" max="26" step="1" value="6" data-r="shapeThick" aria-label="도형 굵기"></span>' +
       '</div>' +
       '<div class="itshape__colors">' + colors + _rbSw('shape', 'itscw') + '</div>' +
     '</div>';
@@ -528,7 +584,7 @@
       '<div class="itlay2__strip" data-r="layStrip"></div>' +
       '<div class="itlay2__ctrls">' +
         '<span class="itlay2__fit" data-r="layFit"><button data-fit="cover">꽉 채움</button><button data-fit="contain" class="on">전체</button></span>' +
-        '<span class="itlay2__gap">간격<input type="range" min="0" max="24" step="1" value="3" data-r="layGap"></span>' +
+        '<span class="itlay2__gap">간격<input type="range" min="0" max="24" step="1" value="3" data-r="layGap" aria-label="사진 간격"></span>' +
         '<span class="itlay2__bg">' + bg + _rbSw('layout', 'itlaybg') + '</span>' +
         '<label class="itlay2__add itlay2__bgimg">' + IC.addphoto + '배경<input type="file" accept="image/*" data-r="layBgImg" hidden></label>' +
         '<label class="itlay2__add">' + IC.addphoto + '사진<input type="file" accept="image/*" data-r="layAdd" hidden></label>' +
@@ -546,13 +602,14 @@
       '<div class="itgrip itgrip--p" data-pgrip></div>' +
       '<div class="itdrawp__tools">' + brushes +
         '<button class="itdrawp__clear" data-r="drawClear">' + svg('<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>', 2) + '전체 지우기</button></div>' +
-      '<div class="itdrawp__size"><span class="itdrawp__lbl">굵기</span><input type="range" min="3" max="40" step="1" value="10" data-r="brushSize"></div>' +
+      '<div class="itdrawp__size"><span class="itdrawp__lbl">굵기</span><input type="range" min="3" max="40" step="1" value="10" data-r="brushSize" aria-label="붓 굵기"></div>' +
       '<div class="itdrawp__colors">' + colors + _rbSw('draw', 'itdsw') + _pipSw('draw', 'itdsw') + '</div>' +
     '</div>';
   }
 
   function cacheRefs() {
-    ['stage', 'photowrap', 'photo', 'photofx', 'collage', 'frame', 'draw', 'layers', 'rail', 'cancel', 'done', 'aln', 'size', 'fonts', 'colors', 'stkSheet', 'layHint', 'layStrip', 'layGap', 'layAdd', 'brushSize', 'featLocTx', 'myStk', 'stkUpload', 'stkTabs', 'stkBody', 'shapeThick', 'adjStrip', 'adjReset', 'adjRot', 'adjRotOut', 'grid', 'adjCut', 'adjUncut', 'adjCutBg', 'adjBgImg', 'layFit', 'layBgImg', 'undo', 'redo', 'peek', 'drawClear', 'addText'].forEach(function (k) {
+    ['tstyle', 'tilt', 'tiltout',
+      'stage', 'photowrap', 'photo', 'photofx', 'collage', 'frame', 'draw', 'layers', 'rail', 'cancel', 'done', 'aln', 'size', 'fonts', 'colors', 'stkSheet', 'layHint', 'layStrip', 'layGap', 'layAdd', 'brushSize', 'featLocTx', 'myStk', 'stkUpload', 'stkTabs', 'stkBody', 'shapeThick', 'adjStrip', 'adjReset', 'adjRot', 'adjRotOut', 'grid', 'adjCut', 'adjUncut', 'adjCutBg', 'adjBgImg', 'layFit', 'layBgImg', 'undo', 'redo', 'peek', 'drawClear', 'addText'].forEach(function (k) {
       refs[k] = root.querySelector('[data-r="' + k + '"]');
     });
     refs.panels = {};
@@ -572,6 +629,13 @@
        elementFromPoint 가 색 스와치(.itdsw)를 준다 — 원장은 '앞으로 보내기'를 눌렀는데 색이 바뀐다.
        패널이 열려 있는 동안엔 줄 자체를 감춘다(패널을 닫으면 그대로 돌아온다). */
     root.classList.toggle('itded--panel', !!tool);
+    /* [BUG-04] 레이어 순서 줄을 열린 패널 **위**로 띄우기 위한 높이. 패널마다 높이가 달라 상수로 못 쓴다.
+       패널이 없으면 지워서 CSS 기본값(bottom:0)으로 돌아가게 한다. */
+    try {
+      var _op = tool && refs.panels[tool];
+      if (_op) root.style.setProperty('--itpanel-h', (_op.offsetHeight || 180) + 'px');
+      else root.style.removeProperty('--itpanel-h');
+    } catch (_ph) { void _ph; }
     var drawing = tool === 'draw', inLayout = tool === 'layout';
     refs.draw.classList.toggle('is-armed', drawing);
     refs.draw.style.zIndex = drawing ? '5' : '3';
@@ -600,10 +664,10 @@
   /* ── 레이어 공통(드래그) ── */
   function makeLayer(type) {
     var box = el('div', 'itl');
-    box.innerHTML = '<button class="itl__del">' + svg('<path d="M18 6L6 18M6 6l12 12"/>', 2.4) + '</button>' +
+    box.innerHTML = '<button class="itl__del" aria-label="\uc9c0\uc6b0\uae30">' + svg('<path d="M18 6L6 18M6 6l12 12"/>', 2.4) + '</button>' +
       '<button class="itl__dup" aria-label="복제">' + svg('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>', 2.1) + '</button>' +
-      '<button class="itl__rot">' + svg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>', 2.2) + '</button>' +
-      '<button class="itl__rs">' + IC.rs + '</button>';
+      '<button class="itl__rot" aria-label="\ud68c\uc804">' + svg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>', 2.2) + '</button>' +
+      '<button class="itl__rs" aria-label="\ud06c\uae30 \uc870\uc808">' + IC.rs + '</button>';
     var L = { type: type, el: box, x: 0, y: 0, scale: 1, rot: 0 };
     box.addEventListener('pointerdown', function (e) { onLayerDown(e, L); });
     // [#8b] 삭제/복제 핸들은 몸통과 겹쳐 있어, 몸통을 탭하면 그 위의 ×가 눌려 레이어가 사라지곤 했다.
@@ -630,6 +694,43 @@
     refs.layers.appendChild(box);
     S.layers.push(L);
     return L;
+  }
+  /* [2026-09-11] 글자 박스를 스테이지 안에 유지한다.
+     🔴 예전 동작: `placeCenter(L, 180, 50)` 이 **글자를 치기 전 180px 기준**으로 왼쪽 좌표를 잡고,
+     그 뒤로 글자가 오른쪽으로만 자랐다. 줄바꿈도 클램프도 없어서(white-space:pre · max-width:none)
+     21자짜리 평범한 한글 문장이 스테이지를 넘어갔다 — 화면에서도, **발행본에서도 잘렸다**
+     (실측: 스테이지 656px 에서 21자 → 오른쪽 끝 1.056 / 36자 → 1.499).
+     규칙: 원장이 아직 안 옮긴 글자는 가로 가운데를 지킨다(치는 대로 좌우로 같이 자란다).
+     한 번 옮긴 뒤에는 그 위치를 존중하되, 박스가 스테이지 밖으로 나가면 되돌려 넣는다. */
+  function _fitTextInStage(L) {
+    if (!L || !L.el || !refs.stage) return;
+    var R = refs.stage.getBoundingClientRect(); if (!R.width) return;
+    var w = L.el.offsetWidth * (L.scale || 1), h = L.el.offsetHeight * (L.scale || 1);
+    if (!L._moved) L.x = (R.width - w) / 2;
+    // 박스가 스테이지보다 크면 클램프가 의미 없다 — 그때는 가운데로 둔다.
+    L.x = (w >= R.width) ? (R.width - w) / 2 : Math.max(0, Math.min(R.width - w, L.x));
+    L.y = (h >= R.height) ? (R.height - h) / 2 : Math.max(0, Math.min(R.height - h, L.y));
+    applyXf(L);
+  }
+  /* [2026-09-11] 글자 내용이 바뀌면 **저장 당시 폭 제한을 풀고** 상자를 다시 맞춘다.
+     🔴 안 풀면: 저장→재편집한 글자에 내용을 더할 때 상자가 안 커지고 잘게 접힌다.
+     실측(스테이지 533px) — 복원된 상자 max-width 71px 에서 38자를 치니 **16줄**,
+     같은 문장을 새 글자에 치면 469px 에서 2줄이었다.
+     복원이 폭을 지키는 건 BUG-07(안 건드린 글자의 줄바꿈 보존) 때문이고 그 근거는
+     '저장 당시의 그 글자'다. 글자가 바뀌면 근거가 사라진다.
+     '가로 늘리기'(L.wrapW)로 원장이 직접 정한 폭은 손대지 않는다 — 명시적 선택이다.
+     ⚠️ editText 가 아니라 **레이어를 만들 때** 붙인다. 편집 진입 경로가 여러 개라
+        한 곳에만 붙이면 나머지 경로에선 안 돈다(이 레포에서 반복된 실수다). */
+  function _bindTextGrow(L) {
+    if (!L || !L.tx || L._growBound) return;
+    L._growBound = 1;
+    L.tx.addEventListener('input', function () {
+      if (!L.wrapW) {
+        var _R = refs.stage && refs.stage.getBoundingClientRect();
+        if (_R && _R.width) L.tx.style.maxWidth = Math.round(_R.width * 0.88) + 'px';
+      }
+      _fitTextInStage(L);
+    });
   }
   function placeCenter(L, w, h) {
     var r = refs.stage.getBoundingClientRect();
@@ -770,7 +871,132 @@
   // [P1-3] 구조적 undo/redo — 추가/삭제/복제만 추적(실제 DOM 노드 보존, 재생성 안 함 → 안전).
   //   이동·색변경 등 속성 변화는 드래그로 쉽게 재조정 가능하므로 제외. 가장 치명적인 '실수 삭제'를 확실히 커버.
   function _pushOp(op) { if (!S.undo) S.undo = []; S.undo.push(op); S.redo = []; if (S.undo.length > 40) S.undo.shift(); _syncHist(); }
+  /* ── [BUG-03 2026-09-09] 스타일 변경도 되돌리기 대상 ─────────────────────────
+     예전 히스토리는 add·del·move·resize·wrap·cellcrop·photo 만 담았다.
+     폰트·색·정렬·크기·보정은 **하나도 안 담겨서**, 색을 바꾼 뒤 ↩ 를 누르면
+     '색이 되돌아가는' 게 아니라 **그 앞 op(=레이어 추가)이 취소돼 글자가 통째로 사라졌다**
+     (브라우저 실측: ↩ 1회=이동취소, 2회=레이어 삭제). 원장 입장에선 파괴적이고 예측 불가다. */
+
+  /* ─────────────────────────────────────────────────────────────────────
+     [2026-09-11] 인스타식 글자 스타일 — 그림자/외곽선/배경박스를 원장이 고른다.
+
+     왜: 지금까지 `.itl-text` CSS 가 **모든 글자에** `text-shadow:0 1px 12px rgba(0,0,0,.4)` 를
+     강제했다. 끌 수도 키울 수도 없었고, 밝은 배경에 깔끔한 납작 글씨를 쓰고 싶어도 방법이 없었다.
+     게다가 canvas 내보내기는 `shadowBlur 8 / rgba(0,0,0,.35) / 오프셋 0` 이라 **화면과 값이 달랐다.**
+
+     기본값은 'shadow' 다 — 기존 작업물·자동초안이 보이던 그대로 나온다(회귀 0).
+     ⚠️ DOM 과 canvas 는 렌더러가 달라서 **한쪽만 고치면 발행본에서 조용히 사라진다**(이 파일에서
+     외곽선으로 이미 한 번 겪었다). 그래서 값을 상수 하나로 묶고 양쪽이 같은 걸 읽게 한다. */
+  var TSTYLES = [
+    { key: 'none', label: '기본' }, { key: 'shadow', label: '그림자' },
+    { key: 'outline', label: '외곽선' }, { key: 'bg', label: '배경' }
+  ];
+  var TS = {
+    shadowCss: '0 2px 10px rgba(0,0,0,.45)',
+    shadowRgba: 'rgba(0,0,0,.45)', shadowBlur: 10, shadowDy: 2,
+    strokeCss: '1px rgba(0,0,0,.55)', strokeRgba: 'rgba(0,0,0,.55)', strokeW: 2,
+    /* 좌우 패딩은 기본(.itl-text 의 10px)과 **같아야 한다**. 키웠더니 같은 max-width 안에서
+       글자가 쓸 수 있는 폭이 줄어 '배경'으로 바꾸는 순간 한 줄이 두 줄로 접혔다(실측).
+       넉넉한 느낌은 세로 패딩과 모서리로 낸다 — 세로는 줄바꿈에 영향이 없다. */
+    bgPadX: 10, bgPadY: 9, bgRadius: 12
+  };
+  /** 구버전 초안 호환 — tstyle 이 없으면 예전 stroke/shadow 플래그로 유추한다. */
+  function _tstyleOf(L) {
+    if (!L) return 'shadow';
+    if (L.tstyle) return L.tstyle;
+    if (L.bg) return 'bg';
+    if (L.stroke) return 'outline';
+    /* tstyle 이 없는 **옛 초안**은 예전 CSS 가 전원에게 그림자를 줬으므로 'shadow' 가 맞다.
+       L.shadow=false 를 'none' 으로 읽으면 예전에 저장한 글자들이 재편집에서 납작해진다
+       (`_serLayer` 가 base.shadow=false 로 저장해 왔다). 'none' 은 새로 고른 사람만 갖는다. */
+    return 'shadow';
+  }
+  /** 색 문자열(#rgb·#rrggbb·rgb()) → 그 위에서 읽히는 글자색. 못 읽으면 흰색. */
+  function _inkOn(col) {
+    try {
+      var r, g, b, c = String(col || '').trim();
+      var m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(c);
+      if (m) {
+        var h = m[1];
+        if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+        r = parseInt(h.slice(0, 2), 16); g = parseInt(h.slice(2, 4), 16); b = parseInt(h.slice(4, 6), 16);
+      } else {
+        var n = c.match(/[\d.]+/g); if (!n || n.length < 3) return '#ffffff';
+        r = +n[0]; g = +n[1]; b = +n[2];
+      }
+      // sRGB 상대휘도 — 0.5 를 경계로 검/흰
+      return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.55 ? '#1c1316' : '#ffffff';
+    } catch (_e) { void _e; return '#ffffff'; }
+  }
+  /** 글자 레이어의 스타일을 DOM 에 반영. 예전 플래그(L.stroke/L.shadow)도 같이 맞춘다 —
+      가독성 자동보정과 _serLayer 가 그 둘을 읽기 때문. */
+  function _applyTextStyle(L) {
+    if (!L || !L.tx) return;
+    var k = _tstyleOf(L), st = L.tx.style;
+    L.tstyle = k;
+    L.stroke = (k === 'outline'); L.shadow = (k === 'shadow'); L.bg = (k === 'bg');
+    /* 외곽선에도 그림자를 남긴다 — 예전엔 CSS 가 모든 글자에 그림자를 줬고 canvas 도 fill 에
+       그림자를 씌웠다. 여기서 빼면 기존 작업물의 외곽선 글씨가 조용히 납작해진다.
+       납작한 글씨를 원하면 '기본'을 고르면 된다(그게 이번에 새로 생긴 선택지다). */
+    st.textShadow = (k === 'shadow' || k === 'outline') ? TS.shadowCss : 'none';
+    st.webkitTextStroke = (k === 'outline') ? TS.strokeCss : '';
+    if (k === 'bg') {
+      st.background = L.color; st.color = _inkOn(L.color);
+      st.padding = TS.bgPadY + 'px ' + TS.bgPadX + 'px';
+      st.borderRadius = TS.bgRadius + 'px';
+      st.boxDecorationBreak = 'clone'; st.webkitBoxDecorationBreak = 'clone';
+    } else {
+      st.background = 'transparent'; st.color = L.color;
+      st.padding = '6px 10px'; st.borderRadius = '0';
+    }
+  }
+  function _styleOf(L) {
+    if (!L) return null;
+    return { font: (L.font && L.font.key) || null, color: L.color, align: L.align,
+      scale: L.scale, fontSize: L.fontSize, tstyle: _tstyleOf(L), rot: L.rot || 0 };
+  }
+  function _applyStyleTo(L, v) {
+    if (!L || !v) return;
+    if (v.font) { var f = fontByKey(v.font); if (f) { L.font = f; if (L.tx) { L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight; } } }
+    if (v.color != null) { L.color = v.color; if (L.tx) L.tx.style.color = v.color; }
+    if (v.tstyle != null) { L.tstyle = v.tstyle; }
+    if (v.rot != null) L.rot = v.rot;
+    if (L.type === 'text' && L.tx) _applyTextStyle(L);   // 색이 바뀌면 배경박스/잉크색도 다시 계산
+    if (v.align != null) { L.align = v.align; if (L.tx) L.tx.style.textAlign = v.align; }
+    if (v.fontSize != null) { L.fontSize = v.fontSize; if (L.tx) L.tx.style.fontSize = v.fontSize + 'px'; }
+    if (v.scale != null) L.scale = v.scale;
+    applyXf(L);
+    try { if (L.type === 'text') syncTextControls(L); } catch (_e) { void _e; }
+  }
+  /** 변화가 없으면 스택에 안 쌓는다 — 같은 색을 다시 눌러도 ↩ 가 헛돌지 않게. */
+  function _pushStyle(L, before) {
+    if (!L || !before) return;
+    var after = _styleOf(L);
+    try { if (JSON.stringify(before) === JSON.stringify(after)) return; } catch (_e) { void _e; }
+    _pushOp({ op: 'style', L: L, before: before, after: after });
+  }
+  var _adjSnap = null;
+  var _tiltSnap = null;   // 기울기 드래그 시작 시점 스냅(되돌리기 한 칸)
+  function _pushAdj(idx, before) {
+    if (before == null) return;
+    var after = Object.assign({}, adjOf(idx));
+    try { if (JSON.stringify(before) === JSON.stringify(after)) return; } catch (_e) { void _e; }
+    _pushOp({ op: 'adj', idx: idx, before: before, after: after });
+  }
   function _applyInverse(op, undo) {
+    // [BUG-03] 스타일(폰트·색·정렬·크기) 되돌리기
+    if (op.op === 'style') {
+      _applyStyleTo(op.L, undo ? op.before : op.after);
+      if (op.L) selectLayer(op.L);
+      return;
+    }
+    // [BUG-03] 사진 보정(밝기·대비·채도·온도·선명도·수평) 되돌리기
+    if (op.op === 'adj') {
+      S.adj = S.adj || [];
+      S.adj[op.idx] = Object.assign(defAdj(), undo ? op.before : op.after);
+      try { syncAdjSliders(); applyAdjToDisplay(); applyStraighten(); renderAdjust(); } catch (_e) { void _e; }
+      return;
+    }
     // [#9] 누끼/원본(사진 교체)도 되돌리기(↩)로 되돌린다 — 예전엔 undo 스택 밖이라 ↩가 무반응이었음.
     if (op.op === 'photo') {
       var st = undo ? op.before : op.after, pi = op.idx;
@@ -821,7 +1047,23 @@
        ↪ 1회에 2개로 줄었다. 삭제도 같은 이유로 ↩ 가 복원 대신 재삭제였다.
        ⚠️ 이동/크기/wrap/사진교체/wmApply 는 위에서 이미 return 하므로 영향 없음 — add/del 만 해당. */
     var add = (op.op === 'add') !== undo;   // undo: add→제거, del→복원 / redo: 반대
-    if (add) { if (refs.layers && op.L.el) refs.layers.appendChild(op.L.el); if (S.layers.indexOf(op.L) < 0) { var at = (op.idx != null && op.idx <= S.layers.length) ? op.idx : S.layers.length; S.layers.splice(at, 0, op.L); } selectLayer(op.L); }
+    /* 🔴 [2026-09-11] 모델은 제자리(op.idx)에 되돌리는데 **DOM 은 항상 맨 뒤에 붙이고 있었다.**
+       굽기는 S.layers(모델 순서)로 그리므로, 실수로 지웠다가 ↩ 하면
+       **화면에선 그 레이어가 맨 위인데 발행본에선 원래 자리**로 나갔다 — 화면 ≠ 발행본.
+       실측: 같은 자리에 겹친 A·B·C 에서 B 를 지우고 ↩ →
+         화면 맨 위 = BBBB / 발행본 맨 위 = CCCC(박스색 rgb(110,155,196) 로 확인).
+       '실수 삭제 → 되돌리기' 는 흔한 동작이라 조용히 다른 사진이 나간다.
+       모델에 넣는 자리와 **같은 자리**에 DOM 도 끼워 넣는다. */
+    if (add) {
+      var at = (op.idx != null && op.idx <= S.layers.length) ? op.idx : S.layers.length;
+      if (S.layers.indexOf(op.L) < 0) S.layers.splice(at, 0, op.L);
+      if (refs.layers && op.L.el) {
+        var ref = S.layers[at + 1];                       // 모델상 바로 위 레이어
+        if (ref && ref.el && ref.el.parentNode === refs.layers) refs.layers.insertBefore(op.L.el, ref.el);
+        else refs.layers.appendChild(op.L.el);
+      }
+      selectLayer(op.L);
+    }
     else { var i = S.layers.indexOf(op.L); if (i >= 0) S.layers.splice(i, 1); op.L.el.remove(); if (S.active === op.L) S.active = null; }
   }
   function _undo() { if (!S.undo || !S.undo.length) return; var op = S.undo.pop(); _applyInverse(op, true); S.redo = S.redo || []; S.redo.push(op); _syncHist(); }
@@ -910,6 +1152,7 @@
     }
     if (!drag) return;
     if (S) _ps().moved = true;   // [P2-1] 사용자가 직접 옮기면 자동 회피 우선권 해제 — **이 장에 한해서**
+    drag.L._moved = true;   // [2026-09-11] 한 번 옮기면 자동 가운데 정렬을 멈춘다(원장 배치 존중)
     drag.L.x = drag.ox + (e.clientX - drag.sx);
     drag.L.y = drag.oy + (e.clientY - drag.sy);
     drag.moved = true;   // [#9] 실제로 움직였을 때만 되돌리기 스택에 남긴다(탭만 하면 안 남김)
@@ -1037,10 +1280,22 @@
     }
     var L = makeLayer('text');
     L.font = FONTS[0]; L.color = COLORS[0]; L.align = 'center'; L.fontSize = 30; L.text = PLACEHOLDER;
+    L.tstyle = 'shadow';   // [2026-09-11] 예전엔 CSS 가 전원에게 그림자를 강제했다 — 기본값을 맞춰 보이는 건 그대로.
     // [2026-07-26 원영] white-space:pre — 편집 중 자동 줄바꿈 금지(엔터 친 곳만 줄바꿈).
     //   export 캔버스는 split('\n')으로 엔터만 줄바꿈이라, 편집 화면도 동일해야 WYSIWYG.
-    var t = el('div', 'itl-text'); t.textContent = L.text; t.style.cssText = 'font-family:' + L.font.family + ';font-weight:' + L.font.weight + ';color:' + L.color + ';text-align:center;font-size:' + L.fontSize + 'px;white-space:pre';
+    /* [2026-09-11] 예전엔 `white-space:pre` 라 자동 줄바꿈이 없었다. 그 주석의 근거는
+       "export 가 split('\n') 이라 화면도 같아야 한다" 였는데, 지금 굽기는 `_textLines` 로
+       **실제 렌더된 줄 박스**를 재므로 그 전제가 사라졌다(소프트 줄바꿈도 그대로 잡는다).
+       복원 경로(_addShopLayerText)는 이미 pre-wrap + keep-all 이라 타이핑과 복원이 갈라져 있었다.
+       max-width 는 스테이지의 88% — 넘치면 잘리는 게 아니라 어절 단위로 접힌다. */
+    var _stR = refs.stage.getBoundingClientRect();
+    var t = el('div', 'itl-text'); t.textContent = L.text;
+    t.style.cssText = 'font-family:' + L.font.family + ';font-weight:' + L.font.weight + ';color:' + L.color
+      + ';text-align:center;font-size:' + L.fontSize + 'px'
+      + ';white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere'
+      + (_stR.width ? ';max-width:' + Math.round(_stR.width * 0.88) + 'px' : '');
     L.el.appendChild(t); L.tx = t;
+    _applyTextStyle(L);
     placeCenter(L, 180, 50); selectLayer(L);
     _pushOp({ op: 'add', L: L });   // [P1-3] 추가 되돌리기
     editText(L);   // [2026-09-05] 동기 호출 필수 — setTimeout 으로 미루면 모바일 키보드가 안 올라온다(위 주석 ③)
@@ -1063,7 +1318,17 @@
       //   두 줄 입력이 한 줄로 뭉쳤다(미리보기·export·재편집 3곳 불일치). innerText 는 개행을 \n 으로 보존.
       var _t = (L.tx.innerText != null ? L.tx.innerText : L.tx.textContent) || '';
       L.text = _t.replace(/ /g, ' ').replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '');
+      _fitTextInStage(L);   // [2026-09-11] 다 치고 나면 박스를 스테이지 안으로(안 그러면 발행본에서 잘린다)
     }, { once: true });
+    /* (아래 규칙은 _bindTextGrow 로 옮겼다 — 편집 진입 경로가 여럿이라 여기에만 붙이면 샌다.)
+       [2026-09-11] 글자를 고치기 시작하면 **저장 당시 폭 제한을 푼다.**
+       🔴 그러지 않으면: 저장→재편집한 글자에 내용을 더할 때 상자가 안 커지고 잘게 접힌다.
+       실측(스테이지 533px) — 복원된 상자 max-width 178px 에서 38자를 치니 **8줄**,
+       같은 문장을 새 글자에 치면 469px 에서 2줄이었다.
+       복원이 폭을 지키는 건 BUG-07(안 건드린 글자의 줄바꿈 보존) 때문이고, 그 근거는
+       '저장 당시의 그 글자'다. 글자가 바뀌면 그 근거가 사라진다.
+       '가로 늘리기'(L.wrapW)로 원장이 직접 정한 폭은 손대지 않는다 — 그건 명시적 선택이다. */
+    _bindTextGrow(L);
   }
   /* ── 우리샵 스타일 입력 레이어 렌더(학습 round-trip용) ── */
   function fontByKey(k) { for (var i = 0; i < FONTS.length; i++) { if (FONTS[i].key === k) return FONTS[i]; } return null; }
@@ -1105,6 +1370,9 @@
     L.text = spec.text || '';
     L.stroke = !!(spec.outline && spec.outline.on) || !!spec.stroke;
     L.shadow = isBadge || !!(spec.shadow && spec.shadow.on) || !!spec.shadow;
+    /* [2026-09-11] tstyle 이 있으면 그게 정본. 없는 옛 초안은 stroke/shadow 로 유추한다
+       (배지는 자기 배경을 이미 갖고 있으므로 'bg' 로 승격시키지 않는다). */
+    L.tstyle = spec.tstyle || (isBadge ? 'shadow' : _tstyleOf(L));
     var t = el('div', 'itl-text'); t.textContent = L.text;
     /* [2026-07-23 보스] 한글 줄바꿈 — word-break:keep-all 로 **어절(띄어쓰기) 단위**로 끊는다.
        기본값(normal)은 한글을 글자 단위로 끊어서 '속눈썹 연/장', '뿌리염/색' 처럼 어색하게 잘렸다.
@@ -1121,13 +1389,56 @@
        [wrapW] 원장이 '가로 늘리기' 핸들로 **직접 정한 폭**은 max-width 가 아니라 고정 width 다.
        예전엔 _serLayer 가 이 값을 안 실어서 재편집 때 통째로 사라졌다. */
     if (spec.wrapW != null) { L.wrapW = Math.max(40, Math.round(spec.wrapW * R.width)); css += ';width:' + L.wrapW + 'px'; }
-    else if (spec.w != null) css += ';max-width:' + (Math.ceil(spec.w * R.width) + 1) + 'px';
-    if (L.stroke) css += ';-webkit-text-stroke:1px rgba(0,0,0,.5)';
-    if (L.shadow) css += ';text-shadow:0 2px 8px rgba(0,0,0,.35)';
+    /* [2026-09-11] `+1` 은 BUG-07 의 반올림 보정인데 **왕복마다 누적**된다(실측 3회: 469→470→471px).
+       상한이 없으면 반복 재편집으로 상자가 스테이지보다 넓어져 다시 잘리기 시작한다.
+       스테이지 폭으로 막는다 — 그 안에서의 여유는 겉보기에 영향이 없다. */
+    else if (spec.w != null) css += ';max-width:' + Math.min(Math.ceil(spec.w * R.width) + 1, Math.round(R.width)) + 'px';
+    // [2026-09-11] 외곽선·그림자·배경은 _applyTextStyle 이 아래에서 한 번에 건다(값 단일화).
     if (isBadge) css += ';background:' + (spec.bg || 'rgba(0,0,0,.32)') + ';padding:4px 10px;border-radius:8px';
     if (spec.opacity != null) css += ';opacity:' + spec.opacity;
     t.style.cssText = css; L.el.appendChild(t); L.tx = t;
+    if (!isBadge) _applyTextStyle(L);   // 배지는 자기 배경/패딩이 있어 건드리지 않는다
     // [#2c] 긴 시술내용/두 줄 이상도 안 잘리게 — 텍스트 블록이 사진 높이의 ~1/3을 넘으면 폰트를 줄여 자동으로 맞춘다.
+    /* [BUG-07 2026-09-10] 저장 당시 줄 수를 지킨다.
+       폰트 메트릭이 크기에 선형이 아니라(실측 4%), 상대폭으로 되살린 max-width 가 몇 px 모자라
+       한 줄짜리가 두 줄로 접히는 일이 있었다. 줄이 **늘어난 경우에만** 폭을 넓혀 되돌린다 —
+       의도해서 두 줄로 만든 문구는 건드리지 않는다. 스테이지 폭을 넘지 않게 상한을 둔다.
+       (wrapW 는 원장이 직접 정한 고정폭이라 여기서 손대지 않는다.) */
+    if (spec.lines > 0 && spec.wrapW == null && spec.w != null && R.width) {
+      var _want = spec.lines, _cap = Math.floor(R.width * 0.98), _cur = Math.ceil(spec.w * R.width) + 1;
+      if (_want === 1) {
+        /* 한 줄이었으면 **자연 폭을 직접 재서** 정확히 맞춘다 — 루프보다 정확하고 한 번에 끝난다.
+           (줄바꿈을 잠깐 끄고 재고 되돌린다. 대부분의 접힘 사고가 이 경우다.) */
+        var _ws = t.style.whiteSpace, _mw = t.style.maxWidth;
+        t.style.whiteSpace = 'pre'; t.style.maxWidth = 'none';
+        var _nat = Math.ceil(t.getBoundingClientRect().width) + 1;
+        t.style.whiteSpace = _ws || 'pre-wrap'; t.style.maxWidth = _mw;
+        if (_nat > _cur) { _cur = Math.min(_cap, _nat); t.style.maxWidth = _cur + 'px'; }
+      } else {
+        var _guard = 0;
+        while (_lineCount(t, L.fontSize) > _want && _cur < _cap && _guard++ < 40) {
+          _cur = Math.min(_cap, Math.ceil(_cur * 1.08) + 1);
+          t.style.maxWidth = _cur + 'px';
+        }
+      }
+    }
+    /* [2026-09-11] 🔴 **한 단어는 절대 쪼개지 않는다.**
+       실측(라이브): 'BEFORE' 배지가 발행본에서 `BEFOR / E` 로 갈라져 나왔다.
+       자연 폭 102px, 복원된 max-width 102px — **1px 미만 차이**로 접히고
+       `overflow-wrap:anywhere` 가 단어 중간을 끊었다.
+       위 BUG-07 가드는 `spec.lines` 가 있어야 도는데, 자동 초안이 넣는 레이어에는 그 값이 없어
+       배지·짧은 라벨이 무방비였다. 공백 없는 한 덩어리가 두 줄 이상이면 자연 폭으로 넓힌다
+       (스테이지 폭이 상한 — 진짜로 화면보다 긴 단어는 예전대로 anywhere 가 끊는다). */
+    if (spec.wrapW == null && R.width && !/\s/.test(String(L.text || ''))) {
+      if (_lineCount(t, L.fontSize) > 1) {
+        var _ws0 = t.style.whiteSpace, _mw0 = t.style.maxWidth;
+        t.style.whiteSpace = 'pre'; t.style.maxWidth = 'none';
+        var _nat1 = Math.ceil(t.getBoundingClientRect().width) + 1;
+        t.style.whiteSpace = _ws0 || 'pre-wrap'; t.style.maxWidth = _mw0;
+        var _cap1 = Math.floor(R.width * 0.98);
+        if (_nat1 <= _cap1) t.style.maxWidth = _nat1 + 'px';
+      }
+    }
     if (spec.w != null && R.height) { var _maxH = R.height * 0.34, _g = 0; while (L.el.offsetHeight > _maxH && L.fontSize > 13 && _g++ < 16) { L.fontSize -= 2; t.style.fontSize = L.fontSize + 'px'; } }
     /* [2026-09-03 P3 실측] offsetWidth/Height 는 **정수로 반올림**된 값이고, _serLayer 는
        getBoundingClientRect 의 **소수 값**으로 중심을 계산한다. 두 척도가 달라서
@@ -1138,7 +1449,20 @@
     var bw = _bb.width || L.el.offsetWidth, bh = _bb.height || L.el.offsetHeight;
     L.x = (spec.x != null ? spec.x : 0.5) * R.width - bw / 2;
     L.y = (spec.y != null ? spec.y : 0.5) * R.height - bh / 2;
+    /* [2026-09-11] 기울기 복원 — **글자만 빠져 있었다.** 스티커(_addShopLayerSticker)와
+       도형은 `L.rot = spec.rot` 을 하는데 텍스트 경로에만 없어서, 기울여 놓은 글자가
+       저장했다 다시 열면 똑바로 돌아왔다(_serLayer 는 rot 를 실어 보내고 있었다).
+       실측으로 잡았다: -12° 로 완료 → 재편집하니 transform 이 matrix(1,0,0,1,…) 이었다. */
+    L.rot = spec.rot || 0;
+    /* [2026-09-11] 저장된 좌표는 원장의 배치다 — 자동 가운데로 덮지 않는다.
+       (`moved` 가 없는 옛 초안도 좌표는 저장돼 있으니 존중한다.)
+       다만 스테이지 밖으로 나간 상태로 저장됐다면 되돌려 넣는다 — 그대로 두면 발행본에서 잘린다. */
+    L._moved = (spec.moved != null) ? !!spec.moved : true;
+    _bindTextGrow(L);
+    // 원장이 고른 축 표식 복원 — 이게 없으면 자동 보정이 다시 덮는다(위 _serLayer 주석 참고)
+    if (spec.own && spec.own.length) { L._own = {}; for (var _oi = 0; _oi < spec.own.length; _oi++) L._own[spec.own[_oi]] = 1; }
     applyXf(L);
+    _fitTextInStage(L);
     return L;
   }
   // [#14] 우리샵 스타일에서 들어온 구분선 → 편집 가능한 line 도형 레이어로.
@@ -1219,9 +1543,23 @@
     if (!S || _ps().safeApplied || _ps().moved) return;
     if (!(window.ItdSafeZone && window.ItdSafeZone.avoidBox)) return;
     var url = S.photoUrl; if (!url) return;
-    _ps().safeApplied = true;   // 장마다 1회만
+    /* [P1 2026-09-10 실측] `_psIdx` 가 **이 함수엔 없는 이름**이었다 — `_applyPlanSafety` 의
+       지역변수라 아래 콜백에서 `ReferenceError: _psIdx is not defined` 가 났다.
+       라이브 콘솔 실측(build 20260909-2330-924b7e1, 편집기 열 때마다):
+         itd-editor.js:1307  ReferenceError: _psIdx is not defined
+       비동기 `.then` 안이라 앱은 안 죽고 **이 기능만 조용히 죽는다** —
+       얼굴/피사체 위에 얹힌 자동배치 텍스트를 비켜놓는 동작이 한 번도 실행된 적이 없다.
+       (테스트가 통과하는데 코드가 안 도는 그 패턴이다.)
+
+       고치면서 형제 함수 `_applyPlanSafety` 의 계약을 그대로 가져온다 —
+       비동기 결과는 **자기 세대(세션+장 번호)** 일 때만 쓴다. 안 그러면
+       1번 장 판단이 3번 장에 얹힌다(이 파일이 이미 겪은 경로다). */
+    var _psIdx = (S.adjSel || 0);
+    var mySession = S;
+    _ps(_psIdx).safeApplied = true;   // 장마다 1회만
     window.ItdSafeZone.avoidBox(url).then(function (box) {
-      if (!box || !S || _ps(_psIdx).moved || (S.layout && (S.layout.kind || 'single') !== 'single')) return;
+      if (!box || !S || S !== mySession || (S.adjSel || 0) !== _psIdx) return;
+      if (_ps(_psIdx).moved || (S.layout && (S.layout.kind || 'single') !== 'single')) return;
       var R = refs.stage.getBoundingClientRect(); if (!R.height) return;
       var atop = box.y * R.height, abot = (box.y + box.h) * R.height;
       var faceUpper = (atop + (abot - atop) / 2) < R.height * 0.55;
@@ -1378,8 +1716,14 @@
         });
         if (!fix) return;                       // 이미 잘 보인다 — 아무것도 안 한다
         if (fix.color && !isRole && !own.color) { L.color = fix.color; L.tx.style.color = fix.color; _planAxis(L, 'color'); }
-        if (fix.stroke && !L.stroke) { L.stroke = true; L.tx.style.webkitTextStroke = '1px rgba(0,0,0,.5)'; _planAxis(L, 'stroke'); }
-        if (fix.shadow && !L.shadow) { L.shadow = true; L.tx.style.textShadow = '0 2px 8px rgba(0,0,0,.35)'; _planAxis(L, 'shadow'); }
+        /* [2026-09-11] 가독성 자동보정도 _applyTextStyle 을 거친다 — 값을 여기서 따로 적으면
+           화면과 발행본이 갈라진다. 원장이 스타일을 직접 골랐으면(_own) 건드리지 않는다:
+           자동이 취향을 이기면 안 된다. 배경박스는 이미 대비가 확보돼 있어 손대지 않는다. */
+        var _ownTs = !!(L._own && L._own.tstyle), _curTs = _tstyleOf(L);
+        if (!_ownTs && _curTs !== 'bg') {
+          if (fix.stroke && _curTs !== 'outline') { L.tstyle = 'outline'; _applyTextStyle(L); _planAxis(L, 'stroke'); }
+          else if (fix.shadow && _curTs !== 'shadow') { L.tstyle = 'shadow'; _applyTextStyle(L); _planAxis(L, 'shadow'); }
+        }
         L._src = L._src || 'plan';
         L._planRead = fix;                      // 왜 바꿨는지 남긴다(디버그·되돌리기)
         fixed++;
@@ -1543,6 +1887,11 @@
     root.querySelectorAll('[data-color]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-color') === L.color); });
     refs.aln.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-aln') === L.align); });
     refs.size.value = L.scale;
+    // [2026-09-11] 스타일 칩·기울기도 현재 레이어를 따라간다 — 안 하면 레이어를 바꿔도 옛 선택이 켜져 보인다.
+    var _k = _tstyleOf(L);
+    root.querySelectorAll('[data-tstyle]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tstyle') === _k); });
+    if (refs.tilt) refs.tilt.value = Math.round(L.rot || 0);
+    if (refs.tiltout) refs.tiltout.textContent = Math.round(L.rot || 0) + '\u00B0';
   }
   /* [T8-A 2026-08-19] 원장 조작 관찰 — undo 스택(_pushOp)과 완전히 분리된 경로다.
      _pushOp 에 속성변경을 넣으면 ↩ 동작이 바뀌어 T4 계약이 깨지므로 여기서만 기록한다.
@@ -1565,10 +1914,33 @@
     try { if (L && L._planAxes && L._planAxes[k] && window.DraftQuality) window.DraftQuality.corrected(k, L.role || L.type); }
     catch (_e) { void _e; }
   }
-  function applyFont(key) { var L = activeText(); if (!L) return; var f = FONTS.filter(function (x) { return x.key === key; })[0]; _sig('font_changed', { layerKey: L.role || L.type, before: L.font && L.font.key, after: key }); L.font = f; L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight; _own(L, 'font'); }
-  function applyColor(c) { var L = activeText(); if (!L) return; _sig('color_changed', { layerKey: L.role || L.type, before: L.color, after: c }); L.color = c; L.tx.style.color = c; _own(L, 'color'); }
-  function applyAlign(a) { var L = activeText(); if (!L) return; _sig('alignment_changed', { layerKey: L.role || L.type, before: L.align, after: a }); L.align = a; L.tx.style.textAlign = a; _own(L, 'align'); }
+  function applyFont(key) { var L = activeText(); if (!L) return; var _b = _styleOf(L); var f = FONTS.filter(function (x) { return x.key === key; })[0]; _sig('font_changed', { layerKey: L.role || L.type, before: L.font && L.font.key, after: key }); L.font = f; L.tx.style.fontFamily = f.family; L.tx.style.fontWeight = f.weight;
+    /* [2026-09-11] 폰트가 바뀌면 글자 폭이 바뀐다. 상자는 왼쪽 끝이 고정이라 그대로 두면
+       가운데 있던 글자가 옆으로 밀린다(실측: 손글씨 폰트로 바꾸니 중심 0.500 → 0.466).
+       발행본은 화면을 정확히 따라가므로 **발행본까지 같이 밀린다.** 옮긴 적 없는 글자는 다시 가운데로. */
+    _fitTextInStage(L);
+    _own(L, 'font');  _pushStyle(L, _b); }
+  function applyColor(c) { var L = activeText(); if (!L) return; var _b = _styleOf(L); _sig('color_changed', { layerKey: L.role || L.type, before: L.color, after: c }); L.color = c; L.tx.style.color = c; _applyTextStyle(L); _own(L, 'color');  _pushStyle(L, _b); }
+  function applyAlign(a) { var L = activeText(); if (!L) return; var _b = _styleOf(L); _sig('alignment_changed', { layerKey: L.role || L.type, before: L.align, after: a }); L.align = a; L.tx.style.textAlign = a; _own(L, 'align');  _pushStyle(L, _b); }
   function applyScale(v) { var L = S.active; if (!L) return; L.scale = parseFloat(v); applyXf(L); }
+  /* [2026-09-11] 글자 스타일(기본/그림자/외곽선/배경) — 원장이 고른 건 _own 도장을 찍어
+     가독성 자동보정이 나중에 덮어쓰지 못하게 한다(자동이 취향을 이기면 안 된다). */
+  function applyTStyle(k) {
+    var L = activeText(); if (!L) return;
+    var _b = _styleOf(L);
+    _sig('textstyle_changed', { layerKey: L.role || L.type, before: _tstyleOf(L), after: k });
+    L.tstyle = k; _applyTextStyle(L);
+    _fitTextInStage(L);   // 배경박스는 패딩이 붙어 폭이 변한다 — 폰트와 같은 이유로 자리를 다시 잡는다
+    _own(L, 'tstyle'); _own(L, 'stroke'); _own(L, 'shadow');
+    _pushStyle(L, _b); syncTextControls(L);
+  }
+  /* 기울기 — 회전 핸들·두 손가락과 같은 L.rot 를 쓴다(값이 갈리면 화면과 발행본이 어긋난다). */
+  function applyTilt(deg) {
+    var L = S.active; if (!L) return;
+    L.rot = Math.max(-45, Math.min(45, parseFloat(deg) || 0));
+    applyXf(L);
+    var o = root.querySelector('[data-r=tiltout]'); if (o) o.textContent = Math.round(L.rot) + '\u00B0';
+  }
   function activeText() { return S.active && S.active.type === 'text' ? S.active : null; }
 
   /* ── 스티커 ── */
@@ -1733,6 +2105,8 @@
     root.querySelectorAll('.itlaytype').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-lay') === i); });
     // [#2] 콜라주는 칸에 '꽉 채움(cover)'이 기본 — 칸을 채우고, 잘리는 부분은 칸을 드래그해 보일 곳을 고른다(재구도).
     //   전체보기(contain)를 원하면 fit 토글. 단일은 전체.
+    /* [2026-09-11] 업로드 화면에서 원장이 '사진 채우기'를 골랐으면 그게 정본이다.
+       예전엔 여기서 단일=contain 으로 덮어써서, 원장이 '꽉 채움'을 골라도 편집기에선 여백이 다시 생겼다. */
     if (!S._fitManual) { S.fitMode = isSingleL(S.layout) ? 'contain' : 'cover'; _syncFitToggle(); }
     _syncBaLabels();   // [전/후] 전/후 레이아웃이면 BEFORE·AFTER 라벨 자동, 아니면 제거
     applyPhotoTransform();   // [#2] 단일↔콜라주 전환 시 photowrap 회전 리셋(콜라주 전체 휘어짐 방지)
@@ -1860,6 +2234,30 @@
     if (a < 0.4 || a > 2.5) return '4:5';
     return rw + ':' + rh;
   }
+  /* ── [BUG-01 2026-09-09] 내보내기 좌표계 = 화면 좌표계와 분리 ──────────────
+     예전엔 `canvas = stage.getBoundingClientRect() × devicePixelRatio` 였다.
+     그래서 **브라우저 창 크기가 발행 이미지 해상도를 결정**했다 —
+     실측: 원본 1080×1350 사진이 창 1440 에서 650×812, 창 500 에서 500×625 로 나갔고
+     그 축소본이 그대로 Supabase 에 저장되고 인스타 발행 payload 로 갔다.
+     원장은 알 방법이 없고, 창을 좁게 쓸수록 결과가 나빠졌다.
+
+     이제 출력 크기는 **선언된 비율**만으로 정한다(폭 1080 고정).
+       4:5 → 1080×1350 · 1:1 → 1080×1080 · 3:4 → 1080×1440 · 9:16 → 1080×1920
+     그리기 수식은 전부 '스테이지 CSS 픽셀' 기준으로 쓰여 있으므로 **건드리지 않는다**.
+     대신 캔버스 변환 배율만 dpr → k(=출력/스테이지) 로 바꾼다. 균등 배율이라
+     회전·비균등 도형도 왜곡되지 않는다. 스테이지 반올림(±1px)은 max+센터링으로 흡수.  */
+  var EXPORT_W = 1080;          // 인스타 권장 기준 폭
+  var EXPORT_MAX_H = 1920;      // 세로 과대 방지(9:16 상한)
+  function _exportSize(ratio, r) {
+    var rp = _safeRatio(ratio).split(':');
+    var rw = parseFloat(rp[0]) || 4, rh = parseFloat(rp[1]) || 5;
+    var w = EXPORT_W, h = Math.round(w * rh / rw);
+    if (h > EXPORT_MAX_H) { h = EXPORT_MAX_H; w = Math.round(h * rw / rh); }
+    var sw = (r && r.width) || 0, sh = (r && r.height) || 0;
+    if (!sw || !sh) return { w: w, h: h, k: 1, ox: 0, oy: 0 };   // 스테이지 측정 실패 → 안전 폴백
+    var k = Math.max(w / sw, h / sh);                            // 균등 배율(빈 가장자리 방지)
+    return { w: w, h: h, k: k, ox: (w - sw * k) / 2, oy: (h - sh * k) / 2 };
+  }
   function fitStageToRatio() {
     if (!root || !refs.stage) return;
     if (S) S.ratio = _safeRatio(S.ratio);
@@ -1981,7 +2379,7 @@
   function renderAdjust() {
     if (!refs.adjStrip) return;
     refs.adjStrip.innerHTML = (S.photos || []).map(function (u, i) {
-      return '<button class="itadjthumb' + (i === S.adjSel ? ' on' : '') + '" data-adjthumb="' + i + '" style="background-image:url(\'' + u + '\');filter:' + filterStr(adjOf(i)) + '"></button>';
+      return '<button class="itadjthumb' + (i === S.adjSel ? ' on' : '') + '" data-adjthumb="' + i + '" aria-label="' + (i + 1) + '번째 사진" style="background-image:url(\'' + u + '\');filter:' + filterStr(adjOf(i)) + '"></button>';
     }).join('');
     syncAdjSliders();
   }
@@ -2039,6 +2437,13 @@
   //   좌우(사진 스트립)로 넘기며 각 사진에 다른 글/스티커/링크를 얹을 수 있다(인스타 캐러셀 장별 편집).
   function _switchPhotoLayers(oldIdx, newIdx) {
     if (oldIdx === newIdx) return;
+    /* 🔴 [2026-09-11] **치던 글자가 사진 전환에서 사라졌다.**
+       `_serLayer` 는 모델(L.text)을 읽는데, contenteditable 로 입력 중인 내용은 blur 전까지
+       모델에 안 들어간다. 원장이 사진1에 문구를 치다가 사진2를 눌러보고 돌아오면
+       **방금 친 글자가 통째로 없고 '내용을 입력하세요' 로 돌아와 있었다.**
+       실측: 'REALTYPED' 입력(편집 모드 유지) → 썸네일로 2번 사진 → 1번 복귀 → 플레이스홀더.
+       `_flushEditingText()` 는 이미 있었지만 2초 초안 타이머만 불렀다. 직렬화 직전에 부른다. */
+    _flushEditingText();
     if (!S.layersByPhoto) S.layersByPhoto = {};
     S.layersByPhoto[oldIdx] = (S.layers || []).map(_serLayer).filter(Boolean);   // 현재 장 레이어 직렬화 보관
     S.layers.slice().forEach(function (L) { try { if (L.el && L.el.remove) L.el.remove(); } catch (_e) { void _e; } });
@@ -2167,6 +2572,30 @@
   }
 
   /* ── 그리기 ── */
+  /* 🔴 [2026-09-11 실측] **붓그림이 저장본엔 있는데 화면엔 안 그려졌다.**
+     `_restoreState` 가 `S.photoDraw` 를 되살리지만 **캔버스에 다시 칠하는 건 아무도 안 했고**,
+     `initCanvas()` 는 width/height 를 세팅하면서 캔버스를 비운다.
+     발행(exportComposite)은 이 캔버스를 합성하므로 **재편집 한 번이면 발행본에서도 사라진다.**
+     실측(스테이지 714×893): 그린 직후 잉크 샘플 91 → 재편집 후 0,
+     발행본 55,131B → 46,571B. 보정 미반영(9/11 수정)과 같은 계열의 누락이다.
+     저장 당시 캔버스 픽셀 크기와 지금이 다를 수 있어(창 크기·dpr) 목적지 크기로 맞춰 그린다. */
+  function _restorePhotoDraw() {
+    try {
+      if (!S || !S.photoDraw || !refs.ctx || !refs.draw) return;
+      var idx = (S.adjSel != null) ? S.adjSel : 0;
+      var src = S.photoDraw[idx] || S.photoDraw[String(idx)];
+      if (!src) return;
+      var im = new Image();
+      im.onload = function () {
+        try {
+          var c = refs.ctx; c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
+          c.drawImage(im, 0, 0, refs.draw.width, refs.draw.height); c.restore();
+        } catch (_e2) { void _e2; }
+      };
+      im.src = src;
+      if (S) S._drawInk = true;   // 되살린 그림도 '있음' — 안 그러면 다음 저장에서 flush 를 건너뛴다
+    } catch (_e) { void _e; }
+  }
   function initCanvas() {
     var r = refs.stage.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     refs.draw.width = Math.round(r.width * dpr); refs.draw.height = Math.round(r.height * dpr);
@@ -2195,7 +2624,9 @@
     refs.ctx.beginPath(); refs.ctx.moveTo(dpos.x, dpos.y); refs.ctx.lineTo(x, y); refs.ctx.stroke();
     dpos = { x: x, y: y };
   }
-  function drawUp() { dpos = null; }
+  /* 🔴 [2026-09-11] 한 획이라도 그었으면 표시해 둔다 — 저장 때 캔버스를 상태로 옮길지 판단한다.
+     픽셀을 훑어 판정하면 얇은 획을 놓쳐 **그림을 지워버릴** 수 있어 플래그로 간다. */
+  function drawUp() { dpos = null; if (S) S._drawInk = true; }
 
   /* ── 합성 내보내기 (사진 줌·콜라주·레이어 회전 반영) ── */
   /* [신뢰성 2026-08-21] 이미지가 load 도 error 도 안 주면 예전엔 **영영 pending** 이었다.
@@ -2263,9 +2694,12 @@
     var _photoDrawn = 0;   // 실제로 그려진 사진 수 — 0 이면 저장 실패로 본다(아래 참조)
     var _fire = function (url) { if (_cbDone) return; _cbDone = true; try { cb(url); } catch (_e) { void _e; } };
     var r = refs.stage.getBoundingClientRect();
-    var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-    var cv = document.createElement('canvas'); cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
-    var c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // [BUG-01] 출력은 화면 크기와 무관한 고정 해상도. 아래 드로잉은 전부 스테이지 CSS 픽셀 기준이라
+    //   변환 배율(_xs.k)만 바꾸면 되고, 수식은 하나도 손대지 않는다.
+    var _xs = _exportSize(S && S.ratio, r);
+    var cv = document.createElement('canvas'); cv.width = _xs.w; cv.height = _xs.h;
+    var c = cv.getContext('2d'); c.setTransform(_xs.k, 0, 0, _xs.k, _xs.ox, _xs.oy);
+    c.imageSmoothingEnabled = true; try { c.imageSmoothingQuality = 'high'; } catch (_isq) { void _isq; }
     var baseDone;
     if (isSingleL(S.layout)) {
       var sIdx = S.photos.indexOf(S.photoUrl);
@@ -2283,7 +2717,7 @@
              사람 마스크로 destination-in(=보정된 사람만 남김) ② 본 캔버스엔 '보정 안 한 사진'(=배경 원래색)을
              깐 뒤 그 위에 보정된 사람을 얹는다. 마스크는 합성본 정렬이라 사진과 같은 drawImage 로 정확히 겹친다. */
           var fgc = document.createElement('canvas'); fgc.width = cv.width; fgc.height = cv.height;
-          var fc = fgc.getContext('2d'); fc.setTransform(dpr, 0, 0, dpr, 0, 0);
+          var fc = fgc.getContext('2d'); fc.setTransform(_xs.k, 0, 0, _xs.k, _xs.ox, _xs.oy);
           fc.save(); _xf(fc); fc.filter = _sFlt; fc.drawImage(img, dx, dy, cr.dw, cr.dh); fc.filter = 'none';
           fc.globalCompositeOperation = 'destination-in'; fc.drawImage(mk, dx, dy, cr.dw, cr.dh); fc.restore();
           c.save(); _xf(c); c.drawImage(img, dx, dy, cr.dw, cr.dh); c.restore();   // 배경 = 보정 전 원본
@@ -2324,7 +2758,7 @@
           if (mks[k]) {
             // [#11] 누끼 셀 — 단일 사진과 같은 방식으로 배경만 원래색 유지(오프스크린에 보정된 사람만 남겨 위에 얹음).
             var fgc = document.createElement('canvas'); fgc.width = cv.width; fgc.height = cv.height;
-            var fc = fgc.getContext('2d'); fc.setTransform(dpr, 0, 0, dpr, 0, 0);
+            var fc = fgc.getContext('2d'); fc.setTransform(_xs.k, 0, 0, _xs.k, _xs.ox, _xs.oy);
             fc.save(); setup(fc); fc.filter = flt; fc.drawImage(img, dx, dy, cr.dw, cr.dh); fc.filter = 'none';
             fc.globalCompositeOperation = 'destination-in'; fc.drawImage(mks[k], dx, dy, cr.dw, cr.dh); fc.restore();
             c.save(); setup(c); c.drawImage(img, dx, dy, cr.dw, cr.dh); c.restore();   // 배경 = 보정 전
@@ -2399,20 +2833,56 @@
              webkit 은 획 중앙 기준이라 lineWidth 를 2배로 잡고 **fill 전에** 그린다
              (안쪽 절반은 글자가 덮어서 화면과 비슷해진다). 그림자는 끄고 그린다 —
              외곽선에까지 그림자가 붙으면 화면보다 훨씬 두꺼워 보인다. */
-          if (L.stroke) {
+          /* [2026-09-11] 스타일은 화면(_applyTextStyle)과 **같은 상수(TS)** 를 읽는다.
+             예전엔 여기서 그림자를 무조건 넣고 화면은 CSS 로 다른 값을 넣어 둘이 어긋났다.
+             DOM 과 canvas 가 다른 렌더러라 값을 따로 적으면 반드시 갈라진다 — 이 파일에서
+             외곽선이 발행본에서만 사라진 사고가 이미 있었다. */
+          var _ts = _tstyleOf(L);
+          var _lh = fs * 1.16;
+
+          // 배경박스 — 줄마다 실제 글자폭을 재서 라운드 사각형을 깔고, 글자는 대비색으로 얹는다.
+          /* 배경박스는 **레이어 박스 하나**를 그대로 깐다(줄마다 따로 그리지 않는다).
+             화면에서는 .itl-text 의 background 라 여러 줄이어도 박스가 하나다 — 줄마다 그리면
+             두 줄부터 화면과 다르게 보인다. ow/oh 는 그 요소의 실제 박스(패딩 포함)라 정확히 일치한다. */
+          if (_ts === 'bg') {
+            var _bw = ow, _bh = oh;
+            var _rd = Math.min(TS.bgRadius * (L.scale || 1), _bh / 2, _bw / 2);
+            c.save(); c.shadowBlur = 0; c.shadowColor = 'transparent'; c.fillStyle = L.color;
+            c.beginPath();
+            if (c.roundRect) c.roundRect(-_bw / 2, -_bh / 2, _bw, _bh, _rd);
+            else {
+              var _x0 = -_bw / 2, _y0 = -_bh / 2;
+              c.moveTo(_x0 + _rd, _y0); c.arcTo(_x0 + _bw, _y0, _x0 + _bw, _y0 + _bh, _rd);
+              c.arcTo(_x0 + _bw, _y0 + _bh, _x0, _y0 + _bh, _rd); c.arcTo(_x0, _y0 + _bh, _x0, _y0, _rd);
+              c.arcTo(_x0, _y0, _x0 + _bw, _y0, _rd); c.closePath();
+            }
+            c.fill(); c.restore();
+            c.font = L.font.weight + ' ' + fs + 'px ' + L.font.family;
+            c.fillStyle = _inkOn(L.color); c.textAlign = _al; c.textBaseline = 'middle';
+          }
+
+          /* 외곽선 — webkit 은 획 중앙 기준이라 lineWidth 를 2배로 잡고 **fill 전에** 그린다
+             (안쪽 절반은 글자가 덮어 화면과 비슷해진다). 그림자는 끄고 그린다 — 외곽선에까지
+             그림자가 붙으면 화면보다 훨씬 두꺼워 보인다. */
+          if (_ts === 'outline') {
             c.save();
             c.shadowBlur = 0; c.shadowColor = 'transparent';
-            c.lineWidth = Math.max(1, 2 * (L.scale || 1));
-            c.strokeStyle = 'rgba(0,0,0,.5)';
+            c.lineWidth = Math.max(1, TS.strokeW * (L.scale || 1));
+            c.strokeStyle = TS.strokeRgba;
             c.lineJoin = 'round'; c.miterLimit = 2;
-            lines.forEach(function (ln, i) { c.strokeText(ln, _ax, sy + i * fs * 1.16); });
+            lines.forEach(function (ln, i) { c.strokeText(ln, _ax, sy + i * _lh); });
             c.restore();
             c.font = L.font.weight + ' ' + fs + 'px ' + L.font.family; c.fillStyle = L.color;
             c.textAlign = _al; c.textBaseline = 'middle';
           }
-          c.shadowBlur = 8; c.shadowColor = 'rgba(0,0,0,.35)';
-          lines.forEach(function (ln, i) { c.fillText(ln, _ax, sy + i * fs * 1.16); });
-          c.shadowBlur = 0;
+
+          if (_ts === 'shadow' || _ts === 'outline') {
+            c.shadowBlur = TS.shadowBlur * (L.scale || 1);
+            c.shadowOffsetY = TS.shadowDy * (L.scale || 1);
+            c.shadowColor = TS.shadowRgba;
+          } else { c.shadowBlur = 0; c.shadowOffsetY = 0; c.shadowColor = 'transparent'; }
+          lines.forEach(function (ln, i) { c.fillText(ln, _ax, sy + i * _lh); });
+          c.shadowBlur = 0; c.shadowOffsetY = 0;
         }
         c.restore();
       });
@@ -2429,6 +2899,28 @@
   }
 
   /* ── 배선 ── */
+  /* [BUG-02] 리로드·탭전환·앱 백그라운드 직전에 **동기로** 한 번 더 굳힌다.
+     주기 스냅샷(2초)만으로는 마지막 2초가 날아간다. pagehide 는 리로드/닫기/뒤로가기 모두를 덮고,
+     visibilitychange:hidden 은 모바일에서 pagehide 가 안 오는 경우를 덮는다(iOS 실측 관행).
+     여기서 IDB 는 안 쓴다 — 비동기라 언로드 중엔 못 끝낸다. sessionStorage 는 동기라 끝난다. */
+  /* [BUG-06 2026-09-09] 편집기에 키보드 핸들러가 **하나도 없었다**(3,000줄에 keydown 0개).
+     Escape 로 패널도 편집기도 못 닫아서, 키보드만 쓰는 사용자는 갇혔다.
+     단계적으로 빠져나간다: 글자 입력 중 → 입력만 종료 / 패널 열림 → 패널만 닫기 / 그 외 → 편집기 취소.
+     (곧바로 편집기를 닫으면 패널 하나 닫으려던 사람이 작업을 통째로 잃는다.) */
+  try {
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || !root || !root.classList.contains('is-open')) return;
+      var editing = (S && S.layers || []).filter(function (L) { return L && L.tx && L.tx.getAttribute('contenteditable') === 'true'; })[0];
+      if (editing) { e.preventDefault(); try { editing.tx.blur(); } catch (_b) { void _b; } return; }
+      if (S && S.tool) { e.preventDefault(); _closeToolPanel(); return; }
+      e.preventDefault();
+      if (S) S._cancelled = true; _draftClear(); close(); if (S && S.onCancel) S.onCancel();
+    });
+  } catch (_ke) { void _ke; }
+  try {
+    window.addEventListener('pagehide', function () { _draftSnap(true); });
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') _draftSnap(true); });
+  } catch (_lce) { void _lce; }
   function wire() {
     refs.rail.addEventListener('click', function (e) {
       var b = e.target.closest('[data-tool]'); if (!b) return;
@@ -2453,6 +2945,12 @@
     // 텍스트 컨트롤
     refs.fonts.addEventListener('click', function (e) { var b = e.target.closest('[data-font]'); if (!b) return; applyFont(b.getAttribute('data-font')); root.querySelectorAll('[data-font]').forEach(function (x) { x.classList.toggle('on', x === b); }); });
     refs.colors.addEventListener('click', function (e) { var b = e.target.closest('[data-color]'); if (!b) return; applyColor(b.getAttribute('data-color')); root.querySelectorAll('[data-color]').forEach(function (x) { x.classList.toggle('on', x === b); }); });
+    if (refs.tstyle) refs.tstyle.addEventListener('click', function (e) { var b = e.target.closest('[data-tstyle]'); if (!b) return; applyTStyle(b.getAttribute('data-tstyle')); });
+    /* 기울기: 드래그 중엔 화면만 바꾸고(input), 손 떼면 되돌리기 한 칸(change) — 크기 슬라이더와 같은 계약. */
+    if (refs.tilt) {
+      refs.tilt.addEventListener('input', function (e) { if (_tiltSnap == null && S.active) _tiltSnap = _styleOf(S.active); applyTilt(e.target.value); });
+      refs.tilt.addEventListener('change', function () { if (_tiltSnap && S.active) { _pushStyle(S.active, _tiltSnap); } _tiltSnap = null; });
+    }
     refs.aln.addEventListener('click', function (e) { var b = e.target.closest('[data-aln]'); if (!b) return; applyAlign(b.getAttribute('data-aln')); refs.aln.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); }); });
     /* [2026-08-23] 크기 취향은 **핀치에서만** 잡히고 있었다 — 슬라이더로 바꾸면 학습이 0 이었다.
        슬라이더가 안 잡히면 크기 개인화는 핀치를 쓰는 원장에게만 붙는다.
@@ -2460,13 +2958,17 @@
           그래서 **조작이 끝났을 때**(change) 한 건만. 시작 스냅샷은 첫 input 에서 뜬다.
        ⚠️ 배율(scale)이 아니라 정규화 size 로 남긴다 — 저장 스키마와 축이 같아야 적용이 맞는다. */
     var _sizeSnap = null;
+    var _sizeStyleSnap = null;   // [BUG-03] 크기 드래그 되돌리기용 시작 스타일
     refs.size.addEventListener('input', function () {
       if (!_sizeSnap && S && S.active) {
         try { _sizeSnap = _serLayer(S.active); } catch (_se) { void _se; _sizeSnap = null; }
       }
+      // [BUG-03] 되돌리기용 스타일 스냅 — 드래그 한 번 = op 하나(매 input 마다 쌓으면 ↩ 를 수십 번 눌러야 한다).
+      if (!_sizeStyleSnap && S && S.active) { _sizeStyleSnap = { L: S.active, v: _styleOf(S.active) }; }
       applyScale(refs.size.value);
     });
     refs.size.addEventListener('change', function () {
+      if (_sizeStyleSnap) { _pushStyle(_sizeStyleSnap.L, _sizeStyleSnap.v); _sizeStyleSnap = null; }   // [BUG-03]
       var L = S && S.active;
       if (!L || !_sizeSnap) { _sizeSnap = null; return; }
       var after = null; try { after = _serLayer(L); } catch (_se2) { void _se2; }
@@ -2540,18 +3042,26 @@
     // 보정 — 사진 선택 + 슬라이더(선택 사진만) + 초기화
     refs.panels.adjust.addEventListener('click', function (e) { var t = e.target.closest('[data-adjthumb]'); if (t) onAdjThumb(+t.getAttribute('data-adjthumb')); });
     refs.panels.adjust.addEventListener('input', function (e) {
-      var s = e.target.closest('[data-adj]'); if (!s) return; var k = s.getAttribute('data-adj'); adjOf(S.adjSel)[k] = +s.value;
+      var s = e.target.closest('[data-adj]'); if (!s) return; var k = s.getAttribute('data-adj');
+      if (!_adjSnap) _adjSnap = { idx: S.adjSel, v: Object.assign({}, adjOf(S.adjSel)) };   // [BUG-03]
+      adjOf(S.adjSel)[k] = +s.value;
       var c0 = ADJ_CTRLS.filter(function (x) { return x.k === k; })[0]; var out = root.querySelector('[data-adjout="' + k + '"]'); if (out) out.textContent = adjReadout(c0, +s.value);
       applyAdjThrottled(); var th = refs.adjStrip && refs.adjStrip.querySelector('[data-adjthumb="' + S.adjSel + '"]'); if (th) th.style.filter = filterStr(adjOf(S.adjSel));
     });
+    // [BUG-03] 보정 드래그가 끝나면 되돌리기 op 하나로 확정(수평 슬라이더 포함).
+    refs.panels.adjust.addEventListener('change', function (e) {
+      if (!e.target.closest('[data-adj]') && e.target !== refs.adjRot) return;
+      if (_adjSnap) { _pushAdj(_adjSnap.idx, _adjSnap.v); _adjSnap = null; }
+    });
     // [#3] 수평 슬라이더 — 가이드 그리드 표시 + 사진 회전
     if (refs.adjRot) refs.adjRot.addEventListener('input', function () {
+      if (!_adjSnap) _adjSnap = { idx: S.adjSel, v: Object.assign({}, adjOf(S.adjSel)) };   // [BUG-03]
       var rv = +refs.adjRot.value; if (Math.abs(rv) < 1.5) { rv = 0; refs.adjRot.value = 0; }   // [#2] 0° 근처면 수평으로 잠금
       adjOf(S.adjSel).rot = rv; if (refs.adjRotOut) refs.adjRotOut.textContent = rv.toFixed(1).replace(/\.0$/, '') + '°';
       root.classList.add('is-leveling'); clearTimeout(S._lvlT); S._lvlT = setTimeout(function () { root.classList.remove('is-leveling'); }, 900);
       applyStraighten();
     });
-    refs.adjReset.addEventListener('click', function () { S.adj[S.adjSel] = defAdj(); syncAdjSliders(); applyAdjToDisplay(); applyStraighten(); renderAdjust(); });
+    refs.adjReset.addEventListener('click', function () { var _ab = Object.assign({}, adjOf(S.adjSel)); S.adj[S.adjSel] = defAdj(); _pushAdj(S.adjSel, _ab); syncAdjSliders(); applyAdjToDisplay(); applyStraighten(); renderAdjust(); });
     if (refs.adjCut) refs.adjCut.addEventListener('click', function () { doCutout(); });
     if (refs.adjUncut) refs.adjUncut.addEventListener('click', undoCutout);
     // [#4] 누끼 배경 색 — 탭하면 즉시 재합성(매트 캐시 있으면 0초). 누끼 전이면 배경만 기억.
@@ -2576,7 +3086,7 @@
     enableDragScroll(refs.adjStrip);
     // 그리기
     root.querySelector('[data-panel="draw"] .itdrawp__tools').addEventListener('click', function (e) {
-      if (e.target.closest('[data-r="drawClear"]')) { if (refs.ctx && refs.draw) { refs.ctx.clearRect(0, 0, refs.draw.width, refs.draw.height); toastIt('그림을 지웠어요'); } return; }   // [#6] 그리기 전체 지우기
+      if (e.target.closest('[data-r="drawClear"]')) { if (refs.ctx && refs.draw) { refs.ctx.clearRect(0, 0, refs.draw.width, refs.draw.height); if (S) { S._drawInk = false; try { delete S.photoDraw[(S.adjSel != null) ? S.adjSel : 0]; } catch (_dc) { void _dc; } } toastIt('그림을 지웠어요'); } return; }   // [#6] 그리기 전체 지우기
       var b = e.target.closest('[data-brush]'); if (!b) return; S.brush = b.getAttribute('data-brush'); root.querySelectorAll('[data-brush]').forEach(function (x) { x.classList.toggle('on', x === b); });
     });
     refs.brushSize.addEventListener('input', function () { S.brushSize = +refs.brushSize.value; });
@@ -2590,7 +3100,7 @@
     refs.stage.addEventListener('pointerup', stageUp);
     refs.stage.addEventListener('pointercancel', stageUp);
     // 닫기/완료
-    refs.cancel.addEventListener('click', function () { if (S) S._cancelled = true; close(); if (S && S.onCancel) S.onCancel(); });
+    refs.cancel.addEventListener('click', function () { if (S) S._cancelled = true; _draftClear(); close(); if (S && S.onCancel) S.onCancel(); });
     if (refs.undo) refs.undo.addEventListener('click', function () { _undo(); });   // [P1-3]
     if (refs.redo) refs.redo.addEventListener('click', function () { _redo(); });
     if (refs.peek) refs.peek.addEventListener('click', function () { togglePeek(); });   // [P2-2]
@@ -2626,6 +3136,11 @@
         //   0 = 통째 빼기(자동화 거부, 문구 판단 아님) / 1+ = 자동화는 수용했는데 특정 문구만 지움.
         meta.wmKept = (S.layers || []).filter(function (L) { return L && L._src === 'wm'; }).length;
         meta.perPhoto = _collectPerPhoto();   // [#5/#6] 사진별 레이어(단일모드) — 플로우가 각 장을 자기 레이어로 합성
+        /* [2026-09-12 ZH] **지금 보고 있던 장이 몇 번인지** 알려준다.
+           플로우는 지금까지 '편집기를 열 때 잡은 장'에 합성본을 넣었다. 원장이 편집기 안에서
+           사진을 바꾸면 그 둘이 어긋나서, 1번(네일)에서 열고 2번(헤어)을 보다가 [완료] 하면
+           **1번 자리에 헤어 합성본**이 들어갔다(실측 2026-09-12: 캐러셀에서 네일이 사라지고 헤어가 두 장). */
+        meta.photoIdx = (isSingleL(S.layout) && S.adjSel != null) ? S.adjSel : null;
         // [캐러셀] 콜라주(다중 셀)가 아니면서 편집기에서 새로 추가한 사진 → 플로우가 여러 장 게시(캐러셀) 후보로 반영.
         //   콜라주면 이미 한 장으로 합성되므로 별도 추가 안 함.
         meta.newPhotos = (isSingleL(S.layout) && S.photos && S.photos.length > (S._initPhotoN || 0)) ? S.photos.slice(S._initPhotoN || 0) : [];
@@ -2635,6 +3150,7 @@
         try { if (window.WMMetrics) window.WMMetrics.observePublish(meta.layers, S.photoUrl, metaGeometry()); }
         catch (_mx) { void _mx; }
         _restoreSaveUi();
+        _draftClear();           // [BUG-02] 저장 성공 = 복구 대상 아님. 남겨두면 다음에 유령 배너가 뜬다.
         close();
         if (cb) cb(url, meta);   // StoryEditor 계약 호환(meta.layers)
       });
@@ -2698,6 +3214,21 @@
 
   // [#4/#8/#11/#16] 재편집 이어가기 — 편집기 '전체 상태'를 직렬화/복원.
   //   metaLayers 는 '우리샵 학습'용이라 도형·스티커를 버린다. 재편집은 전부 보존해야 하므로 별도 직렬화.
+  /* [BUG-07 2026-09-10] 줄바꿈을 **모델 속성**으로 고정한다.
+     복원은 저장된 상대폭으로 max-width 를 걸고 폰트도 상대크기로 되살리는데,
+     폰트 메트릭이 크기에 **선형이 아니다** — 실측: 같은 글자의 렌더 폭 비율이
+     스테이지 505→675 에서 0.2398 → 0.2302 (4% 변동). 여유가 적은 문구는 이 4% 때문에
+     한 줄이 두 줄로 접힌다(2026-09-03 에 0.47px 부족으로 같은 사고가 이미 있었고 +1px 로 땜질했다).
+     그래서 '몇 줄이었는지'를 같이 저장하고, 복원 후 줄 수가 늘었으면 폭을 넓혀 되돌린다.
+     늘어난 경우에만 넓히므로 **의도한 줄바꿈은 그대로** 유지된다. */
+  function _lineCount(el, fontSizePx) {
+    try {
+      var h = el.getBoundingClientRect().height || el.offsetHeight || 0;
+      var lh = parseFloat(getComputedStyle(el).lineHeight);
+      if (!isFinite(lh) || lh <= 0) lh = (fontSizePx || 30) * 1.16;
+      return Math.max(1, Math.round(h / lh));
+    } catch (_e) { return 1; }
+  }
   function _serLayer(L) {
     var R = refs.stage.getBoundingClientRect(); if (!R.width) return null;
     var b = L.el.getBoundingClientRect();
@@ -2730,14 +3261,26 @@
     /* [2026-09-03] weight 는 **L.weight 우선**. 예전엔 항상 폰트 기본값을 실어보내서,
        자동배치가 준 얇은 글씨(600)가 재편집 후 800 으로 굵어졌다(복제·undo 는 이미 L.weight 를 쓰고 있었다). */
     base.size = fs; base.weight = L.weight || (L.font && L.font.weight); base.stroke = !!L.stroke; base.shadow = !!L.shadow;
+    base.tstyle = _tstyleOf(L);   // [2026-09-11] 정본. stroke/shadow 는 옛 소비자를 위해 남긴다.
+    /* 원장이 손으로 옮겼는지. 안 실으면 재편집 때 '한 번도 안 옮긴 글자'로 되살아나
+       다음 편집에서 제멋대로 가운데로 튄다(반대로 항상 옮긴 걸로 치면 자동 가운데가 영영 안 돈다). */
+    base.moved = !!L._moved;
+    /* 🔴 [2026-09-11] 원장이 **직접 고른 축**(_own)도 실어 보낸다.
+       `_own` 은 "자동 보정이 절대 안 덮는 축" 표식인데 저장이 안 돼서, 재편집하면 표식이 사라지고
+       가독성 자동보정이 원장의 선택을 덮어썼다. 실측: '기본'(그림자 없음)을 고르고 저장 →
+       다시 열면 'shadow' 로 돌아왔다. 자동이 취향을 이기면 안 된다는 원칙이 왕복에서 깨져 있었다. */
+    try { var _ow = Object.keys(L._own || {}); if (_ow.length) base.own = _ow; } catch (_oe) { void _oe; }
     // 원장이 '가로 늘리기' 로 직접 정한 폭 — 안 실으면 재편집 때 줄바꿈 폭이 통째로 날아간다.
     if (L.wrapW) base.wrapW = L.wrapW / R.width;
+    // [BUG-07] 이 순간 실제로 몇 줄이었는지. 복원이 이걸 지킨다(늘어난 경우에만 폭을 넓힘).
+    if (L.tx) base.lines = _lineCount(L.tx, L.fontSize);
     return base;
   }
   // [#5/#6] 사진별 레이어 수집 — 단일모드에서 각 장(현재 장 포함)이 가진 텍스트/스티커 레이어를 { idx, photoUrl, layers } 로.
   //   플로우가 이걸로 각 장을 자기 레이어와 합성해 캐러셀 장별로 다른 글/스티커가 실제 게시되게 한다.
   function _collectPerPhoto() {
     try {
+      _flushEditingText();   // [2026-09-11] 위와 같은 이유 — 입력 중인 글자가 발행에서 빠지면 안 된다
       if (!isSingleL(S.layout)) return null;   // 콜라주는 한 장 합성(장별 아님)
       if (!S.layersByPhoto) S.layersByPhoto = {};
       S.layersByPhoto[S.adjSel] = (S.layers || []).map(_serLayer).filter(Boolean);   // 현재 장도 포함
@@ -2749,8 +3292,193 @@
       return out.length ? out : null;
     } catch (_e) { return null; }
   }
+  /* ── [BUG-02 2026-09-09] 편집 중 리로드/배포로 작업이 통째로 날아가던 것 ──────────
+     실제로 당했다: 텍스트를 넣은 상태에서 새 배포가 떨어지자
+     app-core 의 'SW 버전 불일치 → 캐시 삭제 후 reload' 가 돌아 편집기·해시·초안이 전부 사라졌다.
+     원인은 두 겹이었다.
+       ① 편집기가 진행 중 작업을 **어디에도** 저장하지 않았다(3,000줄에 draft 영속화 0).
+       ② 리로드를 막는 가드가 사실상 없다 — beforeunload 는 standalone PWA + 시트 열림일 때만.
+
+     ②를 막는 방식(리로드 차단)은 택하지 않는다. 버전 불일치 자가복구는 있어야 하는 기능이고,
+     차단해도 탭 종료·크래시·OS 메모리 회수는 못 막는다.
+     대신 **리로드가 일어나도 잃지 않게** 한다 — 스냅샷 → 복구 제안.
+
+     저장 위치를 쪼갠 이유: 사진 dataURL 은 폰 원본이면 4MB+ 라 sessionStorage(5MB)를 터뜨린다.
+       · 작은 것(레이어·보정·레이아웃)  → sessionStorage (pagehide 에서 **동기** 저장 가능)
+       · 큰 것(사진·붓그림·배경사진)     → IndexedDB assets store (기존 v7 store 재사용, 스키마 무변경)
+     변경 지점을 일일이 훅하지 않고 **주기 스냅샷**을 쓴다 — 새 기능이 생겨도 자동으로 덮인다
+     (실제로 색·폰트·정렬은 되돌리기 히스토리에서 빠져 있었다. 같은 종류의 누락을 원천 차단). */
+  var DRAFT_KEY = 'itdasy:itd_draft_v1';
+  var DRAFT_PENDING_KEY = 'itdasy:itd_draft_pending_v1';
+  var DRAFT_ASSET = 'itdasy_itd_draft_media_v1';
+  var DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+  var DRAFT_TICK_MS = 2000;
+  var _draftTimer = null, _draftLastJson = '', _draftMediaSig = '', _draftBar = null;
+
+  /** 큰 값(dataURL)은 따로 뺀다 — sessionStorage 에 넣으면 quota 로 저장 자체가 실패한다. */
+  function _splitDraft(st) {
+    var media = { photos: st.photos || [], photoDraw: st.photoDraw || {}, photoBg: st.photoBg || {}, collageBgImg: st.collageBgImg || null };
+    var light = Object.assign({}, st);
+    delete light.photos; delete light.photoDraw; delete light.photoBg; delete light.collageBgImg;
+    return { light: light, media: media };
+  }
+  /** 사진 identity — 전체를 비교하면 매 틱마다 수 MB 를 훑는다. 길이+앞뒤 조각이면 충분. */
+  function _mediaSig(media) {
+    try {
+      return (media.photos || []).map(function (u) {
+        u = String(u || ''); return u.length + ':' + u.slice(0, 48) + ':' + u.slice(-16);
+      }).join('|') + '#' + String((media.photoDraw && JSON.stringify(media.photoDraw) || '').length)
+        + '#' + String((media.collageBgImg || '').length);
+    } catch (_e) { return String(Math.random()); }
+  }
+  function _draftClear() {
+    try { sessionStorage.removeItem(DRAFT_KEY); sessionStorage.removeItem(DRAFT_PENDING_KEY); } catch (_e) { void _e; }
+    try { if (window.saveAssetToDB) window.saveAssetToDB({ id: DRAFT_ASSET, media: null, createdAt: Date.now() }); } catch (_e2) { void _e2; }
+    _draftLastJson = ''; _draftMediaSig = '';
+  }
+  /* [BUG-02 후속] 입력 중인 글자를 모델로 밀어넣는다.
+     `L.text` 는 contenteditable 의 **blur 에서만** 갱신된다(editText). 리로드는 blur 를 일으키지 않으므로,
+     이걸 안 하면 "원장이 방금 치고 있던 문구" 정확히 그것만 초안에서 빠진다(플레이스홀더로 복구됨).
+     저장(완료)은 버튼으로 포커스가 옮겨가 blur 가 나므로 영향 없다 — 리로드 경로 전용 보정이다. */
+  function _flushEditingText() {
+    try {
+      (S && S.layers || []).forEach(function (L) {
+        if (!L || L.type !== 'text' || !L.tx) return;
+        if (L.tx.getAttribute('contenteditable') !== 'true') return;
+        var _t = (L.tx.innerText != null ? L.tx.innerText : L.tx.textContent) || '';
+        L.text = _t.replace(/\u00a0/g, ' ').replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '');
+      });
+    } catch (_e) { void _e; }
+  }
+  /** 스냅샷 1회. sync=true 면 pagehide 경로 — sessionStorage 만 동기로 쓴다(IDB 는 못 끝난다). */
+  function _draftSnap(sync) {
+    try {
+      if (!S || !root || !root.classList.contains('is-open')) return;
+      _flushEditingText();
+      var st = _exportState(); if (!st) return;
+      var sp = _splitDraft(st);
+      var lightJson = JSON.stringify({ v: 1, ts: Date.now(), sig: _photosSig(sp.media.photos), state: sp.light });
+      if (lightJson === _draftLastJson) return;                 // 안 바뀌었으면 안 쓴다
+      _draftLastJson = lightJson;
+      try { sessionStorage.setItem(DRAFT_KEY, lightJson); }
+      catch (_qe) { void _qe; return; }                         // quota 등 — 조용히 포기(편집은 계속)
+      if (sync) return;
+      var msig = _mediaSig(sp.media);
+      if (msig !== _draftMediaSig && window.saveAssetToDB) {     // 사진은 바뀔 때만(무거움)
+        _draftMediaSig = msig;
+        /* [2026-09-10 콘솔 실측] `saveAssetToDB(id, obj)` 로 불렀는데 이 함수는 **인자 1개**다
+           (assets store 는 keyPath:'id'). 그래서 DataError 로 조용히 실패했고, **사진이 IDB 에
+           한 번도 안 들어갔다** — 레이어는 sessionStorage 라 복구가 되는 것처럼 보였지만
+           붓그림(photoDraw)·배경사진(collageBgImg)은 되살릴 수 없었다. 규약대로 감싼다. */
+        /* 🔴 [2026-09-11] `DRAFT_ASSET` 는 **탭 하나가 아니라 브라우저 전체가 공유하는 키 한 개**다.
+           가벼운 상태(sessionStorage)는 탭별인데 사진은 여기 한 칸에 겹쳐 쓰므로,
+           탭 두 개로 서로 다른 사진을 편집하면 **나중에 쓴 탭이 이긴다.**
+           실측: A(사진 1,115,874B) 편집 중 B(547,622B)가 덮음 → A 새로고침 후 '이어서 편집'을
+           **2초 안에** 누르면(A 자신의 첫 틱 전) 글자는 A 것인데 **사진이 B 것**으로 복구됐다.
+           → 어느 초안의 사진인지 도장(sig)을 같이 남기고, 읽을 때 대조한다. */
+        try { window.saveAssetToDB({ id: DRAFT_ASSET, sig: _photosSig(sp.media.photos), media: sp.media, createdAt: Date.now() }); }
+        catch (_me) { void _me; }
+      }
+    } catch (_e) { void _e; }
+  }
+  function _draftStart() {
+    _draftStop();
+    _draftLastJson = ''; _draftMediaSig = '';
+    _draftTimer = setInterval(function () { _draftSnap(false); }, DRAFT_TICK_MS);
+  }
+  function _draftStop() { if (_draftTimer) { clearInterval(_draftTimer); _draftTimer = null; } }
+  /* [BUG-02 후속 2026-09-10 · 라이브 실측으로 잡음] 복구 초안을 **새 세션이 2초 만에 덮어썼다.**
+     편집기를 열면 _draftStart 의 주기 스냅샷이 곧바로 DRAFT_KEY 를 현재(=복구 전) 상태로 갈아엎어서,
+     원장이 '이어서 편집' 을 누르기도 전에 되살릴 대상이 사라졌다. 배너가 안 뜬 것도 같은 원인이다.
+     → 열 때 기존 초안을 **pending 키로 옮겨** 격리한다. 진행 중 세션은 DRAFT_KEY 에만 쓴다.
+     pending 도 sessionStorage 라 리로드를 한 번 더 겪어도 살아남는다(복구를 미뤄도 안 잃는다). */
+  function _draftStash() {
+    try {
+      var cur = sessionStorage.getItem(DRAFT_KEY);
+      if (cur) { sessionStorage.setItem(DRAFT_PENDING_KEY, cur); sessionStorage.removeItem(DRAFT_KEY); }
+    } catch (_e) { void _e; }
+  }
+  function _draftDropPending() { try { sessionStorage.removeItem(DRAFT_PENDING_KEY); } catch (_e) { void _e; } }
+  /** 저장된 초안 읽기 — TTL 지났거나 사진이 다르면 무시. pending(격리본)을 먼저 본다. */
+  function _draftRead() {
+    try {
+      var raw = sessionStorage.getItem(DRAFT_PENDING_KEY) || sessionStorage.getItem(DRAFT_KEY); if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || o.v !== 1 || !o.state) return null;
+      if (!o.ts || (Date.now() - o.ts) > DRAFT_TTL_MS) { _draftDropPending(); return null; }
+      return o;
+    } catch (_e) { return null; }
+  }
+  /** 초안 사진 읽기 — **되살리려는 그 초안의 사진일 때만** 돌려준다.
+      expectSig 가 안 맞으면 null: 사진은 지금 열려 있는 것(=sig 대조를 이미 통과한 그 사진)이 남는다.
+      다른 탭 사진으로 바꿔치기하느니, 되살릴 수 있는 것만 되살리는 쪽이 안전하다. */
+  function _draftLoadMedia(expectSig) {
+    try {
+      if (window.getAssetFromDB) {
+        return Promise.resolve(window.getAssetFromDB(DRAFT_ASSET))
+          .then(function (rec) {
+            if (!rec || !rec.media) return null;
+            if (expectSig && rec.sig !== expectSig) return null;   // 다른 탭이 덮어쓴 사진 — 쓰지 않는다
+            return rec.media;
+          })
+          .catch(function () { return null; });
+      }
+    } catch (_e) { void _e; }
+    return Promise.resolve(null);
+  }
+  function _hideDraftBar() { if (_draftBar) { try { _draftBar.remove(); } catch (_e) { void _e; } _draftBar = null; } }
+  /** 복구 제안 바 — 자동으로 덮어쓰지 않는다. 원장이 고른다(§5 Restore / Discard). */
+  function _showDraftBar(onRestore) {
+    _hideDraftBar();
+    var b = el('div', 'itded__recover');
+    b.innerHTML = '<span class="itded__recover-t">편집하던 내용이 남아 있어요</span>' +
+      '<button type="button" class="itded__recover-y">이어서 편집</button>' +
+      '<button type="button" class="itded__recover-n">새로 시작</button>';
+    b.querySelector('.itded__recover-y').addEventListener('click', function () { _hideDraftBar(); onRestore(); });
+    b.querySelector('.itded__recover-n').addEventListener('click', function () { _hideDraftBar(); _draftDropPending(); });
+    root.appendChild(b); _draftBar = b;
+  }
+  /** 초안 identity = 사진. 다른 게시물의 초안을 엉뚱하게 되살리지 않게 이걸로 대조한다. */
+  function _photosSig(photos) {
+    try {
+      return (photos || []).map(function (u) { u = String(u || ''); return u.length + ':' + u.slice(0, 48); }).join('|');
+    } catch (_e) { return ''; }
+  }
+  /** 저장된 초안으로 현재 세션을 교체 — 원장이 '이어서 편집'을 고른 경우에만 부른다. */
+  function _draftRestore(st) {
+    try {
+      (S.layers || []).slice().forEach(function (L) { try { if (L.el) L.el.remove(); } catch (_e) { void _e; } });
+      S.layers = []; S.active = null;
+      _restoreState(st);
+      refs.photo.style.backgroundImage = S.photoCss;
+      refs.photo.style.backgroundSize = S.fitMode;
+      fitStageToRatio();
+      _applyRestore(st);
+      /* 되돌리기 히스토리는 잇지 않는다 — 리로드 전 op 스택은 사라진 DOM 을 가리켜
+         ↩ 를 누르면 없는 레이어를 되살리려다 어긋난다. 복구 지점을 새 출발선으로 삼는다. */
+      S.undo = []; S.redo = []; _syncHist();
+      return true;
+    } catch (_e) { void _e; return false; }
+  }
+  /* 🔴 [2026-09-11 실측] 붓그림은 **캔버스에만** 있고 `S.photoDraw` 에는
+     사진을 전환할 때(`_switchPhotoDraw`)만 들어갔다. 사진이 한 장이면 그게 영영 안 돌아
+     `S.photoDraw` 가 **빈 채로** 저장된다. 발행은 캔버스를 합성하니 그때는 멀쩡하고,
+     **재편집하면 그림만 사라진다 — 그 상태로 다시 발행하면 발행본에서도 사라진다.**
+     실측: 잉크 133 인데 저장본 photoDraw 키 0개 / 발행본 55,131B → 재편집 후 46,571B.
+     입력 중인 글자를 `_flushEditingText` 로 모델에 밀어넣는 것과 같은 이유·같은 자리다. */
+  function _flushPhotoDraw() {
+    try {
+      if (!S || !refs.draw || !refs.ctx) return;
+      if (!S.photoDraw) S.photoDraw = {};
+      if (!S._drawInk) return;                       // 한 획도 안 그었으면 건드리지 않는다
+      var idx = (S.adjSel != null) ? S.adjSel : 0;
+      S.photoDraw[idx] = refs.draw.toDataURL();
+    } catch (_e) { void _e; }
+  }
   function _exportState() {
     try {
+      _flushEditingText();   // [2026-09-11] 저장·재편집·초안이 모두 이 값을 쓴다 — 입력 중인 글자 포함
+      _flushPhotoDraw();     // [2026-09-11] 붓그림도 같은 이유 — 캔버스에만 있으면 재편집에서 사라진다
       return { v: 1, layoutIdx: LAYOUTS.indexOf(S.layout), layoutOrder: (S.layoutOrder || []).slice(),
         cellCrop: (S.cellCrop || []).slice(), collageBg: S.collageBg, collageBgImg: S.collageBgImg || null,
         collageGap: S.collageGap, fitMode: S.fitMode, ratio: S.ratio,
@@ -2839,6 +3567,30 @@
       wmContext: opts.wmContext || null };
     var _ed = (opts.editState && opts.editState.v) ? opts.editState : null;   // [#4/#8/#11/#16] 재편집 이어가기
     if (_ed) { try { _restoreState(_ed); } catch (_re) { _ed = null; } }   // 복원 실패 시 일반 열기로 폴백(앱 안전)
+    /* [2026-09-12 ZH] 캐러셀 재편집 — **장별 레이어와 활성 장**을 되살린다.
+       editState 는 '활성 장' 한 장 분량이라, 이게 없으면 다른 장이 빈 채로 열리고
+       장을 넘기는 순간 `_switchPhotoLayers` 가 그 **빈 상태를 저장**해 원장의 글자가 사라진다. */
+    if (_ed && opts.layersByPhoto && typeof opts.layersByPhoto === 'object') {
+      try {
+        var _lbpIn = {};
+        Object.keys(opts.layersByPhoto).forEach(function (k) {
+          var ls = opts.layersByPhoto[k];
+          if (Array.isArray(ls) && ls.length) _lbpIn[Number(k)] = ls.slice();
+        });
+        S.layersByPhoto = _lbpIn;
+        var _selIn = Number(opts.photoIdx);
+        if (!(_selIn >= 0 && _selIn < (S.photos || []).length)) _selIn = 0;
+        S.adjSel = _selIn;
+        S.photoUrl = S.photos[_selIn]; S.photoCss = _cssUrl(S.photos[_selIn]);
+      } catch (_lbE) { void _lbE; }
+    }
+    /* [2026-09-11] 업로드 화면의 '사진 채우기' 선택을 수동 선택으로 받는다.
+       🔴 **복원 뒤에** 적용해야 한다. `_restoreState` 가 `st.fitMode` 로 덮어쓰기 때문에
+       앞에 두면 원장이 방금 고른 값이 **옛 저장값에 먹힌다**(실측: 꽉 채움을 눌렀는데
+       편집기가 contain 으로 열렸다 — opts.fitMode='cover' 는 분명히 전달됐는데도).
+       원장이 조금 전에 누른 것이 저장본보다 최신 의사다.
+       `_fitManual` 을 세워야 `selectLayout` 의 기본값(단일=contain)도 안 덮는다. */
+    if (opts.fitMode === 'cover' || opts.fitMode === 'contain') { S.fitMode = opts.fitMode; S._fitManual = true; }
     // [T8-A] 관찰 세션 시작 — 이 편집기 오픈 = 게시물 1개 작업 = observation 1개(batch).
     //   baseline 은 자동적용 직후 상태(diff 기준). 학습 계산은 여기서 안 한다(critical path 보호).
     try {
@@ -2879,6 +3631,7 @@
       S._popHandler = function () {
         if (!root || !root.classList.contains('is-open')) return;
         S._histPushed = false; S._cancelled = true;   // [audit] 저장(export) 진행 중 back → onDone 이중발화 차단
+        _draftClear();                                 // [BUG-02] back = 취소 → 초안 폐기(유령 복구 방지)
         _swallowNextPop();
         _teardownBack(true); root.classList.remove('is-open');
         if (S && S.onCancel) S.onCancel();   // 시스템 back = 취소로 닫기
@@ -2891,8 +3644,27 @@
     refs.photo.style.backgroundSize = S.fitMode; refs.photo.style.backgroundColor = (S.fitMode === 'contain' ? (S.collageBg || '#fff') : 'transparent');
     // [#4/#8/#11/#16] 저장된 편집 이어가기 — 레이아웃/콜라주/레이어 즉시 복원(동기: fitStageToRatio 가 이미 stage 크기 확정).
     if (_ed) { try { _applyRestore(_ed); } catch (_re2) { void _re2; } }
+    /* [BUG-02] 리로드 복구 — 비정상 종료(리로드·배포·크래시)로 남은 초안이 있고
+       **같은 사진**이면 되살릴지 물어본다. 정상 저장/취소 때는 초안을 지우므로 여기 안 걸린다.
+       자동으로 덮지 않는 이유: 원장이 그 사이 새로 시작했을 수 있다(되돌리기 어려운 쪽으로 틀리지 않는다). */
+    _hideDraftBar();
+    _draftStash();      // [BUG-02 후속] 타이머가 덮기 전에 격리 — 순서가 핵심이다
+    _draftStart();
+    try {
+      var _dr = _draftRead();
+      if (_dr && _dr.state && _dr.sig && _dr.sig === _photosSig(S.photos)) {
+        _showDraftBar(function () {
+          _draftLoadMedia(_dr.sig).then(function (media) {
+            var st = Object.assign({}, _dr.state, media || {});
+            if (_draftRestore(st)) { _draftDropPending(); toastIt('편집하던 내용을 되살렸어요'); }
+            else toastIt('되살리지 못했어요 — 그대로 이어서 편집해 주세요');
+          });
+        });
+      }
+    } catch (_dre) { void _dre; }
     requestAnimationFrame(function () {
       initCanvas();
+      if (_ed) _restorePhotoDraw();   // [2026-09-11] initCanvas 가 캔버스를 비운 **뒤에** 붓그림을 다시 칠한다
       if (!_ed) renderIncoming(S.incoming);   // 복원 모드가 아니면 우리샵 자동배치 레이어
       else { if (!isSingleL(S.layout)) renderCollage(); _renderMissingIncoming(S.incoming); }   // [#2a] 복원했어도 없는 역할의 시술 텍스트는 추가
       // [T4] 작업 기억이 얹혔으면 undo 스택에 '한 덩어리'로 — ↩ 한 번이면 wm 레이어 전체가 원복된다
@@ -2911,6 +3683,15 @@
     root.querySelectorAll('.itlaytype').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-lay') === LAYOUTS.indexOf(S.layout)); });
     S._fitManual = true; _syncFitToggle();
     applyPhotoTransform(); if (!isSingleL(S.layout)) renderCollage();
+    /* 🔴 [2026-09-11] 복원이 **사진 보정을 화면에 반영하지 않고 있었다.**
+       `_restoreState` 는 `S.adj` 를 되살리는데(밝기·대비·채도·온도·선명도·수평),
+       그걸 화면에 거는 `applyAdjToDisplay`/`applyStraighten` 은 아무도 안 불렀다.
+       슬라이더는 보정 패널을 열 때 `renderAdjust()` 가 맞춰주니 **+30 이라고 적혀 있는데
+       큰 사진은 무보정**이었고, 발행본은 보정이 들어간 채로 나갔다 — 화면 ≠ 발행본.
+       실측(스테이지 533×666): 밝기+30·대비+20·채도+50 으로 저장 후 재편집하면
+       스테이지 사진 filter=none / 회색패치 64(원본값), 발행본은 74(보정값)였다.
+       필터가 걸린 요소는 보정 패널 썸네일(.itadjthumb) 하나뿐이었다. */
+    applyAdjToDisplay(); applyStraighten();
     renderLayoutStrip(); renderLayoutHint();
     _restoreLayers(st.layers);
   }
@@ -2938,6 +3719,7 @@
        취소·그냥 닫기도 **세어야** 한다 — 발행만 세면 분모가 발행 성공 쪽으로 쏠린다. */
     try { if (window.DraftQuality) window.DraftQuality.published({ published: false, undone: !!(S && S._cancelled) }); }
     catch (_dqc) { void _dqc; }
+    _draftStop(); _hideDraftBar();
     _closeEyedrop(); _teardownBack(false); root.classList.remove('is-open');
   }
 
@@ -2953,7 +3735,11 @@
     var photo = opts.photoUrl || opts.photo || '';
     var photos = (opts.photos && opts.photos.length) ? opts.photos.slice() : [photo];
     var rp = String(opts.ratio || '4:5').split(':'); var rw = +rp[0] || 4, rh = +rp[1] || 5;
-    var Wpx = 432, Hpx = Math.round(Wpx * rh / rw);
+    /* [BUG-01 2026-09-09] 오프스크린 합성 스테이지를 **출력 해상도와 같게** 잡는다.
+       예전 432px 는 그 자체가 출력 크기였다(= 자동 합성본이 432×540 으로 발행됨).
+       exportComposite 가 이제 고정 1080 으로 굽지만, 스테이지가 432 면 글자를 432 기준으로
+       그린 뒤 2.5배 확대하게 돼 흐려지고 줄바꿈도 화면과 달라진다. 같은 크기로 그려 k=1 로 만든다. */
+    var Wpx = EXPORT_W, Hpx = Math.round(Wpx * rh / rw);
     S = { layers: [], active: null, tool: null, layout: LAYOUTS[0], layoutOrder: [],
       brush: 'pen', brushSize: 10, drawColor: COLORS[2], shapeColor: COLORS[2], shapeFill: false, shapeThick: 6,
       adj: photos.map(function () { return defAdj(); }), adjSel: 0, collageGap: 3, collageBg: '#FFFFFF', collageBgImg: null, cellCrop: [], cellSel: -1, fitMode: 'contain',

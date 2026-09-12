@@ -225,7 +225,9 @@ describe('④ 편집기 하단 줄이 아이폰 홈 인디케이터를 피한다
   });
 
   test('.itlyr 버튼이 44×44 이상이다 (예전 38×34)', () => {
-    const m = editorCss.match(/\.itlyr \{[^}]*\}/);
+    /* [2026-09-11] `.itded__lyr .itlyr { … }` 가 생기면서 이 정규식이 그쪽을 먼저 잡았다.
+       계약은 '버튼이 44×44' — 줄 첫머리의 진짜 `.itlyr` 규칙만 잡도록 앵커를 건다. */
+    const m = editorCss.match(/(?:^|\n)\.itlyr \{[^}]*\}/);
     expect(m[0]).toMatch(/width:\s*(\d+)px/);
     expect(Number(m[0].match(/width:\s*(\d+)px/)[1])).toBeGreaterThanOrEqual(44);
     expect(Number(m[0].match(/height:\s*(\d+)px/)[1])).toBeGreaterThanOrEqual(44);

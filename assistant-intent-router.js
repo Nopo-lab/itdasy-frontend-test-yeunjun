@@ -199,6 +199,22 @@
     return { from: start.toISOString(), to: end.toISOString() };
   }
 
+  /* [잇비 전수QA 2026-09-11 · P1] **취소·노쇼를 세고 있었다.**
+
+     실측(실 Chrome, 배포본 6926ff0, 오늘 예약 confirmed 2 + cancelled 1):
+       "오늘 예약 알려줘" → 머리글 "📅 오늘 예약 3건" · 카드는 **2장**
+     원장님은 3건을 준비한다. 숫자와 목록이 한 화면에서 서로 다른 말을 한다.
+
+     원인은 계산이 **두 갈래**였다는 것 — 머리글은 `_formatBookings(d.items)`(원본),
+     카드는 `app-assistant.js _runAsyncIntentRule` 의 `items.filter(status!=='cancelled')`.
+     한쪽에만 필터가 있었다. 백엔드 즉답(`today_bookings`)은 처음부터
+     `status.notin_(('cancelled','no_show'))` 로 맞게 세고 있었는데, FE 가 가로채서 틀린 값을 냈다.
+
+     그래서 필터를 **execAsyncRule 한 곳**으로 올린다. 머리글도 카드도 같은 배열만 본다. */
+  function activeBookings(items) {
+    return (items || []).filter((b) => b && b.status !== 'cancelled' && b.status !== 'no_show');
+  }
+
   function _formatBookings(items, label) {
     if (!items || !items.length) return `📅 ${label} 예약 없어요.`;
     const lines = items.slice(0, 8).map((b) => {
@@ -221,11 +237,27 @@
     return r.json();
   }
 
+  /* [잇비 전수QA 2026-09-11 · P1] **지출을 물었는데 매출을 답했다.**
+
+     실측(실 Chrome, 배포본 6926ff0):
+       "이번 달 지출 얼마야?" → "📊 이번 달 매출 385,000원 (21건)"
+       (실제 이번 달 지출은 **0원**이다 — 백엔드 `expense_summary` 로 확인)
+     원장님이 이 답을 그대로 믿으면 이번 달 재료비를 38만원 쓴 걸로 안다.
+
+     원인: 아래 매출 규칙들이 `(이번 달) + (얼마)` 만 보고 매칭한다. '지출'이라는 단어를
+     아무도 안 본다. 백엔드엔 `expense_summary` 즉답이 이미 있고 정확히 답한다 —
+     FE 가 가로채는 바람에 거기 닿지 못했을 뿐이다.
+
+     ⚠️ 이 목록은 **돈의 종류**를 가른다. 새 표현을 넣을 땐 매출/지출 양쪽을 같이 본다.
+        한쪽만 넣으면 같은 뜻의 다른 말이 또 반대편으로 샌다. */
+  const EXPENSE_WORD_RE = /(지출|비용|재료비|매입|경비|나간\s*돈|쓴\s*돈|얼마\s*썼|얼마나\s*썼|원가)/;
+  function _isExpenseQ(q) { return EXPENSE_WORD_RE.test(String(q || '')); }
+
   const ASYNC_RULES = [
     // 매출 — 오늘
     {
       type: 'revenue_today',
-      test: (q) => /^(오늘|금일)\s*(의)?\s*(매출|얼마|벌)/.test(q) || /오늘\s*얼마/.test(q),
+      test: (q) => !_isExpenseQ(q) && (/^(오늘|금일)\s*(의)?\s*(매출|얼마|벌)/.test(q) || /오늘\s*얼마/.test(q)),
       fetch: () => _fetchJson('/revenue?period=today'),
       format: (d) => {
         const t = d.total || 0;
@@ -237,21 +269,21 @@
     // 매출 — 이번 주
     {
       type: 'revenue_week',
-      test: (q) => /(이번|금)\s*주.*(매출|얼마|벌)/.test(q),
+      test: (q) => !_isExpenseQ(q) && /(이번|금)\s*주.*(매출|얼마|벌)/.test(q),
       fetch: () => _fetchJson('/revenue?period=week'),
       format: (d) => `📊 이번 주 매출 **${_krw(d.total || 0)}** (${d.count || 0}건)`,
     },
     // 매출 — 이번 달
     {
       type: 'revenue_month',
-      test: (q) => /((이번|금|이)\s*달|월\s*매출|이달).*(매출|얼마|벌)?/.test(q) && /(매출|얼마|벌)/.test(q),
+      test: (q) => !_isExpenseQ(q) && /((이번|금|이)\s*달|월\s*매출|이달).*(매출|얼마|벌)?/.test(q) && /(매출|얼마|벌)/.test(q),
       fetch: () => _fetchJson('/revenue?period=month'),
       format: (d) => `📊 이번 달 매출 **${_krw(d.total || 0)}** (${d.count || 0}건)`,
     },
     // 매출 — 지난 달
     {
       type: 'revenue_last_month',
-      test: (q) => /(지난|저번)\s*달.*(매출|얼마|벌)/.test(q),
+      test: (q) => !_isExpenseQ(q) && /(지난|저번)\s*달.*(매출|얼마|벌)/.test(q),
       fetch: () => _fetchJson('/revenue?period=last_month'),
       format: (d) => `📊 지난 달 매출 **${_krw(d.total || 0)}** (${d.count || 0}건)`,
     },
@@ -393,6 +425,11 @@
   // 매칭된 규칙 실행 — async. fetch 실패 시 throw → caller 가 LLM fallback 또는 에러 메시지 결정.
   async function execAsyncRule(rule) {
     const data = await rule.fetch();
+    // [2026-09-11 P1] 예약 조회는 **여기서 한 번** 취소·노쇼를 걷어낸다.
+    //   format(머리글)과 호출측(카드)이 같은 배열을 보게 하는 유일한 지점이다.
+    if (/^bookings_/.test(rule.type || '') && data && Array.isArray(data.items)) {
+      data.items = activeBookings(data.items);
+    }
     const response = rule.format(data);
     _bumpStats(rule.type);
     return { matched: true, type: rule.type, response, data };
@@ -491,7 +528,31 @@
   // 두 이름 유사도 — fuzzy match (포함 / 정확 / 끝글자 매칭)
   function _nameMatches(target, candidate) {
     if (!target || !candidate) return false;
-    if (target === candidate) return 100;
+    /* [잇비 전수QA 2026-09-11 · P2] **정확히 부른 이름이 접두사형과 동점(100)이 됐다.**
+       실측: 고객 목록에 "김호영" 과 "E2E_C_김호영" 이 둘 다 있을 때
+         "김호영님 예약 있어?" → "🔍 같은 이름 2명 있어요"
+       같은 이름이 아니다. 하나는 **완전히 같고** 하나는 접두사가 붙은 다른 사람이다.
+       백엔드(`_customer_ids_by_name`)는 exact 를 먼저 찾고 거기서 1명이면 확정한다 —
+       FE 만 둘을 같은 등급으로 봤다. 그래서 완전 일치에 한 단계 높은 점수를 준다.
+       (진짜 동명이인은 둘 다 110 이라 되묻기가 그대로 살아 있다.) */
+    if (target === candidate) return 110;
+    // [P1 2026-09-09 실측] DB 이름에 **접두사**가 붙어 있으면 정확히 부른 이름도 '유사'로 떨어졌다.
+    //   실 Chrome: "E2E_A_박지우님 모레 오후 3시에 커트 예약 잡아줘"
+    //     → "🔍 정확히 일치하는 고객이 없어요. 비슷한 이름 후보예요:
+    //        · E2E_B_박지우현 · E2E_A_박지우"        ← 정확한 이름을 댔는데 되묻는다
+    //   이름 추출이 `[가-힣]{2,5}` 라 "박지우" 만 뽑고, `candidate.includes(target)` = 90 점이
+    //   되어 자동 확정(100)에 못 미친다. 게다가 "박지우현" 도 같은 90 이라 **다른 고객이
+    //   후보 1번으로 올라온다.** 되묻기 문구는 "정확한 이름으로 다시 알려주세요" 인데
+    //   이미 정확한 이름을 댔으므로 다시 말해도 같은 답이 나온다 — 빠져나갈 길이 없다.
+    //
+    //   운영 데이터에도 접두사 이름이 실제로 있다("(샘플) 이수민" — 시드·별칭 표기).
+    //   그래서 **이름 경계에서 끝나는 접두사형은 같은 사람**으로 본다.
+    //   백엔드 `_customer_ids_by_name` 이 쓰는 규칙과 같은 계약이다(형제 경로 정렬).
+    //   "박지우현" 은 "박지우" 로 끝나지 않으므로 여전히 90 — 동명 유사자는 안 올라온다.
+    if (candidate.endsWith(target) && candidate.length > target.length) {
+      const sep = candidate.charAt(candidate.length - target.length - 1);
+      if (/[^가-힣]/.test(sep)) return 100;
+    }
     if (candidate.includes(target)) return 90;
     if (target.includes(candidate)) return 80;
     // 끝 2글자 매칭 (성 제외 이름)
@@ -506,9 +567,9 @@
   function _decideCustomer(scored) {
     const top = scored[0].score;
     const tied = scored.filter((x) => x.score === top);
-    if (top === 100 && tied.length === 1) return { customer: tied[0].c };
+    if (top >= 100 && tied.length === 1) return { customer: tied[0].c };
     const fmt = (x) => `· ${x.c.name}${x.c.phone ? ' (' + x.c.phone + ')' : ''}`;
-    if (top === 100) {  // 동명이인 — 전화번호로 구분 요청
+    if (top >= 100) {  // 동명이인 — 전화번호로 구분 요청
       return { askText: `🔍 같은 이름 ${tied.length}명 있어요. 전화번호 뒷자리나 순번(1·2…)으로 알려주세요:\n${tied.slice(0, 5).map((x, i) => `${i + 1}) ${x.c.name}${x.c.phone ? ' (' + x.c.phone + ')' : ''}`).join('\n')}`, candidates: tied.slice(0, 5).map((x) => x.c) };
     }
     // top < 100 — 유사 후보뿐. 자동 확정 금지(다른 고객 오선택 방지).
@@ -1089,6 +1150,32 @@
     return { hint, summary, hasRecent: !!recent, noMaterial };
   }
 
+  // [ITBI 2차게이트 2026-09-12 · P1 · CASE-021] **여러 명을 가리키는 말은 이름이 아니다.**
+  //
+  //   실측(라이브 · user 4):
+  //     "오래 안 온 손님한테 문자 보내줘"      → "🔍 **오래**님을 못 찾았어요."
+  //     "이탈 위험 고객한테 안부 문자 초안 써줘" → "🔍 **위험**님을 못 찾았어요."
+  //   `_extractMsgTarget` 은 호칭(님)이 없으면 **금지어 목록을 뺀 뒤 첫 한글 덩어리**를
+  //   이름으로 집는다. 목록에 없는 단어는 전부 사람 이름이 된다 — 블랙리스트의 숙명이다.
+  //   (같은 교훈이 이 레포에 2026-08-17 부터 적혀 있다: "한국어 파싱에 블랙리스트 금지")
+  //
+  //   더 나쁜 건 이게 **FE 에서 끝난다**는 것이다. 백엔드엔 이런 요청을 위한 경로가
+  //   이미 있다 — `generate_bulk_message` + `segment`(at_risk_30d · regulars_top10 …).
+  //   즉 정답이 있는데 지름길이 가로채서 헛소리를 돌려주고 있었다.
+  //
+  //   바로 이 파일이 모순을 안고 있었다: `_draftTone` 은 같은 단어들
+  //   `(오래|뜸|이탈|안 오|발길)` 을 보고 'we_miss_you'(여러 명 대상 톤)라고 판단하면서,
+  //   바로 다음 줄에서 그 단어에서 **한 사람 이름**을 뽑으려 한다.
+  //
+  //   고치는 방식: 이름 매칭을 약하게 만들지 않는다(그러면 "박지우 문자 보내줘" 가 깨진다).
+  //   **집단을 가리키는 말 + 호칭 근거 없음** 일 때만 지름길에서 손을 뗀다.
+  //   ⚠ 한글은 완성형이다 — '온'(U+C628) 은 '오' 로 시작하지 않는다.
+  //     `안\s*오` 로 쓰면 "안 오시는" 은 잡고 **"안 온" 은 놓친다**. 회귀 테스트가 잡았다.
+  const _SEGMENT_TARGET = /((오래|한동안|한참|요즘|근래)\s*안\s*(오|온|와|왔)|안\s*(오는|온|오시는|오신|왔)\s*(분|손님|고객)|뜸한|뜸해|발길\s*(이\s*)?끊|이탈|단골(들|\s*손님|\s*고객)?|신규\s*(고객|손님)|새로\s*(온|왔|오신)|전체\s*(고객|손님)|모든\s*(고객|손님)|회원권\s*(잔액|만료)|생일인\s*(고객|손님)|위험\s*고객)/;
+  //   ⚠ `(?![가-힣])` 로 막으면 **조사가 붙은 호칭을 놓친다** — "김호영씨한테" 의 '한' 때문에
+  //     호칭 근거가 없다고 판정됐다(실측). 조사는 허용하고, 이름 안에 파묻힌 경우만 막는다.
+  const _NAME_EVIDENCE = /[가-힣]{2,5}\s*(?:님|씨)(?=$|[\s,.!?~]|한테|에게|께|은|는|이|가|을|를|도|와|과|의|랑|처럼|만)/;
+
   // 결과: {kind:'execute', action} | {kind:'message', text} | null(초안 의도 아님)
   async function tryDraftMessage(text, ctx) {
     if (_disabled()) return null;
@@ -1096,6 +1183,8 @@
     // 예약 생성/취소 의도가 우선(충돌 방지)
     if (_CREATE_VERB.test(t) || _CANCEL_VERB.test(t)) return null;
     if (!_MSG_NOUN.test(t) || !_MSG_VERB.test(t)) return null;
+    // [CASE-021] 집단 대상인데 이름 근거가 없으면 백엔드(세그먼트 일괄 초안)로 넘긴다.
+    if (_SEGMENT_TARGET.test(t) && !_NAME_EVIDENCE.test(t)) return null;
 
     const tone = _draftTone(t);
     const purpose = t.slice(0, 120);
@@ -1150,6 +1239,7 @@
   // ─── public API ─────────────────────────────────────────
   window.AssistantIntent = {
     classifyObvious,
+    activeBookings,
     findAsyncRule,
     execAsyncRule,
     tryCreateBooking,

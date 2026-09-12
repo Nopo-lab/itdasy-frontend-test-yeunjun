@@ -140,6 +140,12 @@
 .wsc-one {
   height: min(52vh, 480px); aspect-ratio: 4 / 5; margin: 0 auto; border-radius: 18px;
   background-size: cover; background-position: center; background-color: var(--border, #E9EBEE);
+  /* [2026-09-12 ZH] `background-repeat` 기본값은 repeat 다. 예전엔 이 칸이 늘 cover 라
+     드러나지 않았는데, '사진 채우기' 선택으로 **contain 이 도달 가능해지면서**
+     가로 사진이 세로로 3번 반복돼 보였다(실측 2026-09-12, manicure 1.5:1 → 298×373 칸).
+     원장이 '전체 보이기' 를 고른 바로 그 화면에서 자기 사진이 타일처럼 깔린다.
+     다른 contain 배경(.ed-photo·.wshc-lb__slide·.pe-tplg-preview-canvas)엔 전부 있는 선언이다. */
+  background-repeat: no-repeat;
   max-width: 100%;
 }
 .wsc-onemsg {
@@ -154,4 +160,24 @@
 @media (prefers-reduced-motion: reduce) {
   .wsc-opt, .wsc-opt:active, .wsc-mini i { transition: none !important; transform: none !important; }
   .wsc-frames, .wsc-strip { scroll-behavior: auto; }
+}
+
+/* 🔴 [2026-09-11] 사진 채우기(꽉 채움 / 전체) — 기존 구성 칩(.wsc-opt)과 같은 시각 언어를 그대로 쓴다.
+   새 디자인 언어를 만들지 않는다. 미니 썸네일만 '여백 있음/없음'을 한눈에 보여준다. */
+.wsc-opts--fit { flex-direction: row; gap: 8px; }
+.wsc-opts--fit .wsc-opt { flex: 1 1 0; min-width: 0; gap: 10px; padding: 10px 12px; }
+.wsc-fitmini {
+  width: 34px; height: 42px; border-radius: 7px; flex: none;
+  background: var(--surface-2, #F7F8FA); border: 1px solid var(--border, #E9EBEE);
+  display: block; position: relative; overflow: hidden;
+}
+/* 꽉 채움 — 칸을 가득 채운 사진 */
+.wsc-fitmini--cover::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(135deg, #C9CED6, #9AA3AE);
+}
+/* 전체 보이기 — 위아래 흰 여백이 남는 사진 */
+.wsc-fitmini--contain::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 25%; height: 50%;
+  background: linear-gradient(135deg, #C9CED6, #9AA3AE);
 }

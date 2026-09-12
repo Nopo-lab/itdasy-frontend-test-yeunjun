@@ -299,28 +299,63 @@ async function deleteSlotFromDB(id) {
 // [2026-04-26] 계정 격리 — 로그아웃·계정 전환 시 갤러리 IndexedDB 전체 폐기.
 // 이전 사용자의 작업실 사진이 다음 사용자에게 노출되는 누수 방지 (메타 심사 대응).
 const CLEAR_GDB_TIMEOUT_MS = 2000;
+/* [2026-09-11 BUG-F2 라이브 실측] **`deleteDatabase` 를 정리에 쓰지 않는다.**
+   왜 바꿨나 — 2026-09-03 주석은 "잠기면 이벤트가 안 온다" 까지만 봤고, 그래서 타임아웃으로
+   넘어가는 걸 해법이라고 적어 뒀다. 그 타임아웃이 **거짓 안심**이었다.
+   탭 2개(원장이 실제로 하는 일)로 로그아웃→로그인 하면서 계측한 결과:
+     DELETE_REQ itdasy-gallery → **del.BLOCKED (4ms)** → 그 뒤 open 20건이 **전부 pending**,
+     success·error·blocked 이벤트 0건. 탭 B 를 닫아도 안 풀렸고, **로그아웃한 탭까지 리로드**하자
+     그제서야 delete 가 실행되며 큐가 한꺼번에 풀렸다(제3의 탭 probe 로 확인).
+   핵심: **deleteDatabase 는 취소할 수 없다.** 한 번 blocked 되면 그 DB 에 대한 이후 모든 open 이
+   origin 전역으로 줄서서 잠긴다 → `gdb_open_timeout` → 작업실이 빈 화면으로 굳는다.
+   호출부가 2초 뒤에 포기해도 **요청 자체는 살아남아 뒤를 계속 잠근다.**
+   → 정리는 store 를 비우는 것으로 한다. `clear()` 는 평범한 readwrite 트랜잭션이라
+     다른 탭이 연결을 붙잡고 있어도 blocked 가 없고, 큐를 잠그지 않는다.
+     스키마(빈 store)는 남지만 사용자 데이터는 0 이므로 격리 목적은 동일하게 달성된다. */
 async function clearGalleryDB() {
   try {
-    if (_gdb) { try { _gdb.close(); } catch (_) { void 0; } _gdb = null; }
-    /* [2026-09-03 최종 스윕] workspace-sync.clearLocal 과 **같은 뿌리**다.
-       deleteDatabase 는 다른 연결이 붙잡고 있으면 success·error·blocked 를
-       **하나도 안 내고** pending 으로 남는다(2026-09-03 실측: 4초 관찰 이벤트 0건).
-       onblocked 를 달아둔 것으로는 못 막는다 — 그 이벤트조차 안 온다.
-       이 함수도 _purgeUserScopedDB → 로그인 경로에서 await 되므로
-       안 끝나면 **로그인이 멈춘다**. 정리는 best-effort 로 강등한다. */
+    const db = await _gdbForClear();
+    if (!db) return false;
+    /* 내가 직접 연 연결이면 **끝나고 반드시 닫는다.** 버전 없이 열었기 때문에
+       이 연결이 남아 있으면 다음 openGalleryDB(7) 의 upgrade 를 도로 blocked 로 만든다 —
+       고치려던 병을 다른 자리에서 재현하는 꼴이 된다. */
+    const _mine = db !== _gdb;
+    const _release = () => { if (_mine) { try { db.close(); } catch (_) { void 0; } } };
+    const names = Array.prototype.slice.call(db.objectStoreNames || []);
+    // store 가 하나도 없으면(방금 만들어진 빈 DB) 지울 사용자 데이터도 없다.
+    if (!names.length) { _release(); try { _gdbSetOwner(null); } catch (_) { void 0; } return true; }
     return await new Promise((resolve) => {
       let settled = false;
-      const finish = (v) => { if (!settled) { settled = true; resolve(v); } };
+      const finish = (v) => { if (!settled) { settled = true; _release(); resolve(v); } };
       const timer = setTimeout(() => finish(false), CLEAR_GDB_TIMEOUT_MS);
       try {
-        const req = indexedDB.deleteDatabase(_GDB_NAME);
-        // 지워졌으면 소유자 도장도 비운다 — 다음 open 이 현재 사용자로 새로 찍는다.
-        req.onsuccess = () => { clearTimeout(timer); try { _gdbSetOwner(null); } catch (_) { void 0; } finish(true); };
-        req.onerror   = () => { clearTimeout(timer); finish(false); };
-        req.onblocked = () => { clearTimeout(timer); finish(false); };
+        const tx = db.transaction(names, 'readwrite');
+        names.forEach((n) => { try { tx.objectStore(n).clear(); } catch (_) { void 0; } });
+        // 비웠으면 소유자 도장도 비운다 — 다음 open 이 현재 사용자로 새로 찍는다.
+        tx.oncomplete = () => { clearTimeout(timer); try { _gdbSetOwner(null); } catch (_) { void 0; } finish(true); };
+        tx.onerror    = () => { clearTimeout(timer); finish(false); };
+        tx.onabort    = () => { clearTimeout(timer); finish(false); };
       } catch (_) { clearTimeout(timer); finish(false); }
     });
   } catch (_) { return false; }
+}
+/* 정리용 연결. openGalleryDB() 를 쓰면 **소유자 불일치 → clearGalleryDB → …** 로 재귀하므로
+   여기서는 소유자 검사를 타지 않는 별도 경로를 쓴다.
+   버전을 지정하지 않는다 — 버전을 박으면 upgradeneeded 가 걸려 다시 blocked 위험이 생기고,
+   DB 가 없을 때 store 없는 v7 을 만들어 이후 openGalleryDB(7) 의 스키마 생성을 영영 막는다. */
+function _gdbForClear() {
+  if (_gdb) return Promise.resolve(_gdb);
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (v) => { if (settled) return; settled = true; clearTimeout(timer); resolve(v); };
+    const timer = setTimeout(() => finish(null), CLEAR_GDB_TIMEOUT_MS);
+    try {
+      const req = indexedDB.open(_GDB_NAME);
+      req.onsuccess = (e) => finish(e.target.result);
+      req.onerror   = () => finish(null);
+      req.onblocked = () => finish(null);
+    } catch (_) { finish(null); }
+  });
 }
 window.clearGalleryDB = clearGalleryDB;
 // ── [T8-B] 학습 store 범용 CRUD — 격리/검증은 work-memory-store.js 가 한다 ──

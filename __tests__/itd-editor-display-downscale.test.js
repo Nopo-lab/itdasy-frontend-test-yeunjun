@@ -35,13 +35,30 @@ describe('itd-editor 표시용 축소본', () => {
     expect(body).not.toMatch(/loadImg\(_disp\(/);
   });
 
-  test('3) 투명 PNG 는 축소본도 PNG 로 낸다', () => {
+  test('3) 투명 여부는 확장자가 아니라 실제 알파로 판정한다', () => {
     const i = SRC.indexOf('function _prepDisp');
     expect(i).toBeGreaterThan(-1);
-    const body = SRC.slice(i, i + 2200);
-    expect(body).toMatch(/data:image\\\/png/);
+    const body = SRC.slice(i, i + 3000);
+    // 확장자로 갈라서 PNG 를 유지하던 1차 수정은 5MB 불투명 PNG 축소본이 3.4MB PNG 로 남아
+    // 42fps 에서 안 올라갔다. 반드시 _hasAlpha 로 갈라야 한다.
+    expect(body).toMatch(/_hasAlpha\(cv\)/);
     expect(body).toMatch(/toDataURL\('image\/png'\)/);
-    expect(body).toMatch(/toDataURL\('image\/jpeg'/);
+    expect(body).toMatch(/toDataURL\('image\/jpeg', 0\.9\)/);
+    // 분기 조건이 확장자로 되돌아가면 실패
+    expect(body).not.toMatch(/\/\^data:image\\\/png\/i\.test\(url\) \?/);
+  });
+
+  test('3b) _hasAlpha 는 읽기 실패 시 PNG 를 유지한다(투명 깨짐 방지)', () => {
+    const i = SRC.indexOf('function _hasAlpha');
+    expect(i).toBeGreaterThan(-1);
+    const body = SRC.slice(i, i + 800);
+    expect(body).toMatch(/catch[\s\S]*return true/);
+  });
+
+  test('3c) 알파가 있는데도 크면 한 단계 더 줄인다', () => {
+    expect(SRC).toMatch(/DISP_SMALL_EDGE\s*=\s*\d{3,4}/);
+    const i = SRC.indexOf('function _prepDisp');
+    expect(SRC.slice(i, i + 3000)).toMatch(/out\.length > DISP_BYTES/);
   });
 
   test('4) 임계값이 사라지지 않았다(무조건 축소/무조건 통과 방지)', () => {

@@ -23,9 +23,10 @@
   - Sign in with Apple 은 iOS에서 Google/카카오 로그인을 다시 노출할 때 추가
 - [ ] **App Store Connect 앱 생성**: 이름 "잇데이"
 - [ ] **IAP 상품 2개**
-  - `itdasy_membership_monthly_6900` — **₩9,900 / $6.99 USD** 자동갱신 구독 (**10일** 무료 체험)
-    ⚠️ 상품ID 이름의 `6900` 은 레거시 — 콘솔 가격이 ₩9,900 인지 확인
-  - 두 상품 같은 Subscription Group ("Itdasy Subscriptions")
+  - `itdasy_pro_monthly_9900` — ₩9,900 자동갱신 구독 (10일 무료 체험)
+  - `itdasy_pro_yearly_99000` — ₩99,000/년 자동갱신 구독 (체험 없음) · **월간과 같은 구독 그룹**
+  - ⚠️ `itdasy_membership_monthly_6900` 은 2026-09-02 폐기 — **판매중지만, 삭제 금지.**
+    가격을 올려 재사용하지 않는다(기존 구독자가 인상 대상이 되어 구독이 끊길 수 있다).  - 두 상품 같은 Subscription Group ("Itdasy Subscriptions")
 - [ ] **App-Specific Shared Secret** 발급 → Cloud Run env `APPLE_IAP_SHARED_SECRET=<값>` 주입
 - [ ] **Privacy Policy URL**: `https://itdasy.com/privacy.html`
 - [ ] **Marketing/Support URL**: `https://itdasy.com/`

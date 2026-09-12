@@ -77,8 +77,14 @@ describe('③ 비율 검증 — 손상된 editState 가 화면을 뭉개던 것 
 
 describe('④ 저장→복원 왕복 무손실 (P1/P3)', () => {
   test('텍스트 폭을 반올림이 아니라 올림+1 로 복원한다 (한 줄이 두 줄로 접히던 것)', () => {
-    expect(editorSrc).toContain("css += ';max-width:' + (Math.ceil(spec.w * R.width) + 1) + 'px'");
+    expect(editorSrc).toContain('Math.ceil(spec.w * R.width) + 1');
     expect(editorSrc).not.toContain("';max-width:' + Math.round(spec.w * R.width)");
+  });
+  /* [2026-09-11] `+1` 은 **왕복마다 누적된다** — 실측(Chrome, 스테이지 533px):
+     저장→재편집 3회에 max-width 가 469 → 470 → 471px. 상한이 없으면 반복 재편집만으로
+     상자가 스테이지보다 넓어져 BUG-07 이전처럼 다시 잘리기 시작한다. */
+  test('그 +1 이 무한히 누적되지 않게 스테이지 폭으로 막는다', () => {
+    expect(editorSrc).toMatch(/max-width:'\s*\+\s*Math\.min\(Math\.ceil\(spec\.w \* R\.width\) \+ 1, Math\.round\(R\.width\)\)/);
   });
   test('실측 수치로 재현 — 145.469px 를 반올림하면 부족, 올림+1 이면 충분', () => {
     const need = 0.3879166666666667 * 375;   // 실제 렌더 폭
@@ -124,8 +130,32 @@ describe('⑦ 도구 패널이 레이어 순서 줄을 덮어 "보이는데 안 
     expect(editorSrc).toContain("root.classList.toggle('itded--panel', !!tool);");
     expect(editorSrc).toContain("root.classList.remove('itded--panel');");
   });
-  test('CSS 가 그때 줄을 감춘다', () => {
-    expect(editorCss).toMatch(/\.itded\.itded--panel \.itded__lyr \{\s*display:\s*none/);
+  /* [계약 변경 2026-09-09 · BUG-04] 예전 계약은 "패널이 열리면 줄을 **감춘다**" 였다.
+     의도는 옳았다(덮여서 '보이는데 안 눌리는' 상태 방지). 그런데 그 해법이 새 결함을 만들었다:
+       · selectLayer() 는 텍스트 레이어를 고르면 **항상** setTool('text') 를 부른다(itd-editor.js).
+         → 텍스트는 "고르면 숨고, 안 고르면 버튼이 비활성" 이라 앞/뒤로 보내기가 구조적으로 불가능했다.
+       · 게다가 PC 실측(1440×812)에서 이 줄은 flex 흐름에 있어 뷰포트 **밖**(y=812)으로 밀려 있었다
+         (.itded clientH 812 / scrollH 1430, position:fixed 라 스크롤로도 도달 불가).
+     새 계약: **감추지 말고 패널 위로 올린다.** 원래 위험(덮여서 안 눌림)은 z-index 로 막는다.
+     아래 검사는 옛 검사보다 약해지지 않게 '패널 아래에 깔리지 않는다'를 직접 고정한다. */
+  test('패널이 열려도 줄을 감추지 않고 패널 위로 올린다', () => {
+    const panelRule = editorCss.match(/\.itded\.itded--panel \.itded__lyr \{[^}]*\}/)[0];
+    expect(panelRule).not.toMatch(/display:\s*none/);          // 옛 해법으로 되돌아가면 실패
+    expect(panelRule).toMatch(/bottom:\s*var\(--itpanel-h/);   // 패널 높이만큼 띄운다
+  });
+  test('줄이 패널보다 위에 있다 — 덮여서 안 눌리던 원래 위험을 z-index 로 막는다', () => {
+    const panelZ = Number(editorCss.match(/\.itpanel\{[^}]*z-index:\s*(\d+)/)[1]);
+    const lyrZ = Number(editorCss.match(/\.itded__lyr \{[^}]*z-index:\s*(\d+)/)[1]);
+    expect(lyrZ).toBeGreaterThan(panelZ);
+  });
+  test('줄이 flex 흐름이 아니라 오버레이다 — 예전엔 흐름에 있어 PC 에서 화면 밖으로 밀렸다', () => {
+    const base = editorCss.match(/\.itded__lyr \{[^}]*\}/)[0];
+    expect(base).toMatch(/position:\s*absolute/);
+    expect(base).toMatch(/bottom:\s*0/);
+  });
+  test('열린 패널 높이를 setTool 이 --itpanel-h 로 넣고, 닫히면 지운다', () => {
+    expect(editorSrc).toContain("root.style.setProperty('--itpanel-h'");
+    expect(editorSrc).toContain("root.style.removeProperty('--itpanel-h')");
   });
 });
 
@@ -146,7 +176,10 @@ describe('⑧ 모바일 터치 타깃 — 아이콘이 아니라 히트박스 �
     expect(Math.abs(Number(m[1]))).toBeLessThanOrEqual(13 / 2 + 0.5);
   });
   test('레이어 순서 버튼은 44x44 이고 safe-area 를 더한다', () => {
-    const lyr = editorCss.match(/\.itlyr \{[^}]*\}/)[0];
+    /* [2026-09-11] `.itded__lyr .itlyr { … }` 규칙이 생기면서 이 정규식이 **그쪽을 먼저 잡았다.**
+       계약은 '순서 버튼이 44×44' 이지 파일에 그 문자열이 몇 번 나오느냐가 아니다 —
+       줄 첫머리에 오는 진짜 `.itlyr` 규칙만 잡도록 앵커를 건다. */
+    const lyr = editorCss.match(/(?:^|\n)\.itlyr \{[^}]*\}/)[0];
     expect(Number(lyr.match(/width:\s*(\d+)px/)[1])).toBeGreaterThanOrEqual(44);
     expect(Number(lyr.match(/height:\s*(\d+)px/)[1])).toBeGreaterThanOrEqual(44);
     expect(editorCss.match(/\.itded__lyr \{[^}]*\}/)[0]).toContain('safe-area-inset-bottom');

@@ -941,8 +941,22 @@
       if (match) _selectChip(match);
       else { customInput.style.display = 'block'; customInput.value = ctx.service_name; _selectChip(null); }
     }
-    // 캐시 비었으면 비동기 로드 후 재렌더
-    if (!list.length && typeof window.loadServiceTemplates === 'function') {
+    // 캐시 비었으면 비동기 로드 후 재렌더 — **딱 한 번만.**
+    //
+    // [원장 QA 2026-09-11] 여기가 무한 재귀였다. 실측(라이브, 매출 입력 창을 연 채 10초):
+    //     GET /services  ×570건  (초당 약 57회, 전부 429)
+    //   모달을 닫아도, 고객 선택 시트를 닫아도 멈추지 않고 **새로고침해야** 멎었다.
+    //   그 사이 rate limit 이 소진돼 다른 화면까지 "요청이 잠깐 몰렸어요" 로 막히고,
+    //   모바일 메뉴가 "오늘 0건 · 매출 0원" 이라는 **거짓 숫자**를 보여줬다.
+    //
+    // 왜 멈추지 않았나 — `loadServiceTemplates()` 는 실패해도 예외를 던지지 않고 `[]` 를
+    //   돌려준다(app-service-templates.js). 그래서 429 로 실패해도 `.then()` 이 돌고,
+    //   캐시는 여전히 비어 있으니 이 분기가 또 타서 스스로를 무한히 다시 부른다.
+    //   `.catch()` 는 애초에 불릴 일이 없었다.
+    //
+    // 재시도 1회면 충분하다 — 정상이면 그 한 번에 캐시가 차고, 실패면 '+ 직접' 으로 적으면 된다.
+    if (!list.length && !modal._rfSvcRetried && typeof window.loadServiceTemplates === 'function') {
+      modal._rfSvcRetried = true;
       window.loadServiceTemplates().then(() => _renderServiceChips(modal, ctx, hooks)).catch(() => {});
     }
   }
@@ -1140,7 +1154,7 @@
       });
     });
     sheet.querySelector('[data-rv-del]').addEventListener('click', () => {
-      window._inlineConfirm('이 매출을 삭제할까요?', async () => {
+      window._inlineConfirm(_deleteConfirmMsg(item), async () => {
         try {
           await remove(item.id);
           if (window.showToast) window.showToast('삭제됐어요');
@@ -1153,11 +1167,39 @@
     });
   };
 
+
+  /* [2026-09-11 BUG-A] 매출 삭제 확인창 문구 — **금전 효과를 먼저 말한다.**
+
+     원래 문구는 "이 매출을 삭제할까요?" 한 줄이었다. 그런데 서버의 DELETE 는
+     그 한 번으로 두 가지를 더 한다:
+       ① `membership_delta` 만큼 **손님 회원권 잔액을 되돌린다**(차감행이면 잔액이 늘고,
+          충전행이면 잔액이 줄어든다)
+       ② 그 매출에 붙은 **환불 기록도 같이 지운다**(고아 음수행 방지)
+     둘 다 손님 돈인데 확인창이 한마디도 안 했다. 원장님은 무엇이 움직이는지 모르고 누른다.
+
+     ⚠️ 모르면 말하지 않는다. `membership_delta` 가 없는(옛 서버·일반 매출) 행에
+     "잔액이 돌아와요" 라고 쓰면 그게 더 나쁜 거짓말이다. 값이 있을 때만 덧붙인다. */
+  function _deleteConfirmMsg(item, info) {
+    const lines = ['이 매출을 삭제할까요?'];
+    const d = item && item.membership_delta;
+    if (typeof d === 'number' && d !== 0) {
+      const won = Math.abs(d).toLocaleString('ko-KR');
+      lines.push(d < 0
+        ? `회원권에서 차감한 ${won}원이 손님 잔액으로 되돌아가요.`
+        : `충전한 ${won}원이 손님 잔액에서 빠져요.`);
+    }
+    const rf = info && Number(info.refunded_total);
+    if (rf > 0) lines.push(`이 매출에 붙은 환불 기록 ${rf.toLocaleString('ko-KR')}원도 같이 지워져요.`);
+    lines.push('되돌릴 수 없어요.');
+    return lines.join('\n');
+  }
+  window._revenueDeleteMsg = _deleteConfirmMsg;
+
   // ── public 객체 + 내부 API export (today/month 가 참조) ─
   window.Revenue = {
     list, create, update, remove,
     // 내부 헬퍼·유틸 (분할 파일이 참조)
-    _esc, _formatMan, _isPC, _tagHTML, _rvShopExample,
+    _esc, _formatMan, _isPC, _tagHTML, _rvShopExample, _deleteConfirmMsg,
     PERIODS, PERIOD_LABEL, TAG_LABEL,
     get _items() { return _items; },
     get _currentPeriod() { return _currentPeriod; },

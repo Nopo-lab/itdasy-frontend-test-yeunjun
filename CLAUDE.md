@@ -11,9 +11,13 @@
 (`scripts/bump_cache_busters.py`, 실측 258건). `load-groups.js` 자신의 버전도 포함되며,
 그게 안 바뀌면 배포를 **실패시킨다** — 그거 하나 빠지면 나머지가 전부 무효이기 때문.
 
-- 🔴 **딱 하나 남은 수동 작업**: `?v=` 가 **아직 안 붙은 새 파일**을 추가할 때는
-  한 번은 손으로 `?v=` 를 붙여야 한다. 스크립트는 '이미 붙어 있는 것'만 갱신한다
-  (사람이 의도적으로 뺀 항목까지 건드리지 않으려고 일부러 그렇게 했다).
+- ✅ **새 파일도 자동이다** (2026-08-02 `c32683d` 부터). 스크립트의 `NO_VER` 가
+  `?v=` 가 아직 안 붙은 로컬 js/css 에도 배포 때 새로 붙여준다.
+  ⚠️ 이 자리엔 원래 "새 파일은 손으로 붙여야 한다 · 스크립트는 이미 붙어 있는 것만 갱신한다" 고
+  적혀 있었는데 **NO_VER 가 들어온 뒤로 줄곧 거짓이었다** — 실제로 그걸 믿고
+  "이 파일들은 캐시버스팅이 안 된다" 고 오진한 적이 있다(2026-09-12).
+- 🔴 **여전히 수동인 곳**: `style.css` 의 `@import` — `TARGETS`(index.html · js/load-groups.js)
+  밖이라 자동 범프가 안 닿는다. 손으로 올려야 한다.
 - 외부 CDN(`https://…`)은 건드리지 않는다.
 - 왜 자동화했나: 손으로 하면 반드시 빠뜨린다. 특히 `index.html` 의 `js/load-groups.js?v=` 를
   빼먹으면 **안의 버전을 아무리 올려도 무효**다 — 브라우저가 옛 load-groups 를 쓰고 그 안의
@@ -139,7 +143,13 @@ PC(`@media (width >= 768px)`)엔 고정 사이드바 `#sideNav`(`.side-nav.ms-si
 **언어**: 한국말, 쉬운말. 원영님은 코딩 초보.
 
 - 역할: 연준 전용 프론트 검증 레포. 배포 `https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/`
-- 백엔드: `itdasy_backend-test` (Cloud Run staging). `PROD_API` = `https://itdasy-backend-staging-644329093453.asia-northeast3.run.app` (app-core.js:57). 토큰 키: `itdasy_token::staging`
+- 🚨 **백엔드는 운영이다.** `PROD_API` = `https://itdasy-backend-staging-644329093453.asia-northeast3.run.app`
+  이름은 staging 이지만 `env=production` 이고 **실사용자 DB(Supabase `itdasy-staging` / hsxxqomfbdernepykils)** 를 본다.
+  이 사이트(`nopo-lab.github.io/itdasy-frontend-test-yeunjun/`)는 살아 있고, 여기서 넣은 돈은 진짜 돈이다.
+  토큰 키: `itdasy_token::staging` (키 이름도 이름만 staging)
+- 💾 **운영 DB 백업의 단일 소유자가 이 레포다.** `.github/workflows/supabase-backup.yml`
+  매일 KST 03:00 · artifact 30일 · 실패 시 잡 FAIL + Discord 알림.
+  다른 레포에 백업을 늘리지 마라 — 새벽에 어느 게 진짜인지 구분 못 한다.
 - 상속: 루트 `../CLAUDE.md` + `../AGENTS.md §3, §4`
 - 워크플로우: 1) 여기서 먼저 → 2) 검증 후 `itdasy-frontend`(운영) 승격
 - 트랙: 4줄 이상 / API / Capacitor = 표준(티켓→플랜→승인→코드→T4→T1→머지), 문서·1~3줄 = 경량

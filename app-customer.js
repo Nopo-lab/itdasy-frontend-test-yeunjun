@@ -114,7 +114,12 @@
         return `${verb} 실패 — 다시 시도해주세요`;
     }
   }
-  window.CustomerErrorText = _friendlyError;  // 편집 모달(app-customer-dashboard.js)이 함께 쓴다
+  window.CustomerErrorText = _friendlyError;
+  // [2026-09-09] 삭제 계약 공유 — app-customer-dashboard.js 의 '삭제' 버튼이 같은 문구·가드를 쓴다.
+  window.CustomerDeleteContract = {
+    confirmMessage: () => _deleteConfirmMsg(),
+    blockedByBalance: (c) => _deleteBlockedByBalance(c),
+  };  // 편집 모달(app-customer-dashboard.js)이 함께 쓴다
 
   // ── Stale-while-revalidate 캐시 — localStorage persistent (앱 재시작 후에도 즉시 렌더)
   const _SWR_KEY = 'pv_cache::customers';
@@ -268,9 +273,34 @@
   // [출시감사 2026-08-05 P0-1] 캐시 밖 손님을 찾기 위한 서버 검색.
   //   프론트 search() 는 캐시(최대 200건)를 filter 할 뿐이라, 201번째부터의 손님은
   //   이름으로도 전화로도 절대 못 찾았다. CRM 에서 이건 기능 부재다.
-  async function searchServer(q) {
-    const d = await _api('GET', '/customers?limit=200&q=' + encodeURIComponent(q));
+  async function searchServer(q, offset) {
+    const off = Number(offset) || 0;
+    const d = await _api('GET', '/customers?limit=200&offset=' + off + '&q=' + encodeURIComponent(q));
     return { items: d.items || [], total: Number(d.total) || 0, hasMore: !!d.has_more };
+  }
+
+  // [고객관리 릴리즈게이트 2026-09-06] 검색 결과도 이어받는다.
+  //   예전엔 `searchServer` 가 `limit=200` 한 장만 받고 끝이라, 검색어에 걸리는 손님이
+  //   200명을 넘으면 **201번째부터는 화면에 나올 방법이 아예 없었다.**
+  //   실측(고객 1,014명): `TEST_SCALE` 은 DB 에 699명이 걸리는데 화면은 200명에서 멈췄고
+  //   "+150명 더 보기" 라고 **틀린 수**까지 보여줬다.
+  //   한국 이름은 성이 몰려 있어(김·이·박) 1,000명 샵에서 성 한 글자 검색이면 실제로 넘는다.
+  let _searchingMore = false;
+  async function searchMore(q) {
+    if (_searchingMore || !_serverHits || _serverHits.q !== q || !_serverHits.hasMore) return false;
+    _searchingMore = true;
+    try {
+      const r = await searchServer(q, _serverHits.items.length);
+      const have = new Set(_serverHits.items.map(c => String(c.id)));
+      const fresh = (r.items || []).filter(c => !have.has(String(c.id)));
+      _serverHits.items = _serverHits.items.concat(fresh);
+      _serverHits.total = r.total || _serverHits.total;
+      // 서버가 has_more 를 안 주더라도 total 로 다시 판정한다 (loadMore 와 같은 규칙).
+      _serverHits.hasMore = (!!r.hasMore || _serverHits.total > _serverHits.items.length)
+                            && (r.items || []).length > 0;
+      return fresh.length > 0;
+    } catch (_e) { void _e; return false; }
+    finally { _searchingMore = false; }
   }
 
   // [출시 종결 2026-08-12] 201번째 손님부터 **목록에서** 볼 방법이 없었다.
@@ -893,7 +923,15 @@
     const offBadge = sheet.querySelector('#customerOfflineBadge');
     // [출시감사 2026-08-05 P0-1] 전체 수는 **서버가 센 값**(_total). 캐시 길이가 아니다.
     const shopTotal = Math.max(_total || 0, _cache ? _cache.length : 0);
-    count.textContent = shopTotal + '명' + (seg !== 'all' ? ` · ${items.length}명 표시` : '');
+    /* [BUG-N2 2026-09-11] 예전엔 `seg !== 'all'`(필터 칩) 일 때만 "N명 표시" 를 붙였다.
+       **검색은 세그먼트가 아니라서** 빠졌고, 그래서 같은 화면인데 규칙이 갈렸다:
+         필터(회원권) → 3명 보임 · footer "15명 · 3명 표시"   ✅
+         검색 "강"     → 1명 보임 · footer "15명"             ❌
+         검색 0건      → "검색 결과 없음" · footer "15명"     ❌ (특히 오해를 부른다)
+       조건을 '표시 수가 전체와 다르면' 으로 바꾸면 검색·필터·둘 다 켠 경우가 한 규칙이 된다.
+       아무것도 안 거른 상태에서 "15명 · 15명 표시" 같은 군더더기는 자연히 안 생긴다. */
+    const _shown = items.length;
+    count.textContent = shopTotal + '명' + (_shown !== shopTotal ? ` · ${_shown}명 표시` : '');
     offBadge.style.display = _isOffline ? 'inline-block' : 'none';
 
     // [2026-07-08 A안] 요약 스트립 숫자 갱신 (필터와 무관하게 전체 기준)
@@ -913,9 +951,24 @@
     }
 
     if (!items.length) {
-      box.innerHTML = _dupBannerHTML()
-        + `<div class="dt-empty">${_cache && _cache.length ? (seg !== 'all' ? '이 조건에 맞는 손님이 아직 없어요' : '검색 결과 없음') : '+ 버튼을 눌러 첫 고객을 등록해보세요'}</div>`;
+      /* [2026-09-12 BUG-C2] **못 불러온 것과 진짜 0명을 구분한다.**
+         예전엔 캐시가 비면 무조건 "+ 버튼을 눌러 첫 고객을 등록해보세요" 였다.
+         그런데 오프라인 폴백(`_loadOffline()`)이 빈 배열을 돌려준 경우에도 같은 문구가 떴다 —
+         손님이 없다고 **알 수 없는데 없다고 단정**하는 것이고, 원장님은 이미 있는 손님을
+         다시 등록하게 된다(2026-08 실사고와 같은 결함 클래스, 그때는 선택창만 고쳤다).
+         서버를 못 봤으면 그렇다고 말하고 다시 시도할 길을 준다. */
+      let _emptyMsg;
+      if (_cache && _cache.length) {
+        _emptyMsg = (seg !== 'all' ? '이 조건에 맞는 손님이 아직 없어요' : '검색 결과 없음');
+      } else if (_isOffline) {
+        _emptyMsg = '손님 목록을 불러오지 못했어요.<br>연결을 확인하고 다시 시도해 주세요.'
+          + '<br><button type="button" class="dt-retry" data-cust-retry>다시 시도</button>';
+      } else {
+        _emptyMsg = '+ 버튼을 눌러 첫 고객을 등록해보세요';
+      }
+      box.innerHTML = _dupBannerHTML() + `<div class="dt-empty">${_emptyMsg}</div>`;
       _bindDupBanner(box);
+      _bindListRetry(box);
       return;
     }
     // 검색 키워드 바뀌면 window 리셋
@@ -926,8 +979,15 @@
     //   검색·세그먼트 필터가 걸린 상태에서는 서버 페이지네이션을 이어붙이면 안 된다
     //   (필터는 캐시 위에서 도는 계산이라 페이지가 섞인다). 전체 목록일 때만 켠다.
     const serverMore = _serverHasMore() && !q && seg === 'all';
+    // 검색 중에도 서버에 다음 장이 남았으면 이어받을 수 있다 (위 searchMore 참고).
+    //   ⚠️ `q` 는 입력창 **원문**이다(trim·소문자 안 됨). `_serverHits.q` 는 소문자로 저장하므로
+    //      그대로 비교하면 `'TEST_SCALE' !== 'test_scale'` 로 항상 어긋나 버튼이 안 산다.
+    //      `search()` 가 쓰는 정규화와 **같은 규칙**으로 맞춘다.
+    const qKey = String(q || '').trim().toLowerCase();
+    const searchMoreAvail = !!qKey && !!_serverHits && _serverHits.q === qKey
+                            && !!_serverHits.hasMore && seg === 'all';
     const visible = items.slice(0, _windowSize);
-    const hasMore = totalLen > _windowSize || serverMore;
+    const hasMore = totalLen > _windowSize || serverMore || searchMoreAvail;
 
     // [v208] 가나다 그룹 + v4 row 마크업
     const isPC = _isPC();
@@ -964,7 +1024,8 @@
     box.innerHTML = _dupBannerHTML()
       + groupsHtml
       + (hasMore
-          ? `<button id="customerLoadMore" type="button" style="width:calc(100% - 20px);min-height:44px;margin:12px 10px;padding:11px;border:1px dashed hsl(220,15%,80%);border-radius:12px;background:var(--surface-2);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;">+ ${Math.max(1, (serverMore ? Math.max(shopTotal, totalLen) : totalLen) - _windowSize)}명 더 보기</button>`
+          ? `<button id="customerLoadMore" type="button" style="width:calc(100% - 20px);min-height:44px;margin:12px 10px;padding:11px;border:1px dashed hsl(220,15%,80%);border-radius:12px;background:var(--surface-2);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;">+ ${Math.max(1, (searchMoreAvail ? Math.max(Number(_serverHits.total) || 0, totalLen)
+                              : serverMore ? Math.max(shopTotal, totalLen) : totalLen) - _windowSize)}명 더 보기</button>`
           : '');
 
     // 우측 인덱스바 (모바일만)
@@ -995,6 +1056,10 @@
           more.disabled = true;
           more.textContent = '불러오는 중…';
           await loadMore();
+        } else if (searchMoreAvail && _windowSize > _serverHits.items.length) {
+          more.disabled = true;
+          more.textContent = '불러오는 중…';
+          await searchMore(qKey);
         }
         _rerender();
       }, { once: true });
@@ -1078,7 +1143,12 @@
 
   // [2026-04-29 E1] 스와이프 액션 메뉴
   function _openSwipeActions(customerId) {
-    const c = (_cache || []).find(x => x.id === customerId);
+    // [P0 2026-09-09] `row.dataset.id` 는 **문자열**("682"), `_cache[].id` 는 서버 JSON 의 **숫자**(682).
+    //   `===` 라서 항상 못 찾고 `if (!c) return` 으로 조용히 끝났다 → 이 시트가 한 번도 안 열렸다.
+    //   그 결과 **회원권 충전의 유일한 진입점이 죽어** 앱에서 회원권을 못 썼다(매출 입력·예약 잡기도 같이).
+    //   실 Chrome 실측: 스와이프 핸들러는 정상 도달(row 가 translateX 120px 까지 움직임)하는데 시트만 안 떴다.
+    //   같은 저장소의 다른 경로(app-calendar-view.js·app-dm-manual-replies.js)는 이미 String() 정규화를 쓴다.
+    const c = (_cache || []).find(x => String(x.id) === String(customerId));
     if (!c) return;
     const old = document.getElementById('custSwipeActions');
     if (old) old.remove();
@@ -1121,16 +1191,38 @@
     });
   }
 
+  /* [2026-09-09] 삭제 계약 한 곳 — 스와이프·대시보드·편집시트 세 경로가 같은 문구/가드를 쓴다. */
+  function _deleteConfirmMsg() {
+    return '고객 목록에서만 사라져요. 지난 매출·시술 기록은 그대로 남아요.\n삭제할까요?';
+  }
+  function _deleteBlockedByBalance(c) {
+    const bal = Number(c && c.membership_balance) || 0;
+    if (bal <= 0) return false;
+    if (window.showToast) {
+      window.showToast(`${c.name}님은 회원권 잔액이 ${bal.toLocaleString()}원 남아 있어요. 먼저 환불·정산한 뒤에 삭제할 수 있어요.`);
+    }
+    return true;
+  }
+
   function _confirmDelete(customerId) {
-    const c = (_cache || []).find(x => x.id === customerId);
+    // [P0 2026-09-09] 위와 같은 문자열/숫자 불일치 — 왼쪽 스와이프 삭제가 조용히 아무 일도 안 했다.
+    const c = (_cache || []).find(x => String(x.id) === String(customerId));
     if (!c) return;
-    // [A7] 삭제 확인 메시지 통일
-    window._inlineConfirm('이 고객을 삭제하면 시술 기록도 함께 삭제돼요. 계속할까요?', () => {
+    /* [2026-09-09] 삭제 경로가 3개인데 계약이 서로 달랐다.
+       · 문구: 여기와 대시보드는 "시술 기록도 함께 삭제돼요" 였는데 **사실과 반대**다.
+         서버는 지난 예약·매출을 일부러 남긴다(customers.py delete 주석: "장부는 손님을 지워도 남아야 한다").
+         2026-08-05 P1-7 이 `_customerDelete` 한 곳만 고치고 나머지 둘을 놔둬서 다시 갈렸다.
+       · 잔액 가드: `_customerDelete` 에만 있었다.
+       · 409 처리: 서버가 `membership_balance_remains` 와 사람이 읽을 메시지까지 주는데
+         여기선 '삭제 실패' 로 뭉개서 원장이 이유도 모르고 계속 다시 눌렀다.
+       → 셋을 한 계약으로 모은다. 문구·가드·에러문구 모두 `_customerDelete` 기준. */
+    if (_deleteBlockedByBalance(c)) return;
+    window._inlineConfirm(_deleteConfirmMsg(), () => {
       remove(customerId).then(() => {
         if (window.showToast) window.showToast('삭제됨');
         _rerender();
-      }).catch(() => {
-        if (window.showToast) window.showToast('삭제 실패');
+      }).catch((err) => {
+        if (window.showToast) window.showToast(_friendlyError(err, '삭제'));
       });
     });
     return;
@@ -1242,16 +1334,13 @@
     //   실제로는 매출·시술 기록이 하나도 안 지워진다(실측: 삭제 전후 이번달 매출 927,000원 동일,
     //   매출 목록엔 그 손님 이름이 그대로 남음). 지워진다고 겁주는 건 안 지워지고,
     //   정작 되돌릴 수 없는 것(회원권 잔액)은 말하지 않았다.
-    const c = (_cache || []).find(x => x.id === id);
-    const bal = Number(c && c.membership_balance) || 0;
-    const msg = bal > 0
-      ? `${c.name}님은 회원권 잔액이 ${bal.toLocaleString()}원 남아 있어요.\n먼저 환불·정산한 뒤에 삭제할 수 있어요.`
-      : '고객 목록에서만 사라져요. 지난 매출·시술 기록은 그대로 남아요.\n삭제할까요?';
-    if (bal > 0) {
-      if (window.showToast) window.showToast(msg.replace(/\n/g, ' '));
-      return;
-    }
-    window._inlineConfirm(msg, async () => {
+    /* [P0 2026-09-09 · 돈] 호출부가 `t.dataset.customerId`(문자열)를 넘기는데 `_cache[].id` 는 숫자라
+       `===` 가 항상 false → `c`=undefined → **bal 이 늘 0** 이었다. 그래서 회원권 잔액이 남은 손님도
+       "잔액 있음" 경고 없이 삭제 확인창으로 직행했다.
+       실측(운영 DB, 테스트 고객): 잔액 50,000원인데 이 표현식은 못 찾아 0 으로 판정했다. */
+    const c = (_cache || []).find(x => String(x.id) === String(id));
+    if (_deleteBlockedByBalance(c)) return;
+    window._inlineConfirm(_deleteConfirmMsg(), async () => {
       try {
         await remove(id);
         if (window.hapticLight) window.hapticLight();
@@ -1363,8 +1452,25 @@
     if (swr) {
       _cache = swr.items;
       _rerender();  // 즉시 표시
-      // 오래된 캐시면 백그라운드 갱신 (list() 내부에서 자동 처리)
-      list().then(() => _rerender()).catch(() => {});
+      /* [2026-09-09] 화면을 **여는 순간**에는 캐시가 신선해도 서버와 한 번 맞춘다.
+         예전엔 `list()` 를 불렀는데, `list()` 는 `swr.fresh`(2분 이내)면 네트워크를 아예
+         안 친다 → 이름은 stale-while-revalidate 인데 실제로는 그냥 2분 TTL 캐시였다.
+
+         실측(실 Chrome, 운영 DB): 다른 경로로 손님을 만들고(`POST /customers` 201)
+         홈 → 고객관리로 재진입해도 **목록에 안 나온다.** 세션 9 에서는 10초를 기다려도
+         수렴하지 않았다(DB 5명 · 화면 4행 · 그 사이 `GET /customers` 는 나갔는데도).
+
+         원장이 겪는 모습: 폰에서 손님을 추가하고 PC 를 보면 없다. 명함 스캔·DM 자동 등록·
+         잇비가 만든 손님도 마찬가지다. "저장은 됐다는데 목록에 없다" 가 된다.
+
+         그래서 목록을 여는 이 경로에서만 강제로 갱신한다(비용: 진입당 GET 1회.
+         서버도 `customers_list:{user}` 를 5분 캐시하므로 대부분 캐시 히트다).
+         내용이 같으면 다시 그리지 않는다 — 스크롤·검색 상태를 건드리지 않기 위해서다. */
+      _fetchFresh().then((fresh) => {
+        if (!Array.isArray(fresh)) return;
+        const sig = (arr) => (arr || []).map((c) => c && c.id).join(',');
+        if (sig(fresh) !== sig(_cache)) { _cache = fresh; _rerender(); }
+      }).catch(() => {});
     } else {
       box.innerHTML = (typeof window._renderSkeleton === 'function')
         ? window._renderSkeleton(6)
@@ -1374,10 +1480,36 @@
         _rerender();
       } catch (e) {
         console.warn('[customer] list 실패:', e);
-        box.innerHTML = '<div class="dt-error">불러오기 실패</div>';
+        /* [2026-09-12 BUG-C2] 실패를 알리는 것만으로는 부족하다 — 다시 시도할 길을 같이 준다.
+           예전엔 '불러오기 실패' 한 줄이라 원장님이 할 수 있는 게 시트를 닫는 것뿐이었다. */
+        //   `.dt-error` 는 flex 라 자식을 하나로 감싼다(기존 규칙을 건드리지 않기 위해).
+        box.innerHTML = '<div class="dt-error"><div>손님 목록을 불러오지 못했어요.'
+          + '<br><button type="button" class="dt-retry" data-cust-retry>다시 시도</button></div></div>';
+        _bindListRetry(box);
       }
     }
   };
+
+  /* 실패 화면의 '다시 시도' — 캐시를 비우고 서버를 다시 본다.
+     성공하면 평소 렌더로 돌아가고, 또 실패하면 같은 실패 화면이 남는다(조용히 0명이 되지 않는다). */
+  function _bindListRetry(box) {
+    const btn = box && box.querySelector('[data-cust-retry]');
+    if (!btn || btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', async () => {
+      if (btn.dataset.busy === '1') return;
+      btn.dataset.busy = '1';
+      btn.textContent = '불러오는 중…';
+      try {
+        await _fetchFresh();
+        _isOffline = false;
+        _rerender && _rerender();
+      } catch (_e) {
+        btn.dataset.busy = '';
+        btn.textContent = '다시 시도';
+      }
+    });
+  }
 
   window.closeCustomers = function () {
     const sheet = document.getElementById('customerSheet');
@@ -1410,12 +1542,26 @@
   //   캘린더·매출 등에서 호출 — 항상 최신 전체 목록 보장 (페이징 누락 방지)
     async function pick(opts) {
       opts = opts || {};
-      // 2026-05-04 ── 고객 누락 보고 대응: 캐시가 너무 작거나 stale하면 강제 재조회
+      // [원장 QA 2026-09-11] 목록을 **못 불러온 것**과 **정말 0명인 것**을 구분한다.
+      //   실측(라이브): 고객이 15명 있는데 매출 입력 → 고객 선택이
+      //     "등록된 고객이 없어요. 아래에서 바로 추가할 수 있어요." 를 띄우고,
+      //     "김" 으로 검색해도 "'김' 고객을 찾을 수 없어요" + **"새 고객으로 '김' 추가"** 를 권했다.
+      //   원장이 그걸 누르면 **이미 있는 손님이 중복으로 또 생긴다.**
+      //   (실제로 목록에 `E2E_G_김민수` 가 2건 있다.)
+      //   당시 `/services` 무한루프(app-revenue.js)가 rate limit 을 태워 `/customers` 까지
+      //   429 로 실패한 상태였다. 그 루프는 따로 고쳤지만, **실패를 '0명' 으로 표시하는 것**은
+      //   그 자체가 결함이라 여기서 막는다.
+      let _pickLoadFailed = false;
       try {
         const swr = _readSWR();
         const minItems = 5; // 최소 5명은 있어야 캐시로 인정 (신규 가입자 제외)
         if (!_cache || _cache.length < minItems || !swr || !swr.fresh) {
-          try { await _fetchFresh(); } catch (_e) { await list().catch(() => {}); }
+          try {
+            await _fetchFresh();
+          } catch (_e) {
+            try { await list(); }
+            catch (_e2) { if (!_cache || !_cache.length) _pickLoadFailed = true; }
+          }
         }
       } catch (_) { /* ignore */ }
     return new Promise((resolve) => {
@@ -1447,14 +1593,48 @@
       const newNameEl = pop.querySelector('[data-pick-new-name]');
       const newPhoneEl = pop.querySelector('[data-pick-new-phone]');
       const createBtn = pop.querySelector('[data-pick-create]');
-      const close = (val) => { pop.remove(); resolve(val); };
+      /* [P1 2026-09-09] 이 창은 `position:fixed; inset:0; z-index:10800` 전체화면 오버레이인데
+         **뒤로가기 레지스트리에 등록돼 있지 않았다.** 실측(실 Chrome, 배포본):
+           예약 폼(#cvBookingForm) → 고객 선택창 열기 → 브라우저 뒤로가기 1회
+           → hash 가 #booking 으로 바뀌며 **작성 중이던 예약 폼이 닫히고**,
+             정작 위에 떠 있던 고객 선택창은 **그대로 남는다.**
+         원장이 날짜·시간·시술까지 골라 둔 예약이 통째로 날아간다(작업 유실).
+         안드로이드 하드웨어 백은 같은 경로라 시트 스택이 비면 앱이 그대로 꺼진다.
+         앱의 규약은 `_registerSheet('닫는 방법')` → `_markSheetOpen` → 닫을 때 `_markSheetClosed` 다
+         (app-core.js changePw · app-calendar-view.js cvBookingForm/cvBookingDetail 등 전부 이 규약). */
+      const SHEET_ID = 'customerPick';
+      let _closed = false;
+      const close = (val) => {
+        if (_closed) return; _closed = true;
+        try { if (typeof window._markSheetClosed === 'function') window._markSheetClosed(SHEET_ID); } catch (_e) { void _e; }
+        pop.remove(); resolve(val);
+      };
+      try {
+        if (typeof window._registerSheet === 'function') window._registerSheet(SHEET_ID, () => close(null));
+        if (typeof window._markSheetOpen === 'function') window._markSheetOpen(SHEET_ID);
+      } catch (_e) { void _e; }
 
       const render = () => {
         const q = searchEl.value;
         const trimmed = q.trim();
         const hits = search(q);
         if (!hits.length) {
-          if (trimmed) {
+          // 로드 실패 판정이 **가장 먼저**다 — 검색 중이어도 '추가' 를 권하면 중복이 생긴다.
+          if (_pickLoadFailed) {
+            // 못 불러온 것이지 0명이 아니다 — 여기서 '추가' 를 권하면 중복 고객이 생긴다.
+            listEl.innerHTML = '<div style="padding:26px 14px 8px;text-align:center;color:var(--text-subtle);font-size:13px;line-height:1.6;">' +
+              '고객 목록을 불러오지 못했어요.<br>잠시 후 다시 열어 주세요.' +
+              '</div>' +
+              '<button data-pick-retry style="display:block;width:100%;padding:13px;margin:8px 0 10px;border:1px solid #E5E8EB;border-radius:14px;background:#fff;color:#4E5968;font-weight:600;font-size:13px;cursor:pointer;">다시 불러오기</button>';
+            createRow.style.display = 'none';
+            const retryBtn = listEl.querySelector('[data-pick-retry]');
+            if (retryBtn) retryBtn.addEventListener('click', async () => {
+              retryBtn.disabled = true; retryBtn.textContent = '불러오는 중…';
+              try { await _fetchFresh(); _pickLoadFailed = false; }
+              catch (_e) { try { await list(); if (_cache && _cache.length) _pickLoadFailed = false; } catch (_e2) { void _e2; } }
+              render();
+            });
+          } else if (trimmed) {
             // 검색어 있는데 결과 0건 → 즉석 신규 추가 UI 노출 + 1탭 버튼
             listEl.innerHTML = `
               <div style="padding:18px 12px 12px;text-align:center;color:#888;font-size:13px;">'${_esc(trimmed)}' 고객을 찾을 수 없어요</div>
@@ -1462,8 +1642,8 @@
             `;
             createRow.style.display = 'block';
             newNameEl.value = trimmed;
-            const quickBtn = listEl.querySelector('[data-pick-quick-add]');
-            if (quickBtn) quickBtn.addEventListener('click', () => onCreate());
+            const quickBtn2 = listEl.querySelector('[data-pick-quick-add]');
+            if (quickBtn2) quickBtn2.addEventListener('click', () => onCreate());
           } else {
             listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-subtle);font-size:13px;">' +
               '등록된 고객이 없어요. 아래에서 바로 추가할 수 있어요.' +

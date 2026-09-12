@@ -106,6 +106,8 @@
     }
     const el = _ensureRevenueSheet();
     el.style.display = 'flex';
+    // [P1 2026-09-10] 뒤로가기 등록 — 매출 빠른입력 시트도 같은 사각지대였다.
+    try { window._bindSheetBack && window._bindSheetBack('p9QuickRevenue', el, closeQuickRevenue); } catch (_e) { void _e; }
     setTimeout(() => el.querySelector('#p9RevAmount')?.focus(), 60);
   }
 

@@ -15,8 +15,11 @@
 ## 🔴 A. IAP 인앱결제 — 콘솔/시크릿 (Claude 불가, 사장님/원영)
 상세: `IAP_SETUP.md`. 프론트 연동·플러그인·lockfile 은 완료(라이브).
 
-- [ ] App Store Connect: 자동갱신구독 `itdasy_membership_monthly_6900` (**₩9,900/월, 10일 무료체험**) 등록·심사제출
-      ⚠️ 상품ID 이름의 `6900` 은 레거시 — 콘솔 가격이 ₩9,900 인지 확인
+- [ ] App Store Connect: 자동갱신구독 `itdasy_pro_monthly_9900` (₩9,900/월, 10일 무료체험) + `itdasy_pro_yearly_99000` (₩99,000/년, 체험 없음) **같은 구독 그룹**으로 등록·심사제출
+- [ ] App Store Connect: `itdasy_membership_monthly_6900` **판매중지** (삭제 금지)
+      ⚠️ 기존 `itdasy_membership_monthly_6900` 의 **가격을 올리지 않는다.** 그 상품의 가격을
+         바꾸면 이미 구독 중인 원장님들도 인상 대상이 되고, Apple 은 동의를 받지 못하면
+         구독을 끊는다. 신규 상품을 따로 등록해 기존 구독자를 그대로 두는 게 표준이다.
 - [ ] Play Console: 동일 상품ID 구독 등록·활성화
 - [ ] Cloud Run(itdasy-backend-staging, asia-northeast3, itdasy-495513) env:
       `APPLE_IAP_SHARED_SECRET`, `APPLE_APP_BUNDLE_ID`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`(base64), `GOOGLE_PLAY_PACKAGE_NAME`

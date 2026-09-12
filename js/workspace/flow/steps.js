@@ -18,8 +18,12 @@
     var STEP = {
       upload:   { title: '사진 업로드',     cta: { l: '레이아웃 고르기 →', to: 'layout' } },   // 업로드 다음 = 레이아웃 고르기
       layout:   { title: '레이아웃 고르기', cta: { l: '이대로 게시글 쓰기', to: 'caption' } },
-      edit:     { title: '편집',            cta: { l: '저장하고 게시글 쓰기', to: 'caption' } },
-      template: { title: '템플릿 선택',     cta: { l: '이대로 게시글 쓰기', to: 'caption' } },
+      /* [2026-09-10] edit(옛 슬라이더 편집기 A)·template 스텝 제거.
+         2026-07-22 에 '사진 편집' 을 ItdEditor(B)로 옮기면서 A 화면은 진입을 끊었는데
+         스텝 정의만 남아 있었다. 실측: setScreen('edit') 를 부르는 실사용 경로가 하나도 없고
+         (잇비 goto 는 connect/caption/layout 리터럴뿐, bg·template 커맨드는 발신처 0건),
+         template 화면은 **edit 화면의 cta2 하나**로만 열려서 같이 도달 불가였다.
+         지금 앱에서 쓸 수 있는 기능만 남긴다. */
       // [통합 2026-07-13] 캡션 결과 = 인스타 미리보기 통합(요청6). 캡션 화면 아래로 스크롤하면 발행+피드 미리보기가 같이 뜸.
       //   → 별도 preview 스텝으로 넘어가지 않고 캡션 화면에서 바로 '저장하고 완료'. (preview 스텝은 플러밍 보존용으로만 정의 유지, 진입 없음)
       // [2026-08-30 원영] 캡션 화면의 주 행동은 화면 안 '인스타에 바로 올리기' 하나. 하단 고정 버튼은
@@ -32,7 +36,7 @@
     };
 
     // master 순서(슬라이드 방향 인덱스: connect 가 preview 앞 — 기존 SCREENS 보존, layout 은 upload 다음)
-    var master = ['upload', 'layout', 'edit', 'template', 'caption', 'connect', 'preview'];
+    var master = ['upload', 'layout', 'caption', 'connect', 'preview'];
     // visible 순서(진행바/다음화면) — [통합 2026-07-13] preview 제거(캡션 화면에 흡수). upload→layout→caption→connect.
     var visible = ['upload', 'layout', 'caption', 'connect'];
 

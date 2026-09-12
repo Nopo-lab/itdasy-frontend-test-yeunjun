@@ -48,7 +48,12 @@
     // 1) 작업실/편집화면 열기 — 생성 가드보다 먼저(예: "카드 만드는 화면 열어줘"는 '만들' 포함이지만 진입 의도).
     //    "작업실"이 들어가면 동사가 약하거나(로 가/ㄱㄱ) 없어도 진입 의도로 본다(단, 생성/조회 단서 없을 때).
     if (WORKSHOP_RE.test(t) && (OPEN_VERB.test(t) || /화면/.test(t))) return { matched: true, mode: 'open' };
-    if (/작업실/.test(t) && !CREATE_RE.test(t) && !hasEdit) return { matched: true, mode: 'open' };
+    /* [잇비 전수QA 2026-09-11 · P2] '작업실' 이라는 단어만 있으면 무조건 작업실을 열었다.
+       실측: "작업실에 작업 중인 거 있어?" → 잇비가 닫히고 작업실 탭으로 이동(답변 0).
+       백엔드엔 `workspace_status` 즉답("🎨 작업실에 작업 중인 게 N건 있어요" + 작업실 열기 버튼)이
+       이미 있다 — 답을 주고 버튼도 주는 쪽이 원장님한테 낫다. 상태를 묻는 말이면 양보한다. */
+    var asksStatus = /(있어|있나|없어|몇\s*(개|건)|얼마나|현황|상태|어때|뭐\s*있|남았)/.test(t);
+    if (/작업실/.test(t) && !CREATE_RE.test(t) && !hasEdit && !asksStatus) return { matched: true, mode: 'open' };
     // 2) 순수 생성 제외 — 저장단서/다시/조회·편집 동사·대명사참조가 하나도 없을 때만 양보.
     if (CREATE_RE.test(t) && !SAVED_CUE.test(t) && !again && !hasShow && !hasEdit && !PRONOUN_REF_RE.test(t)) return null;
     // [2026-06-14 QA] "응 그거 취소해" 처럼 예약/취소/매출 액션이 섞이면 저장카드 조회가 아님 →

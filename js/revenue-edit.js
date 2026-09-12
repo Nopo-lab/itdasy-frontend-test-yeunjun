@@ -105,6 +105,9 @@
     //   삭제 = 잘못 입력한 걸 없앤다. 그날 받았다는 사실까지 사라진다.
     //   환불 = 실제로 돈을 돌려줬다. 원매출과 환불이 **둘 다** 장부에 남는다.
     //   원장님이 손님에게 돈을 돌려줬는데 삭제를 누르면 그 기록이 없어진다.
+    /* [2026-09-11 BUG-A] 삭제 확인창에 쓸 환불 정보. 아래 fetch 가 채운다.
+       못 받아오면 null 로 둔다 — 모르는 걸 아는 척하지 않는다. */
+    let refundInfo = null;
     const isRefundRow = Number(item.amount) < 0 || item.refund_of_id != null;
     if (isRefundRow) {
       // 환불 기록 자체는 편집 대상이 아니다(서버도 400 으로 막는다).
@@ -121,6 +124,7 @@
           const r = await window.apiFetch('/revenue/' + item.id + '/refunds');
           if (!r.ok) return;
           const d = await r.json();
+          refundInfo = d;
           if (d.refunded_total > 0) {
             noteEl.hidden = false;
             noteEl.innerHTML = '이미 <b>' + Number(d.refunded_total).toLocaleString('ko-KR')
@@ -168,7 +172,12 @@
           if (window.showToast) window.showToast('삭제 실패: ' + (e && e.message ? e.message : ''));
         }
       };
-      if (typeof window._inlineConfirm === 'function') window._inlineConfirm('이 매출을 삭제할까요?', doDelete);
+      /* 확인창은 금전 효과를 먼저 말한다 — 회원권 잔액 되돌림·환불행 동반 삭제.
+         문구 규칙은 app-revenue.js 한 곳에만 둔다(두 벌이 되면 한쪽만 고쳐진다). */
+      const msg = (typeof window._revenueDeleteMsg === 'function')
+        ? window._revenueDeleteMsg(item, refundInfo)
+        : '이 매출을 삭제할까요?';
+      if (typeof window._inlineConfirm === 'function') window._inlineConfirm(msg, doDelete);
       else doDelete();
     });
 

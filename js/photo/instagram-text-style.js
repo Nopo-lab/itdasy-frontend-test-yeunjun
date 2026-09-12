@@ -301,8 +301,16 @@
   }
 
   /* mediaList = 백엔드가 정규화한 인스타 미디어 [{id, thumb, permalink, media_type}]
-     🔴 필드는 `thumb` 다. `thumbnail_url` 로 가정했다가 12장을 통째로 흘린 적이 있다. */
-  function build(mediaList) {
+     🔴 필드는 `thumb` 다. `thumbnail_url` 로 가정했다가 12장을 통째로 흘린 적이 있다.
+
+     [2026-09-04] `opts.onPost(media, result)` — 게시물 하나가 분석될 때마다 부른다.
+       여태 이 함수는 결과를 **중앙값 하나로 뭉치고 원본을 버렸다.** 그래서 "비슷한 것끼리
+       묶어줘"를 할 수가 없었다(묶으려면 게시물마다의 값이 있어야 한다).
+       집계 동작은 한 글자도 안 바꾼다 — 버려지던 걸 밖으로 흘려보내기만 한다.
+       캐시 적중분도 부른다: 두 번째 실행에서 그룹이 텅 비면 안 되기 때문이다. */
+  function build(mediaList, opts) {
+    opts = opts || {};
+    var onPost = (typeof opts.onPost === 'function') ? opts.onPost : null;
     var list = (mediaList || []).filter(function (m) {
       return m && (m.thumb || m.thumbnail_url || m.media_url);
     });
@@ -325,7 +333,11 @@
             var key = SCHEMA + ':' + _hash(new Uint8Array(buf));
             return _cacheGet(key).then(function (hit) {
               // 같은 사진 + 같은 분석 버전이면 Vision 을 다시 부르지 않는다
-              if (hit && hit.result && hit.version === SCHEMA) { cacheHits++; results.push(hit.result); return; }
+              if (hit && hit.result && hit.version === SCHEMA) {
+                cacheHits++; results.push(hit.result);
+                if (onPost) { try { onPost(m, hit.result); } catch (_e) { void _e; } }
+                return;
+              }
               calls++;
               return _analyze(blob).then(function (r) {
                 if (!r) return;
@@ -334,6 +346,7 @@
                 }
                 if (r.status === 'FAILED' || r.engine !== 'gemini') return;   // 실패는 결과에도 캐시에도 안 넣는다
                 results.push(r);
+                if (onPost) { try { onPost(m, r); } catch (_e) { void _e; } }
                 /* 🔑 **성공한 것만** 캐시한다. 실패를 캐시하면 쿼터가 풀려도 영영 빈 결과를 쓰고,
                    다음 동기화에서 재시도할 기회 자체가 사라진다. 성공분은 해시로 남으니
                    다음 번엔 그 장을 다시 분석하지 않는다(§11 부분 재시도). */

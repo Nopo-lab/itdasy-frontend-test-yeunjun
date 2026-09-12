@@ -223,6 +223,9 @@ function _galleryItemDetail(galleryId) {
       pop.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.7);display:flex;align-items:flex-end;justify-content:center;';
       pop.onclick = e => { if (e.target === pop) pop.style.display = 'none'; };
       document.body.appendChild(pop);
+      /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+         안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+      try { window._bindSheetBack && window._bindSheetBack('galleryfinish1', pop, () => { pop.remove(); }); } catch (_bsb) { void _bsb; }
     }
     const escapedCaption = escapeHtml(item.caption);
     pop.innerHTML = `
@@ -411,6 +414,9 @@ function _showPublishOptions(slotId) {
     pop.style.cssText = 'display:none;position:fixed;inset:0;z-index:9500;background:rgba(15,20,25,0.5);align-items:flex-end;justify-content:center;';
     pop.onclick = e => { if (e.target === pop) pop.style.display = 'none'; };
     document.body.appendChild(pop);
+    /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+       안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+    try { window._bindSheetBack && window._bindSheetBack('galleryfinish2', pop, () => { pop.remove(); }); } catch (_bsb) { void _bsb; }
   }
 
   pop.innerHTML = `
@@ -499,6 +505,9 @@ function _previewSlotOnInsta(slotId) {
     pop.style.cssText = 'display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.82);align-items:center;justify-content:center;padding:14px;';
     pop.onclick = e => { if (e.target === pop) pop.style.display = 'none'; };
     document.body.appendChild(pop);
+    /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+       안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+    try { window._bindSheetBack && window._bindSheetBack('galleryfinish3', pop, () => { pop.remove(); }); } catch (_bsb) { void _bsb; }
   }
 
   const hashHtml = hashtags ? hashtags.split(/\s+/).filter(Boolean).map(h => {

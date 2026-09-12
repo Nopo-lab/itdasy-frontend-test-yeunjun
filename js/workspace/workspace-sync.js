@@ -22,25 +22,81 @@
 
   // ── 보조 메타 DB (itdasy-sync) ─────────────────────────────
   var _sdb = null;
+  /* [2026-09-11 SESS-2] 여는 데 상한을 둔다. `itdasy-sync` 는 잠기면 success·error·blocked
+     **어느 이벤트도 안 온다**(2026-09-03 실측 기록: readyState=pending 인 채 영영).
+     상한이 없으면 이 DB 를 건드리는 모든 단계가 같이 멈춘다 — `sync()` 의
+     migrateIfNeeded → flushTombstones → pushAll → pull 이 통째로 정지해서
+     **서버에 작업물이 멀쩡한데도 작업실이 0건으로 굳었다**(라이브 실측: 서버 4 / 화면 0).
+     열리지 않으면 거절해서 각 단계가 자기 catch 로 넘어가게 한다(정리와 같은 best-effort). */
+  var SYNC_OPEN_TIMEOUT_MS = 3000;
   function openSyncDB() {
     return new Promise(function (resolve, reject) {
       if (_sdb) return resolve(_sdb);
+      var settled = false;
+      var timer = setTimeout(function () {
+        if (settled) return; settled = true;
+        log('sync db open timeout — 잠김으로 보고 접는다');
+        reject(new Error('sync_db_open_timeout'));
+      }, SYNC_OPEN_TIMEOUT_MS);
       var req = indexedDB.open('itdasy-sync', 1);
       req.onupgradeneeded = function (e) {
         var db = e.target.result;
         if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'k' });
         if (!db.objectStoreNames.contains('tombstones')) db.createObjectStore('tombstones', { keyPath: 'slot_id' });
       };
-      req.onsuccess = function (e) { _sdb = e.target.result; resolve(_sdb); };
-      req.onerror = function () { reject(req.error); };
+      req.onsuccess = function (e) {
+        if (settled) { try { e.target.result.close(); } catch (_c) { void _c; } return; }
+        settled = true; clearTimeout(timer); _sdb = e.target.result;
+        /* [2026-09-11 BUG-F3] 다른 탭이 delete/upgrade 를 걸면 **즉시 양보한다.**
+           app-gallery-db.js 는 2026-08-17 부터 이 가드가 있는데 여기만 없었다.
+           양보하지 않으면 그 요청이 영구 blocked 되고, 그 뒤 이 DB 에 줄선 open 이 전부 얼어붙는다
+           (실측: 옛 빌드가 남긴 delete 하나 때문에 itdasy-sync 가 탭을 다 닫아도 안 열렸다.
+            같은 순간 itdasy-gallery 는 5ms 만에 열렸다 = DB 별 현상이지 브라우저 고장이 아니다).
+           배포 직후에는 옛 빌드를 띄운 탭이 남아 있을 수 있으므로 실제로 타는 경로다. */
+        _sdb.onversionchange = function () { try { _sdb.close(); } catch (_v) { void _v; } _sdb = null; };
+        resolve(_sdb);
+      };
+      req.onerror = function () { if (settled) return; settled = true; clearTimeout(timer); reject(req.error); };
+      req.onblocked = function () { if (settled) return; settled = true; clearTimeout(timer); reject(new Error('sync_db_blocked')); };
     });
   }
   function _tx(store, mode) { return openSyncDB().then(function (db) { return db.transaction(store, mode).objectStore(store); }); }
+  /* [2026-09-11 SESS-2] `itdasy-sync` 가 **잠기면 아무 이벤트도 안 온다.**
+     (2026-09-03 실측으로 이미 기록됨: deleteDatabase 가 success·error·blocked 무엇도 안 냄,
+      readyState=pending. 그때는 '로그인이 멈추지 않게' 까지만 고쳤다.)
+     그 뒤가 남아 있었다 — 잠긴 DB 를 읽는 `pull()` 이 **영영 안 끝나서**
+     서버에 작업물이 멀쩡히 있는데도 작업실이 0건으로 굳는다(2026-09-11 라이브 실측: 서버 4 / 화면 0,
+     하드 새로고침으로도 복구 안 됨). 정리와 마찬가지로 **읽기도 best-effort** 여야 한다.
+     못 읽으면 안전한 쪽으로 접는다 — 커서는 null(=전량 받기), tombstone 은 빈 배열. */
+  var SYNC_READ_TIMEOUT_MS = 3000;
+  function _readOr(p, fallback) {
+    return Promise.race([
+      Promise.resolve(p).catch(function () { return fallback; }),
+      new Promise(function (res) { setTimeout(function () { log('sync db read timeout — degrade'); res(fallback); }, SYNC_READ_TIMEOUT_MS); }),
+    ]);
+  }
+
   function getMeta(k) { return _tx('meta', 'readonly').then(function (s) { return new Promise(function (res) { var r = s.get(k); r.onsuccess = function () { res(r.result ? r.result.v : null); }; r.onerror = function () { res(null); }; }); }); }
   function setMeta(k, v) { return _tx('meta', 'readwrite').then(function (s) { return new Promise(function (res) { var r = s.put({ k: k, v: v }); r.onsuccess = function () { res(true); }; r.onerror = function () { res(false); }; }); }); }
   function addTombstone(slotId) { return _tx('tombstones', 'readwrite').then(function (s) { return new Promise(function (res) { var r = s.put({ slot_id: slotId, at: Date.now() }); r.onsuccess = function () { res(true); }; r.onerror = function () { res(false); }; }); }); }
-  function delTombstone(slotId) { return _tx('tombstones', 'readwrite').then(function (s) { return new Promise(function (res) { var r = s.delete(slotId); r.onsuccess = function () { res(true); }; r.onerror = function () { res(false); }; }); }); }
+  function delTombstone(slotId) { delete _memTombs[String(slotId)]; return _tx('tombstones', 'readwrite').then(function (s) { return new Promise(function (res) { var r = s.delete(slotId); r.onsuccess = function () { res(true); }; r.onerror = function () { res(false); }; }); }); }
   function listTombstones() { return _tx('tombstones', 'readonly').then(function (s) { return new Promise(function (res) { var r = s.getAll(); r.onsuccess = function () { res(r.result || []); }; r.onerror = function () { res([]); }; }); }); }
+
+  /* [2026-09-12 ZH] `itdasy-sync` 를 못 쓰는 프로필에서 **지운 글이 되살아나던 것**의 대비책.
+     tombstone 은 "서버에 아직 못 보낸 삭제" 를 적어 두는 재시도 기록인데, 그 기록 자체가
+     실패하면 ① 서버 DELETE 가 안 나가고 ② pull 의 부활 방지 가드도 빈 배열이 되어
+     서버에 남은 행이 그대로 다시 내려온다.
+     라이브 실측(2026-09-12): 삭제 → "콘텐츠를 삭제했어요" 토스트 → 새로고침하니 카드 복귀.
+     → 메모리에도 같이 적어 이번 세션의 pull 이 되살리지 못하게 한다(영속은 IDB 가 담당). */
+  var _memTombs = Object.create(null);
+  function allTombstones() {
+    return _readOr(listTombstones(), []).then(function (rows) {
+      var out = (rows || []).slice();
+      var seen = {}; out.forEach(function (t) { if (t && t.slot_id != null) seen[String(t.slot_id)] = 1; });
+      Object.keys(_memTombs).forEach(function (id) { if (!seen[id]) out.push({ slot_id: id, at: _memTombs[id] }); });
+      return out;
+    });
+  }
 
   // ── 이미지 dataURL → JPEG blob (최장축 1440, q0.86) — Cloud Run 32MB·저장비용 방어 ──
   function _dataUrlToJpegBlob(dataUrl, maxDim, q) {
@@ -104,7 +160,7 @@
 
   // [M2·M3] _rev/_base 는 순수 로컬 동기화 상태다 — meta 로 서버에 올라가면 안 된다(서버 오염 +
   //   다른 기기가 남의 base 를 물려받아 병합 판정이 틀어진다).
-  var META_SKIP = { id: 1, label: 1, caption: 1, hashtags: 1, publish: 1, customer_id: 1, order: 1, photos: 1, updatedAt: 1, syncState: 1, _rev: 1, _base: 1 };
+  var META_SKIP = { id: 1, label: 1, caption: 1, hashtags: 1, publish: 1, customer_id: 1, order: 1, photos: 1, updatedAt: 1, syncState: 1, _rev: 1, _base: 1, _pending: 1 };
   function buildMeta(slot) {
     var m = {};
     for (var k in slot) {
@@ -136,11 +192,41 @@
      base 는 사진 blob 을 안 담는다 — 텍스트 메타 + 사진 '서명'만(수백 바이트). */
   var MERGE_FIELDS = ['label', 'caption', 'hashtags', 'customer_id', 'order'];
 
-  /** 사진 집합의 서명 — id 순서 + 편집상태만. blob 없이 '바뀌었나'만 본다. */
+  /* [BUG-N1 2026-09-11] 편집상태를 **저장 위치와 무관한 모양**으로 normalize 한다.
+     예전엔 `JSON.stringify(editState).length` 를 썼는데, 같은 꾸밈이라도
+       로컬  = `data:image/jpeg;base64,...` 가 통째로 박혀 있어 수십~수백 KB
+       서버본 = 업로드된 `https://...supabase.../abc.jpg` 라 수십 자
+     라서 **길이가 항상 달랐다.** 그래서 `photoSig(local) !== photoSig(remote)` 가
+     내용과 무관하게 늘 참이 되고, merge3 의 사진 분기가 매번 '진짜 충돌' 로 떨어졌다.
+     결과: 원장이 저장 직후 화면을 옮기면 작업 카드가 `_conflict_` 사본으로 갈라지고
+     **최신 편집이 목록에 안 보이는 쪽에** 들어갔다(실측 2/2, 라이브 c3bf4ca).
+     같은 이유로 `sameBaseSig` 를 쓰는 '_pending(내 push 가 늦게 도착)' 가드도
+     _sig 가 영영 안 맞아 **한 번도 발동하지 못했다.**
+     이미지 참조를 토큰 하나로 바꾸면 양쪽이 같은 값을 낸다. 레이어·문구·개수가
+     진짜로 다르면 여전히 다른 값이 나오므로 **실제 충돌 감지는 그대로다.** */
+  function _imgAgnostic(es) {
+    try {
+      return JSON.stringify(es, function (k, v) {
+        if (typeof v === 'string' && (v.indexOf('data:image') === 0 || /^https?:\/\//.test(v))) return '<img>';
+        return v;
+      });
+    } catch (_e) { return ''; }
+  }
+  /** 짧고 안정적인 서명. 길이만 쓰면 서로 다른 내용이 같은 길이로 겹친다. */
+  function _hash(str) {
+    var h = 5381;
+    for (var i = 0; i < str.length; i++) { h = ((h * 33) ^ str.charCodeAt(i)) >>> 0; }
+    return str.length + '.' + h.toString(36);
+  }
+  /** 사진 집합의 서명 — id 순서 + 편집상태만. blob 없이 '바뀌었나'만 본다.
+      `v2:` 는 포맷 표식이다. 예전 포맷으로 저장된 `_base` 는 다음 동기화 한 번에
+      `makeBase` 가 새로 쓰므로 창이 한 주기로 닫힌다. */
   function photoSig(slot) {
     try {
-      return (slot && slot.photos || []).map(function (p) {
-        return String(p && p.id) + ':' + String(p && p.role || '') + ':' + (p && p.editState ? JSON.stringify(p.editState).length : 0);
+      var ps = (slot && slot.photos) || [];
+      if (!ps.length) return '';   // 기존 계약 유지 — 사진이 없으면 빈 문자열(workspace-sync-merge.test.js)
+      return 'v2:' + ps.map(function (p) {
+        return String(p && p.id) + ':' + String(p && p.role || '') + ':' + (p && p.editState ? _hash(_imgAgnostic(p.editState)) : '0');
       }).join('|');
     } catch (_e) { return ''; }
   }
@@ -149,6 +235,15 @@
     var b = { _sig: photoSig(slot) };
     MERGE_FIELDS.forEach(function (k) { b[k] = slot ? slot[k] : undefined; });
     return b;
+  }
+  /** 두 지문이 같은 내용을 가리키나 — '서버본이 내가 보낸 그것인가' 판정용. */
+  function sameBaseSig(a, b) {
+    if (!a || !b) return false;
+    if (!sameVal(a._sig, b._sig)) return false;
+    for (var i = 0; i < MERGE_FIELDS.length; i++) {
+      if (!sameVal(a[MERGE_FIELDS[i]], b[MERGE_FIELDS[i]])) return false;
+    }
+    return true;
   }
   function sameVal(a, b) { return (a == null ? '' : String(a)) === (b == null ? '' : String(b)); }
 
@@ -197,6 +292,11 @@
             image_url: (typeof img === 'string' && img.indexOf('data:') !== 0) ? img : null,
             base_url: (typeof p.baseUrl === 'string' && p.baseUrl.indexOf('data:') !== 0) ? p.baseUrl : null,
             edit_state: p.editState || null,
+            /* [BUG-2 2026-09-11] '원장이 직접 꾸민 사진' 표식을 서버에도 보낸다.
+               여태 payload 에 없어서 서버를 한 번 왕복하면 이 값이 통째로 사라졌다
+               (실측: 저장 직후 true → 새로고침도 필요 없이 화면만 옮겨도 false).
+               자동합성이 원장 작업을 덮지 않게 막는 첫 겹(`_cardWasEdited`)이 이 값을 본다. */
+            story_edited: !!p.storyEdited,
             sort_order: i,
           };
         }).filter(function (p) { return !!p.image_url; });   // 이미지 없는 사진은 스킵
@@ -234,6 +334,7 @@
         editedDataUrl: p.image_url,
         baseUrl: p.base_url || p.image_url,
         editState: p.edit_state || null,
+        storyEdited: !!p.story_edited,   // [BUG-2] 서버가 돌려준 표식을 복원한다 — 없으면 왕복마다 사라진다
       };
     });
     var slot = Object.assign({}, rs.meta || {}, {
@@ -333,9 +434,24 @@
   }
   function pushSlot(slot) {
     var startedAt = slot && slot.updatedAt;   // [버그수정 2026-07-09 TOCTOU] push 시작 스냅샷
+    /* 🔴 [2026-09-11 실측] **서버는 커밋했는데 응답이 유실되면** 로컬은 옛 base 를 그대로 들고
+       dirty 로 남는다. 원장이 "저장이 안 됐나" 하고 다시 저장하면 다음 push 가 옛 rev 를 보내
+       409 를 받고, 3-way 병합이 "둘 다 base 에서 바뀌었다" 로 읽어 **작업 카드를 하나 더 만든다**
+       ('다른 기기 수정본' — 쓴 사람은 나 하나뿐인데).
+       → 이번에 보낸 내용의 지문을 남겨 둔다. 나중에 서버본이 그 지문과 같으면
+       '남이 바꾼 것' 이 아니라 '내가 보낸 게 늦게 도착한 것' 이다. */
+    var _pendingBase = null;
     return buildPayload(slot).then(function (built) {
       var payload = built.payload, complete = built._complete;
-      return window.apiFetch('/workspace/slots/upsert', {
+      _pendingBase = makeBase(slot);   // payload 를 만든 그 시점의 내용
+      /* 🔴 보내기 **전에** 남긴다. 응답이 아예 안 오는(행) 경우엔 실패 콜백도 안 돌고,
+         그 상태로 새로고침하면 흔적이 통째로 사라져 다음 409 에서 또 사본이 생긴다.
+         실측: forever-pending 응답으로 재현했더니 `_pending` 이 안 남았다.
+         `_origSaveSlot` 은 재-dirty 도, updatedAt 변경도 하지 않는다(TOCTOU 가드 무해). */
+      var _mark = (slot && _origSaveSlot)
+        ? Promise.resolve().then(function () { slot._pending = _pendingBase; return _origSaveSlot(slot); }).catch(function () {})
+        : Promise.resolve();
+      return _mark.then(function () { return window.apiFetch('/workspace/slots/upsert', {
         method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader()), body: JSON.stringify(payload),
       }).then(function (r) {
         // [M2·M3] 409 = 내가 본 리비전 이후 다른 기기가 바꿈 → 덮어쓰지 말고 3-way 병합.
@@ -344,7 +460,7 @@
           return remote ? resolveConflict(slot, remote).then(function () { return { _conflict: true }; }) : null;
         });
         return r.ok ? r.json() : null;
-      }).then(function (j) {
+      }); }).then(function (j) {
         if (j && j._conflict) return;   // 병합이 처리 — 이번 push 는 여기서 끝(병합본이 dirty 로 남아 다음 push)
         if (j && (j.ok || j.skipped)) {
           // [버그수정 2026-07-09 TOCTOU] push(업로드) 도중 사용자가 재편집(updatedAt 변경)했으면 그 편집분은
@@ -364,13 +480,23 @@
               var _srv = j && j.slot;
               if (_srv && _srv.server_updated_at) slot._rev = _srv.server_updated_at;
               slot._base = makeBase(slot);
+              delete slot._pending;   // 결과를 알았다 — 미확인 표시를 지운다
               if (_origSaveSlot) return Promise.resolve(_origSaveSlot(slot)).catch(function () {});   // synced 상태만 영속(재-dirty 안 함)
             });
           }
           log('pushSlot partial — keep dirty for retry', slot && slot.id);
         }
       });
-    }).catch(function (e) { log('pushSlot err', slot && slot.id, e); });
+    }).catch(function (e) {
+      log('pushSlot err', slot && slot.id, e);
+      /* 응답을 못 받았다 = 서버가 커밋했는지 **모른다.** 보낸 내용의 지문을 남겨
+         다음 409 에서 '내 것이 늦게 도착한 것' 인지 가릴 수 있게 한다.
+         새로고침을 겪어도 살아남아야 하므로 로컬에 영속한다(재-dirty 안 하는 원본 저장). */
+      if (slot && _pendingBase) {
+        slot._pending = _pendingBase;
+        if (_origSaveSlot) return Promise.resolve(_origSaveSlot(slot)).catch(function () {});
+      }
+    });
   }
   /**
    * [M3] 충돌 해소 — 서버가 409 로 준 remote 와 내 local 을 base 기준 3-way 병합.
@@ -381,6 +507,14 @@
   function resolveConflict(local, remoteRaw) {
     var remote = remoteToLocal(remoteRaw);
     var base = local && local._base;
+    /* [2026-09-11] 응답을 못 받은 내 push 가 서버에 늦게 도착했을 수 있다.
+       서버본이 그때 보낸 내용과 같으면 그건 **남의 변경이 아니라 내 것**이다.
+       base 를 그 지문으로 바꾸면 merge3 에서 remote===base 가 되어
+       내 새 편집만 남고 사본을 만들지 않는다(다른 기기가 진짜로 바꿨으면 지문이 달라 그대로 충돌). */
+    if (local && local._pending && sameBaseSig(local._pending, makeBase(remote))) {
+      log('conflict = my own un-acked push landed', local.id);
+      base = local._pending;
+    }
     var res = merge3(base, local, remote);
     var merged = res.slot;
     merged.id = local.id;
@@ -388,6 +522,7 @@
     merged.updatedAt = Date.now();
     merged.syncState = 'dirty';                           // 병합 결과를 다시 올려야 서버도 최신이 된다
     merged._base = makeBase(merged);
+    delete merged._pending;   // 충돌을 해소했다 — 미확인 표시를 지운다
 
     if (!res.conflicts.length) {
       log('conflict auto-merged', local.id);
@@ -398,8 +533,9 @@
     var mine = Object.assign({}, local, {
       id: String(local.id) + '_conflict_' + Date.now(),
       label: (local.label || '작업') + ' (다른 기기 수정본)',
-      _rev: null, _base: null, updatedAt: Date.now(), syncState: 'dirty',
+      _rev: null, _base: null, _pending: null, updatedAt: Date.now(), syncState: 'dirty',
     });
+    delete mine._pending;
     var srv = Object.assign({}, remote, {
       id: local.id, _rev: remoteRaw.server_updated_at || null, syncState: 'synced',
     });
@@ -413,7 +549,7 @@
   }
 
   function flushTombstones() {
-    return listTombstones().then(function (tombs) {
+    return allTombstones().then(function (tombs) {
       return (tombs || []).reduce(function (p, t) {
         return p.then(function () {
           return window.apiFetch('/workspace/slots/' + encodeURIComponent(t.slot_id), { method: 'DELETE', headers: authHeader() })
@@ -429,12 +565,20 @@
   function pull() {
     if (!ready() || _pulling) return Promise.resolve();
     _pulling = true;
-    return getMeta('lastPulledAt').then(function (since) {
+    return Promise.all([_readOr(getMeta('lastPulledAt'), null), loadAllLocal()]).then(function (_cur) {
+      var since = _cur[0];
+      /* [2026-09-11 SESS-2] 로컬 슬롯이 통째로 비었는데 커서만 남아 있으면
+         델타(`?since=`) pull 로는 **영영** 돌아오지 않는다. 슬롯은 `itdasy-gallery`,
+         커서는 `itdasy-sync` 로 **DB 가 달라서** 한쪽만 비워지는 일이 실제로 난다.
+         (라이브 실측 2026-09-11: 강제 로그아웃 뒤 서버엔 4건인데 작업실이 0건으로 고정,
+          하드 새로고침으로도 복구 안 됨 — 원장 눈엔 작업물이 전부 사라진 것.)
+         로컬이 0건이면 커서를 버리고 전량 받는다. 이미 지운 글은 아래 tombstone 가드가 막는다. */
+      if (since && (!_cur[1] || _cur[1].length === 0)) { log('pull full — local empty, cursor dropped'); since = null; }
       var url = '/workspace/slots' + (since ? ('?since=' + encodeURIComponent(since)) : '');
       return window.apiFetch(url, { method: 'GET', headers: authHeader() }).then(function (r) { return r.ok ? r.json() : null; });
     }).then(function (resp) {
       if (!resp || !Array.isArray(resp.slots)) return;
-      return Promise.all([loadAllLocal(), listTombstones()]).then(function (both) {
+      return Promise.all([loadAllLocal(), allTombstones()]).then(function (both) {
         var locals = both[0];
         // [H5 수정 2026-07-16] 로컬에서 지웠는데 아직 서버로 DELETE 를 못 보낸 슬롯(tombstone)은
         //   pull 이 되살리면 안 된다. 예전엔 local 이 없으니 가드를 통과해 삭제한 글이 부활했다.
@@ -470,7 +614,15 @@
           });
         }, Promise.resolve()).then(function () {
           // 하나라도 적용 실패면 since 를 전진시키지 않는다 → 다음 pull 이 그 delta 를 다시 받아 재시도.
-          if (resp.server_time && !applyFailed) setMeta('lastPulledAt', resp.server_time);
+          /* [2026-09-11] catch 를 붙인다. 이 호출은 결과를 안 기다리는데(fire-and-forget),
+             DB 가 잠겨 있으면 거절이 아무에게도 안 잡혀 **uncaught 예외로 Sentry 까지 올라간다**
+             (라이브 실측: 앱은 멀쩡한데 sync_db_open_timeout 이 EXCEPTION 으로 보고됨).
+             예상된 축퇴가 오류로 보고되면 진짜 오류가 그 잡음에 묻힌다.
+             커서를 못 남기면 다음 pull 이 전량을 받는다 — 느릴 뿐 안전한 쪽이다. */
+          if (resp.server_time && !applyFailed) {
+            Promise.resolve(setMeta('lastPulledAt', resp.server_time))
+              .catch(function (_e) { log('cursor save skip', _e); });
+          }
           if (changed) refreshHome();
         });
       });
@@ -505,13 +657,23 @@
     // [H5 수정 2026-07-16] coalesce 로 pushAll 을 건너뛰어도 삭제(tombstone)는 반드시 보낸다.
     //   pushAll 이 flushTombstones 의 유일한 호출자였어서, 편집 중엔 삭제가 서버에 안 나가고
     //   그 상태로 pull 이 돌아 지운 글이 되살아났다. (pushAll 도 안에서 또 부르지만 idempotent)
-    return migrateIfNeeded()
+    /* [2026-09-11 SESS-2] 앞 단계가 하나 엎어져도 **pull 까지는 반드시 간다.**
+       예전엔 migrateIfNeeded / pushAll 이 거절하면 체인이 그대로 catch 로 빠져
+       pull 이 아예 안 돌았다 — 서버에 있는 작업물을 받아올 기회가 사라진다. */
+    return migrateIfNeeded().catch(function (e) { log('migrate skip', e); })
       .then(function () { return flushTombstones().catch(function () {}); })
-      .then(function () { return (COALESCE() && _flowOpen) ? null : pushAll(); })
+      .then(function () { return (COALESCE() && _flowOpen) ? null : pushAll().catch(function (e) { log('push skip', e); }); })
       .then(pull).catch(function (e) { log('sync err', e); }).then(function () { _syncing = false; });
   }
   var _pushTimer = null;
-  function schedulePush() { if (!ready()) return; clearTimeout(_pushTimer); _pushTimer = setTimeout(function () { pushAll(); }, 1200); }
+  function schedulePush() {
+    if (!ready()) return;
+    clearTimeout(_pushTimer);
+    // 같은 이유로 catch 필수 — 타이머에서 부르는 fire-and-forget 이라 거절을 받을 사람이 없다.
+    _pushTimer = setTimeout(function () {
+      Promise.resolve(pushAll()).catch(function (_e) { log('push skip', _e); });
+    }, 1200);
+  }
 
   // ── coalesce(비용 방어) — 편집 중엔 매 저장마다 업로드하지 않고, '정착(settle)' 때 1회만 ──
   //   sub-flag ITDASY_SLOT_SYNC_COALESCE. off면 기존 eager 동작 그대로.
@@ -542,7 +704,16 @@
       _origDeleteSlot = window.deleteSlotFromDB;
       var wrappedDel = function (id) {
         var out = _origDeleteSlot.apply(this, arguments);
-        Promise.resolve(out).then(function () { return addTombstone(String(id)); }).then(function () { if (ready()) flushTombstones(); }).catch(function () {});
+        var sid = String(id);
+        /* [2026-09-12 ZH] **기록이 실패해도 서버 삭제는 보낸다.**
+           예전엔 addTombstone() 이 거절하면 체인이 그대로 catch 로 빠져 flushTombstones() 가
+           아예 안 불렸다 — 서버는 지운 걸 영영 모르고 다음 pull 이 그 글을 되살린다.
+           실패는 `.catch(function () {})` 가 통째로 삼켜서 원장은 알 수도 없었다. */
+        _memTombs[sid] = Date.now();
+        Promise.resolve(out)
+          .then(function () { return addTombstone(sid).catch(function (e) { log('tombstone write failed', e); }); })
+          .then(function () { if (ready()) return flushTombstones(); })
+          .catch(function (e) { log('delete push failed', e); });
         return out;
       };
       wrappedDel.__wsSyncWrapped = true;
@@ -580,11 +751,26 @@
       }
       var timer = setTimeout(function () { finish(false); }, CLEAR_LOCAL_TIMEOUT_MS);
       try {
-        if (_sdb) { try { _sdb.close(); } catch (_e) { void 0; } _sdb = null; }
         try { _uploadCache.clear(); } catch (_e2) { void 0; }
         try { if (typeof _hydrateCache !== 'undefined' && _hydrateCache) _hydrateCache.clear(); } catch (_e3) { void 0; }
-        var req = indexedDB.deleteDatabase('itdasy-sync');
-        req.onsuccess = req.onerror = req.onblocked = function () { clearTimeout(timer); finish(true); };
+        /* [2026-09-11 BUG-F2] **deleteDatabase 를 쓰지 않는다.** 위 주석이 기록한 "이벤트가 안 온다" 는
+           증상이었고, 원인은 **취소 불가능한 delete 요청이 큐에 눌러앉는 것**이다. 한 번 blocked 되면
+           이 DB 에 대한 이후 모든 open 이 origin 전역으로 잠긴다(2026-09-11 탭 2개 실측: 갤러리 쪽
+           open 20건 전부 pending, 로그아웃한 탭까지 리로드해야 풀림). 여기도 같은 뿌리다.
+           → store 를 비운다. clear() 는 평범한 readwrite 라 blocked 자체가 없다.
+           ⚠️ 연결을 미리 닫지 않는다 — 닫으면 곧바로 다시 열어야 하고, 그 open 이 잠길 수 있다. */
+        openSyncDB().then(function (db) {
+          var names = [];
+          try { names = Array.prototype.slice.call(db.objectStoreNames || []); } catch (_e4) { names = []; }
+          if (!names.length) { clearTimeout(timer); finish(true); return; }
+          var tx = db.transaction(names, 'readwrite');
+          names.forEach(function (n) { try { tx.objectStore(n).clear(); } catch (_e5) { void 0; } });
+          // 성공은 oncomplete 하나뿐이다. 예전 코드는 onerror·onblocked 에도 true 를 줘서
+          // **못 지웠는데 재시도 플래그를 지웠다** — 그러면 다음 부팅에서 다시 시도하지도 않는다.
+          tx.oncomplete = function () { clearTimeout(timer); finish(true); };
+          tx.onerror    = function () { clearTimeout(timer); finish(false); };
+          tx.onabort    = function () { clearTimeout(timer); finish(false); };
+        }, function () { clearTimeout(timer); finish(false); });
       } catch (_e) { clearTimeout(timer); finish(false); }
     });
   }
@@ -603,6 +789,10 @@
     var tries = 0;
     (function boot() { if (ready()) { sync(); } else if (tries++ < 20) { setTimeout(boot, 800); } })();
     window.addEventListener('online', function () { sync(); });
+    /* [2026-09-12 BUG-S1] 로그인으로 세션이 생기면 그때 깨어난다.
+       부팅 폴링은 16초 만에 포기하고, 같은 탭에서 로그인하면 visibilitychange 도 안 온다.
+       그래서 로그인이 늦으면 작업실이 영영 0개로 남았다(서버엔 멀쩡히 있는데도). */
+    window.addEventListener('itdasy:session-ready', function () { sync(); });
     document.addEventListener('visibilitychange', function () { if (!document.hidden) sync(); });
   }
 

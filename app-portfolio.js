@@ -308,6 +308,9 @@ function openPortfolioItem(id, src, mainTag, tags) {
   overlay.querySelector('[data-portfolio-close]')?.addEventListener('click', () => overlay.remove());
   overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
   document.body.appendChild(overlay);
+  /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+     안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+  try { window._bindSheetBack && window._bindSheetBack('portfolio', overlay, () => { overlay.remove(); }); } catch (_bsb) { void _bsb; }
 }
 
 async function deletePortfolioItem(id, overlay) {

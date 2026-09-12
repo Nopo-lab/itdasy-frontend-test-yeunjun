@@ -174,7 +174,15 @@ describe('[§16] PhotoContext 는 편집 결과에 절대 영향을 주지 않�
   const ALLOWED_CONSUMERS = [
     'js/itd-editor/itd-editor.js',        // open 훅 — 결과를 받지도 않는다
     'js/workspace/wm-metrics.js',         // 겹침 baseline — 쓰는 곳이 지표
-    'js/photo/shop-style-candidate.js'    // [Phase 2] 인스타 후보 생성 — 쓰는 곳이 candidate(미적용)
+    'js/photo/shop-style-candidate.js',   // [Phase 2] 인스타 후보 생성 — 쓰는 곳이 candidate(미적용)
+    /* [2026-09-04] 인스타 게시물별 색감 측정.
+       ⚠️ 이건 앞의 셋과 다르다 — **결과가 편집기까지 갈 수 있다**
+       (게시물 분석 → 스타일 그룹 → ShopStyle → 편집기 레이어).
+       그래도 허용하는 근거는 하나뿐이다: 그 경로가 **원장이 '이 스타일로 사진 만들기' 를
+       직접 누를 때만** 열린다는 것. 자동으로는 한 픽셀도 안 바뀐다.
+       🔴 이 모듈이 언젠가 '알아서 적용' 하게 되면 그건 Phase 1 계약 위반이고,
+          이 줄이 아니라 그 변경을 되돌려야 한다. */
+    'js/photo/ig-post-analysis.js'
   ];
 
   test('PhotoContext 호출부는 관측 모듈뿐이다', () => {

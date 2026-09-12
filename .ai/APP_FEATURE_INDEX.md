@@ -90,7 +90,8 @@
 - **js/load-groups.js** (186) — 로드 매니페스트 `APP_LOAD_GROUPS`(photo/assistant/extras). ✅ **[2026-07-23~] `?v=` 는 배포가 자동 범프**(`deploy.yml` + `scripts/bump_cache_busters.py`, `2d5a9cc`) — `load-groups.js` 자신의 버전이 안 바뀌면 배포를 실패시킨다. **아직 `?v=` 가 안 붙은 새 파일만 한 번 손으로 붙이면 됨.**
 - **app-save-file.js** (93) — 🆕 **[2026-08-01 P0] 파일 저장 공용 헬퍼.** 앱 곳곳이 `<a download>` + 무조건 `toast('저장 완료')` 였는데 **iOS WKWebView·Android Capacitor WebView 는 data:/blob: 를 그 방식으로 저장 못 한다** → 아무 일도 안 일어나는데 "저장했어요". 사진 저장·백업·데이터 내보내기(개인정보 이동권) 전부 해당 = 심사·법무 리스크. `navigator.share + canShare`(@capacitor/share) 패턴을 공용으로 뽑고 **실패 시 실패를 말한다.**
 - **js/channel-mark.js** (58) — 인박스 채널 배지 `ChannelMark.norm/mark`(인스타/카카오/네이버톡톡).
-- **js/heic-convert.js** (63) — 아이폰 HEIC→JPEG 클라 변환.
+- **js/heic-convert.js** (68) — 아이폰 HEIC→JPEG 클라 변환. **[2026-09-07 미디어감사]** `isHeic` 가 `!file.type`(MIME 이 **완전히 빈** 경우)일 때만 확장자 폴백을 태워서, MIME 을 `application/octet-stream` 으로 주는 웹뷰에선 변환을 건너뛰고 원본 HEIC 가 <img>/canvas 로 흘러가 실패했다(드래그앤드롭에선 `image/*` 필터에도 걸려 **조용히 사라짐**). 이제 이미지 MIME 이 아니면 확장자로 판별.
+- **js/media-fallback.js** (70) — 🆕 **[2026-09-07 미디어감사] 사진이 안 열릴 때의 마지막 방어선.** 미디어 `<img>` 에 onerror 가 **한 곳도 없어서**(app-portfolio.js:236·299·508 · app-gallery-workshop.js:406 · workspace-perf.js:607) 객체가 사라지면 회색 빈 칸만 남았다 — 로딩 중인지 없어진 건지 알 수 없고 할 수 있는 것도 없다. error 는 버블링을 안 하므로 **캡처 단계**에서 document 하나로 받아(개별 img 수정 0) 1회 캐시버스터 자동 재시도 → 그래도 실패면 '사진을 못 불러왔어요 + 다시 시도'. inline onerror 를 가진 img(프로필 사진)·data:/blob: 은 건드리지 않는다. ⚠️ 없는 객체를 Supabase 는 **400+JSON** 으로 준다(404 아님).
 - **app-perf-recovery.js** (663) — 3초 체감 성능복구·프리로드·워치독 + **오프라인 판정·쓰기잠금**(`_markOffline`·`_setMutationLock`).
   - 🚨 **[2026-08-01 오프라인 오판 근본수정]** 라이브 실측: `/auth/me` 를 **딱 한 번** 503 으로 만들자 즉시 오프라인 배너 + `_setMutationLock(true)` 로 **저장 버튼 전부 잠김**. 이 경로는 원래 `_markOffline` 미정의라 죽어 있었는데 전날(`506c0d7`) 정의해 살리면서 설계 결함이 그대로 터졌다. → 결함 4 수정: ① **응답이 왔으면 네트워크는 정상** (429/500/503 ≠ 오프라인, fetch 가 실제로 throw/abort 할 때만) ② 재시도 0회 → **3회 백오프**(0·1.2s·3s) ③ **자가복구** 15초마다 재확인 → 사용자가 아무것도 안 해도 풀림 ④ 앱 복귀마다 무방비 프로브 제거. **교훈: 죽은 코드를 살릴 땐 원래 옳았는지부터 본다.**
   - ⚠️ **"배너 CSS 가 없다"는 오진이었고 되돌렸다**(`ac16eed`) — 원본 스타일은 처음부터 멀쩡했다. `transform` 요소는 height 가 그대로라 '보임' 판정이 어긋나고, **배경 탭은 레이아웃 갱신이 지연**된다(시각 측정은 fronted 탭에서).
@@ -218,7 +219,7 @@
 
 ### 허브·결제·설정
 - 허브: **app-customer-hub.js**(30)·**app-integrations-hub.js**(126)·**app-inventory-hub.js**(594)·**app-kakao-hub.js**(137, 알림톡 UI 스텁)·**app-settings-hub.js**(321). **js/hubs/prototype-render.js**(187).
-- 결제: **app-billing.js**(150, PortOne — ⚠️`/billing/config.enabled=false` 라 **웹 결제는 현재 도달 불가**, 버튼이 "결제 준비 중" 으로 비활성)·**app-plan.js**(471, 월6,900원 단일멤버십 + **IAP 구매·복원 + 스토어/웹PG 해지 분기**)·**app-membership.js**(259, 회원권)·**app-iap.js**(225, StoreKit/Play Billing → 백엔드 영수증 교차검증).
+- 결제: **app-billing.js**(150, PortOne — ⚠️`/billing/config.enabled=false` 라 **웹 결제는 현재 도달 불가**, 버튼이 "결제 준비 중" 으로 비활성)·**app-plan.js**(월 9,900 / 연 99,000 잇데이 Pro + **IAP 구매·복원 + 월↔연 전환(스토어 구독관리) + 스토어/웹PG 해지 분기**)·**app-membership.js**(259, 회원권)·**app-iap.js**(StoreKit/Play Billing → 백엔드 영수증 교차검증. `PRODUCTS` = 월간 `itdasy_pro_monthly_9900` · 연간 `itdasy_pro_yearly_99000`, 폐기 6,900 은 복원 전용).
   - **[2026-07-31~08-01 돈 P0]** 회원권 결제 시 **잔액이 안 빠지고 매출이 이중으로 잡히던 것**(`cb62ce7`) · `/billing` 재시도 금지로 **이중청구 차단**(`6a1cf3a`) · `membership` 을 유료 플랜으로 인식(`isPaidPlan`·구독 메타) · 가격 6,900원 단일 멤버십으로 문구 통일 + 무료체험 7일 통일.
 - 설정: **app-shop-settings.js**(460)·**app-backup.js**(224)·**app-support.js**(258)·**app-autocomplete.js**(58).
 
@@ -280,6 +281,22 @@
 - **표시 한도 ≠ 강제 한도**(표시 3회 / 실제 100회 두 벌) → 플랜 한도 **단일 소스화**(`7234855`).
 - **회원 탈퇴가 FK 위반으로 통째로 실패**(Apple 심사 블로커, `79b116a`) · 회원권 해지 환불정산 · 0원 매출 지표오염 · 완료매출 취소/삭제 시 미삭제(P0 돈) · PATCH `customer_id` **IDOR**.
 - ⚠️ **`STAGING_BYPASS_ALL` 이 라이브였다**(전원 premium) → OFF. 검증은 **정규식 말고 AST·실DB**로.
+- **[2026-09-11 예약·매출·회원권·고객 전수감사]** 🔴 **완료 → 취소 → 되살리기 → 재완료 = 장부 합계 0원**
+  (회원권이면 잔액이 안 빠져 시술이 공짜). `sprint_e._create_auto_revenue` 가 "행이 있나" 만 보고
+  **"이미 환불·복구로 상계됐나"** 를 안 봤다 → 실제 상태 전이일 때만 **재청구/재차감**(행 추가, 삭제 아님).
+  `UNIQUE(booking_id,revenue_kind)` 탓에 재청구 행은 `revenue_kind=None` + memo 마커로 판정을 잇는다.
+  같이 고친 것: **방문 판정**(노쇼 위약금·회원권 충전/복구행이 방문으로 세어짐 → `membership_delta` 컬럼 판정 ·
+  **방문 단위 = `COALESCE(booking_id,-id)`** 로 한 예약 1회 · SQL `visit_filters()` 와 파이썬 `is_visit()` 동시 수정) ·
+  **예약 삭제가 시술기록·`next_retouch_date` 를 안 지워 안 한 시술의 리터치 알림이 나가던 것**
+  (`sprint_e.revert_completion_effects`, `settle_booking_revenues` 안에서 `deleted_at` 게이트) ·
+  `ai_brief._last_amount` 무필터(환불행 −80,000·충전액을 '최근 시술 금액' 으로) ·
+  `PATCH /revenue` 가 수수료·실수령 재계산을 안 하던 것 · **환불 붙은 매출 삭제 시 고아 음수행**
+  (`refund_of_id` 가 `ON DELETE SET NULL`) · **고객 병합·삭제가 `bookings_list` 캐시를 안 비우던 것** ·
+  `POST /bookings` 가 `payment_method` 를 받고 버리던 것.
+  ⚠️ **취소(cancelled)는 방문·시술기록을 그대로 둔다**(계약 — `test_cancel_visit_semantics_2026_09_07.py`).
+  잘못 완료 처리한 걸 되돌리는 길은 **예약 삭제**다.
+  회귀: `backend/tests/test_booking_money_reactivation_2026_09_11.py`(13건). 정본 =
+  루트 `BOOKING_REVENUE_MEMBERSHIP_CUSTOMER_AUDIT_2026-09-11.md`.
 
 ### 모델 (models.py · **60 클래스**)
 - 계정/샵: User·ShopSettings·Persona·Portfolio·BackgroundAsset·ApiUsageLog.

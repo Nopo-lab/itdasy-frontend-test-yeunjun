@@ -176,6 +176,9 @@
     overlay.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.35);display:flex;align-items:flex-end;justify-content:center;padding:16px;';
     overlay.innerHTML = _panelHtml();
     document.body.appendChild(overlay);
+    /* [2026-09-09] 뒤로가기 등록 — 전체화면 오버레이는 back 으로 자기가 닫혀야 한다.
+       안 하면 back 이 이 창 대신 뒤 화면을 닫아 작성 중이던 내용이 날아간다. */
+    try { window._bindSheetBack && window._bindSheetBack('emojistorage', overlay, () => { overlay.remove(); }); } catch (_bsb) { void _bsb; }
     _paintPanel(overlay, current);
     overlay.querySelector('[data-close]').addEventListener('click', () => overlay.remove());
     overlay.querySelectorAll('[data-tab]').forEach(btn => {

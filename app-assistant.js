@@ -583,8 +583,12 @@
       : `<div style="padding:2px 2px 0;font-size:14px;line-height:1.55;color:#191F28;font-weight:500;white-space:pre-wrap;letter-spacing:-0.2px;">${_textInner}</div>`);
     // [2026-06-10] 타임아웃 메시지에 [다시 시도] 버튼 — 같은 질문 재타이핑 없이 1탭 재시도
     const retryHtml = m.retry_q ? `<div style="margin-top:8px;"><button type="button" data-asst-retry="${idx}" style="padding:9px 18px;border:1px solid #E5E8EB;border-radius:999px;background:#fff;color:#191F28;font-size:13px;font-weight:600;cursor:pointer;">다시 시도</button></div>` : '';
+    // [잇비 관측 2026-09-11] 신고에 **재현 좌표**를 같이 싣는다(대화·턴·intent·빌드·마스킹된 질문).
+    //   이게 없으면 "답이 틀렸어요" 를 받아도 다음 업데이트에 반영할 방법이 없다.
+    const _tr = (m && m.trace) || {};
     const reportHtml = promoResultHtml ? '' : `<div style="margin-top:4px;padding-left:2px;">
           <button data-report-ai="chat_answer" data-snippet="${_esc(m.text).replace(/"/g,'&quot;')}" data-source="/assistant/chat" aria-label="AI 답변 신고"
+            data-trace="${_esc(JSON.stringify(_tr)).replace(/"/g,'&quot;')}"
             style="background:transparent;border:none;cursor:pointer;font-size:11px;color:#C5CBD2;padding:2px 4px;display:inline-flex;align-items:center;gap:3px;">${_svg('ic-flag', 11)} 신고</button>
         </div>`;
     // [2026-08-16] 오늘의 브리핑 — 메시지 앞 중앙 날짜칩 (카톡 날짜칩 스타일)
@@ -2786,6 +2790,10 @@
     } catch (_e) { void _e; }
   }
 
+  // [P0 2026-09-09] 진행 중인 시도의 멱등키 — 내용 서명 → 키.
+  //   성공하면 지운다. 회원권 시트(`app-membership.js` `_txnFor`)와 같은 계약이다.
+  const _pendingTxn = new Map();
+
   // 순수 실행기 — action 객체만 받아 POST, 결과 반환. UI 갱신은 호출자가.
   // [QA-NEXT #4] action._ai_original (AI 추출 시점 payload 스냅샷) 있으면 original_payload 동봉 →
   // 백엔드에서 final vs original diff 를 UserCorrection 으로 학습.
@@ -2809,21 +2817,79 @@
     //   백엔드에 멱등이 없어서 같은 요청 5발이 매출 5건이 됐다(실측). 더블탭·타임아웃 후
     //   재시도·모바일 재전송이면 원장님은 한 번 눌렀는데 장부가 여러 줄이 된다.
     //   키를 **액션 객체에 붙여** 재시도해도 같은 값이 가게 한다 (매번 새로 만들면 무의미).
+    // [P0 2026-09-09 2차] 키를 **액션 객체에만** 붙이면 카드가 새로 만들어질 때 새 키가 된다.
+    //   실측한 사고가 정확히 그 경로였다: 응답이 유실돼 화면이 멈춤 → 원장이 같은 요청을
+    //   다시 함 → 새 카드 → 새 키 → 서버가 중복인 줄 모르고 **또 충전**(30,000 → 60,000).
+    //
+    //   형제 경로인 회원권 시트(app-membership.js `_txnFor`)는 이미 **내용 서명**으로 키를 잡고
+    //   성공했을 때만 버린다. 같은 계약을 여기에도 맞춘다 — 한쪽에만 있던 가드를 정렬하는 것이다.
+    //   · 같은 내용(kind + payload)의 재시도 = 같은 키 → 서버가 흡수
+    //   · 성공하면 키를 버린다 → 일부러 같은 금액을 또 충전하는 건 새 시도로 처리된다
+    const _txnSig = (() => {
+      try {
+        const p = { ...(action.payload || {}) };
+        delete p.client_txn_id;
+        return action.kind + '|' + JSON.stringify(Object.keys(p).sort().map((k) => [k, p[k]]));
+      } catch (_e) { return action.kind + '|' + Math.random(); }
+    })();
+    if (!action._txn_id) action._txn_id = _pendingTxn.get(_txnSig);
     if (!action._txn_id) {
       action._txn_id = (window.crypto && window.crypto.randomUUID)
         ? window.crypto.randomUUID().replace(/-/g, '').slice(0, 32)
         : 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
     }
+    _pendingTxn.set(_txnSig, action._txn_id);
     body.payload = { ...body.payload, client_txn_id: action._txn_id };
     if (action._ai_original && typeof action._ai_original === 'object') {
       body.original_payload = action._ai_original;
     }
     if (action._source_question) body.source_question = action._source_question;
-    const res = await apiFetch('/assistant/execute', {
-      method: 'POST',
-      headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    // [P0 2026-09-09 실측] 여기엔 **타임아웃이 없었다.**
+    //   `apiFetch` 는 비-GET 이면 그냥 `fetch(url, opts)` 라 AbortController 도 없다.
+    //   요청이 멈추면 카드가 "저장 중…" 에서 **영원히** 머문다(실측: 60초 넘게 그대로).
+    //   `/assistant/ask` 는 AbortController 를 쓰는데 execute 만 빠져 있었다 — 형제 경로 누락.
+    //
+    //   그리고 그게 **이중 청구**로 이어졌다. 실측(실 Chrome · 운영 DB · 서빙 d1f2884):
+    //     잔액 0 → "회원권 30000원 충전" → 확인 → 서버는 커밋(잔액 30,000)
+    //     → 응답만 유실 → 화면은 계속 "저장 중…"
+    //     → 원장이 결과를 모르니 같은 요청을 다시 함 → 확인 → **잔액 60,000**
+    //   돈이 두 번 들어갔다.
+    //
+    //   서버 멱등은 멀쩡하다 — 같은 `client_txn_id` 로 재전송하면 잔액이 안 움직인다(실측:
+    //   65,000 → 65,000, 같은 응답 반환). 문제는 **클라이언트가 그 키로 재시도할 방법이 없던 것**이다.
+    //   화면이 멈춰 있으니 원장은 새 요청을 만들고, 새 카드는 새 키를 받는다.
+    //
+    //   그래서: 타임아웃을 두고, 끊기면 **같은 `_txn_id` 로 한 번 자동 재시도**한다.
+    //   서버가 멱등이므로 이미 커밋됐다면 그 결과를 그대로 돌려주고(중복 없음),
+    //   아직 안 갔다면 그때 실행된다. 둘 다 안 되면 "결과를 확인하지 못했어요" 로 알린다 —
+    //   타임아웃은 "안 갔다" 가 아니라 **"모른다"** 이므로 실패로 단정하지 않는다.
+    const EXEC_TIMEOUT_MS = 25000;
+    async function _postExec() {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), EXEC_TIMEOUT_MS);
+      try {
+        return await apiFetch('/assistant/execute', {
+          method: 'POST',
+          headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: ctrl.signal,
+        });
+      } finally { clearTimeout(timer); }
+    }
+    let res;
+    try {
+      res = await _postExec();
+    } catch (_e1) {
+      // 끊겼다 — 결과를 모른다. 같은 멱등키로 한 번만 다시 물어본다.
+      try {
+        res = await _postExec();
+      } catch (_e2) {
+        const e0 = new Error('결과를 확인하지 못했어요. 연결이 끊겨서 처리됐는지 알 수 없어요. '
+          + '회원권·매출 화면에서 반영됐는지 확인한 뒤 다시 시도해 주세요.');
+        e0.unknownOutcome = true;
+        throw e0;
+      }
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       const e2 = new Error(_executeErrorMessage(err, res.status));
@@ -2831,6 +2897,7 @@
       throw e2;
     }
     const d = await res.json();
+    _pendingTxn.delete(_txnSig);   // 성공했으니 이 키는 버린다 — 다음 요청은 새 시도다
     _invalidateCachesFor(d.kind || action.kind);
     if (d.kind === 'generate_bulk_message' && d.message_draft) {
       try {
@@ -4444,6 +4511,22 @@
 
   function _runSheetShortcut(input, fn) {
     _clearAssistantInput(input);
+    // [P1 2026-09-09 실측] 잇비 시트를 **먼저 닫는다**. 안 닫으면 목표 화면이
+    //   잇비(z-index 10500) 뒤(z-index 9000대)에 열려서 **사용자에겐 아무 일도 안 일어난 것처럼 보인다.**
+    //
+    //   실측(배포본 6be453c, 실 Chrome, 각각 깨끗한 상태에서 1건씩):
+    //     "회원권 만료 임박한 사람 있어?" → membershipSheet 열림 · 잇비 그대로 위 · elementFromPoint=asstBody
+    //     "인사이트 보여줘"              → insightsSheet  열림 · 잇비 그대로 위
+    //     "백업 화면 열어줘"             → backupScreen   열림 · 잇비 그대로 위
+    //     "리뷰 요청 보내줘"             → wsv2Flow       열림 · 잇비 **닫힘** (보임)
+    //     "이탈 고객 관리"               → retentionSheet 열림 · 잇비 **닫힘** (보임)
+    //   즉 목표 화면 **일부만** 스스로 잇비를 닫고 있었다 — 전형적인 "한 경로엔 가드가 있고
+    //   형제 경로엔 없다". 그래서 각 목표가 아니라 **공용 헬퍼**에서 한 번에 닫는다.
+    //
+    //   특히 나쁜 건 "회원권 만료 임박한 사람 있어?" 가 **백엔드가 내려준 추천칩**이라는 점이다.
+    //   원장이 칩을 눌렀는데 답변도 안 나오고 화면도 안 바뀐다(사용자 말풍선조차 안 생긴다).
+    //   게다가 history 만 하나 쌓여서 **다음 뒤로가기가 보이지도 않는 시트를 닫는 데 소모된다.**
+    try { if (typeof window.closeAssistant === 'function') window.closeAssistant(); } catch (_c) { void _c; }
     try { fn(); } catch (_e) { void _e; }
   }
 
@@ -4475,15 +4558,37 @@
     return false;
   }
 
+  /* [잇비 전수QA 2026-09-11 · P2] 아래 지름길은 **명령**("…열어줘")용인데 **질문**까지 삼켰다.
+
+     실측(실 Chrome, 배포본 6926ff0): "회원권 만료 임박한 사람 있어?" 를 누르면
+     잇비가 닫히고 회원권 시트만 뜬다. 채팅엔 질문도 답도 안 남는다.
+     하필 그 문장은 **백엔드가 내려준 추천칩**이다(`_READONLY_FOLLOWUPS.membership_balance`) —
+     우리가 추천해 놓고 우리가 대화를 끊는다.
+
+     백엔드엔 `expiring_membership`·`at_risk_customers` 즉답이 있고, 답 끝에
+     '고객 화면 열기' 버튼까지 붙여 준다(`_READONLY_HUB_ACTION`). 즉 질문을 양보하면
+     원장님은 **답 + 버튼** 을 둘 다 받는다. 화면만 여는 건 정보가 줄어드는 선택이다.
+
+     그래서 '상태를 묻는 말'이면 지름길을 쓰지 않는다. 여는 동사(열어/관리/화면/이동)가
+     같이 있으면 그건 명령이므로 그대로 연다("회원권 만료 관리 화면 열어줘"). */
+  const _ASK_RE = /(있어|있나|없어|누구|몇|얼마|언제|어때|현황|상태|알려\s*줘?|보여\s*줘?|\?$)/;
+  const _OPEN_VERB_RE = /(열어|열기|화면|이동|가자|관리\s*(화면|해)|띄워|보여\s*주는\s*화면)/;
+  function _isStatusQuestion(q) {
+    const t = String(q || '').trim();
+    return _ASK_RE.test(t) && !_OPEN_VERB_RE.test(t);
+  }
+
   function _trySimpleOpenShortcut(input, q) {
+    // 질문형이면 답을 주는 쪽(백엔드 즉답)으로 보낸다.
+    const askOnly = _isStatusQuestion(q);
     const pairs = [
       [/(브랜드\s*키트|brand\s*kit|샵\s*브랜드|워터마크\s*(설정|관리))/, () => window.BrandKit?.open?.()],
-      [/회원권.*(만료|임박)|만료.*회원권/, () => window.MembershipUI?.openExpiringList?.(30)],
+      ...(askOnly ? [] : [[/회원권.*(만료|임박)|만료.*회원권/, () => window.MembershipUI?.openExpiringList?.(30)]]),
       [/(dm|디엠|자동\s*응답|자동\s*답장).*(설정|관리|편집|룰)|자동\s*응답\s*(켜|꺼|on|off)/, window.openDMAutoreplySettings],
-      [/(통계|분석|인사이트|insight|매출\s*(요약|리포트|추이|분석))/, window.openInsights],
+      ...(askOnly ? [] : [[/(통계|분석|인사이트|insight|매출\s*(요약|리포트|추이|분석))/, window.openInsights]]),
       [/(백업|backup|데이터.*(복구|내보내|받|export))/, window.openBackupScreen],
-      [/(리뷰|후기)\s*(요청|보내|부탁|발송)/, window.openReviewRequests],
-      [/(이탈|위험|복귀|재방문)\s*(고객|손님|관리)?|retention/i, window.openRetentionAI],
+      ...(askOnly ? [] : [[/(리뷰|후기)\s*(요청|보내|부탁|발송)/, window.openReviewRequests]]),
+      ...(askOnly ? [] : [[/(이탈|위험|복귀|재방문)\s*(고객|손님|관리)?|retention/i, window.openRetentionAI]]),
     ];
     return _runFirstShortcutPair(input, q, pairs);
   }
@@ -4567,7 +4672,7 @@
     const res = await apiFetch('/assistant/ask', {
       method: 'POST',
       headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q, session_id: _sessionId || undefined, context_hint: _hint || undefined }),
+      body: JSON.stringify({ question: q, session_id: _sessionId || undefined, context_hint: _hint || undefined, via: _takeVia() }),
       signal: ctrl.signal,
     });
     // [2026-07-22 보스] 서버가 사람 말로 이유를 줬으면(429 "AI 비서가 잠시 붐비고 있어요" 등)
@@ -4604,6 +4709,21 @@
     _notifyAnswerArrived();
   }
 
+  /* [잇비 관측 2026-09-11] 답변 1건의 **좌표**를 메시지에 붙여둔다.
+     신고를 받아도 어느 대화의 어느 턴인지 몰라 재현이 안 됐다 — 신고 버튼이 이 값을 싣는다. */
+  function _attachTrace(msg, data, q) {
+    try {
+      msg.trace = {
+        conversation_id: (data && data.session_id) || _sessionId || null,
+        turn_id: (data && data.turn_id) != null ? data.turn_id : null,
+        intent: (data && data.intent) || null,
+        user_question: q || '',
+        app_build: (window.__ITDASY_BUILD__ || window.APP_BUILD || document.body?.dataset?.build || ''),
+      };
+    } catch (_e) { void _e; }
+    return msg;
+  }
+
   function _textResponseMessage(data, actionsList) {
     const msg = { role: 'assistant', text: data.answer || '답을 만들지 못했어요.' };
     if (Array.isArray(data.related_questions) && data.related_questions.length) msg.related = data.related_questions.slice(0, 3);
@@ -4627,7 +4747,7 @@
       _pushFallbackAsk(q);
       return;
     }
-    _history.push(_textResponseMessage(data, actionsList));
+    _history.push(_attachTrace(_textResponseMessage(data, actionsList), data, q));
     _renderHistory();
     if (window.hapticLight) window.hapticLight();
     _clearChatPending();
@@ -4796,22 +4916,75 @@
     return true;
   }
 
+  /* [잇비 관측 2026-09-11] **프론트가 혼자 답한 턴을 서버 로그에서 볼 수 있게 한다.**
+
+     이번 전수 QA 에서 가장 나쁜 결함 6건이 전부 여기서 끝났다 — 백엔드엔 요청 자체가
+     안 갔으니 서버 로그엔 아무 흔적도 없고, 원장님이 신고하지 않으면 영영 모른다.
+     ("오늘 예약 3건"인데 카드 2장 · 지출을 물었는데 매출 · 추천칩이 화면만 열고 끝)
+     그래서 **어느 지름길이 가로챘는지**(`handled_by`)를 한 줄 남긴다.
+     보내는 건 마스킹된 질문 모양뿐이고(서버에서 한 번 더 마스킹), 실패해도 대화는 그대로다. */
+  const _SHORTCUTS = [
+    ['obvious_intent', (i, q) => _tryObviousIntent(i, q)],
+    ['affirm_action', _tryAffirmAction],
+    ['customer_phone_intent', _tryCustomerPhoneIntent],
+    ['customer_add_guard', _tryCustomerAddGuard],
+    ['caption_conversation', _tryCaptionConversation],
+    ['cancel_booking', _tryCancelBookingShortcut],
+    ['booking_context', _tryBookingContextShortcut],
+    ['lookup_booking', _tryLookupBookingShortcut],
+    ['create_booking', _tryCreateBookingShortcut],
+    ['draft_message', _tryDraftMessageShortcut],
+    ['closing_report', _tryClosingReportShortcut],
+    ['daily_briefing', _tryDailyBriefingShortcut],
+    ['customer_status_card', _tryCustomerStatusCard],
+    ['async_intent_rule', _tryAsyncIntentRule],
+    ['keyword_shortcut', (i, q) => _tryKeywordShortcut(i, q)],
+  ];
+
   async function _trySendShortcuts(input, q) {
-    if (_tryObviousIntent(input, q)) return true;
-    if (await _tryAffirmAction(input, q)) return true;
-    if (await _tryCustomerPhoneIntent(input, q)) return true;   // [Phase3] 연락처 자연어(add-guard 보다 먼저)
-    if (await _tryCustomerAddGuard(input, q)) return true;
-    if (await _tryCaptionConversation(input, q)) return true;     // [§2-5] 캡션 — 대화형 생성/재생성(1초캡션 팝업 금지)
-    if (await _tryCancelBookingShortcut(input, q)) return true;
-    if (await _tryBookingContextShortcut(input, q)) return true;
-    if (await _tryLookupBookingShortcut(input, q)) return true;
-    if (await _tryCreateBookingShortcut(input, q)) return true;
-    if (await _tryDraftMessageShortcut(input, q)) return true;   // [T-110] 메시지 초안(발송 아님)
-    if (await _tryClosingReportShortcut(input, q)) return true;  // [2026-07-05] 하루 마감 리포트(브리핑보다 먼저)
-    if (await _tryDailyBriefingShortcut(input, q)) return true;  // [T-114] 오늘 운영 브리핑(읽기 전용)
-    if (await _tryCustomerStatusCard(input, q)) return true;     // [J-3] 고객 상태 카드(읽기 전용 + 다음액션 버튼)
-    if (await _tryAsyncIntentRule(input, q)) return true;
-    return _tryKeywordShortcut(input, q);
+    // ⚠ 표식은 여기서 **먼저** 꺼낸다. FE 지름길이 처리하면 `/assistant/ask` 를 안 부르므로
+    //   아래 ask 페이로드의 `_takeVia()` 가 영영 안 돌고, 표식이 남아 다음 턴에 붙는다.
+    const via = _takeVia();
+    for (const [name, fn] of _SHORTCUTS) {
+      // eslint-disable-next-line no-await-in-loop
+      if (await fn(input, q)) { _reportClientTurn(name, q, via); return true; }
+    }
+    // 지름길이 안 받았으면 백엔드가 받는다 — 표식을 되돌려 놓는다.
+    try { if (via === 'chip') window.__itbiVia = 'chip'; } catch (_e) { void _e; }
+    return false;
+  }
+
+  // 로그 1건. 절대 대화를 깨뜨리지 않는다(실패는 조용히 버린다).
+  // [ITBI 2차게이트 2026-09-12 · §8] 추천칩 클릭 표식을 **한 번만** 소비한다.
+  //   칩이 입력창을 채우고 send() 를 부르므로, 지우지 않으면 그 다음 직접 입력까지
+  //   'chip' 으로 집계돼 추천칩 실패율이 실제보다 좋아 보인다(지표가 스스로를 속인다).
+  function _takeVia() {
+    try {
+      const v = window.__itbiVia || null;
+      window.__itbiVia = null;
+      return v || 'typed';
+    } catch (_e) { return 'typed'; }
+  }
+
+  function _reportClientTurn(handledBy, q, via) {
+    try {
+      if (typeof apiFetch !== 'function') return;
+      const last = _history[_history.length - 1];
+      apiFetch('/assistant/client-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(window.authHeader ? window.authHeader() : {}) },
+        body: JSON.stringify({
+          event: 'turn',
+          conversation_id: _sessionId || null,
+          handled_by: handledBy,
+          via: via || 'typed',
+          question: String(q || '').slice(0, 500),
+          answer: (last && last.role === 'assistant' && typeof last.text === 'string')
+            ? last.text.slice(0, 500) : null,
+          app_build: (window.__ITDASY_BUILD__ || window.APP_BUILD || ''),
+        }),
+      }).catch(() => {});
+    } catch (_e) { void _e; }
   }
 
   // [P0a] 사진 직후 후속 텍스트가 "그 사진"에 대한 명령인지(누끼/배경/보정/템플릿/홍보/인스타/업로드/손님 등).

@@ -104,7 +104,28 @@
     el = document.createElement('div');
     el.id = 'membershipSheet';
     el.className = 'sheet-overlay';
-    el.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:flex-end;justify-content:center;';
+    /* [BUG-1 2026-09-11] z-index 9000 → 10650.
+       원장이 고객 화면에서 [회원권]을 눌러도 **아무 일도 안 일어나는 것처럼 보였다.**
+       시트는 정상적으로 만들어지고 `/memberships/{id}/history` 도 200 인데,
+       9000 이라 고객 화면들 **뒤에** 깔려서 화면에 안 보인 것이다.
+       실측(라이브 c3bf4ca, 실 Chrome): `elementFromPoint(시트 중앙)` 이 시트가 아니라
+       고객 상세의 `.cd-memory-head` 를 돌려줬다. 가리는 것은 둘:
+         #customerSheet     z=9998   (고객 목록)
+         #customerDashSheet z=10600  (고객 상세)
+       회원권 충전은 **그 화면 위에 얹히는 모달**이다(닫으면 원래 고객 화면으로 돌아와야 한다).
+       그래서 잇비처럼 '먼저 닫기'가 아니라 **위로 올리는 게** 맞는 처리다.
+
+       10650 을 고른 이유 — 이 앱의 오버레이 사다리에 맞춘 값이다:
+         9998  고객 목록 · 10500 잇비 · 10600 고객 상세 · **10650 회원권** · 10700 DM 미리보기 ·
+         10800 고객 픽커 · 12000 자동화 동의 · 99999 토스트
+       고객 상세(10600)보다는 위, DM 미리보기(10700)보다는 아래 — 기존 관계를 하나도 안 건드린다.
+
+       🔴 이건 이 레포에서 **네 번째** 같은 결함이다. 앞의 셋은 이미 고쳐져 있었다:
+         핫픽스D #3  customerDashSheet → 10600 ("채팅에서 고객 기록 열기 시 뒤에 깔리던 버그")
+         2026-06-11  고객 픽커        → 10800 ("잇비(10500) 위로 — 픽커 가림 픽스")
+         2026-09-09  잇비 단축키      → 여는 쪽을 먼저 닫음 (app-assistant.js `_runSheetShortcut`)
+       그 주석의 표현 그대로 "한 경로엔 가드가 있고 형제 경로엔 없다" 였다. */
+    el.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10650;align-items:flex-end;justify-content:center;';
     el.innerHTML = `
       <style>
         #membershipSheet .ms-cta:active { transform: scale(.985); }
@@ -143,6 +164,22 @@
     container.innerHTML = '<div style="font-size:12px;color:#888;text-align:center;padding:8px;">최근 내역 불러오는 중…</div>';
     try {
       const r = await _fetch('GET', `/memberships/${customerId}/history?limit=8`);
+      /* [BUG-N3 2026-09-11] 머리글의 잔액을 **서버 값으로 덮는다.**
+         예전엔 호출부가 넘긴 `currentBalance` 만 썼는데, 그건 화면이 들고 있던 옛 값이다.
+         실측(라이브 ec4cf71): 30,000원을 충전하고(POST /memberships/topup 200,
+         토스트 "잔액 30,000원", 내역 "+30,000원") 시트를 다시 열었더니
+         머리글만 **"현재 잔액 0원"** 이었다. 서버는 `current_balance: 30000` 이었고
+         그 값은 **바로 이 응답 안에 들어 있었는데 안 쓰고 있었다.**
+         원장이 0원으로 보고 또 충전하면 이중 충전이 된다 — 돈 화면에서 제일 위험한 표기다.
+         호출부 값은 응답이 오기 전 한순간을 메우는 용도로만 남긴다(즉시 그려지는 게 낫다). */
+      try {
+        if (r && r.current_balance != null && !Number.isNaN(Number(r.current_balance))) {
+          const _sub = document.querySelector('#membershipSheet #msSub');
+          if (_sub && /현재 잔액/.test(_sub.textContent || '')) {
+            _sub.textContent = (_sub.textContent || '').replace(/현재 잔액\s*[^·]*/, '현재 잔액 ' + formatMoney(Number(r.current_balance)));
+          }
+        }
+      } catch (_be) { void _be; }
       const items = r.history || r.items || [];   // [2026-07-22 fix] BE는 {history:[]} 반환 — 키 불일치로 항상 빈칸이던 버그
       if (!items.length) {
         container.innerHTML = '<div style="font-size:12px;color:#888;text-align:center;padding:10px;">아직 내역이 없어요.</div>';
@@ -181,6 +218,11 @@
     subEl.style.display = sub ? 'block' : 'none';
     sheet.querySelector('#msBody').innerHTML = htmlBody;
     sheet.style.display = 'flex';
+    /* [2026-09-09] 뒤로가기로 닫히게 등록. 안 하면 back 이 이 시트 대신 뒤 화면을 닫아
+       충전하려던 흐름이 통째로 날아간다(돈 화면이라 더 위험하다).
+       닫기 지점이 4곳(× · 배경탭 · 충전성공 · 사용성공)이라 각각에 _markSheetClosed 를
+       붙이면 하나 빠질 때 유령 hash 가 남는다 → DOM 에서 사라짐을 관찰하는 헬퍼를 쓴다. */
+    try { window._bindSheetBack && window._bindSheetBack('membershipSheet', sheet, () => { sheet.style.display = 'none'; }); } catch (_e) { void _e; }
   }
 
   // ── 충전 시트 ───────────────────────────────────────────────

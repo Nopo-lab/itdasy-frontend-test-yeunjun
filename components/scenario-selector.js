@@ -86,6 +86,18 @@ function _findCard(axes) {
  *   onComplete({ combo_id: string, axes: object, special_context: string })
  */
 function renderScenarioSelector(container, onComplete) {
+  /* [AI 릴리스 게이트 2026-09-07] onComplete 는 **한 번만** 부른다.
+     여기서 나가는 콜백 하나가 곧 LLM 호출 1회 + 한도 1회다. 두 번 나가면
+     같은 캡션을 두 번 만들고 무료 3회 중 2회가 한 번의 연타로 사라진다.
+     (호출부가 화면을 바꾸므로 실사용에서 잘 안 터지지만, 모바일 고스트 클릭과
+      Enter 연타가 남아 있었다 — 방어는 이벤트가 나가는 지점이 맞다.) */
+  var _fired = false;
+  var _onCompleteOnce = onComplete;
+  onComplete = function (payload) {
+    if (_fired) return;
+    _fired = true;
+    _onCompleteOnce(payload);
+  };
   _injectSSStyles();
 
   const state = { situation: null, customer: null, photo: null };

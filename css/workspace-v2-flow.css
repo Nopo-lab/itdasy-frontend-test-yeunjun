@@ -959,3 +959,4 @@ body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
 /* [버그4 2026-07-25 → 2026-08-11 전역 승격] iOS 자동 확대 차단 규칙은
    tokens.css 로 이동·전역화(전 화면 input/textarea/select/contenteditable 16px).
    작업실 한정이던 이 블록은 중복이라 삭제 병합. */
+

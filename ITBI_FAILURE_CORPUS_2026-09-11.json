@@ -1,0 +1,318 @@
+{
+ "captured": "2026-09-11 KST",
+ "environment": "실 Chrome · nopo-lab.github.io/itdasy-frontend-test-yeunjun · BE itdasy-backend-staging(env=production) · cbt3@itdasy.com(user 4)",
+ "how_to_use": "각 케이스는 `conversation` 을 순서대로 실제로 입력하면 재현된다. ground_truth 는 잇비가 아닌 앱 API/DB 에서 얻은 값이다.",
+ "cases": [
+  {
+   "id": "CASE-001",
+   "severity": "P1",
+   "quality_label": "factually_wrong",
+   "area": "예약 건수",
+   "conversation": [
+    "오늘 예약 알려줘"
+   ],
+   "ground_truth": {
+    "bookings_today_kst": 3,
+    "confirmed": 2,
+    "cancelled": 1,
+    "expected_count_shown": 2,
+    "source": "GET /bookings (status!=cancelled,no_show) · BE today_bookings 와 동일 규칙"
+   },
+   "observed": "머리글 '📅 오늘 예약 3건' · 카드 2장",
+   "must_not_contain": [
+    "오늘 예약 3건"
+   ],
+   "expected_behavior": "머리글 건수 == 카드 수 == 살아있는 예약 수(2건)",
+   "root_cause": "assistant-intent-router `_formatBookings` 는 원본 items.length, app-assistant `_runAsyncIntentRule` 은 cancelled 를 거른 배열 — 계산이 두 갈래",
+   "fix": "execAsyncRule 에서 bookings_* 결과를 한 번 필터(activeBookings) → 머리글·카드가 같은 배열",
+   "regression_test": "__tests__/itbi-question-routing-2026-09-11.test.js › 오늘 예약 건수"
+  },
+  {
+   "id": "CASE-002",
+   "severity": "P1",
+   "quality_label": "irrelevant",
+   "area": "지출/매출",
+   "conversation": [
+    "이번 달 지출 얼마야?"
+   ],
+   "ground_truth": {
+    "expense_month": 0,
+    "revenue_month": 385000,
+    "source": "BE expense_summary 실측 · GET /revenue?period=month"
+   },
+   "observed": "📊 이번 달 매출 385,000원 (21건)",
+   "must_not_contain": [
+    "매출"
+   ],
+   "expected_behavior": "지출 0원을 지출로 답한다(💸 이번 달 기록된 지출이 없어요)",
+   "root_cause": "FE revenue_month 규칙이 '(이번 달)+(얼마)' 만 보고 매칭. '지출' 이라는 단어를 아무도 안 봄",
+   "fix": "매출 4규칙 전부에 `!_isExpenseQ(q)` 가드 → 백엔드 expense_summary 로 양보",
+   "regression_test": "__tests__/itbi-question-routing-2026-09-11.test.js › 지출 질문이 매출 답으로 새지 않는다"
+  },
+  {
+   "id": "CASE-003",
+   "severity": "P1",
+   "quality_label": "hallucination",
+   "area": "이름 오인식 (스타터 칩)",
+   "conversation": [
+    "이번 달 생일인 손님 있어?"
+   ],
+   "ground_truth": {
+    "customers_with_birthday": 0,
+    "customer_named_이번": "존재하지 않음"
+   },
+   "observed": "이번님을 고객 명단에서 못 찾았어요. 새 고객이면 \"이번 고객 추가\"라고 말씀해 주세요.",
+   "must_not_contain": [
+    "이번님",
+    "단골님"
+   ],
+   "expected_behavior": "🎂 이번 달 생일인 고객이 없어요 (BE birthday 즉답)",
+   "root_cause": "customer-add-guard `_looksFindCustomer` 가 `(고객|손님).*(있어)` 만 보고 이름 질문으로 단정 → 남은 첫 한글 토큰('이번')을 이름으로 집음. 블랙리스트 방식의 한계",
+   "fix": "호칭(○○님/씨)이 있을 때만 사람으로 단정 — 백엔드가 2026-08-17 에 같은 버그로 도입한 규칙과 동일",
+   "also_reproduces": [
+    "단골 손님 있어?",
+    "신규 고객 있어?",
+    "오늘 온 손님 있어?"
+   ],
+   "regression_test": "__tests__/itbi-question-routing-2026-09-11.test.js › 고객 찾기 가드"
+  },
+  {
+   "id": "CASE-004",
+   "severity": "P1",
+   "quality_label": "undercapable",
+   "area": "이탈 고객",
+   "conversation": [
+    "오래 안 온 손님 누구야?"
+   ],
+   "ground_truth": {
+    "at_risk": 0,
+    "lost": 0,
+    "source": "GET /retention/at-risk · compute_at_risk"
+   },
+   "observed": "한동안 안 오신 고객 정보는 고객 화면에서 확인할 수 있어요.",
+   "must_not_contain": [
+    "고객 화면에서 확인할 수 있어요"
+   ],
+   "expected_behavior": "✨ 평소 오시던 주기보다 오래 안 오신 고객은 없어요 (있으면 이름·경과일)",
+   "root_cause": "customer-status-card `_listMessage` 가 at_risk 목록을 `[]` 로 하드코딩. 게다가 읽는 `/today/brief` 엔 at_risk 고객 목록 자체가 없다(개수만) — 이탈 고객이 몇 명이든 항상 같은 회피 문장",
+   "fix": "at_risk 목록 요청은 백엔드(단일 판정기 compute_at_risk)로 양보",
+   "regression_test": "__tests__/itbi-question-routing-2026-09-11.test.js › 이탈 고객 질문"
+  },
+  {
+   "id": "CASE-005",
+   "severity": "P2",
+   "quality_label": "bad_recommendation",
+   "area": "추천칩이 대화를 끊음",
+   "conversation": [
+    "회원권 잔액 남은 손님 알려줘",
+    "회원권 만료 임박한 사람 있어?"
+   ],
+   "ground_truth": {
+    "expiring_30d": 0
+   },
+   "observed": "두 번째 턴에서 잇비가 닫히고 '회원권 만료 관리' 시트만 열림. 채팅엔 질문도 답도 안 남음",
+   "expected_behavior": "💳 30일 내 만료되는 회원권이 없어요 + [고객 화면 열기] 버튼",
+   "root_cause": "백엔드가 추천한 칩을 FE `_trySimpleOpenShortcut` 이 화면이동으로 가로챔. 같은 패턴: 이탈·인사이트·리뷰요청",
+   "fix": "질문형(_isStatusQuestion)이면 지름길을 쓰지 않는다 — 명령형('…열어줘')만 화면이동",
+   "regression_test": "__tests__/itbi-question-routing-2026-09-11.test.js › 화면이동 지름길은 명령에만"
+  },
+  {
+   "id": "CASE-006",
+   "severity": "P1",
+   "quality_label": "irrelevant",
+   "area": "리뷰 현황 → 작업실",
+   "conversation": [
+    "리뷰 현황 어때?"
+   ],
+   "ground_truth": {
+    "review_requests": 0
+   },
+   "observed": "잇비가 닫히고 작업실 사진 업로드 화면이 열림",
+   "expected_behavior": "⭐ 아직 리뷰 요청 기록이 없어요 (BE review_status)",
+   "root_cause": "photo-mode-support START_RE 둘째 갈래의 뒤 그룹이 전부 `?` → '리뷰'·'후기'·'전후' 단어만 있으면 사진편집 모드 시작. review_status 즉답은 채팅에서 도달 불가능했다",
+   "fix": "목적명사(사진/카드/템플릿) 또는 생성동사 중 하나를 필수로",
+   "also_reproduces": [
+    "전후 고객 몇 명이야?",
+    "리뷰 몇 개나 왔어?",
+    "후기 현황 알려줘"
+   ],
+   "regression_test": "__tests__/itbi-question-routing-2026-09-11.test.js › 사진편집 모드 시작 조건"
+  },
+  {
+   "id": "CASE-007",
+   "severity": "P2",
+   "quality_label": "unnecessary_fallback",
+   "area": "불필요한 동명이인 되묻기",
+   "conversation": [
+    "김호영님 예약 있어?"
+   ],
+   "ground_truth": {
+    "exact_match": "김호영(id 675)",
+    "prefixed_other": "E2E_C_김호영(id 710)",
+    "booking": "842 · 2026-09-08 16:00 · 에 24인치 붙임머리"
+   },
+   "observed": "🔍 같은 이름 2명 있어요… 1) E2E_C_김호영 2) 김호영",
+   "expected_behavior": "완전 일치가 하나면 그 사람으로 확정 — 같은 대화의 customer_memo 는 이미 김호영을 특정했다(자기모순)",
+   "root_cause": "`_nameMatches` 가 완전 일치와 접두사형을 둘 다 100 으로 줘서 동점",
+   "fix": "완전 일치 110 > 접두사형 100 (진짜 동명이인은 둘 다 110 이라 되묻기 유지)",
+   "regression_test": "__tests__/itbi-question-routing-2026-09-11.test.js › 고객 이름 매칭 · __tests__/intent-router-name-prefix-exact.test.js"
+  },
+  {
+   "id": "CASE-008",
+   "severity": "P2",
+   "quality_label": "overconfident",
+   "area": "단골 정의",
+   "conversation": [
+    "김호영 고객 알려줘",
+    "다른 단골 고객 알려줘",
+    "1번왔는데 왜 단골이야"
+   ],
+   "ground_truth": {
+    "regular_threshold": 3,
+    "customers_with_3plus_visits": 1,
+    "one_visit_customers": 5
+   },
+   "observed": "👑 많이 오신 고객 TOP 6 — 6명 중 5명이 1회 방문 / 세 번째 턴에 같은 목록을 또 띄움",
+   "must_not_contain": [
+    "1회"
+   ],
+   "expected_behavior": "기준(3회) 이상만 '단골'. 없으면 없다고 말하고, 방문 횟수는 '방문 횟수'라는 다른 이름으로 따로 보여준다",
+   "root_cause": "`regulars` 가 `visit_count > 0` 전원을 나열. 앱 공용 상수 REGULAR_VISIT_THRESHOLD 를 이 경로만 안 썼다. '왜' 질문도 목록 intent 로 분류됨",
+   "fix": "REGULAR_VISIT_THRESHOLD 적용 + '왜/왜냐' 는 LLM 으로 위임",
+   "regression_test": "tests/test_itbi_qa_2026_09_11.py · tests/test_itbi_regular_named_customer_2026_09_09.py"
+  },
+  {
+   "id": "CASE-009",
+   "severity": "P2",
+   "quality_label": "wrong_entity",
+   "area": "목록 뒤의 대명사",
+   "conversation": [
+    "김호영",
+    "1번왔는데 왜 단골이야",
+    "그 고객 마지막 방문은?"
+   ],
+   "ground_truth": {
+    "user_meant": "김호영",
+    "answered_about": "E2E_A_박지우(목록 첫 줄)"
+   },
+   "observed": "🗓️ E2E_A_박지우님 마지막 방문은 2026-09-05 이에요.",
+   "expected_behavior": "직전 턴이 여러 명을 준 목록이면 '그 고객' 은 모호 → 되묻는다(서수를 말했으면 그대로 집는다)",
+   "root_cause": "`_recent_entities` 결과의 **첫 항목**을 말없이 채택. 같은 패턴이 3곳에 복사돼 있었다",
+   "fix": "공용 `_session_customer_id()` — 1명이면 확정 / 서수 있으면 그 자리 / 여럿+서수없음이면 되묻기",
+   "regression_test": "tests/test_itbi_qa_2026_09_11.py › test_session_customer_id_asks_when_list"
+  },
+  {
+   "id": "CASE-010",
+   "severity": "P2",
+   "quality_label": "factually_wrong_latent",
+   "area": "기간 라벨",
+   "conversation": [
+    "이번 달 신규 고객 몇 명?"
+   ],
+   "ground_truth": {
+    "created_this_calendar_month": 15,
+    "note": "측정일엔 롤링/달력 값이 우연히 같았다"
+   },
+   "observed": "🆕 신규 고객 / 이번주 15명 / 이번달 15명 (창은 최근 7일·30일)",
+   "expected_behavior": "'이번주/이번달' 라벨이면 경계도 달력이어야 한다(KST)",
+   "root_cause": "revenue_summary 는 `_kst_month_bounds` 로 고쳤는데 new_customers 만 롤링 창이 남음. 달이 바뀌면 지난달 가입자가 '이번 달' 로 센다",
+   "fix": "`_kst_month_bounds()` + `business_day.week_start()`",
+   "regression_test": "tests/test_itbi_qa_2026_09_11.py › test_new_customers_uses_calendar_bounds"
+  },
+  {
+   "id": "CASE-011",
+   "severity": "P3",
+   "quality_label": "bad_recommendation",
+   "area": "대화 단절",
+   "conversation": [
+    "재고 부족한 거 있어?"
+   ],
+   "ground_truth": {
+    "low_stock_items": 0
+   },
+   "observed": "📦 재고 부족 항목이 없어요. — 후속칩 0개, 버튼 0개",
+   "expected_behavior": "후속칩으로 대화를 이어준다",
+   "root_cause": "24개 intent 중 low_stock 만 `_READONLY_FOLLOWUPS`·`_READONLY_HUB_ACTION` 양쪽에서 빠져 있었다",
+   "fix": "후속칩 2개 추가. 버튼은 **일부러 안 넣음** — 재고 화면은 INVENTORY_HIDDEN 이라 죽은 버튼이 된다",
+   "regression_test": "(코드 상수표 — tests/test_itbi_qa_2026_09_11.py 의 intent 커버리지로 확인)"
+  },
+  {
+   "id": "CASE-012",
+   "severity": "P3",
+   "quality_label": "awkward_language",
+   "area": "표기",
+   "conversation": [
+    "E2E_A_박지우님 마지막 방문 언제야?"
+   ],
+   "observed": "마지막 방문은 2026-09-05 이에요.",
+   "expected_behavior": "앱 규칙은 한글 날짜(9월 5일). ISO/숫자 날짜 노출 금지(핫픽스D #1·#8)",
+   "root_cause": "`customer_last_visit` 이 `strftime('%Y-%m-%d')` 를 그대로 씀",
+   "fix": "미수정 — 남은 항목(P3)",
+   "regression_test": null
+  },
+  {
+   "id": "CASE-013",
+   "severity": "P3",
+   "quality_label": "bad_recommendation",
+   "area": "동명이인 되묻기",
+   "conversation": [
+    "E2E_G_김민수님 마지막 방문 언제야?"
+   ],
+   "observed": "🙋 'E2E_G_김민수' 님이 2분 계세요… (0007) / (0008) — 고를 방법 없음",
+   "expected_behavior": "구분할 정보를 주고, 번호가 없는 고객도 구분되게(마지막 방문·방문 횟수)",
+   "root_cause": "전화번호 뒷자리에만 의존 — 둘 다 번호가 없으면 '연락처 없음 / 연락처 없음'",
+   "fix": "`_ambiguous_answer()` — 번호가 없으면 마지막 방문·방문 횟수로 구분",
+   "regression_test": null
+  },
+  {
+   "id": "CASE-014",
+   "severity": "P1",
+   "quality_label": "irrelevant",
+   "area": "잇비가 시킨 말을 못 알아들음",
+   "conversation": [
+    "회원권 잔액 남은 손님 알려줘",
+    "그 고객 마지막 방문은?",
+    "첫 번째 손님 마지막 방문은?"
+   ],
+   "observed": "3번째 턴 → \"새로 만들려면 '후기 카드 만들어줘'처럼, 저장한 걸 고치려면 '저장된 카드 보여줘'라고 해주세요…\"",
+   "expected_behavior": "2번째 턴의 되묻기가 \"'첫 번째 손님' 처럼 말씀해 주세요\" 라고 안내했으므로 그대로 알아들어야 한다",
+   "root_cause": "`unsupported-intent` RETRY_ALT_RE 의 `첫\\s*번째` 가 먼저 매칭. 원래 '첫 번째가 나았어'(디자인 대안)용이라 사람을 가리키는 말이 아니다. **내가 되묻기 문구를 만들면서 같이 만든 결함**",
+   "fix": "서수 뒤에 사람 명사(손님·고객·분·님)가 오면 가드가 양보 → 백엔드 `_session_customer_id` 가 해석",
+   "regression_test": "__tests__/itbi-question-routing-2026-09-11.test.js › 서수로 고객 지목",
+   "verified_live": "2026-09-12 — '첫 번째 손님 마지막 방문은?' → 'E2E_F_회원권만님 아직 방문 기록이 없어요' (목록 1번, ground truth 방문 0회)"
+  },
+  {
+   "id": "CASE-015",
+   "severity": "P1",
+   "quality_label": "unsafe_response",
+   "area": "질문이 영구 기억으로 저장 + PII",
+   "conversation": [
+    "김호영님 010-7001-0012 이메일 qa-test@example.com 메모해둔 거 있어?"
+   ],
+   "observed": "\"기억했어요 🧠 '김호영님 010-7001-0012 이메일 qa-test@example.com' — 앞으로 참고할게요.\" (facts id 16 으로 실제 저장됨)",
+   "expected_behavior": "조회 질문이다 — 저장하지 말고 고객 메모를 답해야 한다",
+   "root_cause": "`memory-intent` 의 고객범위 가드가 `님 … 메모` 사이 24자만 허용했고, 경계가 `[^.!?\\n]` 이라 **이메일의 `.` 에서 창이 끊겼다**. 가드를 지나자 '메모해' 글자만 보고 저장으로 갔다",
+   "fix": "창 60자 + 경계를 `[^\\n]` 로. 그리고 원칙 추가 — **묻는 문장은 저장이 아니다**(ASKING_RE). ⚠️ 의문 표지에 '확인·알려·보여' 를 넣었다가 뺐다: '보정 전에 항상 확인하는 거 기억해줘' 같은 정상 저장문이 막혔다",
+   "cleanup": "테스트로 생긴 facts id 16 삭제 완료",
+   "regression_test": "__tests__/itbi-question-routing-2026-09-11.test.js › 메모 인텐트",
+   "verified_live": "2026-09-12 — 같은 문장이 이제 `/assistant/ask` 로 도달(llm), 저장 안 됨"
+  },
+  {
+   "id": "CASE-016",
+   "severity": "P0",
+   "quality_label": "unsafe_response",
+   "area": "관측 로그에 고객 이름 평문",
+   "conversation": [
+    "(관측 배포 후 gcloud logging read 로 실제 로그 확인)"
+   ],
+   "observed": "`[ITBI]` 로그의 답변 필드에 고객 이름이 그대로: \"🙋 'E2E_G_김민수' 님이 2분 계세요\" · \"• E2E_A_박지우 — 37,000원\" · \"A / B / C / D\". 질문도 호칭 없으면 샘(\"김호영 고객 알려줘\")",
+   "expected_behavior": "기본 로그에 고객 전체 이름이 남지 않는다 (스펙이 그렇게 약속했다)",
+   "root_cause": "마스킹이 `○○님/씨` 인접만 봤다. 답변은 우리 템플릿이 이름을 목록·따옴표·슬래시로 박아 넣어 **금지목록 방식으로는 구조적으로 안 끝난다**",
+   "fix": "① 금지목록 → **허용목록**(아는 업무 낱말만 남기고 나머지 2~4자 한글·밑줄 식별자는 전부 [NAME]) ② **답변 본문은 아예 안 남긴다**(a → a_len·a_empty)",
+   "note": "\"만들었다\" 와 \"안 샌다\" 는 다르다 — 실제 로그를 읽고서야 드러났다",
+   "regression_test": "tests/test_itbi_qa_2026_09_11.py › test_no_customer_name_survives_sanitize (그때 실제로 찍힌 문자열을 그대로 박아 둠)",
+   "verified_live": "2026-09-12 — 21 레코드 스캔, PII leak 0 · raw 'a' 필드 0"
+  }
+ ],
+ "post_deploy_round": "2026-09-12 · 배포 후 라이브 재검증에서 새로 발견된 3건 (전부 수정·재배포됨)"
+}

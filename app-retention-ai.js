@@ -298,6 +298,12 @@
   async function openRetentionAI() {
     const el = _ensure();
     el.style.display = 'flex';
+    // [P1 2026-09-10 실측] 이 시트는 뒤로가기 스택에 등록돼 있지 않았다.
+    //   화면엔 떠 있는데 `location.hash` 가 비어 있어서, 뒤로가기를 누르면
+    //   시트가 닫히는 게 아니라 **앱이 통째로 종료**된다(안드로이드·PWA).
+    //   이 시트는 인라인 스타일이 아니라 CSS 클래스(.p9-sheet)로 전체화면이 되기 때문에
+    //   기존 감사 스크립트가 못 잡고 있었다 — 스크립트도 같은 커밋에서 고쳤다.
+    try { window._bindSheetBack && window._bindSheetBack('retentionSheet', el, closeRetentionAI); } catch (_e) { void _e; }
     const list = document.getElementById('rtList');
     if (window.showSkeleton) window.showSkeleton(list, 4);
     try {

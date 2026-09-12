@@ -1,5 +1,5 @@
 {
-  "version": "2026-04-16",
+  "version": "2026-09-08",
   "endpoints": {
     "PUT /persona/identity": {
       "request": {
@@ -588,7 +588,13 @@
           "consent_type": {
             "enum": [
               "pipa_collect",
-              "ai_processing"
+              "ai_processing",
+              "ai_vision_photo",
+              "ai_generative_photo",
+              "automation_dm_autoreply",
+              "automation_dm_autosend",
+              "automation_dm_quick_reply",
+              "automation_comment_autoreply"
             ],
             "title": "Consent Type",
             "type": "string"
@@ -775,6 +781,7 @@
               "external_id": {
                 "anyOf": [
                   {
+                    "maxLength": 100,
                     "type": "string"
                   },
                   {
@@ -785,6 +792,7 @@
                 "title": "External Id"
               },
               "content": {
+                "maxLength": 8000,
                 "minLength": 1,
                 "title": "Content",
                 "type": "string"
@@ -806,11 +814,13 @@
                 "anyOf": [
                   {
                     "enum": [
-                      "extension",
+                      "lash",
                       "nail",
                       "hair",
-                      "makeup",
-                      "skincare"
+                      "extension",
+                      "skin",
+                      "waxing",
+                      "tattoo"
                     ],
                     "type": "string"
                   },
@@ -1026,6 +1036,7 @@
             "type": "string"
           },
           "content": {
+            "maxLength": 2000,
             "title": "Content",
             "type": "string"
           },
@@ -1554,13 +1565,26 @@
             "title": "Extra Notes"
           },
           "category": {
-            "description": "시술 카테고리",
-            "enum": [
-              "extension",
-              "nail"
+            "anyOf": [
+              {
+                "enum": [
+                  "lash",
+                  "nail",
+                  "hair",
+                  "extension",
+                  "skin",
+                  "waxing",
+                  "tattoo"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Category",
-            "type": "string"
+            "default": null,
+            "description": "시술 카테고리(미지정 가능)",
+            "title": "Category"
           },
           "length_tier": {
             "default": "medium",
@@ -1568,7 +1592,8 @@
             "enum": [
               "short",
               "medium",
-              "long"
+              "long",
+              "max"
             ],
             "title": "Length Tier",
             "type": "string"
@@ -1579,7 +1604,18 @@
                 "enum": [
                   "plain",
                   "normal",
-                  "ornate"
+                  "ornate",
+                  "natural_owner",
+                  "emotional_instagram",
+                  "treatment_explain",
+                  "booking_cta",
+                  "short_clean",
+                  "natural",
+                  "emotional",
+                  "professional",
+                  "friendly",
+                  "premium",
+                  "mz"
                 ],
                 "type": "string"
               },
@@ -1588,13 +1624,134 @@
               }
             ],
             "default": null,
-            "description": "말투 오버라이드 (None=identity 기본값)",
+            "description": "말투 오버라이드 (None=identity 기본값). v558 칩 6종: natural/emotional/professional/friendly/premium/mz",
             "title": "Tone Override"
+          },
+          "service": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "입력 시술명(해시태그 정합용)",
+            "title": "Service"
+          },
+          "treatment_keyword": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "시술 키워드(최우선 반영, service 미지정 시 대체)",
+            "title": "Treatment Keyword"
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "콘텐츠 유형(before_after 등)",
+            "title": "Content Type"
+          },
+          "caption_intent": {
+            "default": "generate",
+            "description": "생성 의도(재작성/더길게/인스타톤)",
+            "enum": [
+              "generate",
+              "rewrite",
+              "longer",
+              "instagram"
+            ],
+            "title": "Caption Intent",
+            "type": "string"
+          },
+          "previous_caption": {
+            "anyOf": [
+              {
+                "maxLength": 1500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "직전 캡션(변형 시 반복 방지 참고용)",
+            "title": "Previous Caption"
+          },
+          "variation_seed": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "변형 시드(동일 payload 반복으로 같은 결과 방지)",
+            "title": "Variation Seed"
+          },
+          "strict_user_context": {
+            "default": true,
+            "description": "사용자 입력 시술맥락을 few-shot 보다 우선 강제",
+            "title": "Strict User Context",
+            "type": "boolean"
+          },
+          "use_persona": {
+            "default": false,
+            "description": "원장님 말투(인스타 말투분석·페르소나) 반영 여부",
+            "title": "Use Persona",
+            "type": "boolean"
+          },
+          "shop_name": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "샵 이름(입력에서 파싱). 없으면 온보딩 identity 사용",
+            "title": "Shop Name"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "고객 이름(입력에서 파싱, '○○ 고객님')",
+            "title": "Customer Name"
           }
         },
         "required": [
-          "photo_context",
-          "category"
+          "photo_context"
         ],
         "title": "GenerateRequest",
         "type": "object"
@@ -1602,9 +1759,27 @@
       "response": {
         "description": "캡션 생성 응답.",
         "properties": {
+          "status": {
+            "default": "generated",
+            "title": "Status",
+            "type": "string"
+          },
           "caption": {
             "title": "Caption",
             "type": "string"
+          },
+          "body": {
+            "default": "",
+            "title": "Body",
+            "type": "string"
+          },
+          "hashtags": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Hashtags",
+            "type": "array"
           },
           "signature_block_ids_used": {
             "default": [],
@@ -1628,6 +1803,18 @@
             "default": 0,
             "title": "Output Tokens",
             "type": "integer"
+          },
+          "log_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Log Id"
           }
         },
         "required": [
@@ -1646,6 +1833,23 @@
             "minLength": 1,
             "title": "Final Text",
             "type": "string"
+          },
+          "published": {
+            "default": false,
+            "title": "Published",
+            "type": "boolean"
+          },
+          "ig_media_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Ig Media Id"
           }
         },
         "required": [
@@ -1670,541 +1874,9 @@
           }
         }
       }
-    },
-    "GET /customers": {
-      "response": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": { "$ref": "#/models/Customer" }
-          },
-          "total": { "type": "integer" }
-        },
-        "required": ["items", "total"]
-      }
-    },
-    "POST /customers": {
-      "request": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string", "minLength": 1, "maxLength": 50 },
-          "phone": { "type": ["string", "null"], "pattern": "^[0-9\\-+ ]{0,20}$" },
-          "memo": { "type": ["string", "null"], "maxLength": 500 },
-          "tags": {
-            "type": "array",
-            "items": { "type": "string", "maxLength": 20 },
-            "maxItems": 10
-          },
-          "birthday": { "type": ["string", "null"], "description": "MM-DD" }
-        },
-        "required": ["name"]
-      },
-      "response": { "$ref": "#/models/Customer" }
-    },
-    "GET /customers/{customer_id}": {
-      "response": { "$ref": "#/models/Customer" }
-    },
-    "PATCH /customers/{customer_id}": {
-      "request": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string", "minLength": 1, "maxLength": 50 },
-          "phone": { "type": ["string", "null"] },
-          "memo": { "type": ["string", "null"], "maxLength": 500 },
-          "tags": { "type": "array", "items": { "type": "string" } },
-          "birthday": { "type": ["string", "null"] },
-          "last_visit_at": { "type": ["string", "null"], "format": "date-time" }
-        }
-      },
-      "response": { "$ref": "#/models/Customer" }
-    },
-    "DELETE /customers/{customer_id}": {
-      "response": {
-        "type": "object",
-        "properties": { "ok": { "type": "boolean" } },
-        "required": ["ok"]
-      }
-    },
-    "GET /customers/{customer_id}/dashboard": {
-      "response": {
-        "type": "object",
-        "description": "고객 통합 대시보드 집계 (Phase 4+ · 2026-04-20)",
-        "properties": {
-          "customer":        { "type": "object" },
-          "segment":         { "type": "string", "enum": ["vip", "regular", "new", "absent"] },
-          "stats":           { "type": "object" },
-          "retention":       { "type": "object" },
-          "recent_revenues": { "type": "array" },
-          "recent_bookings": { "type": "array" },
-          "recent_nps":      { "type": "array" }
-        },
-        "required": ["customer", "segment", "stats", "retention"]
-      }
-    },
-    "GET /retention/at-risk": {
-      "response": {
-        "type": "object",
-        "properties": {
-          "items":   { "type": "array" },
-          "summary": { "type": "object" }
-        }
-      }
-    },
-    "GET /revenue/forecast": {
-      "response": {
-        "type": "object",
-        "properties": {
-          "has_data":       { "type": "boolean" },
-          "current_week":   { "type": "integer" },
-          "predicted_week": { "type": "integer" },
-          "delta_vs_last":  { "type": "integer" },
-          "delta_pct":      { "type": "number" },
-          "action":         { "type": "string" },
-          "history":        { "type": "array" }
-        }
-      }
-    },
-    "GET /revenue": {
-      "request": {
-        "type": "object",
-        "properties": {
-          "period": { "type": "string", "enum": ["today", "week", "month"] }
-        }
-      },
-      "response": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": { "$ref": "#/models/RevenueRecord" }
-          },
-          "total": { "type": "integer", "description": "KRW 원 단위 합계" },
-          "count": { "type": "integer" }
-        },
-        "required": ["items", "total", "count"]
-      }
-    },
-    "POST /revenue": {
-      "request": {
-        "type": "object",
-        "properties": {
-          "amount": { "type": "integer", "minimum": 1 },
-          "method": { "type": "string", "enum": ["card", "cash", "transfer", "etc"] },
-          "service_name": { "type": ["string", "null"], "maxLength": 50 },
-          "customer_id": { "type": ["string", "null"], "format": "uuid" },
-          "memo": { "type": ["string", "null"], "maxLength": 200 },
-          "recorded_at": { "type": ["string", "null"], "format": "date-time" }
-        },
-        "required": ["amount"]
-      },
-      "response": { "$ref": "#/models/RevenueRecord" }
-    },
-    "DELETE /revenue/{revenue_id}": {
-      "response": {
-        "type": "object",
-        "properties": { "ok": { "type": "boolean" } },
-        "required": ["ok"]
-      }
-    },
-    "GET /bookings": {
-      "request": {
-        "type": "object",
-        "properties": {
-          "from": { "type": "string", "format": "date-time" },
-          "to": { "type": "string", "format": "date-time" }
-        }
-      },
-      "response": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": { "$ref": "#/models/Booking" }
-          }
-        },
-        "required": ["items"]
-      }
-    },
-    "POST /bookings": {
-      "request": {
-        "type": "object",
-        "properties": {
-          "starts_at": { "type": "string", "format": "date-time" },
-          "ends_at": { "type": "string", "format": "date-time" },
-          "customer_id": { "type": ["string", "null"], "format": "uuid" },
-          "service_name": { "type": ["string", "null"], "maxLength": 50 },
-          "memo": { "type": ["string", "null"], "maxLength": 200 }
-        },
-        "required": ["starts_at", "ends_at"]
-      },
-      "response": { "$ref": "#/models/Booking" }
-    },
-    "PATCH /bookings/{booking_id}": {
-      "request": {
-        "type": "object",
-        "properties": {
-          "starts_at": { "type": "string", "format": "date-time" },
-          "ends_at": { "type": "string", "format": "date-time" },
-          "customer_id": { "type": ["string", "null"] },
-          "service_name": { "type": ["string", "null"] },
-          "memo": { "type": ["string", "null"] },
-          "status": { "type": "string", "enum": ["confirmed", "completed", "cancelled", "no_show"] }
-        }
-      },
-      "response": { "$ref": "#/models/Booking" }
-    },
-    "DELETE /bookings/{booking_id}": {
-      "response": {
-        "type": "object",
-        "properties": { "ok": { "type": "boolean" } },
-        "required": ["ok"]
-      }
-    },
-    "GET /inventory": {
-      "response": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": { "$ref": "#/models/InventoryItem" }
-          }
-        },
-        "required": ["items"]
-      }
-    },
-    "POST /inventory": {
-      "request": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string", "minLength": 1, "maxLength": 50 },
-          "unit": { "type": "string", "maxLength": 10, "default": "개" },
-          "quantity": { "type": "integer", "minimum": 0 },
-          "threshold": { "type": "integer", "minimum": 0, "default": 5 },
-          "category": { "type": "string", "enum": ["nail", "lash", "skin", "hair", "etc"], "default": "etc" }
-        },
-        "required": ["name"]
-      },
-      "response": { "$ref": "#/models/InventoryItem" }
-    },
-    "PATCH /inventory/{item_id}": {
-      "request": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string" },
-          "unit": { "type": "string" },
-          "quantity": { "type": "integer", "minimum": 0 },
-          "threshold": { "type": "integer", "minimum": 0 },
-          "category": { "type": "string" }
-        }
-      },
-      "response": { "$ref": "#/models/InventoryItem" }
-    },
-    "POST /inventory/{item_id}/adjust": {
-      "request": {
-        "type": "object",
-        "properties": {
-          "delta": { "type": "integer", "description": "양수=입고, 음수=출고" },
-          "reason": { "type": ["string", "null"], "maxLength": 100 }
-        },
-        "required": ["delta"]
-      },
-      "response": { "$ref": "#/models/InventoryItem" }
-    },
-    "DELETE /inventory/{item_id}": {
-      "response": {
-        "type": "object",
-        "properties": { "ok": { "type": "boolean" } },
-        "required": ["ok"]
-      }
-    },
-    "GET /nps": {
-      "response": {
-        "type": "object",
-        "properties": {
-          "items": { "type": "array", "items": { "$ref": "#/models/NpsRecord" } },
-          "total": { "type": "integer" }
-        },
-        "required": ["items", "total"]
-      }
-    },
-    "POST /nps": {
-      "request": {
-        "type": "object",
-        "properties": {
-          "rating": { "type": "integer", "minimum": 0, "maximum": 10 },
-          "comment": { "type": ["string", "null"], "maxLength": 500 },
-          "customer_id": { "type": ["integer", "null"] },
-          "source": { "type": "string", "enum": ["manual", "alimtalk", "link"] }
-        },
-        "required": ["rating"]
-      },
-      "response": { "$ref": "#/models/NpsRecord" }
-    },
-    "DELETE /nps/{nps_id}": {
-      "response": {
-        "type": "object",
-        "properties": { "ok": { "type": "boolean" } },
-        "required": ["ok"]
-      }
-    },
-    "GET /nps/stats": {
-      "response": {
-        "type": "object",
-        "properties": {
-          "total": { "type": "integer" },
-          "promoters": { "type": "integer" },
-          "passives": { "type": "integer" },
-          "detractors": { "type": "integer" },
-          "score": { "type": "number" },
-          "avg_rating": { "type": "number" }
-        },
-        "required": ["total", "promoters", "passives", "detractors", "score", "avg_rating"]
-      }
-    },
-    "GET /naver-reviews": {
-      "response": {
-        "type": "object",
-        "properties": {
-          "items": { "type": "array", "items": { "$ref": "#/models/NaverReview" } },
-          "total": { "type": "integer" }
-        },
-        "required": ["items", "total"]
-      }
-    },
-    "POST /naver-reviews": {
-      "request": {
-        "type": "object",
-        "properties": {
-          "review_url": { "type": ["string", "null"], "maxLength": 500 },
-          "author_name": { "type": ["string", "null"], "maxLength": 50 },
-          "rating": { "type": ["integer", "null"], "minimum": 1, "maximum": 5 },
-          "content": { "type": ["string", "null"], "maxLength": 2000 },
-          "visited_at": { "type": ["string", "null"] },
-          "sticker_image_url": { "type": ["string", "null"] }
-        }
-      },
-      "response": { "$ref": "#/models/NaverReview" }
-    },
-    "PATCH /naver-reviews/{review_id}": {
-      "request": {
-        "type": "object",
-        "properties": {
-          "author_name": { "type": ["string", "null"] },
-          "rating": { "type": ["integer", "null"] },
-          "content": { "type": ["string", "null"] },
-          "sticker_image_url": { "type": ["string", "null"] }
-        }
-      },
-      "response": { "$ref": "#/models/NaverReview" }
-    },
-    "DELETE /naver-reviews/{review_id}": {
-      "response": {
-        "type": "object",
-        "properties": { "ok": { "type": "boolean" } },
-        "required": ["ok"]
-      }
-    },
-    "GET /video/capability": {
-      "response": {
-        "type": "object",
-        "properties": { "ffmpeg": { "type": "boolean" } },
-        "required": ["ffmpeg"]
-      }
-    },
-    "POST /video/beforeafter": {
-      "request": {
-        "type": "object",
-        "description": "multipart/form-data — before, after (image files) + hold_seconds, transition_seconds"
-      },
-      "response": {
-        "type": "string",
-        "format": "binary",
-        "description": "video/mp4"
-      }
-    },
-    "POST /imports/preview": {
-      "request": {
-        "type": "object",
-        "description": "multipart/form-data — file (CSV/XLSX) + kind=customer|revenue|booking"
-      },
-      "response": { "$ref": "#/models/ImportPreview" }
-    },
-    "POST /imports/commit": {
-      "request": {
-        "type": "object",
-        "properties": {
-          "job_id": { "type": "integer" },
-          "mapping": { "type": "object", "additionalProperties": { "type": "string" } }
-        },
-        "required": ["job_id", "mapping"]
-      },
-      "response": { "$ref": "#/models/ImportResult" }
-    },
-    "GET /imports/jobs": {
-      "response": {
-        "type": "object",
-        "properties": {
-          "items": { "type": "array", "items": { "$ref": "#/models/ImportJob" } }
-        }
-      }
-    },
-    "DELETE /imports/jobs/{job_id}": {
-      "response": {
-        "type": "object",
-        "properties": { "ok": { "type": "boolean" } },
-        "required": ["ok"]
-      }
     }
   },
   "models": {
-    "Customer": {
-      "description": "샵 고객 레코드. shop_id 격리, 소프트 삭제 지원.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "format": "uuid" },
-        "shop_id": { "type": "string" },
-        "name": { "type": "string", "minLength": 1, "maxLength": 50 },
-        "phone": { "type": ["string", "null"], "pattern": "^[0-9\\-+ ]{0,20}$" },
-        "memo": { "type": ["string", "null"], "maxLength": 500 },
-        "tags": {
-          "type": "array",
-          "items": { "type": "string", "maxLength": 20 },
-          "maxItems": 10,
-          "default": []
-        },
-        "birthday": { "type": ["string", "null"], "description": "MM-DD 형식, 연도 X" },
-        "last_visit_at": { "type": ["string", "null"], "format": "date-time" },
-        "visit_count": { "type": "integer", "minimum": 0, "default": 0 },
-        "created_at": { "type": "string", "format": "date-time" },
-        "deleted_at": { "type": ["string", "null"], "format": "date-time" }
-      },
-      "required": ["id", "shop_id", "name", "tags", "visit_count", "created_at"]
-    },
-    "RevenueRecord": {
-      "description": "매출 건당 기록. shop_id 격리. 금액은 KRW 원 단위 정수.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "format": "uuid" },
-        "shop_id": { "type": "string" },
-        "amount": { "type": "integer", "minimum": 1 },
-        "method": { "type": "string", "enum": ["card", "cash", "transfer", "etc"], "default": "card" },
-        "service_name": { "type": ["string", "null"], "maxLength": 50 },
-        "customer_id": { "type": ["string", "null"], "format": "uuid" },
-        "customer_name": { "type": ["string", "null"], "description": "denormalized for history preservation" },
-        "memo": { "type": ["string", "null"], "maxLength": 200 },
-        "recorded_at": { "type": "string", "format": "date-time" },
-        "created_at": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "shop_id", "amount", "method", "recorded_at", "created_at"]
-    },
-    "Booking": {
-      "description": "예약 건. 중복 시간 방지는 서버에서 409로 응답.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "format": "uuid" },
-        "shop_id": { "type": "string" },
-        "starts_at": { "type": "string", "format": "date-time" },
-        "ends_at": { "type": "string", "format": "date-time" },
-        "customer_id": { "type": ["string", "null"], "format": "uuid" },
-        "customer_name": { "type": ["string", "null"] },
-        "service_name": { "type": ["string", "null"], "maxLength": 50 },
-        "memo": { "type": ["string", "null"], "maxLength": 200 },
-        "status": { "type": "string", "enum": ["confirmed", "completed", "cancelled", "no_show"], "default": "confirmed" },
-        "created_at": { "type": "string", "format": "date-time" },
-        "deleted_at": { "type": ["string", "null"], "format": "date-time" }
-      },
-      "required": ["id", "shop_id", "starts_at", "ends_at", "status", "created_at"]
-    },
-    "InventoryItem": {
-      "description": "소모품 재고 품목. 임계치 이하 시 부족 알림.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "format": "uuid" },
-        "shop_id": { "type": "string" },
-        "name": { "type": "string", "maxLength": 50 },
-        "unit": { "type": "string", "maxLength": 10, "default": "개" },
-        "quantity": { "type": "integer", "minimum": 0 },
-        "threshold": { "type": "integer", "minimum": 0 },
-        "category": { "type": "string", "enum": ["nail", "lash", "skin", "hair", "etc"], "default": "etc" },
-        "created_at": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "shop_id", "name", "quantity", "threshold"]
-    },
-    "NpsRecord": {
-      "description": "NPS 응답. rating 0~10, 9~10 promoter / 7~8 passive / 0~6 detractor.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "integer" },
-        "rating": { "type": "integer", "minimum": 0, "maximum": 10 },
-        "comment": { "type": ["string", "null"] },
-        "customer_id": { "type": ["integer", "null"] },
-        "source": { "type": "string", "enum": ["manual", "alimtalk", "link"] },
-        "responded_at": { "type": "string", "format": "date-time" },
-        "created_at": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "rating", "source", "responded_at", "created_at"]
-    },
-    "ImportPreview": {
-      "description": "임포트 프리뷰 결과.",
-      "type": "object",
-      "properties": {
-        "job_id": { "type": "integer" },
-        "kind": { "type": "string", "enum": ["customer", "revenue", "booking"] },
-        "file_name": { "type": ["string", "null"] },
-        "columns": { "type": "array", "items": { "type": "string" } },
-        "sample_rows": { "type": "array" },
-        "total_rows": { "type": "integer" },
-        "detected_mapping": { "type": "object" },
-        "required_fields": { "type": "array", "items": { "type": "string" } },
-        "missing_required": { "type": "array", "items": { "type": "string" } },
-        "available_fields": { "type": "array", "items": { "type": "string" } }
-      },
-      "required": ["job_id", "kind", "columns", "total_rows"]
-    },
-    "ImportResult": {
-      "description": "commit 결과.",
-      "type": "object",
-      "properties": {
-        "job_id": { "type": "integer" },
-        "imported": { "type": "integer" },
-        "failed": { "type": "integer" },
-        "errors": { "type": "array", "items": { "type": "string" } },
-        "status": { "type": "string" }
-      },
-      "required": ["job_id", "imported", "failed", "status"]
-    },
-    "ImportJob": {
-      "description": "임포트 잡 이력.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "integer" },
-        "kind": { "type": "string" },
-        "file_name": { "type": ["string", "null"] },
-        "status": { "type": "string" },
-        "rows_total": { "type": "integer" },
-        "rows_imported": { "type": "integer" },
-        "rows_failed": { "type": "integer" },
-        "created_at": { "type": "string", "format": "date-time" },
-        "committed_at": { "type": ["string", "null"] }
-      },
-      "required": ["id", "kind", "status"]
-    },
-    "NaverReview": {
-      "description": "네이버 플레이스 리뷰 수동 저장.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "integer" },
-        "review_url": { "type": ["string", "null"] },
-        "author_name": { "type": ["string", "null"] },
-        "rating": { "type": ["integer", "null"], "minimum": 1, "maximum": 5 },
-        "content": { "type": "string" },
-        "visited_at": { "type": ["string", "null"] },
-        "sticker_image_url": { "type": ["string", "null"] },
-        "created_at": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "content", "created_at"]
-    },
     "ServiceEntry": {
       "description": "대표 서비스 항목 (프론트 Q2 스펙).",
       "properties": {
@@ -2235,6 +1907,7 @@
         "external_id": {
           "anyOf": [
             {
+              "maxLength": 100,
               "type": "string"
             },
             {
@@ -2245,6 +1918,7 @@
           "title": "External Id"
         },
         "content": {
+          "maxLength": 8000,
           "minLength": 1,
           "title": "Content",
           "type": "string"
@@ -2266,11 +1940,13 @@
           "anyOf": [
             {
               "enum": [
-                "extension",
+                "lash",
                 "nail",
                 "hair",
-                "makeup",
-                "skincare"
+                "extension",
+                "skin",
+                "waxing",
+                "tattoo"
               ],
               "type": "string"
             },
@@ -2505,12 +2181,24 @@
     "length_tier": [
       "short",
       "medium",
-      "long"
+      "long",
+      "max"
     ],
     "tone_override": [
       "plain",
       "normal",
-      "ornate"
+      "ornate",
+      "natural_owner",
+      "emotional_instagram",
+      "treatment_explain",
+      "booking_cta",
+      "short_clean",
+      "natural",
+      "emotional",
+      "professional",
+      "friendly",
+      "premium",
+      "mz"
     ]
   }
 }

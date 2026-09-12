@@ -32,6 +32,15 @@
 .itded__draw{position:absolute;inset:0;z-index:3;touch-action:none}
 .itded__draw.is-armed{cursor:crosshair}
 .itded__layers{position:absolute;inset:0;z-index:4}
+/* 🔴 [2026-09-11 실기기] 도구 패널이 열리면 레이어 순서 줄이 사진 위로 올라오는데(z 11),
+   레이어는 z 4 라 **선택한 레이어의 회전·크기 핸들이 그 줄에 가려 안 눌렸다.**
+   스티커는 기본이 가운데 배치라 '스티커 넣고 패널 열면 못 돌린다' 가 기본 동선이었다.
+   실측(402×714, iOS WebKit·Chrome 동일): rot @241,397 / rs @161,397 → itlyr 로 가로채임.
+   → 레이어가 선택돼 있을 때만 레이어 판을 줄 위로 올린다. 판 자체는 탭을 통과시키고
+   실제 레이어 상자만 받으므로, 순서 줄 버튼은 레이어가 겹치지 않는 곳에서 그대로 눌린다.
+   (:has 미지원 브라우저는 지금 동작 그대로 — 나빠지지 않는다.) */
+.itded__layers:has(.itl.is-active){z-index:12;pointer-events:none}
+.itded__layers:has(.itl.is-active) .itl{pointer-events:auto}
 .itded__scrim{position:absolute;inset:0;z-index:1;pointer-events:none;
   background:linear-gradient(180deg,rgba(20,12,16,.34),transparent 16%,transparent 60%,rgba(20,12,16,.4))}
 
@@ -50,8 +59,11 @@
 .itl__dup{position:absolute;right:-20px;top:-20px;width:24px;height:24px;border-radius:50%;background:rgba(20,12,16,.7);color:#fff;display:none;place-items:center;z-index:5;cursor:pointer;border:none;padding:0;transform-origin:bottom left}
 .itl.is-active .itl__dup{display:grid}
 .itl__dup svg{width:12px;height:12px;stroke:#fff;fill:none;stroke-width:2.1}
+/* [2026-09-11] text-shadow 를 여기서 빼고 _applyTextStyle 이 레이어별로 건다.
+   예전엔 CSS 가 **모든 글자에** 그림자를 강제해서 끌 수가 없었고, canvas 내보내기 값과도 달랐다.
+   새 글자의 기본값은 'shadow' 라 보이는 모습은 그대로다. */
 .itl-text{color:#fff;font-weight:800;line-height:1.16;text-align:center;white-space:pre-wrap;outline:none;
-  text-shadow:0 1px 12px rgba(0,0,0,.4);padding:6px 10px;min-width:30px}
+  padding:6px 10px;min-width:30px}
 /* [캐럿 버그 2026-07-27] 편집 중엔 레이어 박스(.itl)의 grab 커서 대신 text 커서 — is-editing 은 editText()가 붙임 */
 .itl.is-editing,.itl.is-editing .itl-text,.itl-text[contenteditable="true"]{cursor:text}
 .itl-sticker{font-size:64px;line-height:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,.3))}
@@ -109,6 +121,23 @@
 .italn button.on svg{stroke:#1c1316}
 .itsize{display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:11px;font-weight:700}
 .itsize input{width:108px;accent-color:#fff}
+/* [2026-09-11] 글자 스타일 행 — 정렬 세그(.italn)와 폰트 칩(.itfont) 의 시각 언어를 그대로 쓴다. */
+.ittext__row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 2px 10px}
+.ittst{display:inline-flex;gap:6px}
+/* 칩은 **그 효과를 실제로 미리 보여준다** — 이름표가 없으므로 눈으로 골라야 한다.
+   칩 배경을 중간톤으로 둬야 그림자(어두움)와 외곽선(검은 테두리)이 둘 다 읽힌다.
+   어두운 배경에 검은 외곽선을 그렸더니 3번 칩이 그냥 흐릿한 글자로 보였다(실측). */
+.ittst__b{position:relative;width:38px;height:34px;border-radius:10px;border:1.5px solid rgba(255,255,255,.45);
+  background:rgba(255,255,255,.22);color:#fff;font-size:16px;font-weight:900;line-height:1;cursor:pointer;padding:0;
+  display:grid;place-items:center;flex:none}
+.ittst__b::after{content:"";position:absolute;inset:-6px}   /* 손가락 타깃 확보 */
+.ittst__b--none{text-shadow:none}
+.ittst__b--shadow{text-shadow:0 2px 5px rgba(0,0,0,1)}
+.ittst__b--outline{-webkit-text-stroke:1.2px rgba(0,0,0,.95);paint-order:stroke fill}
+.ittst__b--bg{background:#fff;color:#1c1316;border-color:#fff;text-shadow:none}
+.ittst__b.on{box-shadow:0 0 0 2px #1c1316,0 0 0 4px #fff}
+.itsize--tilt input{width:78px}
+.itsize--tilt b{min-width:30px;text-align:right;font-variant-numeric:tabular-nums}
 .itfonts{display:flex;gap:9px;overflow-x:auto;padding:0 0 12px;scrollbar-width:none}
 .itfonts::-webkit-scrollbar{display:none}
 .itfont{flex:none;height:46px;padding:0 17px;border-radius:12px;border:1.5px solid rgba(255,255,255,.6);
@@ -130,7 +159,10 @@
 .iteyed{position:absolute;inset:0;z-index:8;cursor:crosshair;touch-action:none}
 .iteyed__ring{position:absolute;display:none;width:46px;height:46px;border-radius:50%;border:3px solid #fff;
   box-shadow:0 0 0 1px rgba(0,0,0,.25),0 4px 14px rgba(0,0,0,.35);transform:translate(-50%,-140%);pointer-events:none}
-.iteyed__tip{position:absolute;left:50%;top:12px;transform:translateX(-50%);padding:7px 14px;border-radius:999px;
+/* [BUG-05 2026-09-09] top:12px 이면 상단 아이콘 묶음(.itded__hist, z-index 9)과 거의 완전히 겹쳤다.
+   실측 tip[754,12,191,33] vs hist[777,15,124,36] — 아이콘이 위라서 '사' … '돼요' 파편만 보였고
+   스포이드의 **유일한 사용 안내가 통째로 소실**됐다. 헤더 아래로 내린다(레일 top 과 같은 기준). */
+.iteyed__tip{position:absolute;left:50%;top:calc(64px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 6px);transform:translateX(-50%);padding:7px 14px;border-radius:999px;
   background:rgba(20,12,16,.72);color:#fff;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none}
 
 /* ── 스티커 시트 — 인스타식 어두운 반투명 + 스티커는 타일 없이 '떠 있게' ── */
@@ -357,11 +389,29 @@
    화면 맨 아래에 붙는다. padding-bottom 이 2px 뿐이라 iPhone 홈 인디케이터(≈34px) 안에 통째로 들어갔다
    — 실측(375×812): 버튼 4개가 뷰포트 바닥에서 2px, 크기 38×34. 누르면 iOS 홈 제스처가 먼저 먹는다.
    safe-area 를 더하고 터치 타깃을 44px(HIG 최소)로 올린다. 아이콘 크기는 그대로 두고 높이만 키운다. */
-.itded__lyr { display:flex; gap:6px; justify-content:center;
-  padding:6px 10px calc(8px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
+/* [BUG-04 2026-09-09] 예전엔 flex 흐름에 있었는데, fitStageToRatio 가 스테이지 높이를
+   root.clientHeight **전체**로 잡아서 이 줄이 뷰포트 아래로 밀려났다.
+   실측 1440x812: .itded clientH 812 / scrollH 1430, 줄 rect y=812 — position:fixed 라 스크롤로도 못 감.
+   게다가 패널이 열리면 display:none 이라, 텍스트 레이어는 (선택하면 항상 텍스트 패널이 열리므로)
+   앞/뒤로 보내기가 **구조적으로 불가능**했다.
+   → 레일(.itded__rail)과 같은 오버레이로 바꾸고, 패널이 열리면 그 위로 띄운다(--itpanel-h 는 setTool 이 넣는다).
+   스테이지 크기는 건드리지 않는다 — 바꾸면 레이어 px 좌표가 통째로 움직인다. */
+.itded__lyr { position:absolute; left:0; right:0; bottom:0; z-index:11;
+  display:flex; gap:6px; justify-content:center;
+  padding:6px 10px calc(8px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  /* 🔴 [2026-09-11 실기기] 이 줄은 **전폭이고 배경이 없다.** 보이는 건 버튼 4개뿐인데
+     컨테이너가 사진 위 58px 띠 전체의 탭을 먹고 있었다.
+     실측(iPhone 402×714 WebKit · Chrome 402×714 동일): 가운데 스티커의
+     회전 핸들 @241,397 → `itded__lyr`, 크기 핸들 @161,397 → `itlyr` 로 가로채여
+     **핸들이 보이는데 안 눌렸다**(원장 입장: 도구 패널 열고 가운데 글자를 못 돌린다).
+     컨테이너는 탭을 통과시키고 버튼만 받는다 — 화면은 1px도 안 변한다. */
+  pointer-events:none; }
+.itded__lyr .itlyr { pointer-events:auto; }
 /* [2026-09-03] 도구 패널이 열리면 이 줄은 패널에 완전히 덮인다 — 보이는 채로 두면
    눌러도 패널의 다른 버튼이 먹는다(실측). 패널 닫으면 그대로 돌아온다. */
-.itded.itded--panel .itded__lyr { display:none; }
+/* 패널이 열려도 숨기지 않는다 — 대신 패널 위로 올린다.
+   (예전 display:none 의 원래 의도는 '패널에 덮여 보이는데 안 눌리는' 상태 방지였다. 위로 띄우면 그 문제도 없다.) */
+.itded.itded--panel .itded__lyr { bottom: var(--itpanel-h, 180px); }
 .itlyr {
   width:44px; height:44px; display:grid; place-items:center;
   border:1px solid rgba(255,255,255,.16); border-radius:12px;
@@ -370,3 +420,21 @@
 .itlyr:disabled { opacity:.3; cursor:default; }
 .itlyr svg { width:19px; height:19px; }
 .itl-arrowhead { pointer-events:none; }
+
+
+/* [BUG-02 2026-09-09] 리로드 복구 제안 바 — 자동으로 덮지 않고 원장이 고른다. */
+.itded__recover{position:absolute;left:50%;top:calc(64px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 6px);
+  transform:translateX(-50%);z-index:12;display:flex;align-items:center;gap:8px;
+  max-width:calc(100% - 24px);padding:8px 10px 8px 14px;border-radius:14px;
+  background:rgba(22,16,18,.94);box-shadow:0 8px 24px rgba(0,0,0,.35);backdrop-filter:blur(6px)}
+.itded__recover-t{color:#fff;font-size:13px;font-weight:600;white-space:nowrap}
+.itded__recover button{min-height:32px;padding:0 12px;border:0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
+.itded__recover-y{background:var(--accent,#C4737F);color:#fff}
+.itded__recover-n{background:rgba(255,255,255,.14);color:#fff}
+@media (width < 380px){ .itded__recover{gap:6px;padding:8px} .itded__recover-t{font-size:12px;white-space:normal} }
+
+
+/* [BUG-06 2026-09-09] 레이어 핸들 손가락 타깃 — 아이콘은 24px 그대로 두고 히트영역만 44px 로.
+   실측: 삭제·복제·회전·크기·폭 5개가 전부 24×24 였다(권장 44 미달). 시각 디자인은 안 건드린다.
+   inset:-10px → 24 + 10*2 = 44. 기존 .itded__ic::after 와 같은 방식. */
+.itl__del::after,.itl__dup::after,.itl__rot::after,.itl__rs::after,.itl__w::after{content:"";position:absolute;inset:-10px}

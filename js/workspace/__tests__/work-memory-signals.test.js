@@ -273,10 +273,17 @@ describe('[T8-H+ 12·13] continuous 신호 — 조작이 끝날 때 딱 한 번'
     const mv = src.slice(src.indexOf("document.addEventListener('pointermove'"), src.indexOf('function cleanupLayerPointer'));
     expect(mv).not.toMatch(/position_changed|size_changed|shape_geometry_changed/);
   });
-  test('_pushOp 계약은 안 건드린다 — 새 op 종류를 추가하지 않았다', () => {
-    const ops = [...src.matchAll(/_pushOp\(\{\s*op:\s*'([a-zA-Z]+)'/g)].map((m) => m[1]);
-    const allowed = ['add', 'del', 'move', 'resize', 'wrap', 'photo', 'cellcrop', 'wmApply', 'wmRemove'];
-    ops.forEach((o) => expect(allowed).toContain(o));
+  /* [2026-09-09] 예전엔 op 종류 화이트리스트를 박아 뒀다. T8 신호 작업이 되돌리기 계약을
+     건드리지 않았음을 보이려는 의도였는데, 화이트리스트라 **정당한 확장까지** 막았다
+     (BUG-03: 폰트·색·정렬·크기·보정이 히스토리에 아예 없어서 색 바꾸고 ↩ 누르면 글자가 통째로 사라졌다).
+     같은 화이트리스트가 editor-save-reliability.test.js 에도 한 벌 더 있었다 — 둘 다 같은 불변식으로 바꾼다.
+     여기서 지킬 것은 ① T8 신호 코드가 op 을 쌓지 않는다 ② 쌓는 op 은 전부 되돌릴 줄 안다. */
+  test('편집기가 쌓는 모든 op 을 _applyInverse 가 처리한다', () => {
+    const pushed = [...new Set([...src.matchAll(/_pushOp\(\{\s*op:\s*'([a-zA-Z]+)'/g)].map((m) => m[1]))];
+    const inv = src.slice(src.indexOf('function _applyInverse'));
+    const handled = new Set([...[...inv.matchAll(/op\.op === '([a-zA-Z]+)'/g)].map((m) => m[1]), 'add', 'del']);
+    expect(pushed.filter((o) => !handled.has(o))).toEqual([]);
+    expect(pushed).toContain('style');   // BUG-03 로 늘어난 종류가 실제로 처리된다
   });
   test('세 신호가 SUPPORTED 에 들어 있다 — 없으면 note() 가 조용히 버린다', () => {
     const S = load(5);

@@ -22,14 +22,20 @@ const SRC = fs.readFileSync(
 
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
-/** clearLocal 만 떼어내 실제로 실행 가능한 형태로 만든다 */
-function loadClearLocal({ fireEvent }) {
+/** clearLocal 만 떼어내 실제로 실행 가능한 형태로 만든다
+ *
+ *  [2026-09-11 BUG-F2 계약 재정의] 정리 수단이 `deleteDatabase` → **store clear** 로 바뀌었다.
+ *  이 파일이 2026-09-03 에 고정한 계약("아무 이벤트도 안 와도 settle 된다")은 증상 대응이었고,
+ *  원인은 **취소할 수 없는 delete 요청이 큐에 눌러앉는 것**이었다 — 호출부가 타임아웃으로 포기해도
+ *  요청은 살아남아 그 DB 의 이후 모든 open 을 origin 전역으로 잠근다(2026-09-11 탭 2개 실측).
+ *  지켜야 할 계약은 그대로다: **로그인은 어떤 경우에도 통과한다.** 수단만 바꾼다.
+ */
+function loadClearLocal({ tx = 'complete', open = 'ok' } = {}) {
   const body = stripComments(SRC);
   const start = body.indexOf('var CLEAR_LOCAL_TIMEOUT_MS');
   const endMark = body.indexOf('function clearLocal');
   expect(start).toBeGreaterThan(-1);
   expect(endMark).toBeGreaterThan(start);
-  // clearLocal 함수 끝(닫는 중괄호 + 개행) 까지
   const fnStart = endMark;
   let depth = 0, i = body.indexOf('{', fnStart), end = -1;
   for (; i < body.length; i++) {
@@ -39,8 +45,27 @@ function loadClearLocal({ fireEvent }) {
   const src = body.slice(start, endMark) + body.slice(fnStart, end);
 
   const store = {};
+  const cleared = [];
+  const calls = { deleteDatabase: 0 };
+  const db = {
+    objectStoreNames: ['meta', 'tombstones'],
+    close() {},
+    transaction() {
+      const t = {};
+      setTimeout(() => {
+        if (tx === 'complete') { if (t.oncomplete) t.oncomplete(); }
+        else if (tx === 'error') { if (t.onerror) t.onerror(); }
+        // 'pending' → 아무 이벤트도 안 낸다
+      }, 10);
+      t.objectStore = (n) => ({ clear: () => cleared.push(n) });
+      return t;
+    },
+  };
+  const openSyncDB = () => (open === 'ok'
+    ? Promise.resolve(db)
+    : Promise.reject(new Error('sync_db_open_timeout')));
   const sandbox = {
-    _sdb: null,
+    _sdb: db,
     _uploadCache: { clear() {} },
     _hydrateCache: { clear() {} },
     localStorage: {
@@ -48,52 +73,63 @@ function loadClearLocal({ fireEvent }) {
       setItem: (k, v) => { store[k] = String(v); },
       removeItem: (k) => { delete store[k]; },
     },
-    indexedDB: {
-      deleteDatabase() {
-        const req = {};
-        if (fireEvent) setTimeout(() => { if (req[fireEvent]) req[fireEvent](); }, 10);
-        return req;   // fireEvent 없으면 **영원히 아무 이벤트도 안 옴** = 실측한 그 상황
-      },
-    },
+    // deleteDatabase 를 부르면 그 사실이 잡히도록 남겨 둔다 — 부르면 안 된다.
+    indexedDB: { deleteDatabase() { calls.deleteDatabase++; return {}; } },
   };
   // eslint-disable-next-line no-new-func
-  const factory = new Function('_sdb', '_uploadCache', '_hydrateCache', 'localStorage', 'indexedDB',
+  const factory = new Function('_sdb', '_uploadCache', '_hydrateCache', 'localStorage', 'indexedDB', 'openSyncDB',
     src + '\nreturn { clearLocal: clearLocal, PURGE_PENDING_KEY: PURGE_PENDING_KEY, TIMEOUT: CLEAR_LOCAL_TIMEOUT_MS };');
   return {
-    ...factory(sandbox._sdb, sandbox._uploadCache, sandbox._hydrateCache, sandbox.localStorage, sandbox.indexedDB),
-    store,
+    ...factory(sandbox._sdb, sandbox._uploadCache, sandbox._hydrateCache, sandbox.localStorage, sandbox.indexedDB, openSyncDB),
+    store, cleared, calls,
   };
 }
+
+/** openSyncDB().then 체인이 진행되도록 마이크로태스크를 흘린다 */
+const flush = async () => { for (let k = 0; k < 5; k++) await Promise.resolve(); };
 
 describe('clearLocal 은 로그인을 막지 않는다', () => {
   beforeEach(() => { jest.useFakeTimers(); });
   afterEach(() => { jest.useRealTimers(); });
 
-  test('★ deleteDatabase 가 아무 이벤트도 안 내도 반드시 settle 된다 (이번 버그)', async () => {
-    const { clearLocal, TIMEOUT } = loadClearLocal({ fireEvent: null });
+  test('★ 정리가 아무 이벤트도 안 내도 반드시 settle 된다 (로그인 정지 회귀)', async () => {
+    const { clearLocal, TIMEOUT } = loadClearLocal({ tx: 'pending' });
     let settled = false;
     const p = clearLocal().then((v) => { settled = true; return v; });
+    await flush();
     jest.advanceTimersByTime(TIMEOUT + 50);
     await expect(p).resolves.toBe(false);
     expect(settled).toBe(true);
   });
 
-  test('정상 삭제되면 true', async () => {
-    const { clearLocal } = loadClearLocal({ fireEvent: 'onsuccess' });
+  test('정상적으로 비워지면 true + 모든 store 를 비운다', async () => {
+    const { clearLocal, cleared } = loadClearLocal({ tx: 'complete' });
     const p = clearLocal();
+    await flush();
     jest.advanceTimersByTime(50);
     await expect(p).resolves.toBe(true);
+    expect(cleared.sort()).toEqual(['meta', 'tombstones']);
   });
 
-  test('blocked 이벤트가 오면 그때 끝낸다 (타임아웃까지 안 기다림)', async () => {
-    const { clearLocal } = loadClearLocal({ fireEvent: 'onblocked' });
+  test('🔴 deleteDatabase 를 한 번도 부르지 않는다 (취소 불가 요청이 큐를 잠근다)', async () => {
+    const { clearLocal, calls } = loadClearLocal({ tx: 'complete' });
     const p = clearLocal();
+    await flush();
     jest.advanceTimersByTime(50);
-    await expect(p).resolves.toBe(true);
+    await p;
+    expect(calls.deleteDatabase).toBe(0);
+  });
+
+  test('DB 를 못 열면 타임아웃까지 안 기다리고 false 로 끝낸다', async () => {
+    const { clearLocal } = loadClearLocal({ open: 'fail' });
+    const p = clearLocal();
+    await flush();
+    jest.advanceTimersByTime(10);
+    await expect(p).resolves.toBe(false);
   });
 
   test('타임아웃은 유한하다 — 무한대나 미설정이면 안 된다', () => {
-    const { TIMEOUT } = loadClearLocal({ fireEvent: null });
+    const { TIMEOUT } = loadClearLocal({ tx: 'pending' });
     expect(typeof TIMEOUT).toBe('number');
     expect(TIMEOUT).toBeGreaterThan(0);
     expect(TIMEOUT).toBeLessThanOrEqual(5000);   // 로그인 체감을 해치지 않는 범위
@@ -105,17 +141,30 @@ describe('못 지운 사실을 남겨 다음에 재시도한다', () => {
   afterEach(() => { jest.useRealTimers(); });
 
   test('타임아웃이면 purge_pending 마커를 남긴다', async () => {
-    const { clearLocal, PURGE_PENDING_KEY, store, TIMEOUT } = loadClearLocal({ fireEvent: null });
+    const { clearLocal, PURGE_PENDING_KEY, store, TIMEOUT } = loadClearLocal({ tx: 'pending' });
     const p = clearLocal();
+    await flush();
     jest.advanceTimersByTime(TIMEOUT + 50);
     await p;
     expect(store[PURGE_PENDING_KEY]).toBe('1');
   });
 
+  /* 예전 코드는 onerror·onblocked 에도 finish(true) 였다 — **못 지웠는데 마커를 지웠다.**
+     그러면 다음 부팅의 재시도까지 사라져서, 이전 계정 데이터가 영구히 남는다. */
+  test('🔴 정리가 실패하면 false + 마커 유지 (실패를 성공으로 보고 금지)', async () => {
+    const { clearLocal, PURGE_PENDING_KEY, store } = loadClearLocal({ tx: 'error' });
+    const p = clearLocal();
+    await flush();
+    jest.advanceTimersByTime(50);
+    await expect(p).resolves.toBe(false);
+    expect(store[PURGE_PENDING_KEY]).toBe('1');
+  });
+
   test('성공하면 마커를 지운다', async () => {
-    const { clearLocal, PURGE_PENDING_KEY, store } = loadClearLocal({ fireEvent: 'onsuccess' });
+    const { clearLocal, PURGE_PENDING_KEY, store } = loadClearLocal({ tx: 'complete' });
     store[PURGE_PENDING_KEY] = '1';
     const p = clearLocal();
+    await flush();
     jest.advanceTimersByTime(50);
     await p;
     expect(store[PURGE_PENDING_KEY]).toBeUndefined();
@@ -126,29 +175,5 @@ describe('못 지운 사실을 남겨 다음에 재시도한다', () => {
     const init = body.slice(body.indexOf('function init()'));
     expect(init).toMatch(/PURGE_PENDING_KEY/);
     expect(init).toMatch(/clearLocal\(\)/);
-  });
-});
-
-describe('같은 뿌리 — clearGalleryDB 도 매달리지 않는다', () => {
-  /* 2026-09-03 최종 스윕: deleteDatabase 무한 pending 은 workspace-sync 만의 문제가 아니었다.
-     app-gallery-db.clearGalleryDB 도 같은 구조였고, 역시 _purgeUserScopedDB →
-     로그인 경로에서 await 된다. 한 곳만 고치면 다른 쪽으로 같은 사고가 난다. */
-  const GDB = fs.readFileSync(path.join(__dirname, '..', 'app-gallery-db.js'), 'utf8');
-  const body = GDB.slice(GDB.indexOf('async function clearGalleryDB'), GDB.indexOf('window.clearGalleryDB'));
-
-  test('타임아웃 상수가 있고 유한하다', () => {
-    const m = GDB.match(/CLEAR_GDB_TIMEOUT_MS\s*=\s*(\d+)/);
-    expect(m).toBeTruthy();
-    expect(Number(m[1])).toBeGreaterThan(0);
-    expect(Number(m[1])).toBeLessThanOrEqual(5000);
-  });
-
-  test('deleteDatabase 대기에 setTimeout 안전망이 걸려 있다', () => {
-    expect(body).toMatch(/setTimeout\([\s\S]{0,60}?CLEAR_GDB_TIMEOUT_MS/);
-    expect(body).toMatch(/settled/);
-  });
-
-  test('세 이벤트 모두 타이머를 해제한다 (중복 resolve 방지)', () => {
-    expect((body.match(/clearTimeout\(timer\)/g) || []).length).toBeGreaterThanOrEqual(4);
   });
 });

@@ -918,26 +918,29 @@ function getToken() {
 }
 // [2026-04-24] 디바이스 간 데이터 불일치 방어 — 토큰 변경 감지 시 SWR 캐시 일괄 클리어.
 // 폰·노트북·태블릿 같은 계정으로 들어왔을 때 다른 디바이스의 stale 스냅샷이 보이는 문제 해결.
-// [PerfFix] 같은 프레임 안에서 N번 호출돼도 rAF로 1번만 실행.
-let _swrClearScheduled = false;
+/* [인증감사 2026-09-06 P1] rAF 지연을 **없앴다 — 이건 계정 경계라 미루면 안 된다.**
+   예전엔 rAF 로 미뤘는데, 이 함수를 부르는 두 곳이 하필 프레임을 기다려주지 않는다:
+     · logout() 은 곧바로 location.replace 로 나간다 → 다음 프레임이 영영 안 온다.
+     · 숨은 탭·백그라운드 탭은 rAF 자체가 멈춘다.
+   실측(로컬 2계정, 원장A uid49 → 원장B uid50): 로그아웃 뒤에도
+   `hv41_cache::brief` 에 원장A 의 {this_month_total:1665000, total_customers:3} 이 그대로 남았다.
+   app-home-v41.js 의 render() 는 이 캐시를 **먼저 그리고**(_hydrateHome), 60초 안이면
+   `swr.fresh && !force` 로 **네트워크 요청조차 하지 않고 return** 한다 →
+   다음 원장 홈에 앞 원장 매출·고객수가 뜬 채 스스로 고쳐지지도 않는다.
+   비용은 localStorage 키 순회 한 번이라 미룰 이유가 없다. */
 function _clearAllSWRCache() {
-  if (_swrClearScheduled) return;
-  _swrClearScheduled = true;
-  requestAnimationFrame(() => {
-    _swrClearScheduled = false;
-    const prefixes = ['pv_cache::', 'itdasy:cache', 'dash_cache::', 'hv41_cache::', 'mv3_cache::'];
-    const exactKeys = ['ch_cache', 'ih_cache', 'rh_cache'];
-    [localStorage, sessionStorage].forEach(store => {
-      try {
-        const keys = Object.keys(store);
-        for (let i = 0; i < keys.length; i++) {
-          const k = keys[i];
-          if (exactKeys.indexOf(k) !== -1 || prefixes.some(p => k.startsWith(p))) {
-            try { store.removeItem(k); } catch (_e) { void _e; }
-          }
+  const prefixes = ['pv_cache::', 'itdasy:cache', 'dash_cache::', 'hv41_cache::', 'mv3_cache::'];
+  const exactKeys = ['ch_cache', 'ih_cache', 'rh_cache'];
+  [localStorage, sessionStorage].forEach(store => {
+    try {
+      const keys = Object.keys(store);
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i];
+        if (exactKeys.indexOf(k) !== -1 || prefixes.some(p => k.startsWith(p))) {
+          try { store.removeItem(k); } catch (_e) { void _e; }
         }
-      } catch (_e) { void _e; }
-    });
+      }
+    } catch (_e) { void _e; }
   });
 }
 window._clearAllSWRCache = _clearAllSWRCache;
@@ -960,7 +963,16 @@ const _USER_KEY_PREFIXES = ['itdasy_', 'itdasy:', 'pv_cache::', 'persona_'];
    전환 조건이 거짓 → purge 를 안 함 → **B 원장의 초안(고객명·사진)이 C 계정 화면에 그대로 떴다.**
    값 자체는 서버 발급 숫자 id 라 민감정보가 아니고, 로그인마다 applyNewSession 이 덮어쓴다.
    로그아웃 후 남는 것이 **의도**다 — 남아 있어야 다음 로그인이 '계정이 바뀌었나'를 판정한다. */
+/* [인증감사 2026-09-06 P2] `shop_name`·`shop_type` 추가 — 바로 아래 주석이
+   "shop_* 는 user 데이터 → 제거" 라고 못박아 뒀는데 **정작 목록엔 `shop_id` 만** 있었다.
+   두 키는 어느 prefix 에도 안 걸려서(`itdasy_`·`itdasy:`·`pv_cache::`·`persona_`)
+   로그아웃·계정전환을 그대로 통과했다. 실측: 원장A 로그아웃 뒤에도
+   localStorage.shop_name === '원장A의 뷰티샵'.
+   applyNewSession 의 /auth/me 덮어쓰기는 구멍을 못 막는다 —
+   `if (typeof me.shop_name === 'string' && me.shop_name)` 이라 **새 계정의 매장명이
+   아직 비어 있으면(온보딩 전 신규 원장) 덮어쓰지 않고 앞 원장 상호가 그대로 남는다.** */
 const _USER_KEY_EXACT = ['last_login_email', 'user_oauth_provider', 'shop_id',
+  'shop_name', 'shop_type',
   'assistant_session_id'];
 // [2026-05-07 26차] user 변경 시 보존 키는 "디바이스 단위 UI 설정"만.
 // shop_* / onboarding_done 은 user 데이터 → 제거.
@@ -1002,17 +1014,12 @@ function _purgeUserScopedStorage() {
   }
   // SWR 캐시는 즉시 (동기) — 직후 fetch 가 stale 보지 않게
   _clearAllSWRCache();
-  // 사용자 prefix 키 정리는 idle 시점에 수행 (UI 안 막힘)
-  if (typeof requestIdleCallback === 'function') {
-    requestIdleCallback(() => {
-      _doPurgeStorage(localStorage);
-      _doPurgeStorage(sessionStorage);
-    }, { timeout: 1500 });
-  } else {
-    // rIC 미지원 브라우저는 즉시 동기 (구버전 사파리)
-    _doPurgeStorage(localStorage);
-    _doPurgeStorage(sessionStorage);
-  }
+  /* [인증감사 2026-09-06 P1] rIC 지연도 없앴다. _clearAllSWRCache 와 같은 이유다 —
+     logout() 은 곧 location.replace 로 나가고, 숨은 탭은 rIC 도 늦춰진다. timeout:1500 이
+     있어도 "그 전에 페이지가 사라지면" 아무 소용이 없다. 계정 경계를 지우는 일이
+     '한가할 때 하는 일' 목록에 있으면 안 된다. */
+  _doPurgeStorage(localStorage);
+  _doPurgeStorage(sessionStorage);
 }
 window._purgeUserScopedStorage = _purgeUserScopedStorage;
 
@@ -1066,6 +1073,22 @@ async function applyNewSession(newToken, opts) {
   if (newUserId) {
     try { localStorage.setItem('last_user_id', newUserId); } catch (_) { /* storage full / private mode */ }
   }
+
+  /* [2026-09-12 BUG-S1] **세션이 생겼다는 신호를 쏜다.**
+
+     작업실 동기화는 부팅 때 `ready()`(=로그인됨)를 최대 20회×800ms = **16초만** 기다리고 포기한다.
+     로그아웃하면 페이지가 `?_logout=` 으로 다시 뜨는데, 그 16초 안에 로그인하지 못하면
+     그 뒤로 sync 를 깨우는 건 `online` 과 `visibilitychange` 뿐이다 —
+     **같은 탭에서 로그인하면 둘 다 오지 않는다.**
+     결과: 로그인은 됐는데 작업실이 0개로 남고 "첫 글을 만들어보세요" 가 뜬다.
+     서버엔 멀쩡히 있다(실측: 서버 3 / 로컬 0, 30초 기다려도 그대로. sync() 한 번에 3개 복구).
+     원장이 비밀번호를 천천히 치거나 잠깐 딴 데 보면 재현되는, 시간에 달린 결함이었다.
+
+     여기가 세션이 확립되는 유일한 지점이다. 구독자가 알아서 깨어나게 이벤트로 알린다
+     (여기서 WorkspaceSync 를 직접 부르면 로드 순서에 묶인다). */
+  try {
+    window.dispatchEvent(new CustomEvent('itdasy:session-ready', { detail: { userId: newUserId || null } }));
+  } catch (_e) { void _e; }
 
   // /auth/me 동기화 — fire-and-forget (await 제거: 첫 진입 ~200ms 단축)
   // user_id 는 JWT payload.sub 로 이미 확보, email/oauth_provider 만 백그라운드 보강.
@@ -1239,6 +1262,9 @@ function authHeader() {
   // 화면이 멈춤. 첫 시도는 넉넉히 20초, 재시도는 12초 (인스턴스 warm 이면 빠름).
   const FETCH_TIMEOUT_FIRST_MS = 20000;
   const FETCH_TIMEOUT_RETRY_MS = 12000;
+  // 사진 업로드 전용 — 위 20초는 '응답을 기다리는' 시간 기준이라 '바이트를 올리는' 시간엔 짧다.
+  const UPLOAD_TIMEOUT_FIRST_MS = 90000;
+  const UPLOAD_TIMEOUT_RETRY_MS = 60000;
 
   // [2026-07-22 보스] AI(LLM) 호출은 20초로 끊으면 안 된다 — 잇비 답변·캡션 생성은 15~60초가 정상이다.
   //   기존 동작: 20초에 abort → 12초짜리 재시도 3회(재시도마다 서버에서 '진짜 LLM 호출'이 새로 돌아 돈이 나감)
@@ -1259,6 +1285,11 @@ function authHeader() {
   // 호출자 signal 보존하면서 timeout 까지 보호하는 fetch 헬퍼.
   // timeout 으로 abort 된 경우는 wrapper 의 retry 분기가 받아서 재시도하도록
   // 호출자의 init.signal 은 건드리지 않는다 (catch 에서 caller-abort 판단 그대로 유지).
+  function _timeoutReason(ms) {
+    const msg = '네트워크가 느려서 ' + Math.round(ms / 1000) + '초 안에 끝나지 않았어요. 신호가 좋은 곳에서 다시 시도해 주세요.';
+    try { return new DOMException(msg, 'AbortError'); } catch (_) { const e = new Error(msg); e.name = 'AbortError'; return e; }
+  }
+
   function _fetchWithTimeout(input, init, timeoutMs) {
     const ctl = new AbortController();
     const callerSignal = init && init.signal;
@@ -1267,7 +1298,12 @@ function authHeader() {
       if (callerSignal.aborted) ctl.abort();
       else callerSignal.addEventListener('abort', onCallerAbort, { once: true });
     }
-    const timer = setTimeout(() => ctl.abort(), timeoutMs);
+    /* [미디어감사 2026-09-07] abort 에 **사유**를 실어준다.
+       이유가 없으면 브라우저 기본 사유가 그대로 사용자에게 보인다. 실측: DM 빠른안내 사진
+       업로드가 20초에 끊기면 토스트가 `사진 업로드 실패: signal is aborted without reason`.
+       원장님이 읽을 수 있는 말이 아니다. name 은 'AbortError' 그대로라 기존 분기(호출자 abort
+       판별·재시도 판단)는 아무것도 안 바뀐다. */
+    const timer = setTimeout(() => ctl.abort(_timeoutReason(timeoutMs)), timeoutMs);
     const newInit = { ...(init || {}), signal: ctl.signal };
     return _origFetch(input, newInit).finally(() => {
       clearTimeout(timer);
@@ -1315,13 +1351,15 @@ function authHeader() {
   //   서버가 이미 커밋했는데 응답이 돌아오는 길에 끊기면(WiFi↔LTE 핸드오프·지하철) 래퍼가
   //   같은 POST 를 다시 쏴서 같은 예약/매출이 2건 생긴다(멱등키 없음 → 돈 숫자·이중예약 사고).
   //   GET(?쿼리)·PATCH/{id}·DELETE/{id} 는 읽기/멱등이라 안전 → 재시도 유지. 컬렉션 POST 만 막는다.
+  //   [미디어감사 2026-09-07] portfolio·background 추가 — 둘 다 컬렉션 POST 로 **DB 행을 만든다.**
+  //   위에서 FormData 재시도를 열었으므로 여기 안 넣으면 응답만 유실된 경우 사진이 2장 생긴다.
   //   [전기종 파괴검증 2026-09-12] `support/messages` 추가. 실측: 무응답(타임아웃)에서 **1탭 → POST 3회**,
   //     네트워크 끊김에서 **1탭 → POST 4회**. 관리자 답장(support/admin/reply)은 이미 위 목록에 있는데
   //     **원장이 보내는 문의만 빠져 있었다.** 타임아웃은 '안 갔다'가 아니라 '모른다' 라서(서버가 이미
   //     받아 Discord 알림까지 쐈을 수 있다) 자동 재시도하면 같은 문의가 2~4건 등록된다.
   //     ⚠️ 끝을 `(\?|$)` 로 막는 게 핵심이다 — 이러면 **컬렉션 POST 만** 걸리고
   //        `POST /support/messages/read`(읽음 처리, 멱등)와 `GET /support/messages`(목록)는 재시도가 살아 있다.
-  const CREATE_NO_RETRY_RE = /\/(bookings|revenue|customers|support\/messages)(\?|$)/;
+  const CREATE_NO_RETRY_RE = /\/(bookings|revenue|customers|portfolio|background|support\/messages)(\?|$)/;
   function _isNonIdempotentCreate(input, init) {
     try {
       const m = (init && init.method ? String(init.method).toUpperCase() : 'GET');
@@ -1330,18 +1368,38 @@ function authHeader() {
       return CREATE_NO_RETRY_RE.test(String(u));
     } catch (_) { return false; }
   }
+  /* [미디어감사 2026-09-07] FormData·Blob 은 **여러 번 재사용된다.**
+     예전 주석("FormData/Blob/ReadableStream 은 한 번만 읽을 수 있어서")은 사실이 아니었다.
+     브라우저는 fetch 를 부를 때마다 FormData/Blob 을 새로 직렬화한다 — 같은 객체를 3번
+     넘겨도 서버는 3번 다 온전한 바디를 받는다(실측: 같은 FormData 로 3회 POST → 서버 수신 3회).
+     한 번만 읽히는 건 ReadableStream(과 이미 쓴 Request) 뿐이다.
+
+     이 오해 때문에 **앱의 모든 사진 업로드가 재시도 0회**였다. 실측 대조:
+       JSON body + 503  → 5회 요청(1+재시도, 백오프 8초)
+       FormData + 503   → 1회 요청, 즉시 실패
+       FormData + 무응답 → 20초에 abort, 재시도 없음, **토스트도 없음**
+     (토스트는 `if (retryable && attempt >= 1)` 안에 있어서 retryable=false 면 아예 안 뜬다.)
+     Cloud Run 콜드스타트 503 한 번에 원장 사진이 그냥 안 올라갔다. */
   function _isRetryableMethod(init) {
     const m = (init && init.method ? String(init.method).toUpperCase() : 'GET');
     if (m === 'GET' || m === 'HEAD') return true;
-    // JSON body(string) POST 는 body 재사용 가능 → 재시도 허용
-    if (m === 'POST' && init && typeof init.body === 'string') return true;
+    if (m === 'POST') return _bodyReusable(init);
     return false;
+  }
+  function _isUploadBody(init) {
+    const b = init && init.body;
+    if (!b) return false;
+    return (typeof FormData !== 'undefined' && b instanceof FormData)
+        || (typeof Blob !== 'undefined' && b instanceof Blob);
   }
   function _bodyReusable(init) {
     if (!init || !init.body) return true;
     const b = init.body;
     if (typeof b === 'string') return true;
-    return false; // FormData/Blob/ReadableStream 은 한 번만 읽을 수 있어서 재시도 시 body 재사용 불가
+    if (_isUploadBody(init)) return true;                       // 매번 새로 직렬화된다
+    if (typeof ArrayBuffer !== 'undefined' && (b instanceof ArrayBuffer || ArrayBuffer.isView(b))) return true;
+    if (typeof URLSearchParams !== 'undefined' && b instanceof URLSearchParams) return true;
+    return false;   // ReadableStream 등 진짜 1회성만 제외
   }
 
   function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -1466,8 +1524,15 @@ function authHeader() {
     while (true) {
       // [fix] 캐러셀(여러장) 인스타 발행은 컨테이너 순차 폴링으로 25~50초+ → 호출부가 itdasyTimeoutMs 로 타임아웃 상향 가능(기본 20초는 abort됨)
       const _customTmo = init && init.itdasyTimeoutMs;
+      /* [미디어감사 2026-09-07] 업로드는 20초로 못 끝난다.
+         `/image/upload`(DM 빠른안내 사진)는 클라 축소 없이 **원본 최대 10MB** 를 그대로 올린다.
+         20초 안에 끝내려면 4Mbps 를 계속 유지해야 하는데 지하철·엘리베이터·시골에선 안 된다.
+         받는 쪽 한도가 20MB 라 넉넉히 잡아도 서버가 알아서 거른다. */
+      const _isUp = _isUploadBody(init);
       const _tmo = _customTmo
-        || (isLlm ? LLM_TIMEOUT_MS : (attempt === 0 ? FETCH_TIMEOUT_FIRST_MS : FETCH_TIMEOUT_RETRY_MS));
+        || (isLlm ? LLM_TIMEOUT_MS
+           : _isUp ? (attempt === 0 ? UPLOAD_TIMEOUT_FIRST_MS : UPLOAD_TIMEOUT_RETRY_MS)
+           : (attempt === 0 ? FETCH_TIMEOUT_FIRST_MS : FETCH_TIMEOUT_RETRY_MS));
       try {
         const res = await _fetchWithTimeout(input, init, _tmo);
         if (res.ok) _resetConnFail();   // [버그2] 성공 응답 = 연결 정상 — 실패 카운터 리셋
@@ -1490,15 +1555,25 @@ function authHeader() {
              401 을 아무도 처리하지 않았다.** 잠금화면을 닫아 버린 사용자는 그 뒤로 영영
              "다시 로그인하라" 는 말을 못 듣고, 화면은 옛 데이터를 그대로 띄운 채 남았다. */
           if (!getToken()) { _handle401(); return res; }
+          /* [2026-09-11 SESS-2] 갱신에 **성공한 뒤**의 재시도 실패는 세션 만료가 아니다.
+             예전엔 `_tryRefresh()` 와 재시도를 한 try 로 묶어서, 재시도가 타임아웃·네트워크로
+             실패하면 `_handle401()` 이 돌아 원장을 **강제 로그아웃**시키고 작성 중이던 글을
+             통째로 버렸다. 정작 방금 발급된 토큰은 멀쩡한데 화면만 "세션이 만료되었습니다" 다.
+             (라이브 실측 2026-09-11: 캡션 생성 중 발생 → 질문 3개·업종·시술 입력분 전부 소실,
+              localStorage 의 토큰은 그 시점에 /auth/me 200 이었다.)
+             불을 지른 건 재시도 타임아웃을 12초로 **고정**한 것 — 원 호출이 LLM(120초)이나
+             업로드(90초)면 12초 안에 끝날 수가 없어서 **항상** 이 경로로 떨어진다.
+             → ① 갱신 자체가 실패했을 때만 _handle401 ② 재시도는 원 호출과 같은 타임아웃(_tmo).
+             재시도가 그래도 실패하면 throw 되어 아래 catch(err) 의 일반 네트워크 실패 처리로 간다. */
+          let newTok;
           try {
-            const newTok = await _tryRefresh();
-            // 갱신된 토큰으로 원 요청 재시도 (refresh 후 fetch 는 timeout 짧게)
-            const newInit = { ...init, headers: { ...(init && init.headers), 'Authorization': 'Bearer ' + newTok } };
-            return await _fetchWithTimeout(input, newInit, FETCH_TIMEOUT_RETRY_MS);
+            newTok = await _tryRefresh();
           } catch (_e) {
             _handle401();
             return res;
           }
+          const newInit = { ...init, headers: { ...(init && init.headers), 'Authorization': 'Bearer ' + newTok } };
+          return await _fetchWithTimeout(input, newInit, _tmo);
         }
         // [2026-07-22 보스] 서버가 Retry-After 로 "지금 다시 때리지 마"라고 하면 재시도하지 않는다.
         //   실제 사고: AI 쿼터가 마르면 잇비가 한 번 실패에 23~29초를 태우는데(백엔드가 Gemini 를
@@ -1744,6 +1819,15 @@ async function submitChangePw() {
       body: JSON.stringify({ current_password: cur, new_password: nw }),
     });
     if (res.ok) {
+      /* [인증감사 2026-09-06 P2] 서버가 준 **새 토큰으로 갈아끼운다.**
+         비번 변경은 users.min_valid_iat 를 올려 기존 토큰을 전부 죽인다 — 지금 이 기기 것까지.
+         그래서 예전엔 "다른 기기에서는 다시 로그인해주세요" 라고 안내해 놓고 정작 이 기기가
+         다음 API 호출에서 401 → 잠금화면 + "세션이 만료됐어요" 로 튕겼다.
+         (구버전 백엔드는 access_token 을 안 준다 → 그때는 예전처럼 튕기지만 더 나빠지진 않는다.) */
+      try {
+        const data = await res.json();
+        if (data && data.access_token) setToken(data.access_token);
+      } catch (_e) { void _e; }
       closeChangePwModal();
       showToast('비밀번호를 바꿨어요. 다른 기기에서는 다시 로그인해주세요');
       return;
@@ -2910,6 +2994,20 @@ window.addEventListener('load', async function() {
           const _lastBtn = document.querySelector('.tab-bar [data-tab="' + _lastTab + '"]')
             || document.querySelector('.ms-side__item[data-side-tab="' + _lastTab + '"]');
           showTab(_lastTab, _lastBtn);
+          /* [2026-09-11] 복원은 **탭을 켜기만 하고 내용을 안 그렸다.**
+             showTab 안의 init 은 home·dashboard 두 개뿐이라, 작업실로 복원되면
+             빈 탭(innerHTML 33자)이 활성화되고 원장은 **흰 화면**을 본다 — 껐다 켠 뒤 첫 화면이다.
+             실측(라이브 d4dbfed): 부팅 직후 tab-workshop ACTIVE·내용 없음, 정작 홈은 32,934자가
+             그려진 채 숨어 있었다. 하단 '작업실' 을 한 번 눌러야 비로소 목록이 나타났다.
+             다른 작업실 진입 경로는 전부 showTab 과 initWorkshopTab 을 **짝으로** 부른다
+             (app-ai.js·app-gallery-finish.js·_backToWorkshopFromCaption). 복원만 뒤를 빠뜨렸다.
+             init 을 showTab 안으로 넣지 않은 이유: 기존 호출부가 이미 직접 부르고 있어서
+             거기 넣으면 작업실로 갈 때마다 두 번 그린다(중복 렌더·중복 조회).
+             스텁이어도 그대로 부른다 — 스텁이 photo 그룹을 불러온 뒤 진짜 함수를 이어서 부른다. */
+          if (_lastTab === 'workshop' && typeof window.initWorkshopTab === 'function') {
+            try { Promise.resolve(window.initWorkshopTab()).catch(function () { /* 복원 실패가 부팅을 막지 않는다 */ }); }
+            catch (_wi) { void _wi; }
+          }
         }
       } catch (_e) { void _e; }
     }
@@ -3803,6 +3901,29 @@ window._askConfirm = function (msg, onYes) {
   if (confirm(msg)) onYes();
 };
 
+/* [2026-09-11 BUG-A2] 예약 취소 확인창 문구 — **완료된 예약이면 돈이 움직인다는 걸 말한다.**
+
+   라이브 실측: 예약을 '시술 완료' 하면 매출이 자동 기록되고(385,000 → 395,000),
+   그 예약을 취소하면 서버가 **환불행으로 상계**해 합계가 되돌아간다(395,000 → 385,000).
+   그런데 확인창은 "이 예약을 취소할까요?" 한 줄이라, 원장님은 이번달 매출이 바뀌는 줄 모르고 누른다.
+   매출 삭제 확인창(BUG-A)과 같은 결함이 취소 경로에도 있었다.
+
+   ⚠️ 모르면 말하지 않는다. 완료가 아닌 예약(확정·대기)은 매출이 없으므로 덧붙이지 않는다.
+   금액을 모르면 금액 없이 사실만 말한다 — 없는 숫자를 지어내는 게 더 나쁘다. */
+window._bookingCancelMsg = function (booking) {
+  const lines = ['이 예약을 취소할까요?'];
+  try {
+    const st = String((booking && booking.status) || '');
+    if (st === 'completed') {
+      const amt = Number(booking && booking.amount) || 0;
+      lines.push(amt > 0
+        ? `완료된 예약이에요. 기록된 매출 ${amt.toLocaleString('ko-KR')}원이 환불로 상계돼 합계에서 빠져요.`
+        : '완료된 예약이에요. 기록된 매출이 환불로 상계돼 합계에서 빠져요.');
+    }
+  } catch (_e) { void _e; }
+  return lines.join('\n');
+};
+
 // 2중 확인 유틸 — 레거시 호환 stub (호출처는 _inlineConfirm 으로 교체 완료)
 window._confirm2 = function (_msg) {
   console.warn('[_confirm2] deprecated — use _inlineConfirm');
@@ -4084,6 +4205,80 @@ window.refreshLastSyncBadges = function () {
   window._registerSheet = function (name, closeFn) {
     if (typeof closeFn !== 'function') return;
     registry.set(name, { close: closeFn });
+  };
+
+  /* ── [2026-09-09] 오버레이 한 줄 등록 헬퍼 ──────────────────────────────────
+     전수 조사 결과: `position:fixed; inset:0` 전체화면 오버레이를 쓰는 파일 50개 중
+     **32개가 뒤로가기 레지스트리에 미등록**이었다. 미등록이면 원장이 뒤로가기를 눌렀을 때
+     그 오버레이는 그대로 남고 **뒤에 있던 화면이 대신 닫힌다** — 작성 중이던 내용이 날아간다
+     (실측: 예약 폼 → 고객 선택창 → back → 예약 폼이 닫히고 선택창만 남음).
+     안드로이드 하드웨어 백은 같은 경로라, 스택이 비면 앱이 그대로 꺼진다.
+
+     왜 하나씩 못 고쳤나: 파일마다 닫는 방법이 제각각이다.
+       `pop.remove()` · `sheet.style.display='none'` · 이름 있는 close 함수 ·
+       배경 클릭 익명 핸들러 · × 버튼 · ESC — 한 파일에 닫기 지점이 4~7곳씩 있다.
+       전부에 `_markSheetClosed` 를 손으로 붙이면 하나만 빠져도 유령 hash 가 남는다
+       (그게 "뒤로가기 한 번이 먹통" 의 원인이었다 — _markSheetClosed 주석 참고).
+
+     그래서 **여는 곳 한 줄만** 부르면 닫힘은 DOM 에서 직접 관찰한다:
+       화면에서 사라짐(제거 or display:none or hidden) = 닫힘.
+     닫기 경로가 몇 개든, 나중에 새 경로가 생기든 자동으로 잡힌다.
+
+       window._bindSheetBack('membershipSheet', el, () => closeFn());
+
+     ⚠️ 이미 규약을 지키는 18개 파일은 건드리지 않는다. 두 번 등록하면 스택이 어긋난다. */
+  /* [2026-09-11 BUG-D] **한 번 닫히면 등록이 영영 풀리던 것 — 보이는 동안만 등록되도록 재무장한다.**
+
+     재현(예약관리): 완료 시트를 열고 → 뒤로가기 → 시트는 그대로 남고 뒤 화면이 바뀐다.
+     그 뒤 예약관리로 돌아오면 시트가 유령처럼 떠 있다(`startFromBooking` 호출 0회 = 새로 연 게 아님).
+
+     원인: 예전 코드는 숨겨지는 순간 `finish()` 로 **observer 를 끊고 dataset 도장을 지웠다.**
+     그런데 유지형 시트(display 토글)는 `_ensureSheet()` 가 "이미 있으면 즉시 return" 이라
+     **재오픈 때 _bindSheetBack 을 다시 부르지 않는다** → 두 번째부터는 미등록 상태로 열린다.
+     미등록이면 back 이 이 창 대신 뒤 화면을 닫는다(이 파일 4165행 주석이 적은 바로 그 사고).
+     게다가 만들자마자(아직 display:none 일 때) 호출되면 그 자리에서 finish() 라
+     **첫 오픈조차 등록되지 않는** 경우가 있었다.
+
+     → observer 를 끊지 않고 **가시성 전이**를 따라간다. 보이면 등록, 숨으면 해제,
+       DOM 에서 빠지면 그때 정리. 호출부 40여 곳을 각각 고치는 대신 여기 한 곳에서 닫는다.
+       (`_markSheetOpen` 은 스택 top 검사로 멱등, `_registerSheet` 는 Map 덮어쓰기라 재호출이 안전하다) */
+  window._bindSheetBack = function (name, el, closeFn) {
+    try {
+      if (!name || !el || typeof closeFn !== 'function') return;
+      window._registerSheet(name, closeFn);      // 닫는 방법은 늘 최신 것으로
+
+      const visible = () => {
+        if (!el.isConnected) return false;
+        if (el.hidden) return false;
+        const cs = window.getComputedStyle(el);
+        return cs.display !== 'none' && cs.visibility !== 'hidden';
+      };
+
+      if (el.dataset && el.dataset.sheetBound === name) {
+        // 이미 관찰 중이다. 지금 보이는 상태면 열림으로 맞춰준다(재오픈 경로).
+        if (visible()) window._markSheetOpen(name);
+        return;
+      }
+      if (el.dataset) el.dataset.sheetBound = name;
+
+      let open = false;
+      const sync = () => {
+        const v = visible();
+        if (v !== open) {
+          open = v;
+          if (v) { window._registerSheet(name, closeFn); window._markSheetOpen(name); }
+          else { try { window._markSheetClosed(name); } catch (_e) { void _e; } }
+        }
+        if (!el.isConnected) {
+          try { obs.disconnect(); } catch (_e) { void _e; }
+          try { if (el.dataset) delete el.dataset.sheetBound; } catch (_e) { void _e; }
+        }
+      };
+      const obs = new MutationObserver(sync);
+      obs.observe(el, { attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
+      if (el.parentNode) obs.observe(el.parentNode, { childList: true });
+      sync();   // 지금 보이면 지금 등록, 아직 숨어 있으면 보일 때 등록된다
+    } catch (_e) { void _e; }
   };
 
   // ── [2026-09-07 반응형 게이트 BUG-7] 새로고침 뒤 남는 유령 hash 청소 ──

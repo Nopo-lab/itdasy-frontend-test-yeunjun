@@ -202,3 +202,23 @@
 @media (prefers-reduced-motion: reduce) {
   .btn-primary--pulse { animation: none; }
 }
+
+/* 사진을 못 불러왔을 때 (js/media-fallback.js) — 회색 빈 칸 대신 상태와 할 일을 준다.
+   [미디어감사 2026-09-07] 예전엔 미디어 <img> 에 onerror 가 하나도 없어서, 객체가 사라지면
+   원장님 화면엔 아무 설명 없는 빈 네모만 남았다(로딩 중인지 없어진 건지 구분 불가). */
+.mf-broken {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; width: 100%; height: 100%; min-height: 72px; padding: 10px;
+  box-sizing: border-box; border-radius: 14px;
+  background: var(--bg2, #f4f4f5); color: var(--text3, #8b8b93);
+  text-align: center; line-height: 1.35;
+}
+.mf-broken > svg { width: 22px; height: 22px; opacity: .55; flex: none; }
+.mf-broken__t { font-size: 12px; }
+.mf-broken__r {
+  font: inherit; font-size: 12px; padding: 5px 12px; border-radius: 999px;
+  border: 1px solid var(--border, #e4e4e7); background: var(--bg, #fff);
+  color: var(--text2, #52525b); cursor: pointer; min-height: 32px;
+}
+.mf-broken__r:hover { background: var(--bg2, #f4f4f5); }
+.mf-broken__r:focus-visible { outline: 2px solid var(--accent, #d58a95); outline-offset: 2px; }

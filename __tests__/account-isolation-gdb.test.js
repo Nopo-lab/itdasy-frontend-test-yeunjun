@@ -40,11 +40,18 @@ describe('② 소유자 도장은 purge 를 살아남고, 삭제 성공만이 �
     const keep = coreSrc.slice(coreSrc.indexOf('const _USER_KEY_KEEP'), coreSrc.indexOf(']);', coreSrc.indexOf('const _USER_KEY_KEEP')));
     expect(keep).toContain("'itdasy_gdb_owner'");
   });
-  test('clearGalleryDB 성공 콜백에서만 도장을 비운다', () => {
+  /* [2026-09-11 BUG-F2 계약 재정의] 예전엔 '성공' 이 `deleteDatabase.onsuccess` 였다.
+     그 수단 자체가 라이브 결함의 원인이었다 — deleteDatabase 는 취소가 안 돼서 한 번 blocked 되면
+     그 DB 의 이후 모든 open 을 origin 전역으로 잠근다(탭 2개 실측: open 20건 전부 pending).
+     이제 정리는 store clear 로 하고, **성공은 tx.oncomplete 하나뿐**이다.
+     지켜야 할 것은 그대로다: 진짜로 비웠을 때만 도장을 지운다. */
+  test('정리 성공(tx.oncomplete)에서만 도장을 비운다', () => {
     const clear = gdbSrc.slice(gdbSrc.indexOf('async function clearGalleryDB'));
-    expect(clear).toMatch(/onsuccess = \(\) => \{[^}]*_gdbSetOwner\(null\)/);
-    // 실패·타임아웃 경로는 도장을 건드리지 않는다 — 남은 DB 의 소유자를 잊으면 관문이 못 막는다
-    expect(clear.slice(0, clear.indexOf('window.clearGalleryDB'))).not.toMatch(/onerror[^\n]*_gdbSetOwner/);
+    expect(clear).toMatch(/tx\.oncomplete = \(\) => \{[^}]*_gdbSetOwner\(null\)/);
+    // 실패·중단·타임아웃 경로는 도장을 건드리지 않는다 — 남은 DB 의 소유자를 잊으면 관문이 못 막는다
+    const body = clear.slice(0, clear.indexOf('window.clearGalleryDB'));
+    expect(body).not.toMatch(/onerror[^\n]*_gdbSetOwner/);
+    expect(body).not.toMatch(/onabort[^\n]*_gdbSetOwner/);
   });
 });
 
@@ -58,7 +65,22 @@ describe('③ openGalleryDB 읽기 관문 — 실행 검증', () => {
       setItem: (k, v) => { store[k] = String(v); },
       removeItem: (k) => { delete store[k]; },
     };
-    const dbHandle = { name: 'mock', close() {}, objectStoreNames: { contains: () => true }, transaction() { throw new Error('not needed'); } };
+    /* 정리는 이제 store clear 다 — mock 도 실제 계약대로 store 목록과 트랜잭션을 갖는다. */
+    let clearBehavior = opts.clearBehavior || 'success';
+    const dbHandle = {
+      name: 'mock', close() {},
+      objectStoreNames: ['slots', 'gallery', 'assets'],
+      transaction() {
+        const tx = {};
+        setTimeout(() => {
+          if (clearBehavior === 'success') { if (tx.oncomplete) tx.oncomplete(); }
+          else if (clearBehavior === 'fail') { if (tx.onerror) tx.onerror(); }
+          // 'pending' 은 아무 이벤트도 안 낸다 — 타임아웃 경로 검증용
+        }, 0);
+        tx.objectStore = () => ({ clear() {} });
+        return tx;
+      },
+    };
     let deleteBehavior = opts.deleteBehavior || 'success';
     const openBehavior = opts.openBehavior || 'success';
     const indexedDB = {
@@ -76,6 +98,7 @@ describe('③ openGalleryDB 읽기 관문 — 실행 검증', () => {
         return req;
       },
       _setDelete(b) { deleteBehavior = b; },
+      _setClear(b) { clearBehavior = b; },
     };
     const window = { showToast: opts.showToast || (() => {}) };
     const sandbox = { localStorage, indexedDB, window, setTimeout, clearTimeout, console };
@@ -101,25 +124,25 @@ describe('③ openGalleryDB 읽기 관문 — 실행 검증', () => {
     expect(store.itdasy_gdb_owner).toBe('U1');
   });
 
-  test('소유자 불일치 + 삭제 성공 → 지우고 새 소유자로 연다', async () => {
+  test('소유자 불일치 + 정리 성공 → 비우고 새 소유자로 연다', async () => {
     const { api, store } = loadGdb({ store: { last_user_id: 'U2', itdasy_gdb_owner: 'U1' } });
     await expect(api.openGalleryDB()).resolves.toBeTruthy();
     expect(store.itdasy_gdb_owner).toBe('U2');
   });
 
-  test('🔴 소유자 불일치 + 삭제 실패(pending) → 열지 않는다 (유출 차단)', async () => {
+  test('🔴 소유자 불일치 + 정리 실패 → 열지 않는다 (유출 차단)', async () => {
     const toasts = [];
     const { api, store } = loadGdb({ store: { last_user_id: 'U2', itdasy_gdb_owner: 'U1' },
-      deleteBehavior: 'pending', showToast: (m) => toasts.push(m) });
+      clearBehavior: 'pending', showToast: (m) => toasts.push(m) });
     await expect(api.openGalleryDB()).rejects.toThrow('gdb_owner_mismatch');
     expect(store.itdasy_gdb_owner).toBe('U1');          // 도장 유지 — 다음 시도도 다시 막는다
     expect(toasts.join(' ')).toContain('다른 탭');       // 사용자에게 복구 방법 안내
   });
 
-  test('차단 후 삭제가 가능해지면 스스로 복구된다', async () => {
-    const { api, indexedDB } = loadGdb({ store: { last_user_id: 'U2', itdasy_gdb_owner: 'U1' }, deleteBehavior: 'pending' });
+  test('차단 후 정리가 가능해지면 스스로 복구된다', async () => {
+    const { api, indexedDB } = loadGdb({ store: { last_user_id: 'U2', itdasy_gdb_owner: 'U1' }, clearBehavior: 'pending' });
     await expect(api.openGalleryDB()).rejects.toThrow('gdb_owner_mismatch');
-    indexedDB._setDelete('success');
+    indexedDB._setClear('success');
     await expect(api.openGalleryDB()).resolves.toBeTruthy();
   });
 

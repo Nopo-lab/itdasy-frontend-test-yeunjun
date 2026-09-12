@@ -18,7 +18,20 @@ android {
         applicationId "com.y2do.itdasy"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        // [2026-08-15 / 이 레포는 2026-09-07 반영] versionCode 는 CI 가 주입한다
+        //   (ANDROID_VERSION_CODE = github.run_number).
+        //   Play 는 업로드마다 이 값이 반드시 더 커야 하고, **한 번 쓴 번호는 영구 소진**된다.
+        //   되돌릴 수도, 재사용할 수도 없다. 사람이 기억해서 올리는 방식은 반드시 한 번은 빠뜨리고,
+        //   그때 업로드가 거부되면서 원인을 한참 찾게 된다 → 빌드 번호에 묶어 자동 증가시킨다.
+        //   로컬 빌드는 값이 없어 1 로 떨어지는데, 로컬 산출물은 어차피 업로드하지 않으므로 무해하다.
+        //   ⚠️ 괄호 앞에 공백을 두지 말 것. `versionCode (expr).toInteger()` 로 쓰면 Groovy 가
+        //   `versionCode(expr)` 메서드 호출로 먼저 파싱하고 그 결과에 .toInteger() 를 붙인다
+        //   → "A problem occurred evaluating project ':app'. > Value is null" 로 빌드가 죽는다.
+        //   실제로 그렇게 썼다가 debug/release 양쪽 빌드를 한 번 날렸다(2026-08-15).
+        //   ⚠️ 이 레포 AAB 는 Play 에 올리지 마라 — applicationId 가 운영과 같은
+        //   com.y2do.itdasy 라, 여기 run_number 로 올리면 그 아래 번호가 운영 쪽에서도
+        //   통째로 소진된다. Play 제출은 운영 레포(itdasy-frontend) 산출물로만.
+        versionCode Integer.parseInt(System.getenv("ANDROID_VERSION_CODE") ?: "1")
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

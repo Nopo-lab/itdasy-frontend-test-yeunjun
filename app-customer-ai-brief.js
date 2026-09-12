@@ -387,9 +387,28 @@
     const c = (d && d.customer) || {}, stats = (d && d.stats) || {}, rows = (d && d.recent_revenues) || [];
     const photoN = Number(d && d.__localPhotoCount) || 0;
     const visits = Number(stats.visit_count || c.visit_count || 0);
-    const top = {};
-    rows.forEach(r => { const n = (r && r.service_name || '').trim(); if (n) top[n] = (top[n] || 0) + 1; });
-    const best = Object.keys(top).sort((a, b) => top[b] - top[a])[0] || '';
+    /* [2026-09-12 BUG-C1] 서버가 이미 SSOT 규칙으로 계산해 보낸 top_services 를 쓴다.
+       예전엔 그 필드를 **무시하고** recent_revenues 의 service_name 을 그냥 세서,
+       회원권 충전·환불행이 '선호 시술' 로 올라왔다(실측: "선호 시술 회원권 충전"). */
+    let best = '';
+    const _srv = d && d.top_services;
+    if (Array.isArray(_srv) && _srv.length) {
+      best = String(_srv[0] || '');
+    } else {
+      const top = {};
+      rows.forEach(r => {
+        if (!r) return;
+        if (Number(r.amount) < 0) return;
+        if (r.refund_of_id != null) return;
+        if (typeof r.membership_delta === 'number' && r.membership_delta > 0) return;
+        const n = (r.service_name || '').trim();
+        if (!n) return;
+        if (['회원권 충전', '회원권 해지 환불', '회원권 되돌리기'].indexOf(n) >= 0) return;
+        if (/\s(환불|취소 복구)$/.test(n)) return;
+        top[n] = (top[n] || 0) + 1;
+      });
+      best = Object.keys(top).sort((a, b) => top[b] - top[a])[0] || '';
+    }
     const avgDays = c.avg_cycle_weeks ? Math.round(Number(c.avg_cycle_weeks) * 7) : 0;
     const facts = [];
     if (best) facts.push('선호 시술 ' + best);
