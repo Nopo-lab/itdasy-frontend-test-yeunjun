@@ -50,6 +50,10 @@
 .wf-feed{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:2px; background:#fff; }
 /* [W1] 게시물 0개 신규 유저 안내 — 빈 흰 공간 대신 첫 행동 유도 */
 .wshc-empty-hint{ margin:18px 20px 0; text-align:center; font-size:13px; line-height:1.6; color:var(--text-subtle,#8B95A1); word-break:keep-all; }
+/* [2026-09-12 BUG-W1] 불러오기 실패 시의 '다시 시도' — 실패를 알리기만 하면 할 수 있는 게 없다. */
+.wshc-retry{ margin-top:10px; padding:9px 16px; border:1px solid var(--border,#E5E8EB);
+  border-radius:var(--r-md,10px); background:var(--surface,#fff); color:var(--text,#191F28);
+  font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; }
 .wshc-empty-hint b{ color:var(--c-rose-strong,var(--brand-strong)); font-weight:700; }
 .wf-add,.wf-tile{ position:relative; aspect-ratio:1; border:0; padding:0; overflow:hidden; background-size:cover; background-position:center; background-color:#E4E7EA; -webkit-tap-highlight-color:transparent; transition:transform .175s var(--spring),filter .175s var(--spring); animation:wfIn .41s var(--spring) both; }
 .wf-add:active,.wf-tile:active{ transform:scale(.94); filter:brightness(.94); }

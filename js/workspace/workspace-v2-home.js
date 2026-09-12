@@ -174,7 +174,7 @@
     });
     return order.map(function (k) { return newest[k]; });
   }
-  function _shellHTML(slots) {
+  function _shellHTML(slots, loadFailed) {
     slots = _dedupDrafts(slots);
     var visible = _filter === 'all' ? slots : slots.filter(function (s) {
       return _filter === 'done' ? _isPub(s) : !_isPub(s);
@@ -189,9 +189,17 @@
     var feed = '<div class="wf-feed">' + addCell + visible.map(_feedTile).join('') + '</div>';
     // [W1] 게시물 0개 신규 유저 — 빈 흰 공간에 '+ 새 게시물' 타일만 떠 미완성처럼 보이던 문제.
     //   진짜 게시물이 하나도 없을 때만 한 줄 안내로 첫 행동을 유도(순수 추가·기존 로직 무영향).
-    var emptyHint = (slots.length === 0)
-      ? '<p class="wshc-empty-hint">사진만 올리면 AI가 캡션까지 써드려요.<br>위 <b>새 게시물</b>을 눌러 첫 글을 만들어보세요.</p>'
-      : '';
+    /* [2026-09-12 BUG-W1] **못 불러온 것과 진짜 0개를 구분한다.**
+       0개라고 단정하려면 실제로 읽어봤어야 한다. 못 읽었으면 그렇다고 말하고
+       다시 시도할 길을 준다 — "첫 글을 만들어보세요" 는 서버에 글이 있는 원장님에게
+       자기 작업이 사라진 것처럼 보인다. */
+    var emptyHint = '';
+    if (loadFailed) {
+      emptyHint = '<p class="wshc-empty-hint">작업 내역을 불러오지 못했어요.<br>' +
+        '<button type="button" class="wshc-retry" data-wsv2-retry>다시 시도</button></p>';
+    } else if (slots.length === 0) {
+      emptyHint = '<p class="wshc-empty-hint">사진만 올리면 AI가 캡션까지 써드려요.<br>위 <b>새 게시물</b>을 눌러 첫 글을 만들어보세요.</p>';
+    }
     return '' +
       '<section class="wsv2 wshc wshc--feed" data-wsv2-root>' +
         _pheadHTML() +
@@ -266,7 +274,7 @@
     if (!root) return;
     _lastRoot = root;
 	    _slotsCache = (opts && opts.slots) || [];
-	    root.innerHTML = _shellHTML(_slotsCache);
+	    root.innerHTML = _shellHTML(_slotsCache, !!(opts && opts.loadFailed));
 	    _bind(root);
 	    _bindHeroFile(root);
 	    _bindHomeScroll(root);   // [버그2] 스크롤 호스트에 1회 캡처 리스너
@@ -318,6 +326,20 @@
         _menuOpen = !_menuOpen; render(_lastRoot, { slots: _slotsCache }); return;
       }
       // [#14] 성과 — 홈 본문 필터 줄의 버튼. (⋯ 메뉴에선 제거됨)
+      /* [2026-09-12 BUG-W1] 불러오기 실패 화면의 '다시 시도' — 첫 진입과 같은 경로를 다시 탄다.
+         실패하면 같은 실패 화면이 남는다(조용히 0개가 되지 않는다). */
+      var _retry = e.target.closest('[data-wsv2-retry]');
+      if (_retry) {
+        if (_retry.dataset.busy === '1') return;
+        _retry.dataset.busy = '1';
+        _retry.textContent = '불러오는 중…';
+        if (typeof window.initWorkshopTab === 'function') {
+          Promise.resolve(window.initWorkshopTab()).catch(function () {
+            try { _retry.dataset.busy = ''; _retry.textContent = '다시 시도'; } catch (_r) { void _r; }
+          });
+        }
+        return;
+      }
       if (e.target.closest('[data-wsv2-perf]')) {
         if (window.WorkspacePerf && window.WorkspacePerf.open) window.WorkspacePerf.open();
         else if (typeof window.openInsights === 'function') window.openInsights();

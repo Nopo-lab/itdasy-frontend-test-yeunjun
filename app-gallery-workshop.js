@@ -110,11 +110,19 @@ async function initWorkshopTab() {
   if (!root) return;
 
   let slots;
+  /* [2026-09-12 BUG-W1] 실패를 **빈 배열로 바꾸지 않는다.**
+     예전엔 catch 에서 `slots = []` 로 두고 그대로 렌더해서, DB 가 잠겨 못 읽었을 때도
+     "위 새 게시물을 눌러 첫 글을 만들어보세요" 가 떴다. 토스트는 몇 초 뒤 사라지고
+     화면엔 **손님이 글을 하나도 안 쓴 것처럼** 남는다 — 서버엔 멀쩡히 있는데도.
+     같은 파일의 refresh() 는 이미 "가진 걸 없애면 더 나쁘다" 며 화면을 지키는데
+     첫 진입만 안 지키고 있었다. 실패 사실을 렌더까지 들고 간다. */
+  let loadFailed = false;
   try { slots = await loadSlotsFromDB(); }
   catch (e) {
     // [2026-06-10] 침묵 실패 픽스 — 슬롯이 있는데 빈 화면으로 보이던 문제
     console.warn('[workshop] 슬롯 불러오기 실패', e);
     slots = [];
+    loadFailed = true;
     if (window.showToast) window.showToast('작업 내역을 불러오지 못했어요 — 새로고침해 주세요');
   }
   _slots = slots || [];
@@ -125,7 +133,7 @@ async function initWorkshopTab() {
     return;
   }
   try {
-    window.WorkspaceV2.render(root, { slots: _slots });
+    window.WorkspaceV2.render(root, { slots: _slots, loadFailed: loadFailed });
   } catch (e) {
     console.error('[workshop] V2 렌더 실패', e);
     if (window.showToast) window.showToast('작업실을 여는 중 문제가 생겼어요 — 새로고침해 주세요');
