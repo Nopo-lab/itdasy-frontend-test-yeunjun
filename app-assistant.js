@@ -4672,7 +4672,7 @@
     const res = await apiFetch('/assistant/ask', {
       method: 'POST',
       headers: { ...window.authHeader(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q, session_id: _sessionId || undefined, context_hint: _hint || undefined }),
+      body: JSON.stringify({ question: q, session_id: _sessionId || undefined, context_hint: _hint || undefined, via: _takeVia() }),
       signal: ctrl.signal,
     });
     // [2026-07-22 보스] 서버가 사람 말로 이유를 줬으면(429 "AI 비서가 잠시 붐비고 있어요" 등)
@@ -4942,15 +4942,31 @@
   ];
 
   async function _trySendShortcuts(input, q) {
+    // ⚠ 표식은 여기서 **먼저** 꺼낸다. FE 지름길이 처리하면 `/assistant/ask` 를 안 부르므로
+    //   아래 ask 페이로드의 `_takeVia()` 가 영영 안 돌고, 표식이 남아 다음 턴에 붙는다.
+    const via = _takeVia();
     for (const [name, fn] of _SHORTCUTS) {
       // eslint-disable-next-line no-await-in-loop
-      if (await fn(input, q)) { _reportClientTurn(name, q); return true; }
+      if (await fn(input, q)) { _reportClientTurn(name, q, via); return true; }
     }
+    // 지름길이 안 받았으면 백엔드가 받는다 — 표식을 되돌려 놓는다.
+    try { if (via === 'chip') window.__itbiVia = 'chip'; } catch (_e) { void _e; }
     return false;
   }
 
   // 로그 1건. 절대 대화를 깨뜨리지 않는다(실패는 조용히 버린다).
-  function _reportClientTurn(handledBy, q) {
+  // [ITBI 2차게이트 2026-09-12 · §8] 추천칩 클릭 표식을 **한 번만** 소비한다.
+  //   칩이 입력창을 채우고 send() 를 부르므로, 지우지 않으면 그 다음 직접 입력까지
+  //   'chip' 으로 집계돼 추천칩 실패율이 실제보다 좋아 보인다(지표가 스스로를 속인다).
+  function _takeVia() {
+    try {
+      const v = window.__itbiVia || null;
+      window.__itbiVia = null;
+      return v || 'typed';
+    } catch (_e) { return 'typed'; }
+  }
+
+  function _reportClientTurn(handledBy, q, via) {
     try {
       if (typeof apiFetch !== 'function') return;
       const last = _history[_history.length - 1];
@@ -4961,6 +4977,7 @@
           event: 'turn',
           conversation_id: _sessionId || null,
           handled_by: handledBy,
+          via: via || 'typed',
           question: String(q || '').slice(0, 500),
           answer: (last && last.role === 'assistant' && typeof last.text === 'string')
             ? last.text.slice(0, 500) : null,
