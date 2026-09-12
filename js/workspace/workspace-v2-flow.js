@@ -668,6 +668,47 @@
         실측: A 저장 → B 선택 → 편집기가 여전히 A. `_restore` 는 null 이었는데도.) */
     var _finalEs = (_wsEd && _wsEd.mode === 'collage') ? _mergeWmLayers(_wsEd.editState, _wmEd)
       : (_restore || ((o.fresh || _freshPick) ? _wmEd : ((p0 && p0.editState) || _wmEd)));
+    /* [2026-09-12 ZH] 🔴 **캐러셀 3장을 다시 열면 사진이 1장만 들어왔다.**
+       장별 편집은 사진마다 editState 를 따로 갖는데, 두 종류가 섞여 있다.
+         · 저장 순간 '보던 장' → **전체 스냅샷**(photos 3장 · adj 3개 · 비율 · 채우기)
+         · 나머지 장 → onDone 의 장별 합성이 만든 **자기 원판 1장짜리**(adj [] · fitMode 'contain' 고정)
+       재편집은 `_activeEditPhoto()` 한 장의 스냅샷만 보고 열기 때문에,
+         ① 1장짜리를 집으면 `_restoreState` 가 `S.photos` 를 그 1장으로 덮어써
+            편집기 썸네일이 1개가 되고 **2·3번 장은 다시 고칠 방법이 없다**,
+         ② 전체 스냅샷을 집어도 `layersByPhoto` 는 저장에 실리지 않아 **다른 장이 빈 채로** 열리고
+            원장이 썸네일로 장을 넘기는 순간 `_switchPhotoLayers` 가 그 빈 상태를 저장해 **글자가 사라진다**,
+         ③ 1장짜리를 집으면 채우기가 'contain' 으로, 보정이 전부 0 으로 되돌아간다.
+       (실측 2026-09-12 LIVE: 3장 캐러셀 재편집 → '보정할 사진을 고르세요' 아래 썸네일 1개)
+       → 전 장을 통째로 복원한다: **원판** 목록 + 장별 레이어 + 활성 장 번호,
+         그리고 전역 값(비율·채우기·보정·구도)은 **전체 스냅샷 쪽**에서 가져온다.
+       원판을 쓰는 이유: 편집본(editedDataUrl)을 넘기면 레이어가 **두 번 구워진다**.
+       콜라주(여러 장을 한 장으로 합치는 모드)는 사진 목록의 의미가 달라 건드리지 않는다. */
+    var _carousel = null;
+    try {
+      var _epsC = editablePhotos() || [];
+      if (_restore && _epsC.length > 1 && !(_wsEd && _wsEd.mode === 'collage')) {
+        var _basesC = _epsC.map(function (p) { return _cleanBase(p) || photoUrl(p); });
+        var _lbpC = {};
+        _epsC.forEach(function (p, i) {
+          var ls = (p && p.editState && p.editState.layers) || [];
+          if (ls.length) _lbpC[i] = ls.slice();
+        });
+        var _aIdxC = _epsC.map(function (p) { return p && p.id; }).indexOf(p0 && p0.id);
+        if (_aIdxC < 0) _aIdxC = 0;
+        // 전역 값의 주인은 '전 장을 담은' 스냅샷이다. 없으면 지금 것을 그대로 쓴다.
+        var _fullC = null;
+        _epsC.forEach(function (p) {
+          var es = p && p.editState;
+          if (!_fullC && es && Array.isArray(es.photos) && es.photos.length >= _epsC.length) _fullC = es;
+        });
+        var _baseC = _fullC || _finalEs || {};
+        _finalEs = Object.assign({}, _baseC, {
+          photos: _basesC,
+          layers: (_lbpC[_aIdxC] || []).slice()
+        });
+        _carousel = { layersByPhoto: _lbpC, photoIdx: _aIdxC };
+      }
+    } catch (_ce) { void _ce; }
     if (_orchLayers.length && _finalEs) {
       try {
         var _esL = _finalEs.layers || [];
@@ -710,6 +751,9 @@
       // [#17] 이어서 편집 · [ws-hyper] 레이아웃 매칭 시 콜라주 상태 주입(슬롯 재조정) · [T-115 P2] 없으면 ★기본 작업 기억
       // [2026-07-17] 콜라주(레이아웃)엔 기억의 '꾸밈'만 합쳐 얹는다 — 칸 배치는 레이아웃 것 그대로.
       editState: _finalEs,
+      // [2026-09-12 ZH] 캐러셀 재편집 — 장별 레이어와 활성 장(위 _carousel 주석 참조)
+      layersByPhoto: _carousel ? _carousel.layersByPhoto : null,
+      photoIdx: _carousel ? _carousel.photoIdx : null,
       /* [T8-G] 🔴 관찰에 붙일 상황(context). 안 넘기면 WMSignals.begin 이 {} 를 받아
          contextKey 가 전부 '||' 한 바구니가 된다 — 시술·사진수·성격이 다 뭉개져서
          T8-C 의 context 별 집계도, T8-E 의 exact/service/kind 계층도 통째로 죽는다.

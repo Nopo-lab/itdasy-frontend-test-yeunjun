@@ -3567,6 +3567,23 @@
       wmContext: opts.wmContext || null };
     var _ed = (opts.editState && opts.editState.v) ? opts.editState : null;   // [#4/#8/#11/#16] 재편집 이어가기
     if (_ed) { try { _restoreState(_ed); } catch (_re) { _ed = null; } }   // 복원 실패 시 일반 열기로 폴백(앱 안전)
+    /* [2026-09-12 ZH] 캐러셀 재편집 — **장별 레이어와 활성 장**을 되살린다.
+       editState 는 '활성 장' 한 장 분량이라, 이게 없으면 다른 장이 빈 채로 열리고
+       장을 넘기는 순간 `_switchPhotoLayers` 가 그 **빈 상태를 저장**해 원장의 글자가 사라진다. */
+    if (_ed && opts.layersByPhoto && typeof opts.layersByPhoto === 'object') {
+      try {
+        var _lbpIn = {};
+        Object.keys(opts.layersByPhoto).forEach(function (k) {
+          var ls = opts.layersByPhoto[k];
+          if (Array.isArray(ls) && ls.length) _lbpIn[Number(k)] = ls.slice();
+        });
+        S.layersByPhoto = _lbpIn;
+        var _selIn = Number(opts.photoIdx);
+        if (!(_selIn >= 0 && _selIn < (S.photos || []).length)) _selIn = 0;
+        S.adjSel = _selIn;
+        S.photoUrl = S.photos[_selIn]; S.photoCss = _cssUrl(S.photos[_selIn]);
+      } catch (_lbE) { void _lbE; }
+    }
     /* [2026-09-11] 업로드 화면의 '사진 채우기' 선택을 수동 선택으로 받는다.
        🔴 **복원 뒤에** 적용해야 한다. `_restoreState` 가 `st.fitMode` 로 덮어쓰기 때문에
        앞에 두면 원장이 방금 고른 값이 **옛 저장값에 먹힌다**(실측: 꽉 채움을 눌렀는데
