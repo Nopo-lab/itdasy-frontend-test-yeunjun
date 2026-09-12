@@ -951,9 +951,24 @@
     }
 
     if (!items.length) {
-      box.innerHTML = _dupBannerHTML()
-        + `<div class="dt-empty">${_cache && _cache.length ? (seg !== 'all' ? '이 조건에 맞는 손님이 아직 없어요' : '검색 결과 없음') : '+ 버튼을 눌러 첫 고객을 등록해보세요'}</div>`;
+      /* [2026-09-12 BUG-C2] **못 불러온 것과 진짜 0명을 구분한다.**
+         예전엔 캐시가 비면 무조건 "+ 버튼을 눌러 첫 고객을 등록해보세요" 였다.
+         그런데 오프라인 폴백(`_loadOffline()`)이 빈 배열을 돌려준 경우에도 같은 문구가 떴다 —
+         손님이 없다고 **알 수 없는데 없다고 단정**하는 것이고, 원장님은 이미 있는 손님을
+         다시 등록하게 된다(2026-08 실사고와 같은 결함 클래스, 그때는 선택창만 고쳤다).
+         서버를 못 봤으면 그렇다고 말하고 다시 시도할 길을 준다. */
+      let _emptyMsg;
+      if (_cache && _cache.length) {
+        _emptyMsg = (seg !== 'all' ? '이 조건에 맞는 손님이 아직 없어요' : '검색 결과 없음');
+      } else if (_isOffline) {
+        _emptyMsg = '손님 목록을 불러오지 못했어요.<br>연결을 확인하고 다시 시도해 주세요.'
+          + '<br><button type="button" class="dt-retry" data-cust-retry>다시 시도</button>';
+      } else {
+        _emptyMsg = '+ 버튼을 눌러 첫 고객을 등록해보세요';
+      }
+      box.innerHTML = _dupBannerHTML() + `<div class="dt-empty">${_emptyMsg}</div>`;
       _bindDupBanner(box);
+      _bindListRetry(box);
       return;
     }
     // 검색 키워드 바뀌면 window 리셋
@@ -1460,10 +1475,36 @@
         _rerender();
       } catch (e) {
         console.warn('[customer] list 실패:', e);
-        box.innerHTML = '<div class="dt-error">불러오기 실패</div>';
+        /* [2026-09-12 BUG-C2] 실패를 알리는 것만으로는 부족하다 — 다시 시도할 길을 같이 준다.
+           예전엔 '불러오기 실패' 한 줄이라 원장님이 할 수 있는 게 시트를 닫는 것뿐이었다. */
+        //   `.dt-error` 는 flex 라 자식을 하나로 감싼다(기존 규칙을 건드리지 않기 위해).
+        box.innerHTML = '<div class="dt-error"><div>손님 목록을 불러오지 못했어요.'
+          + '<br><button type="button" class="dt-retry" data-cust-retry>다시 시도</button></div></div>';
+        _bindListRetry(box);
       }
     }
   };
+
+  /* 실패 화면의 '다시 시도' — 캐시를 비우고 서버를 다시 본다.
+     성공하면 평소 렌더로 돌아가고, 또 실패하면 같은 실패 화면이 남는다(조용히 0명이 되지 않는다). */
+  function _bindListRetry(box) {
+    const btn = box && box.querySelector('[data-cust-retry]');
+    if (!btn || btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', async () => {
+      if (btn.dataset.busy === '1') return;
+      btn.dataset.busy = '1';
+      btn.textContent = '불러오는 중…';
+      try {
+        await _fetchFresh();
+        _isOffline = false;
+        _rerender && _rerender();
+      } catch (_e) {
+        btn.dataset.busy = '';
+        btn.textContent = '다시 시도';
+      }
+    });
+  }
 
   window.closeCustomers = function () {
     const sheet = document.getElementById('customerSheet');

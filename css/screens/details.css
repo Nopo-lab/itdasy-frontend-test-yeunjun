@@ -137,6 +137,21 @@
   font-size: 13px;
 }
 
+/* [2026-09-12 BUG-C2] 실패 화면의 '다시 시도' 버튼.
+   실패를 알리기만 하면 원장님이 할 수 있는 게 시트를 닫는 것뿐이다. */
+.dt-retry {
+  margin-top: 10px;
+  padding: 9px 16px;
+  border: 1px solid var(--border, #E5E8EB);
+  border-radius: var(--r-md, 10px);
+  background: var(--surface, #fff);
+  color: var(--text, #191F28);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 /* ── 에러 배너 §5.11 danger ───────────────────────────────────── */
 .dt-error {
   display: flex;
