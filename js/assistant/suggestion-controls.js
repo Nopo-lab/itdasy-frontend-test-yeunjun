@@ -144,6 +144,12 @@
     if (sug && sheet && sheet.contains(sug)) {
       if (typeof isSending === 'function' && isSending()) return true;
       _fillInput(sug.getAttribute('data-suggest'), false);
+      // [ITBI 2차게이트 2026-09-12 · §8] 추천칩 클릭은 지금까지 **직접 타이핑과 구분이 안 됐다.**
+      //   칩이 채우고 send() 를 부르므로 서버에서 보면 똑같은 질문 한 줄이다.
+      //   그래서 "추천칩이 빈 답/실패로 이어진 비율"(RECOMMENDATION_FAILURE_RATE)을
+      //   계산할 방법이 없었다 — 관측 스펙이 요구하는 지표인데 원천 데이터가 없었다.
+      //   다음 한 번의 send 에만 붙는 1회용 표식이다(직접 입력에 새지 않게 소비 즉시 지운다).
+      try { window.__itbiVia = 'chip'; } catch (_e) { void _e; }
       if (typeof send === 'function') send();
       return true;
     }
