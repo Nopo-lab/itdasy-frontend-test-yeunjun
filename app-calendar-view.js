@@ -2750,6 +2750,18 @@
         window.closeCustomers();
       }
     } catch (_e) { void _e; }
+    /* [2026-09-12 BUG-D] 남아 있는 **완료 시트**도 여기서 치운다.
+       예약관리 진입은 언제나 달력에서 시작해야 한다. 이전에 열렸던 완료 시트가
+       display:flex 로 남아 있으면 원장 눈엔 "예약관리를 눌렀더니 웬 완료 창" 이다
+       (실측 당시 startFromBooking 호출 0회 = 새로 연 게 아니라 안 닫힌 것).
+       뒤로가기 등록은 따로 고쳤지만, 그건 back 경로 하나뿐이다 —
+       여기서 치우면 **어떤 경로로 남았든** 유령이 안 된다. */
+    try {
+      if (shown('completeFlowSheet') && window.CompleteFlow
+          && typeof window.CompleteFlow.close === 'function') {
+        window.CompleteFlow.close();
+      }
+    } catch (_e) { void _e; }
   }
 
   window.openCalendarView = async function () {

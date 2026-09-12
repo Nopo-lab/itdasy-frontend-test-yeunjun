@@ -612,6 +612,18 @@
         visit_count: booking.visit_count != null ? Number(booking.visit_count) : null,
       });
     },
+    /* [2026-09-12 BUG-D] 닫는 수단을 정식으로 내보낸다.
+       예전엔 공개 API 가 여는 것뿐이라, 시트가 열린 채 남았을 때 **밖에서 정리할 방법이 없었다.**
+       그래서 예약관리로 들어가면 그대로 유령 시트가 됐다(startFromBooking 호출 0회인데 떠 있음).
+       다른 모듈이 DOM 을 직접 만지지 않고 이 경로로 닫게 한다 —
+       그래야 _bindSheetBack 의 가시성 관찰이 닫힘을 제대로 인식한다. */
+    close() { _close(); },
+    isOpen() {
+      try {
+        const el = document.getElementById('completeFlowSheet');
+        return !!(el && getComputedStyle(el).display !== 'none');
+      } catch (_e) { return false; }
+    },
     show(opts) {
       _openWith({
         booking_id: opts?.booking_id || null,
