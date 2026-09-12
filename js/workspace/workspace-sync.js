@@ -789,6 +789,10 @@
     var tries = 0;
     (function boot() { if (ready()) { sync(); } else if (tries++ < 20) { setTimeout(boot, 800); } })();
     window.addEventListener('online', function () { sync(); });
+    /* [2026-09-12 BUG-S1] 로그인으로 세션이 생기면 그때 깨어난다.
+       부팅 폴링은 16초 만에 포기하고, 같은 탭에서 로그인하면 visibilitychange 도 안 온다.
+       그래서 로그인이 늦으면 작업실이 영영 0개로 남았다(서버엔 멀쩡히 있는데도). */
+    window.addEventListener('itdasy:session-ready', function () { sync(); });
     document.addEventListener('visibilitychange', function () { if (!document.hidden) sync(); });
   }
 

@@ -1074,6 +1074,22 @@ async function applyNewSession(newToken, opts) {
     try { localStorage.setItem('last_user_id', newUserId); } catch (_) { /* storage full / private mode */ }
   }
 
+  /* [2026-09-12 BUG-S1] **세션이 생겼다는 신호를 쏜다.**
+
+     작업실 동기화는 부팅 때 `ready()`(=로그인됨)를 최대 20회×800ms = **16초만** 기다리고 포기한다.
+     로그아웃하면 페이지가 `?_logout=` 으로 다시 뜨는데, 그 16초 안에 로그인하지 못하면
+     그 뒤로 sync 를 깨우는 건 `online` 과 `visibilitychange` 뿐이다 —
+     **같은 탭에서 로그인하면 둘 다 오지 않는다.**
+     결과: 로그인은 됐는데 작업실이 0개로 남고 "첫 글을 만들어보세요" 가 뜬다.
+     서버엔 멀쩡히 있다(실측: 서버 3 / 로컬 0, 30초 기다려도 그대로. sync() 한 번에 3개 복구).
+     원장이 비밀번호를 천천히 치거나 잠깐 딴 데 보면 재현되는, 시간에 달린 결함이었다.
+
+     여기가 세션이 확립되는 유일한 지점이다. 구독자가 알아서 깨어나게 이벤트로 알린다
+     (여기서 WorkspaceSync 를 직접 부르면 로드 순서에 묶인다). */
+  try {
+    window.dispatchEvent(new CustomEvent('itdasy:session-ready', { detail: { userId: newUserId || null } }));
+  } catch (_e) { void _e; }
+
   // /auth/me 동기화 — fire-and-forget (await 제거: 첫 진입 ~200ms 단축)
   // user_id 는 JWT payload.sub 로 이미 확보, email/oauth_provider 만 백그라운드 보강.
   apiFetch('/auth/me', {
