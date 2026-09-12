@@ -1315,7 +1315,13 @@ function authHeader() {
   //   서버가 이미 커밋했는데 응답이 돌아오는 길에 끊기면(WiFi↔LTE 핸드오프·지하철) 래퍼가
   //   같은 POST 를 다시 쏴서 같은 예약/매출이 2건 생긴다(멱등키 없음 → 돈 숫자·이중예약 사고).
   //   GET(?쿼리)·PATCH/{id}·DELETE/{id} 는 읽기/멱등이라 안전 → 재시도 유지. 컬렉션 POST 만 막는다.
-  const CREATE_NO_RETRY_RE = /\/(bookings|revenue|customers)(\?|$)/;
+  //   [전기종 파괴검증 2026-09-12] `support/messages` 추가. 실측: 무응답(타임아웃)에서 **1탭 → POST 3회**,
+  //     네트워크 끊김에서 **1탭 → POST 4회**. 관리자 답장(support/admin/reply)은 이미 위 목록에 있는데
+  //     **원장이 보내는 문의만 빠져 있었다.** 타임아웃은 '안 갔다'가 아니라 '모른다' 라서(서버가 이미
+  //     받아 Discord 알림까지 쐈을 수 있다) 자동 재시도하면 같은 문의가 2~4건 등록된다.
+  //     ⚠️ 끝을 `(\?|$)` 로 막는 게 핵심이다 — 이러면 **컬렉션 POST 만** 걸리고
+  //        `POST /support/messages/read`(읽음 처리, 멱등)와 `GET /support/messages`(목록)는 재시도가 살아 있다.
+  const CREATE_NO_RETRY_RE = /\/(bookings|revenue|customers|support\/messages)(\?|$)/;
   function _isNonIdempotentCreate(input, init) {
     try {
       const m = (init && init.method ? String(init.method).toUpperCase() : 'GET');

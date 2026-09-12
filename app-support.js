@@ -251,7 +251,17 @@
         errSpan.style.cssText = 'color:#e74c3c;font-size:11px;';
         tempEl.appendChild(errSpan);
       }
-      if (window.showToast) window.showToast('전송 실패 — 잠시 후 다시 시도');
+      // [전기종 파괴검증 2026-09-12] 실패하면 **쓴 글을 입력창에 되돌려 준다.**
+      //   예전엔 낙관적 렌더 직후 input 을 비웠다가, 전송이 실패해도 그대로 비어 있었다.
+      //   토스트는 "다시 시도" 라고 하는데 정작 원장이 쓴 문장은 사라져서 **처음부터 다시 타이핑**
+      //   해야 했다(실측: 실패 후 ➤ 를 눌러도 요청 0건 — 입력창이 비어 있어서).
+      //   자동 재시도는 일부러 막아 뒀으므로(app-core.js CREATE_NO_RETRY_RE — 타임아웃 시 문의가
+      //   2~4건 중복 등록되던 것) **수동 재시도 경로는 반드시 살아 있어야 한다.**
+      //   이미 다른 문장을 치고 있으면 덮지 않는다.
+      try {
+        if (input && !input.value) { input.value = content; input.focus(); }
+      } catch (_e) { void _e; }
+      if (window.showToast) window.showToast('전송 실패 — 다시 보내기를 눌러 주세요');
       if (window.hapticError) window.hapticError();
     }
   };

@@ -22,7 +22,7 @@
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
   color: #fff; font-size: 18px; font-weight: 800;
-  user-select: none;
+  -webkit-user-select: none; user-select: none;
 }
 .sv2-acc__info { flex: 1; min-width: 0; }
 .sv2-acc__handle {

@@ -7,7 +7,7 @@
   -webkit-tap-highlight-color: rgba(213,138,149, 0.18);
   -webkit-appearance: none;
   appearance: none;
-  user-select: none;
+  -webkit-user-select: none; user-select: none;
   position: relative;
   z-index: 1;
   min-height: 44px;

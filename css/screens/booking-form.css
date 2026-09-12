@@ -116,7 +116,7 @@
   font-variant-numeric: tabular-nums;
   scroll-snap-align: center;
   scroll-snap-stop: always;
-  user-select:none;
+  -webkit-user-select: none; user-select: none;
   transition: color .15s, font-size .15s, font-weight .15s;
 }
 .bf-tp-row.current {

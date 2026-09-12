@@ -136,7 +136,15 @@
       #${ID} .dmm-it{border-bottom:.5px solid rgba(0,0,0,.06)}
       #${ID} .dmm-it:last-child{border-bottom:0}
       #${ID} .dmm-row{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
-      #${ID} .dmm-chip{font-size:13px;font-weight:800;color:var(--brand-strong,#BC6675);background:var(--brand-bg,#F7EFF0);border:.5px solid rgba(0,0,0,.08);border-radius:999px;padding:6px 12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      /* [전기종 파괴검증 2026-09-12] 버튼 라벨은 길게 눌러도 선택되면 안 된다 — 실기기 재현:
+         아이폰에서 '예약하기' 칩을 길게 누르면 파랗게 잡히고 '복사하기' 팝업이 떴다.
+         이 행 자체가 탭 대상이라 선택이 뜨면 조작이 방해된다. -webkit- 짝 필수 (접두사 없는
+         user-select 는 iOS WebKit 이 통째로 무시한다). */
+      /* 행 전체가 탭 대상이라 라벨/설명도 선택되면 안 된다 — 칩만 막았더니 iOS 가
+         선택을 옆 제목(.dmm-tx .mt)으로 옮겨 그대로 복사 팝업이 떴다(실기기 재현).
+         입력창(.dmm-in/.dmm-lblin/textarea)은 건드리지 않는다 — 편집이 막힌다. */
+      #${ID} .dmm-row .dmm-tx{-webkit-user-select:none;user-select:none}
+      #${ID} .dmm-chip{-webkit-user-select:none;user-select:none;font-size:13px;font-weight:800;color:var(--brand-strong,#BC6675);background:var(--brand-bg,#F7EFF0);border:.5px solid rgba(0,0,0,.08);border-radius:999px;padding:6px 12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       #${ID} .dmm-tx{flex:1;min-width:0}
       #${ID} .dmm-tx .mt{font-size:13px;font-weight:700;color:#191F28}
       #${ID} .dmm-tx .ms{font-size:11px;color:#8B95A1;margin-top:1px}
