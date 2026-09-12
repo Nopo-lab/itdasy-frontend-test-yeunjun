@@ -14,13 +14,23 @@
 
 무엇을 하나
 -----------
-`index.html` 과 `js/load-groups.js` 안에서 **이미 ?v= 가 붙어 있는 로컬 js/css** 를 찾아
-전부 같은 값으로 바꾼다. CI 산출물만 바뀌고 레포 파일은 커밋하지 않는다(배포 워크플로 안에서만 실행).
+`index.html` · `js/load-groups.js` · `style.css` 안에서 로컬 js/css 의 `?v=` 를 찾아
+전부 같은 값으로 바꾼다(안 붙어 있으면 새로 붙인다).
+CI 산출물만 바뀌고 레포 파일은 커밋하지 않는다(배포 워크플로 안에서만 실행).
 
 일부러 안 하는 것
 -----------------
 - `//` 가 들어간 절대 URL(외부 CDN)은 건드리지 않는다.
-- `style.css` 의 `@import` 는 TARGETS 밖이라 **자동 갱신되지 않는다** — 손으로 올려야 한다.
+
+⚠️ style.css 의 @import — 2026-09-12 에 TARGETS 에 추가했다
+-----------------------------------------------------------
+`style.css` 는 `@import url("style-base.css?v=...")` 로 자식 6개를 부른다.
+그런데 TARGETS 에 없어서 **그 6개의 ?v= 가 그대로 얼어붙어 있었다.**
+
+무엇이 나빴나: index.html 의 `style.css?v=` 는 자동으로 올라가니 브라우저가 style.css 는
+**새로 받는다.** 그런데 그 안의 자식 URL 이 옛 ?v= 그대로라 **자식 CSS 는 캐시에서 꺼내 쓴다.**
+겉보기엔 캐시버스팅이 도는 것 같은데 실제 스타일은 안 바뀌는, 가장 속기 쉬운 형태다.
+2026-09-12 실측: style-dark.css 가 `?v=20260520-v242` 로 약 4개월째 고정이었다.
 
 ⚠️ 옛 설명 정정 (2026-09-12)
 ---------------------------
@@ -38,7 +48,9 @@ import io
 import re
 import sys
 
-TARGETS = ("index.html", "js/load-groups.js")
+# style.css 는 @import 로 자식 css 6개를 부른다 — 여기 없으면 그 ?v= 가 영구 고정된다
+# (2026-09-12 실측: style-dark.css 가 4개월째 ?v=20260520-v242).
+TARGETS = ("index.html", "js/load-groups.js", "style.css")
 
 # 따옴표 안의 (상대경로) *.js / *.css 뒤에 붙은 ?v=... 만 교체.
 #   앞의 [\"'] 로 시작을 고정 → 주석·본문 텍스트를 잘못 건드리지 않는다.
@@ -101,6 +113,21 @@ def main() -> int:
               file=sys.stderr)
         return 1
     print("✅ load-groups.js 자체 버전까지 확인")
+    # style.css 의 @import 자식들도 같이 올라갔는지 본다.
+    #   index.html 의 style.css?v= 는 자동으로 올라가므로 브라우저는 style.css 를 새로 받는다.
+    #   그런데 그 안의 자식 URL 이 옛 ?v= 면 자식 CSS 는 캐시에서 나온다 —
+    #   '버스팅이 도는 것처럼 보이는데 스타일은 안 바뀌는' 가장 속기 쉬운 실패다.
+    try:
+        css = io.open("style.css", encoding="utf-8").read()
+    except FileNotFoundError:
+        css = ""
+    if css:
+        _imports = re.findall(r'@import\s+url\(["\']([^"\')]+)["\']\)', css)
+        stale = [m for m in _imports if f"?v={version}" not in m]
+        if stale:
+            print(f"❌ style.css 의 @import 가 안 바뀌었다: {stale}", file=sys.stderr)
+            return 1
+        print(f"✅ style.css @import 자식 {len(_imports)}개까지 확인")
     return 0
 
 
