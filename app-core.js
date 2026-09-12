@@ -530,6 +530,19 @@ function _recoverIgProfilePic() {
   })();
   return _igPicRecoverPromise;
 }
+/* [2026-09-12] 인스타 프사를 쓰는 유일한 통로.
+   **연동돼 있을 때만** 돌려준다. 예전엔 화면마다 `localStorage.getItem('itdasy:ig_profile_pic')`
+   을 직접 읽어서, 캐시 정리가 한 박자 늦거나(계정 전환 purge 는 requestIdleCallback) /status 가
+   401 이라 정리를 못 한 순간에 **"인스타 미연동" 이라 써놓고 인스타 얼굴을 띄웠다.**
+   새로 프사를 쓰는 화면을 만들면 이 함수를 쓴다 — 직접 localStorage 를 읽지 말 것. */
+window.igCachedProfilePic = function () {
+  try {
+    const st = window._lastIgState;
+    if (st && !st.connected) return '';
+    return localStorage.getItem('itdasy:ig_profile_pic') || '';
+  } catch (_e) { return ''; }
+};
+
 window.handleIgAvatarError = function (imgEl, slotEl, fallbackHTML) {
   const oldSrc = (imgEl && imgEl.src) || '';
   _recoverIgProfilePic().then((fresh) => {
@@ -556,7 +569,8 @@ function updateHeaderProfile(handle, tone, picUrl) {
   //   인스타 프사가 떴다가 사라지던 버그 방지. 로그아웃·연동해제는 호출 전에 캐시를 지우므로
   //   그때는 정상적으로 이니셜로 떨어짐.
   if (!picUrl) {
-    try { picUrl = localStorage.getItem('itdasy:ig_profile_pic') || ''; } catch (_e) { picUrl = ''; }
+    // [2026-09-12] 미연동이면 빈 값 — igCachedProfilePic 주석 참조.
+    picUrl = window.igCachedProfilePic();
   }
 
   const shopName = localStorage.getItem('shop_name') || '사장님';
@@ -2880,6 +2894,27 @@ window.addEventListener('load', async function() {
     }
   })();
 
+  /* [2026-09-12] 인스타 연동이 실패로 끝났을 때 — BE 가 `?ig_error=<슬러그>` 를 달아 돌려보낸다.
+     예전엔 취소·실패가 백엔드 도메인의 JSON 한 줄로 끝나서 앱으로 돌아오지도, 이유를 알지도
+     못했다(라이브 2026-09-11 15:40 실측). 문구는 app-instagram.js 의 IG_FAIL_MESSAGES 가 갖는다.
+     ⚠️ app-instagram.js 가 아직 안 실렸을 수 있어 잠깐 기다렸다 띄운다(로더 순서 의존 금지). */
+  (function() {
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get('ig_error');
+    if (!slug) return;
+    history.replaceState(null, '', window.location.pathname);
+    try { sessionStorage.removeItem('itdasy_oauth_inflight'); } catch (_e) { void _e; }
+    let tries = 0;
+    (function _show() {
+      if (typeof window.showIgReturnFailModal === 'function') { window.showIgReturnFailModal(slug); return; }
+      if (++tries > 40) {   // 8초까지 기다리고 포기 — 그래도 침묵보다는 토스트라도
+        if (typeof window.showToast === 'function') window.showToast('인스타 연동을 마치지 못했어요. 다시 시도해 주세요');
+        return;
+      }
+      setTimeout(_show, 200);
+    })();
+  })();
+
   // T-317 — 토큰 없어도 생체 인증 등록돼 있으면 먼저 시도
   (async () => {
     if (!getToken() && window.Biometric && window.Biometric.isEnabled()) {
@@ -2918,6 +2953,7 @@ window.addEventListener('load', async function() {
     // [v570] OAuth 복귀 의도를 reload 견디는 플래그로 보존 — SW controllerchange→reload 가
     //   ?connected=success 를 날려도 이 플래그로 분석/보고서 흐름을 복원한다(보고서 미노출 hotfix).
     let _pendingReport = false;
+    let _leftForOAuth = false;   // [2026-09-12] 인스타로 나갔다가 못 끝내고 돌아왔나
     try { _pendingReport = sessionStorage.getItem('itdasy_pending_report') === '1'; } catch (_e) { void _e; }
     if (_justOAuthed) {
       try { sessionStorage.setItem('itdasy_pending_report', '1'); } catch (_e) { void _e; }
@@ -2930,12 +2966,26 @@ window.addEventListener('load', async function() {
     } else if (!_pendingReport) {
       // [2026-06-12] OAuth 복귀도 복원 대기도 아닌 일반 부팅이면 inflight 플래그 정리 —
       //   잔존 시 이후 SW 업데이트 controllerchange→reload 를 계속 막는다.
+      // [2026-09-12] 지우기 **전에** 기억해 둔다: 이 플래그가 서 있는데 `connected=success` 가
+      //   아니라면 = "연동하러 인스타로 나갔다가 끝내지 못하고 돌아왔다" 는 뜻이다.
+      //   인스타 자기 화면에서 막히면 우리 콜백이 아예 안 불려서(라이브 2026-09-12 실측:
+      //   authorize 3회 중 콜백 1회) 앱은 아무것도 모른 채 조용히 있었다 — 그 침묵을 없앤다.
+      try { _leftForOAuth = sessionStorage.getItem('itdasy_oauth_inflight') === '1'; } catch (_e) { void _e; }
       try { sessionStorage.removeItem('itdasy_oauth_inflight'); } catch (_e) { void _e; }
     }
     // [2026-06-12] connected=success 직후 경합 제거 — checkInstaStatus 를 먼저 await 로 끝내
     //   (재연동 캐시 정리 선행) 그 다음에 runAutoAnalysisAfterConnect 시작. 동시 출발 금지.
     (async () => {
       try { await checkInstaStatus(); } catch (_e) { void _e; }
+      // [2026-09-12] 인스타에 갔다가 그냥 돌아왔는데 여전히 미연동이면 이유를 알려준다.
+      //   ⚠️ status 를 **먼저** 기다린 뒤 판정한다 — 성공했는데 콜백만 못 받은 경우
+      //   (SW reload 로 ?connected=success 유실 등)에 엉뚱한 실패 안내를 띄우지 않으려고.
+      if (_leftForOAuth && !_justOAuthed && !_pendingReport) {
+        const _st = window._lastIgState;
+        if (_st && !_st.connected && typeof window.showIgReturnFailModal === 'function') {
+          window.showIgReturnFailModal('left');
+        }
+      }
       if (_justOAuthed || _pendingReport) {
         try {
           // [v570] reload 로 ?connected=success 가 사라졌어도 분석 결과가 이미 있으면 보고서 즉시 복원.

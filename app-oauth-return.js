@@ -145,6 +145,20 @@
             } catch (_e2) { /* ignore */ }
           }, 800);
         } catch (_e3) { /* ignore */ }
+      } else if (u.searchParams.get('ig_conflict') === '1') {
+        // [2026-09-12] 이 인스타 계정이 이미 다른 잇데이 계정에 물려 있다.
+        //   웹은 app-core 가 같은 신호를 처리한다. 네이티브는 처리하는 데가 없어서
+        //   **아무 일도 안 일어난 것처럼** 보였다(BE 가 이제 딥링크로도 보낸다).
+        const h = u.searchParams.get('handle') || '';
+        if (typeof window.showInstaConflictModal === 'function') window.showInstaConflictModal(h);
+        else if (window.showToast) window.showToast('이 인스타 계정은 다른 잇데이 계정에서 쓰고 있어요');
+      } else if (u.searchParams.get('ig_error')) {
+        // [2026-09-12] 백엔드가 실패 사유를 슬러그로 실어 딥링크로 돌려보낸다.
+        //   웹(app-core 의 ?ig_error 처리)과 **같은 문구·같은 모달**을 쓴다 — 두 벌로 갈리면
+        //   한쪽만 고쳐지는 게 이 레포의 단골 사고다.
+        const slug = u.searchParams.get('ig_error');
+        if (typeof window.showIgReturnFailModal === 'function') window.showIgReturnFailModal(slug);
+        else if (window.showToast) window.showToast('인스타 연동을 마치지 못했어요. 다시 시도해 주세요');
       } else if (u.searchParams.get('error')) {
         const err = u.searchParams.get('error');
         if (window.showToast) window.showToast('연동 실패: ' + err);

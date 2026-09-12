@@ -37,7 +37,8 @@
     let src = img && img.src ? img.src : '';
     // [2026-06-07] #headerAvatar 가 아직 동기화 안 됐어도 연동된 IG 프사를 직접 폴백 → 홈 아바타에 프사 표시.
     if (!src) {
-      try { src = localStorage.getItem('itdasy:ig_profile_pic') || ''; } catch (_e) { src = ''; }
+      // [2026-09-12] 미연동이면 빈 값 → 이니셜 폴백 (app-core igCachedProfilePic 주석 참조).
+      try { src = window.igCachedProfilePic ? window.igCachedProfilePic() : ''; } catch (_e) { src = ''; }
     }
     const initialHTML = `<span class="hv-header__initial">${esc(shopInitial(shopName()))}</span>`;
     if (src) {
