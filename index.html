@@ -180,29 +180,29 @@ window.__LATEST_BUILD__ = '20260705-v709-fillwide';
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Noto+Serif+KR:wght@500;700&family=Black+Han+Sans&family=Gowun+Dodum&family=Gaegu:wght@400;700&family=Nanum+Pen+Script&family=Jua&family=Do+Hyeon&family=Gamja+Flower&family=Hi+Melody&family=Song+Myung&family=Gothic+A1:wght@400;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/tokens.css?v=local-260831v5">
-<link rel="stylesheet" href="css/icons.css">
+<link rel="stylesheet" href="css/icons.css?v=20260912-busters">
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css" integrity="sha384-UVFvhZP7fWAENUPOoq61rJg5ef6QZW0k5vpAn71041/QS4STvUcJQCGNhStZLGx9" crossorigin="anonymous">
 <!-- [fix #3] bold weight — 작업실 캡션 위저드/시술칩/고객선택 등 ph-bold 아이콘이 폰트 미로드로 빈네모(두부)로 뜨던 버그 (스프라이트 전면 이관은 후속 폴리싱) -->
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css" crossorigin="anonymous">
-<link rel="stylesheet" href="css/components.css">
-<link rel="stylesheet" href="css/patterns.css">
-<link rel="stylesheet" href="css/screens/home.css">
+<link rel="stylesheet" href="css/components.css?v=20260912-busters">
+<link rel="stylesheet" href="css/patterns.css?v=20260912-busters">
+<link rel="stylesheet" href="css/screens/home.css?v=20260912-busters">
 <link rel="stylesheet" href="css/screens/home-v41.css?v=local-260831v5">
 <link rel="stylesheet" href="css/screens/home-pre-connect.css?v=local-260831v5">
 <!-- [2026-05-24] PowerView CSS 제거 — 기능 폐지 -->
 <link rel="stylesheet" href="css/screens/hubs.css?v=local-260831v5">
 <link rel="stylesheet" href="css/screens/hubs-prototype.css?v=local-260831v5">
-<link rel="stylesheet" href="css/screens/dashboard.css">
+<link rel="stylesheet" href="css/screens/dashboard.css?v=20260912-busters">
 <link rel="stylesheet" href="css/screens/details.css?v=local-260831v5">
 <link rel="stylesheet" href="css/screens/customer-v4.css?v=20260805-customer-search-space">
 <link rel="stylesheet" href="css/screens/workshop.css?v=local-260831v5">
-<link rel="stylesheet" href="css/screens/gallery-panels.css">
-<link rel="stylesheet" href="css/screens/gallery-review.css">
-<link rel="stylesheet" href="css/screens/tab-bar.css">
-<link rel="stylesheet" href="css/screens/shop-drawer.css">
+<link rel="stylesheet" href="css/screens/gallery-panels.css?v=20260912-busters">
+<link rel="stylesheet" href="css/screens/gallery-review.css?v=20260912-busters">
+<link rel="stylesheet" href="css/screens/tab-bar.css?v=20260912-busters">
+<link rel="stylesheet" href="css/screens/shop-drawer.css?v=20260912-busters">
 <link rel="stylesheet" href="css/screens/sub-screens.css?v=local-260831v5">
 <link rel="stylesheet" href="css/screens/settings-v2.css?v=local-260831v5">
-<link rel="stylesheet" href="css/screens/calendar.css">
+<link rel="stylesheet" href="css/screens/calendar.css?v=20260912-busters">
 <link rel="stylesheet" href="css/screens/myshop-v3.css?v=local-260831v5">
 <!-- [2026-04-30] 예약관리 v4 — 모바일 + PC + 직원 필터 + now-line + 미니캘 + 통계 -->
 <link rel="stylesheet" href="css/screens/booking-v4.css?v=local-260831v5">
@@ -231,7 +231,7 @@ window.__LATEST_BUILD__ = '20260705-v709-fillwide';
 <link rel="stylesheet" href="css/screens/brand-kit.css?v=local-260831v5">
 <link rel="stylesheet" href="style.css?v=20260904-uxqa4">
 <!-- [2026-04-29] Micro-interaction & Fun — 사용 재미 강화 -->
-<link rel="stylesheet" href="style-fun.css">
+<link rel="stylesheet" href="style-fun.css?v=20260912-busters">
 <!-- [2026-04-30 v65] 허브 카드 + 시트 폴리싱 (lift/active/blur) -->
 <link rel="stylesheet" href="style-hub.css?v=local-260831v5">
 <!-- [v501 Phase1] 작업실 V2 첫 화면 / [v503] 플로우 / [v508] 크롭 -->
@@ -2582,7 +2582,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
      cookie-consent 도 같이 앞으로 옮긴다(둘 다 sync, 6.6KB + CDN).
      CDN 은 SRI 로 무결성 검증(다른 CDN 과 일관성도 맞춤). -->
 <!-- 2026-05-08: cookie-consent 는 Sentry inline init 의 GDPR 가드(window.itdasyConsent) 를 정의하므로 sync 유지 -->
-<script src="app-cookie-consent.js"></script>
+<script src="app-cookie-consent.js?v=20260912-busters"></script>
 <!-- T-327 · Sentry 에러 모니터링 (T-351: GDPR 동의 기반 활성화) -->
 <script>window.SENTRY_DSN_FE = "https://b3732869f4b445bc7a73a5e4cbacc4ed@o4511236563992576.ingest.us.sentry.io/4511236579852288";</script>
 <script src="https://browser.sentry-cdn.com/7.100.0/bundle.min.js" crossorigin="anonymous"
@@ -2645,7 +2645,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
 <script src="js/automation-consent.js?v=20260906-consent-gate" defer></script>
 <script src="app-dm-menu.js?v=20260906-consent-gate" defer></script>
 <script src="app-perf-recovery.js?v=20260805-customer-search-space" defer></script>
-<script src="app-spec-validator.js" defer></script>
+<script src="app-spec-validator.js?v=20260912-busters" defer></script>
 <!-- [2026-08-31] 인스타 토큰 상태 판정 — app-instagram.js·연동관리 허브가 공유.
      ⚠️ app-instagram.js 보다 먼저 로드돼야 한다(배너가 window.IgTokenStatus 를 읽는다). -->
 <script src="js/instagram/token-status.js?v=local-260831v5" defer></script>
@@ -2686,7 +2686,7 @@ window._lazyImgly = function _lazyImgly() {
 };
 </script>
 <script src="app-photo-enhance.js?v=local-260831v5" defer></script>
-<script src="app-sample-captions.js" defer></script>
+<script src="app-sample-captions.js?v=20260912-busters" defer></script>
 <script src="app-push.js?v=20260815-firebase-on" defer></script>
 <script src="app-notifications.js?v=local-260831v5" defer></script>
 <script src="app-oauth-return.js?v=20260803-p0-1a-oauth-token" defer></script>
@@ -2694,7 +2694,7 @@ window._lazyImgly = function _lazyImgly() {
 <!-- [2026-04-29] Fun helpers — 숫자 count-up · confetti · star burst · empty state -->
 <script src="app-fun.js?v=local-260831v5" defer></script>
 <!-- 터치 제스처 통합 (시트 swipe-down · 캘린더 좌우 · 리스트 swipe · 길게누르기) -->
-<script src="app-gestures.js" defer></script>
+<script src="app-gestures.js?v=20260912-busters" defer></script>
 <script src="app-theme.js?v=local-260831v5" defer></script>
 <script src="app-billing.js?v=local-260831v5" defer></script>
 <script src="app-iap.js?v=local-260831v5" defer></script>
@@ -2704,7 +2704,7 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-customer-dashboard.js?v=20260805-customer-search-space" defer></script>
 <!-- [2026-04-29 W5] 회원권 / 정기권 UI -->
 <!-- [2026-04-30] 시트 진입/종료 애니메이션 헬퍼 (SheetAnim) -->
-<script src="app-sheet-anim.js" defer></script>
+<script src="app-sheet-anim.js?v=20260912-busters" defer></script>
 <!-- [2026-04-30] 가격표 사진 업로드 → ServiceTemplate 일괄 등록 -->
 <script src="app-pricelist.js?v=local-260831v5" defer></script>
 <!-- [P1-B 2026-06-09] 외부 가격표·홍보물 이미지 OCR → 우리 editable 템플릿 재구성 (/templates/extract-ocr) -->
@@ -2728,11 +2728,11 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-insights.js?v=local-260831v5" defer></script>
 <script src="app-dashboard.js?v=local-260831v5" defer></script>
 
-<script src="app-photo-match.js" defer></script>
+<script src="app-photo-match.js?v=20260912-busters" defer></script>
 <script src="app-complete-flow.js?v=local-260831v5" defer></script>
 <script src="app-auto-ba.js?v=local-260831v5" defer></script>
 <script src="app-today-brief.js?v=local-260831v5" defer></script>
-<script src="app-home-v41-config.js" defer></script>
+<script src="app-home-v41-config.js?v=20260912-busters" defer></script>
 <script src="js/home/v41-styles.js?v=local-260831v5" defer></script>
 <script src="js/home/v41-actions.js?v=local-260831v5" defer></script>
 <script src="js/home/v41-renderers.js?v=local-260831v5" defer></script>
@@ -2814,19 +2814,19 @@ window._lazyImgly = function _lazyImgly() {
 <script src="app-caption-prefill.js?v=local-260831v5" defer></script>
 <script src="app-ba-auto-trigger.js?v=local-260831v5" defer></script>
 <script src="app-today-morning.js?v=local-260831v5" defer></script>
-<script src="app-ai-suggestions.js" defer></script>
+<script src="app-ai-suggestions.js?v=20260912-busters" defer></script>
 <!-- [P0-2 Phase3] app-report.js → lazy 'extras' 그룹(loader 스텁 openReport 브리지) -->
-<script src="app-empty-state.js" defer></script>
+<script src="app-empty-state.js?v=20260912-busters" defer></script>
 <script src="app-generic-sheet.js?v=local-260831v5" defer></script>
 <script src="app-service-templates.js?v=local-260831v5" defer></script>
 <!-- [2026-05-24] 파워뷰 (PowerView) JS 19개 전부 제거 — 기능 폐지 -->
 <!-- [죽은코드 정리 2026-07-27] app-killer-widgets.js 로드 제거 — 렌더 컨테이너(homeKillerWidgets/dashKiller)가
      DOM 에 없어 모든 위젯이 안 뜨는 죽은 코드였다(HomeV41 로 대체됨). 매 부팅 헛로드만 발생시켜 제거. -->
 
-<script src="app-autocomplete.js" defer></script>
+<script src="app-autocomplete.js?v=20260912-busters" defer></script>
 <!-- [P0-2 Phase2] app-revenue-hub·app-revenue-report → lazy 'revenue' 그룹 -->
 <script src="js/hubs/prototype-render.js?v=local-260831v5" defer></script>
-<script src="app-emoji-storage.js" defer></script>
+<script src="app-emoji-storage.js?v=20260912-busters" defer></script>
 <!-- [2026-05-17 v167] 고객별 추천 chip + AI 브리핑 (P0-3, P1-5) — customer-hub/dashboard 보다 먼저 로드 -->
 <script src="app-customer-chips.js?v=local-260831v5" defer></script>
 <script src="app-customer-ai-brief.js?v=local-260831v5" defer></script>
@@ -2836,11 +2836,11 @@ window._lazyImgly = function _lazyImgly() {
 <!-- [P0-2 Phase3] app-reminder·app-retention-ai·app-review → lazy 'extras' 그룹(loader 스텁 브리지) -->
 <script src="app-phase9-ux.js?v=local-260831v5" defer></script>
 
-<script src="app-biometric.js" defer></script>
+<script src="app-biometric.js?v=20260912-busters" defer></script>
 <!-- 2026-05-01 ── app-referral.js 제거 (친구초대 폐지) -->
 <script src="app-content-report.js?v=local-260831v5" defer></script>
 <!-- D1: 1초 캡션 워크플로우 (사진 1탭 → 캡션·해시태그·9:16 스토리) — defer 비차단 -->
-<script src="app-instant-caption.js" defer></script>
+<script src="app-instant-caption.js?v=20260912-busters" defer></script>
 <!-- E2: 음성 캡션 워크플로우 → lazy 'extras' 그룹(loader 스텁 openVoiceCaption 브리지) -->
 
 <script src="app-debug-panel.js?v=local-260831v5" defer></script>

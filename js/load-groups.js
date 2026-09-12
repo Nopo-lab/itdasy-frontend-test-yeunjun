@@ -186,15 +186,15 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'app-comment-reply-queue.js?v=20260906-consent-gate',
   'app-dm-conversations.js?v=local-260831v5',
   'app-dm-manual-replies.js?v=20260723-dmback',
-  'app-persona-survey.js',
-  'app-support.js',
+  'app-persona-survey.js?v=20260912-busters',
+  'app-support.js?v=20260912-busters',
   'app-membership.js?v=20260907-money-ux',
   'app-template-import.js?v=local-260831v5',
   'app-smart-capture.js?v=local-260831v5',
   'app-import.js?v=local-260831v5',
   'app-sns-hashtag.js?v=local-260831v5',
   'app-receipt-scan.js?v=local-260831v5',
-  'app-import-wizard.js',
+  'app-import-wizard.js?v=20260912-busters',
   'app-waitlist.js?v=local-260831v5',
   'app-growth-story.js?v=20260903-mobqa19',
   'app-data-export.js?v=local-260831v5',
@@ -204,7 +204,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'app-reminder.js?v=local-260831v5',
   'app-retention-ai.js?v=local-260831v5',
   'app-review.js?v=local-260831v5',
-  'app-voice-caption.js'
+  'app-voice-caption.js?v=20260912-busters'
   ],
   // [P0-2 콜드스타트 축소] 검증된 leaf 대형 feature 모듈 — 진입점만 노출·공용 유틸 재정의 0·
   //   부팅 top-level 부작용은 "달력 열린 뒤"에만 의미. loader.js 스텁이 openCalendarView/openBooking 브리지.
