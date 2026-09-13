@@ -89,12 +89,23 @@
     const amount = parseInt(el.querySelector('#p9RevAmount').value, 10);
     if (!amount || amount <= 0) return _toast('금액을 입력해 주세요');
     if (!window.Revenue?.create) return _toast('매출 화면을 먼저 불러오는 중이에요');
-    await window.Revenue.create({
-      amount,
-      method: el.querySelector('#p9RevMethod').value || 'card',
-      customer_id: ctx.customer_id,
-      customer_name: ctx.customer_name || null,
-    });
+    try {
+      await window.Revenue.create({
+        amount,
+        method: el.querySelector('#p9RevMethod').value || 'card',
+        customer_id: ctx.customer_id,
+        customer_name: ctx.customer_name || null,
+      });
+    } catch (e) {
+      /* [P2 2026-09-13] 예전엔 여기서 에러를 안 잡았다 — 데이터 계층(Revenue.create)이 모든 실패에
+         "결과를 확인하지 못했어요" 를 띄워 줘서 겉보기엔 괜찮았다. 그 계층이 이제 **서버가 분명히
+         거절한 4xx(429·400·402…)는 말하지 않고** 호출부에 맡기므로, 안 잡으면 조용히 사라진다.
+         이미 "모른다" 고 말했으면(_unknownShown) 겹쳐 말하지 않는다. 폼은 닫지 않는다. */
+      if (!(e && e._unknownShown)) {
+        _toast('저장 실패: ' + (window._humanError ? window._humanError(e) : '잠시 후 다시 시도해 주세요'));
+      }
+      return;
+    }
     closeQuickRevenue();
     _toast('매출 기록 완료');
   }
