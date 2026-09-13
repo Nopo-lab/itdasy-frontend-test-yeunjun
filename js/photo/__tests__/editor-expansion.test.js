@@ -55,10 +55,16 @@ describe('[레이어 순서] 배열과 DOM 이 같이 움직인다', () => {
     });
   });
   test('🔑 배열 순서와 DOM 순서를 함께 옮긴다 (갈리면 화면≠발행본)', () => {
+    // [2026-09-13] 옮기는 일은 _placeLayerAt 한 곳으로 모았다(되돌리기도 같은 함수를 쓰게).
+    //   reorderLayer 는 반드시 그 함수를 거쳐야 하고, 그 함수가 배열·DOM 을 함께 옮긴다.
     const i = ed.indexOf('function reorderLayer');
-    const seg = ed.slice(i, ed.indexOf('function _syncLayerBtns', i));
-    expect(seg).toMatch(/S\.layers\.splice\(i, 1\); S\.layers\.splice\(to, 0, L\);/);
-    expect(seg).toMatch(/refs\.layers\.appendChild\(x\.el\)/);
+    const seg = ed.slice(i, ed.indexOf('function _placeLayerAt', i));
+    expect(seg).toMatch(/_placeLayerAt\(L, to\);/);
+    expect(seg).not.toMatch(/S\.layers\.splice/);   // 우회해서 배열만 옮기는 경로가 생기면 안 된다
+    const j = ed.indexOf('function _placeLayerAt');
+    const place = ed.slice(j, ed.indexOf('function _syncLayerBtns', j));
+    expect(place).toMatch(/S\.layers\.splice\(i, 1\); S\.layers\.splice\(/);
+    expect(place).toMatch(/refs\.layers\.appendChild\(x\.el\)/);
   });
   test('선택이 없으면 버튼이 꺼진다 (사라지지 않는다 — 자리가 들썩이면 오탭)', () => {
     expect(ed).toMatch(/b\.disabled = !\(L && i >= 0 && i < n - 1\)/);
@@ -69,9 +75,20 @@ describe('[레이어 순서] 배열과 DOM 이 같이 움직인다', () => {
     const seg = ed.slice(i, i + 1200);
     expect(seg).toMatch(/_syncLayerBtns\(\)/);
   });
-  test('되돌리기 스택을 채우지 않는다 — 원장이 되돌리고 싶은 편집이 밀려난다', () => {
+  /* [2026-09-13 계약 변경] 예전 계약은 "순서 변경은 되돌리기 스택을 채우지 않는다
+     (원장이 되돌리고 싶은 편집이 밀려난다)" 였다. 걱정 자체는 맞지만 **대가가 더 컸다.**
+     기록이 없으면 순서 변경 뒤의 ↩ 가 그 변경을 건너뛰고 **앞선 '추가'를 취소**해서
+     원장이 만든 다른 글자·스티커가 사라진다.
+     실측(2026-09-13, Chrome 402×684 실엔진): 글자 2개 → 맨 뒤로 → ↩ → 레이어 2→1.
+     스택은 40개 상한이고 순서 변경은 드문 조작이라 '밀려남' 쪽 위험이 훨씬 작다.
+     → 순서 변경도 한 번 남기고, 되돌리면 원래 자리로 돌아가야 한다. */
+  test('순서 변경은 되돌리기에 남는다 — 안 남기면 ↩ 가 엉뚱한 레이어를 지운다', () => {
     const i = ed.indexOf('function reorderLayer');
-    const seg = ed.slice(i, ed.indexOf('function _syncLayerBtns', i));
-    expect(seg).not.toMatch(/_pushOp/);
+    const seg = ed.slice(i, ed.indexOf('function _placeLayerAt', i));
+    expect(seg).toMatch(/_pushOp\(\{ op: 'order', L: L, from: i, to: to \}\)/);
+    // 실제로 안 움직였으면(맨 앞에서 '앞으로') 쌓지 않는다 — 여기서 먼저 빠져나가야 한다
+    const guard = seg.indexOf('if (to === i) return false;');
+    expect(guard).toBeGreaterThan(0);   // 없으면 indexOf 가 -1 이라 아래 비교가 거짓으로 통과한다
+    expect(guard).toBeLessThan(seg.indexOf("_pushOp({ op: 'order'"));
   });
 });
