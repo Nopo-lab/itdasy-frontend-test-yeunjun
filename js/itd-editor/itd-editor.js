@@ -352,6 +352,13 @@
 
   function build() {
     root = el('div', 'itded');
+    /* [2026-09-13 ZH] 초안 '손댐' 판정 기준 = **원장의 첫 입력 직전 상태.**
+       capture 단계라 버튼·레이어 핸들러가 상태를 바꾸기 **전에** 찍힌다.
+       열기의 rAF 에 기준을 두면 탭이 가려졌을 때(rAF 정지) 기준이 영영 안 잡혀
+       모든 초안이 '손댐'으로 찍혔다 — 실측(숨은 창): 빈 세션이 대기본을 다시 덮음. */
+    ['pointerdown', 'keydown', 'input'].forEach(function (ev) {
+      root.addEventListener(ev, function () { if (S && _draftBaseLight == null) _draftMarkBase(); }, true);
+    });
     root.innerHTML =
       '<div class="itded__stage" data-r="stage">' +
         '<div class="itded__photowrap" data-r="photowrap"><div class="itded__photo" data-r="photo"></div><div class="itded__photofx" data-r="photofx" hidden></div><div class="itded__collage" data-r="collage" hidden></div></div>' +
@@ -761,7 +768,7 @@
   function onRotDown(e, L) {
     e.preventDefault(); e.stopPropagation(); selectLayer(L);
     var b = L.el.getBoundingClientRect();
-    rotd = { L: L, cx: b.left + b.width / 2, cy: b.top + b.height / 2, start: (L.rot || 0), a0: Math.atan2(e.clientY - (b.top + b.height / 2), e.clientX - (b.left + b.width / 2)) };
+    rotd = { L: L, cx: b.left + b.width / 2, cy: b.top + b.height / 2, start: (L.rot || 0), s0: (L.scale || 1), a0: Math.atan2(e.clientY - (b.top + b.height / 2), e.clientX - (b.left + b.width / 2)) };
     try { e.target.setPointerCapture(e.pointerId); } catch (_) { void _; }
   }
   // 크기조절 핸들 — 중심에서의 거리 비율로 scale 조정(모든 레이어 공통).
@@ -771,7 +778,7 @@
     var b = L.el.getBoundingClientRect(); var cx = b.left + b.width / 2, cy = b.top + b.height / 2;
     // [#10] 도형은 '늘리기'(비균등 box 크기), 그 외는 예전대로 균등 scale.
     var isShape = L.type === 'shape' && L.w != null && L.h != null;
-    rsd = { L: L, cx: cx, cy: cy, d0: Math.max(8, Math.hypot(e.clientX - cx, e.clientY - cy)), s0: (L.scale || 1),
+    rsd = { L: L, cx: cx, cy: cy, d0: Math.max(8, Math.hypot(e.clientX - cx, e.clientY - cy)), s0: (L.scale || 1), r0: (L.rot || 0),
       shape: isShape, sx: e.clientX, sy: e.clientY, w0: L.w, h0: L.h, x0: L.x, y0: L.y, before: isShape ? { w: L.w, h: L.h, x: L.x, y: L.y } : null };
     try { rsd._serSnap = _serLayer(L); } catch (_rs) { void _rs; rsd._serSnap = null; }   // [T8-H+ V2] 정규화 기준
     try { e.target.setPointerCapture(e.pointerId); } catch (_) { void _; }
@@ -818,12 +825,17 @@
         : dir === 'up' ? Math.min(S.layers.length - 1, i + 1)
           : Math.max(0, i - 1);
     if (to === i) return false;
-    S.layers.splice(i, 1); S.layers.splice(to, 0, L);
+    _placeLayerAt(L, to);
+    _pushOp({ op: 'order', L: L, from: i, to: to });   // [2026-09-13 ZH] 순서 바꾸기도 되돌리기(↩)에
+    return true;
+  }
+  function _placeLayerAt(L, to) {
+    var i = S.layers.indexOf(L); if (i < 0) return;
+    S.layers.splice(i, 1); S.layers.splice(Math.max(0, Math.min(S.layers.length, to)), 0, L);
     // DOM 도 같은 순서로 다시 붙인다 — 배열이 진실이고 DOM 이 따라간다
     try { S.layers.forEach(function (x) { if (x.el) refs.layers.appendChild(x.el); }); }
     catch (_e) { void _e; }
     _syncLayerBtns();
-    return true;
   }
   function _syncLayerBtns() {
     try {
@@ -1011,6 +1023,41 @@
       if (op.L) { op.L.x = mv.x; op.L.y = mv.y; applyXf(op.L); selectLayer(op.L); }
       return;
     }
+    // [2026-09-13 ZH] 레이어 순서 되돌리기.
+    if (op.op === 'order') {
+      if (op.L) { _placeLayerAt(op.L, undo ? op.from : op.to); selectLayer(op.L); }
+      return;
+    }
+    // [2026-09-13 ZH] 사진 채우기(꽉 채움/전체 보이기) 되돌리기.
+    if (op.op === 'fit') {
+      S.fitMode = undo ? op.before : op.after; S._fitManual = true;
+      try { _syncFitToggle(); applyFit(); } catch (_e) { void _e; }
+      return;
+    }
+    // [2026-09-13 ZH] 붓질·전체 지우기 되돌리기 — 그 장의 비트맵을 통째로 되돌린다.
+    if (op.op === 'draw') {
+      var dv = undo ? op.before : op.after;
+      if (!S.photoDraw) S.photoDraw = {};
+      if (dv) S.photoDraw[op.idx] = dv; else delete S.photoDraw[op.idx];
+      if (op.idx === (S.adjSel != null ? S.adjSel : 0)) { _paintDraw(dv); S._drawInk = !!dv; }
+      return;
+    }
+    // [2026-09-13 ZH] 도형 색·채움·굵기 되돌리기.
+    if (op.op === 'shapestyle') {
+      var sv = undo ? op.before : op.after;
+      if (op.L) { op.L.color = sv.color; op.L.fill = sv.fill; op.L.strokeW = sv.strokeW; styleShape(op.L.tx, op.L); selectLayer(op.L); }
+      return;
+    }
+    // [2026-09-13 ZH] 스티커·글자 크기(scale)·회전(rot) 되돌리기.
+    if (op.op === 'xf') {
+      var xf = undo ? op.before : op.after;
+      if (op.L) {
+        op.L.scale = xf.scale; op.L.rot = xf.rot; applyXf(op.L);
+        if (op.L.type === 'text' && refs.size) refs.size.value = op.L.scale;
+        selectLayer(op.L);
+      }
+      return;
+    }
     // [#10] 도형 늘리기 되돌리기 — w/h/x/y 복원.
     if (op.op === 'resize') {
       var rz = undo ? op.before : op.after;
@@ -1176,6 +1223,7 @@
             before: lpinch._serSnap.size, after: _pa.size });
         }
       }
+      if (_pl) _pushXf(_pl, lpinch.s0, lpinch.r0);   // [2026-09-13 ZH] 핀치 확대·회전도 되돌리기(↩)에
       lpinch = null;
     }
     if (drag) {
@@ -1210,7 +1258,23 @@
           before: { w: wd._serSnap.w }, after: { w: _wa.w } });
       }
     }
+    /* [2026-09-13 ZH] 🔴 **스티커·글자의 크기(⤡)와 회전(↺)이 되돌리기에 안 남았다.**
+       기록되는 건 도형 늘리기(resize)·이동(move)·가로폭(wrap)뿐이었다. 그래서 원장이
+       작은 스티커를 옮기려다 옆의 ⤡ 핸들을 잡아 **거대하게 키운 뒤 ↩ 를 누르면**,
+       ↩ 가 그 단계를 건너뛰고 앞선 '추가'를 취소해 **스티커가 통째로 사라졌다.**
+       다시 실행(↷)은 거대한 상태로만 돌아와서 작은 스티커로 돌아갈 길이 없었다.
+       실측(2026-09-13, iPhone 시뮬레이터 · 네일 사진): 스티커 ≈12pt → 가운데를 끌었더니 ≈190pt,
+       ↩ 1회 → 스티커 없음, ↷ → 190pt.  → 끝났을 때 scale/rot 전후를 한 번 남긴다. */
+    if (rsd && !rsd.shape) _pushXf(rsd.L, rsd.s0, rsd.r0);
+    if (rotd) _pushXf(rotd.L, rotd.s0, rotd.start);
     rotd = null; rsd = null; wd = null;
+  }
+  // 크기·회전이 실제로 바뀌었을 때만 기록한다(탭만 하면 안 남긴다 — move 와 같은 규칙).
+  function _pushXf(L, s0, r0) {
+    if (!L) return;
+    var s1 = L.scale || 1, r1 = L.rot || 0;
+    if (s1 === (s0 || 1) && r1 === (r0 || 0)) return;
+    _pushOp({ op: 'xf', L: L, before: { scale: s0 || 1, rot: r0 || 0 }, after: { scale: s1, rot: r1 } });
   }
 
   /* ── 사진 핀치 확대/이동 (두 손가락, 빈 배경에서) ── */
@@ -2068,11 +2132,27 @@
     _pushOp({ op: 'add', L: L });   // [#10] 도형 추가도 되돌리기(↩) — 예전엔 addShape 만 _pushOp 가 빠져 있었음
   }
   // [#5] 활성 도형에 색/채움/굵기 즉시 반영(새로 만드는 것뿐 아니라 선택된 것에도).
-  function applyShapeStyle() {
+  /* [2026-09-13 ZH] 🔴 **도형 색·채움·굵기가 되돌리기에 안 남았다.**
+     글자의 색·폰트·정렬은 `_pushStyle` 로 남는데 도형 경로(applyShapeStyle)만 빠져 있었다.
+     그래서 화살표 색을 잘못 고른 원장이 ↩ 를 누르면 색이 아니라 **화살표가 통째로 사라졌다.**
+     실측(2026-09-13, iPhone 시뮬레이터 · 네일 사진): 분홍 화살표 → 검정 → ↩ 1회 → 화살표 없음.
+     굵기 슬라이더는 input 이 연속으로 와서, 누르기 시작한 값을 잡아두고 손을 뗄 때(change) 한 번만 남긴다. */
+  var _shapeSnap = null;
+  function _shapeStyleOf(L) { return { color: L.color, fill: !!L.fill, strokeW: L.strokeW }; }
+  function _pushShapeStyle(L, before) {
+    if (!L || !before) return;
+    var after = _shapeStyleOf(L);
+    if (after.color === before.color && after.fill === before.fill && after.strokeW === before.strokeW) return;
+    _pushOp({ op: 'shapestyle', L: L, before: before, after: after });
+  }
+  function applyShapeStyle(defer) {
     var L = S.active; if (!L || L.type !== 'shape') return;
+    var _b = _shapeStyleOf(L);
     L.color = S.shapeColor; L.fill = !!S.shapeFill; L.strokeW = S.shapeThick;
     // [#10] 안쪽 막대/면은 box 를 꽉 채우므로(styleShape width/height:100%) 크기는 box(w/h)가 소유 → 여기선 스타일만 다시.
     styleShape(L.tx, L);
+    if (defer) { if (!_shapeSnap || _shapeSnap.L !== L) _shapeSnap = { L: L, v: _b }; return; }
+    _pushShapeStyle(L, _b);
   }
   // [①] PC/모바일 공통 — 가로 스크롤 줄(폰트/색/칩)을 드래그로 넘김(인스타식 스와이프).
   function enableDragScroll(elm) {
@@ -2611,8 +2691,11 @@
     else if (S.brush === 'eraser') { c.globalCompositeOperation = 'destination-out'; c.lineWidth = S.brushSize * 1.6; }
   }
   var dpos = null, _drawRect = null;
+  var _drawBefore;   // [2026-09-13 ZH] 이번 획 직전 비트맵(되돌리기용). undefined = 획 진행 중 아님
+  function _drawSnap() { try { return S._drawInk ? refs.draw.toDataURL() : null; } catch (_e) { void _e; return null; } }
   function drawDown(e) {
     if (S.tool !== 'draw') return;
+    _drawBefore = _drawSnap();
     _drawRect = refs.stage.getBoundingClientRect();   // [⑤렉] 스트로크 시작 때 1회만 측정 → move 마다 reflow 제거
     dpos = { x: e.clientX - _drawRect.left, y: e.clientY - _drawRect.top };
     strokeStyle(); refs.ctx.beginPath(); refs.ctx.moveTo(dpos.x, dpos.y); refs.ctx.lineTo(dpos.x + 0.1, dpos.y + 0.1); refs.ctx.stroke();
@@ -2626,7 +2709,26 @@
   }
   /* 🔴 [2026-09-11] 한 획이라도 그었으면 표시해 둔다 — 저장 때 캔버스를 상태로 옮길지 판단한다.
      픽셀을 훑어 판정하면 얇은 획을 놓쳐 **그림을 지워버릴** 수 있어 플래그로 간다. */
-  function drawUp() { dpos = null; if (S) S._drawInk = true; }
+  /* [2026-09-13 ZH] 🔴 **붓질이 되돌리기에 안 남아, 붓질 뒤 ↩ 가 엉뚱한 글자를 지웠다.**
+     실측(Chrome 402×684 · 헤어 사진): 글자 'KEEP-ME' → 붓질(잉크 1793px) → ↩ →
+     붓질은 그대로, 글자 삭제. → 획마다 전후 비트맵을 한 번 남긴다. */
+  function drawUp() {
+    var wasStroke = !!dpos;
+    dpos = null; if (S) S._drawInk = true;
+    if (wasStroke && _drawBefore !== undefined) {
+      var _after = null; try { _after = refs.draw.toDataURL(); } catch (_e) { void _e; }
+      _pushOp({ op: 'draw', idx: (S.adjSel != null ? S.adjSel : 0), before: _drawBefore, after: _after });
+    }
+    _drawBefore = undefined;
+  }
+  function _paintDraw(url) {
+    var c = refs.ctx; if (!c || !refs.draw) return;
+    c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, refs.draw.width, refs.draw.height); c.restore();
+    if (!url) return;
+    var im = new Image();
+    im.onload = function () { try { c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(im, 0, 0); c.restore(); } catch (_e) { void _e; } };
+    im.src = url;
+  }
 
   /* ── 합성 내보내기 (사진 줌·콜라주·레이어 회전 반영) ── */
   /* [신뢰성 2026-08-21] 이미지가 load 도 error 도 안 주면 예전엔 **영영 pending** 이었다.
@@ -3016,7 +3118,8 @@
       var fl = e.target.closest('[data-shapefill]'); if (fl) { S.shapeFill = fl.getAttribute('data-shapefill') === '1'; refs.panels.shape.querySelectorAll('[data-shapefill]').forEach(function (x) { x.classList.toggle('on', x === fl); }); applyShapeStyle(); return; }
       var sc = e.target.closest('[data-scolor]'); if (sc) { S.shapeColor = sc.getAttribute('data-scolor'); refs.panels.shape.querySelectorAll('[data-scolor]').forEach(function (x) { x.classList.toggle('on', x === sc); }); applyShapeStyle(); return; }
     });
-    refs.shapeThick.addEventListener('input', function () { S.shapeThick = +refs.shapeThick.value; applyShapeStyle(); });
+    refs.shapeThick.addEventListener('input', function () { S.shapeThick = +refs.shapeThick.value; applyShapeStyle(true); });
+    refs.shapeThick.addEventListener('change', function () { if (_shapeSnap) { _pushShapeStyle(_shapeSnap.L, _shapeSnap.v); _shapeSnap = null; } });
     // [#3] 스티커 시트 그립은 이제 data-pgrip → 아래 _attachSheetSwipe 가 일괄 처리(다른 패널과 동일하게 스와이프-닫기).
     // [#7] 각 도구패널 상단 grip 아래로 긁으면 닫기(스티커 포함)
     root.querySelectorAll('[data-pgrip]').forEach(function (g) { _attachSheetSwipe(g); });
@@ -3029,7 +3132,7 @@
       var t = e.target.closest('[data-lay]'); if (t) { selectLayout(+t.getAttribute('data-lay')); return; }
       var th = e.target.closest('[data-laythumb]'); if (th) { onLayThumb(+th.getAttribute('data-laythumb')); return; }
       var bg = e.target.closest('[data-bg]'); if (bg) { S.collageBg = bg.getAttribute('data-bg'); S.collageBgImg = null; saveBgPref(); refs.panels.layout.querySelectorAll('[data-bg]').forEach(function (x) { x.classList.toggle('on', x === bg); }); renderCollage(); applyFit(); recutWithBg(); return; }
-      var ft = e.target.closest('[data-fit]'); if (ft) { S.fitMode = ft.getAttribute('data-fit'); S._fitManual = true; refs.layFit.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === ft); }); applyFit(); return; }
+      var ft = e.target.closest('[data-fit]'); if (ft) { var _fb = S.fitMode; S.fitMode = ft.getAttribute('data-fit'); S._fitManual = true; refs.layFit.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === ft); }); applyFit(); if (_fb !== S.fitMode) _pushOp({ op: 'fit', before: _fb, after: S.fitMode }); return; }
     });
     enableDragScroll(refs.layStrip); enableDragScroll(refs.panels.layout.querySelector('.itlay2__types'));
     refs.layGap.addEventListener('input', function () { S.collageGap = +refs.layGap.value; renderCollage(); });
@@ -3086,7 +3189,7 @@
     enableDragScroll(refs.adjStrip);
     // 그리기
     root.querySelector('[data-panel="draw"] .itdrawp__tools').addEventListener('click', function (e) {
-      if (e.target.closest('[data-r="drawClear"]')) { if (refs.ctx && refs.draw) { refs.ctx.clearRect(0, 0, refs.draw.width, refs.draw.height); if (S) { S._drawInk = false; try { delete S.photoDraw[(S.adjSel != null) ? S.adjSel : 0]; } catch (_dc) { void _dc; } } toastIt('그림을 지웠어요'); } return; }   // [#6] 그리기 전체 지우기
+      if (e.target.closest('[data-r="drawClear"]')) { if (refs.ctx && refs.draw) { var _cb = _drawSnap(); refs.ctx.clearRect(0, 0, refs.draw.width, refs.draw.height); if (S) { S._drawInk = false; try { delete S.photoDraw[(S.adjSel != null) ? S.adjSel : 0]; } catch (_dc) { void _dc; } } if (_cb) _pushOp({ op: 'draw', idx: (S.adjSel != null ? S.adjSel : 0), before: _cb, after: null }); toastIt('그림을 지웠어요 — 되돌리려면 ↩'); } return; }   // [#6] 그리기 전체 지우기
       var b = e.target.closest('[data-brush]'); if (!b) return; S.brush = b.getAttribute('data-brush'); root.querySelectorAll('[data-brush]').forEach(function (x) { x.classList.toggle('on', x === b); });
     });
     refs.brushSize.addEventListener('input', function () { S.brushSize = +refs.brushSize.value; });
@@ -3314,6 +3417,7 @@
   var DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
   var DRAFT_TICK_MS = 2000;
   var _draftTimer = null, _draftLastJson = '', _draftMediaSig = '', _draftBar = null;
+  var _draftBaseLight = null;   // [2026-09-13 ZH] 이 세션이 열렸을 때의 상태 — 원장이 손을 댔는지 판정 기준
 
   /** 큰 값(dataURL)은 따로 뺀다 — sessionStorage 에 넣으면 quota 로 저장 자체가 실패한다. */
   function _splitDraft(st) {
@@ -3357,7 +3461,9 @@
       _flushEditingText();
       var st = _exportState(); if (!st) return;
       var sp = _splitDraft(st);
-      var lightJson = JSON.stringify({ v: 1, ts: Date.now(), sig: _photosSig(sp.media.photos), state: sp.light });
+      var _lightOnly = JSON.stringify(sp.light);
+      var lightJson = JSON.stringify({ v: 1, ts: Date.now(), sig: _photosSig(sp.media.photos), state: sp.light,
+        touched: _draftBaseLight != null && _lightOnly !== _draftBaseLight });
       if (lightJson === _draftLastJson) return;                 // 안 바뀌었으면 안 쓴다
       _draftLastJson = lightJson;
       try { sessionStorage.setItem(DRAFT_KEY, lightJson); }
@@ -3381,9 +3487,12 @@
       }
     } catch (_e) { void _e; }
   }
+  function _draftMarkBase() {
+    try { var st = _exportState(); if (st) _draftBaseLight = JSON.stringify(_splitDraft(st).light); } catch (_e) { void _e; }
+  }
   function _draftStart() {
     _draftStop();
-    _draftLastJson = ''; _draftMediaSig = '';
+    _draftLastJson = ''; _draftMediaSig = ''; _draftBaseLight = null;
     _draftTimer = setInterval(function () { _draftSnap(false); }, DRAFT_TICK_MS);
   }
   function _draftStop() { if (_draftTimer) { clearInterval(_draftTimer); _draftTimer = null; } }
@@ -3392,10 +3501,25 @@
      원장이 '이어서 편집' 을 누르기도 전에 되살릴 대상이 사라졌다. 배너가 안 뜬 것도 같은 원인이다.
      → 열 때 기존 초안을 **pending 키로 옮겨** 격리한다. 진행 중 세션은 DRAFT_KEY 에만 쓴다.
      pending 도 sessionStorage 라 리로드를 한 번 더 겪어도 살아남는다(복구를 미뤄도 안 잃는다). */
+  /* [2026-09-13 ZH] 🔴 **복구 배너를 띄운 채 한 번 더 새로고침되면 원래 초안이 사라졌다.**
+     새로 연 세션은 원장이 아무것도 안 해도 2초 뒤 자기 (빈) 상태를 DRAFT_KEY 에 쓴다.
+     다음 새로고침에서 여기가 그걸 **무조건** pending 으로 옮겨서, 되살릴 진짜 초안을 덮었다.
+     배너는 그대로 떠서 '이어서 편집' 을 누르면 **아무것도 안 돌아온다**(거짓 복구).
+     실측(2026-09-13, Chrome 402×684 실엔진): 글자 'DRAFT-A' → 새로고침(배너, 안 누름) → pending 에 A 있음
+     → 한 번 더 새로고침 → pending 320B, A 없음. iPhone 시뮬레이터에서도 '가나다' 가 같은 방식으로 사라짐.
+     원장이 배너를 바로 안 누르는 건 흔하고, 배포 직후 앱이 스스로 새로고침하는 경로도 있다.
+     → 복구 대기본이 있으면 **원장이 새 세션에서 실제로 손을 댔을 때만** 교체한다.
+       손 안 댄 세션의 초안은 버린다(그 상태는 사진만 있는 기본값이라 잃을 게 없다). */
   function _draftStash() {
     try {
       var cur = sessionStorage.getItem(DRAFT_KEY);
-      if (cur) { sessionStorage.setItem(DRAFT_PENDING_KEY, cur); sessionStorage.removeItem(DRAFT_KEY); }
+      if (!cur) return;
+      var pend = sessionStorage.getItem(DRAFT_PENDING_KEY);
+      var touched = true;
+      try { var o = JSON.parse(cur); if (o && o.touched === false) touched = false; } catch (_pe) { void _pe; }
+      if (!touched) { sessionStorage.removeItem(DRAFT_KEY); return; }   // 손 안 댄 세션 = 되살릴 게 없다(대기본도 안 덮고, 빈 배너도 안 띄운다)
+      void pend;
+      sessionStorage.setItem(DRAFT_PENDING_KEY, cur); sessionStorage.removeItem(DRAFT_KEY);
     } catch (_e) { void _e; }
   }
   function _draftDropPending() { try { sessionStorage.removeItem(DRAFT_PENDING_KEY); } catch (_e) { void _e; } }
