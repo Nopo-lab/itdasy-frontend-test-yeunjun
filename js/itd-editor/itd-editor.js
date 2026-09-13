@@ -352,6 +352,13 @@
 
   function build() {
     root = el('div', 'itded');
+    /* [2026-09-13 ZH] 초안 '손댐' 판정 기준 = **원장의 첫 입력 직전 상태.**
+       capture 단계라 버튼·레이어 핸들러가 상태를 바꾸기 **전에** 찍힌다.
+       열기의 rAF 에 기준을 두면 탭이 가려졌을 때(rAF 정지) 기준이 영영 안 잡혀
+       모든 초안이 '손댐'으로 찍혔다 — 실측(숨은 창): 빈 세션이 대기본을 다시 덮음. */
+    ['pointerdown', 'keydown', 'input'].forEach(function (ev) {
+      root.addEventListener(ev, function () { if (S && _draftBaseLight == null) _draftMarkBase(); }, true);
+    });
     root.innerHTML =
       '<div class="itded__stage" data-r="stage">' +
         '<div class="itded__photowrap" data-r="photowrap"><div class="itded__photo" data-r="photo"></div><div class="itded__photofx" data-r="photofx" hidden></div><div class="itded__collage" data-r="collage" hidden></div></div>' +
@@ -3410,6 +3417,7 @@
   var DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
   var DRAFT_TICK_MS = 2000;
   var _draftTimer = null, _draftLastJson = '', _draftMediaSig = '', _draftBar = null;
+  var _draftBaseLight = null;   // [2026-09-13 ZH] 이 세션이 열렸을 때의 상태 — 원장이 손을 댔는지 판정 기준
 
   /** 큰 값(dataURL)은 따로 뺀다 — sessionStorage 에 넣으면 quota 로 저장 자체가 실패한다. */
   function _splitDraft(st) {
@@ -3453,7 +3461,9 @@
       _flushEditingText();
       var st = _exportState(); if (!st) return;
       var sp = _splitDraft(st);
-      var lightJson = JSON.stringify({ v: 1, ts: Date.now(), sig: _photosSig(sp.media.photos), state: sp.light });
+      var _lightOnly = JSON.stringify(sp.light);
+      var lightJson = JSON.stringify({ v: 1, ts: Date.now(), sig: _photosSig(sp.media.photos), state: sp.light,
+        touched: _draftBaseLight != null && _lightOnly !== _draftBaseLight });
       if (lightJson === _draftLastJson) return;                 // 안 바뀌었으면 안 쓴다
       _draftLastJson = lightJson;
       try { sessionStorage.setItem(DRAFT_KEY, lightJson); }
@@ -3477,9 +3487,12 @@
       }
     } catch (_e) { void _e; }
   }
+  function _draftMarkBase() {
+    try { var st = _exportState(); if (st) _draftBaseLight = JSON.stringify(_splitDraft(st).light); } catch (_e) { void _e; }
+  }
   function _draftStart() {
     _draftStop();
-    _draftLastJson = ''; _draftMediaSig = '';
+    _draftLastJson = ''; _draftMediaSig = ''; _draftBaseLight = null;
     _draftTimer = setInterval(function () { _draftSnap(false); }, DRAFT_TICK_MS);
   }
   function _draftStop() { if (_draftTimer) { clearInterval(_draftTimer); _draftTimer = null; } }
@@ -3488,10 +3501,25 @@
      원장이 '이어서 편집' 을 누르기도 전에 되살릴 대상이 사라졌다. 배너가 안 뜬 것도 같은 원인이다.
      → 열 때 기존 초안을 **pending 키로 옮겨** 격리한다. 진행 중 세션은 DRAFT_KEY 에만 쓴다.
      pending 도 sessionStorage 라 리로드를 한 번 더 겪어도 살아남는다(복구를 미뤄도 안 잃는다). */
+  /* [2026-09-13 ZH] 🔴 **복구 배너를 띄운 채 한 번 더 새로고침되면 원래 초안이 사라졌다.**
+     새로 연 세션은 원장이 아무것도 안 해도 2초 뒤 자기 (빈) 상태를 DRAFT_KEY 에 쓴다.
+     다음 새로고침에서 여기가 그걸 **무조건** pending 으로 옮겨서, 되살릴 진짜 초안을 덮었다.
+     배너는 그대로 떠서 '이어서 편집' 을 누르면 **아무것도 안 돌아온다**(거짓 복구).
+     실측(2026-09-13, Chrome 402×684 실엔진): 글자 'DRAFT-A' → 새로고침(배너, 안 누름) → pending 에 A 있음
+     → 한 번 더 새로고침 → pending 320B, A 없음. iPhone 시뮬레이터에서도 '가나다' 가 같은 방식으로 사라짐.
+     원장이 배너를 바로 안 누르는 건 흔하고, 배포 직후 앱이 스스로 새로고침하는 경로도 있다.
+     → 복구 대기본이 있으면 **원장이 새 세션에서 실제로 손을 댔을 때만** 교체한다.
+       손 안 댄 세션의 초안은 버린다(그 상태는 사진만 있는 기본값이라 잃을 게 없다). */
   function _draftStash() {
     try {
       var cur = sessionStorage.getItem(DRAFT_KEY);
-      if (cur) { sessionStorage.setItem(DRAFT_PENDING_KEY, cur); sessionStorage.removeItem(DRAFT_KEY); }
+      if (!cur) return;
+      var pend = sessionStorage.getItem(DRAFT_PENDING_KEY);
+      var touched = true;
+      try { var o = JSON.parse(cur); if (o && o.touched === false) touched = false; } catch (_pe) { void _pe; }
+      if (!touched) { sessionStorage.removeItem(DRAFT_KEY); return; }   // 손 안 댄 세션 = 되살릴 게 없다(대기본도 안 덮고, 빈 배너도 안 띄운다)
+      void pend;
+      sessionStorage.setItem(DRAFT_PENDING_KEY, cur); sessionStorage.removeItem(DRAFT_KEY);
     } catch (_e) { void _e; }
   }
   function _draftDropPending() { try { sessionStorage.removeItem(DRAFT_PENDING_KEY); } catch (_e) { void _e; } }
