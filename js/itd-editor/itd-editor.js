@@ -3016,7 +3016,8 @@
       if (editing) { e.preventDefault(); try { editing.tx.blur(); } catch (_b) { void _b; } return; }
       if (S && S.tool) { e.preventDefault(); _closeToolPanel(); return; }
       e.preventDefault();
-      if (S) S._cancelled = true; _draftClear(); close(); if (S && S.onCancel) S.onCancel();
+      if (_draftBar && _draftBar.classList.contains('itded__recover--discard')) { _hideDraftBar(); return; }   // 확인창이 떠 있으면 Esc = 계속 편집
+      _requestCancel('esc');
     });
   } catch (_ke) { void _ke; }
   try {
@@ -3203,7 +3204,7 @@
     refs.stage.addEventListener('pointerup', stageUp);
     refs.stage.addEventListener('pointercancel', stageUp);
     // 닫기/완료
-    refs.cancel.addEventListener('click', function () { if (S) S._cancelled = true; _draftClear(); close(); if (S && S.onCancel) S.onCancel(); });
+    refs.cancel.addEventListener('click', function () { _requestCancel('x'); });
     if (refs.undo) refs.undo.addEventListener('click', function () { _undo(); });   // [P1-3]
     if (refs.redo) refs.redo.addEventListener('click', function () { _redo(); });
     if (refs.peek) refs.peek.addEventListener('click', function () { togglePeek(); });   // [P2-2]
@@ -3550,6 +3551,45 @@
     } catch (_e) { void _e; }
     return Promise.resolve(null);
   }
+  /* [2026-09-13 ZH] 🔴 **X 한 번에 편집한 내용이 확인 없이 통째로 사라졌다.**
+     X·Escape·시스템 뒤로 세 경로 모두 곧바로 닫고 복구 초안까지 지워서 되돌릴 길이 없었다.
+     좌상단 X 는 '패널 닫기'로 오인하기 쉬운 자리다.
+     실측(2026-09-13, iPhone 시뮬레이터 · 실 WebKit · 헤어 사진): 글자 '첫방문'(한글 IME) → X 1회 → 편집기 닫힘, 복구 배너 없음.
+     → 원장이 **이 세션에서 실제로 바꾼 게 있을 때만** 묻는다(아무것도 안 했으면 예전처럼 바로 닫는다 — 괜한 확인창 금지).
+       판정은 초안 복구와 같은 기준(첫 입력 직전 상태와 비교)을 쓴다. */
+  function _hasUnsaved() {
+    try {
+      if (!S || _draftBaseLight == null) return false;
+      var st = _exportState(); if (!st) return false;
+      return JSON.stringify(_splitDraft(st).light) !== _draftBaseLight;
+    } catch (_e) { void _e; return true; }   // 판정 실패 = 묻는다(잃는 쪽으로 틀리지 않는다)
+  }
+  function _doCancel() {
+    if (S) S._cancelled = true; _draftClear(); close(); if (S && S.onCancel) S.onCancel();
+  }
+  /** via: 'x' | 'esc' | 'back'.
+      🔴 back 은 **확인창을 띄우지 않는다.** popstate 는 사용자 활성화가 없어서, 편집기를 남기려고
+      history 엔트리를 다시 넣으면 Chrome 이 그 엔트리를 '건너뛸 항목'으로 표시한다(히스토리 개입 정책).
+      그러면 다음 뒤로가 그걸 건너뛰어 **앱의 이전 단계까지 한 칸 더 밀리거나 앱 밖으로 나간다.**
+      실측(2026-09-13, Android 에뮬레이터 Chrome): 뒤로 → 확인창 → 뒤로 → **Chrome 자체가 홈으로 나감.**
+      → 뒤로는 그대로 닫되 **복구 초안을 남긴다.** 다시 열면 '편집하던 내용이 남아 있어요' 로 되살릴 수 있다. */
+  function _requestCancel(via) {
+    if (!_hasUnsaved()) {
+      if (via === 'back') { _cancelFromPop(); return; }
+      _doCancel(); return;
+    }
+    if (via === 'back') { _closeKeepDraft(); return; }
+    _hideDraftBar();
+    var b = el('div', 'itded__recover itded__recover--discard');
+    b.setAttribute('role', 'alertdialog');
+    b.innerHTML = '<span class="itded__recover-t">편집한 내용을 버릴까요?</span>' +
+      '<button type="button" class="itded__recover-y">계속 편집</button>' +
+      '<button type="button" class="itded__recover-n">버리기</button>';
+    b.querySelector('.itded__recover-y').addEventListener('click', function (e) { e.stopPropagation(); _hideDraftBar(); });
+    b.querySelector('.itded__recover-n').addEventListener('click', function (e) { e.stopPropagation(); _hideDraftBar(); _doCancel(); });
+    root.appendChild(b); _draftBar = b;
+    try { b.querySelector('.itded__recover-y').focus(); } catch (_f) { void _f; }
+  }
   function _hideDraftBar() { if (_draftBar) { try { _draftBar.remove(); } catch (_e) { void _e; } _draftBar = null; } }
   /** 복구 제안 바 — 자동으로 덮어쓰지 않는다. 원장이 고른다(§5 Restore / Discard). */
   function _showDraftBar(onRestore) {
@@ -3754,11 +3794,9 @@
       window.__seOpen = true;
       S._popHandler = function () {
         if (!root || !root.classList.contains('is-open')) return;
-        S._histPushed = false; S._cancelled = true;   // [audit] 저장(export) 진행 중 back → onDone 이중발화 차단
-        _draftClear();                                 // [BUG-02] back = 취소 → 초안 폐기(유령 복구 방지)
-        _swallowNextPop();
-        _teardownBack(true); root.classList.remove('is-open');
-        if (S && S.onCancel) S.onCancel();   // 시스템 back = 취소로 닫기
+        S._histPushed = false;
+        if (S._saving) { _cancelFromPop(); return; }   // [audit] 저장(export) 진행 중 back → 묻지 않고 취소(onDone 이중발화 차단)
+        _requestCancel('back');
       };
       window.addEventListener('popstate', S._popHandler);
       history.pushState({ itded: 1 }, ''); S._histPushed = true;
@@ -3831,6 +3869,26 @@
     setTimeout(function () { window.__seSwallowPop = Math.max(0, (+window.__seSwallowPop || 0) - 1); }, 600);
   }
 
+  /** 뒤로로 나갈 때 — 작업이 있으면 초안을 마지막으로 한 번 동기 저장하고, 지우지 않고 닫는다. */
+  function _closeKeepDraft() {
+    if (!S || !root) return;
+    try { _draftSnap(true); } catch (_ds) { void _ds; }
+    S._histPushed = false; S._cancelled = true;
+    _swallowNextPop();
+    _hideDraftBar();
+    _teardownBack(true); _draftStop(); root.classList.remove('is-open');
+    toastIt('편집하던 내용은 남겨뒀어요 — 다시 열면 이어서 할 수 있어요');
+    if (S && S.onCancel) S.onCancel();
+  }
+  function _cancelFromPop() {
+    if (!S || !root) return;
+    S._histPushed = false; S._cancelled = true;   // [audit] 저장(export) 진행 중 back → onDone 이중발화 차단
+    _draftClear();                                 // [BUG-02] back = 취소 → 초안 폐기(유령 복구 방지)
+    _swallowNextPop();
+    _hideDraftBar();
+    _teardownBack(true); root.classList.remove('is-open');
+    if (S && S.onCancel) S.onCancel();   // 시스템 back = 취소로 닫기
+  }
   function _teardownBack(fromPop) {
     window.__seOpen = false;
     if (S && S._popHandler) { try { window.removeEventListener('popstate', S._popHandler); } catch (_e) { void _e; } S._popHandler = null; }
