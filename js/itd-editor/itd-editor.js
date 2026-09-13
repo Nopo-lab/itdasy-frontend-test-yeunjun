@@ -761,7 +761,7 @@
   function onRotDown(e, L) {
     e.preventDefault(); e.stopPropagation(); selectLayer(L);
     var b = L.el.getBoundingClientRect();
-    rotd = { L: L, cx: b.left + b.width / 2, cy: b.top + b.height / 2, start: (L.rot || 0), a0: Math.atan2(e.clientY - (b.top + b.height / 2), e.clientX - (b.left + b.width / 2)) };
+    rotd = { L: L, cx: b.left + b.width / 2, cy: b.top + b.height / 2, start: (L.rot || 0), s0: (L.scale || 1), a0: Math.atan2(e.clientY - (b.top + b.height / 2), e.clientX - (b.left + b.width / 2)) };
     try { e.target.setPointerCapture(e.pointerId); } catch (_) { void _; }
   }
   // 크기조절 핸들 — 중심에서의 거리 비율로 scale 조정(모든 레이어 공통).
@@ -771,7 +771,7 @@
     var b = L.el.getBoundingClientRect(); var cx = b.left + b.width / 2, cy = b.top + b.height / 2;
     // [#10] 도형은 '늘리기'(비균등 box 크기), 그 외는 예전대로 균등 scale.
     var isShape = L.type === 'shape' && L.w != null && L.h != null;
-    rsd = { L: L, cx: cx, cy: cy, d0: Math.max(8, Math.hypot(e.clientX - cx, e.clientY - cy)), s0: (L.scale || 1),
+    rsd = { L: L, cx: cx, cy: cy, d0: Math.max(8, Math.hypot(e.clientX - cx, e.clientY - cy)), s0: (L.scale || 1), r0: (L.rot || 0),
       shape: isShape, sx: e.clientX, sy: e.clientY, w0: L.w, h0: L.h, x0: L.x, y0: L.y, before: isShape ? { w: L.w, h: L.h, x: L.x, y: L.y } : null };
     try { rsd._serSnap = _serLayer(L); } catch (_rs) { void _rs; rsd._serSnap = null; }   // [T8-H+ V2] 정규화 기준
     try { e.target.setPointerCapture(e.pointerId); } catch (_) { void _; }
@@ -1011,6 +1011,16 @@
       if (op.L) { op.L.x = mv.x; op.L.y = mv.y; applyXf(op.L); selectLayer(op.L); }
       return;
     }
+    // [2026-09-13 ZH] 스티커·글자 크기(scale)·회전(rot) 되돌리기.
+    if (op.op === 'xf') {
+      var xf = undo ? op.before : op.after;
+      if (op.L) {
+        op.L.scale = xf.scale; op.L.rot = xf.rot; applyXf(op.L);
+        if (op.L.type === 'text' && refs.size) refs.size.value = op.L.scale;
+        selectLayer(op.L);
+      }
+      return;
+    }
     // [#10] 도형 늘리기 되돌리기 — w/h/x/y 복원.
     if (op.op === 'resize') {
       var rz = undo ? op.before : op.after;
@@ -1176,6 +1186,7 @@
             before: lpinch._serSnap.size, after: _pa.size });
         }
       }
+      if (_pl) _pushXf(_pl, lpinch.s0, lpinch.r0);   // [2026-09-13 ZH] 핀치 확대·회전도 되돌리기(↩)에
       lpinch = null;
     }
     if (drag) {
@@ -1210,7 +1221,23 @@
           before: { w: wd._serSnap.w }, after: { w: _wa.w } });
       }
     }
+    /* [2026-09-13 ZH] 🔴 **스티커·글자의 크기(⤡)와 회전(↺)이 되돌리기에 안 남았다.**
+       기록되는 건 도형 늘리기(resize)·이동(move)·가로폭(wrap)뿐이었다. 그래서 원장이
+       작은 스티커를 옮기려다 옆의 ⤡ 핸들을 잡아 **거대하게 키운 뒤 ↩ 를 누르면**,
+       ↩ 가 그 단계를 건너뛰고 앞선 '추가'를 취소해 **스티커가 통째로 사라졌다.**
+       다시 실행(↷)은 거대한 상태로만 돌아와서 작은 스티커로 돌아갈 길이 없었다.
+       실측(2026-09-13, iPhone 시뮬레이터 · 네일 사진): 스티커 ≈12pt → 가운데를 끌었더니 ≈190pt,
+       ↩ 1회 → 스티커 없음, ↷ → 190pt.  → 끝났을 때 scale/rot 전후를 한 번 남긴다. */
+    if (rsd && !rsd.shape) _pushXf(rsd.L, rsd.s0, rsd.r0);
+    if (rotd) _pushXf(rotd.L, rotd.s0, rotd.start);
     rotd = null; rsd = null; wd = null;
+  }
+  // 크기·회전이 실제로 바뀌었을 때만 기록한다(탭만 하면 안 남긴다 — move 와 같은 규칙).
+  function _pushXf(L, s0, r0) {
+    if (!L) return;
+    var s1 = L.scale || 1, r1 = L.rot || 0;
+    if (s1 === (s0 || 1) && r1 === (r0 || 0)) return;
+    _pushOp({ op: 'xf', L: L, before: { scale: s0 || 1, rot: r0 || 0 }, after: { scale: s1, rot: r1 } });
   }
 
   /* ── 사진 핀치 확대/이동 (두 손가락, 빈 배경에서) ── */
