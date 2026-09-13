@@ -76,3 +76,37 @@ describe('되돌리기 — 크기·회전 기록 (2026-09-13)', () => {
     expect(body).toMatch(/if \(rsd && !rsd\.shape\)/);
   });
 });
+
+describe('되돌리기 — 도형 색·채움·굵기 기록 (2026-09-13)', () => {
+  // 실측: 분홍 화살표 → 검정 → ↩ 1회 → 화살표가 통째로 사라짐(색이 아니라).
+  test('applyShapeStyle 이 바뀐 스타일을 기록한다', () => {
+    const i = C.indexOf('function applyShapeStyle(defer)');
+    expect(i).toBeGreaterThan(0);
+    const body = C.slice(i, i + 600);
+    expect(body).toMatch(/var _b = _shapeStyleOf\(L\);/);
+    expect(body).toMatch(/_pushShapeStyle\(L, _b\);/);
+    // 기록은 스타일을 **적용한 뒤** 비교해야 한다
+    expect(body.indexOf('styleShape(L.tx, L);')).toBeLessThan(body.indexOf('_pushShapeStyle(L, _b);'));
+  });
+
+  test('변화가 없으면 쌓지 않는다(같은 색을 다시 눌러도 ↩ 가 헛돌지 않게)', () => {
+    const i = C.indexOf('function _pushShapeStyle(L, before)');
+    const body = C.slice(i, i + 400);
+    expect(body).toMatch(/if \(after\.color === before\.color && after\.fill === before\.fill && after\.strokeW === before\.strokeW\) return;/);
+  });
+
+  test('굵기 슬라이더는 연속 input 을 쌓지 않고, 손을 뗄 때(change) 한 번만 남긴다', () => {
+    expect(C).toMatch(/refs\.shapeThick\.addEventListener\('input', function \(\) \{ S\.shapeThick = \+refs\.shapeThick\.value; applyShapeStyle\(true\); \}\);/);
+    expect(C).toMatch(/refs\.shapeThick\.addEventListener\('change', function \(\) \{ if \(_shapeSnap\) \{ _pushShapeStyle\(_shapeSnap\.L, _shapeSnap\.v\); _shapeSnap = null; \} \}\);/);
+    const i = C.indexOf('function applyShapeStyle(defer)');
+    expect(C.slice(i, i + 600)).toMatch(/if \(defer\) \{ if \(!_shapeSnap \|\| _shapeSnap\.L !== L\) _shapeSnap = \{ L: L, v: _b \}; return; \}/);
+  });
+
+  test('되돌리기가 도형 스타일을 다시 그린다', () => {
+    const i = C.indexOf("if (op.op === 'shapestyle')");
+    expect(i).toBeGreaterThan(0);
+    const body = C.slice(i, i + 400);
+    expect(body).toMatch(/var sv = undo \? op\.before : op\.after;/);
+    expect(body).toMatch(/op\.L\.color = sv\.color; op\.L\.fill = sv\.fill; op\.L\.strokeW = sv\.strokeW; styleShape\(op\.L\.tx, op\.L\);/);
+  });
+});

@@ -1011,6 +1011,12 @@
       if (op.L) { op.L.x = mv.x; op.L.y = mv.y; applyXf(op.L); selectLayer(op.L); }
       return;
     }
+    // [2026-09-13 ZH] 도형 색·채움·굵기 되돌리기.
+    if (op.op === 'shapestyle') {
+      var sv = undo ? op.before : op.after;
+      if (op.L) { op.L.color = sv.color; op.L.fill = sv.fill; op.L.strokeW = sv.strokeW; styleShape(op.L.tx, op.L); selectLayer(op.L); }
+      return;
+    }
     // [2026-09-13 ZH] 스티커·글자 크기(scale)·회전(rot) 되돌리기.
     if (op.op === 'xf') {
       var xf = undo ? op.before : op.after;
@@ -2095,11 +2101,27 @@
     _pushOp({ op: 'add', L: L });   // [#10] 도형 추가도 되돌리기(↩) — 예전엔 addShape 만 _pushOp 가 빠져 있었음
   }
   // [#5] 활성 도형에 색/채움/굵기 즉시 반영(새로 만드는 것뿐 아니라 선택된 것에도).
-  function applyShapeStyle() {
+  /* [2026-09-13 ZH] 🔴 **도형 색·채움·굵기가 되돌리기에 안 남았다.**
+     글자의 색·폰트·정렬은 `_pushStyle` 로 남는데 도형 경로(applyShapeStyle)만 빠져 있었다.
+     그래서 화살표 색을 잘못 고른 원장이 ↩ 를 누르면 색이 아니라 **화살표가 통째로 사라졌다.**
+     실측(2026-09-13, iPhone 시뮬레이터 · 네일 사진): 분홍 화살표 → 검정 → ↩ 1회 → 화살표 없음.
+     굵기 슬라이더는 input 이 연속으로 와서, 누르기 시작한 값을 잡아두고 손을 뗄 때(change) 한 번만 남긴다. */
+  var _shapeSnap = null;
+  function _shapeStyleOf(L) { return { color: L.color, fill: !!L.fill, strokeW: L.strokeW }; }
+  function _pushShapeStyle(L, before) {
+    if (!L || !before) return;
+    var after = _shapeStyleOf(L);
+    if (after.color === before.color && after.fill === before.fill && after.strokeW === before.strokeW) return;
+    _pushOp({ op: 'shapestyle', L: L, before: before, after: after });
+  }
+  function applyShapeStyle(defer) {
     var L = S.active; if (!L || L.type !== 'shape') return;
+    var _b = _shapeStyleOf(L);
     L.color = S.shapeColor; L.fill = !!S.shapeFill; L.strokeW = S.shapeThick;
     // [#10] 안쪽 막대/면은 box 를 꽉 채우므로(styleShape width/height:100%) 크기는 box(w/h)가 소유 → 여기선 스타일만 다시.
     styleShape(L.tx, L);
+    if (defer) { if (!_shapeSnap || _shapeSnap.L !== L) _shapeSnap = { L: L, v: _b }; return; }
+    _pushShapeStyle(L, _b);
   }
   // [①] PC/모바일 공통 — 가로 스크롤 줄(폰트/색/칩)을 드래그로 넘김(인스타식 스와이프).
   function enableDragScroll(elm) {
@@ -3043,7 +3065,8 @@
       var fl = e.target.closest('[data-shapefill]'); if (fl) { S.shapeFill = fl.getAttribute('data-shapefill') === '1'; refs.panels.shape.querySelectorAll('[data-shapefill]').forEach(function (x) { x.classList.toggle('on', x === fl); }); applyShapeStyle(); return; }
       var sc = e.target.closest('[data-scolor]'); if (sc) { S.shapeColor = sc.getAttribute('data-scolor'); refs.panels.shape.querySelectorAll('[data-scolor]').forEach(function (x) { x.classList.toggle('on', x === sc); }); applyShapeStyle(); return; }
     });
-    refs.shapeThick.addEventListener('input', function () { S.shapeThick = +refs.shapeThick.value; applyShapeStyle(); });
+    refs.shapeThick.addEventListener('input', function () { S.shapeThick = +refs.shapeThick.value; applyShapeStyle(true); });
+    refs.shapeThick.addEventListener('change', function () { if (_shapeSnap) { _pushShapeStyle(_shapeSnap.L, _shapeSnap.v); _shapeSnap = null; } });
     // [#3] 스티커 시트 그립은 이제 data-pgrip → 아래 _attachSheetSwipe 가 일괄 처리(다른 패널과 동일하게 스와이프-닫기).
     // [#7] 각 도구패널 상단 grip 아래로 긁으면 닫기(스티커 포함)
     root.querySelectorAll('[data-pgrip]').forEach(function (g) { _attachSheetSwipe(g); });
