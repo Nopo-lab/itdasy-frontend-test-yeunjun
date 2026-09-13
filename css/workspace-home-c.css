@@ -36,13 +36,22 @@
 .wf-resume__go{ height:34px; padding:0 16px; border-radius:12px; background:var(--c-ink); color:#fff; font-size:13px; font-weight:700; flex:none; display:flex; align-items:center; }
 
 /* 세그 — 필 형태, active = 검정 채움 흰 글자 */
-.wf-segs{ display:flex; gap:8px; padding:14px 16px 12px; }
-.wf-seg{ height:34px; padding:0 14px; border-radius:17px; background:#fff; border:1px solid var(--c-line); font-size:13px; font-weight:600; color:var(--c-ink2); white-space:nowrap; transition:transform .175s var(--spring),background .175s var(--spring),color .175s var(--spring); }
+/* [2026-09-11 전기기 감사] 320~344px 에서 이 줄이 페이지를 30/20/6px 밀어냈다.
+   pill 3개(전체·진행중·발행됨) + '성과' 가 전부 nowrap 이라 320 에선 350px 가 필요했다.
+   → 필터 3개만 가로 스크롤로 접고, '성과'는 오른쪽에 계속 붙여 둔다.
+     (전체를 스크롤로 만들면 '성과'가 화면 밖으로 나가 영영 안 보인다) */
+.wf-segs{ display:flex; align-items:center; gap:8px; padding:14px 16px 12px; }
+.wf-segs__scroll{ display:flex; gap:8px; flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  /* [2026-09-11] 위아래 5px 여유 — `overflow-x:auto` 는 세로도 자르기 때문에, 칩의 44px 히트
+     확장(::after)이 이 안에 안 들어가면 잘려서 34px 그대로였다(실기기 실측). */
+  padding: 5px 0; margin: -5px 0; }
+.wf-segs__scroll::-webkit-scrollbar{ display:none; }
+.wf-seg{ flex:0 0 auto; height:34px; padding:0 14px; border-radius:17px; background:#fff; border:1px solid var(--c-line); font-size:13px; font-weight:600; color:var(--c-ink2); white-space:nowrap; transition:transform .175s var(--spring),background .175s var(--spring),color .175s var(--spring); }
 .wf-seg:active{ transform:scale(.95); }
 .wf-seg.on{ background:var(--c-ink); border-color:var(--c-ink); color:#fff; font-weight:700; }
 .wf-seg__n{ margin-left:5px; font-weight:700; opacity:.72; font-variant-numeric:tabular-nums; }
 /* [#14] 성과 — 필터 줄 오른쪽 끝. 필터(pill)와 같은 높이·모양이되 '고르는 것'이 아니라 '가는 곳'이라 on 상태 없음 */
-.wf-perf{ margin-left:auto; height:34px; padding:0 13px; border-radius:17px; background:#fff; border:1px solid var(--c-line); font-size:13px; font-weight:600; color:var(--c-ink2); white-space:nowrap; display:inline-flex; align-items:center; gap:5px; transition:transform .175s var(--spring),background .175s var(--spring); }
+.wf-perf{ flex:0 0 auto; margin-left:auto; height:34px; padding:0 13px; border-radius:17px; background:#fff; border:1px solid var(--c-line); font-size:13px; font-weight:600; color:var(--c-ink2); white-space:nowrap; display:inline-flex; align-items:center; gap:5px; transition:transform .175s var(--spring),background .175s var(--spring); }
 .wf-perf:active{ transform:scale(.95); background:var(--c-bg, #f5f5f5); }
 .wf-perf svg{ opacity:.66; }
 

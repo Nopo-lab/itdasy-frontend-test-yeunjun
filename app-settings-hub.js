@@ -55,26 +55,42 @@
     const provLabel = provMap[String(prov).toLowerCase()] || (prov ? prov : '이메일');
     return { provLabel, email };
   }
-  // 연동된 인스타 핸들 / 프사 — 캐시(itdasy:ig_handle / itdasy:ig_profile_pic) 기반.
+  // 연동된 인스타 핸들 / 프사.
+  // [2026-09-12] 판정 기준을 **연동 여부 하나**로 통일한다.
+  //   예전엔 배지는 `itdasy:ig_handle`, 아바타는 `itdasy:ig_profile_pic` — 서로 다른 키 두 개를
+  //   각자 보고 그렸다. 두 키가 어긋나는 순간이 실제로 있어서(핸들만 비었거나, 계정 전환 purge 가
+  //   requestIdleCallback 으로 늦게 돌거나, /status 가 401 이라 캐시 정리를 못 하거나)
+  //   **"인스타 미연동" 이라고 써놓고 인스타 프사를 띄우는** 화면이 나왔다.
+  //   이제 라이브 상태(window._lastIgState, /instagram/status 의 단일 진실원)를 먼저 보고,
+  //   아직 못 받아왔을 때만 캐시로 폴백한다. 미연동이면 프사는 **그리지 않는다**.
   function _igInfo() {
     let handle = '';
     let pic = '';
     // 저장값에 @가 이미 붙어있는 경우가 있어 표시 전에 제거 (@@ 중복 방지)
     try { handle = (localStorage.getItem('itdasy:ig_handle') || '').replace(/^@+/, ''); } catch (_e) { void _e; }
     try { pic = localStorage.getItem('itdasy:ig_profile_pic') || ''; } catch (_e) { void _e; }
-    return { handle, pic };
+    const st = window._lastIgState;
+    if (st) {
+      if (!st.connected) return { handle: '', pic: '', connected: false };
+      handle = String(st.handle || handle || '').replace(/^@+/, '');
+      pic = st.profile_picture_url || pic;
+      return { handle, pic, connected: true };
+    }
+    // 라이브 상태 미수신 — 캐시로 그리되 둘 중 하나라도 비면 '연동됨' 이라고 말하지 않는다.
+    return { handle, pic: handle ? pic : '', connected: !!handle };
   }
   // [2026-07-05 리디자인] 원형 프로필 + @핸들 + 연동 상태 필 배지 — 카드 자체가 설명(라벨 텍스트 제거).
   function _accountHTML() {
     const { provLabel, email } = _accountInfo();
-    const { handle, pic } = _igInfo();
+    const { handle, pic, connected } = _igInfo();
     const emailText = email ? `${_esc(provLabel)} · ${_esc(email)}` : _esc(provLabel);
-    const isUrl = /^https?:\/\//i.test(pic || '');
+    // 미연동이면 인스타 프사를 쓰지 않는다 — "미연동" 이라 써놓고 인스타 얼굴을 띄우면 거짓말이다.
+    const isUrl = connected && /^https?:\/\//i.test(pic || '');
     const initial = (handle || 'I').trim().charAt(0).toUpperCase();
     const avatar = isUrl
       ? `<img class="sv2-acc__avatar" src="${_esc(pic)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
       : `<span class="sv2-acc__avatar sv2-acc__avatar--init">${_esc(initial)}</span>`;
-    const badge = handle
+    const badge = connected
       ? `<span class="sv2-pill sv2-pill--ok">인스타 연동됨</span>`
       : `<button type="button" class="sv2-pill sv2-pill--brand" id="shIgConnect">연동하기</button>`;
     return `
@@ -83,7 +99,7 @@
         <div class="sv2-acc">
           ${avatar}
           <div class="sv2-acc__info">
-            <div class="sv2-acc__handle">${handle ? _esc(window.igHandle(handle)) : '인스타 미연동'}</div>
+            <div class="sv2-acc__handle">${connected && handle ? _esc(window.igHandle(handle)) : '인스타 미연동'}</div>
             <div class="sv2-acc__email">${emailText}</div>
           </div>
           ${badge}

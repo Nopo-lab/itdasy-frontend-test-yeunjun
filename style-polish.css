@@ -489,3 +489,205 @@ button:focus:not(:focus-visible) { outline: none; }
   height: 44px;
   transform: translateY(-50%);
 }
+
+/* 14-c. 손가락 영역 2차 — 전 기기 반응형 감사 [2026-09-11]
+   앞의 14 / 14-b 와 **같은 패턴**이다(새 파일·새 유틸 안 만든다).
+   31기기 × 16화면 × 세로/가로 실측에서 남아 있던 44px 미달 목록:
+     button.ss-close            18×18  ← 연동관리·회원권 등 '닫기' 공통. 가장 작았다
+     .rv-header__month .ar      26×26  ← 매출 월 이동. 원장이 매일 누른다
+     .crq-gear                  27×27  ← 댓글 응대 설정
+     #shHaptic                  36×22  ← 진동 토글
+     .wshc-more                 34×34  ← 작업실 더보기
+     #assistantSheetHeader btn  32×32  ← 잇비 닫기 / ⋯
+     #asstPhoto / #asstMicBtn   40×40  ← 잇비 사진·음성
+   전부 이웃 간격을 먼저 재고(각 방향 최소 여유 gL/gR/gT/gB) 넓혀도 옆 버튼의
+   중심을 안 뺏는 것만 44 로 키웠다. 재검증 기준은 "모든 버튼의 중심 hit-test 가
+   자기 자신을 돌려준다"(감사 하네스 occluded == 0).
+   ⚠️ .bk-view__btn(월/주)·.bk-today-btn 은 14-b 주석대로 **계속 제외** — 세그먼트라
+      좌우가 붙어 있어 넓히면 오탭이 난다. */
+button.ss-close,
+.rv-header__month .ar,
+.crq-gear,
+#shHaptic,
+.wshc-more,
+#assistantSheetHeader button,
+#asstPhoto,
+#asstMicBtn { position: relative; }
+
+button.ss-close::after,
+.rv-header__month .ar::after,
+.crq-gear::after,
+#shHaptic::after,
+.wshc-more::after,
+#assistantSheetHeader button::after,
+#asstPhoto::after,
+#asstMicBtn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+
+/* 세로만 모자란 것 — 위아래 여유가 44 를 다 못 주는 곳은 **잰 만큼만** 넓힌다.
+   .dmm-tg        44×26, 아래 여유 최소 7px  → 40 (44 로 키우면 아랫줄 토글을 먹는다)
+   [data-report-ai] 41×17, 아래 여유 12px    → 40
+   .dmm-addbtn    340×43, 1px 모자람         → 44 */
+.dmm-tg,
+.dmm-addbtn,
+[data-report-ai] { position: relative; }
+
+/* ⚠️ .dmm-tg 는 **::after 를 노브(21×21)로 이미 쓰고 있다**(런타임 <style> 주입이라
+   CSS 파일 grep 으로는 안 보인다 — 실측 computed 로 잡았다). 여기서 ::after 를 쓰면
+   규칙이 무시되거나 노브를 덮는다. 그래서 이것만 ::before 를 쓴다. */
+.dmm-tg::before,
+[data-report-ai]::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 40px;
+  transform: translateY(-50%);
+}
+.dmm-addbtn::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
+/* 14-d. 세그먼트(가로로 붙은 버튼) — **세로로만** 넓힌다 [2026-09-11]
+   .ms-ic__seg-btn(글자 크기 '보통/크게') 39×23. 옆 버튼과 gap 4px 라 가로 확장은 금지
+   (14-b 의 .bk-view__btn 과 같은 이유 — 못 누르는 것보다 엉뚱한 걸 누르는 게 나쁘다).
+   세로는 부모 .ms-ic__row 의 padding 11px 이 위아래로 있어 44 까지 안전하다. */
+.ms-ic__seg-btn { position: relative; }
+.ms-ic__seg-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
+/* 14-e. 결제 팝업 약관 링크 — 실기기(iOS Safari) 감사에서 나온 마지막 미달 [2026-09-11]
+   `#planPopup` 하단 '이용약관 37×14' · '개인정보처리방침 74×14' (11px 본문 안 inline 링크).
+   결제 화면의 법적 고지 링크라 안 눌리면 안 된다.
+   가로는 안 넓힌다 — 두 링크가 ' · ' 하나(8px)를 사이에 두고 나란히 있어 서로를 뺏는다.
+   세로만 44 로 넓힌다(위아래는 클릭 대상이 아닌 안내 문구라 덮어도 무해).
+   ⚠️ 로그인/회원가입의 같은 링크는 **일부러 제외** — 그쪽은 <label> 안이라 링크 영역을
+      넓히면 '필수 약관 동의' 체크박스 탭을 링크가 가로챈다. 지금이 더 안전하다. */
+.legal-link { position: relative; display: inline-block; }
+.legal-link::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
+/* 14-f. 손가락 영역 3차 — **실기기 파괴검증**에서 나온 나머지 [2026-09-11]
+   전 조작요소의 '자기 영역 5점' hit-test 를 돌린 뒤 남은 44px 미달 중, 실제 조작 버튼만 추린다.
+   전부 **가로는 이미 충분하고 세로만 모자란** 것들이라 세로로만 넓힌다(옆 버튼을 안 뺏는다).
+     .ms-foot > button (고객센터·로그아웃)  61×27  · 위 여유 38px  → 44
+     .rvcal-add (+ 이 날 매출 입력)        323×38 · 가로 full      → 44
+     .ss-action (하위화면 저장)             52×35 · 상단바          → 44
+   재검증 기준은 늘 같다: 넓힌 뒤에도 **모든 버튼의 자기 영역 5점이 자기에게 와야 한다**(WRONG=0). */
+.ms-foot > button,
+.rvcal-add,
+.ss-action { position: relative; }
+
+.ms-foot > button::after,
+.rvcal-add::after,
+.ss-action::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
+/* 14-g. 손가락 영역 4차 [2026-09-11 파괴검증 마무리]
+     .sv2-pill (샵 관리의 '연동하기')  64×26 → 세로 44
+     .wf-seg / .wf-perf (작업실 필터·성과)  34 → 세로 44
+   둘 다 가로는 충분하고 세로만 모자라다. 가로는 안 넓힌다 —
+   작업실 필터는 칩이 8px 간격으로 붙어 있어 넓히면 옆 칩을 뺏는다. */
+.sv2-pill,
+.wf-seg,
+.wf-perf { position: relative; }
+
+.sv2-pill::after,
+.wf-seg::after,
+.wf-perf::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
+/* 14-h. PC 사이드바 하단 3개 — 아이패드는 여기를 **손가락으로** 누른다 [2026-09-11 파괴검증]
+   실측(iPad Air 11 · 실제 Safari · 820×1048):
+     .ms-side__fab(작업실) 39 · 고객센터 34 · 로그아웃 30
+   PC 사이드바라고 마우스 전용이 아니다. 가로(203px)는 충분하므로 세로만 44 로 넓힌다. */
+.ms-side__fab,
+.ms-side__logout,
+#sideNav a[data-static-action="support"] { position: relative; }
+
+.ms-side__fab::after,
+.ms-side__logout::after,
+#sideNav a[data-static-action="support"]::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
+/* 14-i. 태블릿(PC 셸 + 손가락) 마지막 3종 [2026-09-11 파괴검증 · iPad 가로 1180×688]
+     .bk-pc__nav-btn (PC 달력 이전/다음 달)  30×30 → 44×44
+     .ms-chart__link (매출관리 →)            69×22 → 세로 44
+   PC 달력의 월 이동은 원장이 매일 누르는 버튼인데, 아이패드에선 30px 였다.
+   월 이름이 사이에 있어 좌우를 넓혀도 서로를 안 뺏는다(실측 후 확장). */
+.bk-pc__nav-btn { position: relative; }
+.bk-pc__nav-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
+}
+.ms-chart__link { position: relative; }
+.ms-chart__link::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
+/* 14-j. 태블릿 달력 — `+ 예약 추가` 만 [2026-09-11]
+     .bk-pc__add-btn (+ 예약 추가) 87×33 → 세로 44 (가로는 이미 충분)
+
+   ⚠️ **미니 달력 이전/다음은 2026-09-12 에 구조를 바꿔서 해결했다.**
+      1차(09-11): 22×22 에 투명 히트박스 44 → '다음' 이 '이전' 의 자기 영역을 먹어 WRONG 발생 → 되돌림.
+      2차(09-12): booking-v4.css 에서 **버튼을 36×36 으로 키우고 gap 을 2→10px** 로 벌렸다.
+      중심 간 거리 46px 이라 아래 44×44 확장이 겹치지 않는다. 숫자를 맞추려고 히트박스만
+      키우지 말고 **간격부터 확보**할 것. */
+.bk-mini__nav > button { position: relative; }
+.bk-mini__nav > button::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
+}
+.bk-pc__add-btn { position: relative; }
+.bk-pc__add-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 44px;
+  transform: translateY(-50%);
+}

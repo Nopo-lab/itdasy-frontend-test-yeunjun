@@ -825,7 +825,7 @@ body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
 .wsv2flow .tpls-dot.on { background: var(--brand-strong); transform: scale(1.35); }
 
 /* PC: 고정 사이드바 가림 방지. [v716] var(--side-nav-width) — ≥768px 232 / ≥1200px 260 자동 정합 */
-@media (width >= 768px) {
+@media (width >= 768px) and (height >= 600px) {
   .wsv2flow { left: var(--side-nav-width); }
   .wsv2flow__s { padding: 6px 24px 24px; }
   .wsv2flow .cap-card { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

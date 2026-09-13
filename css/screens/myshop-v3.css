@@ -33,7 +33,7 @@ body:has(#tab-dashboard.active) #headerPersona { display: none !important; }
 }
 
 /* 2026-05-01 ── 글로벌 #sideNav (.side-nav.ms-side) 는 768px 부터 보임 (style-responsive.css 와 동기). */
-@media (width >= 768px) {
+@media (width >= 768px) and (height >= 600px) {
   #sideNav.ms-side { display: flex; }
 }
 
@@ -290,7 +290,10 @@ body:has(#tab-dashboard.active) #tab-dashboard.tab { max-width: none !important;
   line-height: 1;
   flex-shrink: 0;
 }
-.ms-sheet__body { flex: 1; overflow-y: auto; padding: 4px 18px 22px; }
+/* [2026-09-11 파괴검증] 시트 내용이 화면을 다 안 채우면 **마지막 행이 제스처 바에 2px 걸쳤다**
+   (Galaxy 실측: 연결된 서비스 '카카오톡 채널 연동' bottom 764 > 한계 762).
+   내용이 짧아 스크롤이 없을 때는 스크롤로 피할 수도 없다 → 아래 패딩에 safe-area 를 더한다. */
+.ms-sheet__body { flex: 1; overflow-y: auto; padding: 4px 18px calc(22px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
 .ms-sheet__body::-webkit-scrollbar { width: 0; }
 
 /* ─────────────────────────────────────────────────────────────
@@ -472,7 +475,10 @@ body:has(#tab-dashboard.active) #tab-dashboard.tab { max-width: none !important;
 .ms-side__item {
   appearance: none; -webkit-appearance: none;
   display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 9px 10px;
+  /* [2026-09-11 파괴검증] 아이패드(=PC 셸 + 손가락)에서 이 항목이 **38px** 이었다.
+     PC 사이드바라고 마우스만 오는 게 아니다 — 태블릿은 여기를 손가락으로 누른다.
+     보이는 모양은 그대로 두고 세로 패딩만 12px 로 올려 44px 를 만든다(203px 폭은 이미 충분). */
+  width: 100%; padding: 12px 10px;
   background: none; border: 0; outline: 0;
   border-radius: var(--r-sm);
   cursor: pointer;

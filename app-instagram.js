@@ -1288,8 +1288,13 @@ async function connectInstagram() {
     if (window.IgConnectWarn && !(await window.IgConnectWarn.maybeConfirm())) return;
   } catch (_e) { void _e; }   // 카드가 깨져도 연동 자체는 막지 않는다
 
-  btn.textContent = '연결 중...';
-  btn.disabled = true;
+  // [2026-09-12] btn 은 없을 수 있다 — 연동은 홈의 #instaBtn 말고도 여러 곳에서 시작된다
+  //   (재연동 배너, 연동 실패 안내의 '다시 연동하기', 설정 허브). 없을 때 그냥 두면
+  //   `btn.textContent` 가 try 블록 **밖에서** TypeError 를 던져 연동이 조용히 안 시작된다.
+  if (btn) {
+    btn.textContent = '연결 중...';
+    btn.disabled = true;
+  }
 
 
   try {
@@ -1365,8 +1370,10 @@ async function connectInstagram() {
 
   } catch(e) {
     showToast('연동 중 오류가 발생했습니다. 크롬/사파리에서 재시도해주세요');
-    btn.textContent = 'Instagram 연동';
-    btn.disabled = false;
+    if (btn) {
+      btn.textContent = 'Instagram 연동';
+      btn.disabled = false;
+    }
   }
 }
 
@@ -1409,6 +1416,67 @@ function showInstaConflictModal(handle) {
   });
 }
 window.showInstaConflictModal = showInstaConflictModal;
+
+/* ─────────────────────────────────────────────────────────────
+   [2026-09-12] 인스타 연동이 **끝까지 못 간** 경우의 안내
+
+   왜 필요했나 — "연동하면 앱으로 돌아와야 하는데 인스타에 그대로 남는다":
+     ① 인스타에서 취소하면 Meta 가 `?error=access_denied` 로 우리 콜백을 부르는데,
+        백엔드가 JSON `{"status":"ok"}` 한 줄만 띄우고 끝났다(라이브 2026-09-11 15:40 ×2).
+        → 이제 백엔드가 `?ig_error=denied` 를 달아 **앱으로 302** 한다. 그 문구가 여기 있다.
+     ② 인스타 자기 화면에서 막히는 경우(개인 계정 → 전문가 계정 전환 안내에서 취소 등)는
+        콜백이 **아예 안 온다**(라이브 2026-09-12 04:58~59: authorize 3회 중 콜백 1회).
+        인스타 페이지를 우리가 되돌릴 방법은 없다. 대신 원장님이 앱으로 돌아온 순간
+        `itdasy_oauth_inflight` 로 "연동하러 나갔다가 그냥 왔다"를 알아채고 여기서 안내한다.
+        (안 그러면 아무 일도 안 일어난 것처럼 보여서 같은 실패를 반복한다.)
+   ───────────────────────────────────────────────────────────── */
+const IG_FAIL_MESSAGES = {
+  denied:  ['연동을 취소하셨어요', '인스타 화면에서 <strong>[허용]</strong>을 눌러야 연동이 끝나요.'],
+  blocked: ['인스타가 연동을 막았어요', '<strong>프로페셔널 계정</strong>(비즈니스·크리에이터)만 연동돼요.<br>인스타 앱 → 설정 → <strong>전문가용 계정으로 전환</strong> 후 다시 시도해 주세요.'],
+  profile: ['인스타 계정 정보를 못 받았어요', '인스타가 잠시 응답하지 않았어요. 잠시 후 다시 시도해 주세요.'],
+  expired: ['연동 링크가 만료됐어요', '인스타 화면에서 시간이 너무 지났어요. 다시 시도해 주세요.'],
+  no_code: ['연동이 끝나지 않았어요', '인스타 화면에서 <strong>[허용]</strong>까지 눌러야 연동이 끝나요.'],
+  failed:  ['연동을 마치지 못했어요', '잠시 후 다시 시도해 주세요. 계속 안 되면 고객센터로 알려주세요.'],
+  // 콜백이 아예 안 온 경우(인스타 페이지에 남아 있다가 돌아옴) — 원인을 단정하지 않는다.
+  left:    ['인스타에서 연동이 끝나지 않았어요', '인스타 화면에서 <strong>[허용]</strong>까지 눌러야 해요.<br><strong>프로페셔널 계정</strong>(비즈니스·크리에이터)이어야 연동됩니다.'],
+};
+
+function showIgReturnFailModal(slug, _waited) {
+  if (document.getElementById('igReturnFailModal')) return;   // 중복 방지
+  // [2026-09-12] 로그인 잠금 중이면 **기다렸다 띄운다.**
+  //   `body.itdasy-locked > :not(#lockOverlay)` 가 display:none 이라(style-home.css:303)
+  //   지금 붙이면 DOM 에는 있는데 화면엔 없는 모달이 된다 — 그 상태로 '중복 방지' 가드까지
+  //   걸려 로그인 후에도 영영 안 뜬다. 실측으로 잡았다(2026-09-12 로컬 QA).
+  try {
+    if (document.body && document.body.classList.contains('itdasy-locked')) {
+      const n = (_waited || 0) + 1;
+      if (n <= 240) { setTimeout(() => showIgReturnFailModal(slug, n), 500); }   // 최대 2분
+      return;
+    }
+  } catch (_e) { void _e; }
+  const [title, body] = IG_FAIL_MESSAGES[slug] || IG_FAIL_MESSAGES.failed;
+  const modal = document.createElement('div');
+  modal.id = 'igReturnFailModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:#fff;max-width:340px;width:100%;border-radius:18px;padding:24px 22px;box-shadow:0 12px 40px rgba(0,0,0,0.18);">
+      <div style="font-size:17px;font-weight:700;color:#111;margin-bottom:10px;">${_igEsc(title)}</div>
+      <div style="font-size:14px;color:#444;line-height:1.6;margin-bottom:20px;">${body}</div>
+      <div style="display:flex;gap:8px;">
+        <button id="igFailClose" style="flex:1;height:46px;border:1px solid #E5E7EB;background:#fff;color:#444;border-radius:12px;font-weight:600;cursor:pointer;">나중에</button>
+        <button id="igFailRetry" style="flex:1.4;height:46px;border:none;background:#111;color:#fff;border-radius:12px;font-weight:700;cursor:pointer;">다시 연동하기</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  try { window._bindSheetBack && window._bindSheetBack('igreturnfail', modal, () => { modal.remove(); }); } catch (_bsb) { void _bsb; }
+  document.getElementById('igFailClose').addEventListener('click', () => modal.remove());
+  document.getElementById('igFailRetry').addEventListener('click', () => {
+    modal.remove();
+    try { if (typeof window.connectInstagram === 'function') window.connectInstagram(); } catch (_e) { void _e; }
+  });
+}
+window.showIgReturnFailModal = showIgReturnFailModal;
 
 // [2026-05-08 28차 2단계] 잇비 카드 닫기 핸들러
 //   - localStorage 저장 → 다음 진입 시 카드 미표시

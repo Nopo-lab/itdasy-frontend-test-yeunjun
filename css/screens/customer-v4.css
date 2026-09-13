@@ -70,21 +70,56 @@
 #customerSheet .sec-hd {
   font-size:12px;color:#BBB;font-weight:600;padding:8px 0 4px;letter-spacing:1px;margin-top:4px;
 }
+/* [2026-09-11 전기기 감사] 예전엔 `top:200px` 고정 + 9px 글자 + 15×16px 히트영역이었다.
+   ① 200px 은 검색창 세로 구간과 겹쳐서, 검색창 오른쪽 끝을 누르면 자음이 잡혔다.
+      → top 은 JS 가 칩 줄 아래로 실측해서 넣는다(app-customer.js). 여기 값은 폴백.
+   ② 자음 14개를 44px 로 키우는 건 물리적으로 불가능(616px). 대신
+      - 세로: 남는 높이를 14칸이 나눠 갖게(space-evenly) → 844 화면에서 칸당 ~40px
+      - 가로: 보이는 글자는 그대로, **열 전체(26px)** 를 눌리게
+      로 실제 조준 난이도를 낮춘다. iOS 연락처 인덱스와 같은 방식. */
 #customerSheet .idx-bar {
-  position:absolute;right:4px;top:200px;display:flex;flex-direction:column;align-items:center;gap:1px;z-index:10;
+  position:absolute;right:0;top:200px;bottom:24px;
+  display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:0;
+  width:26px;z-index:10;
   user-select:none;-webkit-user-select:none;
 }
 #customerSheet .idx-bar span {
-  font-size:9px;color:#BBB;padding:1px 4px;cursor:pointer;font-weight:500;
+  font-size:10px;color:#BBB;cursor:pointer;font-weight:600;
+  flex:1 1 auto;min-height:20px;max-height:34px;
+  display:flex;align-items:center;justify-content:center;
 }
 #customerSheet .idx-bar span:active,
 #customerSheet .idx-bar span.is-on { color:var(--text,#111);font-weight:700; }
+
+/* [2026-09-11 파괴검증] 인덱스바가 본문과 **10px 겹쳐** 있었다.
+   본문(행·통계·검색창·칩)의 border-box 는 .dt-body 컨텐트 박스(16~386)까지인데,
+   인덱스바는 padding 박스 기준 `right:0`(376~402) 이라 376~386 이 포개졌다.
+   `padding-right` 는 박스를 줄이지 않는다 — 그래서 그동안 안 먹혔다.
+   실측(iPhone 17 · iOS 26.4 · 실제 Safari):
+     세로 402×714 — 고객 행 오른쪽 끝 2·6px 를 누르면 행이 아니라 **자음 인덱스(ㄴ)** 가 눌렸다
+     가로 874×292 — **검색창** 오른쪽 끝도 같은 증상. 게다가 인덱스바 박스가 2px 로 찌그러지고
+       자음 11개(20px×11=220px)가 밖으로 흘러나와 검색창 위에 얹혔다
+   → ① 인덱스바가 보이는 높이에서만 본문 오른쪽에 **홈통 10px** 을 비운다
+     ② 세로가 짧은 화면(폰 가로)에서는 인덱스바를 접는다 — 칸이 20px 라 눌리지도 않고,
+        그 높이에선 스크롤이 더 빠르다. 달력 축소와 같은 기준(430px).
+   ⚠️ 이 블록은 반드시 `.idx-bar` 기본 규칙 **뒤**에 있어야 한다(같은 특이도라 순서가 이긴다). */
+@media (height > 430px) {
+  #customerSheet:not(.cv4-pc) #customerStats,
+  #customerSheet:not(.cv4-pc) .cv4-chips,
+  #customerSheet:not(.cv4-pc) #customerList { margin-right: 10px; }
+  /* 검색창은 inline `width:100%` 라 margin 을 주면 넘친다 → max-width 로 줄인다 */
+  #customerSheet:not(.cv4-pc) #customerSearch { max-width: calc(100% - 10px); }
+}
+@media (height <= 430px) {
+  #customerSheet .idx-bar { display: none; }
+}
+
 
 /* ── 고객 row ─────────────────────────────────── */
 #customerSheet .c-row {
   display:flex;align-items:center;padding:13px 0;border-bottom:1px solid var(--border,#F5F5F7);
   cursor:pointer;transition:background .12s;position:relative;padding-left:16px;
-  padding-right:18px; /* [2026-07-08] 우측 마지막방문 텍스트가 인덱스바에 안 겹치게 */
+  padding-right:12px; /* 인덱스바와의 간격은 위 @media 의 margin-right 가 담당(2026-09-11) */
 }
 #customerSheet .c-row:active { background:var(--surface-2,#FAFAFA); }
 #customerSheet .c-row:last-child { border-bottom:none; }

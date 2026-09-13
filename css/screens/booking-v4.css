@@ -727,13 +727,19 @@
   letter-spacing: -0.2px;
   color: var(--text);
 }
+/* [전기종 파괴검증 2026-09-12] 이전/다음을 **보이는 크기 자체**로 키웠다.
+   예전엔 22×22 에 투명 히트박스만 44 로 덮었다가 '다음' 이 '이전' 의 자기 영역을 먹어
+   WRONG 이 떠서 되돌렸다(둘 사이 gap 이 2px 뿐이었다). 이번엔 반대로 간다 —
+   버튼 36×36 + gap 10px → **중심 간 거리 46px** 이라 44×44 히트영역을 줘도 1px 씩 남는다.
+   좌측 컬럼 폭 예산: 36+10+36=82 + 월 라벨 ~72 = 154 ≤ 내부폭 180. 여유 있다.
+   이 블록은 PC 셸 전용(.bk-pc__left)이라 모바일 헤더에 파급 없음. */
 .bk-mini__nav {
   display: flex;
-  gap: 2px;
+  gap: 10px;
 }
 .bk-mini__nav button {
-  width: 22px;
-  height: 22px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: none;
   display: flex;
@@ -1570,3 +1576,24 @@
 .bk-statbar__label { flex: 1; min-width: 0; font-weight: 600; color: var(--text); }
 .bk-statbar__cell b { color: var(--text); font-weight: 700; margin-left: 1px; }
 .bk-statbar__cell.is-cancel, .bk-statbar__cell.is-cancel b { color: var(--danger); }
+
+/* ── 세로가 아주 짧은 화면(폰 가로) — 달력에 자리를 돌려준다 [2026-09-11 실기기 감사] ──
+   실측(iPhone 17 · iOS 26.4 · 실제 Safari · 가로 874×292):
+     .bk-header 66 + 간격 18 + 툴바(월·주 + 범례) 58 + 통계바 45 = **머리만 187px(64%)**
+     → 달력에 105px 만 남고, 요일줄 25 를 빼면 80px. 칸 하나(151px)도 못 들어가
+       `화면에 온전히 보이는 날짜칸 = 0` 이었다(실측).
+   폰 가로는 iOS 아이폰 앱에선 안 생기지만(Info.plist 세로 잠금),
+   **안드로이드 앱과 모바일 웹에선 생긴다.**
+   그래서 짧은 화면에서만 장식을 접는다 — 숨기는 게 아니라 **우선순위를 바꾸는 것**:
+     · 범례(확정·완료·노쇼)는 칩 색으로 이미 보인다 → 접는다
+     · 통계바(오늘 N건·이번달 N건)는 홈과 예약 요약칩에 같은 수가 있다 → 접는다
+     · 헤더·툴바 패딩만 줄인다(버튼 히트영역 44 는 그대로 — 세로 패딩이 아니라 컨테이너 패딩)
+   ⚠️ 세로 화면(height > 430px)은 값이 하나도 안 바뀐다. */
+@media (height <= 430px) {
+  #cal-overlay .bk-header { padding: 6px 14px 4px; }
+  #cal-overlay .bk-toolbar { padding: 0 14px 4px; }
+  #cal-overlay .bk-legend { display: none; }
+  #cal-overlay #bk-mobile-stats-mount,
+  #cal-overlay .bk-statbar { display: none; }
+  #cal-overlay .bk-month-m__cell { max-height: 84px; }
+}

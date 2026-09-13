@@ -614,7 +614,7 @@ button.ss-close .ic { width: 18px; height: 18px; }
 }
 .wm-cap__undo:active { transform: scale(.96); }
 
-@media (width >= 768px) {
+@media (width >= 768px) and (height >= 600px) {
   /* PC: 고정 사이드바(--side-nav-width)에 안 가리게 — 반복 사고 방지(레포 CLAUDE.md) */
   .wm-cap { left: calc(var(--side-nav-width, 232px) + 16px); right: auto; width: 360px; }
 }

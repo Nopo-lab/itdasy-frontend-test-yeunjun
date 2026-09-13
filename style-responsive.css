@@ -14,8 +14,16 @@
   display: none;
 }
 
-/* ===== ≥768px : 데스크톱 / 태블릿 레이아웃 ===== */
-@media (width >= 768px) {
+/* [2026-09-11 전 기기 반응형 감사] PC 셸 조건에 **높이**를 추가했다.
+   왜: 브레이크포인트가 폭만 봐서, 폰을 가로로 눕히면(iPhone 12 = 844×390,
+   Galaxy S24 = 915×412) 폭이 768 을 넘어 **데스크톱 UI 가 통째로 떴다**.
+   사이드바 232px + 헤더 + 데스크톱 여백이 390px 높이 안에 들어가 실제로는
+   달력 첫 줄도 안 보였다. iOS 는 Info.plist 가 아이폰을 세로로 잠가서 안전했지만
+   **AndroidManifest 에는 screenOrientation 이 없어 갤럭시는 그대로 돌아간다.**
+   기준 600px: 아이패드 가로(768)·안드탭 가로(800)·노트북(768+)은 전부 PC 유지,
+   폰 가로(360~480)만 모바일 셸로 돌아온다. */
+/* ===== ≥768px & 높이 ≥600px : 데스크톱 / 태블릿 레이아웃 ===== */
+@media (width >= 768px) and (height >= 600px) {
 
   /* 본문 좌측 사이드 nav 만큼 들여쓰기 + 콘텐츠 가운데 정렬 */
   body {
@@ -389,5 +397,29 @@
   }
   .tab {
     max-width: 1080px;
+  }
+}
+
+/* ===== ≥2100px : QHD·울트라와이드 — 내용이 끝없이 늘어나지 않게 상한 =====
+   [2026-09-11 전 기기 반응형 감사] 3440×1440 실측: 사이드바를 뺀 3,180px 를
+   내샵관리 본문이 통째로 채워서, 도넛 차트 하나에 1,100px 카드가 붙고 나머지는 빈 공간이었다.
+   (#tab-dashboard 는 myshop-v3.css 에서 `max-width:none !important` 로 일부러 풀어놨다 —
+    ≥1100px 2단 레이아웃이 좁아지지 않게 하려던 것이고, 그 의도는 2100px 미만에서 그대로 둔다.)
+   여기서는 **2100px 이상에서만** 상한을 준다. 1920 이하 화면은 값이 하나도 안 바뀐다. */
+@media (width >= 2100px) {
+  #tab-dashboard.tab {
+    max-width: 1800px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  /* 허브(설정·플랜·고객센터·연동) 내부 카드도 같은 상한 */
+  #aiHubSheet > #aihCard,
+  #settingsHubSheet > #shCard,
+  #planPopup > div,
+  #supportChatModal > #supportChatCard,
+  #integrationsHubSheet > #ihCard {
+    max-width: 1400px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
   }
 }

@@ -1033,6 +1033,11 @@
     if (idxBar) {
       const presentChosung = _CHOSUNG_ORDER.filter(k => itemsByChosung[k] && itemsByChosung[k].length);
       idxBar.innerHTML = presentChosung.map(k => `<span data-jump="${k}">${k}</span>`).join('');
+      // [2026-09-11] 인덱스바 시작 높이를 칩 줄 바로 아래로 맞춘다.
+      //   CSS 의 `top:200px` 는 헤더가 한 줄일 때만 맞는 값이라, 샵 이름이 길거나
+      //   320px 처럼 통계 카드가 접히면 **검색창 위로 올라와 오탭**이 났다.
+      const _chips = sheet.querySelector('.cv4-chips') || sheet.querySelector('#customerSearch');
+      if (_chips) idxBar.style.top = (_chips.offsetTop + _chips.offsetHeight + 10) + 'px';
       idxBar.querySelectorAll('span[data-jump]').forEach(sp => {
         sp.addEventListener('click', () => {
           const target = box.querySelector(`#cv4-sec-${encodeURIComponent(sp.dataset.jump)}`);

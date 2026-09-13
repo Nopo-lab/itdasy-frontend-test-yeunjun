@@ -71,7 +71,8 @@
   //   핸들 첫 글자도 원장님에게 의미가 없다. 프사 없을 때/복구 실패 시 폴백은 가게 아이콘으로.
   const _AVATAR_FALLBACK_HTML = '<svg width="20" height="20" aria-hidden="true" style="color:#fff"><use href="#ic-store"/></svg>';
   function _shopAvatarUrl() {
-    try { return localStorage.getItem('itdasy:ig_profile_pic') || ''; }
+    // [2026-09-12] 미연동이면 인스타 프사를 쓰지 않는다 (app-core igCachedProfilePic 주석 참조).
+    try { return window.igCachedProfilePic ? window.igCachedProfilePic() : ''; }
     catch (_e) { return ''; }
   }
   function _planLabel() {

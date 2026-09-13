@@ -36,7 +36,17 @@ select, label[for] {
 /* 드래그 요소 텍스트 선택 방지 */
 [data-draggable], [data-slot-id], [data-ai-card], [data-finish-slot],
 .carousel-track, .photo-strip, .slot-strip, img {
-  user-select: none;
+  /* [전기종 파괴검증 2026-09-12] `-webkit-` 짝을 반드시 같이 쓴다.
+     접두사 없는 `user-select` 는 iOS WebKit 이 **통째로 무시**한다. 5중 실측:
+       CSS.supports('user-select','none') = false
+       'userSelect' in style              = false
+       setProperty 는 인라인에 안 들어감   (getAttribute('style') = null)
+       스타일시트 규칙도 computed 가 text
+       Range 선택 시험에서 실제로 선택됨
+     재현: 아이폰에서 **하단 탭바 '내 샵 관리' 를 길게 누르면 '관리' 가 파랗게 잡히고
+     '복사하기' 팝업**이 뜬다(시뮬레이터 스크린샷으로 확인). Blink 에서만 재면 안 보인다 —
+     Chrome 에선 접두사 없는 선언이 정상 동작해서 09-11 롱프레스 212건이 전부 통과했다. */
+  -webkit-user-select: none; user-select: none;
   -webkit-touch-callout: none;
 }
 

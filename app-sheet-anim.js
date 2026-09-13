@@ -18,6 +18,13 @@
 
   function open(sheet, card) {
     if (!sheet) return;
+    // [전기종 파괴검증 2026-09-12] 닫힘 타이머를 반드시 취소한다.
+    //   실측 재현: 샵 관리를 열고 0.2초 안에 뒤로 → 0.15초 안에 다시 열면 **안 열린다**.
+    //   close() 가 예약한 220ms `display:none` 타이머가 살아 있다가, 막 다시 연 시트를
+    //   덮어버리기 때문. 화면엔 아무것도 없는데 hash 는 #settingsHub 이고
+    //   _markSheetOpen 도 찍혀 있어서 **다음 뒤로가기 한 번이 통째로 먹힌다.**
+    //   같은 증상 확인: settingsHub / integrationsHub (둘 다 SheetAnim 사용).
+    if (sheet.__saCloseTimer) { clearTimeout(sheet.__saCloseTimer); sheet.__saCloseTimer = null; }
     sheet.style.transition = '';
     sheet.style.opacity = '0';
     if (card) {
@@ -44,7 +51,9 @@
       card.style.transition = 'transform 200ms ease-in';
       card.style.transform = 'translateY(20px)';
     }
-    setTimeout(() => {
+    if (sheet.__saCloseTimer) clearTimeout(sheet.__saCloseTimer);
+    sheet.__saCloseTimer = setTimeout(() => {
+      sheet.__saCloseTimer = null;
       sheet.style.display = 'none';
       if (onDone) onDone();
     }, 220);

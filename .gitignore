@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+node_modules
 # package-lock.json 는 커밋 (재현 가능 빌드)
 
 # Capacitor native projects (native source는 별도 브랜치 또는 별 레포 관리 권장.
