@@ -1,0 +1,118 @@
+{
+  "gate": "ITBI ABSOLUTE FINAL 2ND GATE · §3 recommendation graph",
+  "source_of_truth": "운영 Cloud Logging [ITBI] turn 레코드 (질문은 마스킹된 모양 q 와 지문 q_fp 로만 보존 — 원문 미보존이 설계)",
+  "window_utc": [
+    "2026-09-12T01:40Z",
+    "2026-09-13T03:40Z"
+  ],
+  "account": "user 4 (cbt3) 주력 · user 5 (cbt4) 일부 — 계정 전환은 연준님 조작, 턴마다 user_hash 로 구분",
+  "method": {
+    "ui_real_click": {
+      "clicks": 60,
+      "nodes_clean": 71,
+      "nodes_total": 89,
+      "max_depth": 5,
+      "depth_hist": {
+        "1": 37,
+        "2": 17,
+        "3": 11,
+        "4": 8,
+        "5": 16
+      },
+      "how": "실제 #asstBody 추천칩 button.click() — 앱 핸들러 suggestion-controls.js:143 (_fillInput + send) 를 그대로 태움",
+      "degraded": "18 노드는 탭 백그라운드 스로틀로 답이 비어 폐기(결함으로 치지 않음)"
+    },
+    "api_follow": {
+      "follows": 54,
+      "nodes": 96,
+      "max_depth": 5,
+      "depth_hist": {
+        "1": 2,
+        "2": 6,
+        "3": 14,
+        "4": 15,
+        "5": 19
+      },
+      "how": "related_questions 텍스트를 같은 session_id 로 /assistant/ask 에 via=chip 으로 전송 — 칩 클릭의 서버측 동작과 동일",
+      "lost": "40 호출이 세션 끊김(401 ×39 · 429 ×1)으로 무효 → 제외"
+    },
+    "server_confirmed_chip_turns": 110
+  },
+  "metrics": {
+    "roots": 42,
+    "clicked_edges_total": 114,
+    "server_logged_chip_turns": 110,
+    "chip_turn_non_ok": 0,
+    "max_depth": 5,
+    "unique_semantic_states(path,intent,q_fp)": 71,
+    "unique_question_shapes(q_fp)": 58,
+    "readonly_intents_covered": [
+      "at_risk_customers",
+      "birthday",
+      "comment_queue",
+      "customer_count",
+      "customer_last_visit",
+      "customer_memo",
+      "dm_queue",
+      "empty_time",
+      "expense_summary",
+      "expiring_membership",
+      "instagram_status",
+      "low_stock",
+      "membership_balance",
+      "new_customers",
+      "regulars",
+      "revenue_summary",
+      "review_status",
+      "service_list",
+      "today_bookings",
+      "tomorrow_bookings"
+    ],
+    "readonly_intents_covered_count": 20,
+    "readonly_intents_missing_this_gate": [
+      "empty_time_range",
+      "workspace_status",
+      "customer_bookings",
+      "customer_revenue"
+    ],
+    "conversation_closed": 0,
+    "unsupported_suggestions": 0,
+    "repeat_of_just_asked(api walk)": 7,
+    "recommendation_empty_rate": "9.6%",
+    "recommendation_deadend_rate": "35.5% (칩을 눌렀는데 다음 칩 0개)"
+  },
+  "chip_roles_observed(ui)": {
+    "drill_down": 92,
+    "safe_navigation": 18,
+    "next_action": 0,
+    "clarification": 0,
+    "other_or_fail": 0
+  },
+  "findings": [
+    {
+      "id": "GRAPH-DEADEND",
+      "severity": "P3",
+      "what": "추천칩 경로의 35.5% 가 다음 칩 0개로 끝남(대화는 안 닫힘 · 입력창 유지)",
+      "note": "스펙의 '대화 닫힘 0' 은 충족. 다음 행동 제안이 끊기는 UX 문제로만 기록."
+    },
+    {
+      "id": "GRAPH-REPEAT",
+      "severity": "P3",
+      "what": "API 추적에서 방금 물은 질문과 같은 텍스트 재추천 7회",
+      "note": "UI 경로의 repeat 22 는 스로틀 열화 구간 포함이라 채택 안 함. 서버 _READONLY_FOLLOWUPS 는 같은 intent 를 배제하지만 표현이 다른 동의 질문은 못 거른다."
+    },
+    {
+      "id": "GRAPH-COVERAGE",
+      "severity": "gap",
+      "what": "이번 게이트 창에서 readonly 4 intent 미관측: empty_time_range · workspace_status · customer_bookings · customer_revenue",
+      "note": "해당 루트 질문은 보냈으나 세션 끊김 구간에 걸려 서버에 도달하지 못했다. 이전 게이트(09-11) 에서는 27 canonical 로 라이브 확인됨 → 이번 게이트 기준으로는 NOT TESTED 로 둔다."
+    }
+  ],
+  "harness_lessons": [
+    "백그라운드 탭은 setTimeout 을 분당 1회로 조인다 — 89 노드에 6,901초. MutationObserver 는 스로틀을 안 받는다.",
+    "보내기 버튼(#asstSend)은 입력이 비면 0×0 이다 — 값+input 이벤트 없이 click() 하면 아무 일도 안 난다.",
+    "연속으로 같은 답이 나오면 '텍스트 바뀜' 판정이 영영 안 끝나고, 그 뒤 질문이 옛 DOM 을 읽는다(없는 intent 오판 직전).",
+    "앱의 대화 리셋은 메모리 _sessionId 를 localStorage 에 되써서 /session/reset 만으로는 대화가 안 끊긴다.",
+    "원장님과 같은 Chrome 프로필이면 로그인·로그아웃이 토큰을 공유한다 — 오늘 세션 4번 끊김."
+  ]
+}
