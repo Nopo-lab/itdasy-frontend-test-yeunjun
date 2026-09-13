@@ -818,12 +818,17 @@
         : dir === 'up' ? Math.min(S.layers.length - 1, i + 1)
           : Math.max(0, i - 1);
     if (to === i) return false;
-    S.layers.splice(i, 1); S.layers.splice(to, 0, L);
+    _placeLayerAt(L, to);
+    _pushOp({ op: 'order', L: L, from: i, to: to });   // [2026-09-13 ZH] 순서 바꾸기도 되돌리기(↩)에
+    return true;
+  }
+  function _placeLayerAt(L, to) {
+    var i = S.layers.indexOf(L); if (i < 0) return;
+    S.layers.splice(i, 1); S.layers.splice(Math.max(0, Math.min(S.layers.length, to)), 0, L);
     // DOM 도 같은 순서로 다시 붙인다 — 배열이 진실이고 DOM 이 따라간다
     try { S.layers.forEach(function (x) { if (x.el) refs.layers.appendChild(x.el); }); }
     catch (_e) { void _e; }
     _syncLayerBtns();
-    return true;
   }
   function _syncLayerBtns() {
     try {
@@ -1009,6 +1014,25 @@
     if (op.op === 'move') {
       var mv = undo ? op.before : op.after;
       if (op.L) { op.L.x = mv.x; op.L.y = mv.y; applyXf(op.L); selectLayer(op.L); }
+      return;
+    }
+    // [2026-09-13 ZH] 레이어 순서 되돌리기.
+    if (op.op === 'order') {
+      if (op.L) { _placeLayerAt(op.L, undo ? op.from : op.to); selectLayer(op.L); }
+      return;
+    }
+    // [2026-09-13 ZH] 사진 채우기(꽉 채움/전체 보이기) 되돌리기.
+    if (op.op === 'fit') {
+      S.fitMode = undo ? op.before : op.after; S._fitManual = true;
+      try { _syncFitToggle(); applyFit(); } catch (_e) { void _e; }
+      return;
+    }
+    // [2026-09-13 ZH] 붓질·전체 지우기 되돌리기 — 그 장의 비트맵을 통째로 되돌린다.
+    if (op.op === 'draw') {
+      var dv = undo ? op.before : op.after;
+      if (!S.photoDraw) S.photoDraw = {};
+      if (dv) S.photoDraw[op.idx] = dv; else delete S.photoDraw[op.idx];
+      if (op.idx === (S.adjSel != null ? S.adjSel : 0)) { _paintDraw(dv); S._drawInk = !!dv; }
       return;
     }
     // [2026-09-13 ZH] 도형 색·채움·굵기 되돌리기.
@@ -2660,8 +2684,11 @@
     else if (S.brush === 'eraser') { c.globalCompositeOperation = 'destination-out'; c.lineWidth = S.brushSize * 1.6; }
   }
   var dpos = null, _drawRect = null;
+  var _drawBefore;   // [2026-09-13 ZH] 이번 획 직전 비트맵(되돌리기용). undefined = 획 진행 중 아님
+  function _drawSnap() { try { return S._drawInk ? refs.draw.toDataURL() : null; } catch (_e) { void _e; return null; } }
   function drawDown(e) {
     if (S.tool !== 'draw') return;
+    _drawBefore = _drawSnap();
     _drawRect = refs.stage.getBoundingClientRect();   // [⑤렉] 스트로크 시작 때 1회만 측정 → move 마다 reflow 제거
     dpos = { x: e.clientX - _drawRect.left, y: e.clientY - _drawRect.top };
     strokeStyle(); refs.ctx.beginPath(); refs.ctx.moveTo(dpos.x, dpos.y); refs.ctx.lineTo(dpos.x + 0.1, dpos.y + 0.1); refs.ctx.stroke();
@@ -2675,7 +2702,26 @@
   }
   /* 🔴 [2026-09-11] 한 획이라도 그었으면 표시해 둔다 — 저장 때 캔버스를 상태로 옮길지 판단한다.
      픽셀을 훑어 판정하면 얇은 획을 놓쳐 **그림을 지워버릴** 수 있어 플래그로 간다. */
-  function drawUp() { dpos = null; if (S) S._drawInk = true; }
+  /* [2026-09-13 ZH] 🔴 **붓질이 되돌리기에 안 남아, 붓질 뒤 ↩ 가 엉뚱한 글자를 지웠다.**
+     실측(Chrome 402×684 · 헤어 사진): 글자 'KEEP-ME' → 붓질(잉크 1793px) → ↩ →
+     붓질은 그대로, 글자 삭제. → 획마다 전후 비트맵을 한 번 남긴다. */
+  function drawUp() {
+    var wasStroke = !!dpos;
+    dpos = null; if (S) S._drawInk = true;
+    if (wasStroke && _drawBefore !== undefined) {
+      var _after = null; try { _after = refs.draw.toDataURL(); } catch (_e) { void _e; }
+      _pushOp({ op: 'draw', idx: (S.adjSel != null ? S.adjSel : 0), before: _drawBefore, after: _after });
+    }
+    _drawBefore = undefined;
+  }
+  function _paintDraw(url) {
+    var c = refs.ctx; if (!c || !refs.draw) return;
+    c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, refs.draw.width, refs.draw.height); c.restore();
+    if (!url) return;
+    var im = new Image();
+    im.onload = function () { try { c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(im, 0, 0); c.restore(); } catch (_e) { void _e; } };
+    im.src = url;
+  }
 
   /* ── 합성 내보내기 (사진 줌·콜라주·레이어 회전 반영) ── */
   /* [신뢰성 2026-08-21] 이미지가 load 도 error 도 안 주면 예전엔 **영영 pending** 이었다.
@@ -3079,7 +3125,7 @@
       var t = e.target.closest('[data-lay]'); if (t) { selectLayout(+t.getAttribute('data-lay')); return; }
       var th = e.target.closest('[data-laythumb]'); if (th) { onLayThumb(+th.getAttribute('data-laythumb')); return; }
       var bg = e.target.closest('[data-bg]'); if (bg) { S.collageBg = bg.getAttribute('data-bg'); S.collageBgImg = null; saveBgPref(); refs.panels.layout.querySelectorAll('[data-bg]').forEach(function (x) { x.classList.toggle('on', x === bg); }); renderCollage(); applyFit(); recutWithBg(); return; }
-      var ft = e.target.closest('[data-fit]'); if (ft) { S.fitMode = ft.getAttribute('data-fit'); S._fitManual = true; refs.layFit.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === ft); }); applyFit(); return; }
+      var ft = e.target.closest('[data-fit]'); if (ft) { var _fb = S.fitMode; S.fitMode = ft.getAttribute('data-fit'); S._fitManual = true; refs.layFit.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === ft); }); applyFit(); if (_fb !== S.fitMode) _pushOp({ op: 'fit', before: _fb, after: S.fitMode }); return; }
     });
     enableDragScroll(refs.layStrip); enableDragScroll(refs.panels.layout.querySelector('.itlay2__types'));
     refs.layGap.addEventListener('input', function () { S.collageGap = +refs.layGap.value; renderCollage(); });
@@ -3136,7 +3182,7 @@
     enableDragScroll(refs.adjStrip);
     // 그리기
     root.querySelector('[data-panel="draw"] .itdrawp__tools').addEventListener('click', function (e) {
-      if (e.target.closest('[data-r="drawClear"]')) { if (refs.ctx && refs.draw) { refs.ctx.clearRect(0, 0, refs.draw.width, refs.draw.height); if (S) { S._drawInk = false; try { delete S.photoDraw[(S.adjSel != null) ? S.adjSel : 0]; } catch (_dc) { void _dc; } } toastIt('그림을 지웠어요'); } return; }   // [#6] 그리기 전체 지우기
+      if (e.target.closest('[data-r="drawClear"]')) { if (refs.ctx && refs.draw) { var _cb = _drawSnap(); refs.ctx.clearRect(0, 0, refs.draw.width, refs.draw.height); if (S) { S._drawInk = false; try { delete S.photoDraw[(S.adjSel != null) ? S.adjSel : 0]; } catch (_dc) { void _dc; } } if (_cb) _pushOp({ op: 'draw', idx: (S.adjSel != null ? S.adjSel : 0), before: _cb, after: null }); toastIt('그림을 지웠어요 — 되돌리려면 ↩'); } return; }   // [#6] 그리기 전체 지우기
       var b = e.target.closest('[data-brush]'); if (!b) return; S.brush = b.getAttribute('data-brush'); root.querySelectorAll('[data-brush]').forEach(function (x) { x.classList.toggle('on', x === b); });
     });
     refs.brushSize.addEventListener('input', function () { S.brushSize = +refs.brushSize.value; });

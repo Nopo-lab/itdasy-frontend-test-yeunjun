@@ -110,3 +110,52 @@ describe('되돌리기 — 도형 색·채움·굵기 기록 (2026-09-13)', () =
     expect(body).toMatch(/op\.L\.color = sv\.color; op\.L\.fill = sv\.fill; op\.L\.strokeW = sv\.strokeW; styleShape\(op\.L\.tx, op\.L\);/);
   });
 });
+
+describe('되돌리기 — 순서·사진 채우기·붓질 기록 (2026-09-13)', () => {
+  // 실측(Chrome 402×684 실엔진): 세 조작 모두 ↩ 가 그 조작을 건너뛰고 **엉뚱한 글자를 지웠다.**
+  //   순서 맨뒤로 → ↩ → 레이어 2→1 · 채우기 → ↩ → 1→0 · 붓질 → ↩ → 붓질 그대로 + 글자 삭제.
+  test('레이어 순서 변경을 기록하고, 되돌리면 원래 자리로 옮긴다', () => {
+    const i = C.indexOf('function reorderLayer(L, dir)');
+    const body = C.slice(i, i + 700);
+    expect(body).toMatch(/_placeLayerAt\(L, to\);\s*_pushOp\(\{ op: 'order', L: L, from: i, to: to \}\);/);
+    const j = C.indexOf("if (op.op === 'order')");
+    expect(j).toBeGreaterThan(0);
+    expect(C.slice(j, j + 200)).toMatch(/_placeLayerAt\(op\.L, undo \? op\.from : op\.to\)/);
+  });
+
+  test('순서 변경은 배열과 DOM 을 함께 옮긴다(하나만 옮기면 화면≠발행본)', () => {
+    const i = C.indexOf('function _placeLayerAt(L, to)');
+    const body = C.slice(i, i + 500);
+    expect(body).toMatch(/S\.layers\.splice\(i, 1\); S\.layers\.splice\(/);
+    expect(body).toMatch(/refs\.layers\.appendChild\(x\.el\)/);
+  });
+
+  test('사진 채우기 토글을 기록한다(바뀌었을 때만)', () => {
+    expect(C).toMatch(/var _fb = S\.fitMode; S\.fitMode = ft\.getAttribute\('data-fit'\);[\s\S]{0,260}applyFit\(\); if \(_fb !== S\.fitMode\) _pushOp\(\{ op: 'fit', before: _fb, after: S\.fitMode \}\);/);
+    const j = C.indexOf("if (op.op === 'fit')");
+    expect(C.slice(j, j + 220)).toMatch(/S\.fitMode = undo \? op\.before : op\.after;[\s\S]{0,80}_syncFitToggle\(\); applyFit\(\);/);
+  });
+
+  test('붓질은 획 시작 전 비트맵을 잡고, 획이 끝나면 한 번 남긴다', () => {
+    const d = C.indexOf('function drawDown(e)');
+    expect(C.slice(d, d + 200)).toMatch(/_drawBefore = _drawSnap\(\);/);
+    const u = C.indexOf('function drawUp()');
+    const ub = C.slice(u, u + 500);
+    expect(ub).toMatch(/var wasStroke = !!dpos;/);
+    expect(ub).toMatch(/if \(wasStroke && _drawBefore !== undefined\)/);
+    expect(ub).toMatch(/_pushOp\(\{ op: 'draw', idx: \(S\.adjSel != null \? S\.adjSel : 0\), before: _drawBefore, after: _after \}\);/);
+    expect(ub).toMatch(/_drawBefore = undefined;/);
+  });
+
+  test('전체 지우기도 되돌릴 수 있다', () => {
+    expect(C).toMatch(/var _cb = _drawSnap\(\); refs\.ctx\.clearRect[\s\S]{0,240}if \(_cb\) _pushOp\(\{ op: 'draw', idx: \(S\.adjSel != null \? S\.adjSel : 0\), before: _cb, after: null \}\);/);
+  });
+
+  test('붓질 되돌리기는 그 장의 비트맵을 복원하고, 보고 있는 장일 때만 캔버스를 다시 칠한다', () => {
+    const j = C.indexOf("if (op.op === 'draw')");
+    const body = C.slice(j, j + 450);
+    expect(body).toMatch(/var dv = undo \? op\.before : op\.after;/);
+    expect(body).toMatch(/if \(dv\) S\.photoDraw\[op\.idx\] = dv; else delete S\.photoDraw\[op\.idx\];/);
+    expect(body).toMatch(/if \(op\.idx === \(S\.adjSel != null \? S\.adjSel : 0\)\) \{ _paintDraw\(dv\); S\._drawInk = !!dv; \}/);
+  });
+});
