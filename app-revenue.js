@@ -144,13 +144,19 @@
     const opts = { method, headers: { ...auth, 'Content-Type': 'application/json' } };
     if (body) opts.body = JSON.stringify(body);
     const res = await apiFetch(path, opts);
-    if (res.status === 404 || res.status === 501) throw new Error('endpoint-missing');
+    if (res.status === 404 || res.status === 501) {
+      const em = new Error('endpoint-missing'); em.status = res.status; throw em;
+    }
     if (!res.ok) {
       // [2026-09-02] 402(무료 장부 월30건 게이트) 등 서버의 한국어 detail 을 그대로 노출 —
       //   "HTTP 402" 만 보이면 원장님이 뭘 해야 할지 모른다.
       let d = null;
       try { d = await res.json(); } catch (_) { /* body 없음 */ }
-      throw new Error((d && d.detail) || ('HTTP ' + res.status));
+      // [P2 2026-09-13] status 를 실어 보낸다 — 호출부가 "서버가 분명히 거절(4xx)" 과
+      //   "결과를 모름(네트워크·타임아웃·5xx)" 을 가를 수 있어야 한다(회원권 _fetch 와 같은 계약).
+      const he = new Error((d && d.detail) || ('HTTP ' + res.status));
+      he.status = res.status;
+      throw he;
     }
     return res.status === 204 ? null : await res.json();
   }
@@ -293,8 +299,18 @@
       // [출시감사 2026-08-01] 예전 문구는 '다시 시도해주세요' 였는데, 타임아웃이면 서버엔
       //   이미 저장돼 있을 수 있어 그 안내가 곧 중복 저장을 유도했다. 이제 멱등키(client_txn_id)가
       //   중복을 막지만, 문구도 사실대로 — 결과를 모른다고 말한다.
-      if (window.showToast) {
+      // [P2 2026-09-13] 두 가지를 바로잡는다 (실측: 끊김 1회에 토스트 2개).
+      //   ① 여기서 "결과를 모른다" 를 띄우고 다시 던지면, 화면 쪽이 받아서 **"저장 실패"** 를 또 띄웠다.
+      //      같은 사건에 "모름" 과 "실패" 가 동시에 — 돈 화면에서 **거짓 실패**다.
+      //      → 모른다고 말했으면 err._unknownShown 을 달아 호출부가 겹쳐 말하지 않게 한다.
+      //   ② 429·400·422 처럼 **서버가 분명히 거절**한 것까지 "모른다" 고 했다. 그건 저장이 안 된 게
+      //      확실하다 → 여기서는 말하지 않고, 호출부가 "저장 실패 — 사유" 로 정확히 말한다.
+      const _st = err && err.status;
+      const _certainReject = (typeof _st === 'number' && _st >= 400 && _st < 500)
+        || (err && /^(no-auth|no-token)$/.test(String(err.message)));
+      if (!_certainReject && window.showToast) {
         window.showToast('저장 결과를 확인하지 못했어요. 목록을 새로고침해 확인해 주세요');
+        try { err._unknownShown = true; } catch (_e) { void _e; }
       }
       throw err;
     }
@@ -820,7 +836,11 @@
         await _loadAndRender();
       } catch (e) {
         console.warn('[revenue] save 실패:', e);
-        if (window.showToast) window.showToast('저장 실패: ' + (window._humanError ? window._humanError(e) : (e?.message || '')), { error: true });
+        // [P2 2026-09-13] 데이터 계층이 이미 "결과를 확인하지 못했어요" 라고 했으면 여기서
+        //   "저장 실패" 를 또 띄우지 않는다 — 같은 사건에 모름+실패 동시 표시(거짓 실패).
+        if (!(e && e._unknownShown) && window.showToast) {
+          window.showToast('저장 실패: ' + (window._humanError ? window._humanError(e) : (e?.message || '')), { error: true });
+        }
       } finally {
         modal._rfSaving = false;
         if (_saveBtn) _saveBtn.disabled = false;

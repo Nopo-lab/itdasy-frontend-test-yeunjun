@@ -72,6 +72,27 @@
     if (typeof window.showToast === 'function') window.showToast(msg, opts);
   }
 
+  /* [P2 클로즈아웃 2026-09-13] 무응답이면 "충전 중…" 이 **최악 65초** 그대로였다.
+     실측: 무응답 주입 → 5·15·25·35·45·55초 전부 "충전 중…" + 스피너 → 65초에야 풀림.
+     원인은 apiFetch 의 20초 타임아웃 × 재시도. 멱등키(client_txn_id)가 있어 재시도 자체는
+     **안전하고 유용하다**(자동 복구) — 그래서 재시도는 줄이지 않는다. 문제는 그동안
+     원장님 화면이 **아무 말 없이 멈춘 것처럼** 보인다는 것.
+     → 12초가 지나도 안 끝나면 버튼 글자를 "결과 확인 중…" 으로 바꾸고 이유를 **한 번** 말한다.
+     ⚠️ 버튼은 계속 잠가 둔다. 풀면 같은 키로 요청이 하나 더 떠서 서버는 흡수하지만
+        **성공 토스트·축하 효과가 두 번** 뜬다(중복 토스트). 끝나면 finally 에서 풀린다. */
+  const _SLOW_NOTICE_MS = 12000;
+  const _MONEY_STILL_UNKNOWN = '아직 결과를 확인하지 못했어요. 잠시 후 잔액을 새로고침해 확인해 주세요. 같은 버튼을 다시 눌러도 두 번 처리되지 않아요.';
+  function _slowWatch(btn, slowLabel) {
+    let fired = false;
+    const t = setTimeout(() => {
+      if (!btn || !btn.disabled) return;   // 이미 끝났다
+      fired = true;
+      btn.textContent = slowLabel;
+      _toast(_MONEY_UNKNOWN);
+    }, _SLOW_NOTICE_MS);
+    return { stop() { clearTimeout(t); }, get fired() { return fired; } };
+  }
+
   // ── 멱등키 (카오스 F-3 · 2026-08-23) ────────────────────────────
   //
   // 왜 필요한가 — `apiFetch` 는 `/memberships/*` 를 **자동 재시도한다**
@@ -274,6 +295,7 @@
         return;
       }
       _busy(btn, true, '충전 중…', '충전하기');
+      const _slow = _slowWatch(btn, '결과 확인 중…');
       // [F-3] 같은 시도의 재시도면 같은 키를 다시 쓴다 — 서버가 중복을 흡수한다.
       const { sig: _sig, key: _txn } = _txnFor('topup', customerId, amount, method);
       try {
@@ -299,8 +321,12 @@
         // [돈감사 2026-09-07] 결과를 모르는 실패를 "충전 실패" 라고 단정하지 않는다.
         //   시트도 닫지 않는다 — 같은 버튼(=같은 멱등키)을 다시 누를 수 있어야 한다.
         const _m = _moneyError(e, '충전');
-        _toast(_m.certain ? ('충전 실패 — ' + _m.text) : _m.text, { error: true });
+        // 12초에 이미 "확인하고 있어요" 를 말했으면, 끝에서 같은 말을 또 하지 않는다
+        //   (중복 토스트) — 대신 **다음 행동**(잔액 새로고침)을 알려 준다.
+        const _txt = _m.certain ? ('충전 실패 — ' + _m.text) : (_slow.fired ? _MONEY_STILL_UNKNOWN : _m.text);
+        _toast(_txt, { error: true });
       } finally {
+        _slow.stop();
         _busy(btn, false, '충전 중…', '충전하기');
       }
     });
@@ -343,6 +369,7 @@
         return;
       }
       _busy(btn, true, '차감 중…', '차감하기');
+      const _slow = _slowWatch(btn, '결과 확인 중…');
       // [F-3] 차감도 동일 — 재시도로 손님 잔액이 두 번 빠지면 안 된다.
       // [P0-2] 예약이 다르면 다른 시도다 — bookingId 를 서명에 포함해 키를 분리한다.
       const { sig: _sig, key: _txn } = _txnFor('use', customerId, amount, svc + '|bk' + (bookingId || ''));
@@ -355,6 +382,7 @@
           booking_id: bookingId || null,   // [P0-2] 이 차감이 나온 예약 (기록용 — 자동 복구는 없다)
         });
         _txnDone(_sig);
+        _slow.stop();
         _busy(btn, false, '차감 중…', '차감하기');
         _toast(`사용 완료! 잔액 ${formatMoney(r.membership_balance)}`);
         sheet.style.display = 'none';
@@ -365,8 +393,10 @@
         try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'membership_use' } })); } catch (_) { void 0; }
       } catch (e) {
         const _m = _moneyError(e, '차감');
-        _toast(_m.certain ? ('차감 실패 — ' + _m.text) : _m.text, { error: true });
+        const _txt = _m.certain ? ('차감 실패 — ' + _m.text) : (_slow.fired ? _MONEY_STILL_UNKNOWN : _m.text);
+        _toast(_txt, { error: true });
         // [2026-07-22 fix] 실패 시 재활성화 — 안 하면 버튼 영구 잠김(충전 시트엔 있던 로직)
+        _slow.stop();
         _busy(btn, false, '차감 중…', '차감하기');
       }
     });

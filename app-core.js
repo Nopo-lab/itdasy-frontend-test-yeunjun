@@ -413,6 +413,83 @@ window._sanitizeUserText = function (msg) {
   return label ? label + '. 잠시 후 다시 시도해 주세요' : '일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요';
 };
 
+/* [P2 클로즈아웃 2026-09-13] 영문 예외·원시 JSON 이 원장님 토스트에 그대로 뜨던 것.
+   실측 문구 4종:
+     "저장 실패: Failed to fetch"
+     "저장 실패: The user aborted a request."
+     "해제 실패: Failed to fetch"
+     "해제 실패: 해제 실패 (HTTP 500) {"detail":"server error"}"   ← 라벨 중복 + 원시 JSON
+   `_humanError()` 는 이미 이걸 다 한국어로 바꾸는데, **거치지 않고**
+   `showToast('저장 실패: ' + e.message)` 하는 곳이 22군데다(실측 grep).
+   위 BUG-4 때와 같은 판단으로 **길목에서 흡수한다** — 22군데를 각각 고치면
+   다른 세션 파일까지 건드리게 되고 또 빠뜨린다.
+   원장님이 무슨 작업이 실패했는지는 알아야 하므로 **앞의 한국어 라벨은 살린다.**
+   개발자용 원문은 console 에 남긴다. */
+window._LEAKY_ERROR_RE = /Failed to fetch|Load failed|NetworkError|network connection was lost|The network connection|aborted a request|AbortError|signal is aborted|Internal Server Error|\bHTTP\s*\d{3}\b|\{\s*"?detail"?\s*:|^\s*\{[\s\S]*\}\s*$/i;
+
+window._userSafeToastText = function (msg) {
+  const s0 = String(msg == null ? '' : msg);
+  /* 영문을 **열거하지 않는다** — "server error", "rate limited", "Not Found" 처럼 끝이 없다.
+     실측: DM 설정 저장이 서버 detail 을 꺼내 "저장 실패: server error" 로 그대로 붙였고,
+     첫 판의 목록(Failed to fetch·HTTP 500·JSON)에 없어서 **통과했다.**
+     규칙: "…실패/오류: <사유>" 모양인데 **사유에 한글이 한 글자도 없으면** 원장님이 못 읽는다. */
+  const _shape = s0.match(/^([가-힣][가-힣\s·]{0,14}?(?:실패|오류|에러))\s*[:—-]\s*([\s\S]+)$/);
+  const _foreignReason = !!(_shape && !/[가-힣]/.test(_shape[2]));
+  if (!_foreignReason && !window._LEAKY_ERROR_RE.test(s0)) return s0;
+
+  // 1) 앞의 한국어 라벨("저장 실패", "해제 실패", "전송 실패" …)을 떼어 둔다
+  let label = '';
+  let rest = s0;
+  const m = s0.match(/^([가-힣][가-힣\s·]{0,14}?(?:실패|오류|에러))\s*[:—-]\s*([\s\S]*)$/);
+  if (m) { label = m[1].trim(); rest = m[2]; }
+
+  // 2) 라벨 중복 제거 — "해제 실패: 해제 실패 (HTTP 500) {...}"
+  if (label) {
+    const dup = new RegExp('^' + label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[:—-]?\\s*', 'i');
+    while (dup.test(rest)) rest = rest.replace(dup, '');
+  }
+
+  // 3) 서버가 **한국어로** 이유를 줬으면 그대로 쓴다 (그건 원장님이 읽을 수 있는 말이다)
+  let korDetail = '';
+  try {
+    const j = rest.match(/\{[\s\S]*\}/);
+    if (j) {
+      const o = JSON.parse(j[0]);
+      const d = o && (o.detail || o.message || o.error);
+      if (typeof d === 'string' && /[가-힣]/.test(d)) korDetail = d.trim();
+    }
+  } catch (_e) { void _e; }
+
+  // 4) 사유를 표준 한국어 한 줄로
+  let reason;
+  if (korDetail) {
+    reason = korDetail;
+  } else if (/Failed to fetch|Load failed|NetworkError|network connection was lost|The network connection/i.test(rest)) {
+    /* ⚠️ `Failed to fetch` 를 "인터넷 문제" 라고 단정하지 않는다.
+       브라우저는 **서버다운·DNS실패·CORS거부를 전부 이 문구 하나로** 보고한다.
+       2026-09-01 실사고: 백엔드가 503 이던 날 "인터넷을 확인하세요" 가 떠서
+       원장님이 멀쩡한 공유기만 계속 재부팅했다. (__tests__/friendly-error-mapping.test.js)
+       기기가 실제로 오프라인일 때만 인터넷이라고 말한다. */
+    const off = (typeof navigator !== 'undefined' && navigator.onLine === false);
+    reason = off
+      ? '인터넷 연결이 끊겼어요. 연결을 확인한 뒤 다시 시도해 주세요'
+      : '서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요';
+  } else if (/aborted a request|AbortError|signal is aborted|timeout|timed out/i.test(rest)) {
+    reason = '처리 결과를 확인하지 못했어요. 잠시 후 목록을 새로고침해 확인해 주세요';
+  } else if (/HTTP\s*40[13]|unauthor|forbidden/i.test(rest)) {
+    reason = '로그인이 만료됐어요. 다시 로그인해 주세요';
+  } else if (/HTTP\s*429|rate.?limit|too many requests|quota/i.test(rest)) {
+    reason = '요청이 너무 많아요. 잠시 후 다시 시도해 주세요';
+  } else if (/HTTP\s*5\d\d|Internal Server Error|server error|service unavailable|bad gateway|gateway timeout/i.test(rest)) {
+    reason = '일시적인 서버 오류가 발생했어요. 잠시 후 다시 시도해 주세요';
+  } else {
+    reason = '잠시 후 다시 시도해 주세요';
+  }
+
+  try { console.warn('[toast] 원문 차단:', s0); } catch (_e) { void _e; }
+  return label ? (label + ' — ' + reason) : reason;
+};
+
 function showToast(msg, opts) {
   const o = typeof opts === 'object' ? opts : { type: opts || 'info' };
   const d = Math.min(Number(o.duration) || 2400, TOAST_MAX_DURATION);
@@ -422,6 +499,8 @@ function showToast(msg, opts) {
       console.warn('[toast] 내부 오류 문구 차단:', msg);   // 개발자용 원문은 보존
       safe = window._sanitizeUserText(msg);
     }
+    // [P2 2026-09-13] 영문 fetch/abort 문구·원시 JSON·라벨 중복도 같은 길목에서 흡수
+    safe = window._userSafeToastText(safe);
   } catch (_e) { void _e; }
   _toastQueue.push({ msg: safe, type: o.type || 'info', duration: d });
   if (!_toastActive) _nextToast();
@@ -3839,8 +3918,15 @@ window.safeFetch = async function (url, opts = {}) {
 window._humanError = function (e) {
   if (e && e.timeout) return '서버 응답이 너무 느려요. 잠시 후 다시 시도해주세요';
   const raw = (e && (e.message || e.detail)) || String(e || '');
+  // [P2 2026-09-13] HTTP 5xx 를 네트워크와 **한 줄로 묶어** "네트워크 연결을 확인해주세요" 라고 했다.
+  //   5xx 는 원장님 쪽 문제가 아니라 **서버 쪽 고장**이다 — 멀쩡한 와이파이를 의심하게 만든다
+  //   (실측: 잇비 500 에서 "에러: 네트워크 연결을 확인해주세요"). 먼저 떼어 본다.
+  //   ⚠️ Failed to fetch · Load failed 의 "네트워크" 분류는 기존 결정대로 둔다
+  //      (__tests__/responsive-gate-closeout-2026-09-07.test.js '네트워크·인증 분류는 기존대로').
+  if (/HTTP\s*5\d\d|Internal Server Error|Bad Gateway|Service Unavailable|Gateway Timeout/i.test(raw))
+    return '일시적인 서버 오류가 발생했어요. 잠시 후 다시 시도해주세요';
   // [2026-08-15 기기QA] Load failed = 사파리/WebKit 의 fetch 실패 문구. 빠져 있어서 iOS 에서 영문 노출.
-  if (/HTTP\s*5\d\d|Failed to fetch|Load failed|NetworkError|network connection was lost|timeout|aborted|cancelled/i.test(raw))
+  if (/Failed to fetch|Load failed|NetworkError|network connection was lost|timeout|aborted|cancelled/i.test(raw))
     return '네트워크 연결을 확인해주세요';
   if (/HTTP\s*401|unauthor/i.test(raw))
     return '로그인이 만료됐어요. 다시 로그인해주세요';
