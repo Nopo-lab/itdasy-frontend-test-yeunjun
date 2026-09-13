@@ -336,6 +336,59 @@
     if (a.w > 0) f += ' sepia(' + (a.w / 100 * 0.45).toFixed(2) + ')';
     return f;
   }
+  /* [2026-09-13 ZH] 🔴 **보정이 화면에는 보이는데 발행본에서 통째로 빠질 수 있었다.**
+     발행본은 `ctx.filter = filterStr(...)` 로 굽는데 **폴백이 없다.** `CanvasRenderingContext2D.filter` 는
+     Safari 18(iOS 18)부터 지원이고, 이 앱의 iOS 최소 지원은 15.0 이다(ios/App/Podfile). 미지원 엔진에선
+     대입이 조용히 무시돼 화면(CSS filter)은 밝게, 발행본은 원본 그대로 나간다.
+     실측(2026-09-13, Chrome 실엔진에서 ctx.filter 를 무력화한 음성 대조 · 저조도 헤어 사진 · 밝기+35 대비+10 채도+25):
+       발행본 평균 RGB  원본 [67,48,34] / 보정 정상 [92,57,32] / **filter 미지원 [67,48,34] — 원본과 동일.**
+     → 지원을 한 번 실측으로 판정하고, 미지원이면 **Filter Effects 스펙의 식 그대로** 픽셀에 굽는다.
+       색 연산은 점 단위라 기하 변형 전에 원본에 적용해도 결과가 같다(보간 반올림 차이만). */
+  var _cfOK = null;
+  function _ctxFilterOK() {
+    if (_cfOK != null) return _cfOK;
+    try {
+      var t = document.createElement('canvas'); t.width = t.height = 1;
+      var g = t.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 1, 1);
+      var src = document.createElement('canvas'); src.width = src.height = 1;
+      var sg = src.getContext('2d'); sg.fillStyle = '#fff'; sg.fillRect(0, 0, 1, 1);
+      g.filter = 'brightness(0)'; g.drawImage(src, 0, 0);
+      _cfOK = g.getImageData(0, 0, 1, 1).data[0] < 128;   // 검게 칠해졌으면 filter 가 먹는다
+    } catch (_e) { void _e; _cfOK = true; }                // 판정 불가 = 기존 경로(바꾸지 않는다)
+    return _cfOK;
+  }
+  /** CSS filter 함수 체인(brightness → contrast → saturate → sepia)을 sRGB 픽셀에 그대로 적용. 순수 함수. */
+  function _applyAdjPixels(d, a) {
+    var br = a.b / 100, ct = (a.c + a.sh * 0.4) / 100, sa = a.s / 100, sp = a.w > 0 ? Math.min(1, a.w / 100 * 0.45) : 0;
+    var s0 = 0.213 + 0.787 * sa, s1 = 0.715 - 0.715 * sa, s2 = 0.072 - 0.072 * sa,
+        s3 = 0.213 - 0.213 * sa, s4 = 0.715 + 0.285 * sa, s5 = 0.072 - 0.072 * sa,
+        s6 = 0.213 - 0.213 * sa, s7 = 0.715 - 0.715 * sa, s8 = 0.072 + 0.928 * sa;
+    var q = 1 - sp;
+    var p0 = 0.393 + 0.607 * q, p1 = 0.769 - 0.769 * q, p2 = 0.189 - 0.189 * q,
+        p3 = 0.349 - 0.349 * q, p4 = 0.686 + 0.314 * q, p5 = 0.168 - 0.168 * q,
+        p6 = 0.272 - 0.272 * q, p7 = 0.534 - 0.534 * q, p8 = 0.131 + 0.869 * q;
+    function cl(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
+    for (var i = 0; i < d.length; i += 4) {
+      var r = cl(d[i] / 255 * br), gg = cl(d[i + 1] / 255 * br), b = cl(d[i + 2] / 255 * br);
+      r = cl((r - 0.5) * ct + 0.5); gg = cl((gg - 0.5) * ct + 0.5); b = cl((b - 0.5) * ct + 0.5);
+      var r2 = cl(s0 * r + s1 * gg + s2 * b), g2 = cl(s3 * r + s4 * gg + s5 * b), b2 = cl(s6 * r + s7 * gg + s8 * b);
+      if (sp > 0) { r = cl(p0 * r2 + p1 * g2 + p2 * b2); gg = cl(p3 * r2 + p4 * g2 + p5 * b2); b = cl(p6 * r2 + p7 * g2 + p8 * b2); }
+      else { r = r2; gg = g2; b = b2; }
+      d[i] = Math.round(r * 255); d[i + 1] = Math.round(gg * 255); d[i + 2] = Math.round(b * 255);
+    }
+    return d;
+  }
+  /** 그릴 원본 — filter 가 먹으면 원본 그대로, 아니면 보정을 구운 사본(캔버스). 보정이 기본값이면 원본. */
+  function _adjSrc(img, a) {
+    if (!img || !a || _ctxFilterOK() || _adjIsId(a)) return img;
+    try {
+      var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+      var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      var g = cv.getContext('2d'); g.drawImage(img, 0, 0, w, h);
+      var id = g.getImageData(0, 0, w, h); _applyAdjPixels(id.data, a); g.putImageData(id, 0, 0);
+      return cv;
+    } catch (_e) { void _e; return img; }
+  }
   var ADJ_CTRLS = [
     { k: 'b', label: '밝기', min: 60, max: 140 }, { k: 'c', label: '대비', min: 60, max: 140 },
     { k: 's', label: '채도', min: 0, max: 200 }, { k: 'w', label: '온도', min: 0, max: 100 },
@@ -2412,7 +2465,10 @@
      내보내기(exportComposite)는 canvas 에서 같은 마스크로 배경을 되돌린다(아래).
      fgMask 없으면(누끼 안 함·구 매트) 이 경로를 안 타고 예전 그대로. */
   // 보정 안 건 상태(항등) — filterStr 은 기본값도 'brightness(1.00)…' 라 'none' 이 아니다. 여기서 판정.
-  function _adjIsId(a) { return !a || ((a.b || 100) === 100 && (a.c || 100) === 100 && (a.s || 100) === 100 && !(a.w > 0) && !(a.sh > 0)); }
+  /* [2026-09-13 ZH] `(a.s || 100)` 이라 **채도 0(흑백)이 '보정 없음'으로 판정**됐다 — 0 은 falsy 다.
+     채도 슬라이더 최소값이 0 이라 실제로 고를 수 있는 값이다. null/undefined 일 때만 기본값으로 본다. */
+  function _dv(v, d) { return (v == null || isNaN(v)) ? d : +v; }
+  function _adjIsId(a) { return !a || (_dv(a.b, 100) === 100 && _dv(a.c, 100) === 100 && _dv(a.s, 100) === 100 && !(a.w > 0) && !(a.sh > 0)); }
   function _fgOn(i) { return !!(S.fgMask && S.fgMask[i]); }
   function _fgActive(i) { return _fgOn(i) && !_adjIsId(adjOf(i)); }   // 누끼 + 실제 보정 있을 때만 2겹
   function _syncSingleFx(idx) {
@@ -2820,12 +2876,12 @@
              깐 뒤 그 위에 보정된 사람을 얹는다. 마스크는 합성본 정렬이라 사진과 같은 drawImage 로 정확히 겹친다. */
           var fgc = document.createElement('canvas'); fgc.width = cv.width; fgc.height = cv.height;
           var fc = fgc.getContext('2d'); fc.setTransform(_xs.k, 0, 0, _xs.k, _xs.ox, _xs.oy);
-          fc.save(); _xf(fc); fc.filter = _sFlt; fc.drawImage(img, dx, dy, cr.dw, cr.dh); fc.filter = 'none';
+          fc.save(); _xf(fc); fc.filter = _sFlt; fc.drawImage(_adjSrc(img, adjOf(sIdx < 0 ? 0 : sIdx)), dx, dy, cr.dw, cr.dh); fc.filter = 'none';
           fc.globalCompositeOperation = 'destination-in'; fc.drawImage(mk, dx, dy, cr.dw, cr.dh); fc.restore();
           c.save(); _xf(c); c.drawImage(img, dx, dy, cr.dw, cr.dh); c.restore();   // 배경 = 보정 전 원본
           c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(fgc, 0, 0); c.restore();   // 보정된 사람만 위에
         } else {
-          c.save(); _xf(c); c.filter = _sFlt; c.drawImage(img, dx, dy, cr.dw, cr.dh); c.restore();
+          c.save(); _xf(c); c.filter = _sFlt; c.drawImage(_adjSrc(img, adjOf(sIdx < 0 ? 0 : sIdx)), dx, dy, cr.dw, cr.dh); c.restore();
         }
       });
     } else {
@@ -2861,12 +2917,12 @@
             // [#11] 누끼 셀 — 단일 사진과 같은 방식으로 배경만 원래색 유지(오프스크린에 보정된 사람만 남겨 위에 얹음).
             var fgc = document.createElement('canvas'); fgc.width = cv.width; fgc.height = cv.height;
             var fc = fgc.getContext('2d'); fc.setTransform(_xs.k, 0, 0, _xs.k, _xs.ox, _xs.oy);
-            fc.save(); setup(fc); fc.filter = flt; fc.drawImage(img, dx, dy, cr.dw, cr.dh); fc.filter = 'none';
+            fc.save(); setup(fc); fc.filter = flt; fc.drawImage(_adjSrc(img, adjOf(idxs[k])), dx, dy, cr.dw, cr.dh); fc.filter = 'none';
             fc.globalCompositeOperation = 'destination-in'; fc.drawImage(mks[k], dx, dy, cr.dw, cr.dh); fc.restore();
             c.save(); setup(c); c.drawImage(img, dx, dy, cr.dw, cr.dh); c.restore();   // 배경 = 보정 전
             c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(fgc, 0, 0); c.restore();   // 보정된 사람
           } else {
-            c.save(); setup(c); c.filter = flt; c.drawImage(img, dx, dy, cr.dw, cr.dh); c.restore();
+            c.save(); setup(c); c.filter = flt; c.drawImage(_adjSrc(img, adjOf(idxs[k])), dx, dy, cr.dw, cr.dh); c.restore();
           }
         });
       });
