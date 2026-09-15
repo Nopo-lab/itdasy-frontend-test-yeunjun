@@ -3,8 +3,7 @@
  *
  * 동작 정책:
  *  - "필수" (로그인 세션·설정·오프라인 캐시): 배너와 무관하게 항상 사용.
- *  - "선택" (Sentry 크래시 리포팅): EU/EEA/UK 사용자는 opt-in 필수, 기타 지역은 기본 허용 (묵시적 동의 + 언제든 철회).
- *  - Timezone 기반 경량 지역 추정 (IP 판별 없이). 정확도 제한적이지만 EU/UK 시간대 커버.
+ *  - "선택" (Sentry 크래시 리포팅): 지역과 무관하게 명시 허용 전에는 사용하지 않음.
  *
  * 상태 저장 (localStorage):
  *  - itdasy_consent_v1 = 'granted' | 'denied' | 'dismissed-essential-only'
@@ -135,16 +134,9 @@
       return;
     }
     // EU: 첫 방문 시 항상 배너 노출 (opt-in 필수)
-    // Non-EU: 첫 방문 시 기본 허용 + 배너(소프트) 노출 → 명시 거부 시에만 저장
-    if (region === 'EU') {
-      // Pre-consent default = denied (GDPR: 사전 동의 없이는 optional 처리 금지)
-      _applyState('denied');
-      _injectBanner();
-    } else {
-      // Non-EU(한국 등): 회원가입 시 이미 약관 동의 완료 → 배너 노출 안 함.
-      // localStorage 에도 저장해 향후 호출 시 isAnalyticsAllowed() 통과하도록.
-      _set('granted');
-    }
+    // 선택 오류 진단은 지역과 무관하게 사용자가 직접 허용하기 전까지 끈다.
+    _applyState('denied');
+    _injectBanner();
   }
 
   if (document.readyState === 'loading') {

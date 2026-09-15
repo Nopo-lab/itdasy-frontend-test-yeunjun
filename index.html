@@ -8,6 +8,24 @@
      ⚠️ script-src/connect-src/frame-ancestors 는 <meta> 로는 앱을 깨뜨릴 위험/무효라 제외 —
         HTTP 헤더 + report-only 로 점진 롤아웃 권장(LAUNCH_REMAINING.md C-1). -->
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'">
+<!-- GitHub Pages 는 X-Frame-Options/frame-ancestors 응답 헤더를 설정할 수 없다.
+     앱을 다른 사이트가 투명하게 덮어씌워 클릭을 가로채지 못하도록, 최상위 창에서만
+     문서를 보인다. 다른 출처의 frame 이 top 이동을 막으면 숨김 상태를 유지한다. -->
+<style id="itdasyFrameGuard">html{display:none!important}</style>
+<script id="itdasyFrameGuardScript">
+(function () {
+  var guard = document.getElementById('itdasyFrameGuard');
+  if (window.top === window.self) {
+    if (guard) guard.remove();
+    return;
+  }
+  try {
+    window.top.location = window.self.location;
+  } catch (err) {
+    console.warn('[frame-guard] embedded app blocked', err && err.name);
+  }
+})();
+</script>
 
 <!-- [2026-05-15 NUCLEAR v6] v128 부팅 깨짐 rescue — KILL_KEY bump (v5→v6)
      사용자 보고: "Uncaught SyntaxError: Unexpected end of input @ index.html:2053".
@@ -905,8 +923,9 @@ window.__LATEST_BUILD__ = '20260915-itbi-context-routing';
   <!-- [2026-08-28] 성함 제거 — 화면 어디서도 안 읽는 값이었다(온보딩에서 샵 이름을 따로 받는다).
        이메일은 인증코드를 통과해야 가입이 된다. 링크가 아니라 6자리 코드인 이유는
        메일앱↔브라우저 왕복 없이 이 화면에서 끝내기 위해서다. -->
+  <form id="signupForm" novalidate>
   <div class="su-mailrow">
-    <input type="email" class="login-input" id="signupEmail" placeholder="이메일" autocomplete="email">
+    <input type="email" class="login-input" id="signupEmail" name="email" placeholder="이메일" autocomplete="email">
     <button type="button" class="su-codebtn" id="signupSendCode">인증번호 받기</button>
   </div>
   <div class="su-verify" id="signupVerifyBox" hidden>
@@ -919,7 +938,7 @@ window.__LATEST_BUILD__ = '20260915-itbi-context-routing';
   </div>
 
   <div style="width:100%;max-width:300px;margin:2px auto 6px;text-align:left;font-size:11.5px;color:var(--text3);padding-left:4px;">비밀번호는 8자 이상, 영문+숫자를 섞어 주세요</div>
-  <input type="password" class="login-input" id="signupPassword" placeholder="비밀번호" autocomplete="new-password">
+  <input type="password" class="login-input" id="signupPassword" name="password" placeholder="비밀번호" autocomplete="new-password">
   <!-- 2026-05-01 ── 추천 코드 제거 (친구초대 폐지). hidden 으로 두어 JS 호환 유지. -->
   <input type="hidden" id="signupRef" value="">
 
@@ -928,10 +947,12 @@ window.__LATEST_BUILD__ = '20260915-itbi-context-routing';
     <span>
       <strong>필수 약관</strong>에 동의합니다 ·
       <a href="https://itdasy.com/terms.html" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline;">이용약관</a> ·
-      <a href="https://itdasy.com/privacy.html" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline;">개인정보처리방침</a> ·
-      고객 정보 AI 분석 처리 위탁(Google LLC, 미국) · 가명처리 후 국외이전
+      <a href="https://itdasy.com/privacy.html" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline;">개인정보처리방침</a>
     </span>
   </label>
+  <div style="margin:0 4px 8px;font-size:11.5px;color:var(--text3);line-height:1.55;">
+    AI 기능에서 글이나 사진을 외부 처리업체로 보내기 전, 기능별 안내와 동의를 따로 받습니다.
+  </div>
 
   <!-- PIPA §22-2 — 만 14세 이상 자체 확인 (B2B 사장님 앱) -->
   <label style="display:flex;align-items:flex-start;gap:8px;margin:8px 0 4px;padding:10px;background:rgba(0,0,0,0.03);border-radius:10px;cursor:pointer;font-size:12px;line-height:1.55;">
@@ -942,7 +963,8 @@ window.__LATEST_BUILD__ = '20260915-itbi-context-routing';
   </label>
 
   <div class="login-error" id="signupError"></div>
-  <button class="pin-btn" id="signupBtn" style="opacity:0.6;pointer-events:none;">회원가입</button>
+  <button type="submit" class="pin-btn" id="signupBtn" style="opacity:0.6;pointer-events:none;">회원가입</button>
+  </form>
 
   <div style="margin-top:16px;text-align:center;font-size:13px;color:var(--text3);">
     이미 계정이 있으신가요?
@@ -2609,7 +2631,7 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
   if (!dsn || !window.Sentry) return;
   // T-351 — GDPR/ePrivacy: 동의 없인 Sentry 비활성. EU 사용자는 opt-in 필수.
   var consent = window.itdasyConsent && typeof window.itdasyConsent.isAnalyticsAllowed === 'function'
-    ? window.itdasyConsent.isAnalyticsAllowed() : true;
+    ? window.itdasyConsent.isAnalyticsAllowed() : false;
   if (!consent) return;
   try {
     window.Sentry.init({

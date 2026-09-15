@@ -2066,6 +2066,7 @@ async function confirmDeleteAccount() {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.detail || `삭제 실패 (${res.status})`);
     }
+    const deletion = await res.json().catch(() => ({}));
     // 세션·캐시 전면 삭제
     setToken(null);
     try { localStorage.clear(); } catch (e) { console.warn('[auth] 로컬 데이터 삭제 실패', e); }
@@ -2075,7 +2076,9 @@ async function confirmDeleteAccount() {
         await Promise.all(keys.map(k => caches.delete(k)));
       } catch (e) { console.warn('[auth] 캐시 삭제 실패', e); }
     }
-    showToast('계정이 완전히 삭제되었습니다. 이용해 주셔서 감사합니다.', 'success');
+    showToast(deletion.status === 'ok'
+      ? '계정과 서비스 데이터가 삭제되었습니다. 이용해 주셔서 감사합니다.'
+      : '계정 이용은 종료됐어요. 외부 보관 데이터 삭제 확인을 진행하고 있습니다.', 'success');
     setTimeout(() => { location.href = 'index.html'; }, 1200);
   } catch (e) {
     if (err) { err.textContent = e.message || '삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'; err.style.display = 'block'; }
@@ -2955,6 +2958,11 @@ window.addEventListener('load', async function() {
     e.preventDefault();
     if (typeof login === 'function') login();
   });
+  const signupForm = document.getElementById('signupForm');
+  if (signupForm) signupForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    signup();
+  });
 
   // 비밀번호 보기 토글
   const pwToggle = document.getElementById('loginPwToggle');
@@ -2976,23 +2984,6 @@ window.addEventListener('load', async function() {
     // #goLoginFromErr = "이미 가입된 이메일" 안내 안의 링크. 하단 #goLogin 과 같은 동작이라 한 곳에서 받는다.
     const goLogin = e.target.closest('#goLogin, #goLoginFromErr');
     if (goLogin) { e.preventDefault(); _toggleSignup(false); return; }
-    const signupBtn2 = e.target.closest('#signupBtn');
-    if (signupBtn2) {
-      const a = document.getElementById('signupAgree');
-      const ageOk = document.getElementById('signupAgeOver14');
-      if (!a || !a.checked) {
-        const err = document.getElementById('signupError');
-        if (err) { err.textContent = '약관에 동의해주세요.'; err.style.display = 'block'; }
-        return;
-      }
-      // PIPA §22-2 — 만 14세 미만 차단 (체크박스 없는 옛날 빌드는 통과)
-      if (ageOk && !ageOk.checked) {
-        const err = document.getElementById('signupError');
-        if (err) { err.textContent = '만 14세 이상만 가입할 수 있어요.'; err.style.display = 'block'; }
-        return;
-      }
-      signup();
-    }
   }, false);
 
   // 약관·만14세·이메일인증 셋 다 충족돼야 가입 버튼 활성화
@@ -3028,13 +3019,10 @@ window.addEventListener('load', async function() {
     if (el) el.addEventListener('keydown', (e) => {
       if (e.isComposing || e.keyCode === 229) return;
       if (e.key !== 'Enter') return;
-      e.preventDefault();
-      // [A14] Enter 키 → signup() 직접 호출 (agree 스코프 문제 수정)
-      // 단 인증 전 이메일 칸에서의 Enter 는 '인증번호 받기'가 자연스럽다 —
-      // 여기서 signup() 을 부르면 "인증 먼저" 에러만 뜨고 아무 진전이 없다.
-      if (id === 'signupEmail' && !_suVerify.ticket) { _suSendCode(); return; }
-      if (id === 'signupCode') { _suCheckCode(); return; }
-      signup();
+      // 인증 전 이메일/코드만 별도 동작이다. 비밀번호의 Enter 는
+      // 브라우저 표준 form submit 으로 보내 가입 요청이 두 번 나가지 않게 한다.
+      if (id === 'signupEmail' && !_suVerify.ticket) { e.preventDefault(); _suSendCode(); return; }
+      if (id === 'signupCode') { e.preventDefault(); _suCheckCode(); }
     });
   });
   window.signup = signup;

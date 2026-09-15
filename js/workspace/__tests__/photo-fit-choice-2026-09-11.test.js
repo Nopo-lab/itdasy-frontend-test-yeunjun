@@ -69,6 +69,10 @@ describe('🔴 고른 값이 미리보기·편집기·발행본에 똑같이 간
   });
   test('플로우가 편집기에 fitMode 를 넘긴다', () => {
     expect(F).toMatch(/fitMode: \(d\._wsFit === 'cover'/);
+    expect(F).toMatch(/layers: e\.layers, fitMode: _fm/);
+  });
+  test('화면 밖 자동 합성도 명시한 꽉 채움을 지킨다', () => {
+    expect(E).toMatch(/fitMode: \(opts\.fitMode === 'cover' \? 'cover' : 'contain'\)/);
   });
   test('편집기가 그 값을 수동 선택으로 받는다', () => {
     expect(E).toMatch(/opts\.fitMode === 'cover' \|\| opts\.fitMode === 'contain'/);
