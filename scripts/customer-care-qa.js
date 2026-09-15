@@ -33,12 +33,20 @@ async function boot(page) {
   for (const f of ['data', 'view', 'forms', 'controller', 'due']) await page.addScriptTag({ path: path.join(ROOT, 'js/customer-care/' + f + '.js') });
   await page.addScriptTag({ path: path.join(ROOT, 'app-customer-dashboard.js') });
   await page.evaluate(() => { window.CustomerCare.mountDueShortcut(document.getElementById('customerSheet')); return window._renderCustomerDetail(document.getElementById('detail'), 10); });
-  await page.getByRole('button', { name: '날짜 지정', exact: true }).waitFor();
+  await page.locator('[data-cc-action="edit-plan"]').waitFor();
 }
 async function main() {
   const browser = await chromium.launch(); const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await boot(page);
+  await page.evaluate(async () => {
+    await window.CustomerCare.request(window.CustomerCare.paths.plan(10), 'PUT', { due_date: null, note: '' });
+    await window.CustomerCare.request(window.CustomerCare.paths.referrer(10), 'PUT', { referrer_id: null });
+    const records = await window.CustomerCare.request(window.CustomerCare.paths.records(10));
+    for (const record of records.items.filter(r => r.service_name === '가상 QA 젤 네일')) await window.CustomerCare.request(window.CustomerCare.paths.record(record.id), 'DELETE');
+    await window._renderCustomerDetail(document.getElementById('detail'), 10);
+  });
+  await page.getByRole('button', { name: '날짜 지정', exact: true }).waitFor();
   await page.getByRole('button', { name: '기록 추가', exact: true }).click();
   await page.getByLabel('시술명', { exact: true }).fill('가상 QA 젤 네일');
   await page.getByLabel('시술 방법 · 고객 반응').fill('누드 핑크 · 손톱 끝은 둥글게. 다음에는 길이 유지.');

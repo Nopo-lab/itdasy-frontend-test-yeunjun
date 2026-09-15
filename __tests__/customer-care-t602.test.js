@@ -106,3 +106,13 @@ test('confirmed saves notify existing customer screens and conflicts refresh on 
   expect(changed.mock.calls[0][0].detail).toMatchObject({ kind: 'update_customer', customer_id: 1 });
   window.removeEventListener('itdasy:data-changed', changed);
 });
+test('an open care list refreshes after customer deletion rather than keeping a ghost entry', async () => {
+  document.body.innerHTML = '<main><input id="customerSearch"></main>';
+  scope = document.querySelector('main'); C.mountDueShortcut(scope);
+  C.request.mockResolvedValue({ items: [], total: 0 });
+  const details = scope.querySelector('details'); details.open = true;
+  details.dispatchEvent(new Event('toggle')); await tick();
+  const before = C.request.mock.calls.length;
+  window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'delete_customer', customer_id: 1 } }));
+  await tick(); expect(C.request.mock.calls.length).toBeGreaterThan(before);
+});

@@ -15,7 +15,10 @@
       if (btn.dataset.ccAction === 'open-customer') window.openCustomerDashboard?.(Number(btn.dataset.id));
       else load(state, btn.dataset.ccAction === 'more-due');
     });
-    document.addEventListener('itdasy:customer-care-changed', () => { if (root.open) load(state); });
+    window.addEventListener('itdasy:data-changed', e => {
+      const kind = e.detail?.kind || '';
+      if (root.isConnected && root.open && /^(create|update|delete|cancel|reschedule)_(customer|booking)$/.test(kind)) load(state);
+    });
   };
   function row(item) {
     return C.button('open-customer', '<span><strong>' + C.escape(item.name) + '</strong><small>' + C.escape(item.note || (item.has_upcoming_booking ? '다음 예약이 있어요' : '관리 내용을 확인해 보세요')) + '</small></span>' +
