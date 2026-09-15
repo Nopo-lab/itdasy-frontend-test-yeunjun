@@ -1,0 +1,18 @@
+{
+  "environment": "isolated_local_postgresql_with_stubbed_external_model",
+  "name": "assistant_100_owners",
+  "requests": 100,
+  "concurrency": 3,
+  "p50_ms": 31.39,
+  "p95_ms": 34.37,
+  "p99_ms": 40.70,
+  "max_ms": 40.73,
+  "errors": 0,
+  "overload_check": {
+    "concurrency": 10,
+    "success_200": 3,
+    "backpressure_503": 7,
+    "retry_after_header_on_all_503": true,
+    "user_retry_message_on_all_503": true
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "environment": "isolated_local_postgresql",
+  "owners": 100,
+  "customers": 100000,
+  "photos": 10000,
+  "bookings": 2000,
+  "results": [
+    {"name":"customers_first_page","requests":100,"concurrency":20,"p50_ms":74.03,"p95_ms":162.82,"p99_ms":177.87,"max_ms":179.70,"errors":0},
+    {"name":"customers_last_page","requests":100,"concurrency":20,"p50_ms":73.12,"p95_ms":160.52,"p99_ms":192.97,"max_ms":193.81,"errors":0},
+    {"name":"customers_search","requests":100,"concurrency":20,"p50_ms":61.69,"p95_ms":80.24,"p99_ms":87.69,"max_ms":102.87,"errors":0},
+    {"name":"portfolio_100","requests":100,"concurrency":20,"p50_ms":62.17,"p95_ms":144.33,"p99_ms":154.92,"max_ms":207.22,"errors":0},
+    {"name":"busy_day_bookings","requests":100,"concurrency":20,"p50_ms":27.62,"p95_ms":33.74,"p99_ms":36.55,"max_ms":40.60,"errors":0},
+    {"name":"customers_burst_50","requests":100,"concurrency":50,"p50_ms":179.95,"p95_ms":304.00,"p99_ms":321.49,"max_ms":361.21,"errors":0}
+  ]
+}

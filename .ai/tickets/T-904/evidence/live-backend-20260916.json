@@ -1,0 +1,62 @@
+{
+  "timestamp_utc": "2026-09-15T23:29:28.029356+00:00",
+  "target": "https://itdasy-backend-staging-644329093453.asia-northeast3.run.app",
+  "serving_sha": "fc07f383",
+  "revision": "itdasy-backend-staging-00627-xnw",
+  "traffic_percent": 100,
+  "deployment_workflow": 35034500812,
+  "health": {
+    "status": "healthy",
+    "db": true,
+    "schema_parity": "ok"
+  },
+  "database_schema": {
+    "migration": "0067_booking_no_show_not_null",
+    "no_show_flagged_nullable": "NO",
+    "no_show_flagged_default": "false",
+    "no_show_flagged_null_count": 0
+  },
+  "booking_list": {
+    "status": 200,
+    "latency_ms": 122.1,
+    "is_list": true,
+    "item_count": 0
+  },
+  "ai_live_concurrency": {
+    "requests": 3,
+    "results": [
+      {
+        "request": 1,
+        "status": 200,
+        "latency_ms": 3991.37,
+        "json_object": true,
+        "has_answer": true,
+        "retry_after": null
+      },
+      {
+        "request": 2,
+        "status": 200,
+        "latency_ms": 3992.08,
+        "json_object": true,
+        "has_answer": true,
+        "retry_after": null
+      },
+      {
+        "request": 3,
+        "status": 200,
+        "latency_ms": 3991.32,
+        "json_object": true,
+        "has_answer": true,
+        "retry_after": null
+      }
+    ]
+  },
+  "consent": {
+    "initial_ai_processing": false,
+    "temporarily_changed": true,
+    "restoration": {
+      "write_status": 200,
+      "verified_ai_processing": false
+    }
+  }
+}
