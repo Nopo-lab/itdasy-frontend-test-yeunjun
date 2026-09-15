@@ -53,10 +53,12 @@
 |---|---|
 | FE 후보 기준 | `db824c047a8760cfb9db5883f544a753d528426c` |
 | FE 수정 후보 | `89ee44d` |
+| FE 검토 요청 | [#46](https://github.com/Nopo-lab/itdasy-frontend-test-yeunjun/pull/46), 초안 |
 | FE 원격 main | `9888ceceb734c37d557becd3facf69ced8900915` |
 | FE 실제 제공 빌드 | `20260915-1116-9888cec` |
 | BE 후보 기준 | `69b32ac744c2bc6209e6178c5c0c33ae44f6bede` |
 | BE 수정 후보 | `88f56e2` |
+| BE 검토 요청 | [#64](https://github.com/Nopo-lab/itdasy_backend-test/pull/64), 초안 |
 | BE 실제 제공 SHA | `9850751ebaf79de6709204db4047e588c65ae6ef` |
 | BE 원격 main | `ff6253dfd7d34752636830633e52169b7fe63515` |
 | Cloud Run | `itdasy-backend-staging-00621-mbg`, 트래픽 100% |
