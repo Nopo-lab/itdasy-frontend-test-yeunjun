@@ -4350,7 +4350,14 @@ window.refreshLastSyncBadges = function () {
     if (!meta) return;
     const hash = (window.location.hash || '').replace(/^#/, '');
     if (hash !== top) {
-      try { meta.close && meta.close(); } catch (_e) { void _e; }
+      try {
+        if (meta.close && meta.close() === false) {
+          // T-602: a draft refused to close; restore the entry already consumed by Back.
+          history.pushState({ sheet: top }, '', '#' + top);
+          pushed[stack.lastIndexOf(top)] = true;
+          return;
+        }
+      } catch (_e) { console.warn('[sheet back]', _e); }
       // 스택에서 pop (close 함수가 이미 _markSheetClosed 호출했으면 중복 pop 안됨)
       const idx = stack.lastIndexOf(top);
       if (idx >= 0) { stack.splice(idx, 1); pushed.splice(idx, 1); }

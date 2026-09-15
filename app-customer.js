@@ -634,6 +634,7 @@
       `;
     }
     document.body.appendChild(sheet);
+    window.CustomerCare?.mountDueShortcut(sheet);
     sheet.querySelector('#customerAddBtn').addEventListener('click', _openAddForm);
     sheet.querySelector('[data-customer-close]')?.addEventListener('click', () => window.closeCustomers());
     // chip + 요약 스트립 클릭 (둘 다 data-seg 필터, is-on 동기화)
@@ -845,6 +846,7 @@
     const mount = sheet ? sheet.querySelector('#cdDetailMount') : null;
     // 시트가 PC 분할 마크업이면 우측 mount, 아니면 풀화면 시트
     if (sheet && sheet.classList.contains('cv4-pc') && mount) {
+      if (window.CustomerCare?.canLeave(mount) === false) return;
       mount.classList.add('cv4-detail');
       sheet.querySelectorAll('.pi.on').forEach(el => el.classList.remove('on'));
       if (rowEl) rowEl.classList.add('on');
@@ -1442,6 +1444,7 @@
   }
 
   window.openCustomers = async function () {
+    if (window.CustomerCare?.canLeave(document.getElementById('customerSheet')) === false) return;
     _resetSheetIfModeMismatched();
     const sheet = _ensureSheet();
     sheet.style.display = 'flex';
@@ -1523,6 +1526,7 @@
   }
 
   window.closeCustomers = function () {
+    if (window.CustomerCare?.canLeave(document.getElementById('customerSheet')) === false) return false;
     const sheet = document.getElementById('customerSheet');
     _trapOff();
     if (sheet) { sheet.style.display = 'none'; sheet.classList.remove('dt-shown'); }
