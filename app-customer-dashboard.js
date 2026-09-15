@@ -237,8 +237,8 @@
     const hidden = revenues.slice(5, 20).map(r => _renderRevenueRow(r, true)).join('');
     const more = revenues.length > 5 ? '<span class="d-sec-link" data-cv4-act="toggle-more">더보기</span>' : '';
     return `
-      <div class="d-sec"><span>시술 기록</span>${more}</div>
-      <div style="font-size:11px;color:var(--text-muted,#999);padding:0 4px 4px;">최근 15~20건의 시술 기록을 저장합니다</div>
+      <div class="d-sec"><span>이용·결제 내역</span>${more}</div>
+      <div style="font-size:11px;color:var(--text-muted,#999);padding:0 4px 4px;">최근 이용·결제 내역이에요</div>
       <div class="vr-wrap">${rows}${hidden}</div>
     `;
   }
@@ -320,7 +320,7 @@
     } catch (_e) { void 0; }
     // [T-107] dedupeKey 기준 중복 제거 — 같은 키는 최신(updatedAt/savedAt) 1개만. 키 없으면 그대로 유지.
     items = _dedupePhotoItems(items);
-    if (!items.length) return; // 빈 상태 — 섹션 숨김 유지
+    if (!wrap.isConnected || !items.length) return; // 빈 상태 — 섹션 숨김 유지
     const head = scopeEl.querySelector('[data-cv4-photos-head]');
     if (head) head.hidden = false;
     wrap.innerHTML = items.slice(0, 12).map(it => _photoThumb(it.src, it.label)).join('');
@@ -334,7 +334,7 @@
     return `
       <div class="cv4-detail">
         ${_renderDetailHeader(m)}
-        ${_renderAiNudge(m.nextDate)}
+        ${window.CustomerCare ? '<div data-customer-care></div>' : _renderAiNudge(m.nextDate)}
         ${_renderDetailCards(m)}
         ${pref}
         ${_renderPhotoSection(m.c.id)}
@@ -347,10 +347,12 @@
   function _bindDetailV4(scopeEl, d) {
     if (!scopeEl) return;
     const c = (d && d.customer) || {};
+    window.CustomerCare?.mount(scopeEl, c);
     scopeEl.querySelectorAll('[data-cv4-act]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         const act = btn.dataset.cv4Act;
+        if (['booking', 'membership', 'delete', 'edit'].includes(act) && window.CustomerCare?.canLeave(scopeEl) === false) return;
         if (act === 'booking') {
           // 모바일 시트면 닫고 캘린더 진입. PC 한 화면 분할이면 그대로.
           if (document.getElementById('customerDashSheet')?.style.display === 'flex') {
@@ -422,9 +424,13 @@
   }
   window._renderCustomerDetail = async function (mountEl, customerId) {
     if (!mountEl || !customerId) return;
+    if (window.CustomerCare?.deferRefresh(mountEl, customerId, () => window._renderCustomerDetail(mountEl, customerId))) return;
+    const requestId = mountEl.dataset.customerRequest = String(Number(mountEl.dataset.customerRequest || 0) + 1);
+    const current = () => mountEl.dataset.customerRequest === requestId;
     mountEl.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#888;font-size:13px;">불러오는 중…</div>';
     try {
       const d = await _apiGet('/customers/' + customerId + '/dashboard');
+      if (!current()) return;
       mountEl.innerHTML = _buildDetailHTMLv4(d);
       _bindDetailV4(mountEl, d);
       _fillPhotoTimeline(mountEl, d);
@@ -436,13 +442,16 @@
     } catch (e) {
       // 폴백 — /customers/{id} 만 받아서 최소 정보 표시
       try {
+        if (!current()) return;
         const cust = await _apiGet('/customers/' + customerId);
+        if (!current()) return;
         const fb = { customer: cust, stats: {}, recent_revenues: [] };
         mountEl.innerHTML = _buildDetailHTMLv4(fb);
         _bindDetailV4(mountEl, fb);
         _fillPhotoTimeline(mountEl, fb);
         if (typeof window.showToast === 'function') window.showToast('기본 정보로 표시 중이에요');
       } catch (_) {
+        if (!current()) return;
         mountEl.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--danger);font-size:13px;">불러오기 실패<br><span style="color:#888;font-size:11px;">${_esc((window._humanError ? window._humanError(e) : (e?.message || '네트워크 오류')))}</span></div>`;
       }
     }
@@ -450,6 +459,9 @@
 
   window.openCustomerDashboard = async function (id) {
     if (!id) return;
+    if (window.CustomerCare?.canLeave(document.getElementById('customerSheet')) === false) return;
+    const existing = document.getElementById('customerDashSheet');
+    if (existing?.style.display !== 'none' && window.CustomerCare?.canLeave(existing) === false) return;
     _currentCustomerId = id;
     // [T-101] 잇비 "이 손님" 컨텍스트 — 이름은 detail 로드 후 채움.
     try { window.__ITDASY_CURRENT_CUSTOMER__ = { id: id, name: '' }; } catch (_e) { void 0; }
@@ -482,6 +494,7 @@
 
   window.closeCustomerDashboard = function () {
     const sheet = document.getElementById('customerDashSheet');
+    if (window.CustomerCare?.canLeave(sheet) === false) return false;
     if (sheet) sheet.style.display = 'none';
     document.body.style.overflow = '';
     _currentCustomerId = null;
@@ -659,7 +672,7 @@
       if (!sheet || sheet.style.display === 'none') return;
       try {
         // 현재 열린 dashboard 다시 로드
-        await window.openCustomerDashboard(_currentCustomerId);
+        await window._renderCustomerDetail(sheet.querySelector('#cdBody'), _currentCustomerId);
       } catch (_err) { void _err; }
     });
   }

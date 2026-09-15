@@ -1,0 +1,72 @@
+/* T-602: Customer care shares the customer screen's quiet rose palette. */
+[data-customer-care] { display: grid; gap: 14px; margin: 18px 0; }
+.cc-card { padding: 18px; border: 1px solid var(--border, #e8e5e5); border-radius: 18px; background: var(--surface, #fff); color: var(--text, #242424); }
+.cc-plan { background: var(--bg, #fcf8f9); }
+.cc-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+.cc-heading h3 { margin: 0; font-size: 16px; font-weight: 750; letter-spacing: -0.5px; }
+.cc-heading p { margin: 5px 0 0; font-size: 12px; color: var(--text-muted, #777); line-height: 1.5; }
+.cc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--border, #e8e5e5); border-radius: 10px; background: var(--surface, #fff); color: inherit; font: inherit; font-size: 13px; cursor: pointer; flex-shrink: 0; }
+.cc-btn .ic, .cc-due .ic, .cc-record .ic, .cc-date-icon .ic { width: 18px; height: 18px; flex-shrink: 0; }
+.cc-btn-primary { background: #333033; color: #fff; border-color: #333033; }
+.cc-btn:disabled { opacity: 0.55; cursor: wait; }
+.cc-btn:focus-visible, .cc-field input:focus-visible, .cc-field textarea:focus-visible, .cc-record summary:focus-visible, .cc-due summary:focus-visible { outline: 3px solid #bc6675; outline-offset: 3px; }
+.cc-muted { display: block; font-size: 12px; color: var(--text-muted, #777); line-height: 1.5; }
+.cc-plan-summary { display: flex; align-items: center; gap: 10px; }
+.cc-date-icon { display: grid; place-items: center; width: 40px; height: 44px; border-radius: 12px; background: #f1e3e6; color: #9e4d5c; flex-shrink: 0; }
+.cc-plan-date { display: block; font-size: 18px; letter-spacing: -0.5px; margin-bottom: 3px; }
+.cc-pill { margin-left: auto; white-space: nowrap; padding: 5px 8px; border-radius: 20px; background: #f1e3e6; color: #914452; font-size: 11px; }
+.cc-note { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.75; margin: 14px 0 0; }
+.cc-empty { padding: 16px 0; color: var(--text-muted, #777); text-align: center; font-size: 13px; line-height: 1.7; }
+.cc-empty p { margin: 0 0 4px; }
+.cc-empty span { font-size: 12px; }
+.cc-record { border-top: 1px solid var(--border, #ece9e9); }
+.cc-record summary { display: flex; align-items: center; gap: 10px; min-height: 58px; cursor: pointer; list-style: none; }
+.cc-record summary::-webkit-details-marker, .cc-due summary::-webkit-details-marker { display: none; }
+.cc-record-date { color: var(--text-muted, #777); font-size: 12px; flex-shrink: 0; }
+.cc-record summary strong { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.cc-record summary .ic { margin-left: auto; }
+.cc-record[open] summary .ic { transform: rotate(180deg); }
+.cc-record-content { padding-bottom: 16px; }
+.cc-record-content .cc-note { margin-top: 0; }
+.cc-row-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.cc-photos { display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; }
+.cc-photos img { width: 88px; height: 88px; border-radius: 10px; object-fit: cover; }
+.cc-more { width: 100%; margin-top: 8px; }
+.cc-referrer { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.cc-referrer > strong { font-size: 13px; font-weight: 500; }
+.cc-person { border: 0; background: var(--bg, #f7f6f6); }
+.cc-referrals { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border, #ece9e9); }
+.cc-referrals p { font-size: 12px; color: var(--text-muted, #777); line-height: 1.6; }
+.cc-person-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.cc-form h4 { margin: 0 0 18px; font-size: 16px; }
+.cc-field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; min-width: 0; }
+.cc-field > span { font-size: 12px; font-weight: 600; }
+.cc-field input, .cc-field textarea { box-sizing: border-box; width: 100%; min-width: 0; min-height: 46px; padding: 11px 12px; border: 1px solid var(--border, #dedada); border-radius: 10px; background: var(--surface, #fff); color: inherit; font: inherit; font-size: 16px; }
+.cc-field input[readonly] { background: var(--bg, #f3f1f1); color: var(--text-muted, #777); }
+.cc-field textarea { resize: vertical; line-height: 1.6; }
+.cc-field-row { display: grid; grid-template-columns: 1fr 1.2fr; gap: 10px; }
+.cc-form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.cc-form-actions .cc-btn-primary { min-width: 120px; }
+.cc-form-hint { font-size: 12px; color: var(--text-muted, #777); line-height: 1.6; margin: 10px 0; }
+.cc-form-error { color: #b13e4b; font-size: 13px; line-height: 1.6; }
+.cc-date-presets { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 16px; }
+.cc-search-results { max-height: 240px; overflow-y: auto; }
+.cc-search-person { display: flex; width: 100%; justify-content: space-between; margin-bottom: 6px; text-align: left; }
+.cc-search-person small, .cc-due-person small { display: block; margin-top: 4px; color: var(--text-muted, #777); font-size: 11px; font-weight: 400; }
+.cc-selected-referrer { padding: 12px 0; font-size: 13px; font-weight: 600; }
+.cc-clear { border: 0; color: var(--text-muted, #777); padding-left: 0; }
+.cc-due { margin: 0 0 12px; border: 1px solid var(--border, #e7dfe1); border-radius: 12px; background: var(--surface, #fff); color: var(--text, #242424); }
+.cc-due summary { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 12px; cursor: pointer; font-size: 13px; font-weight: 600; list-style: none; }
+.cc-due summary .ic:last-child { margin-left: auto; }
+.cc-due-body { max-height: 320px; overflow-y: auto; padding: 0 10px 10px; }
+.cc-due-caption { font-size: 11px; color: var(--text-muted, #777); margin: 0 0 8px; }
+.cc-due-person { width: 100%; display: flex; justify-content: space-between; text-align: left; margin-top: 5px; gap: 12px; }
+.cc-due-person > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.cc-due-date { font-size: 11px; white-space: nowrap; text-align: right; }
+@media (width <= 380px) {
+  .cc-card { padding: 14px; }
+  .cc-heading { align-items: flex-start; }
+  .cc-heading p { max-width: 150px; }
+  .cc-field-row { grid-template-columns: 1fr; gap: 0; }
+  .cc-plan-date { font-size: 16px; }
+}
