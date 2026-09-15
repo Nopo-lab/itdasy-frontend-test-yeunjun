@@ -44,7 +44,7 @@ async function resetFixture(page) {
     for (const record of records.items.filter(r => r.service_name === '가상 QA 젤 네일')) await window.CustomerCare.request(window.CustomerCare.paths.record(record.id), 'DELETE');
     await window._renderCustomerDetail(document.getElementById('detail'), 10);
   });
-  await page.getByRole('button', { name: '날짜 지정', exact: true }).waitFor();
+  await page.getByRole('button', { name: '날짜 추가', exact: true }).waitFor();
 }
 async function main() {
   const browser = await engine.launch(); const page = await browser.newPage({ viewport: { width: Number(process.env.T602_WIDTH || 390), height: 844 } });
@@ -57,11 +57,12 @@ async function main() {
   await page.screenshot({ path: path.join(ROOT, 'output/playwright/t602-' + ENGINE + '-mobile-form.png'), fullPage: true });
   await page.getByRole('button', { name: '기록 저장', exact: true }).click();
   await page.getByText('가상 QA 젤 네일', { exact: true }).waitFor();
-  await page.getByRole('button', { name: '날짜 지정', exact: true }).click();
+  await page.getByRole('button', { name: '날짜 추가', exact: true }).click();
   await page.getByRole('button', { name: '3주 뒤', exact: true }).click();
   await page.getByLabel('그날 챙길 내용').fill('유지 상태 확인');
-  const dueDate = await page.getByLabel('관리 날짜').inputValue();
-  await page.getByRole('button', { name: '관리일 저장', exact: true }).click();
+  await page.screenshot({ path: path.join(ROOT, 'output/playwright/t602-' + ENGINE + '-plan-form.png'), fullPage: true });
+  const dueDate = await page.getByLabel('방문 날짜').inputValue();
+  await page.getByRole('button', { name: '저장', exact: true }).click();
   await page.getByText('유지 상태 확인', { exact: true }).waitFor();
   await page.getByRole('button', { name: '소개자 지정', exact: true }).click();
   await page.getByLabel('우리 샵 고객 검색').fill('민지');
@@ -81,8 +82,8 @@ async function main() {
   await page.evaluate(() => window._renderCustomerDetail(document.getElementById('detail'), 10));
   await page.getByText('유지 상태 확인', { exact: true }).first().waitFor();
   await page.locator('[data-cc-action="edit-plan"]').click();
-  await page.getByRole('button', { name: '관리일 해제', exact: true }).click();
-  await page.getByRole('button', { name: '관리일 저장', exact: true }).click();
+  await page.getByRole('button', { name: '날짜 지우기', exact: true }).click();
+  await page.getByRole('button', { name: '저장', exact: true }).click();
   await page.getByText('정해둔 날짜가 없어요', { exact: true }).waitFor({ timeout: 5000 }).catch(async error => {
     console.error(await page.locator('body').innerText());
     console.error(await page.locator('[name="due_date"]').evaluate(el => ({ value: el.value, valid: el.validity.valid, bad: el.validity.badInput, under: el.validity.rangeUnderflow, over: el.validity.rangeOverflow, message: el.validationMessage })));

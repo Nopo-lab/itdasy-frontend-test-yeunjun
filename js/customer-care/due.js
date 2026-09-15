@@ -6,7 +6,7 @@
     const anchor = scope.querySelector('#customerSearch');
     if (!anchor || scope.querySelector('.cc-due')) return;
     const root = document.createElement('details'); root.className = 'cc-due';
-    root.innerHTML = '<summary>' + C.icon('calendar') + '<span>다가오는 관리일</span>' + C.icon('chevron-down') + '</summary><div class="cc-due-body"></div>';
+    root.innerHTML = '<summary>' + C.icon('calendar') + '<span>다가오는 방문일</span>' + C.icon('chevron-down') + '</summary><div class="cc-due-body"></div>';
     anchor.insertAdjacentElement('afterend', root);
     const state = { root, token: null, version: 0, items: [], total: 0 };
     root.addEventListener('toggle', () => { if (root.open) load(state); });
@@ -26,9 +26,9 @@
   }
   function render(s, error) {
     const box = s.root.querySelector('.cc-due-body');
-    box.innerHTML = '<p class="cc-due-caption">지난 관리일과 앞으로 30일 안에 챙길 고객</p>' + s.items.map(row).join('') +
+    box.innerHTML = '<p class="cc-due-caption">지난 방문일과 앞으로 30일 안에 챙길 고객</p>' + s.items.map(row).join('') +
       (error ? '<p role="alert">' + C.escape(error) + '</p>' + C.button('retry-due', '다시 불러오기') :
-        !s.items.length ? '<p class="cc-empty">지금 챙길 관리일이 없어요.</p>' : '') +
+        !s.items.length ? '<p class="cc-empty">지금 챙길 방문일이 없어요.</p>' : '') +
       (!error && s.total > s.items.length ? C.button('more-due', '고객 더 보기', 'cc-more') : '');
   }
   async function load(s, more = false) {
@@ -36,7 +36,7 @@
     const token = window.getToken?.(); const version = ++s.version;
     if (!more || token !== s.token) s.items = [];
     s.token = token; s.busy = true;
-    s.root.querySelector('.cc-due-body').innerHTML = '<p role="status" class="cc-empty">관리일을 불러오고 있어요…</p>';
+    s.root.querySelector('.cc-due-body').innerHTML = '<p role="status" class="cc-empty">방문일을 불러오고 있어요…</p>';
     try {
       const data = await C.request(C.paths.due + '&limit=20&offset=' + s.items.length);
       if (version !== s.version || token !== window.getToken?.()) return;

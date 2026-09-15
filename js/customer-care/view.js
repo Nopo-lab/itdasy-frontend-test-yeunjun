@@ -14,15 +14,15 @@
     return '<div class="cc-empty cc-failure"><p>' + esc(message) + '</p>' + button(action, '다시 불러오기') + '</div>';
   }
   C.planView = state => {
-    const head = heading('다음 관리', '다음에 챙길 날짜를 기억해요',
-      !state.loading && !state.careError ? button('edit-plan', state.care?.plan?.due_date ? '변경' : '날짜 지정') : '');
-    if (state.loading) return head + '<p class="cc-empty" role="status">관리일을 불러오고 있어요…</p>';
+    const head = heading('다음 방문일', '다시 오실 날짜와 챙길 내용을 남겨요',
+      !state.loading && !state.careError ? button('edit-plan', state.care?.plan?.due_date ? '변경' : '날짜 추가') : '');
+    if (state.loading) return head + '<p class="cc-empty" role="status">다음 방문일을 불러오고 있어요…</p>';
     if (state.careError) return head + failure(state.careError, 'retry');
     const p = state.care.plan || {};
     const date = p.due_date;
     return head + '<div class="cc-plan-summary"><div class="cc-date-icon">' + C.icon('calendar') + '</div><div>' +
       '<strong class="cc-plan-date">' + (date ? esc(C.dateLabel(date)) : '정해둔 날짜가 없어요') + '</strong>' +
-      '<span class="cc-muted">' + (date ? (p.source === 'manual' ? '직접 정한 관리일' : '시술 주기로 정한 관리일') : '고객에게 맞는 날짜를 정해 주세요') + '</span></div>' +
+      '<span class="cc-muted">' + (date ? (p.source === 'manual' ? '직접 정한 방문일' : '시술 주기로 계산한 방문일') : '날짜를 아직 정하지 않았어요') + '</span></div>' +
       (date ? '<span class="cc-pill">' + esc(C.dateHint(date)) + '</span>' : '') + '</div>' +
       (p.note ? '<p class="cc-note">' + esc(p.note) + '</p>' : '');
   };
