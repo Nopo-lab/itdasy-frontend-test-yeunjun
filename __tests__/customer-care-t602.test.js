@@ -49,7 +49,8 @@ test('booking-linked treatment edits memo alone', async () => {
   expect(C.request.mock.calls.find(x => x[1] === 'PATCH')[2]).toEqual({ memo: '수정' });
 });
 test('clearing care date sends explicit null rather than omitting the field', async () => {
-  await load(); click('edit-plan'); submit(); await tick();
+  await load(); click('edit-plan');
+  scope.querySelector('[name="due_date"]').value = '2026-10-01'; click('clear-date'); submit(); await tick();
   expect(C.request.mock.calls.find(x => x[1] === 'PUT')[2]).toEqual({ due_date: null, note: '' });
 });
 test('a late response cannot overwrite another customer mounted into the same root', async () => {
@@ -115,4 +116,13 @@ test('an open care list refreshes after customer deletion rather than keeping a 
   const before = C.request.mock.calls.length;
   window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'delete_customer', customer_id: 1 } }));
   await tick(); expect(C.request.mock.calls.length).toBeGreaterThan(before);
+});
+test('Safari stale form validity does not block explicit care-date clear, while note validation still applies', async () => {
+  await load(); click('edit-plan'); const form = scope.querySelector('form');
+  form.reportValidity = jest.fn(() => false);
+  const note = form.elements.note; note.reportValidity = jest.fn(() => false);
+  const before = C.request.mock.calls.length; submit(); await tick();
+  expect(C.request.mock.calls).toHaveLength(before);
+  note.reportValidity.mockReturnValue(true); submit(); await tick();
+  expect(C.request.mock.calls.find(x => x[1] === 'PUT')[2].due_date).toBeNull();
 });

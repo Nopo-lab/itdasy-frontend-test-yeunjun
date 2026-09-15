@@ -2,7 +2,8 @@
 /* T-602: Real customer dashboard + actual API on the isolated local test server.
  * Start backend/scripts/customer_care_local_server.py before running this.
  */
-const { chromium } = require('playwright');
+const ENGINE = process.env.T602_ENGINE || 'chromium';
+const engine = require('playwright')[ENGINE];
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
@@ -36,8 +37,8 @@ async function boot(page) {
   await page.locator('[data-cc-action="edit-plan"]').waitFor();
 }
 async function main() {
-  const browser = await chromium.launch(); const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  const browser = await engine.launch(); const page = await browser.newPage({ viewport: { width: Number(process.env.T602_WIDTH || 390), height: 844 } });
+  const errors = []; page.on('pageerror', error => { errors.push(error.message); console.error('BROWSER ERROR', error.message); });
   await boot(page);
   await page.evaluate(async () => {
     await window.CustomerCare.request(window.CustomerCare.paths.plan(10), 'PUT', { due_date: null, note: '' });
@@ -50,7 +51,7 @@ async function main() {
   await page.getByRole('button', { name: '기록 추가', exact: true }).click();
   await page.getByLabel('시술명', { exact: true }).fill('가상 QA 젤 네일');
   await page.getByLabel('시술 방법 · 고객 반응').fill('누드 핑크 · 손톱 끝은 둥글게. 다음에는 길이 유지.');
-  await page.screenshot({ path: path.join(ROOT, 'output/playwright/t602-mobile-form.png'), fullPage: true });
+  await page.screenshot({ path: path.join(ROOT, 'output/playwright/t602-' + ENGINE + '-mobile-form.png'), fullPage: true });
   await page.getByRole('button', { name: '기록 저장', exact: true }).click();
   await page.getByText('가상 QA 젤 네일', { exact: true }).waitFor();
   await page.getByRole('button', { name: '날짜 지정', exact: true }).click();
@@ -66,10 +67,10 @@ async function main() {
   await page.getByRole('button', { name: /민지 님/ }).waitFor();
   await page.locator('.cc-due summary').click();
   await page.locator('.cc-due-person').waitFor();
-  await page.screenshot({ path: path.join(ROOT, 'output/playwright/t602-mobile.png'), fullPage: true });
+  await page.screenshot({ path: path.join(ROOT, 'output/playwright/t602-' + ENGINE + '-mobile.png'), fullPage: true });
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'mobile overflow');
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.screenshot({ path: path.join(ROOT, 'output/playwright/t602-desktop.png'), fullPage: true });
+  await page.screenshot({ path: path.join(ROOT, 'output/playwright/t602-' + ENGINE + '-desktop.png'), fullPage: true });
   const care = await page.evaluate(() => window.CustomerCare.request(window.CustomerCare.paths.care(10)));
   assert.equal(care.plan.due_date, dueDate); assert.equal(care.referrer.id, 11);
   const other = await page.evaluate(async () => (await window.apiFetch('/customers/20/care', { headers: window.authHeader() })).status);
@@ -77,12 +78,17 @@ async function main() {
   await page.evaluate(() => window._renderCustomerDetail(document.getElementById('detail'), 10));
   await page.getByText('유지 상태 확인', { exact: true }).first().waitFor();
   await page.locator('[data-cc-action="edit-plan"]').click();
-  await page.getByLabel('관리 날짜').fill('');
+  await page.getByRole('button', { name: '관리일 해제', exact: true }).click();
   await page.getByRole('button', { name: '관리일 저장', exact: true }).click();
-  await page.getByText('정해둔 날짜가 없어요', { exact: true }).waitFor();
+  await page.getByText('정해둔 날짜가 없어요', { exact: true }).waitFor({ timeout: 5000 }).catch(async error => {
+    console.error(await page.locator('body').innerText());
+    console.error(await page.locator('[name="due_date"]').evaluate(el => ({ value: el.value, valid: el.validity.valid, bad: el.validity.badInput, under: el.validity.rangeUnderflow, over: el.validity.rangeOverflow, message: el.validationMessage }))); 
+    await page.screenshot({ path: path.join(ROOT, 'output/playwright/t602-' + ENGINE + '-failure.png'), fullPage: true });
+    throw error;
+  });
   assert.equal((await page.evaluate(() => window.CustomerCare.request(window.CustomerCare.paths.care(10)))).plan.due_date, null);
   assert.deepEqual(errors, []); await browser.close();
-  fs.writeFileSync(path.join(ROOT, 'output/playwright/t602-result.json'), JSON.stringify({ pass: true, checks: ['actual dashboard', 'create treatment', 'care save and clear', 'referral search and save', 'due list', 'reload persists', 'other owner denied', '390px no overflow', 'desktop render', 'no browser exceptions'] }, null, 2));
+  fs.writeFileSync(path.join(ROOT, 'output/playwright/t602-' + ENGINE + '-result.json'), JSON.stringify({ pass: true, engine: ENGINE, checks: ['actual dashboard', 'create treatment', 'care save and clear', 'referral search and save', 'due list', 'reload persists', 'other owner denied', 'mobile no overflow', 'desktop render', 'no browser exceptions'] }, null, 2));
   console.log('PASS: 10 browser integration checks; screenshots in output/playwright');
 }
 main().catch(error => { console.error(error); process.exit(1); });

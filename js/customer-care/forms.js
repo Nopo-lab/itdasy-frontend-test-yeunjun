@@ -26,11 +26,11 @@
       memo('시술 방법 · 고객 반응', 'memo', record?.memo, 2000, '사용한 제품, 디자인, 다음에 기억할 내용을 남겨 주세요') +
       actions(editing ? '수정 저장' : '기록 저장') + '</form>';
   };
-  C.planForm = plan => '<form class="cc-form" data-cc-form="plan"><h4>다음 관리일 정하기</h4>' +
+  C.planForm = plan => '<form class="cc-form" data-cc-form="plan" novalidate><h4>다음 관리일 정하기</h4>' +
     field('관리 날짜', 'due_date', plan.due_date, 'min="1900-01-01" max="2100-12-31"', 'date') +
-    '<div class="cc-date-presets">' + [14, 21, 28].map(days => C.button('date-preset', (days / 7) + '주 뒤', '', 'data-days="' + days + '"')).join('') + '</div>' +
+    '<div class="cc-date-presets">' + [14, 21, 28].map(days => C.button('date-preset', (days / 7) + '주 뒤', '', 'data-days="' + days + '"')).join('') + C.button('clear-date', '관리일 해제', 'cc-clear') + '</div>' +
     memo('그날 챙길 내용', 'note', plan.note, 400, '예: 유지 상태 확인, 디자인 상담') +
-    '<p class="cc-form-hint">날짜를 비우고 저장하면 다음 관리일이 해제돼요.</p>' + actions('관리일 저장') + '</form>';
+    '<p class="cc-form-hint">관리일 해제 후 저장하면 날짜가 해제돼요. 메모는 남겨둘 수 있어요.</p>' + actions('관리일 저장') + '</form>';
   C.referrerForm = state => {
     const referrer = state.care.referrer;
     return '<form class="cc-form" data-cc-form="referrer"><h4>소개해 주신 분 찾기</h4>' +

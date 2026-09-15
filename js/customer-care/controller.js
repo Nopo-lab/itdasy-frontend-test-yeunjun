@@ -68,8 +68,17 @@
     if (s.form === 'referrer') return [C.paths.referrer(s.customer.id), 'PUT', { referrer_id: s.selected?.id || null }];
     return [C.paths.plan(s.customer.id), 'PUT', { due_date: form.elements.due_date.value || null, note: form.elements.note.value.trim() }];
   }
+  function validForm(form) {
+    const date = form.elements.namedItem('due_date');
+    // WebKit can leave the form invalid after clearing an optional date, even
+    // when the input reports valid. Validate remaining controls individually.
+    if (form.dataset.ccForm === 'plan' && date && !date.value && !date.validity.badInput) {
+      return [...form.elements].filter(el => el !== date).every(el => el.reportValidity());
+    }
+    return form.reportValidity();
+  }
   async function save(s, form) {
-    if (s.saving || !C.active(s) || !form.reportValidity()) return;
+    if (s.saving || !C.active(s) || !validForm(form)) return;
     const args = mutation(s, form);
     if (s.form === 'record' && args[2].service_name === '') { form.querySelector('.cc-form-error').hidden = false; form.querySelector('.cc-form-error').textContent = '시술명을 입력해 주세요.'; return; }
     s.saving = true; const controls = [...form.querySelectorAll('input,textarea,button')];
@@ -135,6 +144,7 @@
       'cancel-form': () => { s.form = null; s.searchVersion++; clearTimeout(s.searchTimer); paint(s); if (s.checkSaved) { s.checkSaved = false; records(s); } flushRefresh(s); },
       'retry': () => care(s), 'retry-records': () => records(s), 'more-records': () => records(s, true),
       'more-referrals': () => moreReferrals(s),
+      'clear-date': () => { s.root.querySelector('[name="due_date"]').value = ''; },
       'clear-referrer': () => { s.selected = null; selected(s); },
       'pick-referrer': () => { s.selected = s.results.find(c => String(c.id) === button.dataset.id) || s.selected; selected(s); },
       'date-preset': () => { const date = new Date(C.today()); date.setUTCDate(date.getUTCDate() + Number(button.dataset.days)); s.root.querySelector('[name="due_date"]').value = date.toISOString().slice(0, 10); },
