@@ -4,8 +4,8 @@
 - bootstrap:OK @ 2026-09-15 20:31
 - DONE: 격리 DB·실제 브라우저·전체 자동 검사와 수정·재검사 완료.
 - 판정: RELEASE HOLD. PASS 6 / FAIL 7 / NOT VERIFIED 10 / BLOCKED 2.
-- 수정 후보: FE `89ee44d`, BE `88f56e2`, 정책 `f88e877`.
-- 최종 자동 검사: FE 206묶음 3,220개, BE 4,591개, 실제 PostgreSQL 211개 PASS.
+- 수정 후보: FE `89ee44d`, BE `3690929`, 정책 `f88e877`.
+- 최종 자동 검사: FE 206묶음 3,220개. BE 변경안 다섯 검사 모두 통과(일반 4,586개, 순서 섞기 4,585개, 실제 PostgreSQL 211개).
 - AI 동의: 계정 전환·DM 재생성·Instagram 범위·과거 자동 동의 재사용 결함을 수정하고 실제 브라우저·독립 재검사 완료.
 - 주요 미해결: 공개 사진 저장소, Remove.bg 열쇠 회전, 90초 응답 끊김, 실제 정책/삭제 주소, 실제 Meta·결제·모바일·복원·사람 사진 평가.
 - 전체 증거: `.ai/tickets/T-904/release-certification.md`.

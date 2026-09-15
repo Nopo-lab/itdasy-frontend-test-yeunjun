@@ -57,7 +57,7 @@
 | FE 원격 main | `9888ceceb734c37d557becd3facf69ced8900915` |
 | FE 실제 제공 빌드 | `20260915-1116-9888cec` |
 | BE 후보 기준 | `69b32ac744c2bc6209e6178c5c0c33ae44f6bede` |
-| BE 수정 후보 | `88f56e2` |
+| BE 수정 후보 | `3690929` |
 | BE 검토 요청 | [#64](https://github.com/Nopo-lab/itdasy_backend-test/pull/64), 초안 |
 | BE 실제 제공 SHA | `9850751ebaf79de6709204db4047e588c65ae6ef` |
 | BE 원격 main | `ff6253dfd7d34752636830633e52169b7fe63515` |
@@ -100,13 +100,14 @@ BE main에는 실제 제공 SHA 뒤 관측 기록 파일 2개만 바꾸는 `ff62
 | 화면 전체 자동 검사 | FE 후보 | 공통 | 깨짐 0 | 206묶음, 3,220개 성공 | Jest 출력 | PASS |
 | 서버 실행 검사 | BE 후보 | 공통 | 실행 항목 실패 0 | 4,591개 성공 | pytest 출력 | PASS |
 | 서버 건너뛴 검사 | BE 후보 | 공통 | 건너뜀 0 | 291개 미실행 | pytest 출력 | NOT VERIFIED |
+| 변경안 자동 검사 | BE `3690929` | 공통 | 다섯 검사 실패 0 | 일반 4,586개, 순서 섞기 4,585개, PostgreSQL 211개와 매장 분리·FE 연결값 모두 성공 | [GitHub 실행 34990463232](https://github.com/Nopo-lab/itdasy_backend-test/actions/runs/34990463232) | PASS |
 | DM 예약 전체 흐름 | BE 후보 | A/H/L | 현재 흐름과 기대 일치 | 오래된 기대값이라 1개 예상 실패 처리 | `test_dm_booking_form_autosend.py` | NOT VERIFIED |
-| 실제 PostgreSQL 검사 | BE `c38045d`+격리 DB | K/G/L | 권한·장부·삭제 | 211 PASS, 동의 있는 AI 비서 시험 자료로 재검사. 이후 Instagram 동의 버전만 변경 | pytest 출력 | PASS |
+| 실제 PostgreSQL 검사 | BE `3690929`+격리 DB | K/G/L | 권한·장부·삭제 | 211 PASS. GitHub 격리 DB의 권한·돈·전체 PostgreSQL 검사도 PASS | pytest 및 변경안 #64 자동 검사 | PASS |
 | 실제 예약→완료→매출→삭제 | 실제 제공 FE/BE 시험계정 | A/L | 1회 반영 후 정리 | 50,000원 1회, 전부 삭제 | complete-flow 실행 기록 | PASS |
-| 다른 매장 번호 변조 | 이전 후보 격리 PostgreSQL | K | 한 바이트도 노출 없음 | API/DB 357회 차단. 공개 사진 경로는 별도 FAIL | `t904-final/result.json` | PASS(이전 후보 증거) |
-| 돈·회원권 동시 처리 | BE `c38045d`+격리 PostgreSQL | G/H/I/L | 경제효과 1회 | 211개 DB 검사 PASS; 이후 돈과 무관한 Instagram 동의 버전만 변경. 이전 대량 시험 장부 규칙 15개 위반 0 | pytest+이전 `t904-final/result.json` | PASS |
+| 다른 매장 번호 변조 | 이전 후보 격리 PostgreSQL | K | 한 바이트도 노출 없음 | API/DB 357회 차단. 이전 후보 증거이며 공개 사진 경로는 별도 FAIL | `t904-final/result.json` | PASS |
+| 돈·회원권 동시 처리 | BE `3690929`+격리 PostgreSQL | G/H/I/L | 경제효과 1회 | 211개 DB 검사 PASS. 이전 대량 시험 장부 규칙 15개 위반 0 | pytest+이전 `t904-final/result.json` | PASS |
 | 과부하와 재시도 | 이전 후보 격리 PostgreSQL | G/H | 오류가 빨리 보임 | 90초 끊김 다수, 이후 안정성 수정 없음 | `t904-final/evidence.jsonl` | FAIL |
-| AI 동의 없는 요청 | FE `89ee44d`/BE `88f56e2` | F/C/I | 전송 전 설명·직접 선택, 계정 혼동 없음 | FE 12개·BE 집중 49개·전체 4,591개 PASS. 브라우저 계정 전환 시 저장 0/재시도 0/400, 같은 계정은 저장 1/재시도 1/200 | `.playwright-cli/page-2026-09-15T15-00-09-824Z.png` | PASS |
+| AI 동의 없는 요청 | FE `89ee44d`/BE `3690929` | F/C/I | 전송 전 설명·직접 선택, 계정 혼동 없음 | FE 12개·BE 집중 49개·전체 4,591개 PASS. 브라우저 계정 전환 시 저장 0/재시도 0/400, 같은 계정은 저장 1/재시도 1/200 | `.playwright-cli/page-2026-09-15T15-00-09-824Z.png` | PASS |
 | 사진 60장 파일 생성 | FE 후보 | B/C/D/E | 규격·저장 성공 | 60/60, 5비율, 1080px 출력 | `output/photo-editor-realistic-qa-report.json` | PASS |
 | 사진 60장 사람 품질 | FE 후보 | B/C/D/E | 뷰티 사진만 사용 | 역사 그림·건물 등 부적절 원본 포함 | contact sheet | NOT VERIFIED |
 | 시술 전/후 진실성 | FE 후보 | C/E | 전 사진 없으면 가짜 전 사진 금지 | 16/16 성공 | photo-ba-ux 실행 기록 | PASS |
@@ -145,6 +146,8 @@ BE main에는 실제 제공 SHA 뒤 관측 기록 파일 2개만 바꾸는 `ff62
 | T904-D24 | P1 Privacy High | Instagram 연결 버튼이 설명·체크 전에 세 종류 동의를 미리 기록 | 명시 선택 없는 동의 기록 | 옛 연결 요청을 무기록 응답으로 바꾸고 설명 화면 체크 뒤에만 저장 | FE/BE 회귀 검사 PASS |
 | T904-D25 | P2 QA Safety | 로컬 PostgreSQL 주소가 `127.0.0.1/32`로 보이면 안전 확인이 올바른 대상도 거절 | 격리 시험 중단·검증 공백 | 주소와 주소/범위 표기를 모두 로컬로 확인하되 원격은 계속 거절 | 안전 확인 12개+PostgreSQL 211개 PASS |
 | T904-D26 | P1 Privacy High | 과거 앱이 자동 기록한 Instagram 분석 동의 1.0을 새 검사도 인정 | 기존 계정의 게시물이 직접 선택 없이 AI로 전송 가능 | 새 명시 동의만 인정하도록 2.0으로 올리고 1.0 거절 | 집중 49개+전체 서버 4,591개 PASS |
+| T904-D27 | P2 QA Safety | GitHub 격리 DB의 내부 주소를 원격 DB로 오인 | 돈·권한 검사가 206개 오류로 중단 | 로컬 Docker 사설 주소만 추가 허용하고 공개·원격 주소 차단 유지 | 안전 확인 12개+GitHub PostgreSQL 전체 PASS |
+| T904-D28 | P2 QA | 서로 다른 두 검사 묶음이 같은 시험 사용자 번호를 사용 | 실행 순서를 섞으면 중복 오류로 전체 검사 중단 | 시험 번호 영역 분리 | 실패 재현 후 같은 순서 38개와 전체 순서 섞기 4,585개 PASS |
 
 독립 교차검증은 FE `89ee44d`, BE `88f56e2`에서 계정 전환, DM 재생성, Instagram 동의 범위,
 연결 전 자동 기록, 과거 1.0 재사용, 격리 DB 원격 차단의 여섯 항목을 모두 PASS로 확인했다.
@@ -167,10 +170,10 @@ BE main에는 실제 제공 SHA 뒤 관측 기록 파일 2개만 바꾸는 `ff62
 | Google Cloud Run 사용 | 실제 정책은 Railway 기재 | 사실 불일치 | 후보 정책 배포 | FAIL |
 | 외부 업체 삭제는 확인 대기 | 실제 정책은 즉시삭제처럼 표현 | 삭제 완료 오인 | pending·업체별 기간/국가 명시 | FAIL |
 | 사진 저장 공간 public | 정책은 안전한 보관으로 이해됨 | 고객 사진 노출 | 비공개 저장+짧은 접근주소 | FAIL |
-| Google AI 등 국외 처리 | 국가·시기·방법·보유기간 일부 불명 | 법 필수 고지 판단 필요 | 계약/지역/기간 확정 | LEGAL COUNSEL REVIEW REQUIRED |
+| Google AI 등 국외 처리 | 국가·시기·방법·보유기간 일부 불명 | LEGAL COUNSEL REVIEW REQUIRED | 계약/지역/기간 확정 | NOT VERIFIED |
 | 앱 삭제는 가능 | 웹 삭제 신청 주소는 실제 사이트에 없음 | Play 요구 미충족 | `delete-account.html` 배포·콘솔 연결 | FAIL |
-| 선택 오류 진단 자동 허용 | 과거 자동 허용 기록도 인정 | 선택 수집 동의 부족 | 후보에서 기록 v2로 바꾸고 재선택 | PASS 후보 |
-| 가입 때 AI 동의 자동 기록 | 가입과 AI 동의를 분리한다고 표시 | 동의 없는 국외 전송 가능 | 자동 기록 제거·첫 사용 2.0 동의·외부 AI 진입점 차단 | PASS 후보 |
+| 선택 오류 진단 자동 허용 | 과거 자동 허용 기록도 인정 | 선택 수집 동의 부족 | 후보에서 기록 v2로 바꾸고 재선택 | PASS |
+| 가입 때 AI 동의 자동 기록 | 가입과 AI 동의를 분리한다고 표시 | 동의 없는 국외 전송 가능 | 자동 기록 제거·첫 사용 2.0 동의·외부 AI 진입점 차단 | PASS |
 
 대한민국 개인정보 보호법 제28조의8의 국외이전 고지 항목, Apple의 앱 내 계정삭제 및
 제3자 AI 공유 명시 동의, Google Play의 앱 안·웹 양쪽 삭제 경로 요구와 실제 동작을 대조했다.
@@ -190,7 +193,7 @@ BE main에는 실제 제공 SHA 뒤 관측 기록 파일 2개만 바꾸는 `ff62
 DM 180, 시술기록 195, AI 행동 44, 예약게시 47, 댓글 75.
 
 이 대량 수치는 `b5c6f07` 이전 후보에서 얻은 이전 증거이며 결과 파일에 코드 번호가 없다.
-현재 돈·회원권 코드가 포함된 `c38045d`에서는 돈·회원권·중복·매장 경계와 마이그레이션을 포함한 PostgreSQL 211개를
+현재 돈·회원권 코드가 포함된 `3690929`에서는 돈·회원권·중복·매장 경계와 마이그레이션을 포함한 PostgreSQL 211개를
 다시 실행해 모두 PASS했다. 이전 대량 결과는 현재 AI/DM 경로의 인증 근거로 사용하지 않았다.
 
 예약-고객, 매출-고객, 매출-예약, 중복 완료 매출, 취소 예약 매출, 같은 처리번호 중복,
