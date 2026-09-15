@@ -11,6 +11,8 @@
   var COMMANDS = [
     // ── 꾸미기(스티커·텍스트·그리기·누끼) → 현재 인스타식 편집기(ItdEditor). [2026-07-22] ──
     //   '붙여줘'가 고객연결 규칙에 먼저 잡히지 않게 맨 위에 둔다.
+    { test: /후\s*사진.*(다시\s*)?(편집|보정|열)|after\s*photo.*(edit|open)/i, cmd: { type: 'storyedit', targetRole: 'after' }, label: '후 사진 편집기를 열었어요' },
+    { test: /전\s*사진.*(다시\s*)?(편집|보정|열)|before\s*photo.*(edit|open)/i, cmd: { type: 'storyedit', targetRole: 'before' }, label: '전 사진 편집기를 열었어요' },
     { test: /(스티커|이모지|데코|꾸며|꾸미|예쁘게\s*꾸)/, cmd: { type: 'storyedit' }, label: '편집기를 열었어요 — 스티커·꾸미기를 넣어보세요' },
     { test: /(글씨|글자|텍스트|타이포)\s*(넣|써|추가|올)|문구\s*이미지/, cmd: { type: 'storyedit' }, label: '편집기를 열었어요 — 텍스트를 넣어보세요' },
     { test: /(그리기|그려|낙서|펜으로|손글씨)/, cmd: { type: 'storyedit' }, label: '편집기를 열었어요 — 그리기를 해보세요' },
@@ -67,7 +69,7 @@
     { test: /(인스타스럽게|인스타\s*(말투|느낌|st|스타일))/, cmd: { type: 'capvar', variant: 'insta' }, label: '인스타 말투로 다시 썼어요' },
     { test: /(게시글|캡션|문구).*(다시|새로|재생성)|(다시)\s*(써|생성|만들)/, cmd: { type: 'capvar', variant: 'regen' }, label: '게시글을 다시 만들었어요' },
     // [잇비 이어받기] 작업실 열린 상태에서 "이어서/계속/방금 사진 게시글" → 진행 중 draft의 시술내용을 이어받아 캡션.
-    { test: /(이어서|계속|방금\s*(사진|것|거)?).*(게시글|캡션|글|문구)|(이어서|계속)\s*(써|쓰|만들|생성)/, cmd: function (q) {
+    { test: /(이어서|계속|방금\s*(사진|것|거)?).*(게시글|캡션|글|문구)|(이어서|계속)\s*(써|쓰|만들|생성)/, cmd: function (_q) {
       var out = { type: 'caption' };
       try {
         var slot = (window.WorkspaceFlow && typeof window.WorkspaceFlow.getActiveSlot === 'function') ? window.WorkspaceFlow.getActiveSlot() : null;
@@ -109,6 +111,13 @@
   function _flowOpen() {
     try { return !!(window.WorkspaceFlow && window.WorkspaceFlow.isOpen && window.WorkspaceFlow.isOpen()); }
     catch (_e) { return false; }
+  }
+
+  function _roleFrom(q) {
+    var t = String(q || '');
+    if (/후\s*사진|애프터|after/i.test(t)) return 'after';
+    if (/전\s*사진|비포|before/i.test(t)) return 'before';
+    return '';
   }
 
   // [Phase 4] 오늘(자정 이후) 로컬 갤러리에 저장된 시술 사진들의 dataUrl 을 최대 max 장 수집.
@@ -187,6 +196,10 @@
       if (!c.test.test(q)) continue;
       var cmd = typeof c.cmd === 'function' ? c.cmd(q) : c.cmd;
       if (!cmd) continue;
+      if (cmd.type === 'adjust') {
+        var role = _roleFrom(q);
+        if (role) cmd = Object.assign({}, cmd, { targetRole: role });
+      }
       var res;
       try { res = window.WorkspaceFlow.command(cmd); }
       catch (_e) { res = { ok: false, reason: 'error' }; }

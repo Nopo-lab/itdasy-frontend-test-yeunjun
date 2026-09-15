@@ -892,7 +892,7 @@
     const filtered = target.dateHint ? bookings.filter((b) => _bookingMatchesDate(b, target.dateHint)) : bookings;
     const textOut = _formatLookupBookings(customer, filtered);
     _bumpStats('lookup_booking');
-    return { matched: true, kind: 'message', type: 'bookings_lookup', customer_name: customer.name, text: textOut, booking_cards: filtered.slice(0, 5), data: { items: filtered.slice(0, 5) } };
+    return { matched: true, kind: 'message', type: 'bookings_lookup', customer: customer, customer_name: customer.name, text: textOut, booking_cards: filtered.slice(0, 5), data: { customer: customer, items: filtered.slice(0, 5) } };
   }
 
   // ─── [P0-C] 예약 생성 완성: 시간 해석 + 빈시간 추천 + create_booking 카드 ────────
