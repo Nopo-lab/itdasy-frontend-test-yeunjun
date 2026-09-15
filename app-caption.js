@@ -499,7 +499,7 @@ async function _doGenerateCaptionImpl(scenario, closePopup, inlineHost) {
     } else if (/consent_missing/i.test(raw)) {
       // AI 처리는 가입과 분리해 첫 사용 직전에 설명하고 직접 허용받는다.
       window._inlineConfirm(
-        'AI 캡션을 만들면 입력한 시술 정보와 글 작성 요청이 외부 AI 제공자에게 전송됩니다. 개인정보처리방침에서 제공자·국가·보유기간을 확인할 수 있습니다. 동의하고 계속할까요?',
+        'AI 캡션을 만들면 입력한 시술 정보와 글 작성 요청이 Google Cloud Vertex AI(Gemini)로 전송됩니다. 개인정보처리방침에서 처리 국가·보유기간을 확인할 수 있습니다. 동의하고 계속할까요?',
         async () => {
           try {
             await _personaFetch('POST', '/persona/consent', {

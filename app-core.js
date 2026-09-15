@@ -186,16 +186,31 @@ function apiUrl(path) {
    ⚠️ Response 본문은 한 번만 읽을 수 있으므로 소비자마다 clone() 을 준다.
    GET 만 합친다. POST/PATCH/DELETE 는 각각이 의미 있는 행위라 절대 합치면 안 된다. */
 const _inflightGET = new Map();
+let _aiConsentPromptPromise = null;
+
+async function _fetchWithAiConsent(url, opts, consentRetried) {
+  const res = await fetch(url, opts);
+  if (consentRetried || res.status !== 400 || /\/persona\/consent(?:\?|$)/.test(url)) return res;
+  let detail = '';
+  try { detail = String(((await res.clone().json()) || {}).detail || ''); } catch (e) {
+    console.warn('[ai-consent] 응답 확인 실패:', e);
+  }
+  if (detail !== 'consent_missing') return res;
+  const agreed = await ensureAiProcessingConsent();
+  if (!agreed) return res;
+  return _fetchWithAiConsent(url, opts, true);
+}
+
 function apiFetch(path, opts) {
   const url = apiUrl(path);
   const method = ((opts && opts.method) || 'GET').toUpperCase();
-  if (method !== 'GET') return fetch(url, opts);
+  if (method !== 'GET') return _fetchWithAiConsent(url, opts, false);
   // 인증 헤더가 다르면 다른 요청이다(계정 전환 중 섞임 방지)
   const auth = (opts && opts.headers && (opts.headers.Authorization || opts.headers.authorization)) || '';
   const key = url + '\n' + String(auth).slice(-24);
   const pending = _inflightGET.get(key);
   if (pending) return pending.then((r) => r.clone());
-  const p = fetch(url, opts).finally(() => { _inflightGET.delete(key); });
+  const p = _fetchWithAiConsent(url, opts, false).finally(() => { _inflightGET.delete(key); });
   _inflightGET.set(key, p);
   return p.then((r) => r.clone());
 }
@@ -4089,6 +4104,38 @@ function _inlineConfirm(msg, onYes, onNo, opts) {
   el.querySelector('.bk-confirm-toast__cancel').onclick = () => { el.remove(); if (typeof onNo === 'function') onNo(); };
   el.querySelector('.bk-confirm-toast__ok').onclick = () => { el.remove(); onYes(); };
 }
+
+const ensureAiProcessingConsent = function () {
+  if (_aiConsentPromptPromise) return _aiConsentPromptPromise;
+  _aiConsentPromptPromise = new Promise((resolve) => {
+    _inlineConfirm(
+      'AI 기능을 사용하면 입력한 글·사진·음성이 Google Cloud Vertex AI(Gemini) 등 해당 기능의 외부 처리업체로 전송됩니다. 개인정보처리방침의 제공자·처리 국가·보유기간을 확인하고 동의하시겠어요?',
+      async () => {
+        try {
+          const res = await apiFetch('/persona/consent', {
+            method: 'POST',
+            headers: { ...authHeader(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pipa_collect: true,
+              ai_processing: true,
+              versions: { pipa_collect: '1.0', ai_processing: '2.0' },
+            }),
+          });
+          if (!res.ok) throw new Error('consent_save_failed');
+          resolve(true);
+        } catch (e) {
+          console.warn('[ai-consent] 저장 실패:', e);
+          if (window.showToast) window.showToast('동의를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
+          resolve(false);
+        }
+      },
+      () => resolve(false),
+      { okText: '동의하고 계속', cancelText: '지금은 안 함' }
+    );
+  });
+  _aiConsentPromptPromise.finally(() => { _aiConsentPromptPromise = null; });
+  return _aiConsentPromptPromise;
+};
 
 function _inlinePrompt(msg, defaultVal, onSubmit) {
   _dismissOpenInlineDialogs();

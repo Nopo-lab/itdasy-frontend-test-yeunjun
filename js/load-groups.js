@@ -171,7 +171,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'js/assistant/core/template-sample-matcher.js?v=local-260831v5',
   'js/assistant/core/assistant-template-save.js?v=local-260831v5',
   'js/assistant/core/assistant-template-restore.js?v=local-260831v5',
-  'app-assistant.js?v=local-260831v5',
+  'app-assistant.js?v=20260915-ai-consent',
   'app-assistant-actions-marketing.js?v=local-260831v5'
   ],
   extras: [

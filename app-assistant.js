@@ -3705,7 +3705,7 @@
   function _captionErrorMessage(status, detailValue) {
     const detail = String(detailValue || '');
     if (status === 401) return '로그인이 만료됐어요. 다시 로그인해주세요';
-    if (detail === 'consent_missing') return 'AI 사용 동의가 필요해요 (프로필 → AI 보정 동의)';
+    if (detail === 'consent_missing') return 'AI 사용 전 외부 처리 안내와 동의가 필요해요.';
     if (/quota_exceeded:caption/.test(detail)) return '오늘 캡션 한도(3회)를 다 쓰셨어요. 내일 다시!';
     return detail ? detail.slice(0, 100) : '캡션 생성 실패';
   }
