@@ -1298,17 +1298,6 @@ async function connectInstagram() {
 
 
   try {
-    // 동의 내역 서버 로그 및 로컬 저장 (타임스탬프 포함)
-    apiFetch('/instagram/consent', { method: 'POST', headers: authHeader() })
-      .then(() => {
-        const now = new Date().toLocaleString('ko-KR');
-        localStorage.setItem('itdasy_consented', 'true');
-        localStorage.setItem('itdasy_consented_at', now);
-        const tsEl = document.getElementById('consentTimestampDisplay');
-        if (tsEl) { tsEl.textContent = `동의 완료: ${now}`; tsEl.style.display = 'block'; }
-      })
-      .catch(e => console.warn('[instagram] 동의 기록 실패', e));
-
     // iOS Universal Link 우회: 백엔드 ngrok URL로 이동 (instagram.com 직접 아님)
     // 백엔드가 302로 인스타에 전달 → 앱 납치 없이 Safari에서 OAuth 진행
     const token = getToken();
