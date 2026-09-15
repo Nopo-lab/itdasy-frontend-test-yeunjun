@@ -258,7 +258,7 @@
     });
   }
 
-  /* global 후보 — 특정 memory 하나에서 반복된 것만으로는 절대 승격되지 않는다.
+  /* 전체 취향 후보 — 특정 memory 하나에서 반복된 것만으로는 절대 승격되지 않는다.
      서로 다른 memory **와** context 양쪽에서 같은 값이 반복돼야 "이 원장의 전역 취향" 으로 본다. */
   async function getGlobal(feature) {
     var all = await list();

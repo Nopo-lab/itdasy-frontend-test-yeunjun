@@ -186,16 +186,39 @@ function apiUrl(path) {
    ⚠️ Response 본문은 한 번만 읽을 수 있으므로 소비자마다 clone() 을 준다.
    GET 만 합친다. POST/PATCH/DELETE 는 각각이 의미 있는 행위라 절대 합치면 안 된다. */
 const _inflightGET = new Map();
+let _aiConsentPrompt = null;
+
+function _readAuthorization(headers) {
+  if (!headers) return '';
+  if (typeof headers.get === 'function') return headers.get('Authorization') || '';
+  return headers.Authorization || headers.authorization || '';
+}
+
+async function _fetchWithAiConsent(url, opts, consentRetried) {
+  const requestAuthorization = _readAuthorization(opts && opts.headers);
+  const res = await fetch(url, opts);
+  if (consentRetried || res.status !== 400 || /\/persona\/consent(?:\?|$)/.test(url)) return res;
+  let detail = '';
+  try { detail = String(((await res.clone().json()) || {}).detail || ''); } catch (e) {
+    console.warn('[ai-consent] 응답 확인 실패:', e);
+  }
+  if (detail !== 'consent_missing' || !requestAuthorization) return res;
+  const agreed = await ensureAiProcessingConsent(requestAuthorization);
+  if (!agreed) return res;
+  if (_readAuthorization(authHeader()) !== requestAuthorization) return res;
+  return _fetchWithAiConsent(url, opts, true);
+}
+
 function apiFetch(path, opts) {
   const url = apiUrl(path);
   const method = ((opts && opts.method) || 'GET').toUpperCase();
-  if (method !== 'GET') return fetch(url, opts);
+  if (method !== 'GET') return _fetchWithAiConsent(url, opts, false);
   // 인증 헤더가 다르면 다른 요청이다(계정 전환 중 섞임 방지)
   const auth = (opts && opts.headers && (opts.headers.Authorization || opts.headers.authorization)) || '';
   const key = url + '\n' + String(auth).slice(-24);
   const pending = _inflightGET.get(key);
   if (pending) return pending.then((r) => r.clone());
-  const p = fetch(url, opts).finally(() => { _inflightGET.delete(key); });
+  const p = _fetchWithAiConsent(url, opts, false).finally(() => { _inflightGET.delete(key); });
   _inflightGET.set(key, p);
   return p.then((r) => r.clone());
 }
@@ -1103,9 +1126,9 @@ const _USER_KEY_KEEP = new Set([
   'onboarding_done',  // [v203.1] 추가
   // [2026-05-21] GDPR/ePrivacy 동의 상태 — 디바이스 단위 결정이라 로그아웃 시
   // 삭제하면 매 로그인마다 안내 재노출. app-cookie-consent.js 정의 키.
-  'itdasy_consent_v1',
-  'itdasy_consent_at',
-  'itdasy_consent_region',
+  'itdasy_consent_v2',
+  'itdasy_consent_at_v2',
+  'itdasy_consent_region_v2',
   // [2026-09-03 P0 계정 격리] 갤러리 IDB 소유자 도장(app-gallery-db.js) — itdasy_ 접두어라
   // 여기 안 올리면 purge 가 도장을 지워 다음 open 의 소유자 검사가 무력화된다.
   // 도장을 지우는 곳은 clearGalleryDB 성공 콜백 한 곳뿐이어야 한다(삭제 성공 = 도장 소멸).
@@ -2066,6 +2089,7 @@ async function confirmDeleteAccount() {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.detail || `삭제 실패 (${res.status})`);
     }
+    const deletion = await res.json().catch(() => ({}));
     // 세션·캐시 전면 삭제
     setToken(null);
     try { localStorage.clear(); } catch (e) { console.warn('[auth] 로컬 데이터 삭제 실패', e); }
@@ -2075,7 +2099,9 @@ async function confirmDeleteAccount() {
         await Promise.all(keys.map(k => caches.delete(k)));
       } catch (e) { console.warn('[auth] 캐시 삭제 실패', e); }
     }
-    showToast('계정이 완전히 삭제되었습니다. 이용해 주셔서 감사합니다.', 'success');
+    showToast(deletion.status === 'ok'
+      ? '계정과 서비스 데이터가 삭제되었습니다. 이용해 주셔서 감사합니다.'
+      : '계정 이용은 종료됐어요. 외부 보관 데이터 삭제 확인을 진행하고 있습니다.', 'success');
     setTimeout(() => { location.href = 'index.html'; }, 1200);
   } catch (e) {
     if (err) { err.textContent = e.message || '삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'; err.style.display = 'block'; }
@@ -2955,6 +2981,11 @@ window.addEventListener('load', async function() {
     e.preventDefault();
     if (typeof login === 'function') login();
   });
+  const signupForm = document.getElementById('signupForm');
+  if (signupForm) signupForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    signup();
+  });
 
   // 비밀번호 보기 토글
   const pwToggle = document.getElementById('loginPwToggle');
@@ -2976,23 +3007,6 @@ window.addEventListener('load', async function() {
     // #goLoginFromErr = "이미 가입된 이메일" 안내 안의 링크. 하단 #goLogin 과 같은 동작이라 한 곳에서 받는다.
     const goLogin = e.target.closest('#goLogin, #goLoginFromErr');
     if (goLogin) { e.preventDefault(); _toggleSignup(false); return; }
-    const signupBtn2 = e.target.closest('#signupBtn');
-    if (signupBtn2) {
-      const a = document.getElementById('signupAgree');
-      const ageOk = document.getElementById('signupAgeOver14');
-      if (!a || !a.checked) {
-        const err = document.getElementById('signupError');
-        if (err) { err.textContent = '약관에 동의해주세요.'; err.style.display = 'block'; }
-        return;
-      }
-      // PIPA §22-2 — 만 14세 미만 차단 (체크박스 없는 옛날 빌드는 통과)
-      if (ageOk && !ageOk.checked) {
-        const err = document.getElementById('signupError');
-        if (err) { err.textContent = '만 14세 이상만 가입할 수 있어요.'; err.style.display = 'block'; }
-        return;
-      }
-      signup();
-    }
   }, false);
 
   // 약관·만14세·이메일인증 셋 다 충족돼야 가입 버튼 활성화
@@ -3028,13 +3042,10 @@ window.addEventListener('load', async function() {
     if (el) el.addEventListener('keydown', (e) => {
       if (e.isComposing || e.keyCode === 229) return;
       if (e.key !== 'Enter') return;
-      e.preventDefault();
-      // [A14] Enter 키 → signup() 직접 호출 (agree 스코프 문제 수정)
-      // 단 인증 전 이메일 칸에서의 Enter 는 '인증번호 받기'가 자연스럽다 —
-      // 여기서 signup() 을 부르면 "인증 먼저" 에러만 뜨고 아무 진전이 없다.
-      if (id === 'signupEmail' && !_suVerify.ticket) { _suSendCode(); return; }
-      if (id === 'signupCode') { _suCheckCode(); return; }
-      signup();
+      // 인증 전 이메일/코드만 별도 동작이다. 비밀번호의 Enter 는
+      // 브라우저 표준 form submit 으로 보내 가입 요청이 두 번 나가지 않게 한다.
+      if (id === 'signupEmail' && !_suVerify.ticket) { e.preventDefault(); _suSendCode(); return; }
+      if (id === 'signupCode') { e.preventDefault(); _suCheckCode(); }
     });
   });
   window.signup = signup;
@@ -4101,6 +4112,53 @@ function _inlineConfirm(msg, onYes, onNo, opts) {
   el.querySelector('.bk-confirm-toast__cancel').onclick = () => { el.remove(); if (typeof onNo === 'function') onNo(); };
   el.querySelector('.bk-confirm-toast__ok').onclick = () => { el.remove(); onYes(); };
 }
+
+const ensureAiProcessingConsent = function (expectedAuthorization) {
+  if (!expectedAuthorization || _readAuthorization(authHeader()) !== expectedAuthorization) {
+    return Promise.resolve(false);
+  }
+  if (_aiConsentPrompt) {
+    return _aiConsentPrompt.authorization === expectedAuthorization
+      ? _aiConsentPrompt.promise
+      : Promise.resolve(false);
+  }
+  const promise = new Promise((resolve) => {
+    _inlineConfirm(
+      'AI 기능을 사용하면 입력한 글·사진·음성이 Google Cloud Vertex AI(Gemini) 등 해당 기능의 외부 처리업체로 전송됩니다. 개인정보처리방침의 제공자·처리 국가·보유기간을 확인하고 동의하시겠어요?',
+      async () => {
+        try {
+          if (_readAuthorization(authHeader()) !== expectedAuthorization) {
+            if (window.showToast) window.showToast('계정이 바뀌어 AI 동의를 취소했어요. 다시 시도해 주세요.');
+            resolve(false);
+            return;
+          }
+          const res = await apiFetch('/persona/consent', {
+            method: 'POST',
+            headers: { Authorization: expectedAuthorization, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pipa_collect: true,
+              ai_processing: true,
+              versions: { pipa_collect: '1.0', ai_processing: '2.0' },
+            }),
+          });
+          if (!res.ok) throw new Error('consent_save_failed');
+          resolve(_readAuthorization(authHeader()) === expectedAuthorization);
+        } catch (e) {
+          console.warn('[ai-consent] 저장 실패:', e);
+          if (window.showToast) window.showToast('동의를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
+          resolve(false);
+        }
+      },
+      () => resolve(false),
+      { okText: '동의하고 계속', cancelText: '지금은 안 함' }
+    );
+  });
+  _aiConsentPrompt = { authorization: expectedAuthorization, promise };
+  promise.finally(() => {
+    if (_aiConsentPrompt && _aiConsentPrompt.promise === promise) _aiConsentPrompt = null;
+  });
+  return promise;
+};
 
 function _inlinePrompt(msg, defaultVal, onSubmit) {
   _dismissOpenInlineDialogs();

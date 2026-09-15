@@ -2834,6 +2834,15 @@
   // 순수 실행기 — action 객체만 받아 POST, 결과 반환. UI 갱신은 호출자가.
   // [QA-NEXT #4] action._ai_original (AI 추출 시점 payload 스냅샷) 있으면 original_payload 동봉 →
   // 백엔드에서 final vs original diff 를 UserCorrection 으로 학습.
+  // HTTP 성공이어도 작업이 거절될 수 있다. 실패는 모든 실행 카드의 catch 경로로 보낸다.
+  function _assertExecuteResult(result) {
+    if (result && result.ok === false) {
+      throw new Error(typeof result.message === 'string' && result.message
+        ? result.message : '요청을 완료하지 못했어요. 내용을 확인한 뒤 다시 시도해 주세요.');
+    }
+    return result;
+  }
+
   async function _executeAction(action, opts) {
     opts = opts || {};
     // [P0-4 2026-05-19] 위험 액션은 실행 직전 nativeConfirm 한 번 더.
@@ -2843,7 +2852,7 @@
     // [v167 2026-05-17] 로컬 핸들러 우선 — open_photo_editor 같은 클라이언트 단독 액션은 백엔드 호출 우회.
     const localFn = _localKindHandlers[action.kind];
     if (typeof localFn === 'function') {
-      const d = await localFn(action) || {};
+      const d = _assertExecuteResult(await localFn(action) || {});
       _invalidateCachesFor(action.kind);
       _rememberExecutedAction(action, { kind: action.kind, ...d });
       try { window.ItdasyAssistantContext && window.ItdasyAssistantContext.markRecentAction(action.kind); } catch (_e) { void 0; }
@@ -2933,7 +2942,7 @@
       if (err && typeof err.detail === 'object') e2.stages = err.detail.stages || null;
       throw e2;
     }
-    const d = await res.json();
+    const d = _assertExecuteResult(await res.json());
     _pendingTxn.delete(_txnSig);   // 성공했으니 이 키는 버린다 — 다음 요청은 새 시도다
     _invalidateCachesFor(d.kind || action.kind);
     if (d.kind === 'generate_bulk_message' && d.message_draft) {
@@ -3696,7 +3705,7 @@
   function _captionErrorMessage(status, detailValue) {
     const detail = String(detailValue || '');
     if (status === 401) return '로그인이 만료됐어요. 다시 로그인해주세요';
-    if (detail === 'consent_missing') return 'AI 사용 동의가 필요해요 (프로필 → AI 보정 동의)';
+    if (detail === 'consent_missing') return 'AI 사용 전 외부 처리 안내와 동의가 필요해요.';
     if (/quota_exceeded:caption/.test(detail)) return '오늘 캡션 한도(3회)를 다 쓰셨어요. 내일 다시!';
     return detail ? detail.slice(0, 100) : '캡션 생성 실패';
   }

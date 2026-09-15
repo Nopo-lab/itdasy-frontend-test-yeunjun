@@ -123,10 +123,10 @@
 .italn button svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .italn button.on{background:#fff;border-color:#fff}
 .italn button.on svg{stroke:#1c1316}
-.itsize{display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:11px;font-weight:700}
+.itsize{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;color:#fff;font-size:11px;font-weight:700}
 .itsize input{width:108px;accent-color:#fff}
 /* [2026-09-11] 글자 스타일 행 — 정렬 세그(.italn)와 폰트 칩(.itfont) 의 시각 언어를 그대로 쓴다. */
-.ittext__row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 2px 10px}
+.ittext__row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:0 2px 10px}
 .ittst{display:inline-flex;gap:6px}
 /* 칩은 **그 효과를 실제로 미리 보여준다** — 이름표가 없으므로 눈으로 골라야 한다.
    칩 배경을 중간톤으로 둬야 그림자(어두움)와 외곽선(검은 테두리)이 둘 다 읽힌다.

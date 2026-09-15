@@ -1,5 +1,15 @@
 # BOARD — 터미널 상태 대시보드
 
+## T-904 — Codex
+- bootstrap:OK @ 2026-09-15 20:31
+- DONE: 격리 DB·실제 브라우저·전체 자동 검사와 수정·재검사 완료.
+- 판정: RELEASE HOLD. PASS 6 / FAIL 7 / NOT VERIFIED 10 / BLOCKED 2.
+- 수정 후보: FE `89ee44d`, BE `3690929`, 정책 `f88e877`.
+- 최종 자동 검사: FE 206묶음 3,220개. BE 변경안 다섯 검사 모두 통과(일반 4,586개, 순서 섞기 4,585개, 실제 PostgreSQL 211개).
+- AI 동의: 계정 전환·DM 재생성·Instagram 범위·과거 자동 동의 재사용 결함을 수정하고 실제 브라우저·독립 재검사 완료.
+- 주요 미해결: 공개 사진 저장소, Remove.bg 열쇠 회전, 90초 응답 끊김, 실제 정책/삭제 주소, 실제 Meta·결제·모바일·복원·사람 사진 평가.
+- 전체 증거: `.ai/tickets/T-904/release-certification.md`.
+
 ## T-602 — Codex
 - bootstrap:OK @ 2026-09-15 20:10
 - 완료: 화면 문구를 “다음 방문일” 중심으로 정리. “관리일 정하기” 제거. Chromium/WebKit 브라우저 검증 통과.
@@ -11,9 +21,9 @@
 - 기존 사용자 미완료 변경은 원래 작업 폴더에 보존.
 
 
-**LAST UPDATED:** 2026-09-15 by Codex — T-602 다음 방문일 문구 정리·브라우저 재검증 완료
+**LAST UPDATED:** 2026-09-16 by Codex — T-904 최종 수정·전체 재검사·독립 교차검증 완료
 
-**PREVIOUS UPDATE:** 2026-09-15 by Codex (잇비 연속 대화 문맥 수정 — 전체 로컬 검사 통과, 커밋/푸시 안 함)
+**PREVIOUS UPDATE:** 2026-09-15 by Codex (T-903 iPhone·Android 시험용 빌드 완료)
 
 bootstrap:OK @ 2026-09-14 13:14
 bootstrap:OK @ 2026-09-15 07:15
@@ -1634,6 +1644,30 @@ SN-7 백엔드 결선:
 ## IN PROGRESS
 
 (없음)
+
+## DONE — 2026-09-15 T-903 (iPhone·Android 시험용 빌드)
+
+- 사용자 Yes 승인 범위에서 양쪽 휴대폰 프로젝트 동기화, 시험용 빌드, 켜져 있던 시뮬레이터 설치 통과.
+- Android `com.y2do.itdasy`, iPhone `com.nopolab.itdasy`, `itdasy://` 유지. 권한·서명 설정 변경 없음.
+- 동기화로 추적되는 변경은 iPhone CordovaPlugins 잠금 8.5.0→8.5.2 한 곳.
+- 최신 스테이징 잇비 수정까지 합친 뒤 전체 3,179개, 작업실 흐름 9/9, 양쪽 재빌드·재설치 통과.
+- 기존 시험 기기 로그인 정보 보호를 위해 앱 실행·화면 조작은 하지 않음. 스토어 제출·운영 배포 없음.
+- [네이티브 결과](../output/NATIVE_BUILD_QA_2026-09-15.md)
+- 스테이징 초안 검토: 프론트 [#43](https://github.com/Nopo-lab/itdasy-frontend-test-yeunjun/pull/43), 서버 [#62](https://github.com/Nopo-lab/itdasy_backend-test/pull/62)
+- 서버 #62 자동 확인 5개 모두 통과: 전체 검사, 실행 순서 변경, 권한 분리, 실제 PostgreSQL 무결성, 프론트 연결값.
+
+## DONE — 2026-09-15 T-902 (로컬 안전 보강)
+
+- DM 예약 확정 문구·시술 시간·주소의 채널 이동 보존, 빈 확정 문구 발송 차단. 수정 답장도 시술 시간을 서버 예약 생성에 전달.
+- 개발 도구 보안 공지 15→0. 깨끗한 설치·프론트 3,171개·서버 전체 4,499개·프로젝트 파일 메모리 수정 확인.
+- T1 독립 검토 완료. 프론트 `fe/T-901-release-quality`, 서버 `be/T-902-dm-duration`(`28f561b`). 운영 배포·실제 메시지·휴대폰 설정 변경 없음.
+
+## DONE — 2026-09-15 T-901 (로컬 수정·조사 범위)
+
+- Codex 오케스트레이터 / bootstrap:OK @ 2026-09-15 14:44 / 별도 `fe/T-901-release-quality`.
+- 핵심 문제 9항목 수정, 신규 검사 24개. 전체 3,164개 통과, 오류 0·기존 경고 203, 작업실 9/9.
+- T1 독립 검토 통과. 전체 조사표·보안 잔여 항목·90일 성장안·스토어 소개 검토 초안 작성.
+- [보고서](../output/APP_RELEASE_QUALITY_AUDIT_2026-09-15.md). 실기기·실발송·결제·운영 반영 미완료.
 
 ## DONE (2026-05-06 추가)
 

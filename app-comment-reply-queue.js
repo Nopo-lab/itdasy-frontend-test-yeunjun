@@ -777,6 +777,7 @@
   function _render() {
     var el = document.getElementById(ID);
     if (!el) return;
+    ITEMS.forEach(function (it) { if (it._editing) _captureEdit(el, it); });
     var body = el.querySelector('.ss-body');
     var title = el.querySelector('.crq-title');
     if (title) title.textContent = _view === 'settings' ? '댓글 문의 응대 설정' : '댓글 문의 응대';
@@ -1056,13 +1057,13 @@
 
   /* 발송 실패분 되살리기. 낙관적으로 지웠는데 실패하면 원장 화면에서 그냥 사라진다 —
      "보낸 줄 알았는데 안 갔다" 가 제일 나쁘다. 로컬 숨김도 같이 푼다. */
-  function _restoreItem(it) {
+  function _restoreItem(it, silent) {
     if (!it) return;
     delete _hidden[it.id];
     try { localStorage.setItem(_HIDDEN_KEY, JSON.stringify(_hiddenPayload())); } catch (_e) { void _e; }
     if (!ITEMS.some(function (x) { return x.id === it.id; })) ITEMS.push(it);
     _state = ITEMS.length ? 'DATA' : 'EMPTY';
-    _render();
+    if (!silent) _render();
   }
 
   /* [2026-08-15] 발송을 한 군데로 모은다 — 낱개 발송과 묶음 발송이 각자 fetch 를 들고 있으면
@@ -1117,10 +1118,10 @@
         return _postReply(it)
           .then(function (j) {
             if (_delivered(j)) { ok += 1; return; }
-            if (_isInProgress(j)) { pending += 1; _restoreItem(it); return; }
-            fail += 1;
+            if (_isInProgress(j)) { pending += 1; _restoreItem(it, true); return; }
+            fail += 1; _restoreItem(it, true);
           })
-          .catch(function () { fail += 1; });
+          .catch(function () { fail += 1; _restoreItem(it, true); });
       });
     }, Promise.resolve()).then(function () {
       _batchBusy = false;
@@ -1132,8 +1133,43 @@
     });
   }
 
+  // 작성 중인 입력칸은 자동 갱신 전후 모두 보호한다. 완료한 수정본도 다음 조회에 유지한다.
+  var _refreshing = false;
+  function _queueInteracting() {
+    return _batchBusy || ITEMS.some(function (it) { return it._editing; });
+  }
+  function _keepLocalReply(next) {
+    var prev = ITEMS.find(function (it) { return it.id === next.id; });
+    if (prev) {
+      if (prev._override) next._override = prev._override;
+      next._sendPub = prev._sendPub;
+    }
+    return next;
+  }
+
+  function _applyQueueResponse(j, silent) {
+    if (silent && (_queueInteracting() || _view !== 'queue')) return false;
+    _loading = false;
+    _igWaitTries = 0;
+    _weekReplied = (j && j.week_replied) || 0;
+    _realMode = true;
+
+    /* [2026-09-01 CMT-P1-003] 상태를 분리한다. 예전엔 여기서 items.length 만 보고
+       0 건이면 예시로 떨어뜨렸다 — 권한이 없어 못 읽은 것도, 진짜로 문의가 없는 것도
+       똑같이 가짜 손님 3명으로 보였다. */
+    if (j && j.connected === false) { ITEMS = []; _state = 'NOT_CONNECTED'; return true; }
+    if (j && j.disabled) { ITEMS = []; _state = 'DISABLED'; return true; }
+    if (j && j.permission_error) { ITEMS = []; _state = 'PERMISSION'; return true; }
+
+    var arr = (j && j.items) || [];
+    ITEMS = arr.map(_mapReal).map(_keepLocalReply).filter(function (x) { return !_isHidden(x); });
+    _state = ITEMS.length ? 'DATA' : 'EMPTY';
+    return true;
+  }
+
   // 실제 인스타 댓글 로드 — 연동+권한 있으면 문의 댓글로 큐 교체, 아니면 시드 유지.
   function _loadReal(silent) {
+    if (_refreshing || (silent && _queueInteracting())) return;
     var ig = window.WorkspaceAdapter && window.WorkspaceAdapter.instagram ? window.WorkspaceAdapter.instagram() : null;
     var connected = ig ? ig.connected : false;
     /* [2026-08-15 실계정 실측] 인스타 상태가 **아직 안 온** 상태에서 큐를 열면 여기서 시드로 떨어졌다.
@@ -1164,36 +1200,25 @@
     }
     if (_loading) return;                 // 이미 불러오는 중이면 폴링 중복 방지
     if (!silent) { _loading = true; _state = 'LOADING'; _render(); }   // silent(자동갱신)면 스켈레톤 안 띄움
+    _refreshing = true;
+    var applied = false;
     var auth = window.authHeader ? window.authHeader() : {};
     window.apiFetch(window.apiUrl('/instagram/comment-queue'), { headers: auth })
       .then(function (r) {
         if (!r.ok) throw new Error('http ' + r.status);
         return r.json().catch(function () { return {}; });
       })
-      .then(function (j) {
-        _loading = false;
-        _igWaitTries = 0;
-        _weekReplied = (j && j.week_replied) || 0;
-        _realMode = true;
-
-        /* [2026-09-01 CMT-P1-003] 상태를 분리한다. 예전엔 여기서 items.length 만 보고
-           0 건이면 예시로 떨어뜨렸다 — 권한이 없어 못 읽은 것도, 진짜로 문의가 없는 것도
-           똑같이 가짜 손님 3명으로 보였다. */
-        if (j && j.connected === false) { ITEMS = []; _state = 'NOT_CONNECTED'; return; }
-        if (j && j.disabled) { ITEMS = []; _state = 'DISABLED'; return; }
-        if (j && j.permission_error) { ITEMS = []; _state = 'PERMISSION'; return; }
-
-        var arr = (j && j.items) || [];
-        ITEMS = arr.map(_mapReal).filter(function (x) { return !_isHidden(x); });
-        _state = ITEMS.length ? 'DATA' : 'EMPTY';
-      })
+      .then(function (j) { applied = _applyQueueResponse(j, silent); })
       .catch(function () {
         _loading = false;
         /* 자동갱신(silent) 중 한 번 실패했다고 화면을 오류로 갈아엎지 않는다 —
            원장이 답장 쓰는 중에 목록이 사라지면 그게 더 나쁘다. 다음 폴링에서 다시 시도한다. */
-        if (!silent) { ITEMS = []; _state = 'NETWORK'; }
+        if (!silent) { ITEMS = []; _state = 'NETWORK'; applied = true; }
       })
-      .then(function () { if (_view === 'queue') _render(); });
+      .then(function () {
+        _refreshing = false;
+        if (applied && _view === 'queue' && !(silent && _queueInteracting())) _render();
+      });
   }
 
   // [자동갱신] 큐가 열려 있고 목록 화면일 때만 30초마다 조용히 새 댓글을 당겨온다.

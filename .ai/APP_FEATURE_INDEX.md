@@ -13,6 +13,17 @@
 
 ---
 
+## 2026-09-15 T-901 변경 — 로컬 검증 완료, 미배포
+
+- 댓글 `app-comment-reply-queue.js`: 묶음 실패 문의 복원, 편집 중 갱신 보호, 중복 조회 방지, 정렬 시 작성본 유지.
+- DM `app-dm-confirm-queue.js`: 늦은 조회 응답이 편집을 지우지 않음, 빈 수정문 발송 차단, 일반 답글 채널 이동 복원, 계정 변경 시 이전 응답 차단. 예약 세부 입력 보존은 추가 검증 대상.
+- **[T-902]** DM 예약 카드의 고친 확정 문구·시술 시간·주소도 채널 이동 뒤 복원. 빈 확정 문구 전송 차단.
+- **[T-902]** 예약 답글을 직접 수정해도 조정한 시술 시간이 서버 예약 생성까지 전달되도록 프론트·서버 계약 보강. 서버는 별도 `be/T-902-dm-duration`, 미배포.
+- 잇비 `app-assistant.js`: 명시적인 `ok:false`를 공통 실행 실패로 전달. 완료 기록을 남기지 않고 재시도 번호 유지.
+- 사진편집 `css/itd-editor.css`: 320px 화면의 기울기 글자 줄바꿈 정리.
+- 198묶음·3,164개 검사 통과. 전체 범위·미검증 항목은 [조사 보고서](../output/APP_RELEASE_QUALITY_AUDIT_2026-09-15.md).
+- **[T-902]** 개발 도구의 압축/고유번호 버전 범위를 갱신해 깨끗한 설치 기준 보안 공지 15→0. 전체 3,171개 통과. 실제 iOS/Android 빌드는 남음.
+
 ## 🗺️ 도메인 맵 (어디를 봐야 하나)
 
 | 하고 싶은 것 | 프론트 | 백엔드 |
@@ -213,7 +224,7 @@
 
 ### 편집기 (js/itd-editor/**)
 - **itd-editor.js** (2176) — 인스타식 편집기 `ItdEditor`(텍스트·스티커·반달레이아웃·그리기, 12폰트, HSV 색상). **safe-zone.js**(81, 얼굴위 텍스트 회피). **data/itd-decos.js**(104, 스티커 51종).
-  - **[2026-07-23 아이콘 스티커]** `data/itd-icon-stickers.js`(~100KB) — 공개 아이콘 세트 96개를 **빌드 시점에 data URL 로 인라인**(런타임 CDN 무·오프라인 OK·CSP 안전). 스티커 탭 3개 추가: **아이콘**(`mingcute`, Apache 2.0, 단색이라 앱 스킨색으로 치환해 구움)·**컬러**(`fluent-emoji-flat`, MIT)·**라인**(`streamline-color`, **CC BY 4.0 → 귀속 표기 의무**). `STK_TABS` 가 `ItdIconStickers.tabs` 를 읽어 탭을 만들고(목록 이중관리 X), 삽입은 도형 데코와 같은 `addImageSticker` 경로. ⚠️ **로드 순서**: `itd-icon-stickers.js` 가 `itd-editor.js` 보다 앞이어야 탭이 생긴다. 🚨 **미완**: CC BY 귀속 표기 화면 없음(`ItdIconStickers.CREDITS` 데이터만 준비) — 심사 전 노출하거나 라인 탭 제거. 세트 추가·교체 절차와 라이선스 판단표는 **`.ai/ICON_SETS.md`**.
+  - **[2026-07-23 아이콘 스티커]** `data/itd-icon-stickers.js`(~100KB) — 공개 아이콘 세트 96개를 **빌드 시점에 data URL 로 인라인**(런타임 CDN 무·오프라인 OK·CSP 안전). 스티커 탭 3개 추가: **아이콘**(`mingcute`, Apache 2.0, 단색이라 앱 스킨색으로 치환해 구움)·**컬러**(`fluent-emoji-flat`, MIT)·**라인**(`streamline-color`, **CC BY 4.0 → 귀속 표기 의무**). `STK_TABS` 가 `ItdIconStickers.tabs` 를 읽어 탭을 만들고(목록 이중관리 X), 삽입은 도형 데코와 같은 `addImageSticker` 경로. ⚠️ **로드 순서**: `itd-icon-stickers.js` 가 `itd-editor.js` 보다 앞이어야 탭이 생긴다. ✅ **[2026-09-15 정정]** `js/workspace/workspace-settings.js`의 `_creditsHtml` 및 설정 화면 연결에 출처 표기 구현이 있음. 실제 설치본의 표시는 출시 전에 확인. 세트 추가·교체 절차와 라이선스 판단표는 **`.ai/ICON_SETS.md`**.
   - **[#9·#10 2026-07-18 v776]** **선·도형 비균등 늘리기** — 도형 레이어에 `L.w`/`L.h`(box px) 추가. `.itl__rs` 핸들이 **도형이면** 포인터 이동량을 회전 역보정해 box w/h 조절(중심 고정, 선은 가로=길이만·두께는 굵기슬라이더), 텍스트·스티커·이미지는 **예전대로 균등 `scale`**(`_fgActive`처럼 `L.type==='shape' && L.w!=null`일 때만 분기 → 회귀 0). `styleShape` inner=`width/height:100%`, `drawShape`/export 는 `offsetWidth`(=box)라 자동 반영, `_serLayer`는 회전 도형 AABB 오류 피하려 **`L.w/L.h` 직접 저장**(bounding rect 아님). **되돌리기(↩) 확장**: `move`(레이어 이동)·`cellcrop`(콜라주 칸 사진 위치)·`resize`(도형 늘리기) op 추가 — 실수로 옮긴 것 ↩로 원위치(예전엔 add/del/photo만). `addShape` 에 빠져 있던 `_pushOp` 도 복구. 검증: 선 180→420(두께 유지)·사각형 가로만 늘리기·↩ 복원·왕복(340×120 상대값 저장/복원)·스티커 균등 scale 회귀X.
   - **[2026-07-17 도형 왕복 버그수정]** `_serLayer` 가 shape 의 **`fill`·`strokeW` 를 안 내보내고** `addShopRect` 가 **`circle`→`round` 로 뭉개고 `fill=true` 를 강제**해서, 원장이 만든 '테두리 원'이 재편집·작업기억 복원 시 **'꽉 채운 둥근 사각형'**이 됐다. 굽기(`drawShape`)는 셋 다 이미 존중했으므로 **결과물은 맞고 왕복만 틀렸던 것**. `addShopLine` 도 `role` 을 무조건 `'rule'` 로 박아 원장이 직접 그린 선까지 자동 재배치(`:800`·`:822` 가 `role==='rule'` shape 를 옮김) 대상이 됐음 → `spec.role` 존중. ⚠️ `addShopRect` 의 `role` 기본값 `'panel'` 은 자동 재배치 대상이 아니라 그대로 둠.
 
@@ -322,7 +333,7 @@ auth·customer·booking·treatment·services·revenue·inventory·shop·**person
 
 - **실기기 미검증**: IAP 실제 구매·복원(StoreKit/Play Billing 영수증 추출 필드가 플랫폼·버전마다 다름) · 자리비움 자동응답 **실발송**(실DM E2E 필요) · 콜라주+누끼+보정 E2E.
 - **심사 대기**: 인스타 `content_publish`(발행) · DM 봇 Advanced. 댓글 답글은 **스테이징만 ON**(`INSTAGRAM_FULL_SCOPE=1`, 운영은 basic).
-- **미완**: 아이콘 스티커 CC BY **귀속 표기 화면 없음**(`ItdIconStickers.CREDITS` 데이터만) — 심사 전 노출하거나 라인 탭 제거.
+- **[2026-09-15 정정]** 아이콘 출처는 `js/workspace/workspace-settings.js`에 구현·연결됨. 실제 설치본 표시 확인은 남음.
 - **스텁 유지**: 네이버 예약 양방향 동기화 · `app-kakao-hub.js` 관리화면.
 
 ---

@@ -20,15 +20,8 @@ const ROOT = path.resolve(__dirname, '..');
 function staticChecks() {
   const out = [];
   const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
-  const tpl = read('app-photo-editor-templates.js');
-  out.push(['D1 저장·게시 준비 라벨', tpl.includes('저장·게시 준비')]);
-  out.push(['D2 기본 템플릿 details 접기', tpl.includes('details class="pe-tpl-legacy"')]);
-  out.push(['D3 시술 전 사진 추가 CTA', tpl.includes('시술 전 사진 추가')]);
-  out.push(['D4 저장하기 단독 라벨 제거', !/>저장하기</.test(tpl)]);
-  const slider = read('app-photo-editor-ba-slider.js');
-  out.push(['D5 ba-slider 보정 전후 라벨', slider.includes('보정 전후 / 원본 비교')]);
-  out.push(['D6 ba-slider 탭 보정 비교', slider.includes("'보정 비교'")]);
   const compose = read('app-photo-editor-ba-compose.js');
+  out.push(['D3 시술 전 사진 추가 CTA', compose.includes('시술 전 사진 추가')]);
   out.push(['D7 ba-compose placeholder 함수', compose.includes('_beforePlaceholder')]);
   out.push(['D8 ba-compose 가짜 grayscale 가드', compose.includes('before && !_hasBefore')]);
   return out;
@@ -37,11 +30,16 @@ function staticChecks() {
 async function main() {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await page.addInitScript(() => {
+    try { localStorage.clear(); } catch (_e) { /* QA 격리 */ }
+    try { navigator.serviceWorker.register = () => Promise.reject(new Error('qa sw off')); } catch (_e) { /* QA 격리 */ }
+  });
   const errors = [];
   page.on('pageerror', e => errors.push('pageerror: ' + String(e.message || e)));
   page.on('console', m => { if (m.type() === 'error') errors.push('console.error: ' + m.text().slice(0, 160)); });
 
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 45000 });
+  await page.evaluate(() => window.AppLoader && window.AppLoader.ensure('photo'));
   await page.waitForFunction(() => window.PhotoEditorBACompose && window.PhotoEditorTemplateMarketData && window.PhotoEditorTemplateOverlay, null, { timeout: 45000 });
 
   const res = await page.evaluate(() => {

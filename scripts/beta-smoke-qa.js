@@ -119,18 +119,15 @@ async function main() {
 
   // ── 5. 사진편집기 진입/저장 smoke ──
   const peInfo = await page.evaluate(async () => {
-    if (!(window.PhotoEditor && window.PhotoEditor.open)) return { available: false };
+    if (window.AppLoader) await window.AppLoader.ensure('photo');
+    if (!(window.ItdEditor && window.ItdEditor.compose)) return { available: false };
     try {
       const c = document.createElement('canvas'); c.width = 400; c.height = 400; const g = c.getContext('2d'); g.fillStyle = '#cab'; g.fillRect(0, 0, 400, 400);
-      window.PhotoEditor.open({ src: c.toDataURL('image/png'), shopName: 'QA' });
-      await new Promise(r => setTimeout(r, 2500));
-      const sheet = document.getElementById('photoEditorSheet');
-      const cv = document.getElementById('peCanvas');
-      const opened = !!(sheet && getComputedStyle(sheet).display !== 'none' && cv);
-      let saved = false;
-      if (opened && cv) { try { const u = cv.toDataURL('image/png'); saved = u.length > 100; } catch (_e) { saved = false; } }
-      try { window.PhotoEditor.close && window.PhotoEditor.close(true); } catch (_e) { void _e; }
-      return { available: true, opened, canvasExportable: saved };
+      const src = c.toDataURL('image/png');
+      const result = await window.ItdEditor.compose({ photo: src, ratio: '1:1', layers: [
+        { type: 'text', role: 'title', text: 'QA', x: 0.5, y: 0.5, size: 0.08, color: '#ffffff' }
+      ] });
+      return { available: true, composed: !!(result && result.length > 100), canvasExportable: /^data:image\//.test(result || '') };
     } catch (e) { return { available: true, error: String(e && e.message) }; }
   });
   report.steps.photoEditor = peInfo;

@@ -563,7 +563,10 @@
       //   built.ratio(샵 프레임 4:5)로 다시 구우면 콜라주가 contain 레터박스돼 작업기억 꾸밈이
       //   콜라주 실제 크기에 안 맞고 더 작은/어긋난 영역에 얹혔다(원장 지적). o.ratio 없으면(사진별 flat) 프레임 비율.
       var _oRatio = o.ratio || built.ratio;
-      return window.ItdEditor.compose({ photoUrl: base, ratio: _oRatio, layers: _layersForO })
+      return window.ItdEditor.compose({
+        photoUrl: base, ratio: _oRatio, layers: _layersForO,
+        fitMode: (d._wsFit === 'cover' ? 'cover' : 'contain')
+      })
         .then(function (url) {
           if (!url || myD !== d || d._dead) return false;
           o._autoBase = base; o.outputUrl = url; o.autoSig = _sigO;
@@ -868,11 +871,12 @@
             _pp.forEach(function (e) {
               var tp = _eph[e.idx]; if (!tp || tp === p) return;   // 보던 장은 위에서 dataUrl 로 이미 저장
               var _cb = _cleanBase(tp) || photoUrl(tp);
-              window.ItdEditor.compose({ photoUrl: _cb, ratio: _rt, layers: e.layers }).then(function (u) {
+              var _fm = (meta.editState && meta.editState.fitMode === 'cover') ? 'cover' : 'contain';
+              window.ItdEditor.compose({ photoUrl: _cb, ratio: _rt, layers: e.layers, fitMode: _fm }).then(function (u) {
                 if (!u) return;
                 tp.editedDataUrl = u; tp.storyEdited = true;
                 _syncOutputForEdit(tp, u, false);   // [버그수정 2026-07-17] 사진별 레이어 합성도 결과물 배열에 반영
-                tp.editState = { v: 1, layoutIdx: 0, layoutOrder: [], cellCrop: [], fitMode: 'contain', ratio: _rt, adj: [], photoDraw: {}, photoBg: {}, photos: [_cb], layers: e.layers };
+                tp.editState = { v: 1, layoutIdx: 0, layoutOrder: [], cellCrop: [], fitMode: _fm, ratio: _rt, adj: [], photoDraw: {}, photoBg: {}, photos: [_cb], layers: e.layers };
                 d.previewUrl = null;   // [#3] 편집 중간에는 내 콘텐츠 저장 안 함 — 최종(발행/연결/저장)에서만. 데이터는 메모리 유지.
                 /* [2026-09-12 ZH] 장별 합성은 **비동기**다 — 아래 `_persistEditQuiet()` 는 이미 지나갔다.
                    그래서 저장본엔 다른 장들의 글자가 하나도 없었다(실측: 3장 중 2장의 글자 소실).
