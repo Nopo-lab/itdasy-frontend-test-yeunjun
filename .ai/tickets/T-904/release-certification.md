@@ -124,6 +124,15 @@
 
 대한민국 개인정보 보호법 제28조의8의 국외이전 고지 항목, Apple의 앱 내 계정삭제 및
 제3자 AI 공유 명시 동의, Google Play의 앱 안·웹 양쪽 삭제 경로 요구와 실제 동작을 대조했다.
+공식 근거:
+[개인정보 보호법 제28조의8](https://law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1033215841),
+[Apple App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/),
+[Apple 계정 삭제 안내](https://developer.apple.com/support/offering-account-deletion-in-your-app),
+[Google Play 계정 삭제 요구](https://support.google.com/googleplay/android-developer/answer/13327111),
+[Google Play AI 콘텐츠 정책](https://support.google.com/googleplay/android-developer/answer/14094294).
+
+실제 사이트 재확인 결과 개인정보처리방침은 여전히 Railway와 가입 시 일괄 국외이전 동의,
+즉시 완전삭제를 적고 있으며 `https://itdasy.com/delete-account.html`은 HTTP 404다.
 
 ## 8. MONEY RECONCILIATION
 
