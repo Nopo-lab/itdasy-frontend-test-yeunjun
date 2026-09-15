@@ -24,14 +24,17 @@
 | 대상 | 실제 값 |
 |---|---|
 | FE 후보 기준 | `db824c047a8760cfb9db5883f544a753d528426c` |
+| FE 수정 후보 | `fe4685a` |
 | FE 원격 main | `9888ceceb734c37d557becd3facf69ced8900915` |
 | FE 실제 제공 빌드 | `20260915-1116-9888cec` |
 | BE 후보 기준 | `69b32ac744c2bc6209e6178c5c0c33ae44f6bede` |
+| BE 수정 후보 | `c9c4033` |
 | BE 실제 제공 SHA | `9850751ebaf79de6709204db4047e588c65ae6ef` |
 | Cloud Run | `itdasy-backend-staging-00621-mbg`, 트래픽 100% |
 | 서버 환경 | `ENVIRONMENT=production`인 스테이징 서비스 |
 | DB 격리 시험 | `itdasy_t904_runner@itdasy_release_t904`, 관리자 권한 없음 |
 | Supabase | `hsxxqomfbdernepykils`, `user-uploads` |
+| 정책 수정 후보 | `f88e877` |
 | DB 표시 이력 | `MIGRATION_APPLIED=20260516-0016-receipt`; 코드 마이그레이션 63개와 불일치 |
 | Android | `com.y2do.itdasy` |
 | iOS | `com.nopolab.itdasy` |
@@ -63,6 +66,8 @@
 | 시험 | 환경 | 사용자 유형 | 기대 | 실제 | 증거 | 결과 |
 |---|---|---|---|---|---|---|
 | 화면 전체 자동 검사 | FE 후보 | 공통 | 깨짐 0 | 205묶음, 3,210개 성공 | Jest 출력 | PASS |
+| 서버 전체 자동 검사 | BE 후보 | 공통 | 실패 0 | 4,540 PASS, 291 NOT VERIFIED, 예상 실패 1 | pytest 출력 | PASS |
+| 실제 PostgreSQL 검사 | BE 후보+격리 DB | K/G/L | 권한·장부·삭제 | 211 PASS | pytest 출력 | PASS |
 | 실제 예약→완료→매출→삭제 | 실제 제공 FE/BE 시험계정 | A/L | 1회 반영 후 정리 | 50,000원 1회, 전부 삭제 | complete-flow 실행 기록 | PASS |
 | 다른 매장 번호 변조 | 격리 PostgreSQL | K | 한 바이트도 노출 없음 | 357회 차단, 연결 위반 0 | `t904-final/result.json` | PASS |
 | 돈·회원권 동시 처리 | 격리 PostgreSQL | G/H/I/L | 경제효과 1회 | 장부 불변조건 15개 위반 0 | 같은 파일 | PASS |
