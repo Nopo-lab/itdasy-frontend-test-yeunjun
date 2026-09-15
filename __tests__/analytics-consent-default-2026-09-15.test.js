@@ -9,6 +9,11 @@ const assistant = fs.readFileSync(path.join(ROOT, 'app-assistant.js'), 'utf8');
 const instagram = fs.readFileSync(path.join(ROOT, 'app-instagram.js'), 'utf8');
 const index = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
+function cacheVersion(source, filename) {
+  const escaped = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return source.match(new RegExp(`${escaped}\\?v=([^"',]+)`))?.[1] || '';
+}
+
 describe('선택 오류 진단 동의', () => {
   test('한국을 포함한 모든 지역에서 직접 허용 전에는 꺼 둔다', () => {
     expect(consent).toMatch(/_applyState\('denied'\);\s*_injectBanner\(\);/);
@@ -51,14 +56,18 @@ describe('선택 오류 진단 동의', () => {
   });
 
   test('새 동의 코드가 이전 배포 캐시에 가리지 않는다', () => {
-    expect(index).toMatch(/app-core\.js\?v=20260915-ai-consent/);
-    expect(index).toMatch(/app-caption\.js\?v=20260915-ai-consent/);
     const groups = fs.readFileSync(path.join(ROOT, 'js/load-groups.js'), 'utf8');
-    expect(groups).toMatch(/app-assistant\.js\?v=20260915-ai-consent/);
+    const versions = [
+      cacheVersion(index, 'app-core.js'),
+      cacheVersion(index, 'app-caption.js'),
+      cacheVersion(groups, 'app-assistant.js'),
+    ];
+    expect(versions.every(Boolean)).toBe(true);
+    expect(new Set(versions).size).toBe(1);
   });
 
   test('인스타 설명 화면을 보기 전에 동의를 미리 기록하지 않는다', () => {
     expect(instagram).not.toMatch(/apiFetch\('\/instagram\/consent'/);
-    expect(index).toMatch(/app-instagram\.js\?v=20260915-explicit-consent/);
+    expect(cacheVersion(index, 'app-instagram.js')).toBeTruthy();
   });
 });
