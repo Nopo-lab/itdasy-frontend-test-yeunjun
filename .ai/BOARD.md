@@ -1624,6 +1624,7 @@ SN-7 백엔드 결선:
 - 최신 스테이징 잇비 수정까지 합친 뒤 전체 3,179개, 작업실 흐름 9/9, 양쪽 재빌드·재설치 통과.
 - 기존 시험 기기 로그인 정보 보호를 위해 앱 실행·화면 조작은 하지 않음. 스토어 제출·운영 배포 없음.
 - [네이티브 결과](../output/NATIVE_BUILD_QA_2026-09-15.md)
+- 스테이징 초안 검토: 프론트 [#43](https://github.com/Nopo-lab/itdasy-frontend-test-yeunjun/pull/43), 서버 [#62](https://github.com/Nopo-lab/itdasy_backend-test/pull/62)
 
 ## DONE — 2026-09-15 T-902 (로컬 안전 보강)
 

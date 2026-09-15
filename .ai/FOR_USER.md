@@ -141,6 +141,7 @@ AI 캡션, 누끼따기, 비포/애프터 같은 기능 그대로. 단 **예약 
 사용자 승인 뒤 양쪽 휴대폰 프로젝트를 최신 코드에 맞추고, Android 시험용 앱과 iPhone 시뮬레이터용 앱을 실제로 만들었습니다. 두 시험 기기에 업데이트 설치도 성공했습니다.
 앱 이름과 로그인 돌아오기 주소는 그대로입니다. 기존 기기의 로그인 정보 보호를 위해 설치 뒤 앱을 열지는 않았습니다. 실물 휴대전화·스토어 시험 결제·실제 댓글/DM은 출시 전 별도 확인이 필요합니다.
 [네이티브 결과](../output/NATIVE_BUILD_QA_2026-09-15.md)
+검토용 초안은 프론트 [#43](https://github.com/Nopo-lab/itdasy-frontend-test-yeunjun/pull/43), 서버 [#62](https://github.com/Nopo-lab/itdasy_backend-test/pull/62)에 올렸습니다. 아직 운영 배포는 아닙니다.
 
 </details>
 
