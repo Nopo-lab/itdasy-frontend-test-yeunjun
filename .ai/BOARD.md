@@ -1,13 +1,13 @@
 # BOARD — 터미널 상태 대시보드
 
 ## T-904 — Codex
-- bootstrap:OK @ 2026-09-15 20:31
-- DONE: 격리 DB·실제 브라우저·전체 자동 검사와 수정·재검사 완료.
-- 판정: RELEASE HOLD. PASS 6 / FAIL 7 / NOT VERIFIED 10 / BLOCKED 2.
-- 수정 후보: FE `89ee44d`, BE `3690929`, 정책 `f88e877`.
-- 최종 자동 검사: FE 206묶음 3,220개. BE 변경안 다섯 검사 모두 통과(일반 4,586개, 순서 섞기 4,585개, 실제 PostgreSQL 211개).
-- AI 동의: 계정 전환·DM 재생성·Instagram 범위·과거 자동 동의 재사용 결함을 수정하고 실제 브라우저·독립 재검사 완료.
-- 주요 미해결: 공개 사진 저장소, Remove.bg 열쇠 회전, 90초 응답 끊김, 실제 정책/삭제 주소, 실제 Meta·결제·모바일·복원·사람 사진 평가.
+- bootstrap:OK @ 2026-09-16 04:31
+- DONE: 격리 DB·실제 브라우저·스테이징·전체 자동 검사와 수정·재검사 완료.
+- 판정: RELEASE HOLD. PASS 9 / FAIL 0 / NOT VERIFIED 11 / BLOCKED 5.
+- 제공판: FE `8e838842`, BE `6866a9d4`, Cloud Run `00626-h2n` 100%.
+- 최종 자동 검사: FE 206묶음 3,220개. BE 일반·순서 섞기 각 4,615개, 실제 PostgreSQL 214개, 매장 분리 172개+99개 모두 통과.
+- 사진 저장소 비공개·실제 삭제, 탈퇴 삭제 재시도, AI 질문 원문 미기록, DB 보완 7건을 배포 후 재확인.
+- 주요 미해결: 실제 동작하는 Google AI·Remove.bg 열쇠 폐기, 실제 Meta·결제·모바일·복원·사람 사진/스타일 평가·법률 확인.
 - 전체 증거: `.ai/tickets/T-904/release-certification.md`.
 
 ## T-602 — Codex
@@ -21,7 +21,7 @@
 - 기존 사용자 미완료 변경은 원래 작업 폴더에 보존.
 
 
-**LAST UPDATED:** 2026-09-16 by Codex — T-904 최종 수정·전체 재검사·독립 교차검증 완료
+**LAST UPDATED:** 2026-09-16 by Codex — T-904 최종 수정·스테이징 배포·재검증 완료
 
 **PREVIOUS UPDATE:** 2026-09-15 by Codex (T-903 iPhone·Android 시험용 빌드 완료)
 
