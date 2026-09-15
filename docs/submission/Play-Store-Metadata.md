@@ -1,13 +1,17 @@
 # Google Play Console Metadata — 잇데이 / Itdasy
 
+> 2026-09-15 검토: 이 문서의 개인정보·권한·심사 선언은 실제 설치본과 콘솔 대조 전 제출하지 않는다.
+> 소개 문구는 [최신 검토 초안](Release-Copy-2026-09-15.md)을 우선 사용한다. 실제 스토어 변경은 하지 않았다.
+
 > ⚠️ [2026-09-07] 가격 정본은 **월 ₩9,900 / 연 ₩99,000 (USD $6.99), 월간 10일 무료체험**이다.
 > 근거: 백엔드 `/subscription/plans` (`price:9900`, `price_yearly:99000`, `price_usd:6.99`) ·
 > `index.html` 페이월 · `terms.html` · `landing/index.html` (2026-09-02 가격 개편).
-> 상품ID `itdasy_membership_monthly_6900` 은 **이름만 옛 가격이 남은 레거시 식별자**다 —
-> 스토어 연결이 끊기므로 이름은 바꾸지 않는다. **콘솔의 실제 가격이 ₩9,900 인지 반드시 확인할 것.**
+> 현재 앱 상품ID는 `itdasy_pro_monthly_9900` / `itdasy_pro_yearly_99000`이다 (`app-iap.js`).
+> `itdasy_membership_monthly_6900`은 기존 구매 복원용으로 보존한다. 기존 가입자의 가격을 임의 변경하지 않는다.
+> 새 상품의 실제 가격·체험 조건은 콘솔에서 확인해야 한다.
 
 
-**Package Name**: `com.nopolab.itdasy`
+**Package Name**: `com.y2do.itdasy` (Android `app/build.gradle` 기준; iOS 식별자와 다름)
 **Category**: Business
 **Content Rating**: Everyone
 **Default Language**: Korean (한국어 - 대한민국)
@@ -103,7 +107,7 @@ AI Instagram marketing for solo beauty salon owners. Captions, photo editing, sc
 ## IAP Products
 
 ### Subscription Details
-Both products are billed monthly with auto-renewal. 1-week free trial on first subscription.
+Monthly and yearly products renew on their respective billing periods. The app describes a 10-day trial for the monthly product; verify eligibility and the configured offer in Play Console before submission. The yearly product has no trial in the current app copy.
 
 | Product ID | Base Plan | Pricing (KR) | Pricing (US) | Description |
 |---|---|---|---|---|

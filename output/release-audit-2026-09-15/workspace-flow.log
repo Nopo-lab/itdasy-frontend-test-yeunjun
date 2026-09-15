@@ -1,0 +1,16 @@
+
+── Workspace flow smoke ──
+✅ modules load (WorkspaceFlow/Layout/Editor)
+✅ 사진 추가 → 현재 사진 확인 화면  (screen=layout)
+✅ 현재 구성 선택지 렌더
+✅ 한 장으로 합치기 → 현재 미리보기 생성
+✅ 현재 2장 구성 합성 OK
+✅ goto caption
+✅ goto preview
+✅ ItdEditor.compose → dataURL
+✅ no JS runtime errors
+
+(참고: 무시된 network/API 에러 10건)
+
+✅ PASS — 9/9
+External requests blocked: 10

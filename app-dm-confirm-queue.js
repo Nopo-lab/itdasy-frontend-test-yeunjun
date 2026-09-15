@@ -87,6 +87,8 @@
     if (_tabs) _tabs.addEventListener('click', (e) => {
       const t = e.target.closest('.dcq-tab');
       if (!t) return;
+      const list = document.getElementById('dcqList');
+      if (list) _captureReplyDrafts(list);
       _activeFilter = t.getAttribute('data-filter') || 'all';
       _applyAndRender();
     });
@@ -598,25 +600,69 @@
       </div>`;
   }
 
+  // 채널 이동은 답글을 보내거나 버리는 행동이 아니다. 작성본은 이 화면의 메모리에만 둔다.
+  const _replyDrafts = new Map();
+  let _draftOwnerId = null;
+  let _replyEpoch = 0;
+  function _captureReplyDrafts(list) {
+    list.querySelectorAll('.dcq-item').forEach(card => {
+      const ta = card.querySelector('.dcq-edit');
+      if (!_lastItems.some(it => String(it.id) === card.dataset.id)) return;
+      if (ta && ta.style.display !== 'none') _replyDrafts.set(card.dataset.id, ta.value);
+    });
+  }
+  function _restoreReplyDrafts(list) {
+    list.querySelectorAll('.dcq-item').forEach(card => {
+      if (!_replyDrafts.has(card.dataset.id)) return;
+      const ta = card.querySelector('.dcq-edit');
+      if (!ta) return;
+      ta.value = _replyDrafts.get(card.dataset.id); ta.style.display = 'block';
+      const draft = card.querySelector('.dcq-draft'), edit = card.querySelector('.dcq-edit-btn');
+      if (draft) draft.style.display = 'none';
+      if (edit) edit.style.display = 'none';
+    });
+  }
+  function _clearReplyDrafts() {
+    _replyEpoch += 1;
+    _replyDrafts.clear();
+    _lastItems = [];
+    const list = document.getElementById('dcqList');
+    if (list) list.textContent = '';
+  }
+  document.addEventListener('itdasy:auth-expired', _clearReplyDrafts);
+  window.addEventListener('itdasy:session-ready', e => {
+    const owner = e.detail && e.detail.userId;
+    if (owner !== _draftOwnerId) { _clearReplyDrafts(); _draftOwnerId = owner; }
+  });
+
+  function _isEditingReply(list) {
+    return Array.from(list.querySelectorAll('.dcq-edit')).some(t => t.style.display !== 'none')
+      || !!list.querySelector('.dcq-cpv-ta[data-touched="1"]')  // [#31] 확정 멘트 수정 중이면 스킵
+      || !!list.querySelector('.dcq-dur[data-touched="1"]')  // 스테퍼 조정 중이면 재렌더 스킵
+      || Array.from(list.querySelectorAll('.dcq-set-address')).some(i => (i.value || '').trim() || i === document.activeElement);  // 주소 입력 중이면 스킵
+  }
+
   async function _refresh() {
     const list = document.getElementById('dcqList');
     if (!list) return;
     // [2026-06-08] 수정(인라인 textarea) 중이면 폴링 재렌더 스킵 — 입력 내용/카드 안 닫히게.
-    const editing = Array.from(list.querySelectorAll('.dcq-edit')).some(t => t.style.display !== 'none')
-      || !!list.querySelector('.dcq-cpv-ta[data-touched="1"]')  // [#31] 확정 멘트 수정 중이면 스킵
-      || !!list.querySelector('.dcq-dur[data-touched="1"]')  // 스테퍼 조정 중이면 재렌더 스킵
-      || Array.from(list.querySelectorAll('.dcq-set-address')).some(i => (i.value || '').trim() || i === document.activeElement);  // 주소 입력 중이면 스킵
-    if (editing) return;
+    if (_isEditingReply(list)) return;
     // [Task 3] 빈 화면이면 로딩 표시
     if (!list.children.length) {
       list.innerHTML = '<div style="display:flex;justify-content:center;padding:40px 20px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:dcqSpin .8s linear infinite" aria-label="불러오는 중"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>';
     }
+    const epoch = _replyEpoch;
     try {
-      _lastItems = await _fetch('GET', '/dm-confirm-queue');
+      const items = await _fetch('GET', '/dm-confirm-queue');
+      if (epoch !== _replyEpoch || _isEditingReply(list)) return;
+      _lastItems = items;
+      const ids = new Set(items.map(it => String(it.id)));
+      _replyDrafts.forEach((_value, id) => { if (!ids.has(id)) _replyDrafts.delete(id); });
       const cnt = document.getElementById('dcqCount');
       if (cnt) cnt.textContent = _lastItems.length + '건';
       _applyAndRender();
     } catch (e) {
+      if (epoch !== _replyEpoch || _isEditingReply(list)) return;
       list.innerHTML = `<div style="text-align:center;color:var(--danger);padding:20px;font-size:12px;">불러오기 실패: ${_esc((window._humanError ? window._humanError(e) : e.message))}</div>`;
     }
   }
@@ -656,6 +702,7 @@
       return;
     }
     list.innerHTML = items.map(_cardHtml).join('');
+    _restoreReplyDrafts(list);
     // 수정 버튼 → 인라인 textarea 노출
     list.querySelectorAll('.dcq-edit-btn').forEach(b => b.addEventListener('click', () => {
       const card = b.closest('[data-id]'); if (!card) return;
@@ -675,8 +722,14 @@
       if (am.deposit_sent) { _doAction(b, 'confirm-deposit'); return; }
       const ta = card.querySelector('.dcq-edit');
       const edited = (ta && ta.style.display !== 'none') ? (ta.value || '').trim() : '';
-      if (edited) _doAction(b, 'send_edit', edited);
-      else _doAction(b, 'send');
+      if (ta && ta.style.display !== 'none') {
+        if (!edited) {
+          if (window.showToast) window.showToast('보낼 답장을 입력해 주세요');
+          ta.focus();
+          return;
+        }
+        _doAction(b, 'send_edit', edited);
+      } else _doAction(b, 'send');
     }));
     // [2026-07-14 #31] 확정 멘트 수정 — 미리보기 → textarea 전환 (touched 마킹으로 폴링 재렌더 방지)
     list.querySelectorAll('.dcq-cpv-edit').forEach(b => b.addEventListener('click', () => {
@@ -855,6 +908,8 @@
       // [2026-06-08] 전송·예약확정·X(discard) 전부 — 홈 '고객 메시지' 카드 제거(전체 sender_igsid + tail).
       try { window.dispatchEvent(new CustomEvent('itdasy:dm-replied', { detail: { sender_igsid: sender, tail } })); } catch (_e2) { /* ignore */ }
 
+      _replyDrafts.delete(String(id));
+      _lastItems = (_lastItems || []).filter(it => String(it.id) !== String(id));
       // 카드 슬라이드 아웃 + 남은 0건이면 시트 자동 닫기
       card.style.transition = 'all 0.25s ease-out';
       card.style.opacity = '0';
