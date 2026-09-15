@@ -142,6 +142,7 @@ AI 캡션, 누끼따기, 비포/애프터 같은 기능 그대로. 단 **예약 
 앱 이름과 로그인 돌아오기 주소는 그대로입니다. 기존 기기의 로그인 정보 보호를 위해 설치 뒤 앱을 열지는 않았습니다. 실물 휴대전화·스토어 시험 결제·실제 댓글/DM은 출시 전 별도 확인이 필요합니다.
 [네이티브 결과](../output/NATIVE_BUILD_QA_2026-09-15.md)
 검토용 초안은 프론트 [#43](https://github.com/Nopo-lab/itdasy-frontend-test-yeunjun/pull/43), 서버 [#62](https://github.com/Nopo-lab/itdasy_backend-test/pull/62)에 올렸습니다. 아직 운영 배포는 아닙니다.
+서버 #62의 자동 확인 5개는 모두 통과했습니다.
 
 </details>
 

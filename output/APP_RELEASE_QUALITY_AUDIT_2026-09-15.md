@@ -174,6 +174,7 @@ Meta 제한 시간·권한은 승인된 앱 유형과 최신 공식 문서를 �
 서버 수정은 별도 `be/T-902-dm-duration` 작업 가지, 커밋 `28f561b`에만 있으며 실제 서버에 반영하지 않았다.
 스테이징 검토용 초안은 프론트 [#43](https://github.com/Nopo-lab/itdasy-frontend-test-yeunjun/pull/43),
 서버 [#62](https://github.com/Nopo-lab/itdasy_backend-test/pull/62)에 올렸다. 두 요청 모두 아직 운영 배포가 아니다.
+서버 #62의 전체 검사·실행 순서 변경·권한 분리·실제 PostgreSQL 무결성·프론트 연결값 확인은 모두 통과했다.
 
 [스토어 소개 검토 초안](../docs/submission/Release-Copy-2026-09-15.md)을 작성했고, 기존 Play 문서의
 앱 식별자·월간/연간 주기·현재 상품 설명도 정정했다. 과거 개인정보 제출표·시험 참여 요건은

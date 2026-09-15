@@ -19,6 +19,7 @@
 - 기존 기기의 로그인 정보에 접근하지 않기 위해 앱 실행·화면 조작은 생략.
 - 보고서: [네이티브 빌드 결과](../output/NATIVE_BUILD_QA_2026-09-15.md), [자가검토](tickets/T-903/self-review.md).
 - 스테이징 초안 검토: 프론트 [#43](https://github.com/Nopo-lab/itdasy-frontend-test-yeunjun/pull/43), 서버 [#62](https://github.com/Nopo-lab/itdasy_backend-test/pull/62).
+- 서버 #62 자동 확인 5개 모두 통과. 전체 검사 20분 53초, 실행 순서 변경 검사 14분 11초, 권한·실제 PostgreSQL·프론트 연결값 확인 통과.
 - 스토어 제출·운영 배포·실제 메시지·결제·실물 기기 검증은 실행하지 않음.
 
 ---
