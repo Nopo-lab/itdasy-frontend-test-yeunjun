@@ -1,0 +1,72 @@
+{
+  "result": "PASS",
+  "checkedAt": "2026-09-15T17:44:03.762Z",
+  "build": "20260915-itbi-context-routing",
+  "fixture": {
+    "id": 1,
+    "category": "hair",
+    "scenario": "black-long-indoor",
+    "ratio": "portrait",
+    "resolution": "high",
+    "width": 1050,
+    "height": 1400,
+    "file": "/Users/kang-yeonjun/.codex/generated_images/01a0a47f-16f7-7523-87b4-cbd2c276f915/t904_beauty_golden_60_v4/01-hair-black-long-indoor-portrait-high.jpg",
+    "source": "synthetic built-in imagegen",
+    "pii": "none"
+  },
+  "executed": {
+    "sequentialAdjustments": 20,
+    "reverseOrderCovered": true,
+    "undoEverything": true,
+    "redoEverything": true,
+    "reset": true,
+    "resetUndo": true,
+    "save": true,
+    "reopen": true
+  },
+  "initial": {
+    "b": 100,
+    "c": 100,
+    "s": 100,
+    "w": 0,
+    "sh": 0
+  },
+  "after20": {
+    "b": 108,
+    "c": 103,
+    "s": 101,
+    "w": 3,
+    "sh": 4
+  },
+  "afterUndoAll": {
+    "b": 100,
+    "c": 100,
+    "s": 100,
+    "w": 0,
+    "sh": 0
+  },
+  "afterRedoAll": {
+    "b": 108,
+    "c": 103,
+    "s": 101,
+    "w": 3,
+    "sh": 4
+  },
+  "afterReset": {
+    "b": 100,
+    "c": 100,
+    "s": 100,
+    "w": 0,
+    "sh": 0
+  },
+  "reopened": {
+    "b": 108,
+    "c": 103,
+    "s": 101,
+    "w": 3,
+    "sh": 4
+  },
+  "outputBytes": 262843,
+  "screenshot": "/Users/kang-yeonjun/프로젝트/깃허브with원영/itdasy_beauty_app_recent/itdasy-release-cert-fe/output/playwright/t904-editor-operation-matrix.png",
+  "errors": []
+}

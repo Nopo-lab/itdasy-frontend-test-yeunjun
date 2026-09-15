@@ -8,10 +8,11 @@ const { chromium } = require('playwright');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'output', 'playwright');
-const REPORT = path.join(ROOT, 'output', 'photo-editor-realistic-qa-report.json');
+const REPORT = process.env.PHOTO_QA_REPORT || path.join(ROOT, 'output', 'photo-editor-realistic-qa-report.json');
 const BASE_URL = process.env.PHOTO_QA_URL || 'http://127.0.0.1:8092/?v=qa';
 const LIMIT = Number(process.env.PHOTO_QA_LIMIT || 60);
-const RESULT_DIR = path.join(OUT_DIR, 't904-golden-60');
+const RESULT_DIR = process.env.PHOTO_QA_RESULT_DIR || path.join(OUT_DIR, 't904-golden-60');
+const MANIFEST = process.env.PHOTO_QA_MANIFEST || '';
 
 const SEARCHES = [
   { kind: 'hair', quota: 12, recipe: 'hair-shine', q: 'hairstyle hair salon portrait', cats: ['Category:Hairstyles', 'Category:Hairdressing', 'Category:Hairdressers'] },
@@ -86,6 +87,7 @@ function commonsCategoryUrl(cat) {
 }
 
 async function collectSamples() {
+  if (MANIFEST) return loadManifestSamples(MANIFEST);
   const out = [];
   for (const item of SEARCHES) {
     for (const cat of item.cats || []) await collectFrom(out, item, commonsCategoryUrl(cat));
@@ -101,6 +103,40 @@ async function collectSamples() {
     resolution: i % 4 === 0 ? 'low' : 'high',
     style: STYLE_PROFILES[i % STYLE_PROFILES.length],
   }));
+}
+
+function loadManifestSamples(manifestPath) {
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const items = Array.isArray(manifest.items) ? manifest.items : [];
+  return items.slice(0, LIMIT).map((item, i) => {
+    const file = path.resolve(item.file);
+    const mime = path.extname(file).toLowerCase() === '.png' ? 'image/png' : 'image/jpeg';
+    const ratioId = String(item.ratio).replace('x', ':');
+    const targetRatio = RATIOS.find(ratio => ratio.id === ratioId);
+    if (!targetRatio) throw new Error(`지원하지 않는 비율: ${item.ratio}`);
+    return {
+      kind: String(item.category || '').replaceAll('-', '_'),
+      recipe: recipeForCategory(item.category),
+      url: `data:${mime};base64,${fs.readFileSync(file).toString('base64')}`,
+      sourcePage: file,
+      license: item.source,
+      title: `${item.id} ${item.category} ${item.scenario}`,
+      targetRatio,
+      resolution: item.resolution,
+      style: STYLE_PROFILES[i % STYLE_PROFILES.length],
+    };
+  });
+}
+
+function recipeForCategory(category) {
+  return ({
+    hair: 'hair-shine',
+    nail: 'nail-color',
+    'lash-brow': 'lash-crisp',
+    skin: 'skin-even',
+    'salon-product': 'salon-clean',
+    'before-after': 'skin-even',
+  })[category] || 'salon-clean';
 }
 
 function fillDeficits(out) {
@@ -233,7 +269,7 @@ async function main() {
   const report = {
     build,
     checkedAt: new Date().toISOString(),
-    source: 'Wikimedia Commons + LoremFlickr 공개 키워드 사진을 임시 data URL 로 테스트',
+    source: MANIFEST ? `합성 QA 세트: ${MANIFEST}` : 'Wikimedia Commons + LoremFlickr 공개 키워드 사진을 임시 data URL 로 테스트',
     sampleCount: samples.length,
     kinds: countBy(samples, 'kind'),
     ratios: countBy(samples.map(s => ({ ratio: s.targetRatio.id })), 'ratio'),
