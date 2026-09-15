@@ -48,8 +48,8 @@
 
 - 기본 전체 4,518 PASS / 환경별 289 SKIP / 기존 예상실패 1개. PostgreSQL 전체 209 PASS / 생략 0.
 - 최종 수정 뒤 관련 기본 42개, PostgreSQL 9개 PASS.
-- 서버 구현 4c1c1da, PR #63, main 병합 9850751. 배포 성공 확인 중.
-- FE PR #44. 서버 적용 확인 뒤 병합. 고객 관리일 목록도 고객 삭제·수정·예약 변경 때 갱신.
+- 서버 구현 4c1c1da, PR #63, main 병합 9850751. 배포 SUCCESS, 실제 /health healthy / wiring.git_sha=9850751e / schema_parity=ok 확인.
+- FE PR #44. 서버 적용 확인 뒤 병합하며 화면 배포 결과는 해당 PR 연결 Actions에서 확인. 고객 관리일 목록도 고객 삭제·수정·예약 변경 때 갱신.
 
 ## Safari 계열 추가 검증
 

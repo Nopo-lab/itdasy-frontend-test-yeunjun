@@ -36,10 +36,7 @@ async function boot(page) {
   await page.evaluate(() => { window.CustomerCare.mountDueShortcut(document.getElementById('customerSheet')); return window._renderCustomerDetail(document.getElementById('detail'), 10); });
   await page.locator('[data-cc-action="edit-plan"]').waitFor();
 }
-async function main() {
-  const browser = await engine.launch(); const page = await browser.newPage({ viewport: { width: Number(process.env.T602_WIDTH || 390), height: 844 } });
-  const errors = []; page.on('pageerror', error => { errors.push(error.message); console.error('BROWSER ERROR', error.message); });
-  await boot(page);
+async function resetFixture(page) {
   await page.evaluate(async () => {
     await window.CustomerCare.request(window.CustomerCare.paths.plan(10), 'PUT', { due_date: null, note: '' });
     await window.CustomerCare.request(window.CustomerCare.paths.referrer(10), 'PUT', { referrer_id: null });
@@ -48,6 +45,12 @@ async function main() {
     await window._renderCustomerDetail(document.getElementById('detail'), 10);
   });
   await page.getByRole('button', { name: '날짜 지정', exact: true }).waitFor();
+}
+async function main() {
+  const browser = await engine.launch(); const page = await browser.newPage({ viewport: { width: Number(process.env.T602_WIDTH || 390), height: 844 } });
+  const errors = []; page.on('pageerror', error => { errors.push(error.message); console.error('BROWSER ERROR', error.message); });
+  await boot(page);
+  await resetFixture(page);
   await page.getByRole('button', { name: '기록 추가', exact: true }).click();
   await page.getByLabel('시술명', { exact: true }).fill('가상 QA 젤 네일');
   await page.getByLabel('시술 방법 · 고객 반응').fill('누드 핑크 · 손톱 끝은 둥글게. 다음에는 길이 유지.');
@@ -82,7 +85,7 @@ async function main() {
   await page.getByRole('button', { name: '관리일 저장', exact: true }).click();
   await page.getByText('정해둔 날짜가 없어요', { exact: true }).waitFor({ timeout: 5000 }).catch(async error => {
     console.error(await page.locator('body').innerText());
-    console.error(await page.locator('[name="due_date"]').evaluate(el => ({ value: el.value, valid: el.validity.valid, bad: el.validity.badInput, under: el.validity.rangeUnderflow, over: el.validity.rangeOverflow, message: el.validationMessage }))); 
+    console.error(await page.locator('[name="due_date"]').evaluate(el => ({ value: el.value, valid: el.validity.valid, bad: el.validity.badInput, under: el.validity.rangeUnderflow, over: el.validity.rangeOverflow, message: el.validationMessage })));
     await page.screenshot({ path: path.join(ROOT, 'output/playwright/t602-' + ENGINE + '-failure.png'), fullPage: true });
     throw error;
   });
