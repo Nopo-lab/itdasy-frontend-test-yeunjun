@@ -1,6 +1,6 @@
 # BOARD — 터미널 상태 대시보드
 
-**LAST UPDATED:** 2026-09-15 by Codex (작업실/사진편집·외부 인스타 스타일 QA — 운영 FE/BE 반영 완료)
+**LAST UPDATED:** 2026-09-15 by Codex (T-903 iPhone·Android 시험용 빌드 완료)
 
 bootstrap:OK @ 2026-09-14 13:14
 bootstrap:OK @ 2026-09-15 07:15
@@ -1588,7 +1588,15 @@ SN-7 백엔드 결선:
 
 ## IN PROGRESS
 
-- Codex 오케스트레이터 T-903: 사용자 Yes 승인으로 iPhone·Android 동기화와 로컬 빌드 확인 / bootstrap:OK @ 2026-09-15 16:06 / 스토어 제출·운영 배포 없음.
+(없음)
+
+## DONE — 2026-09-15 T-903 (iPhone·Android 시험용 빌드)
+
+- 사용자 Yes 승인 범위에서 양쪽 휴대폰 프로젝트 동기화, 시험용 빌드, 켜져 있던 시뮬레이터 설치 통과.
+- Android `com.y2do.itdasy`, iPhone `com.nopolab.itdasy`, `itdasy://` 유지. 권한·서명 설정 변경 없음.
+- 동기화로 추적되는 변경은 iPhone CordovaPlugins 잠금 8.5.0→8.5.2 한 곳.
+- 기존 시험 기기 로그인 정보 보호를 위해 앱 실행·화면 조작은 하지 않음. 스토어 제출·운영 배포 없음.
+- [네이티브 결과](../output/NATIVE_BUILD_QA_2026-09-15.md)
 
 ## DONE — 2026-09-15 T-902 (로컬 안전 보강)
 
