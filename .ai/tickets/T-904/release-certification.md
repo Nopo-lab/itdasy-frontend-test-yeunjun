@@ -55,7 +55,7 @@
 
 | 대상 | 실제 값 |
 |---|---|
-| FE 원격 main / 제공 소스 | `8e838842741d372ae62f9dee518577d8f079c986` |
+| FE 제품 코드 / 제공 소스 | `8e838842741d372ae62f9dee518577d8f079c986` |
 | FE 실제 제공 빌드 | `20260915-1804-8e83884` |
 | FE 주소 | https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/ |
 | BE 원격 main | `6866a9d4441c7ccb6c16f0da24b50ec78b60d3d6` |
@@ -72,8 +72,9 @@
 | iOS | `com.nopolab.itdasy` |
 | 시각 | 2026-09-16 Asia/Seoul |
 
-최종 직전 FE·BE main을 다시 가져와 대조했다. FE는 `8e838842`, BE는 `6866a9d4`이며
-실제 제공판과 일치한다.
+최종 직전 제품 코드를 다시 가져와 대조했다. FE는 `8e838842`, BE는 `6866a9d4`이며
+실제 제공판과 일치한다. 이후 FE main에 합친 인증 문서 변경은 제품 코드를 건드리지 않아
+FE 제품 기준 SHA에서 제외했다.
 
 ## 3. CAPABILITY MAP
 
