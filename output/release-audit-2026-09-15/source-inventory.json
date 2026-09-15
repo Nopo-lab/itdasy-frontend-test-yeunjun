@@ -1,0 +1,1725 @@
+{
+  "base": "5664fa6e029969815dced8fa7a80dd8bce0c4c31",
+  "runtimeCount": 285,
+  "totalBytes": 5942359,
+  "syntaxFailures": [],
+  "files": [
+    {
+      "file": "app-ai-suggestions.js",
+      "lines": 86,
+      "bytes": 3772,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-ai.js",
+      "lines": 312,
+      "bytes": 15823,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-assistant-actions-marketing.js",
+      "lines": 119,
+      "bytes": 6779,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-assistant-facts.js",
+      "lines": 150,
+      "bytes": 8109,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-assistant-undo.js",
+      "lines": 276,
+      "bytes": 15394,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-assistant.js",
+      "lines": 6158,
+      "bytes": 359398,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-auto-ba.js",
+      "lines": 148,
+      "bytes": 7337,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-autocomplete.js",
+      "lines": 58,
+      "bytes": 2418,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-ba-auto-trigger.js",
+      "lines": 175,
+      "bytes": 7285,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-backup.js",
+      "lines": 229,
+      "bytes": 11019,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-billing.js",
+      "lines": 170,
+      "bytes": 7753,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-biometric.js",
+      "lines": 68,
+      "bytes": 2852,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-booking-api.js",
+      "lines": 379,
+      "bytes": 18778,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-brand-kit.js",
+      "lines": 283,
+      "bytes": 11962,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-calendar-view.js",
+      "lines": 2961,
+      "bytes": 158425,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-caption-prefill.js",
+      "lines": 104,
+      "bytes": 3960,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-caption.js",
+      "lines": 1117,
+      "bytes": 63410,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-chat-auto-edit.js",
+      "lines": 278,
+      "bytes": 10698,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-comment-reply-queue.js",
+      "lines": 1310,
+      "bytes": 96487,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-complete-flow.js",
+      "lines": 680,
+      "bytes": 35524,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-content-report.js",
+      "lines": 183,
+      "bytes": 10973,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-cookie-consent.js",
+      "lines": 156,
+      "bytes": 6779,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-core.js",
+      "lines": 4663,
+      "bytes": 252771,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-customer-ai-brief.js",
+      "lines": 516,
+      "bytes": 23518,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-customer-cache.js",
+      "lines": 90,
+      "bytes": 3619,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-customer-chips.js",
+      "lines": 207,
+      "bytes": 8611,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-customer-dashboard.js",
+      "lines": 667,
+      "bytes": 38320,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-customer-hub.js",
+      "lines": 31,
+      "bytes": 1440,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-customer-memo.js",
+      "lines": 422,
+      "bytes": 22334,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-customer-sync.js",
+      "lines": 58,
+      "bytes": 3284,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-customer.js",
+      "lines": 1772,
+      "bytes": 99622,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-dashboard.js",
+      "lines": 510,
+      "bytes": 23928,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-data-export.js",
+      "lines": 126,
+      "bytes": 7095,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-debug-panel.js",
+      "lines": 177,
+      "bytes": 8439,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-dm-booking-form.js",
+      "lines": 208,
+      "bytes": 12145,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-dm-confirm-queue.js",
+      "lines": 960,
+      "bytes": 69933,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-dm-conversations.js",
+      "lines": 682,
+      "bytes": 37494,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-dm-manual-replies.js",
+      "lines": 484,
+      "bytes": 29736,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-dm-menu.js",
+      "lines": 895,
+      "bytes": 56801,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-dm-preview.js",
+      "lines": 284,
+      "bytes": 15859,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-dm-settings-cache.js",
+      "lines": 56,
+      "bytes": 1556,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-drawer.js",
+      "lines": 160,
+      "bytes": 6721,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-emoji-storage.js",
+      "lines": 226,
+      "bytes": 9960,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-empty-state.js",
+      "lines": 56,
+      "bytes": 3186,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-feed-planner.js",
+      "lines": 159,
+      "bytes": 8005,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-fun.js",
+      "lines": 179,
+      "bytes": 6555,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-gallery-assign.js",
+      "lines": 200,
+      "bytes": 11380,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-gallery-bg.js",
+      "lines": 384,
+      "bytes": 18445,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-gallery-db.js",
+      "lines": 417,
+      "bytes": 23748,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-gallery-element.js",
+      "lines": 385,
+      "bytes": 14429,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-gallery-finish.js",
+      "lines": 722,
+      "bytes": 41016,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-gallery-review.js",
+      "lines": 380,
+      "bytes": 19261,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-gallery-slot-editor.js",
+      "lines": 563,
+      "bytes": 29639,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-gallery-utils.js",
+      "lines": 82,
+      "bytes": 5079,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-gallery-workshop.js",
+      "lines": 695,
+      "bytes": 35208,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-gallery-write.js",
+      "lines": 466,
+      "bytes": 23661,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-generic-sheet.js",
+      "lines": 69,
+      "bytes": 2641,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-gestures.js",
+      "lines": 285,
+      "bytes": 12577,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-growth-story.js",
+      "lines": 194,
+      "bytes": 9196,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-haptic.js",
+      "lines": 184,
+      "bytes": 8140,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-home-customer-msgs.js",
+      "lines": 408,
+      "bytes": 23614,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-home-v41-config.js",
+      "lines": 30,
+      "bytes": 1287,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-home-v41.js",
+      "lines": 603,
+      "bytes": 31659,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-iap.js",
+      "lines": 259,
+      "bytes": 13558,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-ig-connect-warn.js",
+      "lines": 165,
+      "bytes": 9579,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-import-wizard.js",
+      "lines": 543,
+      "bytes": 31436,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-import.js",
+      "lines": 480,
+      "bytes": 25630,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-insights.js",
+      "lines": 493,
+      "bytes": 26645,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-instagram.js",
+      "lines": 1738,
+      "bytes": 111282,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-instant-caption.js",
+      "lines": 442,
+      "bytes": 21207,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-integrations-hub.js",
+      "lines": 236,
+      "bytes": 12171,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-kakao-hub.js",
+      "lines": 185,
+      "bytes": 11274,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-killer-widgets.js",
+      "lines": 609,
+      "bytes": 34491,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-mediapipe-loader.js",
+      "lines": 335,
+      "bytes": 13367,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-membership.js",
+      "lines": 511,
+      "bytes": 33733,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-myshop-v3.js",
+      "lines": 689,
+      "bytes": 32716,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-naver-link.js",
+      "lines": 215,
+      "bytes": 10448,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-naver-talk-link.js",
+      "lines": 222,
+      "bytes": 11531,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-notifications.js",
+      "lines": 380,
+      "bytes": 19197,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-oauth-return.js",
+      "lines": 182,
+      "bytes": 9003,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-perf-recovery.js",
+      "lines": 668,
+      "bytes": 31662,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-persona-survey.js",
+      "lines": 386,
+      "bytes": 19968,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-phase9-ux.js",
+      "lines": 176,
+      "bytes": 7691,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-photo-editor-ba-compose.js",
+      "lines": 820,
+      "bytes": 39942,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-photo-editor-bg-compose.js",
+      "lines": 208,
+      "bytes": 10885,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-photo-editor-shop-data.js",
+      "lines": 64,
+      "bytes": 2276,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-photo-editor-smart-mask.js",
+      "lines": 65,
+      "bytes": 3267,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-photo-editor-template-edit-sheet.js",
+      "lines": 602,
+      "bytes": 31010,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-photo-editor-template-library.js",
+      "lines": 98,
+      "bytes": 3730,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-photo-editor-templates-v2.js",
+      "lines": 432,
+      "bytes": 30118,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-photo-editor-worker-filter.js",
+      "lines": 75,
+      "bytes": 2302,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-photo-enhance.js",
+      "lines": 329,
+      "bytes": 13602,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-photo-match.js",
+      "lines": 166,
+      "bytes": 8506,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-plan.js",
+      "lines": 634,
+      "bytes": 34687,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-portfolio-tags.js",
+      "lines": 166,
+      "bytes": 8409,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-portfolio.js",
+      "lines": 704,
+      "bytes": 28929,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-pricelist.js",
+      "lines": 170,
+      "bytes": 9693,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-push.js",
+      "lines": 139,
+      "bytes": 6162,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-receipt-scan.js",
+      "lines": 687,
+      "bytes": 38018,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-reminder.js",
+      "lines": 119,
+      "bytes": 4694,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-report.js",
+      "lines": 162,
+      "bytes": 9315,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-retention-ai.js",
+      "lines": 347,
+      "bytes": 15616,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-revenue-calendar.js",
+      "lines": 252,
+      "bytes": 16333,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-revenue-hub.js",
+      "lines": 36,
+      "bytes": 2169,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-revenue-month.js",
+      "lines": 639,
+      "bytes": 35002,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-revenue-today.js",
+      "lines": 252,
+      "bytes": 12584,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-revenue.js",
+      "lines": 1302,
+      "bytes": 71177,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-review.js",
+      "lines": 229,
+      "bytes": 10430,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-sample-captions.js",
+      "lines": 121,
+      "bytes": 7644,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-save-file.js",
+      "lines": 94,
+      "bytes": 4094,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-secure-storage.js",
+      "lines": 90,
+      "bytes": 2536,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-service-templates.js",
+      "lines": 418,
+      "bytes": 27170,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-settings-hub.js",
+      "lines": 369,
+      "bytes": 19670,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-sheet-anim.js",
+      "lines": 64,
+      "bytes": 2534,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-shop-settings.js",
+      "lines": 495,
+      "bytes": 25637,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-side-nav-unifier.js",
+      "lines": 190,
+      "bytes": 12290,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-smart-capture.js",
+      "lines": 295,
+      "bytes": 18118,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-sns-hashtag.js",
+      "lines": 202,
+      "bytes": 10946,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-spec-validator.js",
+      "lines": 162,
+      "bytes": 6974,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-support.js",
+      "lines": 286,
+      "bytes": 12322,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-template-import.js",
+      "lines": 270,
+      "bytes": 13443,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-theme.js",
+      "lines": 108,
+      "bytes": 4442,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-today-brief.js",
+      "lines": 354,
+      "bytes": 16185,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-today-morning.js",
+      "lines": 281,
+      "bytes": 15182,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-voice-caption.js",
+      "lines": 616,
+      "bytes": 30005,
+      "syntax": "pass"
+    },
+    {
+      "file": "app-waitlist.js",
+      "lines": 170,
+      "bytes": 7477,
+      "syntax": "pass"
+    },
+    {
+      "file": "assistant-intent-router.js",
+      "lines": 1278,
+      "bytes": 71040,
+      "syntax": "pass"
+    },
+    {
+      "file": "components/scenario-selector.js",
+      "lines": 264,
+      "bytes": 11306,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/cache-invalidation.js",
+      "lines": 77,
+      "bytes": 2981,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/card-renderers.js",
+      "lines": 391,
+      "bytes": 24588,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/action-hub.js",
+      "lines": 459,
+      "bytes": 28475,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/active-card.js",
+      "lines": 64,
+      "bytes": 3344,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/assistant-template-restore.js",
+      "lines": 72,
+      "bytes": 3738,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/assistant-template-save.js",
+      "lines": 125,
+      "bytes": 6478,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/booking-context.js",
+      "lines": 370,
+      "bytes": 19430,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/booking-draft.js",
+      "lines": 204,
+      "bytes": 12482,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/briefing-priority.js",
+      "lines": 106,
+      "bytes": 6286,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/closing-report.js",
+      "lines": 117,
+      "bytes": 5703,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/context-resolver.js",
+      "lines": 126,
+      "bytes": 5178,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/create-intent.js",
+      "lines": 61,
+      "bytes": 4561,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/customer-add-guard.js",
+      "lines": 254,
+      "bytes": 13613,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/customer-insight.js",
+      "lines": 72,
+      "bytes": 4887,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/customer-phone-intent.js",
+      "lines": 154,
+      "bytes": 8615,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/customer-status-card.js",
+      "lines": 272,
+      "bytes": 17424,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/daily-briefing.js",
+      "lines": 325,
+      "bytes": 18197,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/marketing-draft-policy.js",
+      "lines": 112,
+      "bytes": 7489,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/memory-intent.js",
+      "lines": 238,
+      "bytes": 14516,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/photo-mode-support.js",
+      "lines": 122,
+      "bytes": 7517,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/photo-session.js",
+      "lines": 129,
+      "bytes": 6716,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/promo-result-builder.js",
+      "lines": 68,
+      "bytes": 2779,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/saved-cards-intent.js",
+      "lines": 170,
+      "bytes": 12748,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/source-image.js",
+      "lines": 133,
+      "bytes": 5324,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/template-autoapply.js",
+      "lines": 471,
+      "bytes": 23417,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/template-sample-catalog-ba.js",
+      "lines": 162,
+      "bytes": 9145,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/template-sample-catalog-event.js",
+      "lines": 82,
+      "bytes": 4574,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/template-sample-catalog-price.js",
+      "lines": 240,
+      "bytes": 15287,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/template-sample-catalog-review.js",
+      "lines": 152,
+      "bytes": 9519,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/template-sample-catalog.js",
+      "lines": 39,
+      "bytes": 1883,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/template-sample-matcher.js",
+      "lines": 292,
+      "bytes": 13984,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/core/unsupported-intent.js",
+      "lines": 52,
+      "bytes": 3977,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/group-action-controls.js",
+      "lines": 264,
+      "bytes": 8448,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/kind-core.js",
+      "lines": 392,
+      "bytes": 16515,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/lightbox.js",
+      "lines": 112,
+      "bytes": 5496,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/marketing-safety-labels.js",
+      "lines": 86,
+      "bytes": 5424,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/pending-photos.js",
+      "lines": 169,
+      "bytes": 6744,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/photo-actions.js",
+      "lines": 239,
+      "bytes": 10581,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/photo-brief-parser.js",
+      "lines": 181,
+      "bytes": 11405,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/photo-kind-classifier.js",
+      "lines": 55,
+      "bytes": 1878,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/photo-local-handlers.js",
+      "lines": 141,
+      "bytes": 7295,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/photo-workflow-commands.js",
+      "lines": 158,
+      "bytes": 12230,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/promo-result-card.js",
+      "lines": 100,
+      "bytes": 5579,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/single-action-controls.js",
+      "lines": 174,
+      "bytes": 5878,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/suggestion-controls.js",
+      "lines": 178,
+      "bytes": 7944,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/treatment-link.js",
+      "lines": 125,
+      "bytes": 6513,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/voice-input.js",
+      "lines": 164,
+      "bytes": 5631,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/assistant/workspace-nl-commands.js",
+      "lines": 213,
+      "bytes": 17187,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/automation-consent.js",
+      "lines": 286,
+      "bytes": 16493,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/caption/caption-keyword-tags.js",
+      "lines": 171,
+      "bytes": 10999,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/caption/caption-loader-ui.js",
+      "lines": 89,
+      "bytes": 3783,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/caption/caption-onboarding.js",
+      "lines": 75,
+      "bytes": 3383,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/caption/caption-photo-row.js",
+      "lines": 126,
+      "bytes": 6268,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/caption/caption-publish.js",
+      "lines": 98,
+      "bytes": 3916,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/channel-mark.js",
+      "lines": 59,
+      "bytes": 3488,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/data/service-vocab.js",
+      "lines": 67,
+      "bytes": 5972,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/dm/ig-thread-link.js",
+      "lines": 15,
+      "bytes": 631,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/heic-convert.js",
+      "lines": 70,
+      "bytes": 3556,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/home/v41-actions.js",
+      "lines": 135,
+      "bytes": 5751,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/home/v41-renderers.js",
+      "lines": 687,
+      "bytes": 37390,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/home/v41-styles.js",
+      "lines": 5,
+      "bytes": 9117,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/hubs/prototype-render.js",
+      "lines": 188,
+      "bytes": 15658,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/instagram/token-status.js",
+      "lines": 220,
+      "bytes": 11260,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/itd-editor/data/itd-beauty-stickers.js",
+      "lines": 67,
+      "bytes": 9853,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/itd-editor/data/itd-decos.js",
+      "lines": 113,
+      "bytes": 22101,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/itd-editor/data/itd-icon-stickers.js",
+      "lines": 141,
+      "bytes": 99995,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/itd-editor/itd-editor.js",
+      "lines": 4258,
+      "bytes": 310451,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/itd-editor/safe-zone.js",
+      "lines": 82,
+      "bytes": 4314,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/load-groups.js",
+      "lines": 230,
+      "bytes": 13458,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/loader.js",
+      "lines": 170,
+      "bytes": 10383,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/media-fallback.js",
+      "lines": 71,
+      "bytes": 3608,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/myshop-menu.js",
+      "lines": 65,
+      "bytes": 3611,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/navigation/entrypoints.js",
+      "lines": 56,
+      "bytes": 2148,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/beauty-engine.js",
+      "lines": 774,
+      "bytes": 52180,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/mask-application.js",
+      "lines": 318,
+      "bytes": 14798,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/mask-brow-adapter.js",
+      "lines": 77,
+      "bytes": 3330,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/mask-confidence.js",
+      "lines": 64,
+      "bytes": 2812,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/mask-debug-overlay.js",
+      "lines": 170,
+      "bytes": 6081,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/mask-eyelash-adapter.js",
+      "lines": 147,
+      "bytes": 5975,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/mask-hair-adapter.js",
+      "lines": 53,
+      "bytes": 2199,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/mask-hand-adapter.js",
+      "lines": 119,
+      "bytes": 4636,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/mask-refine.js",
+      "lines": 302,
+      "bytes": 11266,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/mask-sclera-adapter.js",
+      "lines": 100,
+      "bytes": 4550,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/photo-effect-debug.js",
+      "lines": 289,
+      "bytes": 18506,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/premium-templates.js",
+      "lines": 694,
+      "bytes": 41267,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/price-menu.js",
+      "lines": 37,
+      "bytes": 1404,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/region-mask-provider.js",
+      "lines": 721,
+      "bytes": 34131,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/template-fit-text.js",
+      "lines": 196,
+      "bytes": 7793,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/template-market-data.js",
+      "lines": 293,
+      "bytes": 24993,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/template-overlay.js",
+      "lines": 329,
+      "bytes": 24990,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/template-pack-beauty-data.js",
+      "lines": 446,
+      "bytes": 29842,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/template-pack-v3-data.js",
+      "lines": 324,
+      "bytes": 17722,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/template-pack-v3-preview.js",
+      "lines": 274,
+      "bytes": 12193,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/template-renderer-beauty-pack-draws.js",
+      "lines": 719,
+      "bytes": 67017,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/template-renderer-beauty-pack.js",
+      "lines": 344,
+      "bytes": 21367,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/template-renderer-wm-pack-draws.js",
+      "lines": 381,
+      "bytes": 23434,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/template-slots.js",
+      "lines": 167,
+      "bytes": 9333,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo-editor/template-thumb.js",
+      "lines": 123,
+      "bytes": 6611,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/category-prior.js",
+      "lines": 163,
+      "bytes": 9246,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/content-intent.js",
+      "lines": 152,
+      "bytes": 8188,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/draft-personalization.js",
+      "lines": 169,
+      "bytes": 8918,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/draft-quality.js",
+      "lines": 272,
+      "bytes": 14505,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/edit-plan.js",
+      "lines": 369,
+      "bytes": 21137,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/evidence-monitor.js",
+      "lines": 141,
+      "bytes": 7194,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/ig-post-analysis.js",
+      "lines": 275,
+      "bytes": 12262,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/ig-style-card-page2.js",
+      "lines": 366,
+      "bytes": 21212,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/ig-style-grouping.js",
+      "lines": 235,
+      "bytes": 11253,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/ig-style-library.js",
+      "lines": 448,
+      "bytes": 23711,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/ig-style-sheet.js",
+      "lines": 503,
+      "bytes": 26789,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/instagram-text-style.js",
+      "lines": 385,
+      "bytes": 20994,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/obb-geometry.js",
+      "lines": 129,
+      "bytes": 6026,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/photo-context.js",
+      "lines": 389,
+      "bytes": 20406,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/safety-gate.js",
+      "lines": 130,
+      "bytes": 7070,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/safety-readout.js",
+      "lines": 178,
+      "bytes": 9644,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/safety-shadow.js",
+      "lines": 221,
+      "bytes": 11203,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/shop-baseline.js",
+      "lines": 215,
+      "bytes": 12946,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/shop-style-candidate.js",
+      "lines": 168,
+      "bytes": 8430,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/social-style-source.js",
+      "lines": 99,
+      "bytes": 3982,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/photo/text-readability.js",
+      "lines": 124,
+      "bytes": 6045,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/revenue-edit.js",
+      "lines": 228,
+      "bytes": 12104,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/revenue/booking-revenue-overlay.js",
+      "lines": 302,
+      "bytes": 12881,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/service-categories.js",
+      "lines": 67,
+      "bytes": 3418,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/blob-url.js",
+      "lines": 86,
+      "bytes": 4301,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/edit-plan-shadow.js",
+      "lines": 158,
+      "bytes": 8100,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/flow/ba-autorole.js",
+      "lines": 96,
+      "bytes": 4905,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/flow/caption-text.js",
+      "lines": 120,
+      "bytes": 11189,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/flow/connect.js",
+      "lines": 109,
+      "bytes": 7537,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/flow/layout.js",
+      "lines": 532,
+      "bytes": 36079,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/flow/publish-progress.js",
+      "lines": 43,
+      "bytes": 2178,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/flow/steps.js",
+      "lines": 51,
+      "bytes": 4003,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/flow/thumbs.js",
+      "lines": 48,
+      "bytes": 2679,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/flow/util.js",
+      "lines": 97,
+      "bytes": 5868,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/layout/layout-model.js",
+      "lines": 182,
+      "bytes": 11211,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/layout/slot-stage.js",
+      "lines": 96,
+      "bytes": 4655,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/shop-style.js",
+      "lines": 211,
+      "bytes": 8929,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/wm-metrics.js",
+      "lines": 481,
+      "bytes": 25913,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/work-memory-consent-ui.js",
+      "lines": 59,
+      "bytes": 3039,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/work-memory-decay.js",
+      "lines": 115,
+      "bytes": 6370,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/work-memory-engine.js",
+      "lines": 589,
+      "bytes": 39155,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/work-memory-learn.js",
+      "lines": 138,
+      "bytes": 6842,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/work-memory-persona.js",
+      "lines": 265,
+      "bytes": 14825,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/work-memory-personalize.js",
+      "lines": 249,
+      "bytes": 13326,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/work-memory-policy.js",
+      "lines": 76,
+      "bytes": 3463,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/work-memory-preferences.js",
+      "lines": 364,
+      "bytes": 22151,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/work-memory-signals.js",
+      "lines": 162,
+      "bytes": 8082,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/work-memory-store.js",
+      "lines": 205,
+      "bytes": 9778,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/work-memory.js",
+      "lines": 732,
+      "bytes": 41726,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/workspace-adapter.js",
+      "lines": 805,
+      "bytes": 57580,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/workspace-crop.js",
+      "lines": 242,
+      "bytes": 13953,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/workspace-perf.js",
+      "lines": 973,
+      "bytes": 60408,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/workspace-settings.js",
+      "lines": 507,
+      "bytes": 35467,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/workspace-state.js",
+      "lines": 81,
+      "bytes": 4539,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/workspace-sync.js",
+      "lines": 877,
+      "bytes": 60612,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/workspace-tpl-edit.js",
+      "lines": 253,
+      "bytes": 17772,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/workspace-v2-flow.js",
+      "lines": 3989,
+      "bytes": 322155,
+      "syntax": "pass"
+    },
+    {
+      "file": "js/workspace/workspace-v2-home.js",
+      "lines": 671,
+      "bytes": 46382,
+      "syntax": "pass"
+    },
+    {
+      "file": "sw.js",
+      "lines": 256,
+      "bytes": 10696,
+      "syntax": "pass"
+    }
+  ],
+  "testFiles": 195,
+  "testsByArea": {
+    "other": 63,
+    "photo-workspace": 103,
+    "assistant": 20,
+    "comments-dm": 9
+  }
+}

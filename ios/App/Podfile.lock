@@ -24,7 +24,7 @@ PODS:
     - Capacitor
   - CapacitorStatusBar (8.0.3):
     - Capacitor
-  - CordovaPlugins (8.5.0):
+  - CordovaPlugins (8.5.2):
     - CapacitorCordova
   - IONCameraLib (1.0.5)
   - KeychainSwift (21.0.0)
@@ -90,7 +90,7 @@ SPEC CHECKSUMS:
   CapacitorShare: 0c58305114538568059bfc07111f22dcb9cb2a82
   CapacitorSplashScreen: 7bf61c2001557ff9e195e601c6b87344480d3c65
   CapacitorStatusBar: eca7bc2b58d9f886f1ef9edb66e57a9b29c121af
-  CordovaPlugins: 4f82a655c31b21d49f44b82d42a4354cc3e0562f
+  CordovaPlugins: a2f967566f0d5ed20875c5b0ccbb0bb5b1ae3419
   IONCameraLib: ecbd8ef0077d481df429cee267bbeb1a7b9bddd0
   KeychainSwift: 4a71a45c802fd9e73906457c2dcbdbdc06c9419d
 

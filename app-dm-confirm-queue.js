@@ -87,6 +87,8 @@
     if (_tabs) _tabs.addEventListener('click', (e) => {
       const t = e.target.closest('.dcq-tab');
       if (!t) return;
+      const list = document.getElementById('dcqList');
+      if (list) _captureCardDrafts(list);
       _activeFilter = t.getAttribute('data-filter') || 'all';
       _applyAndRender();
     });
@@ -598,25 +600,100 @@
       </div>`;
   }
 
+  // 채널 이동은 답글을 보내거나 버리는 행동이 아니다. 작성본은 이 화면의 메모리에만 둔다.
+  const _cardDrafts = new Map();
+  let _draftOwnerId = null;
+  let _replyEpoch = 0;
+  function _captureCardDrafts(list) {
+    list.querySelectorAll('.dcq-item').forEach(card => {
+      const id = card.dataset.id;
+      const draft = _cardDrafts.get(id) || {};
+      const ta = card.querySelector('.dcq-edit');
+      if (!_lastItems.some(it => String(it.id) === id)) return;
+      if (ta && ta.style.display !== 'none') draft.reply = ta.value;
+      const confirm = card.querySelector('.dcq-cpv-ta');
+      if (confirm && confirm.dataset.touched === '1') draft.confirm = confirm.value;
+      const duration = card.querySelector('.dcq-dur');
+      if (duration && duration.dataset.touched === '1') draft.duration = duration.dataset.dur;
+      const address = card.querySelector('.dcq-set-address');
+      if (address) draft.address = address.value;
+      if (Object.keys(draft).length) _cardDrafts.set(id, draft);
+    });
+  }
+  function _restoreCardDrafts(list) {
+    list.querySelectorAll('.dcq-item').forEach(card => {
+      if (!_cardDrafts.has(card.dataset.id)) return;
+      const saved = _cardDrafts.get(card.dataset.id);
+      const ta = card.querySelector('.dcq-edit');
+      if (ta && Object.prototype.hasOwnProperty.call(saved, 'reply')) {
+        ta.value = saved.reply; ta.style.display = 'block';
+        const preview = card.querySelector('.dcq-draft'), edit = card.querySelector('.dcq-edit-btn');
+        if (preview) preview.style.display = 'none';
+        if (edit) edit.style.display = 'none';
+      }
+      _restoreBookingDraft(card, saved);
+    });
+  }
+  function _restoreBookingDraft(card, saved) {
+    const confirm = card.querySelector('.dcq-cpv-ta');
+    if (confirm && Object.prototype.hasOwnProperty.call(saved, 'confirm')) {
+      confirm.value = saved.confirm; confirm.style.display = 'block'; confirm.dataset.touched = '1';
+      const text = card.querySelector('.dcq-cpv-text'), edit = card.querySelector('.dcq-cpv-edit');
+      if (text) text.style.display = 'none';
+      if (edit) edit.style.display = 'none';
+    }
+    const duration = card.querySelector('.dcq-dur');
+    if (duration && saved.duration) {
+      duration.dataset.dur = saved.duration; duration.dataset.touched = '1';
+      duration.textContent = _fmtDur(saved.duration);
+      const runway = parseInt(duration.dataset.runway, 10);
+      const warning = card.querySelector('.dcq-dur-warn');
+      if (warning) warning.style.display = Number.isFinite(runway) && runway > 0 && Number(saved.duration) > runway ? 'flex' : 'none';
+    }
+    const address = card.querySelector('.dcq-set-address');
+    if (address && Object.prototype.hasOwnProperty.call(saved, 'address')) address.value = saved.address;
+  }
+  function _clearReplyDrafts() {
+    _replyEpoch += 1;
+    _cardDrafts.clear();
+    _lastItems = [];
+    const list = document.getElementById('dcqList');
+    if (list) list.textContent = '';
+  }
+  document.addEventListener('itdasy:auth-expired', _clearReplyDrafts);
+  window.addEventListener('itdasy:session-ready', e => {
+    const owner = e.detail && e.detail.userId;
+    if (owner !== _draftOwnerId) { _clearReplyDrafts(); _draftOwnerId = owner; }
+  });
+
+  function _isEditingReply(list) {
+    return Array.from(list.querySelectorAll('.dcq-edit')).some(t => t.style.display !== 'none')
+      || !!list.querySelector('.dcq-cpv-ta[data-touched="1"]')  // [#31] 확정 멘트 수정 중이면 스킵
+      || !!list.querySelector('.dcq-dur[data-touched="1"]')  // 스테퍼 조정 중이면 재렌더 스킵
+      || Array.from(list.querySelectorAll('.dcq-set-address')).some(i => (i.value || '').trim() || i === document.activeElement);  // 주소 입력 중이면 스킵
+  }
+
   async function _refresh() {
     const list = document.getElementById('dcqList');
     if (!list) return;
     // [2026-06-08] 수정(인라인 textarea) 중이면 폴링 재렌더 스킵 — 입력 내용/카드 안 닫히게.
-    const editing = Array.from(list.querySelectorAll('.dcq-edit')).some(t => t.style.display !== 'none')
-      || !!list.querySelector('.dcq-cpv-ta[data-touched="1"]')  // [#31] 확정 멘트 수정 중이면 스킵
-      || !!list.querySelector('.dcq-dur[data-touched="1"]')  // 스테퍼 조정 중이면 재렌더 스킵
-      || Array.from(list.querySelectorAll('.dcq-set-address')).some(i => (i.value || '').trim() || i === document.activeElement);  // 주소 입력 중이면 스킵
-    if (editing) return;
+    if (_isEditingReply(list)) return;
     // [Task 3] 빈 화면이면 로딩 표시
     if (!list.children.length) {
       list.innerHTML = '<div style="display:flex;justify-content:center;padding:40px 20px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:dcqSpin .8s linear infinite" aria-label="불러오는 중"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>';
     }
+    const epoch = _replyEpoch;
     try {
-      _lastItems = await _fetch('GET', '/dm-confirm-queue');
+      const items = await _fetch('GET', '/dm-confirm-queue');
+      if (epoch !== _replyEpoch || _isEditingReply(list)) return;
+      _lastItems = items;
+      const ids = new Set(items.map(it => String(it.id)));
+      _cardDrafts.forEach((_value, id) => { if (!ids.has(id)) _cardDrafts.delete(id); });
       const cnt = document.getElementById('dcqCount');
       if (cnt) cnt.textContent = _lastItems.length + '건';
       _applyAndRender();
     } catch (e) {
+      if (epoch !== _replyEpoch || _isEditingReply(list)) return;
       list.innerHTML = `<div style="text-align:center;color:var(--danger);padding:20px;font-size:12px;">불러오기 실패: ${_esc((window._humanError ? window._humanError(e) : e.message))}</div>`;
     }
   }
@@ -656,6 +733,7 @@
       return;
     }
     list.innerHTML = items.map(_cardHtml).join('');
+    _restoreCardDrafts(list);
     // 수정 버튼 → 인라인 textarea 노출
     list.querySelectorAll('.dcq-edit-btn').forEach(b => b.addEventListener('click', () => {
       const card = b.closest('[data-id]'); if (!card) return;
@@ -675,8 +753,14 @@
       if (am.deposit_sent) { _doAction(b, 'confirm-deposit'); return; }
       const ta = card.querySelector('.dcq-edit');
       const edited = (ta && ta.style.display !== 'none') ? (ta.value || '').trim() : '';
-      if (edited) _doAction(b, 'send_edit', edited);
-      else _doAction(b, 'send');
+      if (ta && ta.style.display !== 'none') {
+        if (!edited) {
+          if (window.showToast) window.showToast('보낼 답장을 입력해 주세요');
+          ta.focus();
+          return;
+        }
+        _doAction(b, 'send_edit', edited);
+      } else _doAction(b, 'send');
     }));
     // [2026-07-14 #31] 확정 멘트 수정 — 미리보기 → textarea 전환 (touched 마킹으로 폴링 재렌더 방지)
     list.querySelectorAll('.dcq-cpv-edit').forEach(b => b.addEventListener('click', () => {
@@ -743,6 +827,23 @@
     }));
   }
 
+  function _addBookingFields(card, body) {
+    const duration = card.querySelector('.dcq-dur');
+    if (duration && Number(duration.dataset.dur) > 0) body.duration_min = Number(duration.dataset.dur);
+    const address = card.querySelector('.dcq-set-address');
+    if (!address) return null;
+    const value = (address.value || '').trim();
+    if (!value) return address;
+    body.address = value;
+    return null;
+  }
+  function _stopForMissingAddress(input, btn) {
+    if (!input) return false;
+    if (window.showToast) window.showToast('샵 주소를 입력해 주세요');
+    input.focus(); btn.disabled = false; btn.style.opacity = '1';
+    return true;
+  }
+
   async function _doAction(btn, action, editedText) {
     const card = btn.closest('[data-id]');
     if (!card) return;
@@ -755,23 +856,7 @@
       let r;
       if (action === 'send') {
         const _body = { selected_index: 0 };
-        const _durEl = card.querySelector('.dcq-dur');  // [2a] 원장 조정 시술시간(분)
-        if (_durEl && _durEl.dataset.dur) {
-          const _d = parseInt(_durEl.dataset.dur, 10);
-          if (_d > 0) _body.duration_min = _d;
-        }
-        // [2026-06-24] 주소 미설정 카드 — 입력한 주소를 함께 보냄(설정 저장 + 손님 안내)
-        const _addrEl = card.querySelector('.dcq-set-address');
-        if (_addrEl) {
-          const _addr = (_addrEl.value || '').trim();
-          if (!_addr) {
-            if (window.showToast) window.showToast('샵 주소를 입력해 주세요');
-            _addrEl.focus();
-            btn.disabled = false; btn.style.opacity = '1';
-            return;
-          }
-          _body.address = _addr;
-        }
+        if (_stopForMissingAddress(_addBookingFields(card, _body), btn)) return;
         r = await _fetch('POST', `/dm-confirm-queue/${id}/send`, _body);
       } else if (action === 'send-form') {
         r = await _fetch('POST', `/dm-confirm-queue/${id}/send-form`);
@@ -783,7 +868,9 @@
           btn.disabled = false; btn.style.opacity = '1';
           return;
         }
-        r = await _fetch('POST', `/dm-confirm-queue/${id}/send_edit`, { edited_reply: editedText });
+        const _editedBody = { edited_reply: editedText };
+        if (_stopForMissingAddress(_addBookingFields(card, _editedBody), btn)) return;
+        r = await _fetch('POST', `/dm-confirm-queue/${id}/send_edit`, _editedBody);
       } else if (action === 'confirm-deposit') {
         // [2026-06-24] 입금 확인 → 예약 확정 시 스테퍼 시술시간(분) 같이 전송(ends_at 보정).
         const _cbody = {};
@@ -796,7 +883,13 @@
         const _cpvTa = card.querySelector('.dcq-cpv-ta');
         if (_cpvTa && _cpvTa.style.display !== 'none') {
           const _ftxt = (_cpvTa.value || '').trim();
-          if (_ftxt) _cbody.final_text = _ftxt;
+          if (!_ftxt) {
+            if (window.showToast) window.showToast('손님에게 보낼 확정 문구를 입력해 주세요');
+            _cpvTa.focus();
+            btn.disabled = false; btn.style.opacity = '1';
+            return;
+          }
+          _cbody.final_text = _ftxt;
         }
         r = await _fetch('POST', `/dm-confirm-queue/${id}/confirm-deposit`, _cbody);
         if (window.showToast) window.showToast(r.ok ? '캘린더 추가 + 고객 등록했어요 ✓' : (r.message || '확정 실패'));
@@ -855,6 +948,8 @@
       // [2026-06-08] 전송·예약확정·X(discard) 전부 — 홈 '고객 메시지' 카드 제거(전체 sender_igsid + tail).
       try { window.dispatchEvent(new CustomEvent('itdasy:dm-replied', { detail: { sender_igsid: sender, tail } })); } catch (_e2) { /* ignore */ }
 
+      _cardDrafts.delete(String(id));
+      _lastItems = (_lastItems || []).filter(it => String(it.id) !== String(id));
       // 카드 슬라이드 아웃 + 남은 0건이면 시트 자동 닫기
       card.style.transition = 'all 0.25s ease-out';
       card.style.opacity = '0';
