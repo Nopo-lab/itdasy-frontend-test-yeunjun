@@ -1103,9 +1103,9 @@ const _USER_KEY_KEEP = new Set([
   'onboarding_done',  // [v203.1] 추가
   // [2026-05-21] GDPR/ePrivacy 동의 상태 — 디바이스 단위 결정이라 로그아웃 시
   // 삭제하면 매 로그인마다 안내 재노출. app-cookie-consent.js 정의 키.
-  'itdasy_consent_v1',
-  'itdasy_consent_at',
-  'itdasy_consent_region',
+  'itdasy_consent_v2',
+  'itdasy_consent_at_v2',
+  'itdasy_consent_region_v2',
   // [2026-09-03 P0 계정 격리] 갤러리 IDB 소유자 도장(app-gallery-db.js) — itdasy_ 접두어라
   // 여기 안 올리면 purge 가 도장을 지워 다음 open 의 소유자 검사가 무력화된다.
   // 도장을 지우는 곳은 clearGalleryDB 성공 콜백 한 곳뿐이어야 한다(삭제 성공 = 도장 소멸).

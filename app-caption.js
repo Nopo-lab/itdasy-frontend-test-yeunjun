@@ -497,16 +497,15 @@ async function _doGenerateCaptionImpl(scenario, closePopup, inlineHost) {
       // 백엔드가 명시한 정확한 원인을 그대로 노출 (디버그 용이)
       userMsg = raw;
     } else if (/consent_missing/i.test(raw)) {
-      // [2026-04-26] consent_missing 자동 복구 — 가입 시 자동 동의 백필 전(前) 가입자
-      // 보호용. 사용자에게 한 번 컨펌 받고 /persona/consent bulk POST 후 재시도.
+      // AI 처리는 가입과 분리해 첫 사용 직전에 설명하고 직접 허용받는다.
       window._inlineConfirm(
-        'AI 캡션 만들기에는 개인정보 수집·AI 처리 동의가 필요합니다.\n가입 시 약관에 이미 동의하신 내용입니다. 지금 동의하시겠어요?',
+        'AI 캡션을 만들면 입력한 시술 정보와 글 작성 요청이 외부 AI 제공자에게 전송됩니다. 개인정보처리방침에서 제공자·국가·보유기간을 확인할 수 있습니다. 동의하고 계속할까요?',
         async () => {
           try {
             await _personaFetch('POST', '/persona/consent', {
               pipa_collect: true,
               ai_processing: true,
-              versions: { pipa_collect: '1.0', ai_processing: '1.0' },
+              versions: { pipa_collect: '1.0', ai_processing: '2.0' },
             });
             // 재시도 한 번
             hideCaptionLoader(false, () => {});
