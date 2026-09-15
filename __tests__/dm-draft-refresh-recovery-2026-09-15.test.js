@@ -8,12 +8,12 @@ const item = { id: 1, sender_igsid: 'qa', sender_username: 'QA', intent: 'locati
   ai_draft_text: '원래 추천 답글', status: 'pending', message_text: '어디인가요?' };
 const response = body => ({ ok: true, json: async () => body });
 let getQueue, requests;
-async function boot() {
+async function boot(initialItems = [item]) {
   jest.useFakeTimers();
   document.body.innerHTML = '';
   Object.defineProperty(document, 'hidden', { configurable: true, value: false });
   requests = [];
-  getQueue = async () => response([item]);
+  getQueue = async () => response(initialItems);
   window.apiUrl = p => p;
   window.authHeader = () => ({});
   window.showToast = jest.fn();
@@ -103,4 +103,96 @@ test.each(['success', 'failure'])('계정 전환 후 옛 %s 응답이 이전 목
   if (mode === 'success') resolve(response([item])); else reject(new Error('offline'));
   await flush();
   expect(document.getElementById('dcqList').textContent).toBe('');
+});
+
+test('채널 이동 뒤 예약 확정 문구와 시술 시간을 복원한다', async () => {
+  const booking = { ...item, action_required: 'booking_action', action_meta: {
+    deposit_sent: true, confirm_preview: '처음 확정 문구', default_duration_min: 60, runway_min: 60
+  } };
+  await boot([booking]);
+  document.querySelector('.dcq-cpv-edit').click();
+  const confirm = document.querySelector('.dcq-cpv-ta');
+  confirm.value = '원장이 고친 확정 문구';
+  document.querySelector('.dcq-dur-btn[data-step="30"]').click();
+  document.querySelector('[data-filter="all"]').click();
+  expect(document.querySelector('.dcq-cpv-ta').value).toBe('원장이 고친 확정 문구');
+  expect(document.querySelector('.dcq-cpv-ta').style.display).toBe('block');
+  expect(document.querySelector('.dcq-dur').dataset.dur).toBe('90');
+  expect(document.querySelector('.dcq-dur-warn').style.display).toBe('flex');
+});
+
+test('채널 이동 뒤 입력한 샵 주소를 복원한다', async () => {
+  const address = { ...item, action_meta: { set_address: true } };
+  await boot([address]);
+  document.querySelector('.dcq-set-address').value = '서울 강남구 테스트로 12';
+  document.querySelector('[data-filter="all"]').click();
+  expect(document.querySelector('.dcq-set-address').value).toBe('서울 강남구 테스트로 12');
+});
+
+test('예약 확정 문구를 비운 채 확정하면 원문을 보내지 않는다', async () => {
+  const booking = { ...item, action_required: 'booking_action', action_meta: {
+    deposit_sent: true, confirm_preview: '처음 확정 문구', default_duration_min: 60
+  } };
+  await boot([booking]);
+  document.querySelector('.dcq-cpv-edit').click();
+  document.querySelector('.dcq-cpv-ta').value = '   ';
+  document.querySelector('.dcq-send').click();
+  await flush();
+  expect(requests.filter(r => r.opts.method === 'POST')).toHaveLength(0);
+  expect(window.showToast).toHaveBeenCalledWith('손님에게 보낼 확정 문구를 입력해 주세요');
+});
+
+test('예약 가능 시간이 0이면 채널 이동 뒤에도 겹침 경고를 새로 켜지 않는다', async () => {
+  const booking = { ...item, action_required: 'booking_action', action_meta: {
+    default_duration_min: 60, runway_min: 0
+  } };
+  await boot([booking]);
+  document.querySelector('.dcq-dur-btn[data-step="30"]').click();
+  document.querySelector('[data-filter="all"]').click();
+  expect(document.querySelector('.dcq-dur-warn').style.display).toBe('none');
+});
+
+test('채널 이동 뒤 예약 확정 요청에 고친 문구와 시술 시간을 보낸다', async () => {
+  const booking = { ...item, action_required: 'booking_action', action_meta: {
+    deposit_sent: true, confirm_preview: '처음 확정 문구', default_duration_min: 60
+  } };
+  await boot([booking]);
+  document.querySelector('.dcq-cpv-edit').click();
+  document.querySelector('.dcq-cpv-ta').value = '수정 확정';
+  document.querySelector('.dcq-dur-btn[data-step="30"]').click();
+  document.querySelector('[data-filter="all"]').click();
+  document.querySelector('.dcq-send').click();
+  await flush();
+  const post = requests.find(r => r.opts.method === 'POST');
+  expect(JSON.parse(post.opts.body)).toEqual(expect.objectContaining({ final_text: '수정 확정', duration_min: 90 }));
+});
+
+test('예약 답글을 고쳐 보내도 시술 시간을 함께 보낸다', async () => {
+  const booking = { ...item, action_required: 'booking_action', action_meta: {
+    default_duration_min: 60
+  } };
+  await boot([booking]);
+  edit('직접 고친 예약 답글');
+  document.querySelector('.dcq-dur-btn[data-step="30"]').click();
+  document.querySelector('.dcq-send').click();
+  await flush();
+  const post = requests.find(r => r.opts.method === 'POST');
+  expect(post.url).toContain('send_edit');
+  expect(JSON.parse(post.opts.body)).toEqual({ edited_reply: '직접 고친 예약 답글', duration_min: 90 });
+});
+
+test('채널 이동 뒤 주소 안내 요청에 입력한 주소를 보낸다', async () => {
+  const booking = { ...item, action_required: 'booking_action', action_meta: {
+    set_address: true, default_duration_min: 60
+  } };
+  await boot([booking]);
+  document.querySelector('.dcq-set-address').value = '서울 테스트로 12';
+  document.querySelector('[data-filter="all"]').click();
+  document.querySelector('.dcq-send').click();
+  await flush();
+  const post = requests.find(r => r.opts.method === 'POST');
+  expect(post.url).toMatch(/\/send$/);
+  expect(JSON.parse(post.opts.body)).toEqual({
+    selected_index: 0, duration_min: 60, address: '서울 테스트로 12'
+  });
 });

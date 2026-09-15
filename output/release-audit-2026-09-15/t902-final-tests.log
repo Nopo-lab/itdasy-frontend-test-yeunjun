@@ -1,0 +1,347 @@
+● Validation Warning:
+
+  Unknown option "_comment" with value "'.claude/worktrees' 는 다른 세션의 git worktree 다(gitignore). 기본 설정이면 jest 가 그걸 같이 훑어서 같은 테스트가 여러 번 세어지고, 로컬 숫자가 CI 와 안 맞는다. 실제로 로컬 2332 vs CI 1016 으로 갈렸다 — 보고한 숫자가 틀렸었다. 남의 세션이 깨뜨린 테스트가 내 실행을 실패시키기도 한다." was found.
+  This is probably a typing mistake. Fixing it will remove this message.
+
+  Configuration Documentation:
+  https://jestjs.io/docs/configuration
+
+● Validation Warning:
+
+  Unknown option "_comment" with value "'.claude/worktrees' 는 다른 세션의 git worktree 다(gitignore). 기본 설정이면 jest 가 그걸 같이 훑어서 같은 테스트가 여러 번 세어지고, 로컬 숫자가 CI 와 안 맞는다. 실제로 로컬 2332 vs CI 1016 으로 갈렸다 — 보고한 숫자가 틀렸었다. 남의 세션이 깨뜨린 테스트가 내 실행을 실패시키기도 한다." was found.
+  This is probably a typing mistake. Fixing it will remove this message.
+
+  Configuration Documentation:
+  https://jestjs.io/docs/configuration
+
+PASS js/photo/__tests__/compose-wait.test.js
+오버레이 뒤로가기 감사 실패 — 등록이 없는 전체화면 오버레이:
+  - app-retention-ai.js
+
+고치는 법: 오버레이를 화면에 올린 직후 한 줄을 추가한다.
+  window._bindSheetBack('<이름>', <오버레이 엘리먼트>, () => { <닫는 코드> });
+닫기 지점이 여러 개여도 헬퍼가 DOM 에서 사라짐을 관찰하므로 한 곳만 부르면 된다.
+back 대상이 아닌 오버레이라면 이 파일의 ALLOWLIST 에 이유와 함께 넣는다.
+PASS __tests__/overlay-back-audit-covers-css-classes.test.js
+(node:63794) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS __tests__/dm-draft-refresh-recovery-2026-09-15.test.js
+PASS scripts/__tests__/deploy-safety.test.js
+PASS __tests__/comment-queue-hardening.test.js
+PASS __tests__/paywall-plan-product-map.test.js
+PASS __tests__/assistant-execute-timeout-idempotent-retry.test.js
+PASS __tests__/side-nav-hub-close.test.js
+PASS __tests__/account-isolation-gdb.test.js
+PASS __tests__/session-expired-stops-polling.test.js
+PASS __tests__/service-menu-first-owner-2026-09-14.test.js
+PASS js/workspace/__tests__/work-memory-store.test.js
+PASS __tests__/assistant-execute-result-2026-09-15.test.js
+PASS __tests__/automation-toggle-off-desync.test.js
+PASS __tests__/session-kill-and-slot-recovery-2026-09-11.test.js
+PASS __tests__/comment-draft-refresh-recovery-2026-09-15.test.js
+PASS js/workspace/__tests__/phase1-observation.test.js
+PASS js/photo/__tests__/idb-schema-guard.test.js
+PASS __tests__/auth-account-switch-cache.test.js
+PASS js/workspace/__tests__/work-memory-preferences.test.js
+PASS js/workspace/__tests__/work-memory-learn.test.js
+PASS __tests__/dm-menu-hydrate-race.test.js
+PASS js/workspace/__tests__/work-memory-personalize.test.js
+PASS __tests__/responsive-gate-closeout-2026-09-07.test.js
+PASS __tests__/sheet-back-rearm-bugd-2026-09-11.test.js
+PASS js/photo/__tests__/silent-noop-guard.test.js
+PASS __tests__/automation-consent.test.js
+PASS js/workspace/__tests__/work-memory-context.test.js
+PASS js/workspace/__tests__/work-memory-persona.test.js
+PASS __tests__/p3-polish-closeout-2026-09-14.test.js
+PASS js/workspace/__tests__/work-memory-assets.test.js
+PASS js/workspace/__tests__/work-memory-text-safety.test.js
+PASS js/workspace/__tests__/work-memory-auto-switch-2026-09-13.test.js
+PASS js/workspace/__tests__/work-memory-signals.test.js
+PASS js/photo/__tests__/draft-quality.test.js
+PASS __tests__/idb-purge-no-deletedb-2026-09-11.test.js
+PASS __tests__/automation-consent-a11y.test.js
+PASS js/workspace/__tests__/scope-lock-2026-09-10.test.js
+PASS __tests__/itbi-remaining-zero-2026-09-14.test.js
+PASS __tests__/itbi-starters.test.js
+PASS js/assistant/core/__tests__/itbi-intent-routing.test.js
+PASS js/workspace/__tests__/workspace-perf.test.js
+PASS js/photo/__tests__/ig-style-library.test.js
+PASS __tests__/media-fallback-2026-09-07.test.js
+PASS js/workspace/__tests__/work-memory-select.test.js
+PASS js/workspace/__tests__/work-memory-schema2.test.js
+PASS js/workspace/__tests__/work-memory-decay.test.js
+PASS js/photo/__tests__/instagram-text-style.test.js
+PASS __tests__/itbi-return-and-handle.test.js
+PASS __tests__/itbi-question-routing-2026-09-11.test.js
+PASS __tests__/duplicate-get-coalescing.test.js
+PASS __tests__/pricelist-does-not-swallow-money-writes.test.js
+PASS __tests__/login-form-autofill-2026-09-13.test.js
+PASS js/workspace/__tests__/work-memory-diverse-owner-style-flow-2026-09-15.test.js
+PASS js/workspace/__tests__/work-memory-cross-service-2026-09-13.test.js
+PASS js/itd-editor/__tests__/editor-save-reliability.test.js
+PASS js/itd-editor/__tests__/beauty-stickers-2026-09-14.test.js
+PASS js/photo/__tests__/t8-runtime-manifest.test.js
+PASS js/assistant/core/__tests__/template-sample-matcher.test.js
+PASS js/workspace/__tests__/work-memory-engine.test.js
+PASS js/itd-editor/__tests__/photo-gate-2026-09-11.test.js
+PASS js/itd-editor/__tests__/editor-hardening-2026-09-03.test.js
+PASS js/photo/__tests__/obb-geometry.test.js
+PASS js/instagram/__tests__/token-status.test.js
+PASS __tests__/membership-balance-truth-2026-09-11.test.js
+PASS __tests__/content-report-over-assistant-2026-09-13.test.js
+PASS __tests__/complete-flow-membership-balance-2026-09-13.test.js
+PASS __tests__/auth-proactive-refresh-2026-09-13.test.js
+PASS __tests__/ai-caption-truth-2026-09-07.test.js
+PASS js/workspace/__tests__/zerohelp-ux-fixes-2026-09-12.test.js
+PASS js/workspace/__tests__/work-memory-policy-runtime.test.js
+PASS js/workspace/__tests__/work-memory-capture.test.js
+PASS js/workspace/__tests__/work-memory-apply-undo.test.js
+PASS __tests__/toast-error-copy-2026-09-13.test.js
+  ● Console
+
+    console.warn
+      [toast] 원문 차단: 저장 실패: Failed to fetch
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at f (__tests__/toast-error-copy-2026-09-13.test.js:44:19)
+          at Array.forEach (<anonymous>)
+      at Object.forEach (__tests__/toast-error-copy-2026-09-13.test.js:43:8)
+
+    console.warn
+      [toast] 원문 차단: 저장 실패: The user aborted a request.
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at f (__tests__/toast-error-copy-2026-09-13.test.js:44:19)
+          at Array.forEach (<anonymous>)
+      at Object.forEach (__tests__/toast-error-copy-2026-09-13.test.js:43:8)
+
+    console.warn
+      [toast] 원문 차단: 해제 실패: Failed to fetch
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at f (__tests__/toast-error-copy-2026-09-13.test.js:44:19)
+          at Array.forEach (<anonymous>)
+      at Object.forEach (__tests__/toast-error-copy-2026-09-13.test.js:43:8)
+
+    console.warn
+      [toast] 원문 차단: 해제 실패: 해제 실패 (HTTP 500) {"detail":"server error"}
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at f (__tests__/toast-error-copy-2026-09-13.test.js:44:19)
+          at Array.forEach (<anonymous>)
+      at Object.forEach (__tests__/toast-error-copy-2026-09-13.test.js:43:8)
+
+    console.warn
+      [toast] 원문 차단: 해제 실패: 해제 실패 (HTTP 500) {"detail":"server error"}
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at Object.f (__tests__/toast-error-copy-2026-09-13.test.js:50:17)
+
+    console.warn
+      [toast] 원문 차단: 해제 실패: 해제 실패 (HTTP 500) {"detail":"server error"}
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at Object.f (__tests__/toast-error-copy-2026-09-13.test.js:56:17)
+
+    console.warn
+      [toast] 원문 차단: 저장 실패: Failed to fetch
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at Object.f (__tests__/toast-error-copy-2026-09-13.test.js:61:12)
+
+    console.warn
+      [toast] 원문 차단: 해제 실패: Failed to fetch
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at Object.f (__tests__/toast-error-copy-2026-09-13.test.js:62:12)
+
+    console.warn
+      [toast] 원문 차단: 저장 실패: The user aborted a request.
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at Object.f (__tests__/toast-error-copy-2026-09-13.test.js:66:17)
+
+    console.warn
+      [toast] 원문 차단: 저장 실패: Failed to fetch
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at Object.f (__tests__/toast-error-copy-2026-09-13.test.js:72:12)
+
+    console.warn
+      [toast] 원문 차단: 저장 실패: Failed to fetch
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at Object.f (__tests__/toast-error-copy-2026-09-13.test.js:73:12)
+
+    console.warn
+      [toast] 원문 차단: 저장 실패: (HTTP 400) {"detail":"이미 등록된 전화번호예요"}
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at Object.f (__tests__/toast-error-copy-2026-09-13.test.js:77:17)
+
+    console.warn
+      [toast] 원문 차단: 저장 실패: server error
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at Object.f (__tests__/toast-error-copy-2026-09-13.test.js:92:12)
+
+    console.warn
+      [toast] 원문 차단: 저장 실패: server error
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at Object.f (__tests__/toast-error-copy-2026-09-13.test.js:93:12)
+
+    console.warn
+      [toast] 원문 차단: 저장 실패: rate limited
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at Object.f (__tests__/toast-error-copy-2026-09-13.test.js:94:12)
+
+    console.warn
+      [toast] 원문 차단: 저장 실패: rate limited
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at Object.f (__tests__/toast-error-copy-2026-09-13.test.js:95:12)
+
+    console.warn
+      [toast] 원문 차단: 저장 실패: Not Found
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at Object.f (__tests__/toast-error-copy-2026-09-13.test.js:96:12)
+
+    console.warn
+      [toast] 원문 차단: 저장 실패: Not Found
+
+      at window._userSafeToastText (eval at load (__tests__/toast-error-copy-2026-09-13.test.js:29:3), <anonymous>:64:17)
+      at Object.f (__tests__/toast-error-copy-2026-09-13.test.js:97:12)
+
+PASS __tests__/photo-commands-do-not-swallow-domain.test.js
+PASS __tests__/home-failed-not-empty-2026-09-13.test.js
+PASS js/workspace/__tests__/sync-account-switch-isolation-2026-09-13.test.js
+PASS js/workspace/__tests__/ig-style-work-precedence.test.js
+PASS js/itd-editor/__tests__/cancel-confirm-unsaved-2026-09-13.test.js
+PASS js/photo/__tests__/draft-personalization.test.js
+PASS __tests__/customer-load-failure-recovery-2026-09-12.test.js
+PASS js/workspace/__tests__/work-memory-policy.test.js
+PASS js/workspace/__tests__/photo-recovery-and-post-scope.test.js
+PASS js/workspace/__tests__/carousel-reedit-all-photos-2026-09-12.test.js
+PASS js/workspace/__tests__/carousel-per-photo-save-2026-09-12.test.js
+PASS js/itd-editor/__tests__/editor-draft-recovery-a11y.test.js
+PASS js/photo/__tests__/edit-plan-integrated.test.js
+PASS js/photo/__tests__/bake-output.test.js
+PASS __tests__/itbi-photo-brief-no-false-promise-2026-09-13.test.js
+PASS __tests__/ig-oauth-return-2026-09-12.test.js
+PASS __tests__/booking-cancel-undo-2026-09-13.test.js
+PASS __tests__/ai-cachebust-and-spec-2026-09-07.test.js
+PASS js/workspace/__tests__/sync-status-signal-2026-09-13.test.js
+PASS js/workspace/__tests__/ig-style-selection-e2e.test.js
+PASS js/itd-editor/__tests__/text-style-2026-09-11.test.js
+PASS js/itd-editor/__tests__/export-resolution-invariance.test.js
+PASS js/itd-editor/__tests__/draft-pending-not-overwritten-2026-09-13.test.js
+PASS js/photo/__tests__/ig-style-grouping.test.js
+PASS __tests__/revenue-delete-money-warning-2026-09-11.test.js
+PASS __tests__/price-consistency-2026-09-07.test.js
+PASS __tests__/kst-date-display-2026-09-13.test.js
+PASS __tests__/itbi-lookup-reference-yield-2026-09-13.test.js
+PASS __tests__/ghost-complete-sheet-structural-2026-09-12.test.js
+PASS __tests__/friendly-error-mapping.test.js
+PASS js/workspace/__tests__/photo-fit-choice-2026-09-11.test.js
+PASS js/workspace/__tests__/legacy-edit-template-removed.test.js
+PASS js/itd-editor/__tests__/undo-scale-rotate-2026-09-13.test.js
+PASS js/itd-editor/__tests__/canvas-filter-fallback-2026-09-13.test.js
+PASS js/photo-editor/__tests__/strict-roi.test.js
+PASS js/photo/__tests__/threshold-boundary.test.js
+PASS js/photo/__tests__/style-learning-multi-owner-qa-2026-09-15.test.js
+PASS js/photo/__tests__/multi-photo.test.js
+PASS js/photo/__tests__/seam-parity.test.js
+PASS js/dm/__tests__/autosend-toggle.test.js
+PASS __tests__/revenue-load-failed-not-zero-2026-09-13.test.js
+PASS __tests__/overlay-layering-membership-2026-09-11.test.js
+PASS __tests__/login-hang-idb-purge.test.js
+PASS __tests__/itbi-client-failure-events-2026-09-13.test.js
+PASS __tests__/calendar-covered-by-customer-sheet-2026-09-12.test.js
+PASS js/workspace/__tests__/sync-postcommit-timeout-2026-09-11.test.js
+PASS js/workspace/__tests__/result-preview-real-ratio-2026-09-13.test.js
+PASS js/photo/__tests__/text-anchor-contract.test.js
+PASS js/photo/__tests__/content-intent.test.js
+PASS __tests__/workspace-pull-recovery-2026-09-12.test.js
+PASS __tests__/preferred-service-truth-2026-09-12.test.js
+PASS __tests__/itbi-active-card-person-ref-2026-09-13.test.js
+PASS __tests__/booking-cancel-money-warning-2026-09-11.test.js
+PASS js/workspace/__tests__/workspace-perf-entry.test.js
+PASS js/workspace/__tests__/work-memory-layout.test.js
+PASS js/workspace/__tests__/multi-style.test.js
+PASS js/workspace/__tests__/delete-push-not-gated-on-tombstone-2026-09-12.test.js
+PASS js/itd-editor/__tests__/draft-not-overwritten-while-hidden-2026-09-13.test.js
+PASS js/revenue/__tests__/booking-revenue-overlay.test.js
+PASS js/photo/__tests__/ig-style-injection.test.js
+PASS js/photo/__tests__/ig-style-backcompat.test.js
+PASS js/photo/__tests__/correction-loop.test.js
+PASS __tests__/workspace-conflict-visible-2026-09-13.test.js
+PASS __tests__/responsive-gate-ios15-and-back-2026-09-07.test.js
+PASS __tests__/media-upload-retry-2026-09-07.test.js
+PASS js/workspace/__tests__/editor-done-rerenders-screen-2026-09-11.test.js
+PASS js/workspace/__tests__/caption-preview-no-shift-2026-09-13.test.js
+PASS js/itd-editor/__tests__/text-gate-2026-09-11.test.js
+PASS js/itd-editor/__tests__/text-wrap-invariance.test.js
+PASS js/photo/__tests__/editor-expansion.test.js
+PASS __tests__/sync-false-conflict-fork-2026-09-11.test.js
+PASS __tests__/p2-footer-and-money-format-2026-09-11.test.js
+PASS __tests__/owner-qa-batch-2026-09-11.test.js
+PASS __tests__/intent-router-name-prefix-exact.test.js
+PASS __tests__/customer-edit-modal-layer.test.js
+PASS __tests__/customer-add-guard-scope.test.js
+PASS __tests__/assistant-sheet-shortcut-closes-itbi.test.js
+PASS __tests__/booking-status-label-2026-09-08.test.js
+PASS __tests__/assistant-domain-question-not-hijacked.test.js
+PASS js/workspace/__tests__/work-memory-consent-ui.test.js
+PASS js/workspace/__tests__/story-edited-roundtrip.test.js
+PASS js/workspace/__tests__/blob-url.test.js
+PASS js/itd-editor/__tests__/layer-handles-over-order-row.test.js
+PASS js/itd-editor/__tests__/editor-manipulation-ux-2026-09-14.test.js
+PASS js/revenue/__tests__/cross-tab-sync.test.js
+PASS js/photo/__tests__/text-readability.test.js
+PASS js/photo/__tests__/social-style-source-2026-09-15.test.js
+PASS js/photo/__tests__/evidence-monitor.test.js
+PASS js/photo/__tests__/edit-plan.test.js
+PASS js/photo/__tests__/continuous-axis.test.js
+PASS scripts/__tests__/sync-merge-design.test.js
+PASS __tests__/sync-wakes-on-login-2026-09-12.test.js
+PASS __tests__/workspace-false-empty-state-2026-09-12.test.js
+PASS __tests__/services-request-storm-bound-2026-09-12.test.js
+PASS __tests__/revenue-calendar-refund-chip-2026-09-11.test.js
+PASS __tests__/overlay-back-registry.test.js
+PASS __tests__/memory-intent-customer-scope.test.js
+PASS __tests__/itbi-via-tagging-2026-09-12.test.js
+PASS __tests__/itd-editor-display-downscale.test.js
+PASS __tests__/itbi-segment-target-2026-09-12.test.js
+PASS __tests__/itbi-fe-shortcut-followups-2026-09-13.test.js
+PASS __tests__/itbi-booking-draft-question-yield-2026-09-13.test.js
+PASS __tests__/first-owner-booking-and-cta-2026-09-14.test.js
+PASS __tests__/comment-reply-inprogress.test.js
+PASS __tests__/customer-delete-contract.test.js
+PASS __tests__/booking-save-doubleclick.test.js
+PASS js/assistant/core/__tests__/photo-mode-support.test.js
+PASS js/workspace/__tests__/workspace-sync-merge.test.js
+PASS js/itd-editor/__tests__/safezone-psidx-reference.test.js
+PASS js/photo/__tests__/bake-parity.test.js
+PASS __tests__/photo-editor-persist-pe01-2026-09-11.test.js
+PASS __tests__/dm-autosend-desync-2026-09-04.test.js
+PASS __tests__/customer-list-revalidate-on-open.test.js
+PASS __tests__/booking-header-layout.test.js
+PASS js/workspace/__tests__/caption-generated-persists-2026-09-13.test.js
+PASS __tests__/settings-service-menu-entry-2026-09-13.test.js
+PASS __tests__/membership-multitab-ui-truth-2026-09-13.test.js
+PASS __tests__/heic-detect-2026-09-07.test.js
+PASS __tests__/itbi-draft-message-no-fake-name-2026-09-13.test.js
+PASS __tests__/dm-menu-group-labels-2026-09-07.test.js
+PASS __tests__/customer-row-id-type.test.js
+PASS __tests__/customer-pick-back-sheet.test.js
+PASS __tests__/comment-reply-unverified.test.js
+PASS __tests__/boot-restore-blank-tab-2026-09-11.test.js
+
+Test Suites: 198 passed, 198 total
+Tests:       3171 passed, 3171 total
+Snapshots:   0 total
+Time:        10.618 s
+Ran all test suites.
