@@ -5,12 +5,32 @@
   'use strict';
 
   const TTL_MS = 10 * 60 * 1000;
-  const S = { lastList: null, lastCancelled: null, lastCreated: null, pendingReschedule: null };
+  const S = { lastList: null, lastTarget: null, lastCancelled: null, lastCreated: null, pendingReschedule: null };
 
   function _trim(s) { return String(s == null ? '' : s).trim(); }
   function _fresh(x) { return x && Date.now() - (x.ts || 0) < TTL_MS; }
   function _active(b) { return b && !['cancelled', 'completed', 'no_show'].includes(b.status); }
   function _name(b) { return _trim((b && (b.customer_name || b.name)) || '고객'); }
+  function _customerCtx() { return window.ItdasyCustomerContext || null; }
+
+  function _rememberCustomerFromBooking(b) {
+    try {
+      const C = _customerCtx();
+      if (C && typeof C.remember === 'function' && b) {
+        C.remember({ id: b.customer_id != null ? b.customer_id : b.id, name: b.customer_name || b.name || '' }, 'booking');
+      }
+    } catch (_e) { void _e; }
+  }
+
+  function _rememberTarget(b) {
+    if (!b || !b.id) return;
+    S.lastTarget = { ts: Date.now(), booking: b };
+    _rememberCustomerFromBooking(b);
+  }
+
+  function _lastTarget() {
+    return _fresh(S.lastTarget) && S.lastTarget.booking ? S.lastTarget.booking : null;
+  }
 
   // [핫픽스D #8] 사람이 읽는 한글 일시 — ISO/"MM/DD HH:mm" 노출 금지. 공용 포맷터 우선.
   function _fmt(b) {
@@ -105,10 +125,16 @@
   }
 
   function _nameHint(q) {
-    let s = _trim(q).replace(/(오늘|내일|모레|예약|시간|오전|오후|저녁|아침|새벽|점심|밤|취소|삭제|지워|없애|캔슬|복구|되돌려|되돌리|되살|바꿔|바꾸|변경|옮겨|미뤄|당겨|그거|그|응|네|하라고|해줘|해|님)/g, ' ');
+    let s = _trim(q).replace(/(오늘|내일|모레|예약|시간|오전|오후|저녁|아침|새벽|점심|밤|취소|삭제|지워|없애|캔슬|복구|되돌려|되돌리|되살|바꿔|바꾸|변경|옮겨|미뤄|당겨|그거|그것|이거|이것|저거|저것|그럼|그러면|아니|아냐|아니요|말고|다시|방금|직전|그|응|네|하라고|해줘|해|님)/g, ' ');
     s = s.replace(/\d{1,2}:\d{2}|\d+\s*시\s*(\d+\s*분)?|\d+\s*월\s*\d+\s*일/g, ' ');
     const m = s.match(/[가-힣]{2,5}/);
     return m ? m[0] : '';
+  }
+
+  function _softReference(q) {
+    const t = _trim(q);
+    if (/(그거|그것|이거|이것|저거|저것|그\s*예약|그\s*고객|방금|직전|아니|아냐|아니요|그럼|그러면|말고)/.test(t)) return true;
+    return _isBareTimeReply(t);
   }
 
   async function _fetchByDateHint(hint) {
@@ -125,6 +151,8 @@
     if (!result || !/^bookings_/.test(result.type || '')) return;
     const items = (result.data && Array.isArray(result.data.items)) ? result.data.items.filter(_active) : [];
     S.lastList = { ts: Date.now(), type: result.type, items };
+    if (result.data && result.data.customer) _rememberCustomerFromBooking(result.data.customer);
+    if (items.length === 1) _rememberTarget(items[0]);
   }
 
   function _bookingFromAction(action, data) {
@@ -149,6 +177,7 @@
     const booking = _bookingFromAction(action, data);
     if (kind === 'create_booking' && booking.id) S.lastCreated = { ts: Date.now(), booking };
     if (kind === 'cancel_booking' && booking.id) S.lastCancelled = { ts: Date.now(), booking };
+    if (booking.id) _rememberTarget(booking);
     if (kind === 'restore_booking') S.lastCancelled = null;
   }
 
@@ -208,6 +237,10 @@
     const hint = _dateHint(q);
     const time = _timeHint(q);
     const name = _nameHint(q);
+    const target = _lastTarget();
+    if (target && !name && _matchDate(target, hint) && _matchTime(target, time) && (_softReference(q) || (!hint && !time))) {
+      return { booking: target };
+    }
     let list = (_fresh(S.lastList) && S.lastList.items) ? S.lastList.items.slice() : [];
     if (hint && hint.offset != null && (!list.length || !list.some((b) => _matchDate(b, hint)))) {
       list = await _fetchByDateHint(hint);
@@ -223,6 +256,10 @@
   async function _pickRescheduleTarget(q) {
     const hint = _dateHint(q);
     const name = _nameHint(q);
+    const target = _lastTarget();
+    if (target && !name && _matchDate(target, hint) && (_softReference(q) || (!hint && _newTimeHint(q, false)))) {
+      return { booking: target };
+    }
     let list = (_fresh(S.lastList) && S.lastList.items) ? S.lastList.items.slice() : [];
     if (hint && hint.offset != null && (!list.length || !list.some((b) => _matchDate(b, hint)))) {
       list = await _fetchByDateHint(hint);
@@ -257,6 +294,7 @@
     if (/(취소|삭제|지워|없애|캔슬|복구|되돌|백업)/.test(t)) return false;
     const hasTime = /\d{1,2}:\d{2}|\d{1,2}\s*시/.test(t);
     if (_fresh(S.pendingReschedule) && hasTime) return true;
+    if (_lastTarget() && _isBareTimeReply(t)) return true;
     if (_fresh(S.lastList) && S.lastList.items && S.lastList.items.length === 1 && _isBareTimeReply(t)) return true;
     const hasChange = /(바꿔|바꾸|변경|옮겨|미뤄|당겨|로\s*해|로\s*잡)/.test(t);
     if (!hasChange) return false;
@@ -285,6 +323,7 @@
       target = picked.booking;
     }
     S.pendingReschedule = null;
+    _rememberTarget(target);
     return { matched: true, kind: 'card', action: _rescheduleAction(target, time, raw) };
   }
 
@@ -297,6 +336,7 @@
     const picked = await _pickCancelTarget(q);
     if (!picked) return null;
     if (picked.ask) return { matched: true, kind: 'message', text: picked.ask };
+    _rememberTarget(picked.booking);
     return { matched: true, kind: 'card', action: _cancelAction(picked.booking, text) };
   }
 
@@ -350,6 +390,7 @@
       }
       const b = Object.assign({}, ctx, updated || {});
       S.lastCancelled = null;
+      _rememberTarget(b);
       return { message: `📅 ${_name(b)}님 ${_fmt(b)} 예약 복구했어요`, booking: b };
     });
     api.registerLocalHandler('reschedule_booking', async (action) => {
@@ -360,6 +401,7 @@
       if (p.ends_at) patch.ends_at = p.ends_at;
       const updated = await window.Booking.update(p.booking_id, patch);
       const b = Object.assign({}, action._context_booking || {}, updated || {}, { starts_at: p.starts_at, ends_at: p.ends_at });
+      _rememberTarget(b);
       return { message: `📅 ${_name(b)}님 예약을 ${_fmt(b)}로 변경했어요`, booking: b };
     });
   }

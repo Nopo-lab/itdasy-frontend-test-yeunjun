@@ -51,7 +51,8 @@ describe('배관 — 지름길 답이 칩을 싣는다', () => {
     pushes.slice(0, 3).forEach(p => expect(p).toMatch(/related:/));
   });
   test('예약 조회 지름길이 고객 이름을 돌려주고 칩을 붙인다', () => {
-    expect(ROUTER).toMatch(/type: 'bookings_lookup', customer_name: customer\.name/);
+    expect(ROUTER).toMatch(/type: 'bookings_lookup'/);
+    expect(ROUTER).toMatch(/customer: customer, customer_name: customer\.name/);
     expect(cut(SRC, '  async function _tryLookupBookingShortcut(')).toMatch(/_feFollowups\('bookings_lookup', result\.customer_name/);
   });
 });

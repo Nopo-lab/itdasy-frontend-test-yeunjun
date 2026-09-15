@@ -3901,6 +3901,28 @@
     _refreshPreview();
     return { ok: true, applied: applied };
   }
+  function _setEditTargetRole(role) {
+    if (!_flowReady()) return { ok: false, reason: 'not_open' };
+    var r = String(role || '').trim();
+    if (!r) return { ok: true };
+    var eps = editablePhotos() || [];
+    var idx = eps.findIndex(function (p) { return p && p.role === r; });
+    if (idx < 0) return { ok: false, reason: 'role_not_found', role: r };
+    d.editIdx = idx;
+    return { ok: true };
+  }
+  function _applyTargetedAdjust(cmd) {
+    var t = _setEditTargetRole(cmd && cmd.targetRole);
+    if (t && !t.ok) return t;
+    return _applyAdjustPatch(cmd);
+  }
+  function _runStoryEditCommand(cmd) {
+    var t = _setEditTargetRole(cmd && cmd.targetRole);
+    if (t && !t.ok) return t;
+    if (_flowReady() && editablePhotos().length) { _openStoryEditor(); return { ok: true }; }
+    open({ cat: cmd.cat || null, startScreen: 'layout', files: cmd.files || null, photoUrls: cmd.photoUrls || null, _openStory: true });
+    return { ok: true };
+  }
   // 이름으로 고객 연결 — 전역 Customer.search 우선, 없으면 최근 고객 매칭. 못 찾으면 connect 화면 안내.
   // [T-104 P4] _connectByName → flow/connect.js
   function command(cmd) {
@@ -3910,9 +3932,7 @@
         open({ cat: cmd.cat || null, startScreen: cmd.screen || 'upload', textOnly: !!cmd.textOnly, files: cmd.files || null, photoUrls: cmd.photoUrls || null });
         return { ok: true };
       case 'storyedit':   // [2026-07-22] 인스타식 편집기(ItdEditor) 열기 — '사진 편집'·꾸미기·누끼 목적지.
-        if (_flowReady() && editablePhotos().length) { _openStoryEditor(); return { ok: true }; }   // 이미 열림 → 현재 사진으로
-        open({ cat: cmd.cat || null, startScreen: 'layout', files: cmd.files || null, photoUrls: cmd.photoUrls || null, _openStory: true });
-        return { ok: true };
+        return _runStoryEditCommand(cmd);
       case 'orchestrate':   // [2026-07-22] 잇비 사진+브리핑 → 레이아웃 고르기 → (편집기 레이어 자동)+캡션 자동.
         //   startScreen 미지정(=upload) → addPhotoUrls 가 사진 투입 후 레이아웃으로 넘김(빈 레이아웃 방지).
         open({ cat: cmd.cat || null, files: cmd.files || null, photoUrls: cmd.photoUrls || null,
@@ -3929,7 +3949,7 @@
         if (SCREENS.indexOf(cmd.screen) < 0) return { ok: false, reason: 'unknown_screen', screen: cmd.screen };
         setScreen(cmd.screen); return { ok: true };
       case 'adjust':
-        return _applyAdjustPatch(cmd);
+        return _applyTargetedAdjust(cmd);
       case 'edit':   // 되돌리기/다시실행/초기화 — [2026-07-22] 옛 슬라이더 화면(A) 안 띄우고 headless 로 상태만.
         if (!_flowReady()) return { ok: false, reason: 'not_open' };
         _editBottom(cmd.action); return { ok: true };   // _setEditSection 은 A DOM 없으면 no-op, _refreshPreview 로 결과만 갱신

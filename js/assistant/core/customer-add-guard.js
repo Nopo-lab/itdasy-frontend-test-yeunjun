@@ -8,6 +8,28 @@
 
   function _trim(s) { return String(s == null ? '' : s).trim(); }
   function _fresh() { return pending && Date.now() - pending.ts < TTL_MS; }
+  function _ctx() { return window.ItdasyCustomerContext || null; }
+
+  function _rememberCustomer(c) {
+    try {
+      const C = _ctx();
+      if (C && typeof C.remember === 'function') C.remember(c, 'customer_record');
+    } catch (_e) { void _e; }
+  }
+
+  function _lastCustomer() {
+    try {
+      const C = _ctx();
+      return C && typeof C.lastCustomer === 'function' ? C.lastCustomer() : null;
+    } catch (_e) { return null; }
+  }
+
+  function _armNewCustomer(name, phone) {
+    try {
+      const C = _ctx();
+      if (C && typeof C.armNewCustomer === 'function') C.armNewCustomer(name, phone || '');
+    } catch (_e) { void _e; }
+  }
 
   /* [P1 2026-09-09] '고객 메모에 …추가해줘' 가 **고객 추가**로 분류되던 것.
 
@@ -64,6 +86,7 @@
 
   // 신규 고객 입력 폼(이름/연락처/메모 등) 열기 — 자동 저장 금지, 저장 전 확인.
   function _openNewForm(name, phone) {
+    _armNewCustomer(name, phone);
     setTimeout(() => {
       try {
         if (typeof window._openCustomerEditSheet === 'function') window._openCustomerEditSheet({ name: name || '', phone: phone || '' });
@@ -106,6 +129,7 @@
 
 
   function _openExisting(customer) {
+    _rememberCustomer(customer);
     setTimeout(() => {
       try {
         // [핫픽스E #6] 고객 상세는 잇비 채팅 위로 — 잇비 닫고 시트 오픈, 닫을 때 잇비 복귀(action-hub open_customer 와 동일).
@@ -174,6 +198,11 @@
   async function _openRecordResult(q) {
     const name = _extractOpenName(q);
     if (!name) {
+      const last = _lastCustomer();
+      if (last && last.id != null && !/(목록|명단|전체|리스트)/.test(_trim(q))) {
+        _openExisting(last);
+        return { matched: true, kind: 'message', text: `${last.name || '그 고객'}님 고객 기록을 열게요.` };
+      }
       setTimeout(() => { try { if (typeof window.openCustomers === 'function') window.openCustomers(); } catch (_e) { void _e; } }, 80);
       return { matched: true, kind: 'message', text: '고객 목록을 열었어요. 보실 고객님 이름을 말씀해 주시면 바로 기록을 띄울게요.' };
     }

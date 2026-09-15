@@ -126,6 +126,7 @@ window.APP_LOAD_GROUPS = Object.assign(window.APP_LOAD_GROUPS || {}, {
   'app-assistant-undo.js?v=local-260831v5',
   'assistant-intent-router.js?v=local-260831v5',
   'js/assistant/kind-core.js?v=local-260831v5',
+  'js/assistant/core/customer-context.js?v=local-260831v5',
   'js/assistant/core/booking-context.js?v=local-260831v5',
   'js/assistant/core/booking-draft.js?v=local-260831v5',
   'js/assistant/core/customer-add-guard.js?v=local-260831v5',

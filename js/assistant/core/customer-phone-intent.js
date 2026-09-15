@@ -12,6 +12,35 @@
   const PHONE_RE = /01[016789][-\s]?\d{3,4}[-\s]?\d{4}/;
   function _trim(s) { return String(s == null ? '' : s).trim(); }
   function _fresh() { return pending && Date.now() - pending.ts < TTL_MS; }
+  function _ctx() { return window.ItdasyCustomerContext || null; }
+
+  function _lastCustomer() {
+    try {
+      const C = _ctx();
+      return C && typeof C.lastCustomer === 'function' ? C.lastCustomer() : null;
+    } catch (_e) { return null; }
+  }
+
+  function _pendingNewCustomer() {
+    try {
+      const C = _ctx();
+      return C && typeof C.pendingNewCustomer === 'function' ? C.pendingNewCustomer() : null;
+    } catch (_e) { return null; }
+  }
+
+  function _rememberCustomer(c) {
+    try {
+      const C = _ctx();
+      if (C && typeof C.remember === 'function') C.remember(c, 'customer_phone');
+    } catch (_e) { void _e; }
+  }
+
+  function _clearPendingNew() {
+    try {
+      const C = _ctx();
+      if (C && typeof C.clearNewCustomer === 'function') C.clearNewCustomer();
+    } catch (_e) { void _e; }
+  }
 
   function _normPhone(s) {
     const d = String(s || '').replace(/[^0-9]/g, '');
@@ -24,9 +53,9 @@
   // 전화/동사/조사 제거 후 한글 이름 후보(2~5자) 첫 번째.
   function _extractName(q) {
     let s = _trim(q).replace(PHONE_RE, ' ').replace(/^잇비\s*/, ' ');
-    s = s.replace(/(고객님|고객|손님|연락처|전화|번호|핸드폰|폰|추가|등록|새로|새|수정|변경|바꿔|바꾸|업데이트|만들어줘|만들어|만들|넣어줘|넣어|해줘|해|주세요|로|으로|를|을|의|님)/g, ' ');
+    s = s.replace(/(고객님|고객|손님|연락처|전화|번호|핸드폰|폰|추가|등록|저장|새로|새|수정|변경|바꿔|바꾸|업데이트|만들어줘|만들어|만들|넣어줘|넣어|해줘|해|주세요|아니|아냐|아니요|로|으로|를|을|의|님)/g, ' ');
     const words = s.match(/[가-힣]{2,5}/g) || [];
-    const stops = new Set(['잇비', '고객', '손님', '추가', '등록', '연락처', '전화', '번호', '수정', '변경']);
+    const stops = new Set(['잇비', '고객', '손님', '추가', '등록', '저장', '연락처', '전화', '번호', '수정', '변경', '아니', '아니요']);
     return words.find((w) => !stops.has(w)) || '';
   }
 
@@ -48,6 +77,12 @@
     if (!PHONE_RE.test(t)) return false;
     return /(바꿔|바꾸|변경|수정|업데이트)/.test(t) && /(연락처|전화|번호|핸드폰|폰|010|공일|로\s|으로)/.test(t);
   }
+  function _looksPhoneChangeStart(q) {
+    const t = _trim(q);
+    if (PHONE_RE.test(t)) return false;
+    if (/(예약|매출|사진|기록|문자|메시지|메세지|캡션|홍보|가격표|템플릿|메모|노트|회원권|잔액|충전)/.test(t)) return false;
+    return /(연락처|전화|번호|핸드폰|폰).*(바꿔|바꾸|변경|수정|업데이트)|(?:바꿔|바꾸|변경|수정|업데이트).*(연락처|전화|번호|핸드폰|폰)/.test(t);
+  }
 
   function _findByName(name) {
     try {
@@ -65,6 +100,7 @@
 
   // 신규 고객 입력 폼(이름/연락처/메모) 열기 — 이름·연락처 자동 채움, 저장 전 확인.
   function _openNewForm(name, phone) {
+    _clearPendingNew();
     setTimeout(() => {
       try {
         if (typeof window._openCustomerEditSheet === 'function') window._openCustomerEditSheet({ name: name || '', phone: phone || '' });
@@ -78,6 +114,7 @@
     if (!window.Customer || typeof window.Customer.create !== 'function') return { matched: true, kind: 'message', text: '고객 기능을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' };
     try {
       await window.Customer.create({ name, phone: phone || null });
+      _rememberCustomer({ name, phone: phone || '' });
       return { matched: true, kind: 'message', text: phone ? `${name}님(${phone})을 새 고객으로 추가했어요.` : `${name}님을 새 고객으로 추가했어요.` };
     } catch (_e) { return { matched: true, kind: 'message', text: `${name}님 추가에 실패했어요. 잠시 후 다시 시도해 주세요.` }; }
   }
@@ -86,6 +123,7 @@
     if (!phone) return { matched: true, kind: 'message', text: '바꿀 연락처를 못 읽었어요. "010-1234-5678로 바꿔줘"처럼 말씀해 주세요.' };
     try {
       await window.Customer.update(id, { phone });
+      _rememberCustomer({ id, name, phone });
       return { matched: true, kind: 'message', text: `${name || '고객'}님 연락처를 ${phone}로 바꿨어요.` };
     } catch (_e) { return { matched: true, kind: 'message', text: '연락처 수정에 실패했어요. 잠시 후 다시 시도해 주세요.' }; }
   }
@@ -107,6 +145,12 @@
   function _followup(q) {
     if (!_fresh()) return null;
     const t = _trim(q); const p = pending;
+    if (p.action === 'await_update_phone') {
+      const phone = _extractPhone(t);
+      if (phone) return _confirm('update', { id: p.id, name: p.name, phone }, `${p.name || '고객'}님 연락처를 ${phone}로 바꿀까요?`);
+      if (/(아니|아냐|취소|그만|싫|관둬)/.test(t)) { pending = null; return { matched: true, kind: 'message', text: '알겠어요. 그대로 둘게요.' }; }
+      return { matched: true, kind: 'message', text: `${p.name || '고객'}님 연락처를 어떤 번호로 바꿀까요? "010-1234-5678"처럼 보내주세요.` };
+    }
     if (/^(응|네|어|그래|맞아|맞아요|좋아|해줘|등록|추가|수정|바꿔)/.test(t)) {
       pending = null;
       if (p.action === 'create') return _doCreate(p.name, p.phone);
@@ -122,6 +166,15 @@
     const t = _trim(text);
     const phone = _extractPhone(t);
 
+    if (phone) {
+      const waitingNew = _pendingNewCustomer();
+      const typedName = _extractName(t);
+      const savingNew = /(연락처|전화|번호|저장|추가|등록|넣어|만들)/.test(t) && !/(바꿔|바꾸|변경|수정|업데이트)/.test(t);
+      if (waitingNew && !typedName && savingNew) {
+        return _openNewForm(waitingNew.name, phone);
+      }
+    }
+
     // 1) 연락처 변경
     if (_looksPhoneChange(t)) {
       const name = _extractName(t);
@@ -131,7 +184,18 @@
         if (m.length > 1) return _pickThenUpdate(phone, `${name}님이 여러 명이에요. 연락처 바꿀 분을 목록에서 골라주세요.`);
         return _pickThenUpdate(phone, `${name}님을 명단에서 못 찾았어요. 목록에서 골라주세요.`);
       }
+      const last = _lastCustomer();
+      if (last && last.id != null) return _confirm('update', { id: last.id, name: last.name, phone }, `${last.name || '고객'}님 연락처를 ${phone}로 바꿀까요?`);
       return _pickThenUpdate(phone, '연락처를 바꿀 고객을 목록에서 골라주세요.');
+    }
+
+    if (_looksPhoneChangeStart(t)) {
+      const last = _lastCustomer();
+      if (last && last.id != null) {
+        pending = { action: 'await_update_phone', id: last.id, name: last.name, ts: Date.now() };
+        return { matched: true, kind: 'message', text: `${last.name || '고객'}님 연락처를 어떤 번호로 바꿀까요?`, related: ['010-1234-5678', '취소'] };
+      }
+      return { matched: true, kind: 'message', text: '연락처를 바꿀 고객 이름과 새 번호를 같이 알려주세요. 예: "강민지 연락처 010-1234-5678로 바꿔줘"' };
     }
 
     // 2) 이름+연락처로 추가 (연락처 없으면 add-guard 가 처리하도록 null)
