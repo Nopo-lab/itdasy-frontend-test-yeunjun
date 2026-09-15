@@ -10,25 +10,53 @@
 | P1 | 5 |
 | P2 | 3 |
 | P3 | 1 |
-| Critical NOT VERIFIED | 7 |
+| Critical NOT VERIFIED | 10 |
 | Security Critical/High | 2 |
 | Privacy Critical/High | 3 |
 | Money mismatch | 0 |
 | Tenant leakage | 0 |
 | Data-loss path | 1 |
 
-25개 게이트 현재 수: **PASS 10 / FAIL 6 / NOT VERIFIED 7 / BLOCKED 2**.
+25개 게이트 현재 수: **PASS 7 / FAIL 6 / NOT VERIFIED 10 / BLOCKED 2**.
+
+| 게이트 | 상태 | 현재 증거 |
+|---|---|---|
+| G1 기능 | NOT VERIFIED | FE 3,215개 실행 성공과 실제 예약→매출 1회만 확인. 모든 기능의 실패·중복·새로고침 조합은 미실행 |
+| G2 로그인/세션 | NOT VERIFIED | 이메일·토큰·Apple 실제 서명 검사는 성공, 실제 Apple 계정 로그인 미실행 |
+| G3 매장 분리 | PASS | 다른 매장 번호 변조 357회, 누출 0 |
+| G4 고객 | PASS | 격리 DB 고객 2,628건과 실제 시험계정 흐름 |
+| G5 예약 | PASS | 격리 DB 예약 476건, 실제 완료·정리 흐름 |
+| G6 회원권 | PASS | 음수·잔액 불일치 0 |
+| G7 돈/장부 | PASS | 장부 규칙 15개 불일치 0 |
+| G8 구독 | NOT VERIFIED | 실제 Apple·Google 결제 상점 미실행 |
+| G9 Instagram | BLOCKED | 허용된 실제 Meta 시험계정 없음 |
+| G10 자동화 동의 | PASS | 동의 OFF 무발송, 위조 요청 거절 |
+| G11 AI | NOT VERIFIED | 실패·사용량 복구 검사는 성공, 실제 제공 AI 전체 흐름 미실행 |
+| G12 사진 편집 | NOT VERIFIED | 60/60 파일 생성은 성공했지만 원본 선별이 잘못돼 전체 편집 기능·뷰티 품질 인증 불가 |
+| G13 원장 스타일 | BLOCKED | 실제 원장 6명의 사람 평가 필요 |
+| G14 사진 저장 | FAIL | `user-uploads` 공개 상태 |
+| G15 개인정보 | FAIL | 실제 정책·삭제·저장 동작 불일치 |
+| G16 법/상점 정책 | FAIL | 웹 삭제 주소 404, 국외이전 세부값 미확정 |
+| G17 보안 | FAIL | Remove.bg 열쇠 미교체, 공개 사진 저장소 |
+| G18 서버 안정성 | FAIL | 부하 뒤 90초 끊김 |
+| G19 DB/복원 | NOT VERIFIED | 실제 백업 복원·구/신 조합 미실행 |
+| G20 성능 | FAIL | 동시 흐름 뒤 응답 제한시간 초과 |
+| G21 모바일 | NOT VERIFIED | 실제 제공판 실행만 성공, 후보판 미실행 |
+| G22 화면 크기 대응 | PASS | iOS/Android/데스크톱 자동 화면 검사 |
+| G23 접근성/기본 사용성 | NOT VERIFIED | 자동 검사는 성공, 12명 실제 사람 시험 미실행 |
+| G24 운영 감지 | NOT VERIFIED | 요청번호·기본 오류 로그는 확인했지만 결제·저장·작업대기·정기작업 실패 알림 전체는 미실행 |
+| G25 사용자 전체 흐름 | NOT VERIFIED | 일부 실제 흐름만 실행, DM 예약 전체 흐름 1개 미검증 |
 
 ## 2. EXACT BASELINE
 
 | 대상 | 실제 값 |
 |---|---|
 | FE 후보 기준 | `db824c047a8760cfb9db5883f544a753d528426c` |
-| FE 수정 후보 | `fe4685a` |
+| FE 수정 후보 | `6357a3f` |
 | FE 원격 main | `9888ceceb734c37d557becd3facf69ced8900915` |
 | FE 실제 제공 빌드 | `20260915-1116-9888cec` |
 | BE 후보 기준 | `69b32ac744c2bc6209e6178c5c0c33ae44f6bede` |
-| BE 수정 후보 | `c9c4033` |
+| BE 수정 후보 | `b5c6f07` |
 | BE 실제 제공 SHA | `9850751ebaf79de6709204db4047e588c65ae6ef` |
 | Cloud Run | `itdasy-backend-staging-00621-mbg`, 트래픽 100% |
 | 서버 환경 | `ENVIRONMENT=production`인 스테이징 서비스 |
@@ -65,14 +93,17 @@
 
 | 시험 | 환경 | 사용자 유형 | 기대 | 실제 | 증거 | 결과 |
 |---|---|---|---|---|---|---|
-| 화면 전체 자동 검사 | FE 후보 | 공통 | 깨짐 0 | 205묶음, 3,210개 성공 | Jest 출력 | PASS |
-| 서버 전체 자동 검사 | BE 후보 | 공통 | 실패 0 | 4,540 PASS, 291 NOT VERIFIED, 예상 실패 1 | pytest 출력 | PASS |
+| 화면 전체 자동 검사 | FE 후보 | 공통 | 깨짐 0 | 205묶음, 3,215개 성공 | Jest 출력 | PASS |
+| 서버 실행 검사 | BE 후보 | 공통 | 실행 항목 실패 0 | 4,584개 성공 | pytest 출력 | PASS |
+| 서버 건너뛴 검사 | BE 후보 | 공통 | 건너뜀 0 | 291개 미실행 | pytest 출력 | NOT VERIFIED |
+| DM 예약 전체 흐름 | BE 후보 | A/H/L | 현재 흐름과 기대 일치 | 오래된 기대값이라 1개 예상 실패 처리 | `test_dm_booking_form_autosend.py` | NOT VERIFIED |
 | 실제 PostgreSQL 검사 | BE 후보+격리 DB | K/G/L | 권한·장부·삭제 | 211 PASS | pytest 출력 | PASS |
 | 실제 예약→완료→매출→삭제 | 실제 제공 FE/BE 시험계정 | A/L | 1회 반영 후 정리 | 50,000원 1회, 전부 삭제 | complete-flow 실행 기록 | PASS |
 | 다른 매장 번호 변조 | 격리 PostgreSQL | K | 한 바이트도 노출 없음 | 357회 차단, 연결 위반 0 | `t904-final/result.json` | PASS |
 | 돈·회원권 동시 처리 | 격리 PostgreSQL | G/H/I/L | 경제효과 1회 | 장부 불변조건 15개 위반 0 | 같은 파일 | PASS |
 | 과부하와 재시도 | 격리 PostgreSQL | G/H | 오류가 빨리 보임 | 90초 끊김 다수 | `t904-final/evidence.jsonl` | FAIL |
-| 사진 60장 생성 | FE 후보 | B/C/D/E | 규격·저장 성공 | 60/60, 5비율, 1080px 출력 | `output/photo-editor-realistic-qa-report.json` | PASS |
+| AI 동의 없는 요청 | FE/BE 후보 | F/C | 전송 전 설명·직접 선택 | 서버 40개 검사 성공, 브라우저에서 400→동의 저장 1회→재시도 1회→200 | `.playwright-cli/page-2026-09-15T14-38-08-542Z.png` | PASS |
+| 사진 60장 파일 생성 | FE 후보 | B/C/D/E | 규격·저장 성공 | 60/60, 5비율, 1080px 출력 | `output/photo-editor-realistic-qa-report.json` | PASS |
 | 사진 60장 사람 품질 | FE 후보 | B/C/D/E | 뷰티 사진만 사용 | 역사 그림·건물 등 부적절 원본 포함 | contact sheet | NOT VERIFIED |
 | 시술 전/후 진실성 | FE 후보 | C/E | 전 사진 없으면 가짜 전 사진 금지 | 16/16 성공 | photo-ba-ux 실행 기록 | PASS |
 | iOS 실행 | 실제 제공 FE | I | 설치·로그인 화면 | Simulator 빌드/실행 성공 | `/tmp/itdasy-t904-ios-10s.png` | PASS |
@@ -87,18 +118,23 @@
 | T904-D01 | P1 Security High | 과거 저장소의 Remove.bg 열쇠가 현재 열쇠와 같음 | 사진 처리 비용·접근 악용 | 업체 회전 필요 | BLOCKED |
 | T904-D02 | P1 Privacy High | `user-uploads`가 public | 주소를 아는 사람이 고객 사진 열람 가능 | 비공개 전환+인증 전달 경로 필요 | FAIL |
 | T904-D03 | P1 Privacy High | 외부 삭제 확인 없이 탈퇴 완료 표시 | 사용자가 삭제 완료로 오해 | 후보에서 pending 표시·저장 | PASS, 재시도 작업 없음 |
-| T904-D04 | P1 Privacy High | 한국 첫 방문에서 Sentry 자동 허용, 확인 실패 때도 허용 | 선택 진단정보 무동의 전송 | 명시 허용 전 항상 OFF | 2개+전체 검사 PASS |
+| T904-D04 | P1 Privacy High | 한국 첫 방문 자동 허용과 과거 자동 허용 기록 재사용 | 선택 진단정보 무동의 전송 | 명시 허용 전 OFF, 동의 기록 v2로 교체 | 4개+전체 검사 PASS |
 | T904-D05 | P2 | 가입칸이 실제 form이 아니어서 자동완성/Enter가 불안정 | 신규가입 실패·중복 요청 | 표준 form/submit으로 수정 | 5개 검사 PASS |
 | T904-D06 | P1 Security High | GitHub Pages에 frame 차단 헤더 없음 | 투명 덮개 클릭 가로채기 | 후보에 시작 즉시 frame guard | 검사 PASS, 실제 배포 전 |
 | T904-D07 | P2 | 자동 사진 합성이 사용자의 꽉 채움 선택을 버림 | 흰 띠·미리보기와 발행본 차이 | fitMode를 모든 합성에 전달 | 24개+60출력 PASS |
 | T904-D08 | P2 Data loss | 저장소 목록 HTTP 오류를 빈 목록 성공으로 반환 | 탈퇴 사진이 남아도 성공처럼 보임 | 오류로 올려 pending 처리 | 57개 검사 PASS |
 | T904-D09 | P2 Security | 격리 증거에 시험 로그인표·전화·메모가 남음 | QA 증거 유출 위험 | 기록 전 가림 처리 | 새 증거 비밀값 0 |
-| T904-D10 | P2 Safety | 파괴 시험 대상 확인이 약함 | 잘못된 DB 파괴 위험 | DB 사용자·이름 정확 확인표 추가 | 대상 가드 검사 PASS |
+| T904-D10 | P2 Safety | 파괴 시험 주소의 추가값으로 원격 DB를 가리킬 수 있음 | 잘못된 DB 파괴 위험 | 추가 연결값 거절, 실제 주소·포트 확인 | 대상 가드 검사 PASS |
 | T904-D11 | P1 Security | 취약 하위 서명 라이브러리 포함 | 서명 공격 위험 | PyJWT로 교체 | 보안 패키지 검사 0 |
 | T904-D12 | P2 Reliability | 실행 중인 작업 고리에서 캐시 삭제가 자기 자신을 기다릴 수 있음 | 화면 숫자 갱신 정지 | 별도 짧은 실행으로 분리 | 회귀 검사 PASS |
 | T904-D13 | P1 Reliability | 20명 동시 흐름 후 요청들이 90초 끊김 | 예약·환불 결과 불명확 | 미해결 | FAIL |
 | T904-D14 | P1 Legal | 실제 정책이 Railway/즉시삭제 등 현재 동작과 다름 | 사용자 고지 불일치 | 별도 후보 문서 작성 | 실제 사이트 미배포 |
 | T904-D15 | P3 QA | 사진 시험 원본 선별이 부정확 | 60장 품질 인증 불가 | 수량·분류는 맞췄으나 원본 품질 미달 | NOT VERIFIED |
+| T904-D16 | P1 Auth | 새 서명 도구가 Apple 공개키 원본을 받지 못함 | Apple 사용자 정상 로그인 오류 | 공개키 변환·RS256 고정 | 실제 RSA 서명 검사 PASS, 실제 계정 미실행 |
+| T904-D17 | P1 Privacy High | 가입 때 AI 동의를 자동 기록하고 과거 기록도 허용 | 동의 없는 외부 AI 전송 가능 | 자동 기록 제거, 2.0 재동의 강제, 확인한 외부 AI 진입점 30곳 차단 | 서버 40개+전체 4,584개 검사 PASS |
+| T904-D18 | P2 | 캡션·비서 외 AI 기능은 동의 없음 오류만 보이고 작업 재개가 안 됨 | 원장이 이유를 모르고 같은 작업 반복 | 공통 요청 통로에 안내·저장·1회 재시도 추가 | 실제 브라우저 400→저장 1회→재요청 1회→200 |
+| T904-D19 | P2 | 배포 캐시가 새 AI 동의 코드를 이전 파일로 가림 | 수정 배포 후에도 옛 동작 지속 | 공통·캡션·비서 파일 주소 버전 갱신 | 캐시 삭제 없는 새 주소 로드 확인 |
+| T904-D20 | P3 | 가입 약관·정책·로그인 링크의 누르는 높이가 14~39px | 모바일에서 잘못 누르기 쉬움 | 모두 최소 44px로 확대 | 390×844 브라우저 실측 PASS |
 
 ## 6. SECURITY REPORT
 
@@ -120,7 +156,8 @@
 | 사진 저장 공간 public | 정책은 안전한 보관으로 이해됨 | 고객 사진 노출 | 비공개 저장+짧은 접근주소 | FAIL |
 | Google AI 등 국외 처리 | 국가·시기·방법·보유기간 일부 불명 | 법 필수 고지 판단 필요 | 계약/지역/기간 확정 | LEGAL COUNSEL REVIEW REQUIRED |
 | 앱 삭제는 가능 | 웹 삭제 신청 주소는 실제 사이트에 없음 | Play 요구 미충족 | `delete-account.html` 배포·콘솔 연결 | FAIL |
-| 선택 오류 진단 자동 허용 | 가입 동의로 대신함 | 선택 수집 동의 부족 | 후보에서 명시 허용으로 수정 | PASS 후보 |
+| 선택 오류 진단 자동 허용 | 과거 자동 허용 기록도 인정 | 선택 수집 동의 부족 | 후보에서 기록 v2로 바꾸고 재선택 | PASS 후보 |
+| 가입 때 AI 동의 자동 기록 | 가입과 AI 동의를 분리한다고 표시 | 동의 없는 국외 전송 가능 | 자동 기록 제거·첫 사용 2.0 동의·외부 AI 진입점 차단 | PASS 후보 |
 
 대한민국 개인정보 보호법 제28조의8의 국외이전 고지 항목, Apple의 앱 내 계정삭제 및
 제3자 AI 공유 명시 동의, Google Play의 앱 안·웹 양쪽 삭제 경로 요구와 실제 동작을 대조했다.
@@ -146,12 +183,13 @@ DM 180, 시술기록 195, AI 행동 44, 예약게시 47, 댓글 75.
 
 ## 9. PHOTO EDITOR REPORT
 
-- AGENT VERIFIED: 60개 출력 파일, 비율별 12개, low 15/high 45, 1080px 출력.
+- AGENT VERIFIED: 60개 파일 생성, 비율별 12개, low 15/high 45, 1080px 출력.
 - AGENT VERIFIED: hair 12, nail 12, lash/brow 10, skin 10, salon/product 8,
   before/after 8의 수량.
 - AGENT VERIFIED: 전 사진이 없을 때 현재 사진을 흑백으로 복제해 가짜 Before를 만들지 않는다.
 - 수정: 사용자가 고른 `cover/contain`을 자동 미리보기·다른 캐러셀 장에도 전달한다.
 - 실패 사례: 시험 원본 중 역사 삽화, 건물, 말 사진 등이 섞여 뷰티 홍보물 평가에 쓸 수 없다.
+- NOT VERIFIED: crop부터 export까지 전 기능을 한 이미지군에서 순서 변경·20회 연속·전부 undo/redo·재열기까지 완주하지 못했다.
 - HUMAN ACCEPTANCE REQUIRED: 손·눈·머리카락·피부·한글·로고의 최종 사람 평가.
 
 ## 10. OWNER STYLE BENCHMARK
@@ -174,7 +212,7 @@ DM 180, 시술기록 195, AI 행동 44, 예약게시 47, 댓글 75.
 |---|---|---|
 | A 컴퓨터가 익숙하지 않은 원장 | 가입·예약·고객·사진 흐름 | 후보 전체 실제 사용 NOT VERIFIED |
 | B 네일샵 | 네일 12출력·SNS 비율 | AGENT VERIFIED, 사람 평가 필요 |
-| C 속눈썹/눈썹 | 얼굴·전후 진실성 | 기능 PASS, 동의 흐름 NOT VERIFIED |
+| C 속눈썹/눈썹 | 얼굴·전후 진실성 | 가짜 Before 방지와 후보 AI 동의 흐름 PASS, 실제 사진 외부처리 NOT VERIFIED |
 | D 헤어샵 | 헤어 출력·색/세로 | 출력 PASS, 색 정확도 사람 평가 필요 |
 | E 피부샵 | 과보정·가짜 Before | 가짜 Before 방지 PASS |
 | F 신규가입 | 자동완성·Enter | 후보 수정/검사 PASS |
@@ -196,3 +234,4 @@ DM 180, 시술기록 195, AI 행동 44, 예약게시 47, 댓글 75.
 7. 유효한 뷰티 사진 60장과 여섯 실제 원장 스타일의 사람 평가 미실행.
 8. 백업을 실제 복원한 뒤 구·신 앱 조합 시험 미실행.
 9. 업체별 국외 이전 국가·보유기간·계약 근거는 법률 전문가 확인 필요.
+10. DM 예약 전체 흐름 1개가 오래된 기대값 상태로 남아 현재 실제 동작을 인증하지 못했다.
