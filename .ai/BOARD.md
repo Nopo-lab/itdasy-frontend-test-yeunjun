@@ -2,7 +2,13 @@
 
 ## T-904 — Codex
 - bootstrap:OK @ 2026-09-15 20:31
-- IN PROGRESS: 최신 main과 T-901~T-903 후보 통합, 전체 출시 인증 실행.
+- DONE: 격리 DB·실제 브라우저·전체 자동 검사와 수정·재검사 완료.
+- 판정: RELEASE HOLD. PASS 6 / FAIL 7 / NOT VERIFIED 10 / BLOCKED 2.
+- 수정 후보: FE `89ee44d`, BE `88f56e2`, 정책 `f88e877`.
+- 최종 자동 검사: FE 206묶음 3,220개, BE 4,591개, 실제 PostgreSQL 211개 PASS.
+- AI 동의: 계정 전환·DM 재생성·Instagram 범위·과거 자동 동의 재사용 결함을 수정하고 실제 브라우저·독립 재검사 완료.
+- 주요 미해결: 공개 사진 저장소, Remove.bg 열쇠 회전, 90초 응답 끊김, 실제 정책/삭제 주소, 실제 Meta·결제·모바일·복원·사람 사진 평가.
+- 전체 증거: `.ai/tickets/T-904/release-certification.md`.
 
 ## T-602 — Codex
 - bootstrap:OK @ 2026-09-15 20:10
@@ -15,7 +21,7 @@
 - 기존 사용자 미완료 변경은 원래 작업 폴더에 보존.
 
 
-**LAST UPDATED:** 2026-09-15 by Codex — T-602 다음 방문일 문구 정리·브라우저 재검증 완료
+**LAST UPDATED:** 2026-09-16 by Codex — T-904 최종 수정·전체 재검사·독립 교차검증 완료
 
 **PREVIOUS UPDATE:** 2026-09-15 by Codex (T-903 iPhone·Android 시험용 빌드 완료)
 
