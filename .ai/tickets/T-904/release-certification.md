@@ -56,7 +56,7 @@
 | 대상 | 실제 값 |
 |---|---|
 | FE 제품 코드 / 제공 소스 | `8e838842741d372ae62f9dee518577d8f079c986` |
-| FE 실제 제공 빌드 | `20260915-1804-8e83884` |
+| FE 실제 제공 빌드 | `20260915-2008-146567a` |
 | FE 주소 | https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/ |
 | BE 원격 main | `6866a9d4441c7ccb6c16f0da24b50ec78b60d3d6` |
 | BE 실제 제공 SHA | `6866a9d4` |
