@@ -11,7 +11,7 @@
 | P2 | 3 |
 | P3 | 1 |
 | Critical NOT VERIFIED | 10 |
-| Security Critical/High | 2 |
+| Security Critical/High | 3 |
 | Privacy Critical/High | 3 |
 | Money mismatch | 0 |
 | Tenant leakage | 1개 공개 사진 경로 |
