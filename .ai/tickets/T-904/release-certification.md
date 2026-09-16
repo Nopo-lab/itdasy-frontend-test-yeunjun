@@ -10,7 +10,7 @@
 | P1 | 2 |
 | P2 | 0 |
 | P3 | 0 |
-| Critical NOT VERIFIED | 8 |
+| Critical NOT VERIFIED | 9 |
 | Critical BLOCKED | 3 |
 | Security Critical/High | 2 active / 과거 외부 열쇠 폐기 확인 BLOCKED |
 | Privacy Critical/High | 0 known / 외부업체 삭제·국외이전 BLOCKED |
@@ -21,11 +21,11 @@
 | AI silent failure | 0 under executed scope |
 | Photo deceptive/harmful defect | 0 agent-found / human acceptance not performed |
 
-25개 게이트 현재 수: **PASS 14 / FAIL 0 / NOT VERIFIED 8 / BLOCKED 3**.
+25개 게이트 현재 수: **PASS 13 / FAIL 0 / NOT VERIFIED 9 / BLOCKED 3**.
 
 | 게이트 | 상태 | 현재 증거 |
 |---|---|---|
-| G1 기능 | NOT VERIFIED | FE 207묶음·3,221개 실행 성공과 실제 예약→완료→매출 흐름 확인. 모든 기능의 모든 오류·다중기기 조합은 미실행 |
+| G1 기능 | NOT VERIFIED | FE 208묶음·3,222개 실행 성공과 실제 예약→완료→매출 흐름 확인. 모든 기능의 모든 오류·다중기기 조합은 미실행 |
 | G2 로그인/세션 | NOT VERIFIED | 비밀번호·만료·재사용·계정전환 검사는 성공. 실제 Apple 계정 로그인 미실행 |
 | G3 매장 분리 | PASS | 살아있는 다른 매장 번호로 357회 변조 차단, DB 76개 표 직접 접근 차단, 사진 저장소 비공개·만료주소 확인 |
 | G4 고객 | PASS | 격리 DB 2,628명과 실제 시험계정 고객 흐름 |
@@ -33,9 +33,9 @@
 | G6 회원권 | PASS | 동시 충전·차감·취소·환불 뒤 음수·잔액 불일치 0 |
 | G7 돈/장부 | PASS | 20명 동시 시험과 장부 규칙 15개, 중복 경제효과 0 |
 | G8 구독 | NOT VERIFIED | 서버 중복·갱신·환불 검사는 성공. Apple·Google·웹 결제사의 실제 결제 미실행 |
-| G9 Instagram | NOT VERIFIED | cbt4@itdasy.com 계정이 Instagram에 연결돼 있고 토큰이 만료 전·무효 아님을 실제 백업 복원 DB에서 확인. 현재 앱 로그인 세션이 없어 실제 Meta 상태조회·댓글·DM·발행은 미실행 |
+| G9 Instagram | NOT VERIFIED | cbt4 실제 연결·읽기·합성 게시물 발행·공개 답장·같은 요청 중복 방지·만료 DM 실패를 실행. 현재 댓글이 모두 허용 기간 밖이라 신규 댓글 비공개 답장만 미실행 |
 | G10 자동화 동의 | PASS | 신규 기본 OFF, 동의 OFF 무발송, 위조·재전송 차단 |
-| G11 AI | NOT VERIFIED | 동의·실패·사용량 복구·오류 표시 검사 성공. 모든 실제 제공자와 429/장애 조합 미실행 |
+| G11 AI | NOT VERIFIED | 실제 성공 요청과 cbt4 전용 실제 서버 시간초과를 실행. 504·실패 차감 0·동의 원복 확인. 모든 실제 제공자와 업스트림 429 조합은 미실행 |
 | G12 사진 편집 | NOT VERIFIED | 합성 뷰티사진 60장과 20회 편집·전부 취소/재실행·저장/재열기 성공. 미세 시술 왜곡은 사람 평가 필요 |
 | G13 원장 스타일 | PASS | 사용자 지시로 사람 평가 대신 에이전트 평가 수행. 합성 뷰티 60장 기준 6개 스타일×10장 모두 같은 스타일로 식별 가능. 단 F before/after 템플릿은 실제 전후 사진일 때만 사용해야 함 |
 | G14 사진 저장 | PASS | 버킷 비공개, 공개주소 400, 만료주소 200, 삭제 뒤 400. 삭제 실패 시 DB 행 보존과 탈퇴 재시도도 실제 배포 확인 |
@@ -45,39 +45,39 @@
 | G18 서버 안정성 | PASS | 새 격리 동시 시험 161개 PASS, 0 실패, 83.6초. 저장·AI·웹훅 실패 검사 포함 |
 | G19 DB/복원 | PASS | 실제 GCS 운영 백업 파일을 내려받아 격리 PostgreSQL에 복원. Supabase 전용 확장만 로컬 호환 문제로 제외했고, 공개 표 76개와 핵심 행 수 복원 확인 |
 | G20 성능 | PASS | 격리 PostgreSQL에 원장 100명·고객 100,000명·사진 10,000장·바쁜 날 예약 2,000건을 넣고 실제 API 측정. 모든 경로 오류 0, p99 최대 0.322초 |
-| G21 모바일 | PASS | Android와 iPhone 실제 앱에서 각각 로그인→고객→예약 생성→삭제 확인. iPhone 세로·가로 전환과 키보드·안전영역 확인 |
+| G21 모바일 | NOT VERIFIED | Android 에뮬레이터와 iPhone 시뮬레이터에서 로그인→고객→예약 생성→삭제·세로/가로·키보드 확인. 현재 FE의 Apple 실기기 확인은 금요일 예정 |
 | G22 화면 크기 대응 | PASS | iOS/Android/데스크톱 자동 화면 검사, 주요 가입 누름영역 44px 실측 |
-| G23 접근성/기본 사용성 | NOT VERIFIED | 자동 검사 성공. 실제 12명 사람 시험 미실행 |
-| G24 운영 감지 | PASS | 개인정보 사고 감지용 운영기록 지표와 알림 2개를 새로 만들고, 가짜 개인정보 사고 기록을 넣어 검색까지 확인. 이메일 실제 수신함 확인은 미실행 |
+| G23 접근성/기본 사용성 | NOT VERIFIED | 댓글·DM 화면의 무명/작은 스위치를 수정하고 368×833 실제 배포에서 기능명·44px·키보드 조작 확인. 실제 12명 사람 시험 미실행 |
+| G24 운영 감지 | PASS | 개인정보 사고 지표·알림 2개·확인된 이메일 채널·합성 사고 검색과 실제 대응 절차를 설정. 실제 수신함 열람은 미실행 |
 | G25 사용자 전체 흐름 | NOT VERIFIED | 12개 가상 사용자 자동 흐름 일부 실행. 실제 사람 12명 전 과정 미실행 |
 
 ## 2. EXACT BASELINE
 
 | 대상 | 실제 값 |
 |---|---|
-| FE 제품 코드 / 제공 소스 | `a2d845f69093ae5efbcd46ac8cbd37c3028a2eb5` |
-| FE 실제 제공 빌드 | `20260915-2309-a2d845f` |
+| FE 제품 코드 / 제공 소스 | `ecb80363f9b8f87a41d0f1d64230dc96ecc46eb5` |
+| FE 실제 제공 빌드 | `20260916-0155-ecb8036` |
 | FE 주소 | https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/ |
-| BE 원격 main | `fc07f383e52b1d8f286959d58fdfe9e93980a551` |
-| BE 실제 제공 SHA | `fc07f383` |
-| Cloud Run | `itdasy-backend-staging-00627-xnw`, 트래픽 100% |
+| BE 원격 main | `f8546a2f0caa07aec56fe3b965e03db6708f0269` |
+| BE 실제 제공 SHA | `f8546a2f` |
+| Cloud Run | `itdasy-backend-staging-00630-gvt`, 트래픽 100% |
 | 서버 환경 | `ENVIRONMENT=production`인 스테이징 서비스 |
 | DB 격리 시험 | `kang-yeonjun@127.0.0.1:5432/itdasy_release_t904` |
 | 격리 복원 DB | `127.0.0.1:5432/itdasy_t904_restore_20260916`, `127.0.0.1:5432/itdasy_t904_supabase_restore_20260916` |
 | Supabase | `hsxxqomfbdernepykils` |
 | Storage | `user-uploads`, `public=false`, 20MB, jpeg/png/jpg/webp |
-| DB 변경 이력 | 코드·스테이징 `0067_booking_no_show_not_null`; 스키마 대조 `ok`, 기존 빈 값 0 |
+| DB 변경 이력 | 스테이징 `0068_comment_event_occurred_at`; 스키마 대조 `ok`, 실제 열 존재 |
 | 홍보 사이트 | https://itdasy.com/ · 소스 `838be596` |
 | Android | `com.y2do.itdasy` |
 | iOS | `com.nopolab.itdasy` |
-| Android 시험 빌드 | FE `c1ef8a4`(main 병합 `a2d845f`), APK SHA-256 `63d0fd30a551cc0e25f7567b1939412f702b32397f2dde8ca84afb4a04ea5236` |
-| iOS 시험 빌드 | FE `c1ef8a4`(main 병합 `a2d845f`), simulator app zip SHA-256 `6014b580c334fc4a720eb56503a3bb328c36a2ed2fd422040b9949aa89e7560e` |
+| Android 시험 빌드 | 이전 FE `a2d845f` 기반 에뮬레이터 빌드. 현재 `ecb8036` 네이티브 재빌드 NOT VERIFIED |
+| iOS 시험 빌드 | 이전 FE `a2d845f` 기반 시뮬레이터 빌드. 현재 `ecb8036` Apple 실기기 빌드 NOT VERIFIED |
 | 시각 | 2026-09-16 Asia/Seoul |
 
-FE `a2d845f`는 GitHub Pages 제공판과 iPhone 가로 화면 수정판 양쪽의 현재 기준이다.
-BE `fc07f383`은 Cloud Run 00627에서 100% 제공 중이고 `/health`의 코드값·DB·스키마 대조가
-모두 정상이다. 이후 main에 합치는 인증 문서만의 변경은 제품 코드를 건드리지 않으므로
-제품 기준 SHA와 분리한다.
+FE `ecb8036`은 GitHub Pages 실제 제공판이다. BE `f8546a2f`은 Cloud Run 00630에서 100%
+제공 중이고 `/health`의 코드값·DB·스키마 대조가 모두 정상이다. 00629는 cbt4에만 AI 시간초과를
+주입한 임시 시험 버전이며, 시험 뒤 설정을 제거한 00630으로 교체했다. 네이티브 앱은 이 최신 FE로
+다시 빌드한 Apple 실기기 증거가 없으므로 현재 기준으로 PASS 처리하지 않는다.
 
 ## 3. CAPABILITY MAP
 
@@ -103,8 +103,8 @@ Supabase의 앱 표 76개는 RLS가 켜져 있고 익명·로그인 사용자의
 
 | 시험 | 환경 | 사용자 유형 | 기대 | 실제 | 증거 | 결과 |
 |---|---|---|---|---|---|---|
-| FE 전체 자동 검사 | FE `a2d845f` 제품 코드 | 공통 | 실패 0 | 207묶음·3,221개 성공 | Jest 출력·FE #52 | PASS |
-| BE 전체 자동 검사 | BE #69 후보판 | 공통 | 실패 0 | 공식 전체 4,617개와 순서섞기 4,617개 성공. 299개 제외·1개 예상 실패는 성공으로 계산하지 않음. 격리 PostgreSQL 보안·돈 검사와 매장분리·FE 연결값도 성공 | GitHub #69 run 35033204555 | PASS |
+| FE 전체 자동 검사 | FE `ecb8036` 제품 코드 | 공통 | 실패 0 | 208묶음·3,222개 성공. 2개 제외는 성공으로 계산하지 않음 | Jest 출력·FE #57 | PASS |
+| BE 전체 자동 검사 | BE `f8546a2f` | 공통 | 실패 0 | 공식 전체·순서섞기 각 4,621개 성공. 299개 제외·1개 예상 실패는 성공으로 계산하지 않음. 격리 PostgreSQL 214개·필수 매장분리 99개도 제외 없이 성공 | run 35045166172 | PASS |
 | 실제 예약→완료→매출→정리 | 스테이징 시험계정 | A/L | 경제효과 1회 | 50,000원 1회, 전부 정리 | 실제 API/UI 기록 | PASS |
 | 다른 매장 번호 변조 | 격리 PostgreSQL | K | 노출·변경 0 | 살아있는 번호 357회 차단 | `t904-final/result.json` | PASS |
 | 20명 동시 업무 | 격리 PostgreSQL | G/H/I/L | 불일치 0 | 161판정 PASS, 0 실패, 83.6초 | `t904-retest2/verdicts.json` | PASS |
@@ -114,6 +114,7 @@ Supabase의 앱 표 76개는 RLS가 켜져 있고 익명·로그인 사용자의
 | AI 사진 분석 동의 없음 | 실제 BE `fc07f383` | C/F | 제공자 호출 전 차단 | 로그인 200, 분석 400, `instagram_ai_consent_missing`, 제공자 결과 없음 | 합성 네일사진 실제 요청 | PASS |
 | AI 질문 운영기록 최소화 | 실제 BE `fc07f383` | A | 정상 읽기와 원문 미기록 | 로그인 200, 읽기 200, 질문·`q` 필드 0, 길이·되돌릴 수 없는 지문 존재 | Cloud Run 00627 새 기록 | PASS |
 | 실제 AI 질문 3개 동시 실행 | Cloud Run 00627·스테이징 시험계정 | H/I | 성공 3, 동의상태 원복 | 200 응답 3/3, 약 3.99초, 임시 동의 후 원래 OFF로 복원 확인 | `evidence/live-backend-20260916.json` | PASS |
+| 실제 AI 시간초과·차감 복구 | Cloud Run 00629→00630·cbt4 | H | 실패를 성공처럼 보이지 않고 차감 0 | 504·답변 없음·사용량 39→39·동의 OFF 원복. 시험 설정 제거 후 00630 정상 | `evidence/runtime-closeout-20260916.md` | PASS |
 | 합성 뷰티사진 60장 | 실제 FE 편집기 | B/C/D/E | 오류·왜곡·검은화면 0 | 60/60 성공, 5비율 각 12장 | `photo-editor-synthetic-golden-60-v4-report.json` | PASS |
 | 20회 편집·전부 취소/재실행 | 실제 FE 편집기 | B/D/L | 저장·재열기 동일 | 전 과정 성공, 262,843바이트 | `t904-editor-operation-matrix.json` | PASS |
 | 사진 사람 품질 | 생성 결과 60장 | B/C/D/E | 시술 진실성·미세 왜곡 없음 | 에이전트 시각검사는 이상 없음 | contact sheets | NOT VERIFIED |
@@ -124,10 +125,15 @@ Supabase의 앱 표 76개는 RLS가 켜져 있고 익명·로그인 사용자의
 | 100개 매장 AI 동시 요청 | 격리 PostgreSQL·가짜 외부모델 | G/H | 내부 처리 오류 0, 과부하 때 명확한 재시도 | 정규 동시수 p99 0.041초·오류 0. 초과 요청 7건은 모두 503+5초 재시도 안내 | `evidence/ai-scale-20260916.json` | PASS |
 | DB 보안·속도 진단 | Supabase staging | 운영자 | 공개 확장·중복·누락 경고 0 | 경고 7개 수정 뒤 해당 경고 0 | Supabase advisor 재실행 | PASS |
 | 실제 운영 백업 복원 | GCS 백업→격리 PostgreSQL | 운영자 | 주요 표·행 복구 | 2026-09-15 LIVE 백업을 내려받아 76개 공개 표 복원. bookings 567, customers 494, revenue_records 506, users 80 확인 | `/tmp/itdasy_t904_supabase_restore_20260916_090907/live.sql.gz`·격리 DB `itdasy_t904_supabase_restore_20260916` | PASS |
-| Android 실제 사용자 흐름 | Galaxy 에뮬레이터·스테이징 시험계정 | A/I/L | 로그인→고객→예약→정리 | 예약 수 0→1 확인 뒤 합성 예약 삭제·부재 확인 | `evidence/mobile-runtime-20260916.md` | PASS |
-| iOS/Android 실제 사용자 흐름 | iPhone 17 시뮬레이터·Galaxy 에뮬레이터 | A/I/L | 설치→로그인→고객→예약→정리 | 양쪽 성공, 시험 예약 모두 삭제. iPhone 402×874↔874×402와 키보드 확인 | 화면 캡처·`evidence/mobile-runtime-20260916.md` | PASS |
+| Android 에뮬레이터 사용자 흐름 | Galaxy 에뮬레이터·스테이징 시험계정 | A/I/L | 로그인→고객→예약→정리 | 예약 수 0→1 확인 뒤 합성 예약 삭제·부재 확인 | `evidence/mobile-runtime-20260916.md` | PASS |
+| iOS/Android 시뮬레이션 흐름 | iPhone 17 시뮬레이터·Galaxy 에뮬레이터 | A/I/L | 설치→로그인→고객→예약→정리 | 양쪽 성공, 시험 예약 모두 삭제. iPhone 402×874↔874×402와 키보드 확인 | 화면 캡처·`evidence/mobile-runtime-20260916.md` | PASS |
+| Apple 실기기 최신판 | 최신 FE 네이티브 빌드 | A/I/L | 실기기 전체 흐름 성공 | 금요일 실행 예정 | 사용자 일정 | NOT VERIFIED |
 | 수정본 실제 서버 예약 조회 | Cloud Run 00627·Supabase staging | A/G | 오래된 빈 값 때문에 500이 나지 않음 | 조회 200, 구조 정상. DB 변경 0067, 빈 값 0, 열은 필수·기본 false | `evidence/live-backend-20260916.json`·Supabase 직접 조회 | PASS |
-| 실제 Meta 연결·발송 | cbt4@itdasy.com 연결 계정 | A/B | 연결·재연결·중복 0 | 복원 DB에서 Instagram user/page/access token 존재, token_invalid=false, 만료 2026-11-12 KST 확인. 실제 Meta API 호출·DM·댓글·발행은 앱 로그인 세션 없음 | 복원 DB 직접 조회 | NOT VERIFIED |
+| 실제 Meta 연결·발행·댓글 | cbt4 연결 계정 | A/B/H/L | 실제 전송, 같은 요청 중복 0 | 상태·게시물 읽기 성공. 합성 게시물 1회 발행, 같은 처리번호 재요청 중복 0. 안전한 시험 댓글 공개 답장 1회, 재요청 중복 0 | 실제 앱·Meta 화면·`evidence/runtime-closeout-20260916.md` | PASS |
+| Meta 비공개 답장 실패 | cbt4 연결 계정·기간 지난 내부 시험 댓글 | H | 실패 원인 명확, 외부 원문·거짓 성공 없음 | `dm_window_expired`, `partial_success=false`, 외부 원문 없음 | 실제 Cloud Run 00628 | PASS |
+| Meta 신규 비공개 답장 | cbt4 연결 계정 | A/B | 허용 기간 내 실제 DM 1회·중복 0 | 현재 안전한 시험 댓글이 모두 기간 밖 | 실제 댓글 대기열 | NOT VERIFIED |
+| 인스타 댓글 실제 시각 | cbt4 연결 계정 | A/L | 오래된 댓글을 새 댓글처럼 표시하지 않음 | 대기 12→8, 7월 항목 제외, 9월 항목 8일·12일로 표시 | 실제 앱·Cloud Run 00628 | PASS |
+| 모바일 댓글·DM 접근성 | FE `ecb8036`, 368×833 | A/L | 기능명·44px·키보드·가로 넘침 없음 | 댓글·DM 스위치와 주요 버튼 통과, 너비 353=353 | 실제 GitHub Pages 제공판 | PASS |
 
 ## 5. DEFECTS FOUND
 
@@ -172,13 +178,18 @@ Supabase의 앱 표 76개는 RLS가 켜져 있고 익명·로그인 사용자의
 | T904-D37 | P1 Privacy High | 서버 여러 대가 같은 탈퇴 재시도를 동시에 집음 | 외부 삭제 중복·제한 초과 | DB에서 한 서버만 30분 점유 | 두 서버 동시 실행, 외부 호출 각 1회 PASS |
 | T904-D38 | P1 Privacy High | 외부업체의 빈 답변·알 수 없는 답변도 삭제 완료 취급 | 자료가 남아도 완료 오인 | 확인된 완료값만 인정 | 관련 114개 PASS |
 | T904-D39 | P2 Security/Performance | DB 확장이 공개 영역에 있고 외래열 색인 5개 누락·중복 1개 | 공격면 확대·대량 조회 지연 | 전용 영역 이동, 5개 추가, 중복 제거 | Supabase 실제 진단 경고 7→0 |
-| T904-D40 | P1 Privacy High | AI 요청문과 사진저장·인스타·DM·알림 등 외부업체 오류 원문을 서버 기록·사용자 오류에 노출 | 전화번호·고객 설명·업체 응답·주소 속 열쇠 노출 | 내용은 제거하고 상태번호·오류 종류·길이만 기록, 사용자에게 행동 가능한 공통 문구 표시 | 공식 전체·순서섞기 각 4,617개와 실제 새 서버 기록 PASS |
+| T904-D40 | P1 Privacy High | AI 요청문과 사진저장·인스타·DM·알림 등 외부업체 오류 원문을 서버 기록·사용자 오류에 노출 | 전화번호·고객 설명·업체 응답·주소 속 열쇠 노출 | 내용은 제거하고 상태번호·오류 종류·길이만 기록, 사용자에게 행동 가능한 공통 문구 표시 | 최신 공식 전체·순서섞기 각 4,621개와 실제 새 서버 기록 PASS |
 | T904-D41 | P1 QA/Money | 돈 관련 검사 파일 3개가 문법 오류라 전체 검사 수집 중단 | 중복 매출·상한·환불 회귀가 실행되지 않을 수 있음 | 깨진 오류문구 3줄 복구 | 돈 관련 53개와 공식 전체·순서섞기 검사 PASS |
 | T904-D42 | P1 Security/Privacy | 과거 시험 결과 4개에 로그인표 200개, 그중 이메일 포함 40개가 저장됨 | 시험계정 로그인정보·이메일 이력 노출 | 원시 결과 4개 제거, 저장 전 가림과 재유입 검사 추가 | 현재 결과 폴더 로그인표·이메일·비밀번호 0; Git 이력은 별도 폐기 확인 필요 |
 | T904-D43 | P1 Security High | 4월 Git 이력의 Google AI 열쇠 1개와 현재 Remove.bg 열쇠가 실제 업체 API에서 200 응답 | 무단 AI 사용·비용·사진 처리 계정 악용 | 현재 파일에서 제거, 나머지 주요 스테이징 열쇠는 교체 확인 | Google·Remove.bg 업체 폐기 BLOCKED |
 | T904-D44 | P2 QA/DB | 고객 소개관계 변경 검사가 DB 색인을 지운 뒤 복구하지 않아 공식 검사가 순서에 따라 실패 | 새 후보판의 DB 검증 결과를 신뢰할 수 없음 | 소개관계 변경 단계가 단일·복합 색인을 모두 복구하고 존재를 직접 검사 | 재현 17개와 격리 PostgreSQL 전체 214개 PASS, 공식 DB 검사 PASS |
 | T904-D45 | P1 Reliability | 오래된 예약의 노쇼 표시가 비어 있으면 예약 목록 100/100 요청이 500 | 바쁜 날 원장이 예약 전체를 열지 못함 | 빈 값은 `false`로 읽고 기존 DB 값을 채운 뒤 앞으로 빈 값 저장 금지 | BE #69·Cloud Run 00627, 스키마 검사 29개, 예약 75개, PostgreSQL 되돌림→빈 값 주입→재적용, 2,486건 보존, 스테이징 DB 빈 값 0과 실제 목록 200 PASS |
-| T904-D46 | P2 Mobile | iPhone 앱 설정이 세로만 허용해 실제 가로 전환이 500으로 거절 | 가로 사용·접근성 요구를 확인할 수 없음 | iPhone 양쪽 가로 방향 허용과 자동 검사 추가 | FE #52, 전체 207묶음·3,221개, iOS 빌드, 실제 874×402 전환과 주 메뉴 4개 표시 PASS |
+| T904-D46 | P2 Mobile | iPhone 앱 설정이 세로만 허용해 시뮬레이터 가로 전환이 500으로 거절 | 가로 사용·접근성 요구를 확인할 수 없음 | iPhone 양쪽 가로 방향 허용과 자동 검사 추가 | FE #52, iOS 빌드, 시뮬레이터 874×402 전환과 주 메뉴 4개 표시 PASS. 실기기는 NOT VERIFIED |
+| T904-D47 | P2 Instagram/Privacy | 기간 지난 댓글의 비공개 답장이 일반 500으로 보이고 Meta 원문이 응답에 포함됨. 공개 답장만 성공한 경우도 부분 성공 표시가 없었음 | 원인이 불명확하고 외부 내부정보 노출·거짓 전체 성공 가능 | 기간 만료 전용 코드, 업체 원문 제거, 부분 성공 표시 | BE #70·Cloud Run 00628, 실제 기간 지난 내부 시험 댓글 PASS |
+| T904-D48 | P2 Instagram | 7월·9월 댓글을 서버에 들어온 시각 기준 “41분 전”으로 표시 | 오래된 문의를 새 문의로 오인해 부적절한 답장 가능 | Meta 실제 발생 시각 저장·기존 행 복구·14일 필터 | BE #70·DB 0068·실제 대기 12→8, 8일·12일 표시 PASS |
+| T904-D49 | P2 Accessibility | 댓글 답장 스위치 12개에 이름이 없고 32×19라 모바일에서 작음 | 화면읽기와 손 조작이 어려움 | 기능명·상태·44×44·키보드 조작, 주요 버튼 44px | FE #55·빌드 `0138-b907030`, 실제 368×833 PASS |
+| T904-D50 | P2 Accessibility | DM 설정 스위치가 전부 “켜기”로 읽히고 44×26, 뒤로·저장도 작음 | 어떤 자동발송을 켜는지 구분하기 어렵고 오조작 가능 | 기능별 이름·상태·44×44, 상단 버튼·메뉴 추가 44px | FE #57·빌드 `0155-ecb8036`, 실제 화면·Space 키 PASS |
+| T904-D51 | P2 Privacy Ops | 고객 사진·전화번호 노출 사고 때 담당·차단·범위 확인·통지·신고 절차가 한 문서에 없음 | 대응 지연과 법정 통지·신고 누락 위험 | 15분·60분·72시간 절차, 외부업체 연락, 복구 기준 문서화 | FE #56·알림 2개·확인된 이메일 채널. 대체 담당자 지정은 BLOCKED |
 
 ## 6. SECURITY REPORT
 
@@ -205,8 +216,8 @@ Supabase의 앱 표 76개는 RLS가 켜져 있고 익명·로그인 사용자의
 | 고객 이름·전화·메모 | 예약·고객관리 | PostgreSQL | 알림업체 가능 | 탈퇴·고객삭제 | 실흐름 일부 PASS |
 | 예약·시술·매출 | 운영·장부 | PostgreSQL | 결제·알림 | 법정 보유 확인 필요 | LEGAL COUNSEL REVIEW REQUIRED |
 | 고객 사진 | 편집·홍보물 | Supabase Storage | AI/사진처리업체 | 개별삭제·탈퇴 접두사 삭제 | 업체 보유 BLOCKED |
-| Instagram 신원·DM | 연결·자동응답 | PostgreSQL | Meta | 연결해제·탈퇴 | cbt4 연결 DB 확인 PASS / 실제 Meta 발송 NOT VERIFIED |
-| AI 질문·결과 | 생성·재시도 | 사용량/결과 일부 | Google AI 등 | 업체별 기간 미확정 | BLOCKED |
+| Instagram 신원·DM | 연결·자동응답 | PostgreSQL | Meta | 연결해제·탈퇴 | cbt4 실제 읽기·게시·공개답장 PASS / 신규 비공개답장 NOT VERIFIED |
+| AI 질문·결과 | 생성·재시도 | 사용량/결과 일부 | Google AI 등 | 업체별 기간 미확정 | 실제 성공·시간초과·차감복구 PASS / 업체 보유 BLOCKED |
 | IP·기기·오류 | 보안·장애대응 | 로그/Sentry | Google Cloud/Sentry | 실제 기간 미확정 | BLOCKED |
 | 결제·영수증 | 구독·환불 | PostgreSQL | Apple/Google/PortOne | 법정 기간 미확정 | LEGAL COUNSEL REVIEW REQUIRED |
 
@@ -216,11 +227,18 @@ Supabase의 앱 표 76개는 RLS가 켜져 있고 익명·로그인 사용자의
 - [Apple 계정 삭제 안내](https://developer.apple.com/support/offering-account-deletion-in-your-app): 앱 안에서 계정과 관련 개인정보 전체 삭제를 시작할 수 있어야 함.
 - [Google Play 계정 삭제 요구](https://support.google.com/googleplay/android-developer/answer/13327111): 앱 안과 외부 웹 경로 모두 필요.
 - [Google Play AI 콘텐츠 정책](https://support.google.com/googleplay/android-developer/answer/14094294): 기만적 AI 콘텐츠 방지와 사용자 신고 기능 요구.
+- [개인정보보호위원회 유출 신고 안내](https://pipc.go.kr/np/default/page.do?mCode=D030040000):
+  정보주체 통지는 원칙적으로 72시간, 1,000명 이상·민감/고유식별정보·외부 불법 접근 중 하나면
+  72시간 안에 신고.
 
 코드와 웹 정책의 큰 불일치는 수정됐지만, 외부업체 계약상 국가·삭제·보유기간과
 스토어 실제 기재값은 접근할 수 없었다. 해당 판단은 **LEGAL COUNSEL REVIEW REQUIRED**다.
 
-개인정보 사고 감지는 실제 운영 감지 장치를 추가했다. `privacy_incident_signal` 기록 지표와 `Privacy incident signal`, `Privacy manual incident intake` 알림을 만들었고, 가짜 사고 기록을 넣어 운영기록 검색까지 확인했다. 사진+전화번호 노출 시 사용자 범위 조회, 주소 폐기, 로그인표 폐기는 가능하지만 실제 사람 호출·신고 제출은 미실행이다.
+개인정보 사고 감지는 실제 운영 감지 장치를 추가했다. `privacy_incident_signal` 기록 지표와
+`Privacy incident signal`, `Privacy manual incident intake` 알림을 만들었고, 연결된 이메일 채널은
+Google Cloud에서 `VERIFIED` 상태다. 합성 사고 기록 검색과 사진 주소·로그인표 폐기, 영향 사용자
+확인, 통지·신고 순서를 `docs/legal/PRIVACY-INCIDENT-RUNBOOK.md`로 만들었다. 실제 수신함 열람,
+대체 담당자 지정, 실제 사고 신고는 미실행이다.
 
 ## 8. MONEY RECONCILIATION
 
@@ -283,8 +301,8 @@ Apple·Google·PortOne의 실제 돈 이동은 실행하지 않았으므로 G8�
 | E 피부샵 | 피부보정·과장 방지 | 가짜 Before 방지 PASS, 미세 과보정 사람 평가 필요 |
 | F 신규가입 | 사전지식 없이 첫 가치 | Enter·자동완성·동의 흐름 PASS, 실제 사람 미실행 |
 | G 파워사용자 | 1,000+ 고객·다중작업 | 100매장·100,000고객·10,000사진·2,000예약 조회 PASS |
-| H 불안정망 | 제한시간·재시도 | 저장·AI·장부 재시도 PASS, 실제 3G 기기 미실행 |
-| I 여러 기기 | PC+iOS+Android | Android·iPhone 실제 로그인·고객·예약 생성·삭제 PASS, iPhone 세로·가로 PASS. 같은 계정의 완전 동시 편집은 미실행 |
+| H 불안정망 | 제한시간·재시도 | 저장·장부 재시도와 실제 AI 시간초과·차감복구 PASS, 실제 3G 기기 미실행 |
+| I 여러 기기 | PC+iOS+Android | Android 에뮬레이터·iPhone 시뮬레이터 로그인·고객·예약 생성·삭제, 세로·가로 PASS. 최신판 Apple 실기기와 같은 계정 완전 동시 편집은 미실행 |
 | J 해지 사용자 | 해지·탈퇴·재가입 | 중복방지·pending 표시 PASS, 실제 상점 환불 미실행 |
 | K 악의적 사용자 | 다른 매장 ID·토큰·재전송 | 357회 변조·토큰·웹훅 공격 PASS |
 | L 실수 많은 사용자 | 연타·뒤로·새로고침·종료 | 돈·사진 작업 회귀 PASS, 전 화면 실제 조작 미실행 |
@@ -292,9 +310,9 @@ Apple·Google·PortOne의 실제 돈 이동은 실행하지 않았으므로 G8�
 ## 12. REMAINING RISKS
 
 1. Git 이력에 노출된 Google AI 열쇠 1개와 Remove.bg 열쇠가 실제로 동작하며 업체 화면 폐기가 필요하다.
-2. cbt4@itdasy.com의 Instagram 연결은 DB에서 확인했지만, 앱 로그인 세션이 없어 실제 Meta 상태조회·댓글·DM·발행·실패·재시도를 실행하지 못했다.
+2. cbt4 Instagram의 실제 읽기·게시·공개 답장·중복 방지·만료 DM 실패는 확인했다. 허용 기간 내 새 시험 댓글이 없어 신규 비공개 답장과 그 중복 방지는 확인하지 못했다.
 3. Apple·Google·PortOne 실제 결제·환불·해지와 스토어 표시를 대조하지 못했다.
 4. 외부업체별 국외이전 국가·보유기간·삭제 계약은 법률 전문가 확인이 필요하다.
-5. Android·iPhone 실제 핵심 흐름은 확인했지만 여러 실기기에서 같은 자료를 동시에 편집하는 시험은 실행하지 못했다.
+5. 최신 FE의 Apple 실기기 시험은 금요일 예정이다. 현재 증거는 Android 에뮬레이터와 iPhone 시뮬레이터이며, 여러 실기기 동시 편집도 미실행이다.
 6. 실제 12명 사용성·접근성 시험은 실행하지 못했다.
-7. 개인정보 사고 감지 알림은 만들고 가짜 사고 기록까지 확인했지만, 실제 담당자 수신함·신고 제출은 확인하지 못했다.
+7. 개인정보 사고 알림·확인된 이메일 채널·실행 절차·합성 기록은 준비됐다. 실제 수신함 열람, 대체 담당자 지정, 실제 신고 제출은 확인하지 못했다.
