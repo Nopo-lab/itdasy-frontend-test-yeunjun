@@ -1,0 +1,70 @@
+{
+  "executed_at": "2026-09-16T17:15:00+09:00",
+  "environment": "staging service connected to Supabase test account",
+  "frontend": {
+    "commit": "08e4bd85ae45ee9a9406474326f69aeeb38ceb3b",
+    "live_build": "20260916-0254-08e4bd8"
+  },
+  "backend": {
+    "commit": "9a2f314353b05246798f710fba3266a8dcae5d7b",
+    "cloud_run_revision": "itdasy-backend-staging-00649-q9r",
+    "traffic_percent": 100,
+    "live_probe_status": 200
+  },
+  "test_account": {
+    "internal_user_id": 5,
+    "instagram_connected": true,
+    "persona_found": true,
+    "persona_analyzed_post_count": 24,
+    "persona_analysis_error": null,
+    "fingerprint_source_post_count": 59,
+    "learned_tone_summary": "친절하고 상세한 설명, 긍정 표현과 권유형 어미",
+    "learned_emoji_set": ["🤍", "💕", "✨", "🎀"],
+    "request_use_persona": true,
+    "generation_log_ids": [793, 794, 795, 796, 797, 798, 799, 800, 801, 802],
+    "server_used_tone": "friendly"
+  },
+  "input_summary": {
+    "content_type": "시술 완성",
+    "customer_context": "처음 온 손님",
+    "photo_context": "완성샷 선택, 사진 0장",
+    "service": "젤네일",
+    "shop": "잇츠데이"
+  },
+  "outputs": [
+    "잇츠데이만의 꼼꼼한 시술로 예쁜 손톱을 만나보세요.\n💕\n언제든지 편하게 문의해주세요!",
+    "일상 속 작은 변화로 기분 전환을 하고 싶으시다면 언제든지 문의해주세요.\n🎀",
+    "잇츠데이에서 나만의 스타일을 찾아보세요!\n🎀",
+    "잇츠데이에서 고객님의 일상에 작은 행복을 더해드릴게요.\n✨\n언제든 편하게 문의해주세요!\n💕",
+    "잇츠데이에서 당신의 특별한 아름다움을 만나보세요!\n🎀",
+    "잇츠데이에서 당신의 개성을 담은 젤네일로 특별함을 더해보세요.",
+    "언제든지 편하게 문의해주세요.\n✨",
+    "젤네일은 일상생활 속에서도 기분 전환에 큰 도움이 될 거예요.\n💕",
+    "이번에 잇츠데이에서 처음 방문한 고객님께도 마무리까지 정성을 다해 젤네일을 시술해 드렸어요.\n🤍\n언제든 젤네일 문의는 편하게 남겨주세요.",
+    "손끝에서 느껴지는 작은 변화로 기분 전환이 필요하시다면 언제든 잇츠데이로 문의해주세요.\n🎀"
+  ],
+  "verification": {
+    "run_count": 10,
+    "http_success_count": 10,
+    "consent_missing_count": 0,
+    "wrong_industry_term_count": 0,
+    "unsupported_completed_result_count": 0,
+    "invented_customer_or_owner_reaction_count": 0,
+    "broken_korean_count": 0,
+    "orphan_or_repeated_emoji_line_count": 0,
+    "emoji_outside_learned_set_count": 0,
+    "agent_style_assessment": {
+      "tone_consistency": "PASS",
+      "emoji_consistency": "PASS",
+      "ending_style_consistency": "PASS",
+      "truthfulness": "PASS",
+      "overall": "AGENT VERIFIED"
+    },
+    "result": "PASS"
+  },
+  "automated_tests": {
+    "owner_voice_and_style_wiring": "26 passed",
+    "caption_truthfulness_targeted": "88 passed",
+    "backend_full": "4715 passed, 299 skipped, 1 xfailed, 224 warnings"
+  }
+}

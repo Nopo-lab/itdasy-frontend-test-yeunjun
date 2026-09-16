@@ -1,0 +1,38 @@
+{
+  "tested_at": "2026-09-16T02:32:04.756Z",
+  "route": "/instagram/comment-reply",
+  "account": "authorized_test_account_user_5",
+  "recipient": "authorized_qa_account",
+  "comment_id_sha256_12": "32b7430f557e",
+  "media_id_sha256_12": "fb8a4f50062c",
+  "queue_http_status": 200,
+  "queue_count_before": 9,
+  "queue_count_after_ui_reload": 8,
+  "recipient_ui_exact_message_count": 1,
+  "first": {
+    "status": 200,
+    "ok": true,
+    "duplicate": false,
+    "partial_success": false,
+    "error_code": null,
+    "public": null,
+    "dm": {
+      "ok": true,
+      "status": 200,
+      "id_present": false
+    }
+  },
+  "replay": {
+    "status": 200,
+    "ok": true,
+    "duplicate": true,
+    "partial_success": null,
+    "error_code": null,
+    "public": {
+      "ok": true,
+      "status": 200,
+      "id_present": false
+    },
+    "dm": null
+  }
+}
