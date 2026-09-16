@@ -35,7 +35,7 @@
   async function _fetchJson(method, path, body) {
     const headers = window.authHeader ? window.authHeader() : {};
     if (body && !(body instanceof FormData)) headers['Content-Type'] = 'application/json';
-    const res = await fetch(_api() + path, {
+    const res = await window.apiFetch(path, {
       method,
       headers,
       body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,

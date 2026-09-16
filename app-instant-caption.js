@@ -66,7 +66,7 @@
     const url = _api() + path;
     let res;
     try {
-      res = await fetch(url, {
+      res = await window.apiFetch(path, {
         method,
         headers,
         body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,

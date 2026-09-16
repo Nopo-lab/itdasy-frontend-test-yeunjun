@@ -3679,8 +3679,7 @@
     try {
       const headers = window.authHeader ? Object.assign({}, window.authHeader()) : {};
       headers['Content-Type'] = 'application/json';
-      const apiBase = window.API || '';
-      const res = await fetch(apiBase + '/persona/generate', {
+      const res = await window.apiFetch('/persona/generate', {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -4993,7 +4992,7 @@
     const ctxStr = (svcLead + _capInstaHint() + _capLenInstruction(c.len) + tags + vary + review + ' 인스타 업로드용 캡션.').slice(0, 500);
     const body = { category: _capCategory(), photo_context: ctxStr, length_tier: c.len || 'medium', tone_override: c.tone || 'normal', service: svc || '' };
     let res;
-    try { res = await fetch((window.API || '') + '/persona/generate', { method: 'POST', headers, body: JSON.stringify(body) }); }
+    try { res = await window.apiFetch('/persona/generate', { method: 'POST', headers, body: JSON.stringify(body) }); }
     catch (_e) { return null; }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return null;

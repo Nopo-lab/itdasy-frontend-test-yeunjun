@@ -19,12 +19,13 @@ const _PERSONA_TIMEOUT_MS = 120000;
 async function _personaFetch(method, path, body) {
   const headers = window.authHeader ? window.authHeader() : {};
   if (body) headers['Content-Type'] = 'application/json';
-  const url = (window.API || '') + path;
   const ctl = typeof AbortController === 'function' ? new AbortController() : null;
   const timer = ctl ? setTimeout(() => ctl.abort(), _PERSONA_TIMEOUT_MS) : null;
   let res;
   try {
-    res = await fetch(url, {
+    // 공통 요청 통로가 consent_missing 응답을 받으면 안내창을 띄우고,
+    // 동의 저장 후 원래 캡션 요청을 정확히 한 번 다시 보낸다.
+    res = await window.apiFetch(path, {
       method, headers,
       body: body ? JSON.stringify(body) : undefined,
       signal: ctl ? ctl.signal : undefined,
