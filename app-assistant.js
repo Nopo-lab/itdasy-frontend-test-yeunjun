@@ -3704,7 +3704,12 @@
   function _captionErrorMessage(status, detailValue) {
     const detail = String(detailValue || '');
     if (status === 401) return '로그인이 만료됐어요. 다시 로그인해주세요';
-    if (detail === 'consent_missing') return 'AI 사용 전 외부 처리 안내와 동의가 필요해요.';
+    if (detail === 'consent_missing') {
+      if (window.AiConsentHome && typeof window.AiConsentHome.open === 'function') {
+        setTimeout(() => window.AiConsentHome.open({ force: true }), 0);
+      }
+      return '홈의 AI 사용 설정에서 동의하면 캡션을 만들 수 있어요.';
+    }
     if (/quota_exceeded:caption/.test(detail)) return '오늘 캡션 한도(3회)를 다 쓰셨어요. 내일 다시!';
     return detail ? detail.slice(0, 100) : '캡션 생성 실패';
   }

@@ -54,6 +54,9 @@ describe('T-904 · 회원가입 표준 form', () => {
   test('필수 약관 동의에 AI 국외이전 동의를 묶지 않는다', () => {
     const label = HTML.match(/<input type="checkbox" id="signupAgree"[\s\S]*?<\/label>/)?.[0] || '';
     expect(label).not.toMatch(/AI 분석|국외이전|Google LLC/);
-    expect(HTML).toMatch(/외부 처리업체로 보내기 전, 기능별 안내와 동의를 따로 받습니다/);
+    const aiLabel = HTML.match(/<input type="checkbox" id="signupAiConsent"[\s\S]*?<\/label>/)?.[0] || '';
+    expect(aiLabel).toMatch(/AI 기능 사용 \(선택\)/);
+    expect(aiLabel).toMatch(/Google Cloud Vertex AI\(Gemini\)/);
+    expect(CORE).toMatch(/ai_processing_consent/);
   });
 });

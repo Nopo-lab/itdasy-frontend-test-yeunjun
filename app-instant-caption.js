@@ -409,6 +409,9 @@
     } catch (e) {
       console.error('[instant-caption] 파이프라인 실패:', e);
       const msg = (e && e.message) ? String(e.message) : '오류';
+      if (/consent_missing/i.test(msg) && window.AiConsentHome && typeof window.AiConsentHome.open === 'function') {
+        window.AiConsentHome.open({ force: true });
+      }
       _setProgress('실패: ' + msg.slice(0, 80), 0);
       _toast('1초 캡션 실패 — ' + msg.slice(0, 60));
     }

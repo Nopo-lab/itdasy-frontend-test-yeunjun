@@ -682,3 +682,42 @@ body.itdasy-locked > :not(#lockOverlay):not(#signupOverlay):not(script):not(styl
   background: var(--brand-bg); color: var(--brand);
   display: flex; align-items: center; justify-content: center;
 }
+
+/* ───── AI 사용 동의 홈 카드 ───── */
+.ai-consent-home {
+  display: flex; align-items: flex-start; gap: 12px;
+  margin: 0 0 16px; padding: 16px;
+  border: 1px solid rgba(213,138,149,.28); border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255,247,248,.96), var(--surface, #fff));
+  box-shadow: 0 4px 14px rgba(90,50,60,.08);
+}
+.ai-consent-home[hidden] { display: none !important; }
+.ai-consent-home__icon {
+  width: 40px; height: 40px; flex: 0 0 40px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--brand-strong, #a85b69); background: rgba(213,138,149,.14);
+}
+.ai-consent-home__body { min-width: 0; flex: 1; }
+.ai-consent-home__eyebrow {
+  color: var(--brand-strong, #a85b69); font-size: 11px; font-weight: 800;
+  letter-spacing: .02em; margin-bottom: 3px;
+}
+.ai-consent-home__title { margin: 0 0 6px; color: var(--text, #252525); font-size: 16px; line-height: 1.35; }
+.ai-consent-home__copy { margin: 0; color: var(--text3, #666); font-size: 12px; line-height: 1.55; }
+.ai-consent-home__status { min-height: 18px; margin: 6px 0 0; color: var(--text3, #666); font-size: 11px; line-height: 1.45; }
+.ai-consent-home__actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.ai-consent-home__actions button {
+  min-height: 44px; padding: 9px 13px; border-radius: 10px; font: inherit;
+  font-size: 12px; font-weight: 800; cursor: pointer; touch-action: manipulation;
+}
+.ai-consent-home__primary { border: 0; color: #fff; background: var(--brand, #d58a95); }
+.ai-consent-home__primary:disabled, .ai-consent-home__secondary:disabled { opacity: .55; cursor: wait; }
+.ai-consent-home__secondary { border: 1px solid rgba(213,138,149,.38); color: var(--brand-strong, #a85b69); background: transparent; }
+.ai-consent-home__link { display: inline-block; margin-top: 8px; color: var(--brand-strong, #a85b69); font-size: 11px; text-decoration: underline; }
+.ai-consent-home[data-state="error"] { border-color: rgba(190,80,80,.32); }
+
+@media (width <= 420px) {
+  .ai-consent-home { padding: 14px; }
+  .ai-consent-home__actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .ai-consent-home__actions button { width: 100%; }
+}

@@ -23,8 +23,7 @@ async function _personaFetch(method, path, body) {
   const timer = ctl ? setTimeout(() => ctl.abort(), _PERSONA_TIMEOUT_MS) : null;
   let res;
   try {
-    // 공통 요청 통로가 consent_missing 응답을 받으면 안내창을 띄우고,
-    // 동의 저장 후 원래 캡션 요청을 정확히 한 번 다시 보낸다.
+    // 동의가 없으면 서버가 consent_missing 을 돌려준다. 캡션 화면은 홈 카드로 안내한다.
     res = await window.apiFetch(path, {
       method, headers,
       body: body ? JSON.stringify(body) : undefined,
@@ -488,6 +487,7 @@ async function _doGenerateCaptionImpl(scenario, closePopup, inlineHost) {
     // [2026-04-26] quota_exceeded:caption:<limit> 패턴 처리 — 한도 안내
     const quotaMatch = raw.match(/quota_exceeded:caption(?::(\d+))?/i);
     let userMsg;
+    let needsConsentHome = false;
     if (quotaMatch) {
       const limit = quotaMatch[1] || '1';
       _capMarkQuotaExhausted(limit); // 다음 탭부터는 로더 없이 즉시 안내
@@ -498,45 +498,9 @@ async function _doGenerateCaptionImpl(scenario, closePopup, inlineHost) {
       // 백엔드가 명시한 정확한 원인을 그대로 노출 (디버그 용이)
       userMsg = raw;
     } else if (/consent_missing/i.test(raw)) {
-      // AI 처리는 가입과 분리해 첫 사용 직전에 설명하고 직접 허용받는다.
-      window._inlineConfirm(
-        'AI 캡션을 만들면 입력한 시술 정보와 글 작성 요청이 Google Cloud Vertex AI(Gemini)로 전송됩니다. 개인정보처리방침에서 처리 국가·보유기간을 확인할 수 있습니다. 동의하고 계속할까요?',
-        async () => {
-          try {
-            await _personaFetch('POST', '/persona/consent', {
-              pipa_collect: true,
-              ai_processing: true,
-              versions: { pipa_collect: '1.0', ai_processing: '2.0' },
-            });
-            // 재시도 한 번
-            hideCaptionLoader(false, () => {});
-            showCaptionLoader();
-            const retry = await _personaFetch('POST', '/persona/generate', payload);
-            const finalCaption2 = retry.caption || '';
-            if (retry.log_id) _lastLogId = retry.log_id;
-            _capAiDraft = finalCaption2;
-            hideCaptionLoader(true, () => {
-              closePopup();
-              const ta = document.getElementById('captionText');
-              if (ta) { ta.value = finalCaption2; _capAutoGrow(ta); }
-              const hashEl = document.getElementById('captionHash');
-              if (hashEl) hashEl.value = '';
-              _renderCaptionActionBar(finalCaption2, '');
-              if (btn) { btn.innerHTML = '만들기'; btn.disabled = false; }
-            });
-          } catch (e2) {
-            console.error('[caption.consent.retry] 실패:', e2);
-            hideCaptionLoader(false, () => {
-              if (window.showToast) window.showToast('동의 처리 후 재시도 실패. 잠시 후 다시 시도해주세요.');
-              if (btn) { btn.innerHTML = '만들기'; btn.disabled = false; }
-            });
-          }
-        }
-      );
-      // 로더 정리 후 리턴 — 동의 거부 시 콜백 미실행이므로 여기서 정리
-      hideCaptionLoader(false, () => {});
-      if (btn) { btn.innerHTML = '만들기'; btn.disabled = false; }
-      return;
+      // 동의는 홈 카드에서 한 번만 선택한다. 캡션 화면에서는 팝업을 띄우지 않는다.
+      needsConsentHome = true;
+      userMsg = '홈의 AI 사용 설정에서 동의하면 캡션을 만들 수 있어요.';
     } else if (/Failed to fetch|Load failed|NetworkError/i.test(raw)) {   // Load failed = 사파리/WebKit 문구
       userMsg = '네트워크 연결 확인 후 다시 시도해주세요.';
     } else if (/timeout/i.test(raw)) {
@@ -559,6 +523,9 @@ async function _doGenerateCaptionImpl(scenario, closePopup, inlineHost) {
 
     hideCaptionLoader(false, () => {
       closePopup();
+      if (needsConsentHome && window.AiConsentHome && typeof window.AiConsentHome.open === 'function') {
+        setTimeout(() => window.AiConsentHome.open({ force: true }), 0);
+      }
       // 미리보기 textarea 비어있어도 placeholder 살아남도록 둠
       showToast(userMsg);
     });

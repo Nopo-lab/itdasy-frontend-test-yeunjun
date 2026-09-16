@@ -14,8 +14,8 @@ function extractPersonaFetch() {
   return caption.slice(start, end);
 }
 
-describe('캡션 AI 동의 누락 자동 복구', () => {
-  test('기본 캡션 요청이 동의 재시도 기능이 있는 공통 요청 통로를 사용한다', async () => {
+describe('캡션 AI 동의 안내', () => {
+  test('기본 캡션 요청은 공통 요청 통로를 사용하고 결과를 그대로 처리한다', async () => {
     const apiFetch = jest.fn().mockResolvedValue({
       status: 200,
       ok: true,
@@ -44,11 +44,13 @@ describe('캡션 AI 동의 누락 자동 복구', () => {
     expect(nativeFetch).not.toHaveBeenCalled();
   });
 
-  test('모든 캡션 진입점이 공통 요청 통로를 거쳐 동의창과 한 번 재시도를 공유한다', () => {
+  test('모든 캡션 진입점이 공통 요청 통로를 거치며 동의 누락은 홈 카드로 안내한다', () => {
     for (const source of [caption, instant, voice, assistant]) {
       expect(source).not.toMatch(/fetch\([^\n]*['"]\/persona\/generate/);
     }
     expect(caption).toMatch(/window\.apiFetch\(path,/);
+    expect(caption).toMatch(/AiConsentHome\.open/);
+    expect(caption).not.toMatch(/_inlineConfirm\(/);
     expect(instant).toMatch(/window\.apiFetch\(path,/);
     expect(voice).toMatch(/window\.apiFetch\(path,/);
     expect((assistant.match(/window\.apiFetch\('\/persona\/generate'/g) || []).length).toBe(2);

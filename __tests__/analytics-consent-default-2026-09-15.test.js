@@ -30,25 +30,25 @@ describe('선택 오류 진단 동의', () => {
     expect(consent).not.toMatch(/const KEY = 'itdasy_consent_v1';/);
   });
 
-  test('AI 사용은 가입 동의로 대신하지 않고 현재 버전을 직접 받는다', () => {
-    expect(caption).toMatch(/ai_processing: '2\.0'/);
-    expect(caption).not.toMatch(/가입 시 약관에 이미 동의하신 내용/);
-    expect(caption).toMatch(/Google Cloud Vertex AI\(Gemini\)로 전송/);
+  test('AI 동의는 가입 또는 홈에서 한 번 선택하고 캡션 화면은 반복 팝업을 띄우지 않는다', () => {
+    const home = fs.readFileSync(path.join(ROOT, 'js/ai-consent-home.js'), 'utf8');
+    expect(index).toMatch(/id="signupAiConsent"/);
+    expect(index).toMatch(/Google Cloud Vertex AI\(Gemini\)/);
+    expect(home).toMatch(/ai_processing: !!aiProcessing/);
+    expect(caption).toMatch(/AiConsentHome\.open/);
+    expect(caption).not.toMatch(/_inlineConfirm\(/);
   });
 
-  test('공통 AI 동의창은 제공자를 밝히고 현재 버전으로 저장한다', () => {
-    expect(core).toMatch(/const ensureAiProcessingConsent = function/);
-    expect(core).toMatch(/Google Cloud Vertex AI\(Gemini\)/);
-    expect(core).toMatch(/ai_processing: '2\.0'/);
-    expect(core).toMatch(/_aiConsentPrompt\.authorization === expectedAuthorization/);
+  test('공통 요청은 consent_missing 을 숨기거나 자동 재시도하지 않는다', () => {
+    expect(core).not.toMatch(/ensureAiProcessingConsent/);
+    expect(core).not.toMatch(/_fetchWithAiConsent/);
   });
 
-  test('공통 요청은 동의 누락일 때 동의 후 한 번만 다시 보낸다', () => {
-    expect(core).toMatch(/detail !== 'consent_missing'/);
-    expect(core).toMatch(/return _fetchWithAiConsent\(url, opts, true\)/);
-    expect(core).toMatch(/if \(consentRetried/);
-    expect(core).toMatch(/\/persona\\\/consent/);
-    expect(core).toMatch(/ensureAiProcessingConsent\(requestAuthorization\)/);
+  test('AI 동의 카드는 현재 계정에만 저장하고 선택 결과를 기록한다', () => {
+    const home = fs.readFileSync(path.join(ROOT, 'js/ai-consent-home.js'), 'utf8');
+    expect(home).toMatch(/_sameAccount\(snapshot\)/);
+    expect(home).toMatch(/Authorization: snapshot\.authorization/);
+    expect(home).toMatch(/_remember\(aiProcessing \? 'all' : 'partial'/);
   });
 
   test('AI 비서도 동의 재시도가 적용되는 공통 요청 통로를 쓴다', () => {
@@ -61,6 +61,7 @@ describe('선택 오류 진단 동의', () => {
       cacheVersion(index, 'app-core.js'),
       cacheVersion(index, 'app-caption.js'),
       cacheVersion(groups, 'app-assistant.js'),
+      cacheVersion(index, 'js/ai-consent-home.js'),
     ];
     expect(versions.every(Boolean)).toBe(true);
     expect(new Set(versions).size).toBe(1);
