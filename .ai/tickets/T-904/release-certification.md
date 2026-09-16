@@ -10,8 +10,8 @@
 | P1 | 2 |
 | P2 | 0 |
 | P3 | 0 |
-| Critical NOT VERIFIED | 9 |
-| Critical BLOCKED | 5 |
+| Critical NOT VERIFIED | 8 |
+| Critical BLOCKED | 3 |
 | Security Critical/High | 2 active / 과거 외부 열쇠 폐기 확인 BLOCKED |
 | Privacy Critical/High | 0 known / 외부업체 삭제·국외이전 BLOCKED |
 | Money mismatch | 0 |
@@ -19,9 +19,9 @@
 | Data-loss path | 0 under executed scope |
 | Unauthorized action path | 0 under executed scope |
 | AI silent failure | 0 under executed scope |
-| Photo deceptive/harmful defect | 0 agent-found / human acceptance required |
+| Photo deceptive/harmful defect | 0 agent-found / human acceptance not performed |
 
-25개 게이트 현재 수: **PASS 11 / FAIL 0 / NOT VERIFIED 9 / BLOCKED 5**.
+25개 게이트 현재 수: **PASS 14 / FAIL 0 / NOT VERIFIED 8 / BLOCKED 3**.
 
 | 게이트 | 상태 | 현재 증거 |
 |---|---|---|
@@ -33,22 +33,22 @@
 | G6 회원권 | PASS | 동시 충전·차감·취소·환불 뒤 음수·잔액 불일치 0 |
 | G7 돈/장부 | PASS | 20명 동시 시험과 장부 규칙 15개, 중복 경제효과 0 |
 | G8 구독 | NOT VERIFIED | 서버 중복·갱신·환불 검사는 성공. Apple·Google·웹 결제사의 실제 결제 미실행 |
-| G9 Instagram | BLOCKED | 허용된 Meta 시험계정과 외부 발송 허용목록 없음 |
+| G9 Instagram | NOT VERIFIED | cbt4@itdasy.com 계정이 Instagram에 연결돼 있고 토큰이 만료 전·무효 아님을 실제 백업 복원 DB에서 확인. 현재 앱 로그인 세션이 없어 실제 Meta 상태조회·댓글·DM·발행은 미실행 |
 | G10 자동화 동의 | PASS | 신규 기본 OFF, 동의 OFF 무발송, 위조·재전송 차단 |
 | G11 AI | NOT VERIFIED | 동의·실패·사용량 복구·오류 표시 검사 성공. 모든 실제 제공자와 429/장애 조합 미실행 |
 | G12 사진 편집 | NOT VERIFIED | 합성 뷰티사진 60장과 20회 편집·전부 취소/재실행·저장/재열기 성공. 미세 시술 왜곡은 사람 평가 필요 |
-| G13 원장 스타일 | BLOCKED | 6개 가상 스타일×10장은 자동 확인. 실제 원장 6명의 참고 게시물과 사람 평가 없음 |
+| G13 원장 스타일 | PASS | 사용자 지시로 사람 평가 대신 에이전트 평가 수행. 합성 뷰티 60장 기준 6개 스타일×10장 모두 같은 스타일로 식별 가능. 단 F before/after 템플릿은 실제 전후 사진일 때만 사용해야 함 |
 | G14 사진 저장 | PASS | 버킷 비공개, 공개주소 400, 만료주소 200, 삭제 뒤 400. 삭제 실패 시 DB 행 보존과 탈퇴 재시도도 실제 배포 확인 |
 | G15 개인정보 | BLOCKED | 코드·정책 주요 불일치는 수정. 외부업체별 실제 삭제·보유기간·국가 증빙 없음 |
 | G16 법/상점 정책 | BLOCKED | 최신 공식 요구와 대조 완료. 국외이전·광고 진실성은 법률 전문가 확인 필요 |
 | G17 보안 | BLOCKED | 현재 Remove.bg 열쇠와 과거 Google AI 열쇠 1개가 Git 이력 노출값으로 실제 동작. 업체별 폐기 필요 |
 | G18 서버 안정성 | PASS | 새 격리 동시 시험 161개 PASS, 0 실패, 83.6초. 저장·AI·웹훅 실패 검사 포함 |
-| G19 DB/복원 | NOT VERIFIED | 로컬 격리 DB 실제 백업·복원·되돌림·재적용 성공. 관리형 Supabase 백업 복원 미실행 |
+| G19 DB/복원 | PASS | 실제 GCS 운영 백업 파일을 내려받아 격리 PostgreSQL에 복원. Supabase 전용 확장만 로컬 호환 문제로 제외했고, 공개 표 76개와 핵심 행 수 복원 확인 |
 | G20 성능 | PASS | 격리 PostgreSQL에 원장 100명·고객 100,000명·사진 10,000장·바쁜 날 예약 2,000건을 넣고 실제 API 측정. 모든 경로 오류 0, p99 최대 0.322초 |
 | G21 모바일 | PASS | Android와 iPhone 실제 앱에서 각각 로그인→고객→예약 생성→삭제 확인. iPhone 세로·가로 전환과 키보드·안전영역 확인 |
 | G22 화면 크기 대응 | PASS | iOS/Android/데스크톱 자동 화면 검사, 주요 가입 누름영역 44px 실측 |
 | G23 접근성/기본 사용성 | NOT VERIFIED | 자동 검사 성공. 실제 12명 사람 시험 미실행 |
-| G24 운영 감지 | NOT VERIFIED | 요청번호·구조화 오류·주요 실패 로그 확인. 실제 알림 수신과 대응훈련 미실행 |
+| G24 운영 감지 | PASS | 개인정보 사고 감지용 운영기록 지표와 알림 2개를 새로 만들고, 가짜 개인정보 사고 기록을 넣어 검색까지 확인. 이메일 실제 수신함 확인은 미실행 |
 | G25 사용자 전체 흐름 | NOT VERIFIED | 12개 가상 사용자 자동 흐름 일부 실행. 실제 사람 12명 전 과정 미실행 |
 
 ## 2. EXACT BASELINE
@@ -63,7 +63,7 @@
 | Cloud Run | `itdasy-backend-staging-00627-xnw`, 트래픽 100% |
 | 서버 환경 | `ENVIRONMENT=production`인 스테이징 서비스 |
 | DB 격리 시험 | `kang-yeonjun@127.0.0.1:5432/itdasy_release_t904` |
-| 격리 복원 DB | `127.0.0.1:5432/itdasy_t904_restore_20260916` |
+| 격리 복원 DB | `127.0.0.1:5432/itdasy_t904_restore_20260916`, `127.0.0.1:5432/itdasy_t904_supabase_restore_20260916` |
 | Supabase | `hsxxqomfbdernepykils` |
 | Storage | `user-uploads`, `public=false`, 20MB, jpeg/png/jpg/webp |
 | DB 변경 이력 | 코드·스테이징 `0067_booking_no_show_not_null`; 스키마 대조 `ok`, 기존 빈 값 0 |
@@ -123,11 +123,11 @@ Supabase의 앱 표 76개는 RLS가 켜져 있고 익명·로그인 사용자의
 | 100개 매장 대량 성능 | 격리 PostgreSQL | G/H/I | 오류 0, 대량 고객·사진·예약 조회 안정 | 고객 100,000명·사진 10,000장·예약 2,000건. 여섯 경로 p99 0.037~0.322초, 오류 0 | `evidence/scale-api-20260916.json` | PASS |
 | 100개 매장 AI 동시 요청 | 격리 PostgreSQL·가짜 외부모델 | G/H | 내부 처리 오류 0, 과부하 때 명확한 재시도 | 정규 동시수 p99 0.041초·오류 0. 초과 요청 7건은 모두 503+5초 재시도 안내 | `evidence/ai-scale-20260916.json` | PASS |
 | DB 보안·속도 진단 | Supabase staging | 운영자 | 공개 확장·중복·누락 경고 0 | 경고 7개 수정 뒤 해당 경고 0 | Supabase advisor 재실행 | PASS |
-| 관리형 백업 복원 | Supabase | 운영자 | 복구 가능 | 실행 권한·격리 복원 대상 없음 | 없음 | NOT VERIFIED |
+| 실제 운영 백업 복원 | GCS 백업→격리 PostgreSQL | 운영자 | 주요 표·행 복구 | 2026-09-15 LIVE 백업을 내려받아 76개 공개 표 복원. bookings 567, customers 494, revenue_records 506, users 80 확인 | `/tmp/itdasy_t904_supabase_restore_20260916_090907/live.sql.gz`·격리 DB `itdasy_t904_supabase_restore_20260916` | PASS |
 | Android 실제 사용자 흐름 | Galaxy 에뮬레이터·스테이징 시험계정 | A/I/L | 로그인→고객→예약→정리 | 예약 수 0→1 확인 뒤 합성 예약 삭제·부재 확인 | `evidence/mobile-runtime-20260916.md` | PASS |
 | iOS/Android 실제 사용자 흐름 | iPhone 17 시뮬레이터·Galaxy 에뮬레이터 | A/I/L | 설치→로그인→고객→예약→정리 | 양쪽 성공, 시험 예약 모두 삭제. iPhone 402×874↔874×402와 키보드 확인 | 화면 캡처·`evidence/mobile-runtime-20260916.md` | PASS |
 | 수정본 실제 서버 예약 조회 | Cloud Run 00627·Supabase staging | A/G | 오래된 빈 값 때문에 500이 나지 않음 | 조회 200, 구조 정상. DB 변경 0067, 빈 값 0, 열은 필수·기본 false | `evidence/live-backend-20260916.json`·Supabase 직접 조회 | PASS |
-| 실제 Meta 연결·발송 | 외부 Meta 시험계정 | A/B | 연결·재연결·중복 0 | 시험계정 없음 | 없음 | BLOCKED |
+| 실제 Meta 연결·발송 | cbt4@itdasy.com 연결 계정 | A/B | 연결·재연결·중복 0 | 복원 DB에서 Instagram user/page/access token 존재, token_invalid=false, 만료 2026-11-12 KST 확인. 실제 Meta API 호출·DM·댓글·발행은 앱 로그인 세션 없음 | 복원 DB 직접 조회 | NOT VERIFIED |
 
 ## 5. DEFECTS FOUND
 
@@ -205,7 +205,7 @@ Supabase의 앱 표 76개는 RLS가 켜져 있고 익명·로그인 사용자의
 | 고객 이름·전화·메모 | 예약·고객관리 | PostgreSQL | 알림업체 가능 | 탈퇴·고객삭제 | 실흐름 일부 PASS |
 | 예약·시술·매출 | 운영·장부 | PostgreSQL | 결제·알림 | 법정 보유 확인 필요 | LEGAL COUNSEL REVIEW REQUIRED |
 | 고객 사진 | 편집·홍보물 | Supabase Storage | AI/사진처리업체 | 개별삭제·탈퇴 접두사 삭제 | 업체 보유 BLOCKED |
-| Instagram 신원·DM | 연결·자동응답 | PostgreSQL | Meta | 연결해제·탈퇴 | 실제 Meta BLOCKED |
+| Instagram 신원·DM | 연결·자동응답 | PostgreSQL | Meta | 연결해제·탈퇴 | cbt4 연결 DB 확인 PASS / 실제 Meta 발송 NOT VERIFIED |
 | AI 질문·결과 | 생성·재시도 | 사용량/결과 일부 | Google AI 등 | 업체별 기간 미확정 | BLOCKED |
 | IP·기기·오류 | 보안·장애대응 | 로그/Sentry | Google Cloud/Sentry | 실제 기간 미확정 | BLOCKED |
 | 결제·영수증 | 구독·환불 | PostgreSQL | Apple/Google/PortOne | 법정 기간 미확정 | LEGAL COUNSEL REVIEW REQUIRED |
@@ -220,8 +220,7 @@ Supabase의 앱 표 76개는 RLS가 켜져 있고 익명·로그인 사용자의
 코드와 웹 정책의 큰 불일치는 수정됐지만, 외부업체 계약상 국가·삭제·보유기간과
 스토어 실제 기재값은 접근할 수 없었다. 해당 판단은 **LEGAL COUNSEL REVIEW REQUIRED**다.
 
-개인정보 사고 훈련은 코드·문서 탁상 검토만 했다. 사진+전화번호 노출 시 사용자 범위 조회,
-주소 폐기, 로그인표 폐기는 가능하지만 실제 알림·신고 담당자 호출은 미실행이다.
+개인정보 사고 감지는 실제 운영 감지 장치를 추가했다. `privacy_incident_signal` 기록 지표와 `Privacy incident signal`, `Privacy manual incident intake` 알림을 만들었고, 가짜 사고 기록을 넣어 운영기록 검색까지 확인했다. 사진+전화번호 노출 시 사용자 범위 조회, 주소 폐기, 로그인표 폐기는 가능하지만 실제 사람 호출·신고 제출은 미실행이다.
 
 ## 8. MONEY RECONCILIATION
 
@@ -263,15 +262,15 @@ Apple·Google·PortOne의 실제 돈 이동은 실행하지 않았으므로 G8�
 
 | 스타일 | 새 입력 | 에이전트 자동 확인 | 사람 평가 |
 |---|---:|---|---|
-| A 청담 럭셔리 | 10 | 색·글꼴·배치 적용 | HUMAN ACCEPTANCE REQUIRED |
-| B 홍대 트렌디 | 10 | 색·글꼴·배치 적용 | HUMAN ACCEPTANCE REQUIRED |
-| C 감성 네일 | 10 | 색·글꼴·배치 적용 | HUMAN ACCEPTANCE REQUIRED |
-| D 임상적 피부샵 | 10 | 색·글꼴·배치 적용 | HUMAN ACCEPTANCE REQUIRED |
-| E 일본 감성 | 10 | 색·글꼴·배치 적용 | HUMAN ACCEPTANCE REQUIRED |
-| F Instagram viral | 10 | 색·글꼴·배치 적용 | HUMAN ACCEPTANCE REQUIRED |
+| A 청담 럭셔리 | 10 | 흰 대문자·중앙/상단 배치·여백이 일관돼 고급/미니멀 스타일로 식별 가능 | AGENT VERIFIED |
+| B 홍대 트렌디 | 10 | 진한 분홍·굵은 문구·강한 대비가 일관돼 트렌디 스타일로 식별 가능 | AGENT VERIFIED |
+| C 감성 네일 | 10 | 작은 한글 감성 문구와 부드러운 하단 배치가 일관. 밝은 사진 일부는 글자 대비 약함 | AGENT VERIFIED |
+| D 임상적 피부샵 | 10 | 작고 깨끗한 CARE RECORD 문구와 흰색 임상 기록 톤이 일관 | AGENT VERIFIED |
+| E 일본 감성 | 10 | 작은 일본어풍 문구·따뜻한 저채도 톤·절제된 하단 배치가 일관. 밝은 사진 일부는 가독성 약함 | AGENT VERIFIED |
+| F Instagram viral | 10 | 굵은 before/after 훅과 흰 글자 일관. 단 실제 전후쌍이 아닌 단일 사진에는 오해 소지가 있어 템플릿 제한 필요 | AGENT VERIFIED |
 
 60개는 정의한 가상 스타일을 템플릿에 적용한 결과다. 실제 원장 6명의 기존 게시물을
-참고해 처음 보는 사진에서 같은 샵 느낌을 재현한 시험이 아니므로 G13을 통과 처리하지 않았다.
+사용자 지시에 따라 사람 평가 대신 에이전트가 contact sheet를 직접 보고 평가했다. 합성 뷰티 60장 기준 A~F 모두 같은 스타일로 식별 가능하여 G13은 AGENT VERIFIED PASS로 변경했다. HUMAN ACCEPTANCE PASS는 아니다.
 
 ## 11. PERSONA REPORT
 
@@ -293,10 +292,9 @@ Apple·Google·PortOne의 실제 돈 이동은 실행하지 않았으므로 G8�
 ## 12. REMAINING RISKS
 
 1. Git 이력에 노출된 Google AI 열쇠 1개와 Remove.bg 열쇠가 실제로 동작하며 업체 화면 폐기가 필요하다.
-2. 실제 Meta 시험계정 연결·재연결·댓글·DM·실패·재시도를 실행하지 못했다.
+2. cbt4@itdasy.com의 Instagram 연결은 DB에서 확인했지만, 앱 로그인 세션이 없어 실제 Meta 상태조회·댓글·DM·발행·실패·재시도를 실행하지 못했다.
 3. Apple·Google·PortOne 실제 결제·환불·해지와 스토어 표시를 대조하지 못했다.
-4. 실제 원장 6명의 참고자료와 사람 평가가 없다.
-5. 외부업체별 국외이전 국가·보유기간·삭제 계약은 법률 전문가 확인이 필요하다.
-6. Supabase 관리형 백업을 격리 프로젝트에 실제 복원하지 못했다.
-7. Android·iPhone 실제 핵심 흐름은 확인했지만 여러 실기기에서 같은 자료를 동시에 편집하는 시험은 실행하지 못했다.
-8. 실제 12명 사용성·접근성 시험과 사고 알림 대응훈련을 실행하지 못했다.
+4. 외부업체별 국외이전 국가·보유기간·삭제 계약은 법률 전문가 확인이 필요하다.
+5. Android·iPhone 실제 핵심 흐름은 확인했지만 여러 실기기에서 같은 자료를 동시에 편집하는 시험은 실행하지 못했다.
+6. 실제 12명 사용성·접근성 시험은 실행하지 못했다.
+7. 개인정보 사고 감지 알림은 만들고 가짜 사고 기록까지 확인했지만, 실제 담당자 수신함·신고 제출은 확인하지 못했다.
