@@ -313,8 +313,12 @@
   }
   // [v785] 채널별 발송 토글 — 앱 공통 규칙: 스위치 on=초록(#16B55E)
   function _tgHtml(on, kind, id) {
-    return '<span class="crq-tg" data-kind="' + kind + '" data-id="' + _esc(id) + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" style="cursor:pointer;flex-shrink:0;margin-left:auto;display:inline-block;width:32px;height:19px;border-radius:10px;position:relative;transition:background .15s;background:' + (on ? '#16B55E' : '#D1D6DB') + ';">' +
-      '<span style="position:absolute;top:2px;left:' + (on ? '15px' : '2px') + ';width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.15);transition:left .15s;"></span></span>';
+    var label = kind === 'pub' ? '공개 답글 보내기' : '비공개 답장 보내기';
+    return '<span class="crq-tg" data-kind="' + kind + '" data-id="' + _esc(id) +
+      '" role="switch" tabindex="0" aria-label="' + label + '" aria-checked="' + (on ? 'true' : 'false') +
+      '" style="cursor:pointer;flex-shrink:0;margin-left:auto;display:inline-flex;width:44px;height:44px;align-items:center;justify-content:flex-end;">' +
+      '<span aria-hidden="true" style="display:inline-block;width:32px;height:19px;border-radius:10px;position:relative;transition:background .15s;background:' + (on ? '#16B55E' : '#D1D6DB') + ';">' +
+      '<span style="position:absolute;top:2px;left:' + (on ? '15px' : '2px') + ';width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.15);transition:left .15s;"></span></span></span>';
   }
   // 말풍선 공통 스타일 (좌상단 꼬리) — [v787] 본문 15px 통일, DM은 배경만 다름
   var _BUBBLE = 'background:#F2F4F6;color:#191F28;border-radius:13px;border-top-left-radius:4px;padding:11px 13px;font-size:15px;line-height:1.55;white-space:pre-wrap;word-break:break-word;';
@@ -404,9 +408,9 @@
         : pubHtml + dmHtml) +
       // 액션
       '<div style="display:flex;gap:8px;margin-top:13px;align-items:center;">' +
-        '<button class="crq-send" data-id="' + _esc(it.id) + '"' + (sendOff ? ' disabled' : '') + ' style="flex:1;padding:12px;border:none;background:' + (sendOff ? '#E5E8EB' : '#191F28') + ';color:' + (sendOff ? '#8B95A1' : '#fff') + ';font-weight:700;font-size:15px;border-radius:13px;cursor:' + (sendOff ? 'default' : 'pointer') + ';display:flex;align-items:center;justify-content:center;gap:5px;">' + (sendOff ? '' : IC.send) + sendLabel + '</button>' +
+        '<button class="crq-send" data-id="' + _esc(it.id) + '"' + (sendOff ? ' disabled' : '') + ' style="flex:1;min-height:44px;padding:12px;border:none;background:' + (sendOff ? '#E5E8EB' : '#191F28') + ';color:' + (sendOff ? '#8B95A1' : '#fff') + ';font-weight:700;font-size:15px;border-radius:13px;cursor:' + (sendOff ? 'default' : 'pointer') + ';display:flex;align-items:center;justify-content:center;gap:5px;">' + (sendOff ? '' : IC.send) + sendLabel + '</button>' +
         '<button class="crq-edit" data-id="' + _esc(it.id) + '" style="padding:12px 14px;border:1px solid ' + (it._editing ? '#BC6675' : '#E5E8EB') + ';background:#fff;color:' + (it._editing ? '#BC6675' : '#191F28') + ';font-weight:600;font-size:15px;border-radius:13px;cursor:pointer;">' + (it._editing ? '완료' : '수정') + '</button>' +
-        '<button class="crq-discard" data-id="' + _esc(it.id) + '" style="padding:12px 6px;border:none;background:none;color:#8B95A1;font-weight:600;font-size:13px;cursor:pointer;">무시</button>' +
+        '<button class="crq-discard" data-id="' + _esc(it.id) + '" style="min-width:44px;min-height:44px;padding:12px 6px;border:none;background:none;color:#8B95A1;font-weight:600;font-size:13px;cursor:pointer;">무시</button>' +
       '</div>' +
       /* [2026-09-02] 보조 행동 — **고객이 확실히 매칭됐을 때만** 뜬다.
          미매칭 카드에는 안 그린다: 누르면 엉뚱한 고객이 열리거나 아무 일도 안 나는 버튼이 되기 때문.
@@ -539,7 +543,7 @@
       '<span style="font-size:15px;color:#191F28;"><b>대기 ' + count + '건</b>' +
         (urgent ? '<span style="color:#DC2626;font-weight:700;"> · 먼저 볼 것 ' + urgent + '건</span>' : '') +
         (_weekReplied > 0 ? '<span style="color:#8B95A1;font-weight:400;"> · 이번 주 ' + _weekReplied + '건 응대</span>' : '') + '</span>' +
-      '<button class="crq-sort" style="margin-left:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:4px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:#6B7684;padding:4px 2px;">' +
+      '<button class="crq-sort" style="margin-left:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:4px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:#6B7684;padding:4px 8px;min-height:44px;">' +
         IC.sort + (_sort === 'old' ? '오래된순' : '최신순') + '</button></div>';
   }
 
@@ -797,9 +801,9 @@
     el.setAttribute('aria-hidden', 'true');
     el.innerHTML =
       '<header class="ss-topbar">' +
-        '<button type="button" class="ss-back" data-crq-back aria-label="뒤로"><svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>' +
+        '<button type="button" class="ss-back" data-crq-back aria-label="뒤로" style="min-width:44px;min-height:44px;"><svg class="ic" aria-hidden="true"><use href="#ic-chevron-left"/></svg></button>' +
         '<div class="ss-title crq-title">댓글 문의 응대</div>' +
-        '<button type="button" class="crq-gear" aria-label="설정" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#4E5968;display:inline-flex;align-items:center;padding:4px;">' + IC.gear + '</button>' +
+        '<button type="button" class="crq-gear" aria-label="설정" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#4E5968;display:inline-flex;align-items:center;justify-content:center;padding:4px;min-width:44px;min-height:44px;">' + IC.gear + '</button>' +
         // [2026-07-22 보스] 저장 버튼 — DM 자동응답 설정창(dm-header__action)과 같은 자리·같은 역할.
         //   값은 바꾸는 즉시 로컬에 저장되지만, 원장님은 "저장을 눌러야 저장된 것"으로 느낀다.
         //   이 버튼이 서버 저장(기기 간 동기화)까지 확실히 마무리한다.
@@ -814,7 +818,7 @@
     el.addEventListener('keydown', function (e) {
       if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
       var sw = e.target.closest
-        ? e.target.closest('.crq-master,.crq-intent,.crq-emoji,.crq-quiet') : null;
+        ? e.target.closest('.crq-master,.crq-intent,.crq-emoji,.crq-quiet,.crq-tg') : null;
       if (!sw) return;
       e.preventDefault();
       sw.click();

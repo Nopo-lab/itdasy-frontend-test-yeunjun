@@ -103,6 +103,22 @@ describe('예시(SEED) 댓글', () => {
   });
 });
 
+describe('댓글 응대 화면 접근성', () => {
+  test('발송 스위치는 이름·키보드 초점·44px 누르기 영역을 가진다', async () => {
+    await boot({ connected: true, items: [item()] });
+    const toggle = body().querySelector('.crq-tg');
+    expect(toggle.getAttribute('role')).toBe('switch');
+    expect(toggle.getAttribute('aria-label')).toBe('공개 답글 보내기');
+    expect(toggle.getAttribute('tabindex')).toBe('0');
+    expect(toggle.style.width).toBe('44px');
+    expect(toggle.style.height).toBe('44px');
+
+    toggle.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(body().querySelector('.crq-tg').getAttribute('aria-checked')).toBe('false');
+  });
+});
+
 // ── ② 상태 분리 ────────────────────────────────────────────────────────────
 describe('상태 분리 — 오류를 빈 목록으로 위장하지 않는다', () => {
   test('permission_error 면 재연결 CTA 를 준다', async () => {
