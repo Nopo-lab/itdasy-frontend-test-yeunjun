@@ -55,8 +55,9 @@
 
 | 대상 | 실제 값 |
 |---|---|
-| FE 제품 코드 / 제공 소스 | `ecb80363f9b8f87a41d0f1d64230dc96ecc46eb5` |
-| FE 실제 제공 빌드 | `20260916-0155-ecb8036` |
+| FE 제품 코드 | `ecb80363f9b8f87a41d0f1d64230dc96ecc46eb5` |
+| FE 실제 제공 소스 | `dccb5c18e8f270fc96ffec053130bf0058ef959c` (이후 변경은 인증 문서뿐) |
+| FE 실제 제공 빌드 | `20260916-0210-dccb5c1` |
 | FE 주소 | https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/ |
 | BE 원격 main | `f8546a2f0caa07aec56fe3b965e03db6708f0269` |
 | BE 실제 제공 SHA | `f8546a2f` |
@@ -74,10 +75,12 @@
 | iOS 시험 빌드 | 이전 FE `a2d845f` 기반 시뮬레이터 빌드. 현재 `ecb8036` Apple 실기기 빌드 NOT VERIFIED |
 | 시각 | 2026-09-16 Asia/Seoul |
 
-FE `ecb8036`은 GitHub Pages 실제 제공판이다. BE `f8546a2f`은 Cloud Run 00630에서 100%
-제공 중이고 `/health`의 코드값·DB·스키마 대조가 모두 정상이다. 00629는 cbt4에만 AI 시간초과를
-주입한 임시 시험 버전이며, 시험 뒤 설정을 제거한 00630으로 교체했다. 네이티브 앱은 이 최신 FE로
-다시 빌드한 Apple 실기기 증거가 없으므로 현재 기준으로 PASS 처리하지 않는다.
+FE 제품 코드는 `ecb8036`이고, 그 뒤 개인정보 사고 절차와 인증 증거 문서만 병합한 `dccb5c1`이
+GitHub Pages에서 실제 제공된다. 두 커밋 사이 제품 실행 파일 차이는 없다. BE `f8546a2f`은 Cloud
+Run 00630에서 100% 제공 중이고 `/health`의 코드값·DB·스키마 대조가 모두 정상이다. 00629는
+cbt4에만 AI 시간초과를 주입한 임시 시험 버전이며, 시험 뒤 설정을 제거한 00630으로 교체했다.
+네이티브 앱은 이 최신 FE로 다시 빌드한 Apple 실기기 증거가 없으므로 현재 기준으로 PASS 처리하지
+않는다.
 
 ## 3. CAPABILITY MAP
 
