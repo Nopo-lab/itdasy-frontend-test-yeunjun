@@ -221,7 +221,7 @@
       #${ID} .dmm-pvbtn .pt b{display:block;font-size:13.5px;font-weight:800;color:#191F28}
       #${ID} .dmm-pvbtn .pt span{display:block;font-size:11px;color:#8B95A1;margin-top:2px;line-height:1.4}
       #${ID} .dmm-pvbtn .pc{flex:none;color:#C9CDD4;display:flex}
-      #${ID} .dmm-addbtn{width:100%;padding:13px;border:1px dashed rgba(0,0,0,.18);background:#fff;border-radius:14px;font-size:13px;font-weight:700;color:#4E5968;cursor:pointer;font-family:inherit;margin-top:10px}
+      #${ID} .dmm-addbtn{width:100%;min-height:44px;padding:13px;border:1px dashed rgba(0,0,0,.18);background:#fff;border-radius:14px;font-size:13px;font-weight:700;color:#4E5968;cursor:pointer;font-family:inherit;margin-top:10px}
       #${ID} .dmm-dim{opacity:.45;pointer-events:none}
       /* [2026-08-16] 두 묶음 — A:바로 나가요(중립·요금 X) / B:나한테 먼저 와요(로즈=요금 쓰는 쪽) */
       #${ID} .dmm-grp{border-radius:18px;padding:11px 10px 13px;margin-bottom:16px}
@@ -244,13 +244,16 @@
       #${ID} .dmm-gauge .num{font-size:10.5px;font-weight:700;color:#8B95A1;white-space:nowrap}
       #${ID} .dmm-gauge.warn .fil{background:var(--brand-strong,#BC6675)}
       #${ID} .dmm-gauge.warn .num{color:var(--brand-strong,#BC6675)}
-      /* 쫀득 토글 — 노브 바운스 + 누를 때 살짝 늘었다 튕김 */
-      #${ID} .dmm-tg{width:44px;height:26px;border-radius:99px;background:#E2E6EB;position:relative;flex:none;border:none;padding:0;cursor:pointer;transition:background .18s}
-      #${ID} .dmm-tg.on{background:#16B55E}
-      #${ID} .dmm-tg::after{content:"";position:absolute;top:2.5px;left:2.5px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);transition:left .24s cubic-bezier(.34,1.56,.64,1),width .12s ease}
+      /* 실제 버튼은 44×44, 안쪽 트랙만 44×26으로 보인다. */
+      #${ID} .dmm-tg{width:44px;height:44px;background:transparent;position:relative;flex:none;border:none;padding:0;cursor:pointer}
+      #${ID} .dmm-tg::before{content:"";position:absolute;top:9px;left:0;width:44px;height:26px;border-radius:99px;background:#E2E6EB;transform:none;transition:background .18s}
+      #${ID} .dmm-tg.on::before{background:#16B55E}
+      #${ID} .dmm-tg::after{content:"";position:absolute;top:11.5px;left:2.5px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);transition:left .24s cubic-bezier(.34,1.56,.64,1),width .12s ease}
       #${ID} .dmm-tg.on::after{left:20.5px}
       #${ID} .dmm-tg:active::after{width:26px}
       #${ID} .dmm-tg.on:active::after{left:15.5px}
+      #${ID} .ss-back{width:44px;height:44px}
+      #${ID} .ss-action{min-height:44px;min-width:44px}
     `;
     document.head.appendChild(s);
   }
@@ -283,8 +286,20 @@
   function _caret(open) {
     return `<span class="dmm-caret ${open ? 'open' : ''}" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>`;
   }
+  function _tgLabel(kind, key) {
+    const labels = {
+      master: '버튼과 기본 안내 자동응답',
+      ice: '대화 시작 때 메뉴 버튼 먼저 표시',
+      draft: '잇비 답장 초안 만들기',
+      autosend: '잇비가 손님에게 직접 답장',
+    };
+    if (labels[kind]) return labels[kind];
+    const it = _itemOf(key);
+    const meta = FIXED_META[key] || {};
+    return `${meta.mt || (it && it.label) || key || '메뉴'} 자동응답`;
+  }
   function _tgHtml(on, kind, key) {
-    return `<button type="button" class="dmm-tg ${on ? 'on' : ''}" data-tg="${kind}" data-key="${_esc(key || '')}" aria-pressed="${on}" aria-label="켜기"></button>`;
+    return `<button type="button" role="switch" class="dmm-tg ${on ? 'on' : ''}" data-tg="${kind}" data-key="${_esc(key || '')}" aria-checked="${on}" aria-pressed="${on}" aria-label="${_esc(_tgLabel(kind, key))}"></button>`;
   }
 
   function _itemEditor(it) {
