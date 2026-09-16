@@ -116,6 +116,7 @@
              실제 시술 메뉴(이름·가격·시간) 화면은 **여는 버튼이 앱 어디에도 없었다**(openServiceTemplates 호출부 0).
              원장이 가격·소요시간을 등록할 길이 막혀 있었다 → 기존 화면을 여는 줄만 붙인다. */ ''}
         ${_rowHTML('services', 'ic-scissors', '시술 메뉴',        '시술 이름 · 가격 · 걸리는 시간', { boxColor: 'pink' })}
+        ${_rowHTML('ai-consent', 'ic-lock', 'AI 사용 설정', '캡션·사진 기능 동의 관리', { boxColor: 'blue' })}
         ${_rowHTML('sync',     'ic-refresh-cw', '데이터 새로고침', '최신 버전·데이터로 새로고침 (껐다 켠 효과)', { boxColor: 'blue' })}
         ${_rowHTML('backup',   'ic-download', '백업 · 내보내기',  '자동 백업 · 데이터 내보내기', { boxColor: 'pink' })}
       </div>
@@ -268,6 +269,7 @@
   function _route(act) {
     if (act === 'services')  { close(); setTimeout(() => window.openServiceTemplates && window.openServiceTemplates(), 200); return; }
     if (act === 'shopinfo')  { close(); setTimeout(() => window.openShopSettings && window.openShopSettings(), 200); return; }
+    if (act === 'ai-consent') { close(); setTimeout(() => window.AiConsentHome && window.AiConsentHome.open({ force: true }), 200); return; }
     // [2026-05-24] powerview 액션 제거 — 파워뷰 기능 폐지
     if (act === 'sync')      { close(); setTimeout(() => window.forceAppUpdate && window.forceAppUpdate(), 200); return; }
     if (act === 'backup')    { close(); setTimeout(() => window.openBackupScreen && window.openBackupScreen(), 200); return; }

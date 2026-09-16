@@ -108,8 +108,8 @@ describe('③~④ 소스 계약 — 되돌리면 여기서 걸린다', () => {
     const calls = CAPTION_SRC.match(/_personaFetch\('POST', '\/persona\/generate'/g) || [];
     const guarded = CAPTION_SRC.match(/_capAssertGenerated\(await _personaFetch\('POST', '\/persona\/generate'/g) || [];
     expect(calls.length).toBeGreaterThanOrEqual(3);
-    // 동의 재시도 경로 1건은 사용자가 이미 실패를 본 뒤라 제외 — 나머지는 전부 가드가 붙는다.
-    expect(guarded.length).toBe(calls.length - 1);
+    // 동의 재시도 경로를 없앴으므로 모든 생성 요청이 같은 결과 진실성 검사를 거친다.
+    expect(guarded.length).toBe(calls.length);
   });
 
   test('생성 동시 실행 잠금이 살아 있다', () => {

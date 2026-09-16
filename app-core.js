@@ -186,39 +186,19 @@ function apiUrl(path) {
    ⚠️ Response 본문은 한 번만 읽을 수 있으므로 소비자마다 clone() 을 준다.
    GET 만 합친다. POST/PATCH/DELETE 는 각각이 의미 있는 행위라 절대 합치면 안 된다. */
 const _inflightGET = new Map();
-let _aiConsentPrompt = null;
-
-function _readAuthorization(headers) {
-  if (!headers) return '';
-  if (typeof headers.get === 'function') return headers.get('Authorization') || '';
-  return headers.Authorization || headers.authorization || '';
-}
-
-async function _fetchWithAiConsent(url, opts, consentRetried) {
-  const requestAuthorization = _readAuthorization(opts && opts.headers);
-  const res = await fetch(url, opts);
-  if (consentRetried || res.status !== 400 || /\/persona\/consent(?:\?|$)/.test(url)) return res;
-  let detail = '';
-  try { detail = String(((await res.clone().json()) || {}).detail || ''); } catch (e) {
-    console.warn('[ai-consent] 응답 확인 실패:', e);
-  }
-  if (detail !== 'consent_missing' || !requestAuthorization) return res;
-  const agreed = await ensureAiProcessingConsent(requestAuthorization);
-  if (!agreed) return res;
-  if (_readAuthorization(authHeader()) !== requestAuthorization) return res;
-  return _fetchWithAiConsent(url, opts, true);
-}
 
 function apiFetch(path, opts) {
   const url = apiUrl(path);
   const method = ((opts && opts.method) || 'GET').toUpperCase();
-  if (method !== 'GET') return _fetchWithAiConsent(url, opts, false);
+  // AI 동의는 요청마다 묻지 않고 가입/홈 동의 카드에서만 저장한다.
+  // 서버가 consent_missing 을 반환하면 각 화면이 홈 카드로 안내한다.
+  if (method !== 'GET') return fetch(url, opts);
   // 인증 헤더가 다르면 다른 요청이다(계정 전환 중 섞임 방지)
   const auth = (opts && opts.headers && (opts.headers.Authorization || opts.headers.authorization)) || '';
   const key = url + '\n' + String(auth).slice(-24);
   const pending = _inflightGET.get(key);
   if (pending) return pending.then((r) => r.clone());
-  const p = _fetchWithAiConsent(url, opts, false).finally(() => { _inflightGET.delete(key); });
+  const p = fetch(url, opts).finally(() => { _inflightGET.delete(key); });
   _inflightGET.set(key, p);
   return p.then((r) => r.clone());
 }
@@ -2619,6 +2599,7 @@ async function signup() {
   const password = document.getElementById('signupPassword').value;
   const referral_code = document.getElementById('signupRef').value.trim() || null;
   const agree = document.getElementById('signupAgree').checked;
+  const aiConsentEl = document.getElementById('signupAiConsent');
   // PIPA §22-2 — 만 14세 이상 자체 확인 체크박스 (없으면 하위호환으로 통과)
   const ageOver14El = document.getElementById('signupAgeOver14');
   const ageOver14 = ageOver14El ? ageOver14El.checked : true;
@@ -2644,10 +2625,12 @@ async function signup() {
     if (errBelow) errBelow.remove();
   });
   try {
+    const signupPayload = { email, password, referral_code, age_over_14: ageOver14, verification_ticket: _suVerify.ticket };
+    if (aiConsentEl) signupPayload.ai_processing_consent = aiConsentEl.checked;
     const res = await apiFetch('/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, referral_code, age_over_14: ageOver14, verification_ticket: _suVerify.ticket }),
+      body: JSON.stringify(signupPayload),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -3426,7 +3409,7 @@ function getSel(id) {
 // ─────────────────────────────────────────────
 //  Service Worker 등록 — 새 버전 배포 시 캐시 자동 갱신
 // ─────────────────────────────────────────────
-window.APP_BUILD = '20260915-itbi-context-routing';
+window.APP_BUILD = '20260916-ai-consent-home';
 function _updateVersionBadge(swVer) {
   const el = document.getElementById('appVersionBadge');
   if (!el) return;
@@ -4112,53 +4095,6 @@ function _inlineConfirm(msg, onYes, onNo, opts) {
   el.querySelector('.bk-confirm-toast__cancel').onclick = () => { el.remove(); if (typeof onNo === 'function') onNo(); };
   el.querySelector('.bk-confirm-toast__ok').onclick = () => { el.remove(); onYes(); };
 }
-
-const ensureAiProcessingConsent = function (expectedAuthorization) {
-  if (!expectedAuthorization || _readAuthorization(authHeader()) !== expectedAuthorization) {
-    return Promise.resolve(false);
-  }
-  if (_aiConsentPrompt) {
-    return _aiConsentPrompt.authorization === expectedAuthorization
-      ? _aiConsentPrompt.promise
-      : Promise.resolve(false);
-  }
-  const promise = new Promise((resolve) => {
-    _inlineConfirm(
-      'AI 기능을 사용하면 입력한 글·사진·음성이 Google Cloud Vertex AI(Gemini) 등 해당 기능의 외부 처리업체로 전송됩니다. 개인정보처리방침의 제공자·처리 국가·보유기간을 확인하고 동의하시겠어요?',
-      async () => {
-        try {
-          if (_readAuthorization(authHeader()) !== expectedAuthorization) {
-            if (window.showToast) window.showToast('계정이 바뀌어 AI 동의를 취소했어요. 다시 시도해 주세요.');
-            resolve(false);
-            return;
-          }
-          const res = await apiFetch('/persona/consent', {
-            method: 'POST',
-            headers: { Authorization: expectedAuthorization, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              pipa_collect: true,
-              ai_processing: true,
-              versions: { pipa_collect: '1.0', ai_processing: '2.0' },
-            }),
-          });
-          if (!res.ok) throw new Error('consent_save_failed');
-          resolve(_readAuthorization(authHeader()) === expectedAuthorization);
-        } catch (e) {
-          console.warn('[ai-consent] 저장 실패:', e);
-          if (window.showToast) window.showToast('동의를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
-          resolve(false);
-        }
-      },
-      () => resolve(false),
-      { okText: '동의하고 계속', cancelText: '지금은 안 함' }
-    );
-  });
-  _aiConsentPrompt = { authorization: expectedAuthorization, promise };
-  promise.finally(() => {
-    if (_aiConsentPrompt && _aiConsentPrompt.promise === promise) _aiConsentPrompt = null;
-  });
-  return promise;
-};
 
 function _inlinePrompt(msg, defaultVal, onSubmit) {
   _dismissOpenInlineDialogs();
