@@ -2,8 +2,9 @@
 
 ## 기준 버전
 
-- FE main: `ecb80363f9b8f87a41d0f1d64230dc96ecc46eb5`
-- FE 실제 제공 빌드: `20260916-0155-ecb8036`
+- FE 제품 코드: `ecb80363f9b8f87a41d0f1d64230dc96ecc46eb5`
+- FE 실제 제공 소스: `dccb5c18e8f270fc96ffec053130bf0058ef959c` (이후 차이는 문서뿐)
+- FE 실제 제공 빌드: `20260916-0210-dccb5c1`
 - BE main·제공 SHA: `f8546a2f0caa07aec56fe3b965e03db6708f0269`
 - Cloud Run 최종 버전: `itdasy-backend-staging-00630-gvt`, 트래픽 100%
 - DB 변경 이력: `0068_comment_event_occurred_at`
@@ -73,4 +74,3 @@ cbt4 사용자 번호 5에만 시험 오류가 적용되도록 Cloud Run 버전 
 - BE 순서 섞기: 4,621개 성공, 299개 제외, 1개 예상 실패
 - 격리 PostgreSQL 닫힌 검사: 214개 성공, 제외 0
 - 매장 분리 전용 검사: 172개 성공, 24개 제외. 별도 필수 99개 성공, 제외 0
-
