@@ -106,32 +106,36 @@ window.__LATEST_BUILD__ = '20260915-itbi-context-routing';
       else document.addEventListener('DOMContentLoaded', _addSig);
     }
   } catch (_sk) { void _sk; }
-  setTimeout(function(){
-    // [v126] app-core.js 가 truncated 돼서 window.APP_BUILD 자체가 undefined 인 케이스도
-    // stale 로 간주해 캐시·SW 일괄 청소 후 reload. 기존 mismatch 가드는 APP_BUILD 정의 시에만
-    // 발동해서 정작 가장 흔한 fail 모드(파일 잘림) 를 못 잡았음.
-    if (sessionStorage.getItem('build_busted')) return;
-    var stale = false;
-    if (!window.APP_BUILD) {
-      console.warn('[BUILD] APP_BUILD 미정의 — app-core.js 로드 실패 의심, 캐시·SW 일괄 청소');
-      stale = true;
-    } else if (window.APP_BUILD !== window.__LATEST_BUILD__) {
-      console.warn('[BUILD] stale JS 감지 — HTML=' + window.__LATEST_BUILD__ + ' / JS=' + window.APP_BUILD);
-      stale = true;
+  // [T-910] 이 검사를 head 파싱 시작 1.5초 뒤에 실행하면 느린 망에서는 정상 app-core.js가
+  // 아직 내려오는 중인데도 "로드 실패"로 오인해 캐시를 지우고 새로고침한다. window load는
+  // 동기 script의 성공 또는 실패가 확정된 뒤 발생하므로, 그때 한 번만 검사한다.
+  (function () {
+    function checkBundleBuild() {
+      if (sessionStorage.getItem('build_busted')) return;
+      var stale = false;
+      if (!window.APP_BUILD) {
+        console.warn('[BUILD] APP_BUILD 미정의 — app-core.js 로드 실패 의심, 캐시·SW 일괄 청소');
+        stale = true;
+      } else if (window.APP_BUILD !== window.__LATEST_BUILD__) {
+        console.warn('[BUILD] stale JS 감지 — HTML=' + window.__LATEST_BUILD__ + ' / JS=' + window.APP_BUILD);
+        stale = true;
+      }
+      if (!stale) return;
+      sessionStorage.setItem('build_busted', '1');
+      var jobs = [];
+      if ('caches' in window) {
+        jobs.push(caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }));
+      }
+      if ('serviceWorker' in navigator) {
+        jobs.push(navigator.serviceWorker.getRegistrations().then(function(regs){
+          return Promise.all((regs || []).map(function(r){ try { return r.unregister(); } catch (err) { console.warn('[BUILD] unregister failed', err); return Promise.resolve(); } }));
+        }));
+      }
+      Promise.all(jobs).catch(function(err){ console.warn('[BUILD] cache reset failed', err); }).then(function(){ location.reload(); });
     }
-    if (!stale) return;
-    sessionStorage.setItem('build_busted', '1');
-    var jobs = [];
-    if ('caches' in window) {
-      jobs.push(caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }));
-    }
-    if ('serviceWorker' in navigator) {
-      jobs.push(navigator.serviceWorker.getRegistrations().then(function(regs){
-        return Promise.all((regs || []).map(function(r){ try { return r.unregister(); } catch (err) { console.warn('[BUILD] unregister failed', err); return Promise.resolve(); } }));
-      }));
-    }
-    Promise.all(jobs).catch(function(err){ console.warn('[BUILD] cache reset failed', err); }).then(function(){ location.reload(); });
-  }, 1500);
+    if (document.readyState === 'complete') checkBundleBuild();
+    else window.addEventListener('load', checkBundleBuild, { once: true });
+  })();
 
   // ── [출시감사 2026-08-02] 서버 진실 대조 ──────────────────────────────────
   // 위의 두 가드(HTML↔JS, SW↔번들)는 **내부 정합성**만 본다. 그래서 옛 index.html 과
