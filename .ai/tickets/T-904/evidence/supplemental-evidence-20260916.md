@@ -1,5 +1,8 @@
 # T-904 보충 증거 — 2026-09-16
 
+> 이 파일은 오전 시점 증거다. 이후 실제 Instagram·AI 장애·접근성 재검증은
+> `runtime-closeout-20260916.md`가 이어받으며, 아래 “실행하지 않았다” 항목보다 나중 증거다.
+
 ## 1. Supabase/백업 복원
 
 - GitHub Actions `Supabase Daily Backup` 최신 성공 실행: `35020540689`, 2026-09-15 20:35:12 UTC.
