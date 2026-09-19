@@ -68,4 +68,17 @@ describe('홈 AI 동의 카드 실제 동작', () => {
     expect(localStorage.getItem('itdasy_ai_consent_decision_v1:42')).toBeNull();
     expect(window.showToast).toHaveBeenCalledWith(expect.stringContaining('계정이 바뀌어'));
   });
+
+  test('상태 조회는 Cache-Control 헤더 없이 _nc 쿼리로 캐시를 무효화한다 (CORS 프리플라이트 회피, T-912 회귀)', async () => {
+    mountCard();
+    await window.AiConsentHome.refresh({ force: true });
+    const get = window.apiFetch.mock.calls.find(
+      call => typeof call[0] === 'string' && call[0].startsWith('/persona/consent') && call[1] && call[1].method === 'GET');
+    expect(get).toBeTruthy();
+    // Cache-Control 을 헤더로 붙이면 교차 출처 GET 이 CORS 프리플라이트를 타는데,
+    // 백엔드 allow_headers 에 Cache-Control 이 없어 400 으로 막혔다(카드가 '불러오지 못했어요'로 고정).
+    const headerKeys = Object.keys((get[1] && get[1].headers) || {}).map(k => k.toLowerCase());
+    expect(headerKeys).not.toContain('cache-control');
+    expect(get[0]).toMatch(/[?&]_nc=/);
+  });
 });

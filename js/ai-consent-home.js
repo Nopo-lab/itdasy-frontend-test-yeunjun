@@ -133,9 +133,12 @@
   }
 
   async function _loadStatus(snapshot) {
-    const res = await window.apiFetch('/persona/consent', {
+    // 캐시 무효화는 쿼리 파라미터(_nc)로 한다. `Cache-Control` 헤더를 붙이면
+    // 교차 출처 요청이 CORS 프리플라이트를 타는데, 백엔드 allow_headers 에
+    // Cache-Control 이 없어 400 으로 막혀 상태 조회가 항상 실패했다(T-912 회귀).
+    const res = await window.apiFetch(`/persona/consent?_nc=${Date.now()}`, {
       method: 'GET',
-      headers: { Authorization: snapshot.authorization, 'Cache-Control': 'no-cache' },
+      headers: { Authorization: snapshot.authorization },
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(String(data.detail || `HTTP ${res.status}`));
