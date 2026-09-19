@@ -65,13 +65,31 @@
   function _toast(message) {
     if (typeof window.showToast === 'function') window.showToast(message);
   }
+  // [T-915] 쿠키/오류진단 동의를 이 카드가 같이 받는다.
+  //   첫 화면에 동의 팝업이 2개 겹쳐 뜨던 걸 하나로 합쳤다(연준님 지적 2026-09-20).
+  //   카드가 뜨면 배너를 접고, 카드가 안 뜨기로 하면 배너를 되돌려 준다.
+  function _cookieConsent() {
+    try { return window.itdasyConsent || null; } catch (e) { return null; }
+  }
+  function _deferCookieBanner() {
+    try { _cookieConsent()?.deferToCombined?.(); }
+    catch (e) { console.warn('[ai-consent-home] 배너 접기 실패:', e); }
+  }
+  function _releaseCookieBanner() {
+    try { _cookieConsent()?.releaseDeferred?.(); }
+    catch (e) { console.warn('[ai-consent-home] 배너 복귀 실패:', e); }
+  }
+
   function _hide() {
     const card = _card();
     if (card) card.hidden = true;
+    // 이 카드가 안 뜨면 쿠키 동의는 원래대로 배너가 받아야 한다.
+    _releaseCookieBanner();
   }
   function _show() {
     const card = _card();
     if (card) card.hidden = false;
+    _deferCookieBanner();
     return card;
   }
 
@@ -115,8 +133,8 @@
     _text('[data-ai-consent-title]', compact ? 'AI 기능은 꺼져 있어요' : 'AI 기능을 켜둘까요?');
     _text('[data-ai-consent-copy]', compact
       ? '캡션·사진 설명을 쓰려면 AI 사용 동의를 켜주세요. 동의 전에는 입력 내용이 외부 처리업체로 전송되지 않아요.'
-      : '캡션·사진 설명·음성 기능을 쓰면 입력한 내용이 Google Cloud Vertex AI(Gemini) 등 외부 처리업체로 전송됩니다. 처리 목적과 보유기간은 개인정보처리방침에서 확인할 수 있어요.');
-    _text('[data-ai-consent-status]', compact ? '현재 설정: 필수 기능만 사용' : '전체 동의하면 AI 기능을 사용할 수 있어요. 필수 기능만 선택하면 AI는 꺼져 있어요.');
+      : '캡션·사진 설명·음성 기능을 쓰면 입력한 내용이 Google Cloud Vertex AI(Gemini) 등 외부 처리업체로 전송됩니다. 앱 오류가 났을 때 원인을 빨리 찾기 위한 진단 정보도 함께 보내요. 처리 목적과 보유기간은 개인정보처리방침에서 확인할 수 있어요.');
+    _text('[data-ai-consent-status]', compact ? '현재 설정: 필수 기능만 사용' : '전체 동의하면 AI 기능과 오류 진단을 켜요. 필수 기능만 선택하면 둘 다 꺼져 있어요. 설정에서 언제든 바꿀 수 있어요.');
 
     const all = card.querySelector('[data-ai-consent-action="all"], [data-ai-consent-action="retry"]');
     const partial = card.querySelector('[data-ai-consent-action="partial"]');
@@ -197,6 +215,12 @@
       if (!_sameAccount(snapshot)) throw new Error('account_changed');
       _status = { pipa_collect: true, ai_processing: !!aiProcessing, all_agreed: !!aiProcessing };
       _remember(aiProcessing ? 'all' : 'partial', snapshot.userId);
+      // [T-915] 합친 동의 — '전체 동의' 는 오류 진단(Sentry)까지, '필수 기능만' 은 둘 다 끈다.
+      //   카드 안내문이 두 가지를 모두 적고 있으므로 여기서 같이 반영한다.
+      try {
+        const cc = _cookieConsent();
+        if (cc) { if (aiProcessing) cc.grant(); else cc.deny(); }
+      } catch (e) { console.warn('[ai-consent-home] 오류진단 동의 반영 실패:', e); }
       _forceOpen = false;
       _renderStatus(_status);
       _toast(aiProcessing ? 'AI 기능을 켰어요.' : '필수 기능만 사용하도록 설정했어요.');

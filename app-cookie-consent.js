@@ -107,6 +107,11 @@
     if (b) b.remove();
   }
 
+  // [T-915] 홈 AI 동의 카드가 같은 화면에서 함께 받기로 하면 배너를 띄우지 않는다.
+  //   첫 화면에 동의 팝업이 2개(쿠키 배너 + AI 카드) 겹쳐 뜨던 걸 하나로 합쳤다.
+  //   판단은 AI 카드가 한다 — 그쪽만 '지금 물어볼 게 있는지'(서버 동의 상태)를 안다.
+  let _deferred = false;
+
   // 공개 API
   window.itdasyConsent = {
     isAnalyticsAllowed() {
@@ -119,7 +124,18 @@
     },
     grant() { _set('granted'); _remove(); },
     deny() { _set('denied'); _remove(); },
-    showBanner() { _injectBanner(); },
+    showBanner() { _deferred = false; _injectBanner(); },
+
+    // AI 동의 카드가 "내가 같이 받을게" 라고 알릴 때.
+    deferToCombined() { _deferred = true; _remove(); },
+
+    // AI 카드가 결국 안 뜨기로 했을 때(이미 동의함·비로그인 등) 배너를 되돌린다.
+    //   아직 분석 동의가 미결정일 때만 띄운다.
+    releaseDeferred() {
+      if (!_deferred) return;
+      _deferred = false;
+      if (!_get().state) _injectBanner();
+    },
     reset() {
       localStorage.removeItem(KEY);
       localStorage.removeItem(KEY_AT);
@@ -139,7 +155,31 @@
     // EU: 첫 방문 시 항상 배너 노출 (opt-in 필수)
     // 선택 오류 진단은 지역과 무관하게 사용자가 직접 허용하기 전까지 끈다.
     _applyState('denied');
+
+    // [T-915] 로그인 상태이고 홈에 AI 동의 카드가 있으면, 그쪽이 결론 낼 때까지 기다린다.
+    //   카드가 `deferToCombined()`/`releaseDeferred()` 로 알려준다.
+    if (_aiCardMayHandle()) {
+      _deferred = true;
+      // 안전장치: AI 모듈이 끝내 아무 말도 안 하면(로드 실패·예외) 동의를 영영 못 받는다.
+      //   그건 조용한 실패라 더 나쁘다 — 8초 뒤엔 배너를 띄운다.
+      setTimeout(() => {
+        if (_deferred && !_get().state) { _deferred = false; _injectBanner(); }
+      }, 8000);
+      return;
+    }
     _injectBanner();
+  }
+
+  /** 홈 AI 동의 카드가 이 동의를 같이 받아줄 수 있는 상황인가. */
+  function _aiCardMayHandle() {
+    try {
+      if (!document.getElementById('aiConsentHomeCard')) return false;
+      // 카드는 로그인 상태에서만 뜬다(서버에 동의 상태를 물어봐야 한다).
+      return typeof window.getToken === 'function' && !!window.getToken();
+    } catch (e) {
+      console.warn('[cookie-consent] AI 카드 확인 실패:', e);
+      return false;
+    }
   }
 
   if (document.readyState === 'loading') {

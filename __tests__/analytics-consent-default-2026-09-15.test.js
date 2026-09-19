@@ -16,8 +16,22 @@ function cacheVersion(source, filename) {
 
 describe('선택 오류 진단 동의', () => {
   test('한국을 포함한 모든 지역에서 직접 허용 전에는 꺼 둔다', () => {
-    expect(consent).toMatch(/_applyState\('denied'\);\s*_injectBanner\(\);/);
+    // [T-915] 예전엔 `_applyState('denied'); _injectBanner();` 두 줄이 **붙어 있는지**를 봤다.
+    //   동의 표면을 하나로 합치면서 그 사이에 양보(defer) 분기가 들어가 깨졌는데,
+    //   지키려던 성질은 "허용 전에는 끈다" 이지 "두 줄이 붙어 있다" 가 아니다.
+    //   그래서 _init 안에서 **끄기가 배너/양보보다 먼저 오는지**로 바꿔 검사한다.
+    const init = consent.slice(consent.indexOf('function _init()'));
+    expect(init).toMatch(/_applyState\('denied'\);/);
+    const offAt = init.indexOf("_applyState('denied');");
+    const bannerAt = init.indexOf('_injectBanner();');
+    expect(offAt).toBeGreaterThan(-1);
+    expect(bannerAt).toBeGreaterThan(offAt);   // 끈 다음에 물어본다
+
+    // 지역을 보고 자동으로 켜주는 경로가 없어야 한다
     expect(consent).not.toMatch(/if \(region === 'EU'\)[\s\S]*else[\s\S]*_set\('granted'\)/);
+    // 사용자가 직접 고르는 경로(버튼·공개 API) 밖에서 granted 로 저장하지 않는다
+    const grants = consent.match(/_set\('granted'\)/g) || [];
+    expect(grants.length).toBe(2);   // __cc_accept 버튼 1 + window.itdasyConsent.grant() 1
   });
 
   test('동의 확인 코드를 읽지 못해도 오류 진단을 켜지 않는다', () => {
