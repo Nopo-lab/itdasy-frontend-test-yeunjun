@@ -545,8 +545,14 @@
   // [v212] PC 한 화면 분할 판정 — 사이드바(232px) + 좌목록(380px) + 디테일(통계 3카드) 까지 모두 표시되려면
   // 전체 viewport 가 충분히 넓어야 함. 부족하면 모바일 풀화면 시트로 폴백.
   // 1280 = 232(sidebar) + 380(pc-l) + 64(padding) + 600(min detail) 근사.
-  const _PC_BREAKPOINT = 1280;
-  function _isPC() { return window.innerWidth >= _PC_BREAKPOINT; }
+  const _PC_BREAKPOINT = 768;   // CSS 셸과 동일 (T-913)
+  const _PC_MIN_HEIGHT = 600;   // CSS 셸과 동일 (T-913)
+  // [T-913] PC 판정은 CSS 셸(@media (width >= 768px) and (height >= 600px),
+  //   style-responsive.css:26)과 **같은 조건**이어야 한다. 어긋나면 그 틈의 기기가
+  //   '데스크톱 껍데기 안에 폰 화면'을 그린다 — 아이패드 세로(1032)에서 실측으로
+  //   화면 높이의 52%(717px)가 빈 공간이었다(모바일 월 그리드는 행 높이가 고정).
+  //   높이 조건을 빼면 폰 가로(예: 956x440)가 데스크톱 UI 를 받는다.
+  function _isPC() { return window.innerWidth >= _PC_BREAKPOINT && window.innerHeight >= _PC_MIN_HEIGHT; }
 
   // ── UI: 오버레이 시트 (v4 — 목업 mockup-customer-v4.html) ───────
   function _ensureSheet() {

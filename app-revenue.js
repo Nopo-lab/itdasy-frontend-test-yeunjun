@@ -16,7 +16,8 @@
   const PERIODS = ['day', 'week', 'month'];
   const PERIOD_LABEL = { day: '일', week: '주', month: '월' };
   let _customRange = { from: null, to: null };
-  const PC_BREAKPOINT = 1100;
+  const PC_BREAKPOINT = 768;   // CSS 셸과 동일 (T-913)
+  const PC_MIN_HEIGHT = 600;   // CSS 셸과 동일 (T-913)
 
   // ── 날짜 helper (ISO YYYY-MM-DD 기준) ────────────────────
   function _pad2(n) { return String(n).padStart(2, '0'); }
@@ -115,7 +116,12 @@
   const _now = () => new Date().toISOString();
   const _uuid = () => (crypto?.randomUUID ? crypto.randomUUID() : 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10));
   const _esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
-  const _isPC = () => window.innerWidth >= PC_BREAKPOINT;
+  // [T-913] PC 판정은 CSS 셸(@media (width >= 768px) and (height >= 600px),
+  //   style-responsive.css:26)과 **같은 조건**이어야 한다. 어긋나면 그 틈의 기기가
+  //   '데스크톱 껍데기 안에 폰 화면'을 그린다 — 아이패드 세로(1032)에서 실측으로
+  //   화면 높이의 52%(717px)가 빈 공간이었다(모바일 월 그리드는 행 높이가 고정).
+  //   높이 조건을 빼면 폰 가로(예: 956x440)가 데스크톱 UI 를 받는다.
+  const _isPC = () => window.innerWidth >= PC_BREAKPOINT && window.innerHeight >= PC_MIN_HEIGHT;
   const _formatMan = (n) => {
     const v = +n || 0;
     if (v >= 10000) return (v / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 }) + '만원';
