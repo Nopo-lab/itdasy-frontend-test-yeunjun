@@ -69,6 +69,12 @@
     const drawer = document.getElementById(DRAWER_ID);
     const backdrop = document.getElementById(BACKDROP_ID);
     if (!drawer || !backdrop || _isOpen) return;
+    /* [2026-09-21 CBT] 열 때마다 다시 그린다. _init 에서 한 번만 그리면
+       app-plan.js 의 `_currentPlan` 이 아직 초기값 'free' 인 시점이라
+       (_loadStatus 가 비동기 + 1.5초 지연 재시도) 유료 계정도 '체험' 으로 굳는다.
+       샵 이름도 마찬가지로 나중에 채워진다. 드로어는 자주 열리지 않으니
+       열 때 한 번 다시 읽는 비용이 싸다. */
+    _hydrateShopHeader();
     _isOpen = true;
     document.body.style.overflow = 'hidden';
     drawer.classList.add('is-open');
@@ -112,11 +118,25 @@
       const avatarEl = document.querySelector('.shop-drawer .shop-avatar');
       const planEl = document.querySelector('.shop-drawer .shop-plan');
       if (!nameEl) return;
+      /* [2026-09-21 CBT] 여기가 **읽는 키를 아무도 쓰지 않아서** 통째로 폴백만 타고 있었다.
+         실측(에뮬레이터, membership 계정 cbt01):
+           window.__plan            → undefined  (전 코드베이스에 `__plan =` 대입 0건)
+           localStorage.itdasy_plan_name → null  (읽는 곳만 여기, 쓰는 곳 0건)
+           → 하드코딩 '체험' 으로 떨어져 **유료 사용자 전원이 메뉴에서 '체험'** 으로 보였다.
+             정작 상단 헤더는 app-plan.js 가 '잇데이 Pro' 를 제대로 그리고 있어서
+             같은 화면에 플랜이 두 개로 갈렸다.
+           localStorage.itdasy_shop_name → null  (app-shop-settings 가 저장할 때만 생김)
+           → 샵 설정을 한 번도 안 연 계정은 '내 샵'. 정작 `shop_name` 키엔
+             '로즈네일 스튜디오' 가 들어 있었다.
+         정본을 먼저 본다: 플랜은 app-plan.js 의 getCurrentPlanLabel(),
+         샵 이름은 실제로 채워지는 `shop_name` 키(app-shop-settings.js:309 와 같은 순서). */
       const shopName =
         (window.__shop && window.__shop.name) ||
         localStorage.getItem('itdasy_shop_name') ||
+        localStorage.getItem('shop_name') ||
         '내 샵';
       const plan =
+        (typeof window.getCurrentPlanLabel === 'function' && window.getCurrentPlanLabel()) ||
         (window.__plan && window.__plan.name) ||
         localStorage.getItem('itdasy_plan_name') ||
         '체험';
