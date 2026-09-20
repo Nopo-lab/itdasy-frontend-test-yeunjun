@@ -1299,6 +1299,28 @@ function _bindLoginSocialButtons() {
   }
 }
 
+/* [2026-09-21 CBT] 인증 직후 한 번에 되살리는 훅.
+   **홈만 고쳐져 있었다.** 2026-08-17 수정은 같은 원인을 홈에만 막아줬고
+   플랜 배지와 '내 샵 관리' 는 그대로 남아 있었다.
+   실측(iOS 시뮬 · 심사 데모계정 review@itdasy.com · v1311):
+     첫 로그인 직후 → 배지 '체험', 내 샵 관리가 '내 샵 / 오늘 0건 / 0원'
+     앱을 껐다 켜면 → '잇데이 Pro / 오늘 1건 / 564,000원' 으로 정상
+   원인: 부팅 때 토큰이 없어 app-plan 의 _loadStatus() 와 app-myshop-v3 의
+   /assistant/brief 가 각각 실패한 채 기본값('free', 빈 brief)으로 굳는데,
+   로그인 성공 후 그 둘을 다시 부르는 훅이 없었다
+   (refreshPlanStatus 호출부는 결제 성공 경로 하나뿐이었다).
+   🔴 앱 심사관이 밟는 경로가 정확히 이것이다 — 설치 → 첫 로그인 → 둘러보기.
+      Apple 2.1(App Completeness) 로 직결되므로 여기서 막는다.
+   플랜만 다시 부르면 연쇄로 풀린다: app-plan 이 로드 후 'itdasy:plan-updated' 를
+   쏘고 app-myshop-v3 가 그걸 듣고 스스로 다시 그린다. brief 를 쓰는 다른 시트까지
+   한 번에 되살리려고 data-changed 도 같이 쏜다. */
+function refreshAfterAuth() {
+  try { if (window.HomeV41 && window.HomeV41.refresh) window.HomeV41.refresh(); } catch (_e) { /* ignore */ }
+  try { if (window.refreshPlanStatus) window.refreshPlanStatus(); } catch (_e) { /* ignore */ }
+  try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'auth' } })); } catch (_e) { /* ignore */ }
+}
+window.refreshAfterAuth = refreshAfterAuth;
+
 function setToken(t) {
   /* [2026-09-01 SESS-1] 새 토큰이 들어오면 "세션 죽음" 표시를 푼다.
      이걸 빼먹으면 재로그인에 성공해도 app-core 의 죽은세션 차단이 계속 걸려
@@ -2238,7 +2260,7 @@ async function login() {
     document.getElementById('lockOverlay').classList.add('hidden');
     // [2026-08-17 보스] 재로그인 후 홈 강제 재렌더 — 만료 토큰으로 부팅해 홈 브리프가 401 로
     //   실패 카드를 띄운 뒤엔, 로그인해도 재렌더 훅이 없어 카드가 고정됐다("맨날 연결 불안정" 신고).
-    if (window.HomeV41 && window.HomeV41.refresh) { try { window.HomeV41.refresh(); } catch (_e) { /* ignore */ } }
+    refreshAfterAuth();   // [2026-09-21] 홈 + 플랜 + 내 샵 관리 한 번에
     // [UX-LOAD] 로그인 후 로딩 화면 표시 → preload + 최소시간 + 인사 후 쫀득 해제
     var _lo = document.getElementById('appLoadingOverlay');
     if (_lo) { _lo.style.display = 'flex'; window._loadShownAt = Date.now(); }
@@ -2682,7 +2704,7 @@ async function signup() {
     _setAuthGateLocked(false);
     checkOnboarding().catch(() => {});
     document.getElementById('lockOverlay').classList.add('hidden');
-    if (window.HomeV41 && window.HomeV41.refresh) { try { window.HomeV41.refresh(); } catch (_e) { /* ignore */ } }   // [2026-08-17] 가입 직후 홈 재렌더
+    refreshAfterAuth();   // [2026-08-17→2026-09-21] 가입 직후: 홈 + 플랜 + 내 샵 관리
     checkInstaStatus(true);
   } catch (e) {
     errEl.textContent = _friendlyErr(e, '가입 실패');
@@ -3092,7 +3114,7 @@ window.addEventListener('load', async function() {
         if (_lo2) { _lo2.style.display = 'flex'; window._loadShownAt = Date.now(); }
         _setAuthGateLocked(false);
         checkOnboarding().catch(() => {});
-        if (window.HomeV41 && window.HomeV41.refresh) { try { window.HomeV41.refresh(); } catch (_e) { /* ignore */ } }   // [2026-08-17] 생체 로그인 후 홈 재렌더
+        refreshAfterAuth();   // [2026-08-17→2026-09-21] 생체 로그인 후: 홈 + 플랜 + 내 샵 관리
         checkInstaStatus(true);
         await _finishLoginLoad(true);
       }
