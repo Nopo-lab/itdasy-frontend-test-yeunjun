@@ -64,6 +64,19 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"
         tools:node="remove" />
 
+    <!-- [2026-09-20] 음성 입력(잇비·캡션 받아쓰기)용. 실측으로 확정한 것 2가지:
+         ① 안드로이드 15 WebView 는 webkitSpeechRecognition 을 **노출한다** —
+            그래서 앱의 `_voiceSupported()` 가 true 가 되고 "미지원" 폴백이 안 뜬다.
+            그런데 start() 하면 `error: not-allowed` 로 죽었다(CDP 로 실측).
+            사용자에겐 "마이크 권한이 필요해요, 브라우저 설정을 확인해주세요" 가 떴는데
+            안드로이드엔 그런 설정이 없어서 **고칠 수 없는 안내**였다.
+         ② Capacitor 의 BridgeWebChromeClient.onPermissionRequest 는 AUDIO_CAPTURE 요청에
+            RECORD_AUDIO 와 MODIFY_AUDIO_SETTINGS 를 **함께** 올리고, 콜백이 전체 AND 로
+            판정한다(granted=false if any false). 둘 중 하나라도 매니페스트에 없으면
+            통째로 거부되므로 **반드시 같이 선언한다.** -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
     <!-- FCM Push Notifications (API 33+ 필수) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
