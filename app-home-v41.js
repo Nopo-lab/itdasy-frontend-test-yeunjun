@@ -349,18 +349,6 @@
     try { window.HomeCustomerMsgs && window.HomeCustomerMsgs.refresh(); } catch (_e) { void _e; }
   }
 
-  /* [2026-08-17 보스] "Instagram 다시 연결"(#metaReconnectRow)은 Meta 검수자 전용 —
-     일반 사용자 홈에 App Review 안내가 상시 노출되던 것 숨김. 검수자는 데모 계정으로
-     로그인하므로 자동 노출되고, 화면녹화(보스 계정)는 ?metareview=1 로 강제 노출. */
-  function _syncMetaReviewRow() {
-    try {
-      const row = document.getElementById('metaReconnectRow');
-      if (!row) return;
-      const demo = (localStorage.getItem('last_login_email') || '').toLowerCase() === 'review@itdasy.com';
-      const forced = /[?&]metareview=1/.test(location.search);
-      row.style.display = (demo || forced) ? '' : 'none';
-    } catch (_e) { /* ignore */ }
-  }
 
   function _showConnectionError(container) {
     container.innerHTML = `
@@ -418,7 +406,6 @@
     const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
     if (!container) return;
     _lastContainerId = container.id || _lastContainerId;
-    _syncMetaReviewRow();   // [2026-08-17] 홈 그릴 때마다 검수자 전용 행 노출 여부 동기화
 
     // SWR: 캐시 즉시 (DM 큐 카운트는 캐시에 없으니 0 으로 시작)
     const swr = _readSWR();
