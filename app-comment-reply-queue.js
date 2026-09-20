@@ -1199,7 +1199,12 @@
     }
     if (!connected || !window.apiFetch) {
       _realMode = false;
-      if (!silent) { ITEMS = []; _state = 'NOT_CONNECTED'; }
+      /* [T-916] 상태만 바꾸고 _render() 를 안 불러서, 바로 위 재시도 루프가 띄워 둔
+         스켈레톤이 화면에 그대로 남았다 — 인스타 미연동 계정(앱 심사 데모 계정 포함)은
+         '댓글 문의 응대' 가 영영 로딩만 돈다. 실측 2026-09-20 아이패드 시뮬레이터.
+         _loading 도 같이 내린다: _render() 가 `_loading || _state==='LOADING'` 으로
+         스켈레톤을 고르므로 둘 중 하나만 내리면 여전히 스켈레톤이 나온다. */
+      if (!silent) { ITEMS = []; _loading = false; _state = 'NOT_CONNECTED'; _render(); }
       return;
     }
     if (_loading) return;                 // 이미 불러오는 중이면 폴링 중복 방지
