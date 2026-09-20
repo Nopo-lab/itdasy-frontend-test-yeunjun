@@ -76,6 +76,13 @@
             통째로 거부되므로 **반드시 같이 선언한다.** -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- ⚠️ required="false" 를 빼면 기기 20개가 스토어에서 사라진다(실측).
+         Play 는 매니페스트에 없어도 **권한에서 하드웨어 요구사항을 추론**한다 —
+         RECORD_AUDIO → android.hardware.microphone(required=true).
+         AAB 를 뜯어봐도 이 줄이 안 보이는 이유가 그것이다(Play 가 수집 단계에서 붙인다).
+         마이크가 없어도 음성 입력만 못 쓸 뿐 앱은 멀쩡하므로 false 로 내린다.
+         바로 위 CAMERA 도 같은 이유로 required="false" 가 붙어 있다. -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <!-- FCM Push Notifications (API 33+ 필수) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
