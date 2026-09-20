@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="false"
@@ -51,7 +52,17 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- [2026-09-20] READ_MEDIA_IMAGES 는 우리가 안 쓴다 — 매니페스트 병합으로만 들어왔다.
+         사진은 전부 웹뷰의 <input type="file"> 로 받는다(시스템 선택창 → 권한 불필요).
+         @capacitor/camera 가 package.json 에 있지만 JS 호출부가 0 건이라(grep 실측)
+         이 권한은 선언만 되고 한 번도 요청되지 않았다.
+         그런데 Play 는 이 권한만 보고 "사진 및 동영상 권한 선언" 을 요구하고,
+         안 쓰는 권한에 핵심 기능을 적으면 그게 허위 선언이 된다.
+         → 플러그인이 넣는 걸 tools:node="remove" 로 걷어낸다.
+         ⚠️ CAMERA 는 남긴다 — app-import.js / app-assistant.js 의 capture="environment"
+         파일 입력이 카메라 인텐트를 띄우는데, 선언돼 있으면 런타임 승인이 필요하다. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"
+        tools:node="remove" />
 
     <!-- FCM Push Notifications (API 33+ 필수) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
