@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
-   플랜 팝업 — 잇데이 Pro: 월 9,900 / 연 99,000(2개월 무료) · 10일 체험(월간)
+   플랜 팝업 — 잇데이 Pro: 월 9,900 / 연 99,000(2개월 무료) · 14일 체험(월간)
    [2026-09-02 가격 개편] 금액 정본 = BE routers/billing.PLAN_PRICING.
    해지(웹 PortOne)는 #cancelSheet 2단계 바텀시트, 스토어 결제는 딥링크.
    ──────────────────────────────────────────────────────────── */
@@ -10,6 +10,8 @@
   let _currentPlan = 'free';
   let _cancelScheduled = false;   // 취소 예약(만료일까지 유지)
   let _periodEnd = null;          // 다음 결제일/만료일
+  let _expired = false;           // 결제 주기가 지나 무료로 떨어진 상태 (BE /subscription/status.expired)
+  let _expiredAt = null;          // 그 만료 시점
   let _store = null;              // 'apple' | 'google' | 'portone' | 'demo' | null — 누가 결제를 갖고 있나
   let _productId = null;          // 스토어 구독관리 딥링크의 sku (Google)
   let _stateUid = null;           // 위 캐시가 '누구 것' 인지 (계정 전환 시 폐기용)
@@ -161,10 +163,10 @@
       // 연간은 무료체험 없이 즉시 결제 (체험 후 연간 청구 = 기만 패턴)
       btn.textContent = '연 99,000원으로 시작하기';
     } else {
-      // "10일 무료" 는 스토어 IAP 체험이 붙는 네이티브에서만 — 웹 PortOne 은 즉시 청구라
+      // "14일 무료" 는 스토어 IAP 체험이 붙는 네이티브에서만 — 웹 PortOne 은 즉시 청구라
       //   무료라고 쓰면 그 자체가 다크패턴이다.
       btn.textContent = (_currentPlan === 'free')
-        ? (_isNative() ? '10일 무료로 시작하기' : '월 9,900원 시작하기')
+        ? (_isNative() ? '14일 무료로 시작하기' : '월 9,900원 시작하기')
         : '잇데이 Pro 로 전환';
     }
   }
@@ -227,6 +229,7 @@
     _stateUid = u;   // 먼저 갱신 — 아래 재렌더가 여기 다시 들어와도 이 줄에서 즉시 빠진다(재귀 방지)
     _currentPlan = 'free'; _store = null; _productId = null;
     _periodEnd = null; _cancelScheduled = false;
+    _expired = false; _expiredAt = null;   // 계정이 바뀌면 남의 만료 안내가 남으면 안 된다
     // ⚠️ 변수만 비우면 **이미 그려진 DOM 은 그대로 남는다**(실측: 전환 직후 버튼이 계속
     //   "스토어에서 구독 관리", meta 에 이전 사용자의 갱신일이 떠 있었다). 같이 다시 그린다.
     try { _updatePlanBadgeUI('free'); _updateActionButton(); _renderSubMeta(); } catch (_e) { void _e; }
@@ -244,6 +247,11 @@
       _currentPlan = (d.plan || 'free').toLowerCase();
       _cancelScheduled = !!d.cancel_at_period_end;
       _periodEnd = d.current_period_end || d.next_bill_at || null;
+      // [만료 안내 2026-09-14] 강등되면 BE 가 status 를 "active" 로 덮어 주기 때문에
+      //   여기서는 미결제자와 만료된 결제자를 구분할 수 없었다. BE 가 더해준 플래그를 쓴다.
+      //   (구버전 BE 는 이 필드가 없다 → undefined → false. 안내가 안 뜰 뿐 깨지지 않는다)
+      _expired = !!d.expired;
+      _expiredAt = d.expired_at || null;
       _store = d.store || null;
       _productId = d.product_id || null;
       _updateActionButton();
@@ -308,6 +316,16 @@
         } else {
           meta.textContent = _cancelScheduled ? ('취소 예약됨 · ' + ds + '까지 이용 가능') : ('다음 결제일 ' + ds);
         }
+        meta.style.display = 'block';
+      } else if (_expired) {
+        // [만료 안내 2026-09-14] 유료였다가 떨어진 원장에게만. 신규 가입자에겐 안 뜬다.
+        //   이 줄이 없으면 한도가 줄어든 이유를 앱 어디서도 알 수 없다(문의로만 드러난다).
+        const dt = _expiredAt ? new Date(_expiredAt) : null;
+        const ds = (dt && !isNaN(dt.getTime()))
+          ? (dt.getFullYear() + '.' + (dt.getMonth() + 1) + '.' + dt.getDate()) : '';
+        meta.textContent = ds
+          ? ('구독이 ' + ds + '에 만료돼 무료 플랜으로 바뀌었어요')
+          : '구독이 만료돼 무료 플랜으로 바뀌었어요';
         meta.style.display = 'block';
       } else {
         meta.style.display = 'none';

@@ -1,6 +1,6 @@
 # 인앱결제(IAP) 셋업 — 남은 단계 (C-1)
 
-> ⚠️ [2026-09-07] 가격 정본은 **월 ₩9,900 / 연 ₩99,000 (USD $6.99), 월간 10일 무료체험**이다.
+> ⚠️ [2026-09-07] 가격 정본은 **월 ₩9,900 / 연 ₩99,000 (USD $6.99), 월간 14일 무료체험**이다.
 > 근거: 백엔드 `/subscription/plans` (`price:9900`, `price_yearly:99000`, `price_usd:6.99`) ·
 > `index.html` 페이월 · `terms.html` · `landing/index.html` (2026-09-02 가격 개편).
 >
@@ -39,7 +39,7 @@ npx cap sync                      # ios/android 네이티브에 플러그인 반
 
 | 용도 | Product ID | 가격 | 무료체험 |
 |---|---|---|---|
-| 월간 | `itdasy_pro_monthly_9900` | ₩9,900 / 월 | **10일** |
+| 월간 | `itdasy_pro_monthly_9900` | ₩9,900 / 월 | **14일** |
 | 연간 | `itdasy_pro_yearly_99000` | ₩99,000 / 년 | 없음 |
 
 🔴 **둘을 같은 구독 그룹(Apple) / 같은 구독의 base plan(Google)** 에 넣어야 한다.
@@ -48,9 +48,9 @@ npx cap sync                      # ios/android 네이티브에 플러그인 반
 
 - **App Store Connect** → 앱 → 구독 → 구독 그룹(`itdasy_subscriptions`) → 자동 갱신 구독 2개
   - 각 상품의 지역화(한국어) 표시명·설명 입력 → **심사 제출**(구독은 앱과 함께 심사)
-  - 월간에만 Introductory Offer → Free Trial 10일
+  - 월간에만 Introductory Offer → Free Trial 14일
 - **Google Play Console** → 수익 창출 → 구독 → 구독 만들기
-  - 월간 기본 요금제 ₩9,900 + 무료 체험 10일 / 연간 기본 요금제 ₩99,000
+  - 월간 기본 요금제 ₩9,900 + 무료 체험 14일 / 연간 기본 요금제 ₩99,000
   - 둘 다 활성화
 
 ### ⚠️ 폐기 상품 — 삭제하지 말 것

@@ -32,7 +32,7 @@
   //   ⚠️ 카드를 새로 추가하면 여기 매핑도 같이 추가해야 한다 — 안 하면 조용히 월간이 팔린다.
   //      (백엔드도 모르는 상품이면 409 로 거절한다: routers/iap.py `_assert_known_product`)
   var PRODUCTS = {
-    pro:        'itdasy_pro_monthly_9900',   // ₩9,900 / 월 (10일 무료체험 오퍼는 스토어 설정)
+    pro:        'itdasy_pro_monthly_9900',   // ₩9,900 / 월 (14일 무료체험 오퍼는 스토어 설정)
     pro_yearly: 'itdasy_pro_yearly_99000',   // ₩99,000 / 년 (체험 없음)
   };
   var DEFAULT_PLAN = 'pro';

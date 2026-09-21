@@ -1,6 +1,6 @@
 # 출시 남은 작업 체크리스트 (2026-07-27 감사 후속)
 
-> ⚠️ [2026-09-07] 가격 정본은 **월 ₩9,900 / 연 ₩99,000 (USD $6.99), 월간 10일 무료체험**이다.
+> ⚠️ [2026-09-07] 가격 정본은 **월 ₩9,900 / 연 ₩99,000 (USD $6.99), 월간 14일 무료체험**이다.
 > 근거: 백엔드 `/subscription/plans` (`price:9900`, `price_yearly:99000`, `price_usd:6.99`) ·
 > `index.html` 페이월 · `terms.html` · `landing/index.html` (2026-09-02 가격 개편).
 > 상품ID `itdasy_membership_monthly_6900` 은 **이름만 옛 가격이 남은 레거시 식별자**다 —
@@ -15,7 +15,7 @@
 ## 🔴 A. IAP 인앱결제 — 콘솔/시크릿 (Claude 불가, 사장님/원영)
 상세: `IAP_SETUP.md`. 프론트 연동·플러그인·lockfile 은 완료(라이브).
 
-- [ ] App Store Connect: 자동갱신구독 `itdasy_pro_monthly_9900` (₩9,900/월, 10일 무료체험) + `itdasy_pro_yearly_99000` (₩99,000/년, 체험 없음) **같은 구독 그룹**으로 등록·심사제출
+- [ ] App Store Connect: 자동갱신구독 `itdasy_pro_monthly_9900` (₩9,900/월, 14일 무료체험) + `itdasy_pro_yearly_99000` (₩99,000/년, 체험 없음) **같은 구독 그룹**으로 등록·심사제출
 - [ ] App Store Connect: `itdasy_membership_monthly_6900` **판매중지** (삭제 금지)
       ⚠️ 기존 `itdasy_membership_monthly_6900` 의 **가격을 올리지 않는다.** 그 상품의 가격을
          바꾸면 이미 구독 중인 원장님들도 인상 대상이 되고, Apple 은 동의를 받지 못하면

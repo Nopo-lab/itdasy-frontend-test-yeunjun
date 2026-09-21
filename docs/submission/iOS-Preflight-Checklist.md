@@ -1,6 +1,6 @@
 # iOS 빌드·제출 프리플라이트 체크리스트 (2026-04-22)
 
-> ⚠️ [2026-09-07] 가격 정본은 **월 ₩9,900 / 연 ₩99,000 (USD $6.99), 월간 10일 무료체험**이다.
+> ⚠️ [2026-09-07] 가격 정본은 **월 ₩9,900 / 연 ₩99,000 (USD $6.99), 월간 14일 무료체험**이다.
 > 근거: 백엔드 `/subscription/plans` (`price:9900`, `price_yearly:99000`, `price_usd:6.99`) ·
 > `index.html` 페이월 · `terms.html` · `landing/index.html` (2026-09-02 가격 개편).
 > 상품ID `itdasy_membership_monthly_6900` 은 **이름만 옛 가격이 남은 레거시 식별자**다 —
@@ -23,7 +23,7 @@
   - Sign in with Apple 은 iOS에서 Google/카카오 로그인을 다시 노출할 때 추가
 - [ ] **App Store Connect 앱 생성**: 이름 "잇데이"
 - [ ] **IAP 상품 2개**
-  - `itdasy_pro_monthly_9900` — ₩9,900 자동갱신 구독 (10일 무료 체험)
+  - `itdasy_pro_monthly_9900` — ₩9,900 자동갱신 구독 (14일 무료 체험)
   - `itdasy_pro_yearly_99000` — ₩99,000/년 자동갱신 구독 (체험 없음) · **월간과 같은 구독 그룹**
   - ⚠️ `itdasy_membership_monthly_6900` 은 2026-09-02 폐기 — **판매중지만, 삭제 금지.**
     가격을 올려 재사용하지 않는다(기존 구독자가 인상 대상이 되어 구독이 끊길 수 있다).  - 두 상품 같은 Subscription Group ("Itdasy Subscriptions")
