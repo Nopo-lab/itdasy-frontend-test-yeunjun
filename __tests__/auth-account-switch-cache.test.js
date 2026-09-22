@@ -87,7 +87,7 @@ describe('④ 비밀번호 변경은 이 기기를 로그아웃시키지 않는�
     expect(i).toBeGreaterThan(-1);
     const after = coreSrc.slice(i, i + 1600);
     expect(after).toMatch(/data\.access_token/);
-    expect(after).toMatch(/setToken\(data\.access_token\)/);
+    expect(after).toMatch(/await _saveLoginToken\(data\.access_token\)/);
   });
 });
 

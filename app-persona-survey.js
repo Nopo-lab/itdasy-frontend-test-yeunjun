@@ -134,7 +134,7 @@
   //   - 인스타 미연동/분석 미완료 라도, 사용자가 직접 분석/연동/테스트 진입 가능.
   function _renderNoAnalysis(reason) {
     const body = document.getElementById('psv-body');
-    const hasToken = !!(typeof window.getToken === 'function' ? window.getToken() : localStorage.getItem('itdasy_token::staging'));
+    const hasToken = !!(typeof window.getToken === 'function' && window.getToken());
     const hasInsta = !!localStorage.getItem('itdasy_latest_analysis');
     body.innerHTML = `
       <div class="psv-title">AI 페르소나</div>

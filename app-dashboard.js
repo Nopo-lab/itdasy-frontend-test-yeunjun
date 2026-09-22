@@ -32,11 +32,7 @@
     try {
       const raw = sessionStorage.getItem(_cacheKey(path));
       if (!raw) {
-        // sessionStorage 없으면 localStorage 도 시도 (세션 새로고침 후 첫 진입)
-        const lraw = localStorage.getItem(_cacheKey(path));
-        if (!lraw) return null;
-        const { v } = JSON.parse(lraw);
-        return v;
+        return null;
       }
       const { v } = JSON.parse(raw);
       return v;
@@ -44,8 +40,6 @@
   }
   function _setCached(path, v) {
     try { sessionStorage.setItem(_cacheKey(path), JSON.stringify({ t: Date.now(), v })); } catch(e){ /* storage full — silently ignore */ }
-    // [P1-2A] localStorage 에도 백업 (브라우저 닫고 새로 열어도 즉시 표시 가능)
-    try { localStorage.setItem(_cacheKey(path), JSON.stringify({ t: Date.now(), v })); } catch(e){ /* ignore */ }
   }
 
   async function _apiGet(path, opts) {
@@ -58,6 +52,7 @@
     if (res.status === 404 || res.status === 501) throw new Error('endpoint-missing');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
+    if (auth.Authorization !== window.authHeader()?.Authorization) throw new Error('session_changed');
     _setCached(path, data);
     return data;
   }

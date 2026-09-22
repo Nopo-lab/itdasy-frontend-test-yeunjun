@@ -137,7 +137,7 @@ Organizer 창 → Distribute App → App Store Connect → Upload
 - [ ] 스크린샷 업로드: 6.7" / 6.5" / 5.5" 각 3~5장
 - [ ] **App Review Information**
   - Sign-in Required: Yes
-  - Demo Account: `review@itdasy.com` / `review1234!`
+  - Demo Account: `review@itdasy.com` / 비밀번호는 App Store Connect 비공개 입력란에서만 관리
   - Review Notes: `docs/submission/Review-Notes.md` 복붙
 - [ ] **Submit for Review**
 - [ ] Apple 검토 대기 (평균 24시간)

@@ -15,7 +15,7 @@
   // ─────────── SWR cache ───────────
   function _readSWR() {
     try {
-      const raw = localStorage.getItem(SWR_KEY) || sessionStorage.getItem(SWR_KEY);
+      const raw = sessionStorage.getItem(SWR_KEY);
       if (!raw) return null;
       const obj = JSON.parse(raw);
       return { d: obj.d, fresh: Date.now() - obj.t < SWR_TTL };
@@ -24,8 +24,8 @@
   function _writeSWR(data) {
     try {
       const payload = JSON.stringify({ t: Date.now(), d: data });
-      try { localStorage.setItem(SWR_KEY, payload); }
-      catch (_e1) { try { sessionStorage.setItem(SWR_KEY, payload); } catch (_e2) { void _e2; } }
+      try { sessionStorage.setItem(SWR_KEY, payload); }
+      catch (_e1) { console.warn('[myshop] 임시 저장 실패'); }
     } catch (_e) { /* silent */ }
   }
 
@@ -46,6 +46,7 @@
       const res = await apiFetch('/assistant/brief', { headers });
       if (!res.ok) return null;
       const data = await _withBookingRevenue(await res.json());
+      if (headers.Authorization !== _authHeaders()?.Authorization) return null;
       _writeSWR(data);
       return data;
     } catch (_e) { return null; }
@@ -225,7 +226,7 @@
   //   추가 API 호출 0 (비용 방어). 캐시 없으면 0 → meta 숨김.
   function _inquiryCounts() {
     try {
-      const raw = localStorage.getItem('hv41_cache::brief') || sessionStorage.getItem('hv41_cache::brief');
+      const raw = sessionStorage.getItem('hv41_cache::brief');
       if (!raw) return { dm: 0, comment: 0 };
       const d = (JSON.parse(raw) || {}).d || {};
       return { dm: Number(d._dmQueueCount) || 0, comment: Number(d._commentQueueCount) || 0 };
@@ -616,8 +617,10 @@
 
     if (_inFlight) return;
     _inFlight = true;
+    const renderAuth = _authHeaders()?.Authorization;
     try {
       const brief = await _fetchBrief();
+      if (renderAuth !== _authHeaders()?.Authorization) return;
       const merged = brief || (swr && swr.d) || {};
       container.innerHTML = _composeHTML(merged);
       _bindEvents(container);

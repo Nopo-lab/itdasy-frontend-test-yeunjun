@@ -32,7 +32,7 @@
   function read(opts) {
     opts = opts || {};
     try {
-      const hit = _parse(localStorage.getItem(KEY)) || _parse(sessionStorage.getItem(KEY));
+      const hit = _parse(sessionStorage.getItem(KEY));
       if (!hit) return null;
       if (opts.minItems && hit.items.length < opts.minItems) return null;
       return hit;
@@ -41,8 +41,8 @@
 
   function set(items, total) {
     const value = _payload(items, total);
-    try { localStorage.setItem(KEY, value); }
-    catch (_e) { try { sessionStorage.setItem(KEY, value); } catch (_e2) { void _e2; } }
+    try { sessionStorage.setItem(KEY, value); }
+    catch (_e) { console.warn('[customer-cache] 임시 저장 실패'); }
     return Array.isArray(items) ? items : [];
   }
 
@@ -60,6 +60,7 @@
       .then(async (res) => {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
+        if (auth.Authorization !== window.authHeader().Authorization) throw new Error('session_changed');
         // [출시감사 2026-08-05 P0-1] 서버가 센 전체 수를 같이 들고 있는다.
         //   items 만 반환하면 호출부가 "캐시 길이 = 전체 고객 수" 로 착각한다 —
         //   그게 화면에 "전체 200명"(실제 10만) 이 뜨던 경로다.

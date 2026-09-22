@@ -26,6 +26,9 @@ mnt/
 # Playwright 로컬 산출물 (테스트 실행시 자동 생성)
 .playwright-cli/
 output/playwright/
+# 화면 확인용 임시 실행 파일은 공개 배포·커밋 대상이 아니다.
+output/_qa*.mjs
+output/qa-*.mjs
 
 # graphify 연결 그래프 — 공유용 graph.html 만 커밋, 나머지(대용량 graph.json·내부 임시)는 로컬 전용
 graphify-out/*

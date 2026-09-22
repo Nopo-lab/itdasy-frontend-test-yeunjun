@@ -14,9 +14,9 @@
   // ============================================================
   // 0. 공통 유틸
   // ============================================================
-  const _safeGet = (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } };
-  const _safeSet = (k, v) => { try { localStorage.setItem(k, v); return true; } catch (_) { return false; } };
-  const _safeDel = (k) => { try { localStorage.removeItem(k); } catch (_) { /* ignore */ } };
+  const _safeGet = (k) => { try { return (k.startsWith('pv_cache::') ? sessionStorage : localStorage).getItem(k); } catch (_) { return null; } };
+  const _safeSet = (k, v) => { try { (k.startsWith('pv_cache::') ? sessionStorage : localStorage).setItem(k, v); return true; } catch (_) { return false; } };
+  const _safeDel = (k) => { try { localStorage.removeItem(k); if (k.startsWith('pv_cache::')) sessionStorage.removeItem(k); } catch (_) { /* ignore */ } };
 
   function _toast(msg) {
     if (typeof window.showToast === 'function') {
@@ -65,6 +65,7 @@
           clearTimeout(timer);
           if (!res.ok) return;
           const d = await res.json();
+          if (auth.Authorization !== window.authHeader().Authorization) return;
           const items = (d && (d.items || d)) || null;
             // [출시감사 2026-08-05 P0-1] 서버가 센 전체 수(total)도 같이 담는다.
             //   items 만 담으면 화면이 '캐시 길이 = 전체 수' 로 착각한다 — 고객 10만 명인데

@@ -1300,7 +1300,6 @@ async function connectInstagram() {
   try {
     // iOS Universal Link 우회: 백엔드 ngrok URL로 이동 (instagram.com 직접 아님)
     // 백엔드가 302로 인스타에 전달 → 앱 납치 없이 Safari에서 OAuth 진행
-    const token = getToken();
     let baseOrigin = window.location.origin;
     if (baseOrigin === 'null' || baseOrigin === 'file://') {
       baseOrigin = window.location.href.split('/index.html')[0];
@@ -1321,23 +1320,19 @@ async function connectInstagram() {
     //   (구글/카카오 _navigateOAuth 와 동일한 방식 — 웹뷰가 instagram.com 로 안 나가므로 App-Bound Domains 와 양립).
     //   복귀는 기존과 동일하게 itdasy://oauth/callback 딥링크(app-oauth-return.js connected=success)로 돌아온다.
     //   구글/카카오도 복귀 시 Browser.close() 를 명시 호출하지 않으므로 인스타도 별도 close 로직을 추가하지 않는다.
-    //   else 분기는 원본 그대로 — 웹·플래그OFF 네이티브(현재 전부)는 100% 기존 동작.
+    //   else 분기는 원본 그대로 — 웹과 브라우저 플러그인 미사용 앱은 기존 이동 방식을 유지한다.
     // [출시감사 2026-08-01 카오스QA] 주소에 로그인 토큰을 싣지 않는다.
     //   예전엔 `?token=<JWT>` 였는데, Cloud Run 액세스 로그에 그 JWT 가 전체 URL 째로
     //   평문으로 남는 걸 실측했다 — 로그만 봐도 계정을 그대로 쓸 수 있었다.
     //   대신 헤더 인증으로 60초짜리 1회용 티켓을 받아 그걸 주소에 싣는다.
     //   티켓이 로그에 남아도 연동 화면 진입 외엔 아무것도 못 한다.
-    //   티켓 발급이 실패하면 옛 방식으로 폴백한다 — 연동이 아예 막히는 것보다 낫다.
-    //   [IG 게이트 2026-09-06] 티켓 발급을 **한 번 더 시도**한다.
-    //     폴백(`?token=`)은 로그에 JWT 를 남기는 바로 그 경로다. 없애면 티켓이 실패할 때
-    //     연동이 통째로 막히니 남기되, **일시적 실패로 폴백하는 일이 없게** 재시도를 넣는다.
-    //     실패 원인 대부분은 순간적인 네트워크 흔들림이고, 그건 한 번 더 부르면 대개 붙는다.
-    //     (BE 가 아예 죽어 있으면 어차피 그다음 단계도 실패하므로 폴백해도 소용없다.)
+    //   [T-912] 티켓 발급이 실패해도 로그인 값을 주소에 싣는 옛 방식으로 내려가지 않는다.
+    //   서버·브라우저 기록에 로그인 값이 남는 것보다 연동을 멈추고 다시 시도하게 하는 편이 안전하다.
     let _entry = '';
     for (let _try = 0; _try < 2 && !_entry; _try++) {
       if (_try) await new Promise((r) => setTimeout(r, 400));
       try {
-        const tr = await apiFetch('/instagram/go-ticket', { method: 'POST' });
+        const tr = await apiFetch('/instagram/go-ticket', { method: 'POST', headers: authHeader() });
         if (tr.ok) {
           const tj = await tr.json();
           if (tj && tj.ticket) _entry = `ticket=${encodeURIComponent(tj.ticket)}`;
@@ -1345,9 +1340,8 @@ async function connectInstagram() {
       } catch (_e) { void _e; }
     }
     if (!_entry) {
-      // 여기까지 오면 JWT 가 주소에 실린다 — 왜 그랬는지 흔적을 남긴다(로그 노출 추적용).
-      console.warn('[instagram] go-ticket 2회 실패 — 레거시 token= 폴백 사용');
-      _entry = `token=${encodeURIComponent(token)}`;
+      console.warn('[instagram] 안전한 연동 표를 받지 못해 연동을 중단합니다.');
+      throw new Error('instagram_ticket_failed');
     }
     const goUrl = `${API}/instagram/go?${_entry}&origin=${origin}&return_to=${returnToEnc}`;
 
@@ -1398,7 +1392,10 @@ function showInstaConflictModal(handle) {
       if (typeof window.logout === 'function') {
         await window.logout();
       } else {
-        if (typeof window.setToken === 'function') window.setToken(null);
+        if (typeof window.setToken === 'function' && await window.setToken(null) === false) {
+          showToast('로그인 정보 삭제를 완료하지 못했어요. 다시 시도해주세요.');
+          return;
+        }
         location.href = 'index.html';
       }
     } catch (_e) { void _e; }

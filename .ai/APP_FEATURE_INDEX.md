@@ -13,6 +13,15 @@
 
 ---
 
+## 2026-09-22 T-913 보안 보강
+
+- 로그인: 휴대폰 안전 저장 완료 뒤 로그인 처리, 저장/초기읽기/로그아웃 순서 경합 차단. 실패·중단 시 다음 부팅에 옛 로그인 부활 방지.
+- 고객·매출·홈·대시보드 조회 사본: 영구 저장 대신 탭 세션 저장. 이전 사본 제거, 계정 변경 뒤 늦은 응답 차단, 다른 창에는 데이터 없는 변경 알림만 전달.
+- 서버: 재설정용 토큰의 일반 로그인 사용 차단, 사용자 활성 검사, 1회용 소비 기록 실패 시 요청 거부, 비밀번호 변경과 소비 기록 원자적 처리.
+- 인스타/관리자: 주소의 로그인 토큰 제거. 관리자 연결은 첫 프레임 인증 및 주기적 재검증.
+- DB: 기존 0064 RLS에 0069 public 스키마/함수/뷰/sequence 접근 경계 보강. DB owner의 매장별 분리는 별도 과제.
+- 배포: output·테스트·coverage 공개 제외. 웹→앱 내장 전환과 웹 폐쇄는 심사 이후로 보류.
+
 ## 2026-09-15 T-901 변경 — 로컬 검증 완료, 미배포
 
 - 댓글 `app-comment-reply-queue.js`: 묶음 실패 문의 복원, 편집 중 갱신 보호, 중복 조회 방지, 정렬 시 작성본 유지.
@@ -94,6 +103,7 @@
 ### 코어 인프라 (부팅·API·인증·로더·SW)
 - **app-core.js** (3520) — 앱 부팅. `PROD_API`(staging Cloud Run)+`window.apiUrl/apiFetch`, 격리 토큰키 `itdasy_token::staging|prod|local`, `getToken/login/logout`, `showTab()` 라우팅, XSS `_esc`, SW 등록·버전배지.
   - **[2026-07-26~08-01 보안·결제]** **오리진 게이트** — 전역 fetch 가 허용 오리진 외로는 토큰을 안 실음 · **`NO_RETRY_PATH_RE`**(`:1135`) = `/billing`·발송류 **재시도 금지**(결제 이중청구·답글 4번 발송 차단) · **`CREATE_NO_RETRY_RE`**(`:1158`) = `/bookings`·`/revenue`·`/customers` 생성 POST 재시도 금지(중복 생성) · **비밀번호 변경 화면**(`:1479`) · 로그아웃 시 서버 세션 무효화 호출 · 토큰 저장소 추상화(보안저장 스왑 지점).
+  - **[2026-09-22 T-912]** iPhone·Android 로그인 값은 앱에 등록된 안전 저장 기능을 직접 사용한다. 주소나 브라우저 저장값으로 보호를 끄는 기능과, 안전 저장 실패 시 일반 저장소로 내려가는 길을 제거했다. 소셜 로그인 복귀도 `setToken()` 한 길로만 저장한다.
   - 🚨 **전역 fetch 래퍼 타임아웃** — 일반 20초(재시도 12초·최대 4회). **[2026-07-22 v790]** `LLM_PATH_RE`(`/assistant/`·`/caption/`·`/persona/`·`/image/enhance|remove-bg|…`) 매칭 시 **120초 + 타임아웃 재시도 금지**(5xx 재시도는 유지). 이걸 안 하면 잇비 답변·캡션 생성이 20초에 강제중단되고 12초짜리로 3번 더 재호출돼 **LLM 중복 과금 + 60초 뒤 '실패했어요'** — '백엔드가 고장난 것 같다'의 실제 정체였다. 느린 신규 API 는 `itdasyTimeoutMs` 로 개별 상향.
   - **시트 뒤로가기 레지스트리** `_registerSheet/_markSheetOpen/_markSheetClosed`(:2888~). 풀스크린 오버레이는 **반드시 open 에서 등록**해야 안드로이드 back/스와이프에 앱이 안 꺼진다. **[2026-07-22]** 미등록 7화면(내샵정보·작업실설정·DM메뉴·네이버연동·톡톡·카카오·백업) 전부 등록 + close 가 replaceState 대신 실제 `history.back()` 으로 엔트리를 뺀다(안 그러면 '눌러도 아무 일 없는 뒤로가기'가 쌓임).
 - **sw.js** (256) — 서비스워커. `CACHE_VERSION` 캐시버전, `/api·/auth` network-first / 정적 cache-first, 읽기전용 GET 오프라인 폴백, 지연그룹 프리캐시 제외. **[2026-07-27]** `CACHE_VERSION` 이 7/24 에 고착돼 새 배포가 폰에 안 보이던 사고 있었음(`1347e8c`).
@@ -153,7 +163,7 @@
 - **app-birthday.js** (164) — 생일/기념일 자동감지. **app-photo-match.js**(162) EXIF 고객매핑. **app-retention-ai.js**(340) 이탈위험 고객. **app-review.js**(199) 리뷰요청. **app-waitlist.js**(149) 대기자.
 
 ### DM·SNS·연동 (FE)
-- **app-instagram.js** (1245) — 인스타 연동 & 말투분석. **[2026-07-30~31]** 연동 주소에서 **JWT 를 빼고 60초 1회용 티켓** 사용(전엔 Cloud Run 로그에 평문 노출) · 네이티브 앱에서 연동이 막히던 버그(PWA 가드가 네이티브 미인식) · `content_publish` 심사중이면 발행 버튼 대신 캡션 복사 안내(`:208`) · shopName 이스케이프. **app-dm-autoreply.js**(1541) AI DM 자동응답 v3. **app-dm-conversations.js**(650) DM 채팅방. **app-dm-confirm-queue.js**(821) 원장 confirm 큐. **app-dm-manual-replies.js**(479) 매뉴얼 멘트. **app-dm-menu.js**(560±) '인스타DM 손님 응대'(구 빠른안내, Quick Replies+Ice Breakers) — [2026-08-16] 마스터 on/off 토글+서버 동기화(_syncDmMenuEnabled) 내장, 인스타DM 유일 설정 화면. **app-dm-booking-form.js**(185) DM 예약양식. **app-dm-settings-cache.js**(55).
+- **app-instagram.js** (1245) — 인스타 연동 & 말투분석. **[2026-07-30~31]** 연동 주소에서 **JWT 를 빼고 60초 1회용 티켓** 사용. **[2026-09-22 T-912]** 티켓 요청에 로그인 확인값이 빠져 매번 실패한 뒤 주소 속 JWT로 내려가던 결함을 수정했다. 이제 티켓만 허용하고 발급 실패 시 연동을 멈춘다. · 네이티브 앱에서 연동이 막히던 버그(PWA 가드가 네이티브 미인식) · `content_publish` 심사중이면 발행 버튼 대신 캡션 복사 안내(`:208`) · shopName 이스케이프. **app-dm-autoreply.js**(1541) AI DM 자동응답 v3. **app-dm-conversations.js**(650) DM 채팅방. **app-dm-confirm-queue.js**(821) 원장 confirm 큐. **app-dm-manual-replies.js**(479) 매뉴얼 멘트. **app-dm-menu.js**(560±) '인스타DM 손님 응대'(구 빠른안내, Quick Replies+Ice Breakers) — [2026-08-16] 마스터 on/off 토글+서버 동기화(_syncDmMenuEnabled) 내장, 인스타DM 유일 설정 화면. **app-dm-booking-form.js**(185) DM 예약양식. **app-dm-settings-cache.js**(55).
 - **app-naver-link.js**(207) 네이버 예약연동. **app-naver-talk-link.js**(219) 네이버 톡톡연동. **app-sns-hashtag.js**(198) 해시태그 매니저. **app-notifications.js**(**368** — [2026-07-27] 홈 인라인 알림 3종 죽은 코드 제거) 인앱 알림. **app-comment-reply-queue.js**(1068 — [2026-09-01] SEED 제거·상태머신·죽은 DM 체인 삭제) 댓글 문의 응대 큐.
 
 ### AI 비서(잇비) — FE

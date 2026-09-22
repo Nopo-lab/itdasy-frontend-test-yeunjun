@@ -3,7 +3,7 @@
 ## Demo Account
 
 - **Email**: `review@itdasy.com`
-- **Password**: `review1234!`
+- **Password**: Enter the current password only in App Store Connect's private Sign-in Information field.
 - **Role**: Beauty salon owner demo account
 
 ## What the app does
