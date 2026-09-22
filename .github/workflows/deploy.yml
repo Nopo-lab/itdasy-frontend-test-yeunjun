@@ -111,7 +111,7 @@ jobs:
           #   android/ios(네이티브·manifest·plist), .github(워크플로), .ai/.claude(내부문서·소스중복·감사노트),
           #   scripts(QA 스크립트·데모계정 흔적), docs(제출문서·법무템플릿), capacitor-templates(빌드템플릿),
           #   루트 *.md(CLAUDE/AGENTS/AUDIT 등 내부문서). 런타임 privacy/terms 는 루트 *.html 이라 유지됨.
-          rm -rf node_modules android ios .github .ai .claude scripts docs capacitor-templates
+          rm -rf node_modules android ios .github .ai .claude scripts docs capacitor-templates output __tests__ coverage
           rm -f ./*.md
           touch .nojekyll
           echo "files to publish: $(find . -type f -not -path './.git/*' | wc -l)"

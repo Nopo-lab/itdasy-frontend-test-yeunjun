@@ -2,7 +2,7 @@ import fs from 'fs';
 import { chromium } from 'playwright';
 const SVC='https://itdasy-backend-staging-644329093453.asia-northeast3.run.app';
 const URL='https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/';
-const { access_token } = await (await fetch(SVC+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'itdasy.qa.v554@gmail.com',password:'Qa7picklemix'})})).json();
+const { access_token } = await (await fetch(SVC+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:process.env.ITDASY_QA_EMAIL,password:process.env.ITDASY_QA_PASSWORD})})).json();
 const DEVS=[['iphone-se',375,667],['iphone-12',390,844],['galaxy-s24',412,915],['fold-closed',280,653],['fold-open',673,841],['ipad',768,1024]];
 const b=await chromium.launch();
 const OUT='output/responsive-qa/v559-template-result-ui';

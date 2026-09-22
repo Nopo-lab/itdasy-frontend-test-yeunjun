@@ -45,7 +45,7 @@
 Meta Developer Dashboard → App Review → Add Use Case 에 각 scope 마다:
 - 비디오 (30~90초) 업로드
 - "무엇을 어디서 사용자가 보게 되는지" 한국어 + 영문 설명
-- Test user credentials: `review@itdasy.com` / `review1234!`
+- Test user credentials: `review@itdasy.com` / (enter the password only in Meta's private review form)
 - Test instructions: Review-Notes.md 의 내용 영문 번역 첨부
 
 ## 예상 소요

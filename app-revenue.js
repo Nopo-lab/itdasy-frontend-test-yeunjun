@@ -164,7 +164,9 @@
       he.status = res.status;
       throw he;
     }
-    return res.status === 204 ? null : await res.json();
+    const data = res.status === 204 ? null : await res.json();
+    if (auth.Authorization !== window.authHeader()?.Authorization) throw new Error('session_changed');
+    return data;
   }
 
   // ── SWR ────────────────────────────────────────────────
@@ -177,7 +179,7 @@
   // [2026-05-20] generic SWR — 외부 (예: revenue-month) 재활용 가능하게 분리.
   function _swrReadKey(key, ttl) {
     try {
-      const raw = localStorage.getItem(key) || sessionStorage.getItem(key);
+      const raw = sessionStorage.getItem(key);
       if (!raw) return null;
       const obj = JSON.parse(raw);
       return { items: obj.d, age: Date.now() - obj.t, fresh: Date.now() - obj.t < ttl };
@@ -186,8 +188,8 @@
   function _swrWriteKey(key, items) {
     try {
       const payload = JSON.stringify({ t: Date.now(), d: items });
-      try { localStorage.setItem(key, payload); }
-      catch (_) { try { sessionStorage.setItem(key, payload); } catch (_e) { void _e; } }
+      try { sessionStorage.setItem(key, payload); }
+      catch (_) { console.warn('[revenue] 임시 저장 실패'); }
     } catch (_) { /* silent */ }
   }
   function _readSWRPeriod(p) { return _swrReadKey(_swrKey(p), _SWR_TTL); }

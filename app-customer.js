@@ -87,7 +87,9 @@
       try { payload = await res.json(); } catch (_e) { void _e; }
       throw _apiError(res.status, payload);
     }
-    return res.status === 204 ? null : await res.json();
+    const data = res.status === 204 ? null : await res.json();
+    if (auth.Authorization !== window.authHeader()?.Authorization) throw new Error('session_changed');
+    return data;
   }
 
   // 상태코드 → 원장님이 읽고 **무엇을 해야 할지 아는** 문구.
@@ -127,7 +129,7 @@
   function _readSWR() {
     if (window.CustomerCache?.read) return window.CustomerCache.read();
     try {
-      const raw = localStorage.getItem(_SWR_KEY) || sessionStorage.getItem(_SWR_KEY);
+      const raw = sessionStorage.getItem(_SWR_KEY);
       if (!raw) return null;
       const obj = JSON.parse(raw);
       return { items: obj.d, total: Number.isFinite(obj.n) ? obj.n : (obj.d || []).length,
@@ -137,9 +139,7 @@
   function _writeSWR(items) {
     if (window.CustomerCache?.set) return window.CustomerCache.set(items, _total || (items || []).length);
     const payload = JSON.stringify({ t: Date.now(), d: items, n: _total || (items || []).length });
-    try { localStorage.setItem(_SWR_KEY, payload); } catch (_e) {
-      try { sessionStorage.setItem(_SWR_KEY, payload); } catch (_e2) { void _e2; }
-    }
+    try { sessionStorage.setItem(_SWR_KEY, payload); } catch (_e) { console.warn('[customer] 임시 저장 실패'); }
   }
   function _clearSWR() {
     if (window.CustomerCache?.clear) return window.CustomerCache.clear();

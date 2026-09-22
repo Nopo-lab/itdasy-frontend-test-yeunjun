@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 const SVC='https://itdasy-backend-staging-644329093453.asia-northeast3.run.app';
 const URL='https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/';
-const { access_token } = await (await fetch(SVC+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'itdasy.qa.v554@gmail.com',password:'Qa7picklemix'})})).json();
+const { access_token } = await (await fetch(SVC+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:process.env.ITDASY_QA_EMAIL,password:process.env.ITDASY_QA_PASSWORD})})).json();
 const b = await chromium.launch();
 const ctx = await b.newContext({ viewport:{width:390,height:844}, hasTouch:true, isMobile:true });
 const p = await ctx.newPage();

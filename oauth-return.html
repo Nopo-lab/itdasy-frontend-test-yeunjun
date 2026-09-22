@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
   <title>잇데이 로그인 완료</title>
   <style>
     body { font-family: -apple-system, system-ui, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background:linear-gradient(135deg,#fef2f2,#fee2e2); }
@@ -48,11 +49,12 @@
         var bb = el('backBtn'); if (bb) bb.style.display = 'block';
       }
       function store(token) {
-        // app-core.js 가 ?api 설정에 따라 staging/prod 중 하나를 읽으므로 둘 다 저장(키 불일치 회귀 방지).
-        // 토큰은 방금 백엔드 교환/검증을 거친 정본이라 이중저장이 안전하다.
-        var isLocal = /localhost|127\.0\.0\.1/.test(window.location.hostname);
-        if (isLocal) { localStorage.setItem('itdasy_token::local', token); }
-        else { localStorage.setItem('itdasy_token::staging', token); localStorage.setItem('itdasy_token::prod', token); }
+        // 이 저장소는 스테이징 전용이다. 다른 환경 키에 로그인 값을 복제하지 않는다.
+        localStorage.setItem('itdasy_token::staging', token);
+        // 이 복귀 페이지는 고정 운영 API와 교환하므로 로컬에서도 같은 API를 사용한다.
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          localStorage.setItem('itdasy_api', 'staging');
+        }
         try { localStorage.removeItem('itdasy_oauth_pkce'); } catch (e) { void e; }
         history.replaceState({}, '', window.location.pathname);
         el('title').textContent = '✓ 로그인 완료!';

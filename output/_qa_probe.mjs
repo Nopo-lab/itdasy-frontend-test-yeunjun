@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 const SVC='https://itdasy-backend-staging-644329093453.asia-northeast3.run.app';
 const URL='https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/';
 // 1) API 로그인 → 토큰
-const lr = await fetch(SVC+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'itdasy.qa.v554@gmail.com',password:'Qa7picklemix'})});
+const lr = await fetch(SVC+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:process.env.ITDASY_QA_EMAIL,password:process.env.ITDASY_QA_PASSWORD})});
 const { access_token } = await lr.json();
 console.log('token_len', (access_token||'').length);
 

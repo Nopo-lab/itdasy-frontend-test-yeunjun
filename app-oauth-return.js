@@ -79,14 +79,12 @@
         body: JSON.stringify({ code: code, code_verifier: pk.v }),
       })
         .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('exchange_failed')); })
-        .then(function (d) {
+        .then(async function (d) {
           if (!d || !d.access_token) throw new Error('no_token');
           try { localStorage.removeItem('itdasy_oauth_pkce'); } catch (_e) { void _e; }
-          try {
-            const keySuffix = api.includes('staging') ? 'staging' : (api.includes('localhost') ? 'local' : 'prod');
-            localStorage.setItem('itdasy_token::' + keySuffix, d.access_token);
-          } catch (_e) { void _e; }
-          try { if (typeof window.applyNewSession === 'function') window.applyNewSession(d.access_token).catch(function () {}); } catch (_e) { void _e; }
+          if (typeof window.setToken !== 'function') throw new Error('token_store_unavailable');
+          if (await Promise.resolve(window.setToken(d.access_token)) === false) throw new Error('token_store_failed');
+          if (typeof window.applyNewSession === 'function') await window.applyNewSession(d.access_token);
           if (window.showToast) window.showToast(provider + ' 로그인 완료!');
           setTimeout(function () { window.location.reload(); }, 300);
         })

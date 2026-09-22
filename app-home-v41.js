@@ -10,7 +10,7 @@
 
   function _readSWR() {
     try {
-      const raw = localStorage.getItem(SWR_KEY) || sessionStorage.getItem(SWR_KEY);
+      const raw = sessionStorage.getItem(SWR_KEY);
       if (!raw) return null;
       const obj = JSON.parse(raw);
       return { d: obj.d, fresh: Date.now() - obj.t < SWR_TTL };
@@ -19,8 +19,8 @@
   function _writeSWR(data) {
     try {
       const payload = JSON.stringify({ t: Date.now(), d: data });
-      try { localStorage.setItem(SWR_KEY, payload); }
-      catch (_e1) { try { sessionStorage.setItem(SWR_KEY, payload); } catch (_e2) { void _e2; } }
+      try { sessionStorage.setItem(SWR_KEY, payload); }
+      catch (_e1) { console.warn('[home] 임시 저장 실패'); }
     } catch (_e) { /* silent */ }
   }
 
@@ -71,6 +71,7 @@
           continue;
         }
         const data = await _withBookingRevenue(await res.json());
+        if (headers.Authorization !== _authHeaders()?.Authorization) return 'AUTH';
         _writeSWR(data);
         return data;
       } catch (_e) {
@@ -422,6 +423,7 @@
 
     if (_inFlight) return;
     _inFlight = true;
+    const renderAuth = _authHeaders()?.Authorization;
     // [2026-08-22 UX-COLD] 캐시로 그린 게 없으면(진짜 첫 진입) fetch 기다리는 동안 스켈레톤.
     _showSkeleton(container);
     try {
@@ -437,6 +439,7 @@
         _skipChannels ? Promise.resolve(_lastDmCount) : _fetchDMQueueCount().catch(() => 0),
         _skipChannels ? Promise.resolve(_lastCmtCount) : _fetchCommentQueueCount().catch(() => 0),
       ]);
+      if (renderAuth !== _authHeaders()?.Authorization) return;
       _lastDmCount = dmQueueCount; _lastCmtCount = commentQueueCount;
       // [2026-08-17 보스] 세션 만료(AUTH) — 에러 카드 금지. 게이트가 로그인 화면을 띄우고,
       //   재로그인 훅(app-core)이 refresh() 로 다시 그린다. 캐시 있으면 그걸로 유지.

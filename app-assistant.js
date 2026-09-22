@@ -254,13 +254,15 @@
   // Wave B5 — 고객 이름 캐시 (keystroke 마다 localStorage 접근 방지)
   let _customerCache = null;
   let _customerCacheAt = 0;
+  let _customerCacheSession = null;
   const _CUSTOMER_CACHE_TTL = 60 * 1000;  // 60초
   function _getCustomers() {
     const now = Date.now();
+    const session = window.getToken ? window.getToken() : null;
+    if (_customerCacheSession !== session) { _customerCache = null; _customerCacheAt = 0; _customerCacheSession = session; }
     if (_customerCache && (now - _customerCacheAt) < _CUSTOMER_CACHE_TTL) return _customerCache;
     try {
-      const raw = (window.safeStorage ? window.safeStorage.get('pv_cache::customers') : null)
-        || (() => { try { return JSON.parse(localStorage.getItem('pv_cache::customers') || 'null'); } catch (_) { return null; } })();
+      const raw = JSON.parse(sessionStorage.getItem('pv_cache::customers') || 'null');
       const items = raw && Array.isArray(raw.d) ? raw.d
                    : Array.isArray(raw) ? raw
                    : (raw && Array.isArray(raw.items) ? raw.items : []);
