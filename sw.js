@@ -45,6 +45,7 @@ const STATIC_ASSETS = [
   './style-hub.css',
   './app-core.js',
   './js/ai-consent-home.js',
+  './js/media-signed-url-refresh.js',
   './js/loader.js',
   './js/load-groups.js',
   './js/navigation/entrypoints.js',
