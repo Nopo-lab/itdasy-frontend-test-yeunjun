@@ -183,7 +183,7 @@ self.addEventListener('fetch', event => {
   //   원인 2개. 둘 다 "앱이 캐시에 멀쩡히 있는데 오프라인 화면"을 띄웠다.
   //   ① 디렉토리 진입: 배포 주소가 `.../itdasy-frontend-test-yeunjun/` 라 요청 키가 './' 인데
   //      프리캐시엔 './index.html' 만 있다 → 정확 매치 실패 → 바로 offline.
-  //   ② 쿼리: `?api=live`·OAuth `?code=`·푸시 딥링크가 붙으면 caches.match 는 기본이
+  //   ② 쿼리: 옛 `?api=`·OAuth `?code=`·푸시 딥링크가 붙으면 caches.match 는 기본이
   //      쿼리 포함 매칭이라 전부 미스 → 바로 offline.
   //   그래서 네트워크가 한 번만 삐끗해도(잠금해제 직후·지하철·와이파이↔LTE 전환) 오프라인 화면이 떴다.
   //   offline.html 은 앱 셸조차 없을 때만 쓰는 최후 수단이어야 한다.

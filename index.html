@@ -2644,7 +2644,8 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
   //   app-core 의 API 결정 규칙(localhost 면 로컬 백엔드, 그 외 PROD_API)을 여기서 최소 재현.
   //   이 레포의 PROD_API 는 스테이징이므로 배포 도메인 = staging.
   var _h = location.hostname;
-  var _env = (_h === 'localhost' || _h === '127.0.0.1') ? 'local' : 'staging';
+  var _nat = false; try { _nat = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()); } catch (_e) { void _e; }  // 앱도 hostname 이 localhost
+  var _env = (!_nat && (_h === 'localhost' || _h === '127.0.0.1')) ? 'local' : 'staging';
   if (!dsn || !window.Sentry) return;
   // T-351 — GDPR/ePrivacy: 동의 없인 Sentry 비활성. EU 사용자는 opt-in 필수.
   var consent = window.itdasyConsent && typeof window.itdasyConsent.isAnalyticsAllowed === 'function'

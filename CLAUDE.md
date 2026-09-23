@@ -62,10 +62,19 @@ io.open('index.html', 'w', encoding='utf-8').write(
 ```
 </details>
 
+## 🧱 개발은 로컬에서만 — 운영은 절대 안 건드린다 (2026-09-23 확정)
+
+- **웹 localhost 는 항상 로컬 백엔드(`localhost:8000`)** 만 본다. 운영으로 붙는 스위치(`?api=staging`/`?api=live`)는 **없앴다. 다시 만들지 마라.**
+- 로컬 백엔드: 백엔드 레포 `bash dev/local-backend.sh` (운영 키·운영 DB·운영 AI 를 막는 검문소 포함, 사용법 `dev/README.md`).
+- 🔴 **앱(Capacitor)도 hostname 이 `localhost`** 다. 그래서 "localhost 면 로컬" 판정에는 반드시 `!isNativePlatform()` 을 같이 건다 —
+  빠지면 앱 내장 번들이 로컬 백엔드로 붙어 **앱 전체가 죽는다.** 규칙은 app-core.js · oauth-return.html · reset-password.html 세 곳,
+  가드 `__tests__/api-target-local-only-2026-09-23.test.js`.
+- 운영 반영은 `main` 머지 → 운영 승격 → 앱 빌드뿐.
+
 ## 🧪 기능별 전수 QA — `.ai/FEATURE_QA_PROMPT.md`
 
 기능 하나를 골라 화면 요소를 전부 눌러보고 **12축**(동작·경계값·오류·시간·데이터안전·되돌리기·UX동선·카피·접근성·네비·보안심사·매출연결)으로 잡는 절차 + 붙여넣는 프롬프트.
-검증 환경 세팅(토큰·`?api=live`·SW 지우기), 헤드리스 함정(rAF 정지·뷰포트 0x0·파일업로드 pending),
+검증 환경 세팅(로컬 백엔드·SW 지우기), 헤드리스 함정(rAF 정지·뷰포트 0x0·파일업로드 pending),
 LLM 쿼터 주의, 반복해서 나온 진짜 원인 패턴(래퍼 우회 직접호출·과한 필터·경로 둘 중 하나만 수정)까지 정리돼 있다.
 
 ## 🔎 도메인별 릴리즈 감사 — `.ai/RELEASE_AUDIT_MATRIX.md`

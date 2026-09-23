@@ -127,11 +127,9 @@ python3 -m http.server 5500
 
 브라우저 콘솔에서:
 ```js
-// 운영 백엔드로 붙이기(실데이터 — 테스트 샵 계정만) — ?api=live 없으면 localhost:8000 을 본다
-location.href = 'http://localhost:5500/?api=live'
-
-// 로그인 토큰 주입 (원장 계정에서 뽑아온 값)
-localStorage.setItem('itdasy_token::staging', '<토큰>')
+// localhost 는 항상 로컬 백엔드(localhost:8000)만 본다 — 운영에 붙는 스위치는 없다(2026-09-23 제거).
+// 로컬 백엔드: 백엔드 레포에서 `bash dev/local-backend.sh` → review@itdasy.com / review1234! 로 로그인
+// (운영 원장 토큰을 뽑아 넣지 마라 — 로컬 QA 가 실데이터에 닿는 유일한 길이 그것이다)
 
 // 🚨 검증 전 항상 — 안 지우면 옛 코드를 보고 "안 고쳐졌다"고 오판한다
 for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
