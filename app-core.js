@@ -129,16 +129,21 @@ async function _finishLoginLoad(withGreeting) {
 // 이 레포(itdasy-frontend-test-yeunjun)는 연준 스테이징 전용 → 스테이징 백엔드 바라봄
 // 운영 레포(itdasy-frontend)는 운영 백엔드(별도 Cloud Run 서비스/커스텀 도메인)를 사용해야 함
 const PROD_API = 'https://itdasy-backend-staging-644329093453.asia-northeast3.run.app';
-// [dev] 로컬에서 스테이징 백엔드로 붙어 테스트: ?api=staging (또는 localStorage itdasy_api=staging).
-//   localhost 전용 · 명시적 opt-in만 · 운영/배포엔 영향 없음. 로컬 백엔드 안 띄우고 스테이징으로 검증할 때.
-const _API_STAGING_OVERRIDE = (function () {
+// [dev] localhost 에서 어느 백엔드에 붙을지 고른다. 배포 사이트·앱에는 영향 없음(항상 PROD_API).
+//   ?api=live  → 운영 백엔드(실데이터! 테스트 샵 계정으로만). 리로드에도 유지.
+//   ?api=local → 다시 로컬 백엔드(localhost:8000, 기본값).
+//   예전 이름 `staging` 은 백엔드 이름만 staging 이고 실제는 운영이라 오해를 불러서 `live` 로 바꿨다(2026-09-23).
+const _API_LIVE_OVERRIDE = (function () {
   try {
-    if (/[?&]api=staging/.test(location.search)) { try { localStorage.setItem('itdasy_api', 'staging'); } catch (_p) { void _p; } return true; }  // 쿼리 1회 → 리로드에도 유지되게 고정
-    return localStorage.getItem('itdasy_api') === 'staging';
+    if (/[?&]api=local\b/.test(location.search)) { try { localStorage.removeItem('itdasy_api'); } catch (_p) { void _p; } return false; }
+    if (/[?&]api=live\b/.test(location.search)) { try { localStorage.setItem('itdasy_api', 'live'); } catch (_p) { void _p; } return true; }  // 쿼리 1회 → 리로드에도 유지되게 고정
+    const v = localStorage.getItem('itdasy_api');
+    if (v === 'staging') { try { localStorage.setItem('itdasy_api', 'live'); } catch (_p) { void _p; } return true; }  // 옛 저장값 1회 이전
+    return v === 'live';
   } catch (_e) { return false; }
 })();
 const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? (_API_STAGING_OVERRIDE ? PROD_API : 'http://localhost:8000')
+  ? (_API_LIVE_OVERRIDE ? PROD_API : 'http://localhost:8000')
   : PROD_API;
 
 // [2026-08-22 UX-COLD] 콜드스타트 깨우기 선빵 — 부팅 즉시 /health 1발 (fire-and-forget).

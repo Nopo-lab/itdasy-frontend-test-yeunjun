@@ -127,8 +127,8 @@ python3 -m http.server 5500
 
 브라우저 콘솔에서:
 ```js
-// 스테이징 백엔드로 붙이기 — ?api=staging 없으면 localhost:8000 을 본다
-location.href = 'http://localhost:5500/?api=staging'
+// 운영 백엔드로 붙이기(실데이터 — 테스트 샵 계정만) — ?api=live 없으면 localhost:8000 을 본다
+location.href = 'http://localhost:5500/?api=live'
 
 // 로그인 토큰 주입 (원장 계정에서 뽑아온 값)
 localStorage.setItem('itdasy_token::staging', '<토큰>')
