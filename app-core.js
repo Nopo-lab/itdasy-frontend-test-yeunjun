@@ -129,17 +129,19 @@ async function _finishLoginLoad(withGreeting) {
 // 이 레포(itdasy-frontend-test-yeunjun)는 연준 스테이징 전용 → 스테이징 백엔드 바라봄
 // 운영 레포(itdasy-frontend)는 운영 백엔드(별도 Cloud Run 서비스/커스텀 도메인)를 사용해야 함
 const PROD_API = 'https://itdasy-backend-staging-644329093453.asia-northeast3.run.app';
-// [dev] 로컬에서 스테이징 백엔드로 붙어 테스트: ?api=staging (또는 localStorage itdasy_api=staging).
-//   localhost 전용 · 명시적 opt-in만 · 운영/배포엔 영향 없음. 로컬 백엔드 안 띄우고 스테이징으로 검증할 때.
-const _API_STAGING_OVERRIDE = (function () {
-  try {
-    if (/[?&]api=staging/.test(location.search)) { try { localStorage.setItem('itdasy_api', 'staging'); } catch (_p) { void _p; } return true; }  // 쿼리 1회 → 리로드에도 유지되게 고정
-    return localStorage.getItem('itdasy_api') === 'staging';
-  } catch (_e) { return false; }
-})();
-const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? (_API_STAGING_OVERRIDE ? PROD_API : 'http://localhost:8000')
-  : PROD_API;
+// [dev] localhost 로 열면 **항상 내 컴퓨터의 로컬 백엔드**(localhost:8000)에 붙는다.
+//   로컬 백엔드 켜기: 백엔드 레포 `bash dev/local-backend.sh` (운영 키·운영 DB 를 막는 검문소 포함).
+//   [2026-09-23] 예전엔 `?api=staging`(→ 잠깐 `?api=live`) 로 localhost 에서 운영 백엔드에 붙을 수 있었다.
+//   "개발은 로컬에서만, 운영은 절대 안 건드린다" 로 정해서 그 길을 없앴다. 다시 만들지 말 것 —
+//   켜 둔 걸 잊으면 로컬 에러 테스트가 실제 원장님 데이터에 들어간다.
+//   배포본·앱은 항상 PROD_API.
+//   🔴 앱(Capacitor)도 주소가 `localhost` 다(iOS capacitor://localhost·Android https://localhost).
+//   앱 내장 번들(server.url 없음)로 가면 hostname 만 보고는 앱이 로컬 백엔드로 붙어 **모든 API 가 죽는다.**
+//   그래서 네이티브면 hostname 과 상관없이 운영. window.Capacitor 는 네이티브 브리지가 페이지 스크립트보다 먼저 넣는다.
+const _IS_NATIVE_APP = (function () { try { return !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()); } catch (_e) { return false; } })();
+const _IS_LOCALHOST = !_IS_NATIVE_APP && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+if (_IS_LOCALHOST) { try { localStorage.removeItem('itdasy_api'); } catch (_e) { void _e; } }  // 옛 스위치 저장값 청소
+const API = _IS_LOCALHOST ? 'http://localhost:8000' : PROD_API;
 
 // [2026-08-22 UX-COLD] 콜드스타트 깨우기 선빵 — 부팅 즉시 /health 1발 (fire-and-forget).
 //   Cloud Run 인스턴스 0→1 기동(5~15s)이 스플래시/로그인 화면 보는 시간과 병렬로 시작돼
