@@ -20,12 +20,17 @@ const rootFiles = [
   'privacy-en.html',
   'terms.html',
   'terms-en.html',
-  'style-polish.css',
   'sw.js',
   'manifest.webmanifest',
+  'manifest.json',
+  'icon.svg',
+  'format-money.js',
 ].filter((file) => fs.existsSync(path.join(root, file)));
 
 const rootGlobs = [
+  // [2026-09-24] style.css 와 @import 자식(style-base/home/components/...)이 빠져 있어서
+  //   앱에서 기본 스타일이 통째로 없었다(로그인 화면에 온보딩·탭바가 맨몸으로 드러남).
+  /^style(-.*)?\.css$/,
   /^app-.*\.js$/,
   /^app-.*\.css$/,
   /^ITDASY-.*\.css$/,
@@ -91,4 +96,35 @@ if (/http-equiv=["']refresh["']/i.test(redirected) || /github\.io\/itdasy-fronte
   throw new Error('www/index.html still redirects to GitHub Pages');
 }
 
-console.log(`Capacitor www bundle ready: ${path.relative(root, out)}`);
+// 복사 목록을 손으로 적는 방식이라 빠뜨리기 쉽다 — 앱이 실제로 부르는 로컬 파일이
+// 번들에 전부 있는지 index.html · CSS @import · 로더(load-groups.js)를 따라가며 확인한다.
+// 하나라도 없으면 빌드를 실패시킨다(앱에서는 404 가 조용히 스타일·기능 누락으로 보인다).
+function localRefs(file) {
+  const s = fs.readFileSync(file, 'utf8');
+  const re = /(?:src|href)=["']([^"'#]+)["']|@import\s+(?:url\()?["']([^"']+)["']|["']((?:js|css|components|shared|workers|assets|icons)\/[^"'?]+\.(?:js|css|html|json|png|svg|webp))(?:\?[^"']*)?["']|["']((?:app|style|ITDASY|workspace)-[^"'?/]+\.(?:js|css|html))(?:\?[^"']*)?["']/g;
+  const refs = [];
+  let m;
+  while ((m = re.exec(s))) {
+    const r = m[1] || m[2] || m[3] || m[4];
+    if (!r || /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(r)) continue;
+    refs.push(r.split('?')[0]);
+  }
+  return refs;
+}
+const seen = new Set();
+const missing = new Set();
+function follow(rel, fromDir) {
+  const p = path.normalize(path.join(fromDir, rel));
+  if (seen.has(p)) return;
+  seen.add(p);
+  if (!fs.existsSync(p)) { missing.add(path.relative(out, p)); return; }
+  // 로더 안의 경로는 문서 기준(www/)이고, CSS @import 는 그 CSS 파일 기준이다
+  if (/\.(?:html|css)$/.test(p)) for (const r of localRefs(p)) follow(r, path.dirname(p));
+  else if (/load-groups\.js$/.test(p)) for (const r of localRefs(p)) follow(r, out);
+}
+follow('index.html', out);
+if (missing.size) {
+  throw new Error(`앱 번들에 없는 파일을 앱이 부릅니다(${missing.size}개):\n${[...missing].sort().join('\n')}`);
+}
+
+console.log(`Capacitor www bundle ready: ${path.relative(root, out)} (참조 ${seen.size}개 확인)`);
