@@ -670,7 +670,7 @@
 
   // [Phase3 #2] 예약 조회 결과를 카드로 — 고객/날짜/시간/시술/상태/예약금/연락처/메모 + 시간변경·취소 칩.
   //   칩은 기존 data-suggest 핸들러 재사용(자연어 명령 재전송) → 시간변경/취소 인텐트로 연결.
-  function _renderBookingCards(m, idx) {
+  function _renderBookingCards(m, _idx) {
     const items = Array.isArray(m.booking_cards) ? m.booking_cards : null;
     if (!items || !items.length) return '';
     const ST = { confirmed: '확정', confirm: '확정', pending: '대기', requested: '요청', completed: '완료', cancelled: '취소', no_show: '노쇼' };
