@@ -106,6 +106,12 @@ describe('주소를 통한 로그인 값 유출 차단', () => {
     expect(OAUTH_PAGE).toMatch(/<meta name="referrer" content="no-referrer">/);
   });
 
+  test('휴대폰 소셜 로그인은 웹 복귀 페이지가 아니라 앱으로 바로 돌아온다', () => {
+    expect(CORE).toMatch(/function _oauthReturnTo\(\)/);
+    expect(CORE).toMatch(/_isNativePlatform\(\) \? 'itdasy:\/\/oauth-return'/);
+    expect(CORE).toMatch(/const returnTo = _oauthReturnTo\(\);/);
+  });
+
   test('페르소나 화면도 공통 로그인 확인 함수만 쓴다', () => {
     expect(PERSONA_SURVEY).toMatch(/window\.getToken/);
     expect(PERSONA_SURVEY).not.toMatch(/localStorage\.getItem\(['"]itdasy_token::/);

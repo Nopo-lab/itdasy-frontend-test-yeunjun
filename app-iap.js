@@ -188,7 +188,22 @@
     if (!isAvailable()) return Promise.resolve({ ok: false, reason: 'unavailable' });
     if (!_ensureInit()) return Promise.resolve({ ok: false, reason: 'init_failed', message: _lastError });
     if (_pending) return Promise.resolve({ ok: false, reason: 'in_progress' });
+    if (window.ItdasyPlayIntegrity && typeof window.ItdasyPlayIntegrity.guard === 'function') {
+      return window.ItdasyPlayIntegrity.guard('iap_purchase')
+        .then(function () { return _purchaseMembershipAfterIntegrity(plan); })
+        .catch(function (err) {
+          if (window.ITDASY_INTEGRITY_ENFORCE !== true) {
+            console.warn('[iap] Play Integrity report-only failure:', err);
+            return _purchaseMembershipAfterIntegrity(plan);
+          }
+          var msg = (err && err.message) || '보안 확인 실패';
+          return { ok: false, reason: 'integrity_failed', message: msg };
+        });
+    }
+    return _purchaseMembershipAfterIntegrity(plan);
+  }
 
+  function _purchaseMembershipAfterIntegrity(plan) {
     // [결제 게이트 2026-09-07] 선택한 플랜의 상품을 산다. 인자가 없으면 월간(기존 동작).
     var productId = _productIdFor(plan);
     var CdvPurchase = _cdv();

@@ -23,7 +23,17 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const SKIP = ['node_modules', '.git', 'ios', 'android', '.claude', '__tests__', 'landing', 'scripts'];
+const SKIP = [
+  'node_modules',
+  '.git',
+  'ios',
+  'android',
+  'www', // Capacitor 앱 포장용 자동 복사본. 원본 JS/CSS만 감사한다.
+  '.claude',
+  '__tests__',
+  'landing',
+  'scripts',
+];
 const OVERLAY_RE = /position:\s*fixed;\s*inset:\s*0/;
 
 /* [P1 2026-09-10] 🔴 이 스크립트에 사각지대가 있었다.

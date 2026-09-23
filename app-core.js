@@ -2844,13 +2844,20 @@ function _navigateOAuth(url) {
   }
 }
 
+function _oauthReturnTo() {
+  // 휴대폰 앱에서는 외부 로그인 완료 후 앱으로 바로 돌아온다.
+  // 그러면 1회용 코드 교환 결과가 app-oauth-return.js → window.setToken()
+  // 경로를 타서 안전 저장소에 들어간다. 웹 브라우저에서만 oauth-return.html 을 쓴다.
+  return _isNativePlatform() ? 'itdasy://oauth-return' : new URL('oauth-return.html', window.location.href).href;
+}
+
 // ───── Google OAuth 로그인 시작 ─────
 // 백엔드에 authorize URL 을 요청 → 사용자를 Google 로그인 페이지로 이동
-// 완료 후 /oauth-return.html 에서 토큰 저장
+// 완료 후 앱은 딥링크, 웹은 /oauth-return.html 에서 1회용 code 를 교환한다.
 window.startGoogleLogin = async function () {
   try {
     // GitHub Pages 서브패스 (/itdasy-frontend-test-yeunjun/) 대응 — 현재 URL 기준 상대 경로
-    const returnTo = new URL('oauth-return.html', window.location.href).href;
+    const returnTo = _oauthReturnTo();
     const _cc = await _oauthPkceStart();
     const res = await fetch(
       // [P0-1-a] code_challenge 는 이제 필수 — 없으면 백엔드가 error=pkce_required 로 돌려보낸다.
@@ -2870,7 +2877,7 @@ window.startGoogleLogin = async function () {
 window.startKakaoLogin = async function () {
   try {
     // GitHub Pages 서브패스 (/itdasy-frontend-test-yeunjun/) 대응 — 현재 URL 기준 상대 경로
-    const returnTo = new URL('oauth-return.html', window.location.href).href;
+    const returnTo = _oauthReturnTo();
     const _cc = await _oauthPkceStart();
     const res = await fetch(
       `${window.API}/auth/kakao/authorize?return_to=${encodeURIComponent(returnTo)}` +
@@ -2888,7 +2895,7 @@ window.startKakaoLogin = async function () {
 // ───── 네이버 OAuth 로그인 시작 ─────
 window.startNaverLogin = async function () {
   try {
-    const returnTo = new URL('oauth-return.html', window.location.href).href;
+    const returnTo = _oauthReturnTo();
     const _cc = await _oauthPkceStart();
     const res = await fetch(
       `${window.API}/auth/naver/authorize?return_to=${encodeURIComponent(returnTo)}` +
