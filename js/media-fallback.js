@@ -54,7 +54,7 @@
     });
   }
 
-  function onError(img) {
+  function retryOrFail(img) {
     if (img.dataset.mfFailed === '1') return;
     if (!img.dataset.mfSrc) img.dataset.mfSrc = img.src;
     if (img.dataset.mfRetried === '1') return fail(img);
@@ -62,9 +62,23 @@
     img.src = bust(img.dataset.mfSrc);
   }
 
+  function onError(img) {
+    if (img.dataset.mfFailed === '1') return;
+    if (!img.dataset.mfSrc) img.dataset.mfSrc = img.src;
+    var refresher = window.MediaSignedUrlRefresh;
+    if (refresher && refresher._isManagedUrl(img.dataset.mfSrc) && img.dataset.mfSignedRetried !== '1') {
+      img.dataset.mfSignedRetried = '1';
+      refresher.refreshImage(img, { force: true }).then(function (ok) {
+        if (!ok && img.isConnected) retryOrFail(img);
+      });
+      return;
+    }
+    retryOrFail(img);
+  }
+
   document.addEventListener('error', function (e) {
     if (isMedia(e.target)) onError(e.target);
   }, true);   // ← 캡처. error 는 버블링하지 않는다.
 
-  window.MediaFallback = { _onError: onError, _fail: fail };
+  window.MediaFallback = { _onError: onError, _fail: fail, _retryOrFail: retryOrFail };
 })();
