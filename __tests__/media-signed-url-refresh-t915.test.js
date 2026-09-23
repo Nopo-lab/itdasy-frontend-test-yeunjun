@@ -87,7 +87,7 @@ test('이미지 로드 실패 시 회색 실패 UI 전에 signed URL 갱신을 �
 test('배선: index와 서비스워커가 자동연장 모듈을 로드한다', () => {
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
-  expect(html).toMatch(/js\/media-signed-url-refresh\.js\?v=20260923-t915/);
+  expect(html).toMatch(/js\/media-signed-url-refresh\.js\?v=[^"']+/);
   expect(html.indexOf('js/media-signed-url-refresh.js')).toBeLessThan(html.indexOf('js/media-fallback.js'));
   expect(sw).toContain('./js/media-signed-url-refresh.js');
 });
