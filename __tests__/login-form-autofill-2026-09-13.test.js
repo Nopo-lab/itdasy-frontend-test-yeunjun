@@ -31,7 +31,7 @@ const CORE = fs.readFileSync(path.join(ROOT, 'app-core.js'), 'utf8');
 function mountLogin() {
   const i = HTML.indexOf('<div class="login-form login-fade-3"');
   expect(i).toBeGreaterThan(-1);
-  const end = HTML.indexOf('<div class="login-divider">', i);
+  const end = HTML.indexOf('<div class="login-divider"', i);
   expect(end).toBeGreaterThan(i);
   document.body.innerHTML = HTML.slice(i, end) + '</div>';
 }
