@@ -11,6 +11,8 @@ PODS:
   - CapacitorCamera (8.2.2):
     - Capacitor
     - IONCameraLib (~> 1.0.5)
+  - CapacitorCommunityAppleSignIn (7.1.0):
+    - Capacitor
   - CapacitorCordova (8.5.0)
   - CapacitorDialog (8.0.1):
     - Capacitor
@@ -24,7 +26,7 @@ PODS:
     - Capacitor
   - CapacitorStatusBar (8.0.3):
     - Capacitor
-  - CordovaPlugins (8.5.0):
+  - CordovaPlugins (8.5.2):
     - CapacitorCordova
   - IONCameraLib (1.0.5)
   - KeychainSwift (21.0.0)
@@ -35,6 +37,7 @@ DEPENDENCIES:
   - "CapacitorApp (from `../../node_modules/@capacitor/app`)"
   - "CapacitorBrowser (from `../../node_modules/@capacitor/browser`)"
   - "CapacitorCamera (from `../../node_modules/@capacitor/camera`)"
+  - "CapacitorCommunityAppleSignIn (from `../../node_modules/@capacitor-community/apple-sign-in`)"
   - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
   - "CapacitorDialog (from `../../node_modules/@capacitor/dialog`)"
   - "CapacitorHaptics (from `../../node_modules/@capacitor/haptics`)"
@@ -60,6 +63,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/browser"
   CapacitorCamera:
     :path: "../../node_modules/@capacitor/camera"
+  CapacitorCommunityAppleSignIn:
+    :path: "../../node_modules/@capacitor-community/apple-sign-in"
   CapacitorCordova:
     :path: "../../node_modules/@capacitor/ios"
   CapacitorDialog:
@@ -83,6 +88,7 @@ SPEC CHECKSUMS:
   CapacitorApp: 305bd13c44f6f9d164e2ee66a4faa956ed8c0e06
   CapacitorBrowser: 752e0208aa07c7aa63d1f7cde895a3e9519b2656
   CapacitorCamera: a8e5798460aa967d0636d34d3a0bf1f69a5b5a39
+  CapacitorCommunityAppleSignIn: 271cb2860576fd2961508bbfa7a82117d93eadca
   CapacitorCordova: 9d3acbb574048e7167d2af127a0af2123e619f2f
   CapacitorDialog: 854c5dac405081cae697c177ca43bcaa95ae67bf
   CapacitorHaptics: 296f771ecd89c7a1bd92a7b6826a7d268e2e70f5
@@ -90,10 +96,10 @@ SPEC CHECKSUMS:
   CapacitorShare: 0c58305114538568059bfc07111f22dcb9cb2a82
   CapacitorSplashScreen: 7bf61c2001557ff9e195e601c6b87344480d3c65
   CapacitorStatusBar: eca7bc2b58d9f886f1ef9edb66e57a9b29c121af
-  CordovaPlugins: 4f82a655c31b21d49f44b82d42a4354cc3e0562f
+  CordovaPlugins: a2f967566f0d5ed20875c5b0ccbb0bb5b1ae3419
   IONCameraLib: ecbd8ef0077d481df429cee267bbeb1a7b9bddd0
   KeychainSwift: 4a71a45c802fd9e73906457c2dcbdbdc06c9419d
 
-PODFILE CHECKSUM: 35da4a9842d01235d41426d7414b14952a96d54f
+PODFILE CHECKSUM: 73a0d3589bc53835b848d6e0bf63da3620fc74b7
 
 COCOAPODS: 1.16.2

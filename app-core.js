@@ -2946,6 +2946,14 @@ window.startAppleLogin = async function () {
     try { await applyNewSession(data.access_token, { forcePurge: true }); } catch (_) { void 0; }
     window.location.reload(); // oauth-return 과 동일하게 재부팅 경로로 세션 반영
   } catch (e) {
+    // [2026-09-24] 애플 창에서 난 오류는 원문이 'com.apple.AuthenticationServices.AuthorizationError 오류 1000'
+    //   처럼 그대로 토스트에 찍혔다(시뮬레이터 실측). 사용자가 닫은 것(1001)은 조용히, 나머지는 쉬운 말로.
+    const raw = String((e && (e.message || e.code)) || '');
+    if (/AuthorizationError/.test(raw) || /^1\d{3}$/.test(raw)) {
+      if (/1001/.test(raw) || /cancel/i.test(raw)) return;
+      showToast('Apple 로그인을 마치지 못했어요. 아이폰 설정에서 Apple 계정에 로그인돼 있는지 확인해 주세요', 'error');
+      return;
+    }
     const msg = window._humanError ? window._humanError(e) : (e.message || 'Apple 로그인 오류');
     showToast(msg, 'error');
   } finally {
