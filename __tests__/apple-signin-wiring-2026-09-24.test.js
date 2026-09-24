@@ -52,3 +52,23 @@ describe('startAppleLogin 오류 문구', () => {
     expect(t[0]).not.toMatch(/AuthorizationError|com\.apple/);
   });
 });
+
+test('서버에 authorization_code 를 보낸다(탈퇴 때 Apple 연결 해제용)', async () => {
+  const core = read('app-core.js');
+  const src = core.slice(core.indexOf('let _appleLoginBusy'), core.indexOf('// T-324'));
+  let body = null;
+  const ctx = {
+    window: {
+      Capacitor: { Plugins: { SignInWithApple: { authorize: () => Promise.resolve({ response: { identityToken: 'id.tok.en', authorizationCode: 'c_123' } }) } } },
+      API: 'https://api.test',
+      location: { reload: () => {} },
+    },
+    fetch: (_u, o) => { body = JSON.parse(o.body); return Promise.resolve({ ok: false, json: () => Promise.resolve({ detail: 'stop' }) }); },
+    showToast: () => {},
+    console,
+  };
+  vm.runInNewContext(src, ctx);
+  await ctx.window.startAppleLogin();
+  expect(body.authorization_code).toBe('c_123');
+  expect(body.identity_token).toBe('id.tok.en');
+});

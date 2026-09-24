@@ -2938,7 +2938,8 @@ window.startAppleLogin = async function () {
     const res = await fetch(`${window.API}/auth/apple`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identity_token: idToken, name: fullName }),
+      // authorization_code: 서버가 refresh token 으로 바꿔 두어야 탈퇴 때 Apple 연결을 끊을 수 있다(가이드라인 5.1.1(v))
+      body: JSON.stringify({ identity_token: idToken, name: fullName, authorization_code: resp.authorizationCode || null }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.detail || 'Apple 로그인 실패');
