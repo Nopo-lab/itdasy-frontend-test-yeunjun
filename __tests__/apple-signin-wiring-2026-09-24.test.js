@@ -19,6 +19,8 @@ test('플러그인이 의존성에 있다', () => {
 test('iOS 앱 타깃이 Apple 로그인 권한을 선언한다(Debug·Release 둘 다)', () => {
   const ent = read('ios/App/App/App.entitlements');
   expect(ent).toMatch(/<key>com\.apple\.developer\.applesignin<\/key>\s*<array>\s*<string>Default<\/string>/);
+  // 배포 프로파일(itdasy_app_store)이 production 이라 값도 production 이어야 서명이 맞는다
+  expect(ent).toMatch(/<key>aps-environment<\/key>\s*<string>production<\/string>/);
   const pbx = read('ios/App/App.xcodeproj/project.pbxproj');
   expect((pbx.match(/CODE_SIGN_ENTITLEMENTS = App\/App\.entitlements;/g) || []).length).toBe(2);
 });
