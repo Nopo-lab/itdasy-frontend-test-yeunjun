@@ -10,7 +10,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const PROD = 'https://itdasy-backend-staging-644329093453.asia-northeast3.run.app';
+const PROD = 'https://itdasy-backend-test-644329093453.asia-northeast3.run.app';
 const LOCAL = 'http://localhost:8000';
 
 function ctx({ host, search = '', native = false, stored = null }) {

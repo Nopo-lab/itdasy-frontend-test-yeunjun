@@ -43,7 +43,7 @@
       // 앱(Capacitor)도 hostname 이 localhost 라 네이티브는 제외 — app-core.js _IS_LOCALHOST 와 같은 규칙
       var IS_NATIVE = false; try { IS_NATIVE = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()); } catch (e) { void e; }
       var IS_LOCAL = !IS_NATIVE && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      var API = IS_LOCAL ? 'http://localhost:8000' : 'https://itdasy-backend-staging-644329093453.asia-northeast3.run.app';
+      var API = IS_LOCAL ? 'http://localhost:8000' : 'https://itdasy-backend-test-644329093453.asia-northeast3.run.app';
       var params = new URLSearchParams(window.location.search);
       function el(id) { return document.getElementById(id); }
       function fail(t, m) {
