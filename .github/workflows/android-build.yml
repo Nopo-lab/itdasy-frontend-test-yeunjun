@@ -21,21 +21,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      # [2026-08-15 운영 레포 실사고] 운영 레포 capacitor.config.json 이 test-yeunjun Pages 를
-      #   가리킨 채로 출시 직전까지 와 있었다. server.url 은 앱이 실제로 띄우는 사이트라,
-      #   틀리면 "스토어에 올라간 앱이 테스트 사이트를 연다" 가 된다 — 심사 통과 후에야 드러난다.
-      #   두 레포의 이 파일은 이 한 줄 빼고 동일해서 동기화 때 통째로 덮어쓰기 쉽다.
-      #   여기선 반대 방향(이 레포 앱이 운영 사이트를 열게 되는 것)이 위험하다.
-      #   그래서 사람 눈이 아니라 빌드가 막는다.
-      - name: Guard — server.url 이 이 레포 Pages 인지
-        run: |
-          URL=$(python3 -c "import json;print(json.load(open('capacitor.config.json'))['server']['url'])")
-          echo "server.url = $URL"
-          if [ "$URL" != "https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/" ]; then
-            echo "::error::스테이징 빌드인데 server.url 이 이 레포 Pages 가 아닙니다: $URL"
-            exit 1
-          fi
-
       # [2026-08-15 Capacitor 8] 17 → 21. @capacitor/android 8.5.0 이
       #   sourceCompatibility/targetCompatibility 를 VERSION_21 로 박아둬서
       #   JDK 17 로는 컴파일이 안 된다.
@@ -67,6 +52,15 @@ jobs:
 
       - name: Install npm deps
         run: npm install --no-audit --no-fund
+
+      - name: Build bundled www
+        run: npm run cap:build-www
+
+      # [2026-09-23 앱전용] 스토어 앱은 GitHub Pages 를 열지 않는다.
+      # server.url 이 있으면 저장소 공개/비공개·Pages 장애가 곧 앱 장애가 된다.
+      # 단순 grep 은 주석 속 옛 주소까지 잡으므로, 주석 제거 후 실행 코드만 검사한다.
+      - name: Guard — 앱전용 번들인지 확인
+        run: node scripts/guard-app-only-bundle.js
 
       # google-services.json 은 .gitignore 로 레포에서 빠져 있다(보안감사 8bd456e 결정).
       # 레포가 public 이라 그 판단을 유지하고, 키스토어와 같은 방식으로 시크릿에서 주입한다.

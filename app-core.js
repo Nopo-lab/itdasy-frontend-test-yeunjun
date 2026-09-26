@@ -2846,13 +2846,20 @@ function _navigateOAuth(url) {
   }
 }
 
+function _oauthReturnTo() {
+  // 휴대폰 앱에서는 외부 로그인 완료 후 앱으로 바로 돌아온다.
+  // 그러면 1회용 코드 교환 결과가 app-oauth-return.js → window.setToken()
+  // 경로를 타서 안전 저장소에 들어간다. 웹 브라우저에서만 oauth-return.html 을 쓴다.
+  return _isNativePlatform() ? 'itdasy://oauth-return' : new URL('oauth-return.html', window.location.href).href;
+}
+
 // ───── Google OAuth 로그인 시작 ─────
 // 백엔드에 authorize URL 을 요청 → 사용자를 Google 로그인 페이지로 이동
-// 완료 후 /oauth-return.html 에서 토큰 저장
+// 완료 후 앱은 딥링크, 웹은 /oauth-return.html 에서 1회용 code 를 교환한다.
 window.startGoogleLogin = async function () {
   try {
     // GitHub Pages 서브패스 (/itdasy-frontend-test-yeunjun/) 대응 — 현재 URL 기준 상대 경로
-    const returnTo = new URL('oauth-return.html', window.location.href).href;
+    const returnTo = _oauthReturnTo();
     const _cc = await _oauthPkceStart();
     const res = await fetch(
       // [P0-1-a] code_challenge 는 이제 필수 — 없으면 백엔드가 error=pkce_required 로 돌려보낸다.
@@ -2872,7 +2879,7 @@ window.startGoogleLogin = async function () {
 window.startKakaoLogin = async function () {
   try {
     // GitHub Pages 서브패스 (/itdasy-frontend-test-yeunjun/) 대응 — 현재 URL 기준 상대 경로
-    const returnTo = new URL('oauth-return.html', window.location.href).href;
+    const returnTo = _oauthReturnTo();
     const _cc = await _oauthPkceStart();
     const res = await fetch(
       `${window.API}/auth/kakao/authorize?return_to=${encodeURIComponent(returnTo)}` +
@@ -2890,7 +2897,7 @@ window.startKakaoLogin = async function () {
 // ───── 네이버 OAuth 로그인 시작 ─────
 window.startNaverLogin = async function () {
   try {
-    const returnTo = new URL('oauth-return.html', window.location.href).href;
+    const returnTo = _oauthReturnTo();
     const _cc = await _oauthPkceStart();
     const res = await fetch(
       `${window.API}/auth/naver/authorize?return_to=${encodeURIComponent(returnTo)}` +
@@ -2931,7 +2938,8 @@ window.startAppleLogin = async function () {
     const res = await fetch(`${window.API}/auth/apple`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identity_token: idToken, name: fullName }),
+      // authorization_code: 서버가 refresh token 으로 바꿔 두어야 탈퇴 때 Apple 연결을 끊을 수 있다(가이드라인 5.1.1(v))
+      body: JSON.stringify({ identity_token: idToken, name: fullName, authorization_code: resp.authorizationCode || null }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.detail || 'Apple 로그인 실패');
@@ -2939,6 +2947,14 @@ window.startAppleLogin = async function () {
     try { await applyNewSession(data.access_token, { forcePurge: true }); } catch (_) { void 0; }
     window.location.reload(); // oauth-return 과 동일하게 재부팅 경로로 세션 반영
   } catch (e) {
+    // [2026-09-24] 애플 창에서 난 오류는 원문이 'com.apple.AuthenticationServices.AuthorizationError 오류 1000'
+    //   처럼 그대로 토스트에 찍혔다(시뮬레이터 실측). 사용자가 닫은 것(1001)은 조용히, 나머지는 쉬운 말로.
+    const raw = String((e && (e.message || e.code)) || '');
+    if (/AuthorizationError/.test(raw) || /^1\d{3}$/.test(raw)) {
+      if (/1001/.test(raw) || /cancel/i.test(raw)) return;
+      showToast('Apple 로그인을 마치지 못했어요. 아이폰 설정에서 Apple 계정에 로그인돼 있는지 확인해 주세요', 'error');
+      return;
+    }
     const msg = window._humanError ? window._humanError(e) : (e.message || 'Apple 로그인 오류');
     showToast(msg, 'error');
   } finally {
