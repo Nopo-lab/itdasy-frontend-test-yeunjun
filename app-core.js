@@ -1104,6 +1104,13 @@ window._clearAllSWRCache = _clearAllSWRCache;
 //   새 토큰을 구분 못 하므로 user_id 기준으로 비교.
 // ──────────────────────────────────────────────
 const _USER_KEY_PREFIXES = ['itdasy_', 'itdasy:', 'pv_cache::', 'persona_'];
+// 운영·테스트 웹앱은 같은 GitHub Pages 원본을 공유하므로 서로의 환경별 토큰은 보존한다.
+const _ENV_TOKEN_KEYS = new Set([
+  _TOKEN_KEY,
+  'itdasy_token::prod',
+  'itdasy_token::staging',
+  'itdasy_token::local',
+]);
 // [연준님 2026-08-16] assistant_session_id 추가 — prefix 어디에도 안 걸려 계정 전환 후에도
 //   이전 계정의 잇비 세션 id 가 그대로 남았다. 서버가 user_id 로 걸러 유출은 없지만,
 //   그 상태 자체가 틀렸고 실측에서 UI 가 꼬였다(대화가 없는데 초기 추천칩이 숨겨짐).
@@ -1156,7 +1163,7 @@ function _purgeUserScopedStorage() {
     try {
       Object.keys(storage).forEach(k => {
         if (_USER_KEY_KEEP.has(k)) return;
-        if (storage === localStorage && k === _TOKEN_KEY) return; // 토큰은 setToken 이 별도 관리
+        if (storage === localStorage && _ENV_TOKEN_KEYS.has(k)) return; // 환경별 토큰은 서로 지우지 않음
         const matchPrefix = _USER_KEY_PREFIXES.some(p => k.startsWith(p));
         const matchExact = _USER_KEY_EXACT.includes(k);
         if (matchPrefix || matchExact) {
