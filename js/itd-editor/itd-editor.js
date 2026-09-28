@@ -22,7 +22,7 @@
     { key: 'gamja',      label: '귀염',  family: "'Gamja Flower', cursive",     weight: 400 },
     { key: 'himelody',   label: '하늘',  family: "'Hi Melody', cursive",        weight: 400 }
   ];
-  var COLORS = ['#FFFFFF', '#15181D', '#BC6675', '#E08A6E', '#E6B45A', '#86B06E', '#6E9BC4', '#A98AC4'];
+  var COLORS = ['#FFFFFF', '#15181D', '#BC6675', '#E08A6E', '#E6B45A', '#CFA7AE', '#8B95A1', '#B8A6B5'];
   // [#13] 무지개 스와치 — 탭하면 네이티브 색상 팔레트가 열려 원하는 색을 자유롭게 고른다(텍스트·도형·그리기·레이아웃 배경 공용).
   function _rbSw(target, cls) {
     return '<button type="button" class="' + (cls || 'itsw') + ' itsw--rb" data-colorpick="' + target + '" title="색 직접 고르기" aria-label="색 직접 고르기"></button>';
@@ -33,7 +33,7 @@
      화면·크기·색은 그대로 — aria-label 만 추가한다(디자인 변경 아님). */
   var COLOR_NAMES = {
     '#FFFFFF': '흰색', '#15181D': '검정', '#BC6675': '로즈', '#E08A6E': '코랄',
-    '#E6B45A': '골드', '#86B06E': '그린', '#6E9BC4': '블루', '#A98AC4': '퍼플'
+    '#E6B45A': '골드', '#CFA7AE': '로즈그레이', '#8B95A1': '그레이블루', '#B8A6B5': '모브'
   };
   function _colorName(c) {
     var k = String(c || '').toUpperCase();
@@ -129,7 +129,7 @@
     else if (t === 'textbg') { applyBgColor(v); if (root) root.querySelectorAll('[data-color]').forEach(function (x) { x.classList.remove('on'); }); }
     else if (t === 'shape') { S.shapeColor = v; if (refs.panels && refs.panels.shape) refs.panels.shape.querySelectorAll('[data-scolor]').forEach(function (x) { x.classList.remove('on'); }); applyShapeStyle(); }
     else if (t === 'draw') { S.drawColor = v; if (root) root.querySelectorAll('[data-dcolor]').forEach(function (x) { x.classList.remove('on'); }); }
-    else if (t === 'layout') { S.collageBg = v; S.collageBgImg = null; saveBgPref(); if (refs.panels && refs.panels.layout) refs.panels.layout.querySelectorAll('[data-bg]').forEach(function (x) { x.classList.remove('on'); }); renderCollage(); applyFit(); recutWithBg(); }
+    else if (t === 'layout') { S._bgTicket = (S._bgTicket || 0) + 1; S._bgLoading = false; S.collageBg = v; S.collageBgImg = null; saveBgPref(); if (refs.panels && refs.panels.layout) refs.panels.layout.querySelectorAll('[data-bg]').forEach(function (x) { x.classList.remove('on'); }); renderCollage(); applyFit(); recutWithBg(); }
     // [스포이드/무지개] 누끼 배경색 — 이미 누끼면 매트 캐시 0초 재합성만(recutWithBg). 아직 안 했으면 색만 기억(드래그 중 유료 누끼 API 연발 방지).
     else if (t === 'cutbg') { S.photoBg = S.photoBg || {}; S.photoBg[S.adjSel] = { color: v, img: null }; if (refs.adjCutBg) refs.adjCutBg.querySelectorAll('[data-cutbg],[data-cutbgimg]').forEach(function (x) { x.classList.remove('on'); }); applyFit(); recutWithBg(); }
   }
@@ -332,6 +332,7 @@
       S.photoCss = _cssUrl(url);
       refs.photo.style.backgroundImage = S.photoCss;
       if (refs.photofx && !refs.photofx.hidden) refs.photofx.style.backgroundImage = S.photoCss;
+      if (window.ItdStudioPreview) window.ItdStudioPreview.update(root, S, loadImg, toastIt);
     } catch (_e) { void _e; }
   }
   function _cssUrl(url) { return 'url("' + _disp(url) + '")'; }
@@ -389,6 +390,7 @@
   }
   /** 그릴 원본 — filter 가 먹으면 원본 그대로, 아니면 보정을 구운 사본(캔버스). 보정이 기본값이면 원본. */
   function _adjSrc(img, a) {
+    if (img && window.ItdPhotoLab && window.ItdPhotoLab.active(a)) img = window.ItdPhotoLab.render(img, a);
     if (!img || !a || _ctxFilterOK() || _adjIsId(a)) return img;
     try {
       var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
@@ -397,6 +399,13 @@
       var id = g.getImageData(0, 0, w, h); _applyAdjPixels(id.data, a); g.putImageData(id, 0, 0);
       return cv;
     } catch (_e) { void _e; return img; }
+  }
+  // 배경색은 보정하지 않고 형태만 맞춘다. 사람 마스크에는 복제 브러시를 적용하지 않는다.
+  function _retouchSrc(img, a, maskOnly) {
+    if (!maskOnly && img && a && a.regions && window.ItdRegionEngine.active(a.regions)) return window.ItdPhotoLab.render(img, { regions: a.regions, retouch: a.retouch });
+    var engine = window.ItdRetouchEngine;
+    return img && engine && engine.active(a && a.retouch)
+      ? engine.render(img, a.retouch, 2560, !!maskOnly) : img;
   }
   var ADJ_CTRLS = [
     { k: 'b', label: '밝기', min: 60, max: 140 }, { k: 'c', label: '대비', min: 60, max: 140 },
@@ -486,6 +495,12 @@
     document.body.appendChild(root);
     cacheRefs();
     wire();
+    if (window.ItdStudioControls) window.ItdStudioControls.mount(root, {
+      state: function () { return S; }, defaults: defAdj, commit: _pushAdj, load: loadImg, filter: filterStr, export: exportComposite,
+      legacyPixels: _applyAdjPixels, tool: setTool, selectPhoto: onAdjThumb,
+      text: function (add) { var current = activeText(); if (add || !current) addText(); else editText(current); },
+      refresh: function () { syncAdjSliders(); applyAdjThrottled(); }
+    });
     preloadFonts();   // [#6] 폰트칩이 각 폰트 디자인대로 보이도록 즉시 로드(지연/FOUT 방지)
   }
   // [#6] 칩에 쓰는 폰트를 강제 로드 — 안 그러면 첫 렌더 때 폴백되어 'Aa가'가 다 똑같아 보임.
@@ -692,7 +707,7 @@
     '</div>';
   }
   // [레이아웃 재설계] 도형 미니썸네일 피커(LAYOUTS 그대로) + 렌더된 사진을 순서대로 탭해 자리에 채움.
-  var BG_COLORS = ['#FFFFFF', '#FBF7F5', '#F4E9E4', '#E8D3C2', '#F2D7DE', '#E6C9D2', '#D9B8C4', '#BC6675', '#E08A6E', '#E6B45A', '#BFD0C4', '#A7C4B5', '#9DB7C9', '#C9C2E0', '#7A6E78', '#2C2226', '#15181D'];
+  var BG_COLORS = ['#FFFFFF', '#F7F8FA', '#F7EFF0', '#F2D5D9', '#E8C7CD', '#D58A95', '#BC6675', '#A85C6A', '#E08A6E', '#E6B45A', '#CFA7AE', '#B8A6B5', '#8B95A1', '#7A6E78', '#4B4146', '#2C2226', '#15181D'];
   // [2026-07-26 원영] 팔레트 A안 — 기본 노출 주요색 인덱스(흰색·크림 2·로즈핑크 2·브랜드 로즈·검정). 나머지는 '+' 펼치기.
   var BG_MAIN_IDX = [0, 1, 2, 4, 5, 7, 16];
   function buildLayout() {
@@ -745,6 +760,7 @@
   function setTool(tool, _noAuto) {
     _closeEyedrop();   // [스포이드] 도구 바꾸면 색 추출 모드 해제
     S.tool = tool;
+    if (window.ItdStudioControls) window.ItdStudioControls.toolChanged(tool);
     root.querySelectorAll('.itrb').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tool') === tool); });
     Object.keys(refs.panels).forEach(function (k) { refs.panels[k].classList.toggle('is-open', k === tool); });
     /* [2026-09-03 P1 실측] 도구 패널(.itpanel, z-index:10)이 열리면 그 아래 '레이어 순서' 줄을 덮는데,
@@ -783,6 +799,7 @@
     root.classList.toggle('itded--peek', S._peek);
     if (refs.peek) refs.peek.classList.toggle('on', S._peek);
     fitStageToRatio();
+    if (window.ItdStudioControls) window.ItdStudioControls.preview();
   }
 
   function _sx(L) { return (L && L.scaleX != null) ? L.scaleX : 1; }
@@ -1502,7 +1519,7 @@
     L.el.appendChild(t); L.tx = t;
     _applyTextStyle(L);
     // 새 글자는 사진 중앙을 가리지 않도록 하단 안전영역에서 시작한다.
-    placeSafeBottom(L, 180, 44); selectLayer(L);
+    placeSafeBottom(L, L.el.offsetWidth || 180, L.el.offsetHeight || 44); selectLayer(L);
     _pushOp({ op: 'add', L: L });   // [P1-3] 추가 되돌리기
     editText(L);   // [2026-09-05] 동기 호출 필수 — setTimeout 으로 미루면 모바일 키보드가 안 올라온다(위 주석 ③)
     /* [2026-08-23] 이 장에 글자가 처음 생겼다 → 그 장 기준으로 자동 초안을 한 번 돌린다.
@@ -1563,11 +1580,11 @@
   function _applyWmSuggestion() {
     var sug = S && S.wmSuggestion;
     if (!sug || !sug.state || !Array.isArray(sug.state.layers)) return;
+    if (window.WorkMemoryEngine && window.WorkMemoryEngine.acceptSuggestion && !window.WorkMemoryEngine.acceptSuggestion(sug)) return;
     var before = S.layers.length; renderIncoming(sug.state.layers);
     var added = S.layers.slice(before).filter(function (L) { return L && L._wmTok === sug.token; });
-    var adjPack = _applyMemoryPreset(sug.adjustmentPreset);
+    var adjPack = _applyMemoryTone(sug.photoTone) || _applyMemoryPreset(sug.adjustmentPreset);
     if (!added.length && !adjPack) return;
-    if (window.WorkMemoryEngine && window.WorkMemoryEngine.acceptSuggestion) window.WorkMemoryEngine.acceptSuggestion(sug);
     _pushOp({ op: 'wmApply', Ls: added, adjPack: adjPack, wmToken: sug.token });
     if (refs.wmSuggest) refs.wmSuggest.hidden = true;
     if (refs.wmRemove) refs.wmRemove.hidden = false;
@@ -2436,7 +2453,7 @@
   // 콜라주(좌우2장/4장) — 단일이면 collage 숨김. grid면 선택 순서(layoutOrder)대로 칸 채움(미선택=자리표시).
   function renderCollage() {
     var fit = S.fitMode || 'cover';
-    if (isSingleL(S.layout)) { refs.collage.hidden = true; refs.collage.className = 'itded__collage'; refs.collage.innerHTML = ''; refs.photo.style.backgroundImage = S.photoCss; refs.photo.style.backgroundSize = fit; refs.photo.style.backgroundColor = (fit === 'contain' ? (S.collageBg || '#fff') : 'transparent'); return; }
+    if (isSingleL(S.layout)) { refs.collage.hidden = true; refs.collage.className = 'itded__collage'; refs.collage.innerHTML = ''; refs.photo.style.backgroundImage = S.photoCss; refs.photo.style.backgroundSize = fit; refs.photo.style.backgroundColor = (fit === 'contain' && !S.collageBgImg ? (S.collageBg || '#fff') : 'transparent'); return; }
     if (refs.photofx) { refs.photofx.hidden = true; }   // [#11] 콜라주 모드 — 단일용 오버레이는 끈다(셀별 fx 는 셀 안에서 처리)
     // [SSOT] 셀 좌표 그대로 절대배치 — 비대칭(1+2·2+1) 포함 모든 모양 지원, export와 동일 좌표.
     var cellsSpec = _layCells(), pos = _layPosArr(), gap = (S.collageGap != null ? S.collageGap : 3), cells = '';
@@ -2474,12 +2491,14 @@
     refs.collage.style.gap = '';
     refs.collage.style.background = S.collageBgImg ? ('center/cover no-repeat url("' + S.collageBgImg + '")') : (S.collageBg || '#fff');
     refs.collage.innerHTML = cells; refs.collage.hidden = false;
+    if (window.ItdStudioPreview) window.ItdStudioPreview.update(root, S, loadImg, toastIt);
   }
   // [#5] 꽉 채움(cover)/전체(contain) — 풀 사진이 잘리지 않게 '전체'면 여백에 배경색.
   function applyFit() {
+    refs.stage.style.background = S.collageBgImg ? ('center/cover no-repeat url("' + S.collageBgImg + '")') : (S.collageBg || '#fff');
     var fit = S.fitMode || 'cover';
     if ((S.layout.kind || 'single') === 'single') {
-      refs.photo.style.backgroundSize = fit; refs.photo.style.backgroundColor = (fit === 'contain' ? (S.collageBg || '#fff') : 'transparent');
+      refs.photo.style.backgroundSize = fit; refs.photo.style.backgroundColor = (fit === 'contain' && !S.collageBgImg ? (S.collageBg || '#fff') : 'transparent');
     } else { renderCollage(); }
   }
   // [#2 단일화·WYSIWYG] 스테이지를 게시물 비율(4:5 등) 박스로 고정 — 화면 전체로 늘어나지 않게.
@@ -2525,13 +2544,14 @@
     if (!root || !refs.stage) return;
     if (S) S.ratio = _safeRatio(S.ratio);
     var rp = String(S && S.ratio || '4:5').split(':'); var rw = +rp[0] || 4, rh = +rp[1] || 5;
-    var availW = root.clientWidth || 432, availH = root.clientHeight || 540;
+    var studio = root.classList.contains('is-open') && window.ItdStudioControls && window.ItdStudioControls.bounds(root);
+    var availW = studio ? studio.width : (root.clientWidth || 432), availH = studio ? studio.height : (root.clientHeight || 540);
     var w = availW, h = w * rh / rw;
     if (h > availH) { h = availH; w = h * rw / rh; }
     refs.stage.style.flex = '0 0 auto';
     refs.stage.style.width = Math.round(w) + 'px';
     refs.stage.style.height = Math.round(h) + 'px';
-    refs.stage.style.margin = 'auto';   // 항상 가운데(자동 위로-이동은 하단 텍스트를 패널 밑으로 숨겨 제거 — #7). 사진 전체 확인은 peek 토글로.
+    refs.stage.style.margin = studio ? (studio.top + (availH - h) / 2) + 'px 0 0 ' + (studio.left + (availW - w) / 2) + 'px' : 'auto';   // 항상 가운데(자동 위로-이동은 하단 텍스트를 패널 밑으로 숨겨 제거 — #7). 사진 전체 확인은 peek 토글로.
   }
   /* ── 셀별 크롭(콜라주 칸마다 드래그/핀치 재구도) ── */
   function cropOf(k) { if (!S.cellCrop[k]) S.cellCrop[k] = { s: 1, tx: 0, ty: 0 }; return S.cellCrop[k]; }
@@ -2594,11 +2614,27 @@
     S.presetByPhoto = Object.assign({}, snap.presets || {});
     try { syncAdjSliders(); applyAdjToDisplay(); applyStraighten(); renderAdjust(); } catch (_e) { void _e; }
   }
+  function _applyMemoryTone(tone) {
+    var v = window.WMPhotoTone && window.WMPhotoTone.toAdjustment(tone); if (!v) return null;
+    var pack = { before: _adjPackSnapshot() };
+    (S.photos || []).forEach(function (_u, i) {
+      var a = Object.assign({}, adjOf(i)); delete a.labLook; delete a.labStrength;
+      S.adj[i] = Object.assign(a, v); delete S.presetByPhoto[String(i)];
+    });
+    pack.after = _adjPackSnapshot();
+    try { syncAdjSliders(); applyAdjToDisplay(); renderAdjust(); }
+    catch (e) { console.warn('[PhotoStudio] remembered tone preview unavailable', e); }
+    return pack;
+  }
   function _applyMemoryPreset(mark) {
     var v = _presetAdj(mark); if (!v) return null;
     var pack = { before: _adjPackSnapshot() };
     (S.photos || []).forEach(function (_u, i) {
-      S.adj[i] = Object.assign({}, v);
+      var current = adjOf(i);
+      S.adj[i] = Object.assign({}, v, { rot: current.rot || 0 });
+      if (current.local) S.adj[i].local = current.local;
+      if (current.retouch) S.adj[i].retouch = current.retouch;
+      if (current.regions) S.adj[i].regions = current.regions;
       S.presetByPhoto[String(i)] = { presetId: mark.presetId, presetStrength: mark.presetStrength == null ? 1 : mark.presetStrength };
     });
     pack.after = _adjPackSnapshot();
@@ -2637,7 +2673,7 @@
   /* [2026-09-13 ZH] `(a.s || 100)` 이라 **채도 0(흑백)이 '보정 없음'으로 판정**됐다 — 0 은 falsy 다.
      채도 슬라이더 최소값이 0 이라 실제로 고를 수 있는 값이다. null/undefined 일 때만 기본값으로 본다. */
   function _dv(v, d) { return (v == null || isNaN(v)) ? d : +v; }
-  function _adjIsId(a) { return !a || (_dv(a.b, 100) === 100 && _dv(a.c, 100) === 100 && _dv(a.s, 100) === 100 && !(a.w > 0) && !(a.sh > 0)); }
+  function _adjIsId(a) { if (typeof window !== 'undefined' && window.ItdPhotoLab && window.ItdPhotoLab.active(a)) return false; return !a || (_dv(a.b, 100) === 100 && _dv(a.c, 100) === 100 && _dv(a.s, 100) === 100 && !(a.w > 0) && !(a.sh > 0)); }
   function _fgOn(i) { return !!(S.fgMask && S.fgMask[i]); }
   function _fgActive(i) { return _fgOn(i) && !_adjIsId(adjOf(i)); }   // 누끼 + 실제 보정 있을 때만 2겹
   function _syncSingleFx(idx) {
@@ -2660,8 +2696,9 @@
     }
   }
   function applyAdjToDisplay() {
+    if (window.ItdStudioPreview) window.ItdStudioPreview.update(root, S, loadImg, toastIt);
     if ((S.layout.kind || 'single') === 'single') {
-      _syncSingleFx(S.photos.indexOf(S.photoUrl));
+      _syncSingleFx(S.adjSel != null ? S.adjSel : S.photos.indexOf(S.photoUrl));
     } else {
       // [#1 끊김] 셀 innerHTML 재생성(배경이미지 재디코딩) 대신 필터만 in-place 갱신.
       //   [#11] 누끼 셀(fgMask 있음)은 fx 오버레이 img 의 필터를, 아니면 셀 자체 필터를 갱신.
@@ -2673,6 +2710,7 @@
     }
   }
   function syncAdjSliders() {
+    if (window.ItdStudioControls) window.ItdStudioControls.sync();
     var a = adjOf(S.adjSel);
     ADJ_CTRLS.forEach(function (c) {
       var inp = root.querySelector('[data-adj="' + c.k + '"]'); if (inp) inp.value = a[c.k];
@@ -2717,8 +2755,8 @@
     var c = refs.ctx;
     try { S.photoDraw[oldIdx] = refs.draw.toDataURL(); } catch (_e) { void _e; }
     c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, refs.draw.width, refs.draw.height); c.restore();
-    var saved = S.photoDraw[newIdx];
-    if (saved) { var im = new Image(); im.onload = function () { try { c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(im, 0, 0); c.restore(); } catch (_e2) { void _e2; } }; im.src = saved; }
+    var saved = S.photoDraw[newIdx], drawingState = S;
+    if (saved) { var im = new Image(); im.onload = function () { if (S !== drawingState || S.adjSel !== newIdx || S._cancelled) return; try { c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; c.shadowBlur = 0; c.drawImage(im, 0, 0); c.restore(); } catch (_e2) { void _e2; } }; im.src = saved; }
   }
   /* 🔴 [2026-08-23] 자동 초안 상태를 **사진별**로 든다.
      예전엔 `S._planApplied`·`S._safeApplied`·`S._userMoved` 가 세션 전역이라
@@ -2758,7 +2796,7 @@
     if (!S.layersByPhoto) S.layersByPhoto = {};
     S.layersByPhoto[oldIdx] = (S.layers || []).map(_serLayer).filter(Boolean);   // 현재 장 레이어 직렬화 보관
     S.layers.slice().forEach(function (L) { try { if (L.el && L.el.remove) L.el.remove(); } catch (_e) { void _e; } });
-    S.layers = []; S.active = null; S.undo = []; S.redo = [];
+    S.layers = []; S.active = null; S.undo = []; S.redo = []; _syncHist();
     var saved = S.layersByPhoto[newIdx];
     if (saved && saved.length) _restoreLayers(saved);   // 넘어간 장 레이어 복원
   }
@@ -2827,6 +2865,7 @@
   function recutWithBg() { if (S.cutSet && S.cutSet[S.adjSel]) doCutout(S.adjSel, true); }
   // [#2] 배경(색/사진) 바꾸면 적용 — 이미 누끼면 0초 교체, 아직 안 했으면 지금 누끼하며 배경 적용(눈에 보이게).
   function applyBgChange() {
+    S._bgTicket = (S._bgTicket || 0) + 1; S._bgLoading = false;
     if (S.cutSet && S.cutSet[S.adjSel]) recutWithBg();
     else doCutout(S.adjSel);   // 처음 배경 고르면 자동 누끼로 반영(예전엔 아무 일도 안 나 '적용 안 됨')
   }
@@ -2845,8 +2884,9 @@
   function toastIt(m) { try { (window.showToast || function () {})(m); } catch (_) { void _; } }
   function addPhotoFromFile(file) {
     if (!file || !/^image\//.test(file.type)) return;
-    var rd = new FileReader();
+    var state = S, rd = new FileReader();
     rd.onload = function () {
+      if (S !== state || state._cancelled) return;
       S.photos.push(rd.result); S.adj.push(defAdj());
       // [#11] 콜라주면 새 사진을 즉시 빈 칸에 자동 배치하고 콜라주/힌트를 다시 그린다.
       //   예전엔 layoutOrder·renderCollage 갱신을 안 해, 추가해도 사진이 '사라진 것처럼' 보이고
@@ -2858,27 +2898,37 @@
       }
       renderLayoutStrip(); renderAdjust();
     };
+    rd.onerror = function () { if (S === state) toastIt('사진 파일을 읽지 못했어요. 다시 골라 주세요'); };
     rd.readAsDataURL(file);
   }
   // [#4] 배경 사진 업로드 — 축소 저장 → 콜라주/누끼 배경으로 + 기억(persist).
-  function addBgImageFromFile(file) {
+  function addBgImageFromFile(file, layoutBackground) {
+    var state = S, idx = S.adjSel;
     if (!file || !/^image\//.test(file.type)) return;
+    var ticket = state._bgTicket = (state._bgTicket || 0) + 1; state._bgLoading = true;
+    function current() { return S === state && !state._cancelled && ticket === state._bgTicket; }
+    function failed() { if (current()) { state._bgLoading = false; toastIt('사진을 읽지 못했어요. 다른 사진을 골라 주세요'); } }
     var rd = new FileReader();
     rd.onload = function () {
+      if (!current()) return;
       var img = new Image();
       img.onload = function () {
         var max = 900, sc = Math.min(1, max / Math.max(img.width, img.height));
         var w = Math.max(1, Math.round(img.width * sc)), h = Math.max(1, Math.round(img.height * sc));
         var cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h);
         var _u; try { _u = cv.toDataURL('image/jpeg', 0.85); } catch (_) { _u = rd.result; }
+        if (!current()) return; state._bgLoading = false;
+        if (layoutBackground) { S.collageBgImg = _u; renderCollage(); applyFit(); toastIt('배경 사진을 적용했어요'); return; }
+        if (S.adjSel !== idx) { toastIt('사진이 바뀌었어요. 배경 사진을 다시 골라 주세요'); return; }
         S.photoBg = S.photoBg || {}; S.photoBg[S.adjSel] = { img: _u };   // [#8] 현재 사진 배경만
         try { localStorage.setItem('itdasy:itd_bgimg', _u); } catch (_e3) { void _e3; }   // [#2] 다음에도 재사용
         if (refs.adjCutBg) { var rb = refs.adjCutBg.querySelector('[data-cutbgimg]'); if (rb) rb.style.backgroundImage = 'url(\'' + _u + '\')'; }
         renderCollage(); applyFit(); applyBgChange(); toastIt('배경 사진을 적용했어요');   // [#2] 처음이면 자동 누끼로 바로 반영
       };
-      img.onerror = function () { S.collageBgImg = rd.result; saveBgPref(); renderCollage(); applyFit(); };
+      img.onerror = failed;
       img.src = rd.result;
     };
+    rd.onerror = failed;
     rd.readAsDataURL(file);
   }
 
@@ -2894,10 +2944,12 @@
     try {
       if (!S || !S.photoDraw || !refs.ctx || !refs.draw) return;
       var idx = (S.adjSel != null) ? S.adjSel : 0;
+      var drawingState = S;
       var src = S.photoDraw[idx] || S.photoDraw[String(idx)];
       if (!src) return;
       var im = new Image();
       im.onload = function () {
+        if (S !== drawingState || S.adjSel !== idx || S._cancelled) return;
         try {
           var c = refs.ctx; c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
           c.drawImage(im, 0, 0, refs.draw.width, refs.draw.height); c.restore();
@@ -2921,29 +2973,31 @@
     else if (S.brush === 'neon') { c.shadowBlur = Math.max(16, S.brushSize * 1.6); c.shadowColor = S.drawColor; c.lineWidth = Math.max(3, S.brushSize * 0.7); c.lineCap = 'round'; c.lineJoin = 'round'; }
     else if (S.brush === 'eraser') { c.globalCompositeOperation = 'destination-out'; c.lineWidth = S.brushSize * 1.6; }
   }
-  var dpos = null, _drawRect = null;
+  var dpos = null, _drawRect = null, _drawPaint = 0;
   var _drawBefore;   // [2026-09-13 ZH] 이번 획 직전 비트맵(되돌리기용). undefined = 획 진행 중 아님
   function _drawSnap() { try { return S._drawInk ? refs.draw.toDataURL() : null; } catch (_e) { void _e; return null; } }
   function drawDown(e) {
-    if (S.tool !== 'draw') return;
+    if (S.tool !== 'draw' || dpos || e.button !== 0) return;
+    _drawPaint++;
     _drawBefore = _drawSnap();
     _drawRect = refs.stage.getBoundingClientRect();   // [⑤렉] 스트로크 시작 때 1회만 측정 → move 마다 reflow 제거
-    dpos = { x: e.clientX - _drawRect.left, y: e.clientY - _drawRect.top };
+    dpos = { id: e.pointerId, x: e.clientX - _drawRect.left, y: e.clientY - _drawRect.top };
     strokeStyle(); refs.ctx.beginPath(); refs.ctx.moveTo(dpos.x, dpos.y); refs.ctx.lineTo(dpos.x + 0.1, dpos.y + 0.1); refs.ctx.stroke();
     try { refs.draw.setPointerCapture(e.pointerId); } catch (_) { void _; }
   }
   function drawMove(e) {
-    if (!dpos || S.tool !== 'draw') return;
+    if (!dpos || S.tool !== 'draw' || dpos.id !== e.pointerId) return;
     var r = _drawRect || refs.stage.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
     refs.ctx.beginPath(); refs.ctx.moveTo(dpos.x, dpos.y); refs.ctx.lineTo(x, y); refs.ctx.stroke();
-    dpos = { x: x, y: y };
+    dpos = { id: e.pointerId, x: x, y: y };
   }
   /* 🔴 [2026-09-11] 한 획이라도 그었으면 표시해 둔다 — 저장 때 캔버스를 상태로 옮길지 판단한다.
      픽셀을 훑어 판정하면 얇은 획을 놓쳐 **그림을 지워버릴** 수 있어 플래그로 간다. */
   /* [2026-09-13 ZH] 🔴 **붓질이 되돌리기에 안 남아, 붓질 뒤 ↩ 가 엉뚱한 글자를 지웠다.**
      실측(Chrome 402×684 · 헤어 사진): 글자 'KEEP-ME' → 붓질(잉크 1793px) → ↩ →
      붓질은 그대로, 글자 삭제. → 획마다 전후 비트맵을 한 번 남긴다. */
-  function drawUp() {
+  function drawUp(e) {
+    if (!dpos || e && dpos.id !== e.pointerId) return;
     var wasStroke = !!dpos;
     dpos = null; if (S) S._drawInk = true;
     if (wasStroke && _drawBefore !== undefined) {
@@ -2952,12 +3006,22 @@
     }
     _drawBefore = undefined;
   }
+  function drawCancel(e) {
+    if (!dpos || dpos.id !== e.pointerId) return;
+    dpos = null; var before = _drawBefore; _drawBefore = undefined;
+    S._drawInk = !!before; _paintDraw(before);
+  }
   function _paintDraw(url) {
-    var c = refs.ctx; if (!c || !refs.draw) return;
+    var c = refs.ctx, state = S, idx = S.adjSel, ticket = ++_drawPaint; if (!c || !refs.draw) return;
     c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, refs.draw.width, refs.draw.height); c.restore();
     if (!url) return;
     var im = new Image();
-    im.onload = function () { try { c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(im, 0, 0); c.restore(); } catch (_e) { void _e; } };
+    im.onload = function () {
+      if (S !== state || S.adjSel !== idx || ticket !== _drawPaint || S._cancelled) return;
+      c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; c.shadowBlur = 0;
+      c.drawImage(im, 0, 0, refs.draw.width, refs.draw.height); c.restore();
+    };
+    im.onerror = function () { toastIt('그림을 복원하지 못했어요. 다시 실행을 눌러 주세요.'); };
     im.src = url;
   }
 
@@ -3023,9 +3087,10 @@
   }
   function exportComposite(cb) {
     // 콜백은 **정확히 한 번**. 성공·실패·예외 어느 경로로 와도 한 번만 부른다.
+    var _exportSession = S;
     var _cbDone = false;
     var _photoDrawn = 0;   // 실제로 그려진 사진 수 — 0 이면 저장 실패로 본다(아래 참조)
-    var _fire = function (url) { if (_cbDone) return; _cbDone = true; try { cb(url); } catch (_e) { void _e; } };
+    var _fire = function (url) { if (S !== _exportSession) url = null; if (_cbDone) return; _cbDone = true; try { cb(url); } catch (_e) { void _e; } };
     var r = refs.stage.getBoundingClientRect();
     // [BUG-01] 출력은 화면 크기와 무관한 고정 해상도. 아래 드로잉은 전부 스테이지 CSS 픽셀 기준이라
     //   변환 배율(_xs.k)만 바꾸면 되고, 수식은 하나도 손대지 않는다.
@@ -3035,14 +3100,16 @@
     c.imageSmoothingEnabled = true; try { c.imageSmoothingQuality = 'high'; } catch (_isq) { void _isq; }
     var baseDone;
     if (isSingleL(S.layout)) {
-      var sIdx = S.photos.indexOf(S.photoUrl);
+      var sIdx = S.adjSel != null ? S.adjSel : S.photos.indexOf(S.photoUrl);
       var sDeg = (adjOf(sIdx < 0 ? 0 : sIdx).rot) || 0, sCs = sDeg ? coverScaleForRot(sDeg) : 1;
       if (S.fitMode === 'contain') { c.fillStyle = S.collageBg || '#fff'; c.fillRect(0, 0, r.width, r.height); }   // [#5] 전체 모드 여백 배경
       var _sFlt = filterStr(adjOf(sIdx < 0 ? 0 : sIdx));
       var _sFg = _fgActive(sIdx) ? S.fgMask[sIdx] : null;
       var _xf = function (cx) { cx.translate(S.pz.tx, S.pz.ty); cx.translate(r.width / 2, r.height / 2);
         cx.scale(S.pz.scale * sCs, S.pz.scale * sCs); cx.rotate(sDeg * Math.PI / 180); cx.translate(-r.width / 2, -r.height / 2); };
-      baseDone = Promise.all([loadImg(S.photoUrl), _sFg ? loadImg(_sFg) : Promise.resolve(null)]).then(function (res) {
+      baseDone = Promise.all([loadImg(S.photoUrl), _sFg ? loadImg(_sFg) : Promise.resolve(null), S.collageBgImg ? loadImg(S.collageBgImg) : Promise.resolve(null)]).then(function (res) {
+        if (S !== _exportSession) return;
+        if (res[2] && window.ItdPhotoRecipes) window.ItdPhotoRecipes.background(c, res[2], r.width, r.height);
         var img = res[0], mk = res[1]; if (!img) return; _photoDrawn++; var cr = fitRect(img, r.width, r.height);
         var dx = (r.width - cr.dw) / 2, dy = (r.height - cr.dh) / 2;
         if (mk) {
@@ -3052,8 +3119,8 @@
           var fgc = document.createElement('canvas'); fgc.width = cv.width; fgc.height = cv.height;
           var fc = fgc.getContext('2d'); fc.setTransform(_xs.k, 0, 0, _xs.k, _xs.ox, _xs.oy);
           fc.save(); _xf(fc); fc.filter = _sFlt; fc.drawImage(_adjSrc(img, adjOf(sIdx < 0 ? 0 : sIdx)), dx, dy, cr.dw, cr.dh); fc.filter = 'none';
-          fc.globalCompositeOperation = 'destination-in'; fc.drawImage(mk, dx, dy, cr.dw, cr.dh); fc.restore();
-          c.save(); _xf(c); c.drawImage(img, dx, dy, cr.dw, cr.dh); c.restore();   // 배경 = 보정 전 원본
+          fc.globalCompositeOperation = 'destination-in'; fc.drawImage(_retouchSrc(mk, adjOf(sIdx < 0 ? 0 : sIdx), true), dx, dy, cr.dw, cr.dh); fc.restore();
+          c.save(); _xf(c); c.drawImage(_retouchSrc(img, adjOf(sIdx < 0 ? 0 : sIdx)), dx, dy, cr.dw, cr.dh); c.restore();   // 형태는 같게, 배경색은 보정 전
           c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(fgc, 0, 0); c.restore();   // 보정된 사람만 위에
         } else {
           c.save(); _xf(c); c.filter = _sFlt; c.drawImage(_adjSrc(img, adjOf(sIdx < 0 ? 0 : sIdx)), dx, dy, cr.dw, cr.dh); c.restore();
@@ -3070,7 +3137,10 @@
       baseDone = Promise.all([
         Promise.all(urls.map(function (u) { return u ? loadImg(u) : Promise.resolve(null); })),
         Promise.all(mkUrls.map(function (u) { return u ? loadImg(u) : Promise.resolve(null); })),
+        S.collageBgImg ? loadImg(S.collageBgImg) : Promise.resolve(null),
       ]).then(function (both) {
+        if (S !== _exportSession) return;
+        if (both[2] && window.ItdPhotoRecipes) window.ItdPhotoRecipes.background(c, both[2], r.width, r.height);
         var imgs = both[0], mks = both[1];
         imgs.forEach(function (img, k) {
           if (!img) return;
@@ -3093,8 +3163,8 @@
             var fgc = document.createElement('canvas'); fgc.width = cv.width; fgc.height = cv.height;
             var fc = fgc.getContext('2d'); fc.setTransform(_xs.k, 0, 0, _xs.k, _xs.ox, _xs.oy);
             fc.save(); setup(fc); fc.filter = flt; fc.drawImage(_adjSrc(img, adjOf(idxs[k])), dx, dy, cr.dw, cr.dh); fc.filter = 'none';
-            fc.globalCompositeOperation = 'destination-in'; fc.drawImage(mks[k], dx, dy, cr.dw, cr.dh); fc.restore();
-            c.save(); setup(c); c.drawImage(img, dx, dy, cr.dw, cr.dh); c.restore();   // 배경 = 보정 전
+            fc.globalCompositeOperation = 'destination-in'; fc.drawImage(_retouchSrc(mks[k], adjOf(idxs[k]), true), dx, dy, cr.dw, cr.dh); fc.restore();
+            c.save(); setup(c); c.drawImage(_retouchSrc(img, adjOf(idxs[k])), dx, dy, cr.dw, cr.dh); c.restore();   // 형태는 같게, 배경색은 보정 전
             c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(fgc, 0, 0); c.restore();   // 보정된 사람
           } else {
             c.save(); setup(c); c.filter = flt; c.drawImage(_adjSrc(img, adjOf(idxs[k])), dx, dy, cr.dw, cr.dh); c.restore();
@@ -3135,6 +3205,7 @@
     } catch (_e) { void _e; try { applyXf(L); } catch (_e2) { void _e2; } return fallback; }
   }
   baseDone.then(function () {
+      if (S !== _exportSession) { _fire(null); return; }
       c.drawImage(refs.draw, 0, 0, r.width, r.height);   // 드로잉
       S.layers.forEach(function (L) {
         var b = L.el.getBoundingClientRect();
@@ -3376,13 +3447,13 @@
     refs.panels.layout.addEventListener('click', function (e) {
       var t = e.target.closest('[data-lay]'); if (t) { selectLayout(+t.getAttribute('data-lay')); return; }
       var th = e.target.closest('[data-laythumb]'); if (th) { onLayThumb(+th.getAttribute('data-laythumb')); return; }
-      var bg = e.target.closest('[data-bg]'); if (bg) { S.collageBg = bg.getAttribute('data-bg'); S.collageBgImg = null; saveBgPref(); refs.panels.layout.querySelectorAll('[data-bg]').forEach(function (x) { x.classList.toggle('on', x === bg); }); renderCollage(); applyFit(); recutWithBg(); return; }
+      var bg = e.target.closest('[data-bg]'); if (bg) { S._bgTicket = (S._bgTicket || 0) + 1; S._bgLoading = false; S.collageBg = bg.getAttribute('data-bg'); S.collageBgImg = null; saveBgPref(); refs.panels.layout.querySelectorAll('[data-bg]').forEach(function (x) { x.classList.toggle('on', x === bg); }); renderCollage(); applyFit(); recutWithBg(); return; }
       var ft = e.target.closest('[data-fit]'); if (ft) { var _fb = S.fitMode; S.fitMode = ft.getAttribute('data-fit'); S._fitManual = true; refs.layFit.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === ft); }); applyFit(); if (_fb !== S.fitMode) _pushOp({ op: 'fit', before: _fb, after: S.fitMode }); return; }
     });
     enableDragScroll(refs.layStrip); enableDragScroll(refs.panels.layout.querySelector('.itlay2__types'));
     refs.layGap.addEventListener('input', function () { S.collageGap = +refs.layGap.value; renderCollage(); });
     refs.layAdd.addEventListener('change', function () { var fl = refs.layAdd.files && refs.layAdd.files[0]; if (fl) addPhotoFromFile(fl); refs.layAdd.value = ''; });
-    if (refs.layBgImg) refs.layBgImg.addEventListener('change', function () { var fl = refs.layBgImg.files && refs.layBgImg.files[0]; if (fl) addBgImageFromFile(fl); refs.layBgImg.value = ''; });
+    if (refs.layBgImg) refs.layBgImg.addEventListener('change', function () { var fl = refs.layBgImg.files && refs.layBgImg.files[0]; if (fl) addBgImageFromFile(fl, true); refs.layBgImg.value = ''; });
     // [셀 크롭] 콜라주 칸 드래그/핀치 재구도(레이아웃 도구에서만 포인터 활성)
     refs.collage.addEventListener('pointerdown', onCellDown);
     document.addEventListener('pointermove', onCellMove);
@@ -3449,6 +3520,8 @@
     refs.draw.addEventListener('pointerdown', drawDown);
     refs.draw.addEventListener('pointermove', drawMove);
     refs.draw.addEventListener('pointerup', drawUp);
+    refs.draw.addEventListener('pointercancel', drawCancel);
+    refs.draw.addEventListener('lostpointercapture', drawCancel);
     // 사진 핀치 확대/이동
     refs.stage.addEventListener('pointerdown', stageDown);
     refs.stage.addEventListener('pointermove', stageMove);
@@ -3461,6 +3534,7 @@
     if (refs.peek) refs.peek.addEventListener('click', function () { togglePeek(); });   // [P2-2]
     if (refs.addText) refs.addText.addEventListener('click', function () { addText(); });   // [#4] 글자 추가(항상 새 텍스트)
     refs.done.addEventListener('click', function () {
+      if (S._bgLoading) { toastIt('배경 사진을 불러오는 중이에요. 잠시 후 완료를 눌러 주세요'); return; }
       if (S._saving) return;   // [audit] 완료 더블탭 방지(저장 중 재클릭 무시)
       S._saving = true;
       var cb = S.onDone, _sess = S; refs.done.textContent = '저장 중…'; refs.done.disabled = true;
@@ -3640,6 +3714,7 @@
       if (!isSingleL(S.layout)) return null;   // 콜라주는 한 장 합성(장별 아님)
       if (!S.layersByPhoto) S.layersByPhoto = {};
       S.layersByPhoto[S.adjSel] = (S.layers || []).map(_serLayer).filter(Boolean);   // 현재 장도 포함
+      if (window.ItdPhotoRecipes) return window.ItdPhotoRecipes.collect(S, { width: parseFloat(refs.stage.style.width), height: parseFloat(refs.stage.style.height) });
       var out = [];
       (S.photos || []).forEach(function (u, i) {
         var ls = S.layersByPhoto[i];
@@ -3674,15 +3749,16 @@
 
   /** 큰 값(dataURL)은 따로 뺀다 — sessionStorage 에 넣으면 quota 로 저장 자체가 실패한다. */
   function _splitDraft(st) {
-    var media = { photos: st.photos || [], photoDraw: st.photoDraw || {}, photoBg: st.photoBg || {}, collageBgImg: st.collageBgImg || null };
+    var media = { fgMask: st.fgMask || {}, origPhotos: st.origPhotos || [], photos: st.photos || [], photoDraw: st.photoDraw || {}, photoBg: st.photoBg || {}, collageBgImg: st.collageBgImg || null };
     var light = Object.assign({}, st);
+    delete light.fgMask; delete light.origPhotos;
     delete light.photos; delete light.photoDraw; delete light.photoBg; delete light.collageBgImg;
     return { light: light, media: media };
   }
   /** 사진 identity — 전체를 비교하면 매 틱마다 수 MB 를 훑는다. 길이+앞뒤 조각이면 충분. */
   function _mediaSig(media) {
     try {
-      return (media.photos || []).map(function (u) {
+      return (media.photos || []).concat(media.origPhotos || [], Object.values(media.fgMask || {})).map(function (u) {
         u = String(u || ''); return u.length + ':' + u.slice(0, 48) + ':' + u.slice(-16);
       }).join('|') + '#' + String((media.photoDraw && JSON.stringify(media.photoDraw) || '').length)
         + '#' + String((media.collageBgImg || '').length);
@@ -3903,14 +3979,15 @@
     try {
       _flushEditingText();   // [2026-09-11] 저장·재편집·초안이 모두 이 값을 쓴다 — 입력 중인 글자 포함
       _flushPhotoDraw();     // [2026-09-11] 붓그림도 같은 이유 — 캔버스에만 있으면 재편집에서 사라진다
-      return { v: 1, layoutIdx: LAYOUTS.indexOf(S.layout), layoutOrder: (S.layoutOrder || []).slice(),
+      return { v: 1, photoIdx: S.adjSel, stageSize: { width: parseFloat(refs.stage.style.width), height: parseFloat(refs.stage.style.height) }, layoutIdx: LAYOUTS.indexOf(S.layout), layoutOrder: (S.layoutOrder || []).slice(),
         cellCrop: (S.cellCrop || []).slice(), collageBg: S.collageBg, collageBgImg: S.collageBgImg || null,
         collageGap: S.collageGap, fitMode: S.fitMode, ratio: S.ratio,
         adj: (S.adj || []).map(function (a) { return Object.assign({}, a); }),
         presetByPhoto: Object.assign({}, S.presetByPhoto),
+        fgMask: Object.assign({}, S.fgMask), origPhotos: (S.origPhotos || []).slice(),
         photoDraw: Object.assign({}, S.photoDraw), photoBg: Object.assign({}, S.photoBg),
         pz: Object.assign({ scale: 1, tx: 0, ty: 0 }, S.pz),   // [버그수정 2026-07-06] 사진 핀치줌/이동 구도 재편집 시 유실 방지
-        photos: (S.photos || []).slice(), layers: (S.layers || []).map(_serLayer).filter(Boolean) };
+        photos: (S.photos || []).slice(), layersByPhoto: Object.assign({}, S.layersByPhoto), layers: (S.layers || []).map(_serLayer).filter(Boolean) };
     } catch (_e) { return null; }
   }
   // editState 를 S 에 반영(open 안에서 S 생성 직후 호출) + 레이어 복원.
@@ -3930,11 +4007,17 @@
     if (st.ratio) S.ratio = _safeRatio(st.ratio);
     if (Array.isArray(st.adj) && st.adj.length) S.adj = st.adj.map(function (a) { return Object.assign(defAdj(), a); });
     if (st.presetByPhoto) S.presetByPhoto = Object.assign({}, st.presetByPhoto);
-    if (st.adjustmentPreset) S._wmAdjPack = _applyMemoryPreset(st.adjustmentPreset);
+    if (st.photoTone || st.adjustmentPreset) S._wmAdjPack = _applyMemoryTone(st.photoTone) || _applyMemoryPreset(st.adjustmentPreset);
+    if (st.fgMask) S.fgMask = Object.assign({}, st.fgMask);
+    if (Array.isArray(st.origPhotos)) S.origPhotos = st.origPhotos.slice();
+    if (st.layersByPhoto) S.layersByPhoto = Object.assign({}, st.layersByPhoto);
     if (st.photoDraw) S.photoDraw = Object.assign({}, st.photoDraw);
     if (st.photoBg) S.photoBg = Object.assign({}, st.photoBg);
     if (st.pz) S.pz = Object.assign({ scale: 1, tx: 0, ty: 0 }, st.pz);   // [버그수정 2026-07-06] 재편집 시 사진 구도(핀치줌/이동) 복원
     if (Array.isArray(st.photos) && st.photos.length) { S.photos = st.photos.slice(); S.photoUrl = S.photos[0]; S.photoCss = _cssUrl(S.photos[0]); }
+    if (Number.isInteger(st.photoIdx) && st.photoIdx >= 0 && st.photoIdx < S.photos.length) {
+      S.adjSel = st.photoIdx; S.photoUrl = S.photos[S.adjSel]; S.photoCss = _cssUrl(S.photoUrl);
+    }
   }
   // stage 크기 — 레이아웃 flush 전(rect=0)엔 fitStageToRatio 가 박아둔 explicit px 로 폴백.
   function _stageWH() {
@@ -3969,6 +4052,8 @@
   function open(opts) {
     opts = opts || {};
     if (!root) build();
+    if (window.ItdStudioPreview) window.ItdStudioPreview.reset(root);
+    root.style.cssText = '';
     var photo = opts.photo || opts.photoUrl || '';   // StoryEditor 계약(photoUrl) 호환
     var photos = (opts.photos && opts.photos.length) ? opts.photos.slice() : [photo];
     S = { layers: [], active: null, tool: 'text', layout: LAYOUTS[0], layoutOrder: [],
@@ -4044,6 +4129,7 @@
     } catch (_pc) { void _pc; }
     S._initPhotoN = (S.photos || []).length;   // [캐러셀] 진입 시 사진 수 — 편집 중 추가된 사진만 플로우로 되돌리기 위한 기준
     if (refs.featLocTx) refs.featLocTx.textContent = S.shopName || '우리샵';   // [③] 위치 칩에 실제 샵 이름
+    refs.stage.style.background = '';
     refs.layers.innerHTML = ''; refs.frame.className = 'itded__frame';
     refs.photo.style.backgroundImage = S.photoCss; refs.photo.style.filter = ''; refs.photo.style.backgroundSize = 'cover'; refs.photo.style.backgroundColor = 'transparent';
     if (refs.photofx) { refs.photofx.hidden = true; refs.photofx.style.webkitMaskImage = ''; refs.photofx.style.maskImage = ''; }   // [#11] 새 세션 — 오버레이 초기화
@@ -4055,6 +4141,7 @@
        실측: 새로 연 편집기에서 레이어 0개인데 undo.disabled=false, redo.disabled=false. */
     _syncHist();
     root.classList.add('is-open');
+    if (window.ItdStudioControls) window.ItdStudioControls.reset();
     // [#9] 시스템 back 으로 편집기가 '먼저' 닫히게 — history 엔트리 1개 push + flow 가 단계 pop 안 하도록 __seOpen 플래그.
     try {
       window.__seOpen = true;
@@ -4090,7 +4177,9 @@
         });
       }
     } catch (_dre) { void _dre; }
+    var openedState = S;
     requestAnimationFrame(function () {
+      if (S !== openedState || openedState._cancelled || !root.classList.contains('is-open')) return;
       initCanvas();
       if (_ed) _restorePhotoDraw();   // [2026-09-11] initCanvas 가 캔버스를 비운 **뒤에** 붓그림을 다시 칠한다
       if (!_ed) renderIncoming(S.incoming);   // 복원 모드가 아니면 우리샵 자동배치 레이어
@@ -4112,14 +4201,15 @@
       // [#5] 시술내용 텍스트가 이미 올라왔으면 그걸 선택 → setTool('text')이 빈 '내용을 입력하세요'를 덧붙이지 않음.
       var firstText = S.layers.filter(function (L) { return L.type === 'text'; })[0];
       if (firstText) selectLayer(firstText);   // 텍스트 선택 → selectLayer 가 폰트 패널까지 연다(조건부 노출)
-      else _closeToolPanel();   // [2026-07-27] 폰트 패널 기본 닫힘 — Aa 탭/텍스트 선택 전엔 아무 패널도 안 연다
+      else setTool('adjust', true);   // [2026-07-27] 폰트 패널 기본 닫힘 — Aa 탭/텍스트 선택 전엔 아무 패널도 안 연다
     });
   }
   // [#4/#8/#11/#16] 복원 렌더 — 레이아웃 버튼/콜라주/레이어 반영(동기 호출 가능).
   function _applyRestore(st) {
+    if (window.ItdStudioControls) window.ItdStudioControls.restoreGeometry(st, S, root, refs.stage);
     root.querySelectorAll('.itlaytype').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-lay') === LAYOUTS.indexOf(S.layout)); });
     S._fitManual = true; _syncFitToggle();
-    applyPhotoTransform(); if (!isSingleL(S.layout)) renderCollage();
+    applyPhotoTransform(); applyFit(); if (!isSingleL(S.layout)) renderCollage();
     /* 🔴 [2026-09-11] 복원이 **사진 보정을 화면에 반영하지 않고 있었다.**
        `_restoreState` 는 `S.adj` 를 되살리는데(밝기·대비·채도·온도·선명도·수평),
        그걸 화면에 거는 `applyAdjToDisplay`/`applyStraighten` 은 아무도 안 불렀다.
@@ -4170,6 +4260,7 @@
     if (!fromPop && S && S._histPushed) { S._histPushed = false; _swallowNextPop(); try { history.back(); } catch (_e2) { void _e2; } }
   }
   function close() {
+    if (window.ItdStudioPreview) window.ItdStudioPreview.reset(root);
     if (!root || !root.classList.contains('is-open')) return;
     /* [STAGE D] 품질 세션 종료. 발행 경로는 이미 published:true 로 닫았으므로
        여기서 또 닫아도 무해하다(`_cur` 이 null 이면 그냥 넘어간다).
@@ -4203,20 +4294,28 @@
       fitMode: (opts.fitMode === 'cover' ? 'cover' : 'contain'), textColorTarget: 'text',
       ratio: (opts.ratio || '4:5'),
       photoUrl: photo, photoCss: _cssUrl(photo), photos: photos, shopName: '', pz: { scale: 1, tx: 0, ty: 0 }, incoming: (opts.layers || []) };
+    if (opts.editState) { _restoreState(opts.editState); S.incoming = opts.editState.layers || []; }
+    else if (opts.photoTone || opts.adjustmentPreset) _applyMemoryTone(opts.photoTone) || _applyMemoryPreset(opts.adjustmentPreset);
+    refs.stage.style.background = '';
     refs.layers.innerHTML = ''; refs.frame.className = 'itded__frame';
     refs.photo.style.backgroundImage = S.photoCss; refs.photo.style.filter = ''; refs.photo.style.backgroundSize = S.fitMode; refs.photo.style.backgroundColor = (S.fitMode === 'contain' ? (S.collageBg || '#fff') : 'transparent');
     refs.collage.hidden = true; refs.collage.innerHTML = ''; refs.photowrap.style.transform = '';
     // display:flex !important + right/bottom:auto — 베이스 .itded{display:none}·inset:0 와의 충돌 방지(off-screen 0크기 방지).
     root.style.cssText = 'display:flex !important;position:fixed;left:-99999px;top:0;right:auto;bottom:auto;width:' + Wpx + 'px;height:' + Hpx + 'px;opacity:0;pointer-events:none;z-index:-1';
-    fitStageToRatio();   // [#2] off-screen 스테이지도 같은 비율 박스로(이전 open()이 남긴 inline px 리셋 포함)
+    fitStageToRatio();
+    if (opts.editState && window.ItdStudioControls) window.ItdStudioControls.restoreGeometry(opts.editState, S, root, refs.stage);
+    // [#2] off-screen 스테이지도 같은 비율 박스로(이전 open()이 남긴 inline px 리셋 포함)
+    var composeState = S;
     return new Promise(function (res) {
       var done = false;
-      var fin = function (url) { if (done) return; done = true; root.style.cssText = ''; res(url); };
+      var current = function () { return !done && S === composeState && !root.classList.contains('is-open'); };
+      var fin = function (url) { if (done) return; var valid = current(); done = true; if (valid) root.style.cssText = ''; res(valid ? url : null); };
       // 폰트 로드를 기다리되 무한대기 방지(최대 500ms). off-screen rAF throttle 회피로 setTimeout 사용.
       var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
       Promise.race([fontsReady, new Promise(function (r) { setTimeout(r, 500); })]).then(function () {
         setTimeout(function () {
-          try { initCanvas(); renderIncoming(S.incoming); } catch (_e) { void _e; }
+          if (!current()) { fin(null); return; }
+          try { initCanvas(); if (opts.editState) _restoreLayers(opts.editState.layers || []); else renderIncoming(S.incoming); } catch (_e) { void _e; }
           /* 자동 초안이 끝난 **뒤에** 굽는다 — 안 그러면 발행본이 편집기와 달라진다.
              ⏱ 상한 1.2초. 플랜이 늦거나 실패해도 굽기는 반드시 진행한다
              (미리보기가 영영 안 나오는 것보다 보정 없는 미리보기가 낫다). */
@@ -4225,8 +4324,11 @@
               new Promise(function (rz) { setTimeout(rz, 1200); })])
             : Promise.resolve();
           _wait.then(function () {
-            setTimeout(function () { try { exportComposite(fin); } catch (_e2) { fin(null); } }, 40);
-          });
+            if (!current()) { fin(null); return; }
+            return window.ItdPhotoRecipes ? window.ItdPhotoRecipes.drawing(refs.draw, S, loadImg, current) : null;
+          }).then(function () {
+            setTimeout(function () { if (!current()) { fin(null); return; } try { exportComposite(fin); } catch (_e2) { fin(null); } }, 40);
+          }).catch(function (e) { console.warn('[PhotoStudio] drawing restore failed', e); fin(null); });
         }, 0);
       });
       setTimeout(function () { fin(null); }, 6000);   // 안전망 — 어떤 경우에도 행 방지

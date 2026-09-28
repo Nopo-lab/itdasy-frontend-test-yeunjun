@@ -532,6 +532,47 @@ async function _doGenerateCaptionImpl(scenario, closePopup, inlineHost) {
   }
 }
 
+
+function _captionVisiblePhotoUrls() {
+  if (typeof _captionSlotId === 'undefined' || !_captionSlotId || typeof _slots === 'undefined') return [];
+  const slot = _slots.find(s => s.id === _captionSlotId);
+  const photos = slot && Array.isArray(slot.photos) ? slot.photos : [];
+  return photos
+    .filter(p => p && !p.hidden)
+    .map(p => p.editedDataUrl || p.dataUrl || p.url || p.src)
+    .filter(Boolean)
+    .slice(0, 10);
+}
+
+function _captionOpenStudioEditor(opts) {
+  const urls = _captionVisiblePhotoUrls();
+  if (!urls.length) {
+    if (window.showToast) showToast('편집할 사진이 없어요. 작업실에 사진을 먼저 넣어주세요');
+    return false;
+  }
+  if (opts && typeof opts.closePopup === 'function') opts.closePopup();
+  const run = () => {
+    try {
+      if (window.WorkspaceFlow && typeof window.WorkspaceFlow.command === 'function') {
+        window.WorkspaceFlow.command({ type: 'storyedit', photoUrls: urls });
+        return true;
+      }
+    } catch (e) {
+      console.warn('[caption] 사진편집 열기 실패:', e);
+    }
+    if (window.showToast) showToast('사진편집을 여는 중이에요. 잠시 후 다시 눌러주세요');
+    return false;
+  };
+  if (window.AppLoader && typeof window.AppLoader.ensure === 'function' && (!window.AppLoader.loaded || !window.AppLoader.loaded('photo')) && !window.WorkspaceFlow) {
+    if (window.showToast) showToast('사진편집 도구 준비 중…');
+    window.AppLoader.ensure('photo').then(run).catch(() => {
+      if (window.showToast) showToast('사진편집 도구를 불러오지 못했어요');
+    });
+    return true;
+  }
+  return run();
+}
+
 // [2026-06-12] 글쓰기 화면이 닫혀 있을 때(리포트→글써보기 등) 시나리오 시트 안에서 결과를 바로 노출.
 //   캡션+해시태그 텍스트 + [복사] [인스타 미리보기] [글쓰기 화면에서 더 손보기]. 화면 이동 없음.
 //   복사/미리보기는 이미 #captionText·#captionHash 에 채워둔 값을 쓰는 기존 함수를 재사용.
@@ -546,7 +587,8 @@ function _renderInlineCaptionResult(host, caption, hashes, closePopup) {
       <button data-cap-inline-copy style="flex:1;padding:13px;border-radius:13px;border:1.5px solid var(--border,#E5E7EB);background:#fff;color:#1a1a1a;font-size:13px;font-weight:700;cursor:pointer;">복사</button>
       <button data-cap-inline-preview style="flex:1;padding:13px;border-radius:13px;border:1.5px solid rgba(213,138,149,0.3);background:transparent;color:var(--accent,#BC6675);font-size:13px;font-weight:700;cursor:pointer;">인스타 미리보기</button>
     </div>
-    <button data-cap-inline-edit style="width:100%;margin-top:8px;padding:13px;border-radius:13px;border:none;background:linear-gradient(135deg,var(--accent,#BC6675),var(--accent2,#D58A95));color:#fff;font-size:13px;font-weight:800;cursor:pointer;">글쓰기 화면에서 더 손보기</button>
+    <button data-cap-inline-photo-edit style="width:100%;margin-top:8px;padding:13px;border-radius:13px;border:none;background:#15181D;color:#fff;font-size:13px;font-weight:800;cursor:pointer;">사진편집에서 보정·꾸미기</button>
+    <button data-cap-inline-edit style="width:100%;margin-top:8px;padding:13px;border-radius:13px;border:1.5px solid rgba(188,102,117,.28);background:#fff;color:var(--accent,#BC6675);font-size:13px;font-weight:800;cursor:pointer;">글쓰기 화면에서 더 손보기</button>
   `;
   host.querySelector('[data-cap-inline-copy]')?.addEventListener('click', () => {
     try {
@@ -555,6 +597,9 @@ function _renderInlineCaptionResult(host, caption, hashes, closePopup) {
   });
   host.querySelector('[data-cap-inline-preview]')?.addEventListener('click', () => {
     try { _previewCaptionOnInsta(); } catch (_e) { if (window.showToast) showToast('미리보기를 열 수 없어요'); }
+  });
+  host.querySelector('[data-cap-inline-photo-edit]')?.addEventListener('click', () => {
+    _captionOpenStudioEditor({ closePopup });
   });
   host.querySelector('[data-cap-inline-edit]')?.addEventListener('click', () => {
     if (typeof closePopup === 'function') closePopup();
@@ -745,9 +790,10 @@ function _renderCaptionActionBar(caption, _hashtags) {
       <i class="ph-duotone ph-pencil-simple" style="font-size:14px" aria-hidden="true"></i>
       직접 고치면 AI가 다음에 더 잘 써요
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+    <div style="display:flex;gap:8px;margin:0 0 10px;">
+      <button data-caption-photo-edit style="flex:1;padding:12px;border-radius:14px;border:none;background:#15181D;color:#fff;font-size:13px;font-weight:800;cursor:pointer;">사진편집에서 보정·꾸미기</button>
       <button data-report-ai="caption" data-snippet="${_capEsc(caption || '')}" data-source="/caption/generate" title="AI 캡션 신고" aria-label="AI 캡션 신고"
-        style="background:transparent;border:none;cursor:pointer;font-size:13px;color:var(--text-subtle);padding:4px 6px;">🚩 신고</button>
+        style="padding:12px 13px;border-radius:14px;border:1.5px solid var(--border,#E5E7EB);background:#fff;cursor:pointer;font-size:13px;color:var(--text-subtle);">🚩</button>
     </div>
     ${hasNextSlot ? `
     <div style="background:rgba(213,138,149,0.07);border:1.5px solid rgba(213,138,149,0.2);border-radius:14px;padding:14px;">
@@ -771,6 +817,9 @@ function _renderCaptionActionBar(caption, _hashtags) {
       showTab('finish', document.querySelector('.tab-bar__btn[data-tab="finish"]'));
       initFinishTab();
     }
+  });
+  actionBar.querySelector('[data-caption-photo-edit]')?.addEventListener('click', () => {
+    _captionOpenStudioEditor();
   });
   actionBar.querySelector('[data-caption-preview]')?.addEventListener('click', _previewCaptionOnInsta);
   actionBar.querySelector('[data-caption-next-slot]')?.addEventListener('click', event => {

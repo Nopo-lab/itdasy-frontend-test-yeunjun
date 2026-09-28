@@ -124,7 +124,7 @@ describe('접근성 — 조작 요소에 읽어줄 이름이 있다', () => {
     const i = ed.indexOf('var COLOR_NAMES');
     expect(i).toBeGreaterThan(0);
     const seg = ed.slice(i, i + 400);
-    ['#FFFFFF', '#15181D', '#BC6675', '#E08A6E', '#E6B45A', '#86B06E', '#6E9BC4', '#A98AC4']
+    ['#FFFFFF', '#15181D', '#BC6675', '#E08A6E', '#E6B45A', '#CFA7AE', '#8B95A1', '#B8A6B5']
       .forEach((c) => expect(seg).toContain(c));
   });
   test.each([

@@ -82,7 +82,7 @@
 .wsv2flow .thumb-del i { font-size: 14px; }
 .wsv2flow .thumb-del:active { background: var(--danger); }
 .wsv2flow .thumb-tag { position: absolute; left: 7px; bottom: 7px; height: 22px; padding: 0 9px; border-radius: var(--r-pill); background: rgba(31,26,26,.66); color: #fff; font-size: 9.5px; font-weight: 800; display: inline-flex; align-items: center; }
-.wsv2flow .thumb-tag.before { background: rgba(46,163,107,.92); }   /* [v567] 전=초록 */
+.wsv2flow .thumb-tag.before { background: rgba(122,110,120,.92); }   /* [v567] 전=그레이지 */
 .wsv2flow .thumb-tag.after { background: var(--brand-strong); }    /* 후=분홍 */
 .wsv2flow .thumb-tag.exclude { background: rgba(80,80,80,.8); text-decoration: line-through; }
 /* 라벨을 탭하면 역할(전/후/홍보컷/제외) 직접 지정 — 버튼 기본 스타일 리셋 */
@@ -92,7 +92,7 @@
 .wsv2flow .thumb-seg { position: absolute; left: 7px; bottom: 7px; display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-pill); background: rgba(20,16,16,.5); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
 .wsv2flow button.thumb-seg-b { appearance: none; -webkit-appearance: none; border: 0; cursor: pointer; font-family: inherit; line-height: 1; min-width: 30px; height: 24px; padding: 0 8px; border-radius: var(--r-pill); background: transparent; color: rgba(255,255,255,.92); font-size: 11px; font-weight: 800; }
 .wsv2flow button.thumb-seg-b.on { background: var(--brand-strong); color: #fff; box-shadow: var(--shadow-sm); }
-.wsv2flow button.thumb-seg-b:first-child.on { background: rgba(46,163,107,.95); }   /* [v567] 전=초록 */
+.wsv2flow button.thumb-seg-b:first-child.on { background: rgba(122,110,120,.95); }   /* [v567] 전=그레이지 */
 .wsv2flow button.thumb-tag::after { content: ""; }
 .wsv2flow .up-rolehint { font-weight: 600; color: var(--text-subtle); font-size: 11px; }
 .wsv2flow .grid-add { height: 128px; display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center; border: 1.5px dashed var(--border-strong); background: var(--surface); color: var(--brand-strong); font-size: 26px; font-weight: 800; border-radius: var(--r-md); cursor: pointer; }
@@ -300,7 +300,7 @@ body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
 .wsv2flow .ed-roles__seg { display: inline-flex; gap: 4px; margin-left: auto; }
 .wsv2flow button.ed-roles__b { appearance: none; -webkit-appearance: none; cursor: pointer; font-family: inherit; min-width: 42px; height: 34px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-muted); font-size: 13px; font-weight: 800; }
 .wsv2flow button.ed-roles__b.on { background: var(--brand-strong); color: #fff; border-color: transparent; }
-.wsv2flow button.ed-roles__b.before.on { background: rgba(46,163,107,.95); }   /* [v567] 전=초록 (후=분홍은 .on) */
+.wsv2flow button.ed-roles__b.before.on { background: rgba(122,110,120,.95); }   /* [v567] 전=그레이지 (후=분홍은 .on) */
 .wsv2flow .ed-roles__hint { font-size: 12px; color: var(--text-subtle); margin-top: 2px; }
 .wsv2flow .ed-roles-empty { font-size: 13px; color: var(--text-subtle); padding: 8px 2px; }
 .wsv2flow .tpl-picked { margin: 10px 2px 0; font-size: 12px; font-weight: 800; color: var(--brand-strong); }
@@ -667,7 +667,7 @@ body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
 .wsv2flow .cust-card.selected { background: var(--brand-bg); border-color: var(--brand); }
 .wsv2flow .cust-bar { align-self: stretch; border-radius: 0 var(--r-sm) var(--r-sm) 0; min-height: 48px; }
 .wsv2flow .cust-bar.b1 { background: #DDD; }
-.wsv2flow .cust-bar.b2 { background: #16B55E; }
+.wsv2flow .cust-bar.b2 { background: #BC6675; }
 .wsv2flow .cust-bar.b3 { background: #BC6675; }
 .wsv2flow .cust-info h3 { margin: 0 0 3px; font-size: 13.5px; font-weight: 800; color: var(--text); }
 .wsv2flow .cust-info p { margin: 0; font-size: 11px; color: var(--text-subtle); font-weight: 600; }
@@ -804,13 +804,13 @@ body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
 .wsv2flow .tpls-strip { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; margin: 0 -2px; padding: 0 2px 4px; }
 .wsv2flow .tpls-strip::-webkit-scrollbar { height: 0; }
 .wsv2flow .tpls-slide { position: relative; flex: 0 0 86%; aspect-ratio: 4 / 5; border-radius: var(--r-lg, 16px); background-size: cover; background-position: center; background-color: var(--frame); scroll-snap-align: center; border: 1px solid var(--border); padding: 0; cursor: pointer; -webkit-appearance: none; appearance: none; }
-/* [v567·필수7] 전=초록 / 후=분홍 (기존엔 반대 — 스왑) */
-.wsv2flow button.tpls-slide.is-before { border: 2.5px solid #2EA36B; }
+/* [v567·필수7] 전=그레이지 / 후=분홍 (기존엔 반대 — 스왑) */
+.wsv2flow button.tpls-slide.is-before { border: 2.5px solid #7A6E78; }
 .wsv2flow button.tpls-slide.is-after { border: 2.5px solid var(--brand-strong); }
 .wsv2flow .tpls-slide__tag { position: absolute; left: 10px; top: 10px; padding: 4px 10px; border-radius: var(--r-pill, 999px); background: rgba(0,0,0,.55); color: #fff; font-size: 12px; font-weight: 800; }
-/* [v567·항목3] 클릭순 전/후 — 사진 위 큰 역할 배지(전=초록, 후=분홍) + 짝 번호 */
+/* [v567·항목3] 클릭순 전/후 — 사진 위 큰 역할 배지(전=그레이지, 후=분홍) + 짝 번호 */
 .wsv2flow .tpls-slide__role { position: absolute; left: 10px; top: 10px; display: inline-flex; align-items: center; gap: 3px; min-width: 30px; height: 30px; padding: 0 9px; justify-content: center; border-radius: var(--r-pill, 999px); color: #fff; font-size: 14px; font-weight: 800; box-shadow: 0 1px 5px rgba(0,0,0,.28); }
-.wsv2flow .tpls-slide.is-before .tpls-slide__role { background: #2EA36B; }
+.wsv2flow .tpls-slide.is-before .tpls-slide__role { background: #7A6E78; }
 .wsv2flow .tpls-slide.is-after .tpls-slide__role { background: var(--brand-strong); }
 .wsv2flow .tpls-slide__role em { font-style: normal; font-size: 11px; font-weight: 800; opacity: .9; }
 .wsv2flow .tpls-empty { padding: 28px 12px; text-align: center; color: var(--text-subtle); font-size: 13px; }
@@ -881,7 +881,7 @@ body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
 /* [아코디언] 접힌 질문 줄 — 답 완료(체크)·잠김(점선) 공용 */
 .wsv2flow .capwiz__row { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; background: #F7F8FA; border: none; border-radius: 14px; padding: 13px 14px; margin: 0 0 10px; font-family: inherit; cursor: pointer; transition: transform .13s; }
 .wsv2flow .capwiz__row:active { transform: scale(.985); }
-.wsv2flow .capwiz__row em { font-style: normal; flex: none; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; color: var(--ok, #16B55E); font-size: 12px; font-weight: 700; }   /* [v751] 완료 체크 = 초록(스위치 on 과 같은 의미색) */
+.wsv2flow .capwiz__row em { font-style: normal; flex: none; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; color: var(--ok, #BC6675); font-size: 12px; font-weight: 700; }   /* [v751] 완료 체크 = 로즈(스위치 on 과 같은 의미색) */
 .wsv2flow .capwiz__row em svg { width: 14px; height: 14px; }
 .wsv2flow .capwiz__rowl { flex: none; font-size: 12px; font-weight: 500; color: #8B95A1; }
 .wsv2flow .capwiz__row b { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 700; letter-spacing: -.2px; color: #17191C; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

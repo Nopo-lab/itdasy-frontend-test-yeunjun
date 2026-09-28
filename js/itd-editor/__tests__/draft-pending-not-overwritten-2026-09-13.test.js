@@ -119,9 +119,10 @@ describe('스냅샷이 touched 를 정확히 남긴다', () => {
   });
 
   test('🔴 기준을 rAF 에 두지 않는다 — 가려진 탭에선 rAF 가 멈춰 기준이 영영 안 잡힌다', () => {
-    const r = C.indexOf('requestAnimationFrame(function () {\n      initCanvas();');
+    const r = C.indexOf('requestAnimationFrame(function () {');
     expect(r).toBeGreaterThan(0);
     const rafBody = C.slice(r, C.indexOf('\n  function ', r));
+    expect(rafBody).toMatch(/initCanvas\(\);/);
     expect(rafBody).not.toMatch(/_draftMarkBase/);
   });
 

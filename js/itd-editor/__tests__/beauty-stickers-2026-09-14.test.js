@@ -66,7 +66,7 @@ describe('새 글자 기본 위치', () => {
     const i = editorSrc.indexOf('function addText()');
     const j = editorSrc.indexOf('\n  function editText', i);
     const block = editorSrc.slice(i, j);
-    expect(block).toContain('placeSafeBottom(L, 180, 44)');
+    expect(block).toContain('placeSafeBottom(L, L.el.offsetWidth || 180, L.el.offsetHeight || 44)');
     expect(block).not.toMatch(/placeCenter\(L,\s*180/);
   });
 });

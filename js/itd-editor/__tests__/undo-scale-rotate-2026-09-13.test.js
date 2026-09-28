@@ -141,7 +141,7 @@ describe('되돌리기 — 순서·사진 채우기·붓질 기록 (2026-09-13)'
   test('붓질은 획 시작 전 비트맵을 잡고, 획이 끝나면 한 번 남긴다', () => {
     const d = C.indexOf('function drawDown(e)');
     expect(C.slice(d, d + 200)).toMatch(/_drawBefore = _drawSnap\(\);/);
-    const u = C.indexOf('function drawUp()');
+    const u = C.indexOf('function drawUp(');
     const ub = C.slice(u, u + 500);
     expect(ub).toMatch(/var wasStroke = !!dpos;/);
     expect(ub).toMatch(/if \(wasStroke && _drawBefore !== undefined\)/);

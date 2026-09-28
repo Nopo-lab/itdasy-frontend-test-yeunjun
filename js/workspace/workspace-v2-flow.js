@@ -3906,9 +3906,9 @@
     return { ok: true, applied: applied };
   }
   function _setEditTargetRole(role) {
-    if (!_flowReady()) return { ok: false, reason: 'not_open' };
     var r = String(role || '').trim();
     if (!r) return { ok: true };
+    if (!_flowReady()) return { ok: false, reason: 'not_open' };
     var eps = editablePhotos() || [];
     var idx = eps.findIndex(function (p) { return p && p.role === r; });
     if (idx < 0) return { ok: false, reason: 'role_not_found', role: r };

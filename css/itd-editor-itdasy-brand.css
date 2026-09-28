@@ -1,0 +1,412 @@
+:root {
+  --brand: #D58A95;
+  --brand-strong: #BC6675;
+  --brand-bg: #F7EFF0;
+  --accent: #D58A95;
+  --accent-strong: #BC6675;
+  --surface: #fff;
+  --surface-2: #F7F8FA;
+  --text: #17191C;
+  --text-muted: #6B7684;
+  --border: #E9EBEE;
+}
+
+body {
+  background: #F7F8FA;
+  color: #17191C;
+}
+
+#start {
+  max-width: 680px;
+  padding: 44px 22px;
+}
+
+#start h1 {
+  margin: 0 0 10px;
+  color: #17191C;
+  font-size: clamp(28px, 7vw, 42px);
+  letter-spacing: 0;
+}
+
+#start p {
+  color: #6B7684;
+  line-height: 1.55;
+}
+
+#start input[type="file"] {
+  display: block;
+  width: 100%;
+  margin: 22px 0 12px;
+  padding: 14px;
+  border: 1px solid #E9EBEE;
+  border-radius: 14px;
+  background: #fff;
+}
+
+#start button,
+#result button,
+#result a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 6px 6px 0 0;
+  padding: 0 16px;
+  border: 1px solid #F0DADD;
+  border-radius: 14px;
+  background: #fff;
+  color: #BC6675;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+#start #demo,
+#result a {
+  border-color: #BC6675;
+  background: #BC6675;
+  color: #fff;
+}
+
+.itded {
+  background: #120D10;
+}
+
+.itded__scrim {
+  background: linear-gradient(180deg, rgba(18, 13, 16, .34), transparent 17%, transparent 60%, rgba(18, 13, 16, .46));
+}
+
+.itded__done,
+.ittext__add,
+.itfont.on,
+.itctarget button.on,
+.itstk__tab.on {
+  color: #17191C;
+}
+
+.itrb.on,
+.itded__wmsuggest,
+.itlay2__cnt,
+.itlaybadge,
+.itlay2__add,
+.itded__recover-y {
+  background: #BC6675;
+}
+
+.itbeauty {
+  background: #fff;
+  color: #17191C;
+}
+
+.itbeauty header {
+  background: #fff;
+  border-bottom: 1px solid #E9EBEE;
+}
+
+.itbeauty header small,
+.itbeauty p,
+.itbeauty summary,
+.itbeauty output,
+.itbeauty [data-beauty-status] {
+  color: #6B7684;
+}
+
+.itbeauty main {
+  background: #17191C;
+}
+
+.itbeauty-photo-nav,
+.itbeauty-toolbar {
+  background: #17191C;
+  color: #F7F8FA;
+}
+
+.itbeauty aside {
+  border-left-color: #E9EBEE;
+  background: #fff;
+}
+
+.itbeauty nav {
+  border-bottom-color: #E9EBEE;
+}
+
+.itbeauty nav button[aria-pressed="true"],
+.itbeauty button[aria-pressed="true"] {
+  border-color: #E8C7CD;
+  background: #F7EFF0;
+  color: #BC6675;
+}
+
+.itbeauty [data-beauty-action="apply"],
+.itdevelop [data-develop-action="apply"],
+.itprecision [data-precision-action="apply"] {
+  border-color: #BC6675;
+  background: #BC6675;
+  color: #fff;
+}
+
+.itbeauty [data-beauty-action="cancel"] {
+  color: #6B7684;
+}
+
+.itbeauty button,
+.itdevelop button,
+.itprecision button {
+  border-color: #E9EBEE;
+  background: #fff;
+}
+
+.itbeauty-brush,
+.itbeauty-section-title button,
+.itdevelop-meter,
+.itdevelop-curve,
+.itprecision-viewport,
+.itprecision aside {
+  background: #F7F8FA;
+}
+
+.itbeauty details,
+.itbeauty [data-beauty-status] {
+  border-color: #E9EBEE;
+}
+
+.itbeauty input,
+.itdevelop input,
+.itprecision input,
+.itbeauty-match input {
+  accent-color: #BC6675;
+}
+
+.itbeauty :focus-visible,
+.itdevelop :focus-visible,
+.itprecision :focus-visible {
+  outline-color: #D58A95;
+}
+
+.itdevelop,
+.itprecision {
+  background: #fff;
+  color: #17191C;
+}
+
+.itdevelop header,
+.itprecision header,
+.itdevelop aside,
+.itprecision-tabs {
+  border-color: #E9EBEE;
+}
+
+.itdevelop button[aria-pressed="true"],
+.itprecision button[aria-pressed="true"] {
+  border-color: #E8C7CD;
+  background: #F7EFF0;
+  color: #BC6675;
+}
+
+.itdevelop-curve [data-curve-line],
+.itdevelop-curve circle {
+  stroke: #BC6675;
+}
+
+@media (width <= 739px) {
+  .itbeauty nav {
+    background: #fff;
+    border-top-color: #E9EBEE;
+  }
+}
+
+/* Preview-only deep brand pass: remove the old olive tone inside editor tools. */
+.itded--studio .itrb,
+.itded--studio .itrb[data-studio-workspace].on:not([aria-pressed="true"]) {
+  color: #6B7684 !important;
+}
+
+.itded--studio .itrb.on,
+.itded--studio .itrb[aria-pressed="true"],
+.itded--studio .itded__rail .itrb[aria-pressed="true"],
+.itded--studio .itstk__tab.on,
+.itbeauty nav button[aria-pressed="true"],
+.itbeauty button[aria-pressed="true"],
+.itdevelop button[aria-pressed="true"],
+.itprecision button[aria-pressed="true"] {
+  border-color: #E8C7CD !important;
+  background: #F7EFF0 !important;
+  color: #BC6675 !important;
+}
+
+.itded--studio .itrb.on svg,
+.itded--studio .itrb[aria-pressed="true"] svg,
+.itbeauty button[aria-pressed="true"] svg {
+  stroke: currentColor !important;
+}
+
+.itbeauty [data-beauty-action="apply"],
+.itdevelop [data-develop-action="apply"],
+.itprecision [data-precision-action="apply"],
+.itstudio-develop {
+  border-color: #BC6675 !important;
+  background: #BC6675 !important;
+  color: #fff !important;
+}
+
+.itstudio-entry button,
+.itstudio-text-actions button,
+.itstudio-precision,
+.itstudio-grid-tools button,
+.itdevelop button,
+.itprecision button,
+.itbeauty button {
+  border-color: #E9EBEE !important;
+  background: #fff !important;
+  color: #17191C !important;
+}
+
+.itstudio-entry button:is(:hover, :focus-visible),
+.itstudio-text-actions button:is(:hover, :focus-visible),
+.itstudio-precision:is(:hover, :focus-visible),
+.itstudio-grid-tools button:is(:hover, :focus-visible),
+.itdevelop button:is(:hover, :focus-visible),
+.itprecision button:is(:hover, :focus-visible),
+.itbeauty button:is(:hover, :focus-visible) {
+  border-color: #D58A95 !important;
+}
+
+.itbeauty [data-beauty-action="cancel"] {
+  background: transparent !important;
+  color: #6B7684 !important;
+}
+
+.itbeauty header b,
+.itdevelop header b,
+.itprecision header b,
+.itbeauty-section-title b,
+.itstudio-looks button[aria-pressed="true"] {
+  color: #17191C !important;
+}
+
+.itbeauty header small,
+.itdevelop header small,
+.itprecision header small,
+.itstudio-background p,
+.itdevelop p,
+.itprecision p,
+.itdevelop-meter div,
+.itbeauty p,
+.itbeauty summary,
+.itbeauty output,
+.itbeauty [data-beauty-status] {
+  color: #6B7684 !important;
+}
+
+.itbeauty-brush,
+.itbeauty-section-title button,
+.itdevelop-viewport,
+.itprecision-viewport,
+.itdevelop-meter,
+.itdevelop-curve,
+.itprecision aside,
+.itstudio-grid-tools button[aria-pressed="true"] {
+  background: #F7F8FA !important;
+}
+
+.itdevelop header,
+.itprecision header,
+.itdevelop aside,
+.itprecision-tabs,
+.itdevelop-meter,
+.itbeauty aside,
+.itbeauty nav,
+.itbeauty details,
+.itbeauty [data-beauty-status] {
+  border-color: #E9EBEE !important;
+}
+
+.itdevelop input,
+.itprecision input,
+.itbeauty input,
+.itbeauty-match input,
+.itadj__row input,
+.itsize input,
+.itdrawp__size input,
+.itshape__thick input,
+.itlay2__gap input {
+  accent-color: #BC6675 !important;
+}
+
+.itdevelop-swatches button[aria-pressed="true"] {
+  outline-color: #BC6675 !important;
+}
+
+.itdevelop-curve .grid {
+  stroke: #E9EBEE !important;
+}
+
+.itdevelop-curve .reference {
+  stroke: #D3D7DE !important;
+}
+
+.itdevelop-curve [data-curve-line],
+.itdevelop-curve circle {
+  stroke: #BC6675 !important;
+}
+
+.itbeauty main,
+.itbeauty-photo-nav,
+.itbeauty-toolbar {
+  background: #17191C !important;
+  color: #F7F8FA !important;
+}
+
+.itbeauty-toolbar button {
+  background: transparent !important;
+  color: #F7F8FA !important;
+}
+
+.itbeauty-toolbar button svg {
+  stroke: currentColor !important;
+}
+
+
+/* Test app v4: force every editing palette away from green-heavy app defaults. */
+.itded--studio .itshape__colors,
+.itded--studio .itdrawp__colors,
+.itded--studio .itcolors {
+  gap: 12px !important;
+}
+.itded--studio .itshape__colors .itscw,
+.itded--studio .itdrawp__colors .itdsw,
+.itded--studio .itcolors .itsw {
+  border-color: #E8C7CD !important;
+}
+.itded--studio .itshape__colors .itscw:nth-of-type(1),
+.itded--studio .itdrawp__colors .itdsw:nth-of-type(1),
+.itded--studio .itcolors .itsw:nth-of-type(1) { background: #FFFFFF !important; }
+.itded--studio .itshape__colors .itscw:nth-of-type(2),
+.itded--studio .itdrawp__colors .itdsw:nth-of-type(2),
+.itded--studio .itcolors .itsw:nth-of-type(2) { background: #15181D !important; }
+.itded--studio .itshape__colors .itscw:nth-of-type(3),
+.itded--studio .itdrawp__colors .itdsw:nth-of-type(3),
+.itded--studio .itcolors .itsw:nth-of-type(3) { background: #BC6675 !important; }
+.itded--studio .itshape__colors .itscw:nth-of-type(4),
+.itded--studio .itdrawp__colors .itdsw:nth-of-type(4),
+.itded--studio .itcolors .itsw:nth-of-type(4) { background: #D58A95 !important; }
+.itded--studio .itshape__colors .itscw:nth-of-type(5),
+.itded--studio .itdrawp__colors .itdsw:nth-of-type(5),
+.itded--studio .itcolors .itsw:nth-of-type(5) { background: #E8C7CD !important; }
+.itded--studio .itshape__colors .itscw:nth-of-type(6),
+.itded--studio .itdrawp__colors .itdsw:nth-of-type(6),
+.itded--studio .itcolors .itsw:nth-of-type(6) { background: #CFA7AE !important; }
+.itded--studio .itshape__colors .itscw:nth-of-type(7),
+.itded--studio .itdrawp__colors .itdsw:nth-of-type(7),
+.itded--studio .itcolors .itsw:nth-of-type(7) { background: #8B95A1 !important; }
+.itded--studio .itshape__colors .itscw:nth-of-type(8),
+.itded--studio .itdrawp__colors .itdsw:nth-of-type(8),
+.itded--studio .itcolors .itsw:nth-of-type(8) { background: #B8A6B5 !important; }
+.itded--studio .itsw.on,
+.itded--studio .itscw.on,
+.itded--studio .itdsw.on {
+  box-shadow: 0 0 0 2px #17191C, 0 0 0 4px #FFFFFF !important;
+}
+.itded--studio .itdevelop-swatches button:nth-child(4),
+.itded--studio .itdevelop-swatches button:nth-child(5) {
+  filter: saturate(.35) hue-rotate(145deg) brightness(1.06) !important;
+}
