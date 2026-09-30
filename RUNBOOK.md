@@ -12,7 +12,7 @@
 
 | 용도 | Cloud Run 서비스 | 주소 | DB | 배포 |
 |---|---|---|---|---|
-| **운영** | `itdasy-backend-prod` | https://itdasy-backend-prod-zzd4ktuxgq-du.a.run.app | 🔴 **확인 필요** (아래) | 운영 레포 `Nopo-lab/itdasy_backend` · 수동 |
+| **운영** | `itdasy-backend-prod` | https://itdasy-backend-prod-zzd4ktuxgq-du.a.run.app | Supabase `itdasy-staging` (hsxxqomfbdernepykils) — 이름만 staging | 수동 (`itdasy_backend` 레포는 2026-08-04 보관됨) |
 | 테스트 | `itdasy-backend-test` | https://itdasy-backend-test-644329093453.asia-northeast3.run.app | Supabase `itdasy-test` (pgsvvcjrifbidwpwfdst) | `itdasy_backend-test` main 푸시 = 자동 |
 
 아래 명령은 전부 `SVC` 변수를 쓴다. **장애 대응은 운영부터.**
@@ -23,9 +23,13 @@ export REGION=asia-northeast3 PROJECT=itdasy-495513
 export B=https://itdasy-backend-prod-zzd4ktuxgq-du.a.run.app
 ```
 
-🔴 **백업이 운영 DB 를 뜨고 있는지 반드시 한 번 확인한다.** `supabase-backup.yml` 은
-`hsxxqomfbdernepykils`(Supabase 이름 `itdasy-staging`)를 "실데이터(LIVE)" 로 백업한다.
-운영 서비스가 **다른 DB** 를 보고 있다면 매일 백업이 초록이어도 실데이터는 백업되지 않는 것이다.
+| 옛 DB | — | — | Supabase `beauty-platform` (wlwauinqvmegnqdtbrtg) — 쓰는 서비스 없음 | — |
+
+✅ **백업은 운영 DB 를 뜨고 있다 (2026-09-30 근거 3개).** `supabase-backup.yml` 의 LIVE 가 `hsxxq…` 다.
+① 백엔드 `dev/local_env_guard.py`(9/23)가 `hsxxq…` 를 "운영 Supabase" 로 적는다
+② 9/28 커밋으로 테스트 서비스가 새 DB `itdasy-test` 로 떠났다
+③ 그 뒤에도 LIVE 백업 크기가 매일 늘어난다(9/25 1,153,371 → 9/29 1,155,474 바이트).
+남은 한 가지: 콘솔 권한 있는 사람이 아래 명령으로 **눈으로 한 번** 확인하면 추정이 아니라 사실이 된다.
 
 ```bash
 # 운영 서비스가 쓰는 DB 호스트 — 값이 Secret Manager 참조면 그 시크릿의 최신 버전을 본다
@@ -125,11 +129,13 @@ gcloud run services describe $SVC --region=$REGION --project=$PROJECT \
    넘으면 AI 호출이 429 로 막히고 "오늘 AI 사용량이 많아 잠시 쉬어가요" 가 뜬다.
 3. **특정 기능이 범인이면** 그것만 끈다(위 2번 표).
 
-🔥 **누끼 폴백 주의**: Replicate 가 흔들리면 remove.bg 폴백(장당 **280원**, Replicate 의 200배)이
+🔥 **누끼 폴백 주의**: Replicate 가 흔들리면 remove.bg 폴백(장당 **약 250~310원**(구독) · 종량제면 최대 1,780원, Replicate 약 1.5원의 200배 안팎)이
 자동으로 탄다. 로그에서 `[NUKKI] Replicate 실패, Remove.bg 폴백` 이 반복되면 폴백을 끊는다.
 
 - 백엔드 패치 `.ai/patches/backend-0001-removebg-fallback-cost-cap.patch` **적용 후**:
-  폴백은 하루 30회(전체)까지만 타고, 실단가 280원으로 일일 상한에 잡힌다.
+  폴백은 하루 30회(전체)까지만 타고, 장당 단가(기본 300원)로 일일 상한에 잡힌다.
+  단가는 Remove.bg 요금제에 맞춘다: 구독 Lite $0.225·Pro $0.195·Volume+ $0.178 / 종량제 $0.27~$1.29 (장당)
+  → `REMOVEBG_FALLBACK_UNIT_KRW` 에 원화로. 모르면 높게 둔다(상한 판정용).
   끊기: `--update-env-vars REMOVEBG_FALLBACK_DAILY_MAX=0` · 늘리기: 숫자만 바꾼다.
   로그 `[NUKKI] 폴백 상한 도달` 이 보이면 상한이 일하는 중이다.
 - **패치 적용 전**: 상한이 폴백을 1.4원으로 센다(200배 과소). `REMOVEBG_API_KEY` 를 비워 폴백을 끊는다.

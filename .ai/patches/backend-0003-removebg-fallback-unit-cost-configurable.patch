@@ -1,0 +1,122 @@
+From f74163c0c972b88fa11f4fad5b0fb8e0baed279f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 30 Sep 2026 13:16:09 +0000
+Subject: [PATCH] =?UTF-8?q?fix(cost):=20=EB=88=84=EB=81=BC=20=ED=8F=B4?=
+ =?UTF-8?q?=EB=B0=B1=20=EB=8B=A8=EA=B0=80=EB=A5=BC=20=EC=8B=A4=EC=A0=9C=20?=
+ =?UTF-8?q?=EC=9A=94=EA=B8=88=EC=A0=9C=EC=97=90=20=EB=A7=9E=EC=B6=9C=20?=
+ =?UTF-8?q?=EC=88=98=20=EC=9E=88=EA=B2=8C=20=E2=80=94=20=EA=B8=B0=EB=B3=B8?=
+ =?UTF-8?q?=20300=EC=9B=90(Lite=20=EA=B5=AC=EB=8F=85=20=EA=B8=B0=EC=A4=80)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+2026-09-30 공개 요금 확인: size=auto 1장 = 크레딧 1개.
+구독 Lite $0.225 · Pro $0.195 · Volume+ $0.178 / 종량제 $0.27~$1.29 (장당).
+구독이면 약 250~310원, 종량제면 370~1,780원이라 280원 고정은 요금제에 따라 크게 틀릴 수 있다.
+
+- REMOVEBG_FALLBACK_UNIT_KRW(기본 300, 0·음수·문자면 기본값). 상한용 값이라 모르면 높게
+- 관리자 원가 화면이 달러 env 를 따로 두지 않고 같은 원화 단가 하나를 환율로 나눠 쓴다
+- tests: env 오버라이드 5종 · 최소 250원 · 관리자 화면 단가 일치 (총 19)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FyD8weAr48DkhpwGiTmhuf
+---
+ backend/routers/admin.py                       |  7 +++----
+ .../test_removebg_fallback_cost_2026_09_30.py  | 18 +++++++++++++++---
+ backend/utils/cost_guard.py                    | 17 ++++++++++++++++-
+ 3 files changed, 34 insertions(+), 8 deletions(-)
+
+diff --git a/backend/routers/admin.py b/backend/routers/admin.py
+index f744130..325b2a6 100644
+--- a/backend/routers/admin.py
++++ b/backend/routers/admin.py
+@@ -1303,10 +1303,9 @@ def stats_infra_cost(
+         .scalar()
+         or 0
+     )
+-    try:
+-        removebg_fallback_unit_usd = float(os.getenv("REMOVEBG_FALLBACK_USD", "0.20"))
+-    except (TypeError, ValueError):
+-        removebg_fallback_unit_usd = 0.20
++    # 단가 정본은 cost_guard(원). 달러 env 를 따로 두면 두 값이 갈라진다 — 원가 상한과 화면이 다른 숫자를 말한다.
++    from utils.cost_guard import UNIT_COST_KRW as _UC, REMOVEBG_FALLBACK_ENDPOINT as _FB
++    removebg_fallback_unit_usd = float(_UC[_FB]) / USD_KRW
+     replicate_usd += float(removebg_fallback_calls) * removebg_fallback_unit_usd
+ 
+     # 3) Railway 월 고정비
+diff --git a/backend/tests/test_removebg_fallback_cost_2026_09_30.py b/backend/tests/test_removebg_fallback_cost_2026_09_30.py
+index 1574e45..e33a623 100644
+--- a/backend/tests/test_removebg_fallback_cost_2026_09_30.py
++++ b/backend/tests/test_removebg_fallback_cost_2026_09_30.py
+@@ -51,7 +51,7 @@ def _count(db, endpoint):
+ # ── 단가·집계 ─────────────────────────────────────────────────────
+ 
+ def test_fallback_has_real_unit_cost():
+-    assert CG.UNIT_COST_KRW[CG.REMOVEBG_FALLBACK_ENDPOINT] >= 100, "폴백 단가가 Replicate 단가처럼 싸게 잡히면 안 된다"
++    assert CG.UNIT_COST_KRW[CG.REMOVEBG_FALLBACK_ENDPOINT] >= 250, "가장 싼 구독 요금제(약 250원)보다 싸게 잡으면 안 된다"
+     assert CG.UNIT_COST_KRW[CG.REMOVEBG_FALLBACK_ENDPOINT] > CG.UNIT_COST_KRW["remove-bg"] * 50
+ 
+ 
+@@ -228,10 +228,22 @@ def test_fallback_disabled_by_zero(client_env, monkeypatch):
+ def test_admin_infra_cost_includes_fallback(db, monkeypatch):
+     from routers import admin as ADM
+     monkeypatch.setattr(ADM, "_gemini_cost_from_logs", lambda db, since: 0.0)
+-    monkeypatch.setenv("REMOVEBG_FALLBACK_USD", "0.20")
+     PL.record_usage(db, 1, "remove-bg")
+     PL.record_usage(db, 1, CG.REMOVEBG_FALLBACK_ENDPOINT)
+     out = ADM.stats_infra_cost(period="month", _=1, db=db)
+     assert out.breakdown["removebg_fallback_calls"] == 1
+-    want = ADM.REPLICATE_REMOVEBG_USD * 1 + 0.20 * 1
++    fb_usd = CG.UNIT_COST_KRW[CG.REMOVEBG_FALLBACK_ENDPOINT] / ADM.USD_KRW
++    assert out.breakdown["removebg_fallback_unit_usd"] == pytest.approx(fb_usd)
++    want = ADM.REPLICATE_REMOVEBG_USD * 1 + fb_usd * 1
+     assert out.replicate_usd == pytest.approx(want, abs=1e-4)
++
++
++def test_fallback_unit_cost_env_override(monkeypatch):
++    """요금제가 다르면 env 로 단가를 맞춘다. 0·음수·문자는 기본값(보수적 300원)."""
++    import importlib
++    for raw, want in [("1290", 1290.0), ("", 300.0), ("0", 300.0), ("-5", 300.0), ("abc", 300.0)]:
++        monkeypatch.setenv("REMOVEBG_FALLBACK_UNIT_KRW", raw)
++        importlib.reload(CG)
++        assert CG.UNIT_COST_KRW[CG.REMOVEBG_FALLBACK_ENDPOINT] == want, raw
++    monkeypatch.delenv("REMOVEBG_FALLBACK_UNIT_KRW", raising=False)
++    importlib.reload(CG)
+diff --git a/backend/utils/cost_guard.py b/backend/utils/cost_guard.py
+index 6595ee5..d21c2e7 100644
+--- a/backend/utils/cost_guard.py
++++ b/backend/utils/cost_guard.py
+@@ -32,6 +32,14 @@ from fastapi import HTTPException
+ 
+ logger = logging.getLogger(__name__)
+ 
++def _env_float(name: str, default: float) -> float:
++    try:
++        v = float(os.environ.get(name, "") or default)
++        return v if v > 0 else default
++    except ValueError:
++        return default
++
++
+ # endpoint → 1회 원가(원). 2026-07-31 실측/추정 — plan_limits.py 상단 표와 같은 값.
+ UNIT_COST_KRW = {
+     "assistant": 7.5,   # 2026-07-31 2차 최적화(Flash 고정+영수증 제거). 최초 13.2
+@@ -55,7 +63,14 @@ UNIT_COST_KRW = {
+     #   `remove-bg` 한 줄뿐이라 일일 상한이 폴백을 **1.4원으로 셌다** → 상한이 200배 헐거웠다.
+     #   폴백이 실제로 탄 경우에만 이 행을 **추가로** 남긴다(요금제 쿼터에는 안 잡힌다 —
+     #   ENDPOINT_TO_LIMIT 에 없음. 원장님 쿼터는 기존 `remove-bg` 1회 그대로).
+-    "remove-bg-fallback": 280.0,
++    #   [2026-09-30 단가 확인] Remove.bg 는 `size=auto` 1장 = 크레딧 1개다(image.py).
++    #   크레딧 값은 요금제마다 다르다(공개 요금, 2026-07 기준):
++    #     구독 Lite $9/40장=$0.225 · Pro $39/200장=$0.195 · Volume+ $89/500장=$0.178
++    #     종량제(pay-as-you-go) 1장 $1.29 ~ 500장 묶음 $0.27
++    #   → 구독이면 장당 약 250~310원, 종량제면 370~1,780원.
++    #   기본값은 가장 작은 구독(Lite) 기준 300원. 실제 요금제가 다르면 env 로 맞춘다.
++    #   상한 판정용 값이라 **싸게 잡는 쪽이 위험하다** — 모르면 높게 둔다.
++    "remove-bg-fallback": _env_float("REMOVEBG_FALLBACK_UNIT_KRW", 300.0),
+     "ai-enhance": 2.2,
+     "ai-remove-object": 2.8,
+     "ai-generate-bg": 39.2,
+-- 
+2.43.0
+
