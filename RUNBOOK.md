@@ -25,6 +25,14 @@ export B=https://itdasy-backend-prod-zzd4ktuxgq-du.a.run.app
 
 | 옛 DB | — | — | Supabase `beauty-platform` (wlwauinqvmegnqdtbrtg) — 쓰는 서비스 없음 | — |
 
+🏷️ **Supabase 이름 바꾸기 (헷갈림 방지, 5분)** — 이름만 바뀌고 주소(고유번호)·접속·코드는 그대로다.
+1. Supabase 대시보드 → 프로젝트 `itdasy-staging` → Settings → General → Project name 을 `itdasy-prod` 로
+2. `beauty-platform` → `itdasy-old-archive` · `itdasy-test` 는 그대로
+3. GitHub 이 레포 → Settings → Secrets → Actions: `SUPABASE_LIVE_DB_URL` 에 옛 `SUPABASE_STAGING_DB_URL` 과 **같은 값**,
+   `SUPABASE_ARCHIVE_DB_URL` 에 옛 `SUPABASE_PROD_DB_URL` 과 같은 값을 넣는다
+4. Actions → Supabase Daily Backup → Run workflow → 로그에 `LIVE 주소 출처: SUPABASE_LIVE_DB_URL (운영 ref 일치)` 확인
+5. 확인되면 옛 시크릿 2개 삭제. 이후 문서의 `itdasy-staging` 표기는 `itdasy-prod` 로 읽으면 된다
+
 ✅ **백업은 운영 DB 를 뜨고 있다 (2026-09-30 근거 3개).** `supabase-backup.yml` 의 LIVE 가 `hsxxq…` 다.
 ① 백엔드 `dev/local_env_guard.py`(9/23)가 `hsxxq…` 를 "운영 Supabase" 로 적는다
 ② 9/28 커밋으로 테스트 서비스가 새 DB `itdasy-test` 로 떠났다
@@ -129,16 +137,18 @@ gcloud run services describe $SVC --region=$REGION --project=$PROJECT \
    넘으면 AI 호출이 429 로 막히고 "오늘 AI 사용량이 많아 잠시 쉬어가요" 가 뜬다.
 3. **특정 기능이 범인이면** 그것만 끈다(위 2번 표).
 
-🔥 **누끼 폴백 주의**: Replicate 가 흔들리면 remove.bg 폴백(장당 **약 250~310원**(구독) · 종량제면 최대 1,780원, Replicate 약 1.5원의 200배 안팎)이
-자동으로 탄다. 로그에서 `[NUKKI] Replicate 실패, Remove.bg 폴백` 이 반복되면 폴백을 끊는다.
+🔥 **누끼 원가 순서 (2026-09-30 백엔드 PR #107)**
 
-- 백엔드 패치 `.ai/patches/backend-0001-removebg-fallback-cost-cap.patch` **적용 후**:
-  폴백은 하루 30회(전체)까지만 타고, 장당 단가(기본 300원)로 일일 상한에 잡힌다.
-  단가는 Remove.bg 요금제에 맞춘다: 구독 Lite $0.225·Pro $0.195·Volume+ $0.178 / 종량제 $0.27~$1.29 (장당)
-  → `REMOVEBG_FALLBACK_UNIT_KRW` 에 원화로. 모르면 높게 둔다(상한 판정용).
-  끊기: `--update-env-vars REMOVEBG_FALLBACK_DAILY_MAX=0` · 늘리기: 숫자만 바꾼다.
-  로그 `[NUKKI] 폴백 상한 도달` 이 보이면 상한이 일하는 중이다.
-- **패치 적용 전**: 상한이 폴백을 1.4원으로 센다(200배 과소). `REMOVEBG_API_KEY` 를 비워 폴백을 끊는다.
+| 순서 | 경로 | 장당 | 켜는 조건 |
+|---|---|---|---|
+| 1 | Replicate `cjwbw/rembg` | 약 5원 | `REPLICATE_API_TOKEN` |
+| 2 | fal BiRefNet v2 | 약 1~2원 | `FAL_KEY` 가 있을 때 |
+| 3 | Remove.bg | 250~310원(구독) · 최대 1,780원(종량제) | **기본 꺼짐.** `REMOVEBG_FALLBACK_DAILY_MAX` 에 양수를 넣을 때만 |
+
+- 로그 `[NUKKI] Replicate 실패, 다음 경로로` 가 반복되면 Replicate 상태를 본다. fal 이 받아주는 동안은 원장님 화면은 멀쩡하다.
+- 1·2 둘 다 실패하면 원장님은 "잠시 후 다시" 안내를 받는다. 급하면 Remove.bg 를 잠깐 켠다:
+  `--update-env-vars REMOVEBG_FALLBACK_DAILY_MAX=30,REMOVEBG_FALLBACK_UNIT_KRW=300` (끝나면 `--remove-env-vars`).
+- PR #107 적용 전 서버라면: Remove.bg 폴백이 무제한으로 돌고 원가 상한에 1.4원으로 잡힌다 → `REMOVEBG_API_KEY` 를 비워 끊는다.
 
 ---
 

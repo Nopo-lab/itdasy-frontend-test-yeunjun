@@ -32,7 +32,7 @@
 |---|---|
 | ✅ **원래 되어 있었다** (플랜 초안이 옛 기록을 봤다) | B4 유령 슬롯 · B5 겹침 이중부킹 · E2 인스타 토큰 자동갱신 · E7 알림톡 야간 · G3 동의 테스트 CI · G4 자동발송 일괄 중지 · C4 의 Sentry SRI · A5 일시정지(Pro) |
 | 🔧 **오늘 고쳤다 (프론트 · 이 PR)** | C4 동적 CDN 5종 SRI·버전 고정 · D7 스토어·영문 약관 체험기간·무료 한도 · H8 스토어·심사·개인정보 문구 과장 · C2 문서 평문 토큰 · D6/I2/G4 런북 · 런북·CLAUDE.md 서비스 이름(운영/테스트 분리) · 백업 워크플로 Pro 주석 |
-| 🔧 **오늘 고쳤다 (백엔드 · 패치 파일, 적용 대기)** | F1 누끼 폴백 원가 200배 과소 집계 → `.ai/patches/backend-0001-…` + 단가 설정 `backend-0003-…` · F3 인젝션 DM 자동발송 차단 + 정화 패턴 구멍 → `.ai/patches/backend-0002-dm-prompt-injection-autosend-block.patch` (Claude 는 백엔드 레포 쓰기 권한이 거절돼 읽기만 가능) |
+| 🔧 **오늘 고쳤다 (백엔드 · PR [#107](https://github.com/Nopo-lab/itdasy_backend-test/pull/107))** | F1 누끼 폴백 원가 과소 집계 + Remove.bg 기본 꺼짐 + fal BiRefNet 2순위 + 평소 단가 5원 정정 · F3 인젝션 DM 자동발송 차단 + 정화 패턴 구멍 |
 | 🆕 **새로 찾았다** | B8 백업 대상 DB(→ 근거로 확인됨) · C9 백엔드 README 평문 비밀번호 · F6 클라이언트 누끼 폴백 사망 · A8 iPhone 오프라인 화면 · H8 문서 과장 |
 | 🤖 **GPT 담당** | C10 Cloud Run 런타임 SA 최소권한 · A7/F11 Redis 교체·`/health` 정직화 · C11 백엔드 배포 워크플로 운영 분리 · C5 개발 의존성 · C3 브랜치 보호·WIF |
 | 🙋 **사람만 할 수 있다** | C1 옛 키 폐기 · C2 시크릿 재발급 · B8 운영 DB 콘솔 눈확인(1분) · C9 README 비밀번호 삭제·교체 · D1~D4 결제 콘솔·실기기 · H1 국외이전 법률 · D7/H8 콘솔 문구 재제출 · J1 밤 알림 · F1 패치 적용 |
@@ -140,9 +140,9 @@
 
 | ID | 심각도 | 리스크 | 지금 상태 | 막는 조치 | 담당 | 기한 | 완료 판정 |
 |---|---|---|---|---|---|---|---|
-| F1 | 🔴 | **AI 원가 폭주 — 누끼 폴백이 상한에 1.4원으로 잡혔다** | 🔧 **결함 확인·패치 완료(적용 대기)**. Remove.bg 폴백(장당 약 250~310원 구독 / 370~1,780원 종량제)을 Replicate 단가 1.4원으로 세서 일일 상한이 200배 헐거웠고 폴백 횟수 상한도 없었다 | 패치 `.ai/patches/backend-0001-removebg-fallback-cost-cap.patch`: 폴백 실단가 집계(기본 300원, `REMOVEBG_FALLBACK_UNIT_KRW` 로 요금제에 맞춤 — 패치 0003) + 하루 30회 상한(`REMOVEBG_FALLBACK_DAILY_MAX`) + 관리자 원가 반영. 테스트 18개(수정 전 3개 실패 확인) + 관련 15파일 통과 | 적용: 연준/GPT (Claude 는 백엔드 쓰기 권한 없음) | **D-0** | 백엔드 머지 커밋 |
+| F1 | 🟠 | **AI 원가 폭주 — 누끼 폴백** | 🔧 **백엔드 PR [#107](https://github.com/Nopo-lab/itdasy_backend-test/pull/107) 올림**. 원래 Remove.bg 폴백(장당 250~1,780원)이 원가 상한에 1.4원으로 잡히고 횟수 제한도 없었다. 원영 결정으로 **Remove.bg 기본 꺼짐**, 2순위를 fal BiRefNet(약 1~2원)으로. 평소 단가도 1.4원 → 5원(공개 단가 $0.0036)으로 정정 | 머지 후 테스트 서비스에 `FAL_KEY` 확인 → 운영 승격 | 연준 | **D-0** | PR #107 머지 + 운영 반영 |
 | F2 | 🔴 | **거짓 시술 광고 생성**(안 한 시술을 했다고 씀) | T-904 D54~D70 으로 17건 정화 규칙 추가 | 출시 후 **실제 원장 캡션 샘플 주 20건** 사람 검수 → 새 패턴은 정화 규칙에 추가. `medical_ad_guard.py` 가 의료광고 표현도 막는지 확인 | 원영·Claude | M1 | 주간 검수표 |
-| F3 | 🟠 | **손님 DM 을 통한 프롬프트 인젝션** | 🔧 **패치 완료(적용 대기)**. 전엔 `prompt_sanitizer` 가 패턴을 지우기만 하고 그 초안은 자동발송 대상에 남았다. 게다가 정화 패턴이 "ignore **all previous** instructions" 를 놓쳤다 | 패치 `.ai/patches/backend-0002-dm-prompt-injection-autosend-block.patch`: `dm_safety.evaluate_bucket` 에 인젝션 판정 추가 → 자동발송 차단·원장 확인(초안은 그대로) + 정화 패턴 보강. 테스트 15개 | 적용: 연준/GPT | 자동발송 켜기 전 | 백엔드 머지 커밋 |
+| F3 | 🟠 | **손님 DM 을 통한 프롬프트 인젝션** | 🔧 **백엔드 PR #107 에 포함**. 전엔 `prompt_sanitizer` 가 패턴을 지우기만 하고 그 초안은 자동발송 대상에 남았다. 정화 패턴도 "ignore **all previous** instructions" 를 놓쳤다 | `dm_safety.evaluate_bucket` 에 인젝션 판정 → 자동발송 차단·원장 확인(초안은 그대로) + 정화 패턴 보강. 테스트 15개 | 연준(머지) | 자동발송 켜기 전 | PR #107 머지 |
 | F4 | 🟠 | **AI 동의 없이 외부 전송** | T-904 에서 동의 v2 로 31개 진입점 차단 | 새 AI 기능 추가 시 PR 체크리스트에 "동의 게이트 통과" 항목 | Claude | 상시 | PR 템플릿 |
 | F5 | 🟡 | **Vertex/Gemini 쿼터 429 지속** | `/ai-health` 로 감지, 기능별 off 가능 | 429 가 10분 지속되면 Discord 자동 알림 | Claude | W1 | 알림 테스트 |
 | F6 | 🟡 | **클라이언트(휴대폰) 누끼 폴백이 항상 실패** | 서버 누끼가 실패하면 폰에서 imgly 로 대신 따는 폴백이 있는데 **두 겹으로 죽어 있다**: ① 불러오는 `@imgly/background-removal@1.7.0/dist/index.umd.js` 가 그 버전에 없다 ② 모델 경로(`publicPath`)를 jsDelivr npm 으로 줬는데 npm 배포본의 모델 목록(`resources.json`)이 비어 있다(모델은 img.ly 전용 서버에 있음). **살리면 첫 사용 때 폰이 약 100MB 를 받는다** — 기본(medium) 모델 88MB + 실행 엔진 약 10~20MB, small 모델도 44MB(데이터 패키지 1.4.5 실측) | 권장: **폴백 코드 삭제.** 서버 누끼가 막히면 "잠시 후 다시" 안내가 100MB 다운로드보다 낫다 | 원영 결정 → Claude | M1 | 결정 기록 |
@@ -310,8 +310,8 @@ D-0 항목만 여기 둔다. 나머지는 각 표의 "완료 판정" 칸에 날�
 | A4 | Supabase Pro 전환 · Spend cap 결정 | 연준 | ◐ Pro 완료 · Spend cap 미정 | 사용자 확인 2026-09-30 |
 | — | `RELEASE_CHECKLIST.md` 게이트 A~C 네이티브 재실행 | 연준·원영 | ☐ | |
 | B8 | 운영 서비스 DB = 백업 LIVE_REF | 연준 | ◐ 근거 3개로 확인 · 콘솔 눈확인 1회 남음 | 2026-09-30 |
-| F1 | 🆕 누끼 폴백 원가 패치 백엔드 적용 (0001 + 0003) · 실제 Remove.bg 요금제 확인 후 `REMOVEBG_FALLBACK_UNIT_KRW` 설정 | 연준 · GPT | ☐ 패치 준비됨 | `.ai/patches/backend-0001-…`, `0003-…` |
-| F3 | 🆕 인젝션 DM 자동발송 차단 패치 백엔드 적용 | 연준 · GPT | ☐ 패치 준비됨 | `.ai/patches/backend-0002-…` |
+| F1 | 누끼 원가 정상화 백엔드 PR #107 머지·운영 반영 · `FAL_KEY` 확인 | 연준 | ◐ PR 올림 | backend #107 |
+| F3 | 인젝션 DM 자동발송 차단 (PR #107 에 포함) | 연준 | ◐ PR 올림 | backend #107 |
 | C9 | 🆕 백엔드 README 평문 비밀번호 삭제 · 심사 계정 비번 교체 | 연준 | ☐ | |
 | H8 | 🆕 스토어·Privacy Labels·Data safety 콘솔 문구 재제출 | 원영 | ☐ | |
 | C10 | 🆕 Cloud Run 런타임 SA 최소권한 | GPT | ☐ 진행 중 | |
