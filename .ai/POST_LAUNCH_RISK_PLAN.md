@@ -23,6 +23,22 @@
 
 ---
 
+## 0.5 2026-09-30 실측 갱신 — 무엇이 이미 됐고, 무엇을 고쳤고, 누가 남은 걸 하나
+
+사용자 지시: "Supabase Pro 다 · 하나씩 조사하면서 싹 고쳐라 · GPT 도 자기가 찾은 것 하는 중".
+그래서 **GPT 가 맡은 5개는 건드리지 않았다**(겹치면 충돌). Claude 는 나머지를 코드로 확인했다.
+
+| 구분 | 항목 |
+|---|---|
+| ✅ **원래 되어 있었다** (플랜 초안이 옛 기록을 봤다) | B4 유령 슬롯 · B5 겹침 이중부킹 · E2 인스타 토큰 자동갱신 · E7 알림톡 야간 · G3 동의 테스트 CI · G4 자동발송 일괄 중지 · C4 의 Sentry SRI · A5 일시정지(Pro) |
+| 🔧 **오늘 고쳤다 (프론트 · 이 PR)** | C4 동적 CDN 5종 SRI·버전 고정 · D7 스토어·영문 약관 체험기간·무료 한도 · H8 스토어·심사·개인정보 문구 과장 · C2 문서 평문 토큰 · D6/I2/G4 런북 · 런북·CLAUDE.md 서비스 이름(운영/테스트 분리) · 백업 워크플로 Pro 주석 |
+| 🔧 **오늘 고쳤다 (백엔드 · 패치 파일, 적용 대기)** | F1 누끼 폴백 원가 200배 과소 집계 → `.ai/patches/backend-0001-removebg-fallback-cost-cap.patch` (Claude 는 백엔드 레포 쓰기 권한이 거절돼 읽기만 가능) |
+| 🆕 **새로 찾았다** | B8 백업이 운영 DB 를 뜨는지 불명 · C9 백엔드 README 평문 비밀번호 · F6 클라이언트 누끼 폴백 사망 · A8 iPhone 오프라인 화면 · H8 문서 과장 |
+| 🤖 **GPT 담당** | C10 Cloud Run 런타임 SA 최소권한 · A7/F11 Redis 교체·`/health` 정직화 · C11 백엔드 배포 워크플로 운영 분리 · C5 개발 의존성 · C3 브랜치 보호·WIF |
+| 🙋 **사람만 할 수 있다** | C1 옛 키 폐기 · C2 시크릿 재발급 · B8 운영 DB 확인 · C9 README 비밀번호 삭제·교체 · D1~D4 결제 콘솔·실기기 · H1 국외이전 법률 · D7/H8 콘솔 문구 재제출 · J1 밤 알림 · F1 패치 적용 |
+
+---
+
 ## 1. 지금 전제로 깔린 사실 (2026-09-30 실측)
 
 플랜을 세우기 전에 "현재 구조가 어떤지"를 먼저 못 박는다. **여기가 틀리면 아래 전부가 틀린다.**
@@ -30,16 +46,16 @@
 | # | 사실 | 근거 | 운영에 주는 뜻 |
 |---|---|---|---|
 | F1 | 앱(Capacitor)은 **웹을 원격으로 불러오는 껍데기**다. `server.url` = GitHub Pages 주소 | `capacitor.config.json` | `main` 에 푸시하면 **전 사용자 앱이 즉시 바뀐다.** 스토어 심사 없이. 단계적 배포도 없다. GitHub Pages 가 죽으면 앱도 죽는다 |
-| F2 | 실사용자 DB는 Supabase `itdasy-staging`(hsxxqomfbdernepykils) **하나**. 이름만 staging | `supabase-backup.yml` 주석 · `RUNBOOK.md §5` | 이름 때문에 "연습용"으로 착각하고 만지는 사고가 제일 위험 |
-| F3 | Supabase **Free 플랜** → PITR(시점 복구)·자동 백업 **없음**. 우리 백업(Actions→GCS)이 유일한 복구 수단 | `supabase-backup.yml` 2026-09-09 주석 | 백업이 하루 비면 그날 데이터는 복구 불가 |
-| F4 | 이 레포 프론트는 2026-09-26 부터 `itdasy-backend-test` 를 본다. 운영 프론트(`itdasy-frontend`)는 **별도 운영 백엔드가 있어야** 한다 | `app-core.js:131` · 커밋 `b1ae1e7` | 2026-08-01 실측 때 운영 Cloud Run 서비스는 **없었다**(`RUNBOOK.md §5`). "지금 어느 백엔드가 진짜 운영인가"를 출시 전에 다시 실측해야 한다 |
+| F2 | 실사용자 DB 후보는 Supabase `itdasy-staging`(hsxxqomfbdernepykils). 이름만 staging. **백업 워크플로가 이걸 LIVE 로 뜬다** | `supabase-backup.yml` 주석 · `RUNBOOK.md §5` | 이름 때문에 "연습용"으로 착각하고 만지는 사고가 제일 위험. 운영 서비스가 정말 이 DB 를 쓰는지는 B8 에서 확인 |
+| F3 | ✅ **2026-09-30 Supabase Pro 전환**(사용자 확인). Pro 기본 = 일일 백업 7일. **PITR 은 애드온**이라 따로 켜야 한다 | 사용자 · Supabase 요금제 | 우리 GCS 백업(400일)은 유지 — 7일 넘는 복구·부분 복구·계정 사고 대비 |
+| F4 | ✅ **운영 백엔드가 분리돼 있다**: 운영 `itdasy-backend-prod`(레포 `itdasy_backend`, 수동 배포) / 테스트 `itdasy-backend-test`(Supabase `itdasy-test`). 이 레포 프론트는 테스트를 본다 | 백엔드 README · `scripts/ops_guard_check.py` · `app-core.js:131` | 8/1 기록("운영 서비스 없음")은 낡았다. 런북 명령을 `$SVC` 로 바꿈 |
 | F5 | 2026-09-16 출시 인증 = **RELEASE HOLD**. PASS 14 / NOT VERIFIED 8 / BLOCKED 3 | `T-904/release-certification.md §1` | BLOCKED 3 = 옛 API 키 폐기 · 법률 검토 · 실결제. 전부 사람 손 |
 | F6 | GCP 빌링이 실제로 잠겨 배포 3건이 밀린 적 있다 | 커밋 `9dc67a1` | 카드·빌링 문제는 가설이 아니라 **재발 이력** |
-| F7 | 푸시 알림은 Firebase 파일이 없어 **미작동** | `FIREBASE_SETUP.md` | 리마인드·알림 기능이 스토어 설명에 있으면 심사·CS 문제 |
+| F7 | 푸시 알림: `app-push.js` 가 `20260815-firebase-on` 으로 갱신돼 있다. Firebase 파일 배치·실발송은 **실기기 미확인** | `index.html` script 태그 · `FIREBASE_SETUP.md` | 리마인드·알림 기능이 스토어 설명에 있으면 실기기 확인 필요 |
 | F8 | IAP 는 코드 완비, **실기기 결제 0회**. 콘솔 상품 미등록 | `IAP_SETUP.md` · `LAUNCH_REMAINING.md §A` | 첫 결제가 곧 첫 테스트가 된다 |
 | F9 | Meta: `content_publish`·DM 봇은 심사 대기. 토큰은 60일 만료 | `RUNBOOK.md §4` · `APP_FEATURE_INDEX.md` | 심사 통과 순간 env 를 바꿔야 하고, 60일마다 재연결 안내가 필요 |
 | F10 | 감시는 GCP Uptime(5분 보장) + Actions cron(실측 1시간 지연) + Discord 웹훅 + Sentry(동의 기반) | `RUNBOOK.md §0` · `index.html:2640` | Actions 만 믿으면 최대 70분 늦게 안다 |
-| F11 | `REDIS_URL` 이 옛 Railway 주소 → rate limit 이 **메모리 폴백** | `RELEASE_CHECKLIST.md 게이트 B` | 인스턴스가 2개 이상 뜨면 요청 제한이 인스턴스마다 따로 센다 |
+| F11 | `REDIS_URL` 이 옛 Railway 주소 → rate limit 이 **메모리 폴백**. GPT 실측: 운영 로그에 DNS 실패, `/health` 는 env 존재만 보고 `cache: redis` 로 표시 | `RELEASE_CHECKLIST.md` · GPT 조사(2026-09-30) | **GPT 담당** (§0.5) |
 | F12 | Android 패키지 `com.y2do.itdasy` / iOS `com.nopolab.itdasy`. **이 레포 AAB 는 Play 에 올리면 안 된다** | `android/app/build.gradle:31` | 잘못 올리면 운영 앱을 테스트 프론트로 덮어쓴다 |
 
 > 🔴 **F1 이 가장 큰 구조적 리스크다.** 장점(핫픽스 즉시 반영)과 단점(잘못된 푸시도 즉시 전파, 롤백은 git revert + 재배포 + SW 캐시)이 같은 것이다. 이 플랜의 상당수가 "main 에 뭐가 들어가는가"를 지키는 일이다.
@@ -59,20 +75,22 @@
 | A1 | 🔴 | **GitHub Pages 장애 = 앱 전체 장애** (F1) | Pages 하나에 전부 걸림. 대체 호스팅 없음 | ① `offline.html` 이 실제로 뜨는지 실기기 확인 ② 심사 후 **웹 번들 앱 내장 전환** 검토 (`APP_FEATURE_INDEX.md` 2026-09-22 에 "심사 이후 보류"로 기록됨) ③ 최소한 Pages 상태페이지를 Discord 알림에 연결 | 연준·Claude | M1 | 기내 Wi-Fi 끄고 앱 열어 offline 화면 확인 스크린샷 + 내장 전환 결정 기록 |
 | A2 | 🔴 | **Cloud Run 콜드스타트·단일 인스턴스** | `min-instances 0`, 콜드스타트 51초 이력 (`RELEASE_CHECKLIST`) | 운영 서비스 `min-instances 1` · `max-instances` 상한 지정(비용 폭주 방지) | 연준 | D-0 | `gcloud run services describe` 출력에 min 1 확인 |
 | A3 | 🔴 | **GCP 빌링 잠김 → 배포·서비스 중단** (F6 재발 이력) | 카드 1장 | ① 결제수단 2개 등록 ② 예산 알림(일 2만원·월 상한) ③ 빌링 계정 소유자 2명 | 연준·원영 | D-0 | 빌링 콘솔 결제수단 2개 + 예산 알림 이메일 수신 테스트 |
-| A4 | 🟠 | **Supabase Free 한도** (DB 용량·스토리지·전송량) 초과 시 업로드·조회 실패 | Free. 사진이 private 버킷에 쌓임 | 요금제 페이지에서 현재 한도 실측 → 사진 기능이 있는 이상 **Pro 전환**(PITR 포함) 결정. 전환 전엔 대시보드 사용량을 주간 체크 | 연준 | D-0 결정 · Q 점검 | 요금제 결정 기록 + 사용량 스크린샷 |
-| A5 | 🟠 | **Supabase Free 프로젝트 자동 일시정지**(장기간 비활성) | 실사용 있으면 안 걸리지만, 초기 사용자 0명 구간이 위험 | Pro 전환이 답. 전환 전이면 Uptime check 가 `/health` 로 DB 핑을 치므로 그게 활성으로 잡히는지 확인 | 연준 | W1 | 7일간 Uptime 로그에 503 없음 |
+| A4 | 🟠 | Supabase 한도(DB·스토리지·전송량) 초과 | ✅ **Pro 전환 완료**(2026-09-30). 초과분은 과금으로 넘어간다 | Supabase **Spend cap** 켜짐/꺼짐 결정(켜면 한도에서 멈춤, 끄면 과금) + 사용량 주간 확인 + 관리자 원가 화면용 `SUPABASE_PLAN_MONTHLY=25` env | 연준 | W1 · Q | Spend cap 결정 기록 + env 확인 |
+| A5 | 🟢 | ~~Supabase Free 자동 일시정지~~ | ✅ **Pro 는 일시정지 없음** — 해소 | — | — | — | — |
 | A6 | 🟡 | **GitHub Pages 빌드 한도·배포 큐 밀림** | `concurrency: pages` 로 큐잉함 (`deploy.yml`) | 핫픽스 몰릴 때 한 번에 하나만. 급하면 revert 1건으로 끝내기 | Claude | 상시 | — |
-| A7 | 🟠 | **Redis 없음 → rate limit·락이 인스턴스별로 따로** (F11) | 옛 Railway 주소 | Cloud Run 이 닿는 Memorystore 또는 Upstash 로 교체, 아니면 rate limit 을 DB 기반으로 | 연준 | M1 | `/health` 또는 로그에 redis 연결 OK |
+| A7 | 🟠 | **Redis 불통 → rate limit·캐시가 인스턴스별 메모리로** (F11) | 운영 로그 DNS 실패 3회(GPT 실측), `/health` 가 불통을 가림 | Redis 교체 + `/health` 가 실제 PING 결과를 보고하게 | **GPT** | W1 | `/health` 에 실제 연결 결과 |
+| A8 | 🟠 | **iPhone 에서 오프라인 화면이 안 뜰 수 있다** | `offline.html` 은 서비스워커가 미리 저장해 보여준다. 그런데 iOS 앱 웹뷰(WKWebView)는 App-Bound Domains 설정 없이는 서비스워커를 지원하지 않는다(`capacitor.config.json` `limitsNavigationsToAppBoundDomains:false`) | iPhone 실기기에서 비행기모드로 앱 실행 확인. 안 뜨면 A1 의 "웹 번들 앱 내장" 결정과 같이 푼다 | 원영 | W1 | 실기기 스크린샷 |
 
 ### B. 데이터 (사라지거나 깨진다)
 
 | ID | 심각도 | 리스크 | 지금 상태 | 막는 조치 | 담당 | 기한 | 완료 판정 |
 |---|---|---|---|---|---|---|---|
-| B1 | 🔴 | **백업이 조용히 비는 날** (F3) | 2026-09-03~06 실제로 4일 비었음 → 수정됨(독립 실행·GCS·실패 시 잡 FAIL) | ① 백업 실패 Discord 알림이 **실제로 도착하는지** 월 1회 확인 ② GCS 버킷 객체 수·최신 날짜를 주간 확인 ③ Pro 전환 시 PITR 로 이중화 | 연준 | W1 · Q | Discord 에 백업 성공/실패 메시지 스크린샷 (월 1회) |
+| B1 | 🔴 | **백업이 조용히 비는 날** (F3) | 우리 백업: 독립 실행·GCS·실패 시 잡 FAIL(9/3~6 공백 사고 후 수정). **+ Supabase Pro 일일 백업 7일** 로 이중화됨 | ① 백업 실패 Discord 알림 실수신 월 1회 확인 ② GCS 최신 객체 날짜 주간 확인 ③ PITR 애드온 필요 여부 결정 | 연준 | W1 · Q | Discord 수신 스크린샷 · PITR 결정 기록 |
+| B8 | 🔴 | **백업이 운영 DB 가 아닌 것을 뜨고 있을 가능성** | 백업은 `hsxxq…`(itdasy-staging)를 LIVE 로 뜬다. 운영이 `itdasy-backend-prod` 로 분리됐는데, 그 서비스의 DB 가 같은지 **어느 문서에도 없다**. 다르면 매일 초록불인데 실데이터 백업은 0 | `RUNBOOK.md` 맨 위 확인 명령으로 운영 서비스의 DB ref 확인 → 다르면 `SUPABASE_STAGING_DB_URL` 시크릿·`LIVE_REF` 를 운영 DB 로 교체 | 연준 | **D-0** | 운영 DB ref = 백업 LIVE_REF 증거 |
 | B2 | 🔴 | **복원 절차를 잊는다** | 리허설 2회 완료(8/1, 9/16) | **분기 1회 복원 드릴** (§4). 절차는 `RUNBOOK.md §5` | 연준 | Q | 드릴 날짜·소요시간·행 수 기록 |
 | B3 | 🔴 | **마이그레이션이 운영 DB 를 깨뜨림** | Dockerfile 이 `alembic upgrade head` 자동 실행, 실패 시 fail-loud | ① 마이그레이션 PR 은 반드시 **격리 DB 되돌림·재적용** 증거 첨부(T-904 D36 방식) ② 배포 직전 수동 백업 1회 ③ `DROP`·`ALTER TYPE` 은 2단계 배포 | Claude·연준 | 상시 | PR 본문에 격리 DB 결과 |
-| B4 | 🟠 | **소프트삭제된 예약이 시간칸을 영구 점유 → 손님 오거절** | 2026-08-02 감사 P0 B-1 (`AUDIT_2026-08-02.md §4`). **수정 여부 미확인** | BE `dm_confirm_queue.py`·`calendar_slots.py` 에 `deleted_at IS NULL` 필터 확인. 없으면 출시 전 수정 | Claude | D-0 | grep + 테스트 케이스 |
-| B5 | 🟠 | **겹치는 시간대 이중부킹** (같은 시각만 UNIQUE) | P1 B-2, 임포트 경로는 충돌검사 자체 없음 | 출시 후 M1 에 `EXCLUDE USING gist` 제약 또는 앱레벨 락 추가. 그전엔 캘린더에 겹침 표시로 원장이 눈으로 잡게 | Claude | M1 | 동시 100발 테스트 겹침 0 |
+| B4 | 🟢 | ~~소프트삭제 예약이 시간칸 영구 점유~~ | ✅ **이미 수정됨** — `services/booking_scope.py` `occupies_slot()` 단일 규칙을 DM 확정·빈시간 계산이 전부 쓴다(2026-08-03) | — | — | — | 2026-09-30 코드 확인 |
+| B5 | 🟢 | ~~겹치는 시간대 이중부킹~~ | ✅ **이미 수정됨** — 마이그레이션 `0034_booking_excl_overlap` 겹침 금지 제약 + 생성·수정 경로 409 변환 | — | — | — | 2026-09-30 코드 확인 |
 | B6 | 🟡 | **운영 DB 의 유령 테이블 12개**(옛 스키마, 개인정보 잔존 가능) | `RUNBOOK.md §5` | 참조 여부 확인 후 삭제. 출시 후 작업 | 연준 | M1 | 삭제 전 덤프 보관 + 삭제 기록 |
 | B7 | 🟠 | **고아 파일**(DB 는 지웠는데 스토리지에 남음) | T-904 D33·D34 로 실패 시 행 보존·매시간 재시도 구현 | 월 1회 "DB 에 없는 스토리지 객체" 대조 스크립트 | Claude | M1 | 대조 결과 0건 또는 정리 기록 |
 
@@ -81,13 +99,16 @@
 | ID | 심각도 | 리스크 | 지금 상태 | 막는 조치 | 담당 | 기한 | 완료 판정 |
 |---|---|---|---|---|---|---|---|
 | C1 | 🔴 | **Git 이력의 옛 API 키가 아직 살아 있음** | Google AI 키 1개 + Remove.bg 키가 실제 200 응답 (T-904 D43, BLOCKED) | 업체 콘솔에서 **폐기**. 폐기 후 curl 로 401 확인 | 연준 | **D-0** | 두 키 모두 401/403 응답 스크린샷 |
-| C2 | 🔴 | **시크릿 재발급 미완**: Replicate 토큰 · Redis 비번 · Instagram Verify Token · 운영 DB 비번(4/19 노출) · Meta App Secret | `RELEASE_CHECKLIST 게이트 B` · `META_INSTAGRAM_CONSOLE_CHECKLIST.md` 상단 경고 | 전부 재발급 → Secret Manager 갱신 → 옛 값 폐기 확인. `.ai/META_INSTAGRAM_CONSOLE_CHECKLIST.md` 에 **평문 Verify Token 이 적혀 있다** → 재발급 후 문서에서 지운다 | 연준·Claude | **D-0** | 재발급 날짜표 + 문서 평문 0건 |
-| C3 | 🔴 | **GitHub org 2FA·`main` 보호 없음** → 누구든 푸시 = 전 사용자 즉시 반영 (F1) | 미설정 | ① org 2FA 필수 ② `main` 보호: PR 필수·CI 통과 필수·force-push 금지 ③ 배포 워크플로 승인자 지정(environment protection) | 연준 | **D-0** | 브랜치 보호 설정 스크린샷 |
-| C4 | 🟠 | **CDN 스크립트(Sentry) 변조** | `index.html:2641` 이 SRI 없이 로드 | `integrity=` 해시 추가 또는 자체 호스팅 | Claude | W1 | SRI 적용 + 페이지 정상 로드 |
-| C5 | 🟠 | **의존성 취약점 누적** | T-902 에서 15→0 맞춤. 백엔드·네이티브 플러그인은 별도 | 월 1회 `npm audit` + BE `pip-audit` + Capacitor 플러그인 릴리즈노트 확인 | Claude | Q | 결과 기록 |
+| C2 | 🔴 | **시크릿 재발급 미완**: Replicate · Redis · Instagram Verify Token · 운영 DB 비번(4/19 노출) · Meta App Secret | ✅ 문서 평문 제거(2026-09-30, META 체크리스트의 Verify Token·스코프 값). **git 이력엔 남아 있다** → 재발급 전까지 노출된 값으로 본다 | 전부 재발급 → Secret Manager 갱신 → 옛 값 폐기 확인 | 연준 | **D-0** | 재발급 날짜표 |
+| C3 | 🔴 | **`main` 보호 없음** → 누구든 푸시 = 전 사용자 즉시 반영 (F1) | GPT 실측: 프론트 main 보호 없음, 백엔드는 요금제 제한으로 조회 불가 | branch protection + 배포 승인자 + (백엔드) 장기 SA 키 → Workload Identity Federation | **GPT** | D-0 | 설정 스크린샷 |
+| C4 | 🟢 | ~~CDN 스크립트 변조~~ | ✅ **수정됨(2026-09-30)**. Sentry 는 원래 SRI 가 있었다(플랜 초안이 잘못 봄). 대신 해시 없이 동적 로드하던 **Tesseract(버전도 `@5` 로 떠 있었음)·heic2any·tfjs·face-landmarks·아이콘 bold CSS** 에 SRI·버전 고정. Chromium 에서 정상 로드·1바이트 변조 차단 확인. 가드 `__tests__/cdn-sri-2026-09-30.test.js` | 새 CDN 추가 시 테스트가 해시를 요구 | Claude | 완료 | 커밋 `5a2968d` |
+| C5 | 🟠 | **의존성 취약점** | GPT 실측: 프론트 운영 의존성 0 · 개발 의존성 high 1(brace-expansion)·moderate 1(fast-uri) · 백엔드 pip-audit 0 | 개발 의존성 정리 + 월 1회 재실행 | **GPT** · 반복은 Claude | Q | 결과 기록 |
 | C6 | 🔴 | **웹 localStorage 토큰**(네이티브는 Secure Storage 로 전환됨) | T-912: 네이티브 안전저장 완료, 웹은 서버 쿠키 전환 전까지 유지 | 웹 사용자가 있는 한 HttpOnly 쿠키 세션 전환. 우선순위는 웹 사용 비율 보고 결정 | Claude·연준 | M1 결정 | 결정 기록 |
 | C7 | 🟠 | **시크릿 로테이션 주기 없음** | 사고 때만 교체 | 분기 1회 로테이션 캘린더(§4) | 연준 | Q | 로테이션 표 |
 | C8 | 🟠 | **관리자 화면·데모 계정** | `review@itdasy.com` 은 심사용. admin 은 `is_admin` 계정 | 심사 통과 후 데모 계정 **비밀번호 교체 + 데이터 초기화**, admin 계정 2FA | 연준 | W1 | 교체 날짜 |
+| C9 | 🟠 | **백엔드 README 에 테스트·심사 계정 비밀번호 평문** | `itdasy_backend-test/README.md` "테스트 계정" 표에 CBT 계정과 `review@itdasy.com` 비밀번호가 그대로 있다(이 문서엔 옮기지 않음). 심사 계정이 운영 DB 에 있으면 레포 접근자 누구나 로그인 가능 | 표에서 비밀번호 삭제 → 심사 콘솔 비공개 칸·비밀번호 관리자로 이동 → 심사 계정 비밀번호 교체 | 연준 (백엔드 쓰기 권한) | **D-0** | README 평문 0 + 교체 날짜 |
+| C10 | 🔴 | **Cloud Run 런타임 계정이 프로젝트 편집자** | GPT 실측: prod/test 둘 다 기본 Compute SA + `roles/editor` → 앱 취약점 하나가 GCP 전체 권한으로 번짐 | 전용 SA(secretAccessor·aiplatform.user·cloudtasks.enqueuer 등 최소) + `--service-account` | **GPT** | D-0 | 서비스별 SA·역할 목록 |
+| C11 | 🔴 | **백엔드 배포 워크플로가 staging 기준** | GPT 실측: `deploy-cloudrun.yml` 이 `ENVIRONMENT=staging` 주입 — 그대로 운영에 쓰면 운영 설정을 덮는다 | 운영/테스트 워크플로 분리 | **GPT** | D-0 | 분리된 워크플로 |
 
 ### D. 결제·구독 (돈이 새거나 못 받는다)
 
@@ -98,8 +119,8 @@
 | D3 | 🔴 | **갱신·환불 웹훅이 실환경에서 안 옴** | S2S/RTDN 코드는 구현됨(2026-08-03). 콘솔 URL 등록·env 는 미확인 | App Store Server Notifications V2 URL · Play RTDN Pub/Sub 등록 → 샌드박스 갱신 1회로 DB 반영 확인 | 연준 | **D-0** | `subscriptions` 행이 웹훅으로 바뀐 로그 |
 | D4 | 🔴 | **Cloud Run env 누락** → 영수증 검증이 409 "준비 중" | `APPLE_IAP_SHARED_SECRET` 등 4종 미주입 | 주입 후 `/iap/status` 확인 | 연준 | **D-0** | 실결제 200 |
 | D5 | 🟠 | **웹 PG 자동결제** (PortOne) | T-904 D30: 기본 OFF·처리번호·갱신 작업 추가, **실결제 미확인** | 웹 결제를 열 거면 소액 실결제 1회 + 환불 1회. 안 열 거면 화면에서 숨김 | 연준 | M1 | 실결제·환불 기록 |
-| D6 | 🟠 | **환불 요청 처리 절차 없음** | 스토어 환불은 Apple/Google 이 함. 앱 쪽 권한 회수는 웹훅 | "환불 문의 오면 뭘 보나" 1쪽 절차: 웹훅 로그 → `subscriptions` → 수동 강등 명령 | Claude | W1 | `RUNBOOK.md` 에 절 추가 |
-| D7 | 🟡 | **가격 표기 불일치** (앱·약관·랜딩·스토어) | 2026-09-07 정리. 스토어 설명은 미검증 | 출시 전 4곳 대조표 1회, 가격 바꿀 때마다 반복 | Claude | D-0 | 4곳 스크린샷 |
+| D6 | 🟢 | ~~환불 요청 처리 절차 없음~~ | ✅ **`RUNBOOK.md §6.6` 추가**(2026-09-30): iOS=Apple, Android 48시간 뒤 Play Console 주문 관리, DB·로그 확인, DB 수동 수정 금지 | — | Claude | 완료 | — |
+| D7 | 🟠 | ~~가격·체험 표기 불일치~~ (파일은 고침, 콘솔 남음) | ✅ **파일 수정(2026-09-30)**. Play 소개 정본 `store/play/listing.ko-KR.json` 이 **10일 체험**·무료 "고객 50명"으로 남아 있었고(`play_publish.py` 가 그대로 올리는 파일), 영문 약관 `terms-en.html` 도 10-day 였다. App Store 소개는 "1-week · No credit card". 전부 14일·실제 한도로 정정하고 체험기간 정본 테스트에 스토어 문서·영문 패턴 추가 | **콘솔에 이미 올라간 문구도 다시 올려야 한다** | Claude(파일) · 원영(콘솔) | D-0 | 콘솔 반영 스크린샷 |
 | D8 | 🟠 | **일 AI 원가 상한 미설정** → 결제자보다 원가가 큼 | `ITDASY_DAILY_COST_CAP_KRW` 미설정 (`RELEASE_CHECKLIST`) | 50,000원으로 시작, 첫 주 실측 후 조정 | 연준 | **D-0** | env 확인 + admin 화면 상한 표시 |
 
 ### E. 외부 플랫폼 정책 의존 (남의 규칙이 바뀐다)
@@ -107,23 +128,24 @@
 | ID | 심각도 | 리스크 | 지금 상태 | 막는 조치 | 담당 | 기한 | 완료 판정 |
 |---|---|---|---|---|---|---|---|
 | E1 | 🔴 | **Meta 앱 Live 전환·권한 4개 통과 후 env 안 바꿈** | `INSTAGRAM_FULL_SCOPE` 가 랜덤값이었던 이력 (`META_…CHECKLIST §0`) | 심사 통과 즉시 `.ai/META_INSTAGRAM_CONSOLE_CHECKLIST.md` 10건 재점검. 발행 버튼이 "캡션 복사"에서 실제 발행으로 바뀌는지 실기기 확인 | 연준 | 심사통과 +1일 | 실제 발행 1건 |
-| E2 | 🟠 | **Meta 토큰 60일 만료 → 연동 끊김을 원장이 모름** | 만료 시 "다시 연결" 안내는 있음 | 만료 7일 전 알림(앱 내 배너 + 푸시) + admin 에 만료 예정 목록 | Claude | M1 | 만료 예정 목록 화면 |
+| E2 | 🟢 | ~~Meta 토큰 60일 만료를 원장이 모름~~ | ✅ **이미 있음** — `services/ig_token_state.py` 상태머신 + 하루 2회 자동 갱신 크론 + 재연동 필요 시 알림(2026-08-30 실장애 후 구현) | 크론 실패가 알림으로 오는지만 월 1회 확인 | 연준 | Q | — |
 | E3 | 🟠 | **Meta 가 권한을 회수**(사용 실적 부족·정책 위반 신고) | — | 월 1회 Meta 대시보드 "App Review 상태·데이터 사용 점검(DUC)" 확인. DUC 는 연 1회 제출 필수 | 연준 | Q | 확인 날짜 |
 | E4 | 🟠 | **Google Play targetSdk 연간 상향·Data Safety 갱신** | `variables.gradle` 기준. Data Safety 는 `docs/submission/Google-Play-Data-Safety.md` | 매년 8월 Play 정책 마감 확인. 새 데이터 수집(푸시·분석) 추가 시 Data Safety·Apple Privacy Labels 같이 수정 | 연준·Claude | Q | 콘솔 경고 0 |
 | E5 | 🟠 | **Apple 계정 삭제·구독 고지 규정** | 앱 내 탈퇴 있음. 웹 `account-deletion.html` 있음 | 탈퇴 → 30일 내 실제 삭제 완료 로그를 월 1회 확인 (T-904 D34 재시도 큐 포함) | Claude | Q | pending 0건 |
 | E6 | 🟡 | **Apple 개발자·Play 개발자 계정 갱신 실패**(연회비·본인확인) | — | 갱신일 캘린더 + 결제카드 2개 | 원영 | Q | 캘린더 등록 |
-| E7 | 🟠 | **카카오 알림톡(Aligo) 템플릿 미승인·야간 광고 제한** | BE 발송 구현됨, 템플릿 승인 상태 미확인 | 템플릿 승인 확인. 광고성 메시지는 21~08시 발송 금지·수신동의 필요 — 발송 코드에 시간 가드 있는지 확인 | Claude·연준 | M1 | 가드 테스트 |
+| E7 | 🟢 | ~~알림톡 야간 광고 제한~~ | ✅ **해당 없음 확인** — 실제 발송은 예약확정·리마인드(정보성)뿐. 쿠폰 템플릿은 발송 코드가 없다. 샵이 켠 경우에만 발송(opt-in) | 광고성 템플릿을 추가할 때 21~08시 차단·수신동의·(광고) 표기를 같이 넣는다 | — | 추가 시 | — |
 | E8 | 🟡 | **네이버 톡톡·네이버 예약 API 변경** | 톡톡 실전송 구현, 예약은 스텁 | 분기 1회 API 공지 확인 | 연준 | Q | — |
 
 ### F. AI 비용·품질·안전 (돈이 튀거나 거짓말을 한다)
 
 | ID | 심각도 | 리스크 | 지금 상태 | 막는 조치 | 담당 | 기한 | 완료 판정 |
 |---|---|---|---|---|---|---|---|
-| F1 | 🔴 | **AI 원가 폭주** (누끼 폴백 remove.bg 장당 280원 = Replicate 200배) | 킬스위치 5종 검증됨 (`RUNBOOK.md §2`) | 일 상한(D8) + 기능별 상한 + 폴백 사용량이 하루 N장 넘으면 폴백 자동 차단 | Claude | W1 | 폴백 상한 테스트 |
+| F1 | 🔴 | **AI 원가 폭주 — 누끼 폴백이 상한에 1.4원으로 잡혔다** | 🔧 **결함 확인·패치 완료(적용 대기)**. Remove.bg 폴백(장당 약 280원)을 Replicate 단가 1.4원으로 세서 일일 상한이 200배 헐거웠고 폴백 횟수 상한도 없었다 | 패치 `.ai/patches/backend-0001-removebg-fallback-cost-cap.patch`: 폴백 실단가 집계 + 하루 30회 상한(`REMOVEBG_FALLBACK_DAILY_MAX`) + 관리자 원가 반영. 테스트 18개(수정 전 3개 실패 확인) + 관련 15파일 통과 | 적용: 연준/GPT (Claude 는 백엔드 쓰기 권한 없음) | **D-0** | 백엔드 머지 커밋 |
 | F2 | 🔴 | **거짓 시술 광고 생성**(안 한 시술을 했다고 씀) | T-904 D54~D70 으로 17건 정화 규칙 추가 | 출시 후 **실제 원장 캡션 샘플 주 20건** 사람 검수 → 새 패턴은 정화 규칙에 추가. `medical_ad_guard.py` 가 의료광고 표현도 막는지 확인 | 원영·Claude | M1 | 주간 검수표 |
-| F3 | 🟠 | **손님 DM 을 통한 프롬프트 인젝션** (DM 내용이 AI 지시가 됨) | DM 자동응답은 원장 confirm 큐 경유 | 자동발송 ON 사용자에겐 "지시문처럼 보이는 DM" 은 자동발송 제외 규칙 + 테스트 코퍼스 (`ITBI_FAILURE_CORPUS` 방식) | Claude | M1 | 인젝션 20건 테스트 통과 |
+| F3 | 🟠 | **손님 DM 을 통한 프롬프트 인젝션** | 부분 방어 있음: `utils/prompt_sanitizer.py`(영·한 패턴 제거) + 프롬프트 지시 + 원장 confirm 큐. 남은 틈: 패턴이 잡혀도 **자동발송 대상에서 빠지지 않는다** | 인젝션 패턴 감지 시 자동발송 대신 원장 확인으로 돌리기(자동발송은 Meta 심사 후에만 켜지므로 그 전에) | Claude(패치)·연준(적용) | 자동발송 켜기 전 | 테스트 |
 | F4 | 🟠 | **AI 동의 없이 외부 전송** | T-904 에서 동의 v2 로 31개 진입점 차단 | 새 AI 기능 추가 시 PR 체크리스트에 "동의 게이트 통과" 항목 | Claude | 상시 | PR 템플릿 |
 | F5 | 🟡 | **Vertex/Gemini 쿼터 429 지속** | `/ai-health` 로 감지, 기능별 off 가능 | 429 가 10분 지속되면 Discord 자동 알림 | Claude | W1 | 알림 테스트 |
+| F6 | 🟡 | **클라이언트 누끼 폴백이 항상 실패** | 서버 누끼가 실패하면 브라우저에서 imgly 로 대신 따는 폴백이 있는데, 불러오는 `@imgly/background-removal@1.7.0/dist/index.umd.js` 가 **그 버전 패키지에 없다**(npm 배포본 확인) → 늘 실패 | 되살리면 휴대폰에서 수십 MB 모델을 내려받는다 — **제품 결정**. 살릴지 코드를 지울지 정한다 | 원영 | M1 | 결정 기록 |
 
 ### G. 자동 발송 사고 (손님에게 잘못 나간다)
 
@@ -131,8 +153,8 @@
 |---|---|---|---|---|---|---|---|
 | G1 | 🔴 | **다른 손님에게 발송·같은 손님에게 두 번** | 멱등·중복 차단 실측(T-904 G9) | 출시 후 첫 100건 발송 로그를 **사람이 전수 확인** | 원영 | W1 | 확인표 |
 | G2 | 🟠 | **오래된 문의에 새 문의처럼 답장** | T-904 D48 로 실제 발생시각·14일 필터 | 유지 | — | — | — |
-| G3 | 🟠 | **자동화 기본 ON 회귀** | 2026-08-26 게이트: 토글 ON + 원장 승인 둘 다 필요 | 게이트 테스트(33+10+20건)가 CI 에서 도는지 확인 | Claude | D-0 | CI 로그 |
-| G4 | 🟠 | **일괄 발송 사고 시 멈추는 버튼 없음** | 기능별 env 킬스위치는 있음 | admin 에 "모든 자동발송 즉시 중지" 버튼 + 사용자별 중지 | Claude | M1 | 버튼 동작 확인 |
+| G3 | 🟢 | ~~자동화 기본 ON 회귀~~ | ✅ **CI 에서 돈다** — 백엔드 `ci.yml` 이 `tests/` 전체를 push·PR·매일 실행, 동의 테스트 포함 | — | — | — | 2026-09-30 확인 |
+| G4 | 🟢 | ~~일괄 발송 사고 시 멈추는 버튼 없음~~ | ✅ **이미 있음** — `AUTOMATION_DISABLE_ALL=1`(호출마다 읽음) · `DM_AUTOSEND_DISABLE=1`. 문서에 없던 것을 `RUNBOOK.md §6.5` 로 추가 | admin 화면 버튼은 선택 | — | — | — |
 
 ### H. 개인정보·법률 (신고·과태료)
 
@@ -145,13 +167,14 @@
 | H5 | 🟠 | **통신판매업 신고·사업자 표기** | 랜딩·약관 표기 여부 미확인 | 유료 구독이면 통신판매업 신고번호·대표자·주소·연락처를 앱·랜딩·스토어에 표기 | 원영 | **D-0** | 스크린샷 |
 | H6 | 🟡 | **RoPA·DPIA 갱신** | `docs/legal/` 에 2026 버전 있음 | 새 수탁사·새 데이터 항목 추가 때마다 갱신 | Claude | Q | 변경 로그 |
 | H7 | 🟠 | **Sentry·로그에 개인정보** | T-904 D35·D40 으로 원문 제거 | 분기 1회 Sentry 이벤트 20건 샘플 검사 | Claude | Q | 검사 기록 |
+| H8 | 🔴 | **스토어·심사·개인정보 문서의 사실과 다른 문구** | ✅ **파일 수정(2026-09-30)**: "모든 통신 TLS 1.3"·"절대 노출 안 됨"·"고객 이름 가명 처리"(실제로는 AI 비서 경로만, DM 초안은 호칭용 이름 포함)·"PIPA/GDPR/CCPA 준수"·사진 저장소 R2(실제 Supabase Storage) | **콘솔(App Store·Play Data safety·Privacy Labels)에 이미 제출된 값도 같이 고쳐야 한다.** Supabase 리전은 콘솔에서 확인 후 기재 | 원영(콘솔)·법률 | D-0 | 콘솔 스크린샷 |
 
 ### I. 클라이언트 배포·캐시 (고쳤는데 사용자 화면은 그대로)
 
 | ID | 심각도 | 리스크 | 지금 상태 | 막는 조치 | 담당 | 기한 | 완료 판정 |
 |---|---|---|---|---|---|---|---|
 | I1 | 🟠 | **구버전이 조용히 돈다** (Pages max-age 10분 + SW) | `build.txt` 대조 가드·`?v=` 자동 범프 (`deploy.yml`) | 배포 후 `scripts/verify_deploy.sh` 결과를 Discord 로. 실패 시 알림 | Claude | W1 | 알림 1회 수신 |
-| I2 | 🔴 | **잘못된 배포를 되돌리는 절차가 없다** (F1: 즉시 전파) | git revert 후 재배포 약 5분 | `RUNBOOK.md` 에 "프론트 롤백" 절 추가: `git revert` → 푸시 → `verify_deploy` → SW 강제갱신 안내. **분기 1회 롤백 드릴** | Claude·연준 | W1 · Q | 드릴 기록 |
+| I2 | 🔴 | **잘못된 배포를 되돌리는 절차가 없다** (F1: 즉시 전파) | ✅ **`RUNBOOK.md §6.7` 추가**(2026-09-30): revert → 배포 → `build.txt` 대조, 앱 부팅 가드 동작 | **분기 1회 롤백 드릴** | 연준 | Q | 드릴 기록 |
 | I3 | 🟠 | **네이티브 플러그인 변경은 스토어 재심사 필요** (웹은 즉시, 네이티브는 며칠) | — | 플러그인·권한·Info.plist 변경은 별도 릴리즈 트랙 + 웹 코드가 옛 네이티브에서도 죽지 않게 `isAvailable()` 가드 유지 | Claude | 상시 | — |
 | I4 | 🟡 | **버전코드 관리** | Android `versionCode` CI 주입, iOS 는 Xcode | 릴리즈 태그 = 스토어 버전 = `build.txt` 매핑표 | 연준 | W1 | 표 |
 
@@ -193,11 +216,11 @@
 하나라도 ☐ 면 출시 버튼을 누르지 않는다. 순서대로.
 
 1. **계정·돈줄부터**: L1 소유권 표 → A3 결제수단 2개·예산 알림 → J1 밤에 닿는 알림 → J3 비용 알림
-2. **열쇠**: C1 옛 키 폐기 → C2 시크릿 재발급 5종 → C3 org 2FA·main 보호
-3. **어느 백엔드가 운영인가** (F4): 운영 Cloud Run 존재·트래픽 받는 리비전·DB 연결 실측 → 스테이징 전용 env(`ITDASY_STAGING_BYPASS_ALL`·`BYPASS_PLAN_LIMITS_EMAILS`) 운영에 없는지 확인 → A2 min-instances → D8 원가 상한
-4. **돈**: D1 콘솔 상품 → D4 env → D2 실기기 결제 5단계 → D3 웹훅 1회 → D7 가격 4곳 대조
+2. **열쇠·권한**: C1 옛 키 폐기 → C2 시크릿 재발급 5종 → C9 백엔드 README 평문 비밀번호 삭제 → (GPT) C10 런타임 SA 최소권한 · C3 main 보호·WIF · C11 배포 워크플로 운영 분리
+3. **운영 백엔드·DB 확정** (F4 — 운영 `itdasy-backend-prod` 존재 확인됨): **B8 운영 DB = 백업 LIVE_REF** 확인 · 트래픽 받는 리비전 실측 → 스테이징 전용 env(`ITDASY_STAGING_BYPASS_ALL`·`BYPASS_PLAN_LIMITS_EMAILS`) 운영에 없는지 확인 → A2 min-instances → D8 원가 상한
+4. **돈**: F1 누끼 폴백 패치 적용 → D1 콘솔 상품 → D4 env → D2 실기기 결제 5단계 → D3 웹훅 1회 → D7·H8 콘솔 문구 재제출(파일은 고침)
 5. **법**: H1 국외이전 고지 → H5 사업자·통신판매 표기
-6. **코드 마지막 확인**: B4 유령 슬롯 필터 → G3 자동화 게이트 CI → A4 Supabase 요금제 결정
+6. **코드 마지막 확인**: ~~B4 유령 슬롯~~ · ~~G3 게이트 CI~~ (원래 됨) → A4 Supabase Spend cap 결정 · PITR 애드온 여부
 7. `RELEASE_CHECKLIST.md` 게이트 A~C 를 **네이티브 빌드로** 다시 돌린다
 
 ### Phase 1 — 출시 첫 72시간 (W1 시작)
@@ -270,8 +293,8 @@ D-0 항목만 여기 둔다. 나머지는 각 표의 "완료 판정" 칸에 날�
 | J1 | 밤에 닿는 알림(SMS/전화) | 연준 | ☐ | |
 | J3 | 비용 알림 | 연준 | ☐ | |
 | C1 | 옛 Google AI·Remove.bg 키 폐기 | 연준 | ☐ | |
-| C2 | 시크릿 5종 재발급 + 문서 평문 제거 | 연준·Claude | ☐ | |
-| C3 | org 2FA · main 보호 | 연준 | ☐ | |
+| C2 | 시크릿 5종 재발급 + 문서 평문 제거 | 연준·Claude | ◐ 문서 ✅ · 재발급 ☐ | 커밋 `5a2968d` |
+| C3 | org 2FA · main 보호 · WIF | GPT · 연준 | ☐ GPT 진행 중 | |
 | F4 | 운영 백엔드 실측·스테이징 env 제거 | 연준 | ☐ | |
 | A2 | min-instances 1 | 연준 | ☐ | |
 | D8 | AI 일 상한 | 연준 | ☐ | |
@@ -279,13 +302,19 @@ D-0 항목만 여기 둔다. 나머지는 각 표의 "완료 판정" 칸에 날�
 | D4 | IAP env 4종 | 연준 | ☐ | |
 | D2 | 실기기 결제 5단계 | 원영 | ☐ | |
 | D3 | S2S/RTDN 1회 반영 | 연준 | ☐ | |
-| D7 | 가격 4곳 대조 | Claude | ☐ | |
+| D7 | 가격·체험 표기 대조 | Claude · 원영 | ◐ 파일 ✅ · 콘솔 재제출 ☐ | 커밋 `25766b0` |
 | H1 | 국외이전 고지 | 연준·법률 | ☐ | |
 | H5 | 사업자·통신판매 표기 | 원영 | ☐ | |
-| B4 | 유령 슬롯 `deleted_at` 필터 | Claude | ☐ | |
-| G3 | 자동화 게이트 테스트 CI | Claude | ☐ | |
-| A4 | Supabase 요금제 결정 | 연준 | ☐ | |
+| B4 | 유령 슬롯 `deleted_at` 필터 | Claude | ✅ 원래 됨 | `booking_scope.py` |
+| G3 | 자동화 게이트 테스트 CI | Claude | ✅ 원래 됨 | 백엔드 `ci.yml` |
+| A4 | Supabase Pro 전환 · Spend cap 결정 | 연준 | ◐ Pro 완료 · Spend cap 미정 | 사용자 확인 2026-09-30 |
 | — | `RELEASE_CHECKLIST.md` 게이트 A~C 네이티브 재실행 | 연준·원영 | ☐ | |
+| B8 | 🆕 운영 서비스 DB = 백업 LIVE_REF 확인 | 연준 | ☐ | |
+| F1 | 🆕 누끼 폴백 원가 패치 백엔드 적용 | 연준 · GPT | ☐ 패치 준비됨 | `.ai/patches/backend-0001-…` |
+| C9 | 🆕 백엔드 README 평문 비밀번호 삭제 · 심사 계정 비번 교체 | 연준 | ☐ | |
+| H8 | 🆕 스토어·Privacy Labels·Data safety 콘솔 문구 재제출 | 원영 | ☐ | |
+| C10 | 🆕 Cloud Run 런타임 SA 최소권한 | GPT | ☐ 진행 중 | |
+| C11 | 🆕 백엔드 배포 워크플로 운영 분리 | GPT | ☐ 진행 중 | |
 
 ---
 
@@ -308,4 +337,4 @@ D-0 항목만 여기 둔다. 나머지는 각 표의 "완료 판정" 칸에 날�
 
 ---
 
-_최종 갱신: 2026-09-30 · 다음 갱신 시점: Phase 0 완료 시(트래커 전부 ✅) 또는 사고 발생 시_
+_최종 갱신: 2026-09-30 (2차 — 코드 실측·수정 반영) · 다음 갱신 시점: Phase 0 완료 시(트래커 전부 ✅) 또는 사고 발생 시_

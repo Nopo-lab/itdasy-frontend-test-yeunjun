@@ -153,8 +153,11 @@ jobs:
       #   · repo 를 지우면 백업도 같이 사라진다 — 백업이 원본과 같은 운명에 묶인다.
       #   · 수명주기·버전관리·삭제 방어가 없다.
       #
-      # Supabase 는 현재 Free 플랜이라 PITR·일일 백업이 **없다**. 즉 이 백업이
-      #   실사용자 데이터의 유일한 복구 수단이다. 30일 만료에 맡길 수 없다.
+      # [2026-09-30] Supabase 는 Pro 로 올라갔다 → Supabase 자체 일일 백업(7일)이 생겼다.
+      #   PITR 은 Pro 기본 포함이 아니라 애드온이다(켜져 있는지 대시보드에서 확인).
+      #   그래도 이 백업을 유지한다: ① 7일을 넘는 복구점 ② Supabase 계정·프로젝트 사고 대비
+      #   ③ Supabase 복원은 프로젝트 전체 덮어쓰기라, 특정 원장 데이터만 살릴 땐 이 덤프가 필요하다.
+      #   (이전: Free 플랜 시절엔 이게 유일한 복구 수단이었다.)
       #
       # 버킷 gs://itdasy-db-backups (asia-northeast3, Cloud Run 과 같은 리전):
       #   버전관리 ON · publicAccessPrevention=enforced · soft-delete 7일

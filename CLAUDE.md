@@ -164,10 +164,12 @@ PC(`@media (width >= 768px)`)엔 고정 사이드바 `#sideNav`(`.side-nav.ms-si
 **언어**: 한국말, 쉬운말. 원영님은 코딩 초보.
 
 - 역할: 연준 전용 프론트 검증 레포. 배포 `https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/`
-- 🚨 **백엔드는 운영이다.** `PROD_API` = `https://itdasy-backend-staging-644329093453.asia-northeast3.run.app`
-  이름은 staging 이지만 `env=production` 이고 **실사용자 DB(Supabase `itdasy-staging` / hsxxqomfbdernepykils)** 를 본다.
-  이 사이트(`nopo-lab.github.io/itdasy-frontend-test-yeunjun/`)는 살아 있고, 여기서 넣은 돈은 진짜 돈이다.
-  토큰 키: `itdasy_token::staging` (키 이름도 이름만 staging)
+- 🔀 **백엔드가 운영/테스트로 나뉘었다 (2026-09-26 `b1ae1e7` · 2026-09-30 확인).**
+  이 레포의 `PROD_API` = `https://itdasy-backend-test-644329093453.asia-northeast3.run.app` (테스트 서비스 · Supabase `itdasy-test`).
+  운영은 Cloud Run `itdasy-backend-prod`(운영 레포 `Nopo-lab/itdasy_backend`)이고 운영 프론트는 `itdasy-frontend` 다.
+  토큰 키는 여전히 `itdasy_token::staging` (API 주소에 test 가 들어가도 같은 키 — `app-core.js` `_TOKEN_KEY`).
+  옛 문구("이 사이트의 백엔드 = staging = 운영 DB")는 9월 26일 전 기준이다. 서비스·DB 표는 `RUNBOOK.md` 맨 위.
+  🔴 운영 서비스가 쓰는 DB 가 아래 백업의 LIVE(hsxxqomfbdernepykils)와 같은지 **확인 전까지 단정하지 말 것.**
 - 💾 **운영 DB 백업의 단일 소유자가 이 레포다.** `.github/workflows/supabase-backup.yml`
   매일 KST 03:00 · artifact 30일 · 실패 시 잡 FAIL + Discord 알림.
   다른 레포에 백업을 늘리지 마라 — 새벽에 어느 게 진짜인지 구분 못 한다.
