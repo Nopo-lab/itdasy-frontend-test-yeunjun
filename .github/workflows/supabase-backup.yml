@@ -21,8 +21,12 @@ name: Supabase Daily Backup
 #     GCP 콘솔 권한이 있는 사람이 운영 서비스의 DATABASE_URL 을 한 번 눈으로 확인하면 끝이다(RUNBOOK 맨 위).
 #   SUPPORT_DISCORD_WEBHOOK      (선택) 실패 시 알림. 없으면 알림만 건너뜀
 #
-#   시크릿 이름은 옛 이름 그대로 둔다(바꾸면 다시 넣어야 함). 대신 백업 파일 이름은
-#   LIVE / ARCHIVE 로 나가고, artifact 안에 README.txt 가 어느 걸 복구해야 하는지 적어둔다.
+#   [2026-09-30 이름 정리] 새 시크릿 이름을 먼저 쓰고, 없으면 옛 이름을 쓴다:
+#     SUPABASE_LIVE_DB_URL    ← (옛) SUPABASE_STAGING_DB_URL   운영 DB
+#     SUPABASE_ARCHIVE_DB_URL ← (옛) SUPABASE_PROD_DB_URL      옛 DB
+#   옮기는 법: 새 이름으로 같은 값을 넣는다 → 수동 실행으로 초록 확인 → 옛 시크릿 삭제.
+#   주소에 해당 DB 고유번호(LIVE_REF/ARCHIVE_REF)가 없으면 백업을 멈춘다 — 잘못 붙여넣기 방지.
+#   백업 파일 이름은 LIVE / ARCHIVE 로 나가고, artifact 안 README.txt 가 복구 대상을 적어둔다.
 #
 # ⚠️ 두 덤프는 서로 독립이다. 한쪽이 실패해도 다른 쪽은 반드시 시도한다.
 #    (2026-09-03~06: ARCHIVE 쪽 인증 실패가 LIVE 스텝까지 skip 시켜 실데이터 백업이 4일 비었다)
@@ -57,14 +61,24 @@ jobs:
         id: live
         continue-on-error: true
         env:
-          DB_URL: ${{ secrets.SUPABASE_STAGING_DB_URL }}
+          # [2026-09-30] 새 이름 우선, 옛 이름은 예비. 새 시크릿을 넣고 백업이 한 번 초록인지 본 뒤 옛 것을 지운다.
+          DB_URL_NEW: ${{ secrets.SUPABASE_LIVE_DB_URL }}
+          DB_URL_OLD: ${{ secrets.SUPABASE_STAGING_DB_URL }}
         shell: bash
         run: |
           set -eo pipefail
+          if [ -n "$DB_URL_NEW" ]; then DB_URL="$DB_URL_NEW"; SRC=SUPABASE_LIVE_DB_URL
+          else DB_URL="$DB_URL_OLD"; SRC="SUPABASE_STAGING_DB_URL(옛 이름)"; fi
           if [ -z "$DB_URL" ]; then
-            echo "::error::SUPABASE_STAGING_DB_URL 미설정 — 실데이터 백업이 안 됩니다"
+            echo "::error::SUPABASE_LIVE_DB_URL(또는 옛 SUPABASE_STAGING_DB_URL) 미설정 — 실데이터 백업이 안 됩니다"
             exit 1
           fi
+          # 이름을 바꾸다 테스트 DB 주소를 넣는 사고 방지 — 운영 DB 고유번호가 주소에 없으면 뜨지 않는다.
+          #   (Supabase 주소는 호스트 db.<ref>.supabase.co 또는 풀러 사용자 postgres.<ref> 에 ref 가 들어간다)
+          case "$DB_URL" in
+            *"$LIVE_REF"*) echo "LIVE 주소 출처: $SRC (운영 ref 일치)" ;;
+            *) echo "::error::$SRC 가 운영 DB($LIVE_REF)를 가리키지 않는다 — 테스트/옛 DB 주소를 넣은 것 같다. 백업 중단"; exit 1 ;;
+          esac
           FILE="backup/itdasy_LIVE_${LIVE_REF}_${BACKUP_TS}.sql.gz"
           # 실패하면 파일을 지운다 — 20바이트짜리 빈 gzip 이 artifact 에 섞이면
           # 나중에 그걸 백업인 줄 알고 집는다. 없는 편이 낫다.
@@ -84,14 +98,20 @@ jobs:
         id: archive
         continue-on-error: true
         env:
-          DB_URL: ${{ secrets.SUPABASE_PROD_DB_URL }}
+          DB_URL_NEW: ${{ secrets.SUPABASE_ARCHIVE_DB_URL }}
+          DB_URL_OLD: ${{ secrets.SUPABASE_PROD_DB_URL }}
         shell: bash
         run: |
           set -eo pipefail
+          DB_URL="${DB_URL_NEW:-$DB_URL_OLD}"
           if [ -z "$DB_URL" ]; then
-            echo "::warning::SUPABASE_PROD_DB_URL 미설정 — ARCHIVE 백업 건너뜀"
+            echo "::warning::SUPABASE_ARCHIVE_DB_URL(또는 옛 SUPABASE_PROD_DB_URL) 미설정 — ARCHIVE 백업 건너뜀"
             exit 0
           fi
+          case "$DB_URL" in
+            *"$ARCHIVE_REF"*) : ;;
+            *) echo "::error::ARCHIVE 시크릿이 옛 DB($ARCHIVE_REF)를 가리키지 않는다 — 백업 중단"; exit 1 ;;
+          esac
           FILE="backup/itdasy_ARCHIVE_${ARCHIVE_REF}_${BACKUP_TS}.sql.gz"
           if ! /usr/lib/postgresql/17/bin/pg_dump --no-owner --no-acl --format=plain "$DB_URL" | gzip > "$FILE"; then
             rm -f "$FILE"
