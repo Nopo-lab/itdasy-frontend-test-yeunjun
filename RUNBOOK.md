@@ -5,11 +5,42 @@
 
 ---
 
+## ⚠️ 먼저 — 서비스 이름이 바뀌었다 (2026-09-30 확인)
+
+이 문서의 옛 판(2026-08-01)은 `itdasy-backend-staging` 하나가 모두를 서빙한다고 적었다.
+**지금은 둘로 나뉘었다**(백엔드 레포 README · `scripts/ops_guard_check.py` · 배포 워크플로 기준).
+
+| 용도 | Cloud Run 서비스 | 주소 | DB | 배포 |
+|---|---|---|---|---|
+| **운영** | `itdasy-backend-prod` | https://itdasy-backend-prod-zzd4ktuxgq-du.a.run.app | 🔴 **확인 필요** (아래) | 운영 레포 `Nopo-lab/itdasy_backend` · 수동 |
+| 테스트 | `itdasy-backend-test` | https://itdasy-backend-test-644329093453.asia-northeast3.run.app | Supabase `itdasy-test` (pgsvvcjrifbidwpwfdst) | `itdasy_backend-test` main 푸시 = 자동 |
+
+아래 명령은 전부 `SVC` 변수를 쓴다. **장애 대응은 운영부터.**
+
+```bash
+export SVC=itdasy-backend-prod      # 테스트를 볼 땐 itdasy-backend-test
+export REGION=asia-northeast3 PROJECT=itdasy-495513
+export B=https://itdasy-backend-prod-zzd4ktuxgq-du.a.run.app
+```
+
+🔴 **백업이 운영 DB 를 뜨고 있는지 반드시 한 번 확인한다.** `supabase-backup.yml` 은
+`hsxxqomfbdernepykils`(Supabase 이름 `itdasy-staging`)를 "실데이터(LIVE)" 로 백업한다.
+운영 서비스가 **다른 DB** 를 보고 있다면 매일 백업이 초록이어도 실데이터는 백업되지 않는 것이다.
+
+```bash
+# 운영 서비스가 쓰는 DB 호스트 — 값이 Secret Manager 참조면 그 시크릿의 최신 버전을 본다
+gcloud run services describe $SVC --region=$REGION --project=$PROJECT \
+  --format='yaml(spec.template.spec.containers[0].env)' | grep -A3 DATABASE_URL
+# 결과의 프로젝트 ref 가 hsxxqomfbdernepykils 여야 한다. 다르면 supabase-backup.yml 의 LIVE_REF 와 시크릿을 운영 DB 로 바꾼다.
+```
+
+---
+
 ## 0. 30초 안에 상황 파악
 
 | 확인 | 어디서 |
 |---|---|
-| 서버 살아있나 | https://itdasy-backend-staging-644329093453.asia-northeast3.run.app/health → `{"status":"healthy"}` |
+| 서버 살아있나 | `$B/health` → `{"status":"healthy"}` (운영 주소는 맨 위 표) |
 | AI 살아있나 | 같은 주소 `/ai-health` → `api_key_fallback_ready:true` · `fallback_fail:0` |
 | 지금 뭐가 막혀있나 | admin → **🚀 출시 첫날** 맨 위 빨간 카드 |
 | 사용량·원가 | 같은 화면. 상한 사용률 90% 넘으면 빨강 |
@@ -19,7 +50,7 @@
 
 | 수단 | 실제 주기 | 알림 |
 |---|---|---|
-| GCP Uptime Check `itdasy-backend-staging-health` | **5분 (보장됨)** · 3개 대륙 | GCP 콘솔 인시던트. Discord/이메일은 알림 채널 연결 필요 |
+| GCP Uptime Check `itdasy-backend-staging-health` ⚠️ 옛 이름 — **운영 주소(`itdasy-backend-prod`)를 보고 있는지 콘솔에서 확인** | **5분 (보장됨)** · 3개 대륙 | GCP 콘솔 인시던트. Discord/이메일은 알림 채널 연결 필요 |
 | GitHub Actions `Uptime Alert` | cron 은 `*/5` 지만 **실측 약 1시간** | Discord 웹훅 (즉시) |
 
 ⚠️ **Actions cron 은 5분이 아니다.** 실측(2026-08-01): 11:00 → 12:08 → 13:53 → 14:58 → 16:08
@@ -35,13 +66,13 @@
 ## 1. 서버가 안 뜬다 (`/health` 실패 · 🚨 알림)
 
 1. **Cloud Run 콘솔**에서 리비전 상태 확인
-   [콘솔 열기](https://console.cloud.google.com/run/detail/asia-northeast3/itdasy-backend-staging/metrics?project=itdasy-495513)
+   [콘솔 열기](https://console.cloud.google.com/run/detail/asia-northeast3/itdasy-backend-prod/metrics?project=itdasy-495513)
 2. 최근 배포가 원인 같으면 **이전 리비전으로 롤백**:
    ```bash
-   gcloud run services update-traffic itdasy-backend-staging \
+   gcloud run services update-traffic $SVC \
      --region=asia-northeast3 --project=itdasy-495513 --to-revisions=<이전리비전>=100
    ```
-   리비전 목록: `gcloud run revisions list --service=itdasy-backend-staging --region=asia-northeast3`
+   리비전 목록: `gcloud run revisions list --service=$SVC --region=$REGION --project=$PROJECT`
 3. 롤백해도 안 되면 **DB 쪽 의심** — `/health` 는 DB 핑이 실패해도 503 을 준다(`main.py:1366`).
    Supabase 대시보드에서 인스턴스 상태 확인.
 
@@ -57,14 +88,14 @@
 1. **원인 확인** — GCP 콘솔 → Vertex AI 쿼터. 429 가 쌓이면 여기가 원인.
 2. **길어지면 기능만 끈다** (서비스 전체는 살린다):
    ```bash
-   gcloud run services update itdasy-backend-staging \
+   gcloud run services update $SVC \
      --region=asia-northeast3 --project=itdasy-495513 \
      --update-env-vars FEATURE_CAPTION=off
    ```
    원장님에겐 "캡션 만들기를 잠시 점검 중이에요 🙏" 가 뜬다.
 3. **복구**:
    ```bash
-   gcloud run services update itdasy-backend-staging \
+   gcloud run services update $SVC \
      --region=asia-northeast3 --project=itdasy-495513 \
      --remove-env-vars FEATURE_CAPTION
    ```
@@ -87,7 +118,7 @@
 1. admin **🚀 출시 첫날** → "오늘 누적" 과 "상한 사용률" 확인
 2. 상한이 안 걸려 있으면 지금 건다:
    ```bash
-   gcloud run services update itdasy-backend-staging \
+   gcloud run services update $SVC \
      --region=asia-northeast3 --project=itdasy-495513 \
      --update-env-vars ITDASY_DAILY_COST_CAP_KRW=50000
    ```
@@ -95,8 +126,13 @@
 3. **특정 기능이 범인이면** 그것만 끈다(위 2번 표).
 
 🔥 **누끼 폴백 주의**: Replicate 가 흔들리면 remove.bg 폴백(장당 **280원**, Replicate 의 200배)이
-자동으로 탄다. 로그에서 `[NUKKI] Replicate 실패, Remove.bg 폴백` 이 반복되면
-`REMOVEBG_API_KEY` 를 비워 폴백을 끊는 게 낫다.
+자동으로 탄다. 로그에서 `[NUKKI] Replicate 실패, Remove.bg 폴백` 이 반복되면 폴백을 끊는다.
+
+- 백엔드 패치 `.ai/patches/backend-0001-removebg-fallback-cost-cap.patch` **적용 후**:
+  폴백은 하루 30회(전체)까지만 타고, 실단가 280원으로 일일 상한에 잡힌다.
+  끊기: `--update-env-vars REMOVEBG_FALLBACK_DAILY_MAX=0` · 늘리기: 숫자만 바꾼다.
+  로그 `[NUKKI] 폴백 상한 도달` 이 보이면 상한이 일하는 중이다.
+- **패치 적용 전**: 상한이 폴백을 1.4원으로 센다(200배 과소). `REMOVEBG_API_KEY` 를 비워 폴백을 끊는다.
 
 ---
 
@@ -116,7 +152,7 @@
 **서버가 멀쩡한데 이 신고가 오면 대부분 클라이언트 오판이다.** 먼저 서버부터 배제한다.
 
 ```bash
-curl -s -o /dev/null -w '%{http_code} %{time_total}s\n' https://itdasy-backend-staging-644329093453.asia-northeast3.run.app/health
+curl -s -o /dev/null -w '%{http_code} %{time_total}s\n' $B/health
 ```
 
 200 이고 1초 이내면 서버 문제가 아니다. 그다음 판별:
@@ -163,6 +199,17 @@ curl -s -o /dev/null -w '%{http_code} %{time_total}s\n' https://itdasy-backend-s
 
 > ⚠️ 남은 리스크: DB 장애 = 사실상 전면 중단이다(대부분 엔드포인트가 DB 를 쓰므로
 > fail-open 이어도 어차피 못 돌았다). 읽기 전용 모드는 아직 없다 — 출시 후 과제.
+
+### 백업은 두 겹이다 (2026-09-30 — Supabase Pro)
+
+| 백업 | 보관 | 복구 단위 | 언제 쓰나 |
+|---|---|---|---|
+| **Supabase 자체 일일 백업** (Pro 기본) | 7일 | 하루 단위, 프로젝트 전체를 그 시점으로 | "어제 새벽 상태로 통째로" — 대시보드 Database → Backups 에서 버튼 |
+| **PITR(시점 복구)** | 애드온을 켰을 때만 | 분 단위 | Pro 에 기본 포함이 **아니다**. Settings → Add-ons 에서 켜져 있는지 확인 |
+| **우리 백업** (`supabase-backup.yml` → GCS) | 400일 | 하루 단위, 테이블만 골라 복원 가능 | Supabase 계정 자체 사고 · 7일 지난 복구 · 특정 원장 데이터만 되살릴 때 |
+
+🔴 Supabase 복원은 **프로젝트 전체를 덮어쓴다** — 그 시점 이후 모든 원장님의 입력이 사라진다.
+한 원장님 데이터만 필요하면 우리 백업을 **별도 DB 에 복원한 뒤 그 행만 옮긴다**(아래 절차).
 
 ### 백업에서 복구하기 — ✅ 리허설 완료 (2026-08-01)
 
@@ -211,7 +258,7 @@ gzip -dc restore/*/itdasy_PROD_*.sql.gz | psql -h /tmp -p 55432 -U drill -d rest
 | 운영 DB alembic revision | **`0012_customer_trust_fields`** |
 | 스테이징 DB revision | `0029_h4_token_epoch` — **17개 앞섬** |
 | 운영 레포(`itdasy_backend`) 코드 | alembic `0019` 까지 (코드조차 DB 보다 앞섬) |
-| 운영 Cloud Run 서비스 | **존재하지 않음** — `itdasy-495513` 에 `itdasy-backend-staging` 하나뿐 |
+| 운영 Cloud Run 서비스 | **존재하지 않음** — `itdasy-495513` 에 `itdasy-backend-staging` 하나뿐 _(2026-08-01 당시. 지금은 `itdasy-backend-prod` 가 있다 — 맨 위 표)_ |
 | 운영 프론트(`itdasy-frontend`) 의 `PROD_API` | **스테이징 백엔드 주소** (라이브 파일에서 실측) |
 
 👉 **결론: 지금 스테이징 백엔드 하나가 모두를 서빙하고 있다. 그게 사실상 운영이다.**
@@ -251,6 +298,84 @@ Supabase Function·직접 SQL·cron 이 참조할 수 있으니 먼저 확인하
 | 오늘 원가 / 상한 | <60% | 90% 넘으면 범인 기능 확인 |
 | 잇비 응답 | 3초 내외 | 10초+ 지속이면 Vertex 상태 확인 |
 | 캡션 응답 | 30~50초 | 60초+ 면 내부 재생성 폭주 의심(`CAPTION_REGEN` 로그) |
+
+---
+
+## 6.5 손님에게 잘못 나가고 있다 — 자동발송 긴급 중지
+
+**고치기 전에 먼저 끈다.** 원인 찾는 동안에도 발송은 계속 나간다.
+
+| 끄고 싶은 것 | env | 반영 |
+|---|---|---|
+| **자동화 4종 전부**(DM 초안·DM 자동발송·DM 버튼 안내·댓글 문의 초안) | `AUTOMATION_DISABLE_ALL=1` | 호출마다 읽는다 — 새 리비전이 뜨는 즉시(약 40초) |
+| DM 자동발송만(초안은 유지) | `DM_AUTOSEND_DISABLE=1` | 같음 |
+| 인스타 DM 봇 수신 자체 + 네이버 톡톡 | `DM_AUTOREPLY_ENABLED=false` | 모듈 로드 때 읽는다 — 새 리비전 필요(env 변경이 곧 새 리비전) |
+| 카카오 알림톡 | `ALIGO_API_KEY` 제거 | 발송 함수가 `not_configured` 로 건너뜀 |
+
+```bash
+gcloud run services update $SVC --region=$REGION --project=$PROJECT \
+  --update-env-vars AUTOMATION_DISABLE_ALL=1
+# 복구
+gcloud run services update $SVC --region=$REGION --project=$PROJECT \
+  --remove-env-vars AUTOMATION_DISABLE_ALL
+```
+
+근거: 백엔드 `services/automation_gate.py` `_kill_switch()` (웹훅·워커·재시도가 실행 시점에 재조회).
+끈 뒤에는 **이미 나간 메시지 목록**을 DM 로그에서 뽑아 원장님께 알린다 — 손님 쪽 정정은 원장님 몫이다.
+
+---
+
+## 6.6 환불·구독 문의가 왔다
+
+**iPhone 환불은 Apple 만 할 수 있다.** Android 는 구매 48시간 안이면 사용자가 Play 에서 직접,
+그 뒤엔 **우리가 Play Console → 주문 관리에서** 환불할 수 있다. 어느 쪽이든 우리가 할 일은
+① 스토어 결정이 앱에 반영됐는지 확인 ② 안 됐으면 원인을 찾는 것이다.
+
+1. 원장님께 받을 것: 가입 이메일, 결제한 스토어(아이폰/안드로이드), 대략의 결제 날짜. **카드번호·영수증 사진은 받지 않는다.**
+2. 환불 요청 안내 — 우리가 대신 못 한다:
+   - iPhone: `reportaproblem.apple.com` 에서 본인이 요청
+   - Android: 48시간 안 = Google Play → 결제 및 구독 → 해당 구독 → 환불 요청.
+     48시간 지남 = 우리가 판단해 Play Console → 주문 관리 → 해당 주문 → 환불(권한 있는 관리자만)
+3. 앱 반영 확인 (운영 DB):
+   ```sql
+   SELECT user_id, store, plan, status, next_bill_at, cancel_at_period_end, last_verified_at
+   FROM subscriptions WHERE user_id = <원장 id> ORDER BY last_verified_at DESC LIMIT 5;
+   ```
+   환불 반영 = `plan='free'` · `status='refunded'`. 해지 예약 = `cancel_at_period_end=true` 이고 `plan` 은 그대로(기간 끝까지 사용 가능 — 정상).
+4. 반영이 안 됐으면 스토어 알림이 왔는지 본다:
+   ```bash
+   gcloud logging read 'resource.labels.service_name="itdasy-backend-prod" AND textPayload:"IAP"' \
+     --project=$PROJECT --limit=30 --freshness=7d --format="value(timestamp,textPayload)"
+   ```
+   `[IAP Apple S2S] 반영 … type=REFUND → revoked` / `[IAP Google RTDN] 반영 … REVOKED` 가 없으면 알림 미수신이다.
+   원인 판별은 백엔드 `backend/docs/IAP_GO_LIVE_RUNBOOK.md` §2 "401 원인 판별표".
+5. **DB 를 손으로 고치지 않는다.** 스토어 알림이 다시 오면(재전송) 멱등하게 반영된다. 급하면 원장님께
+   앱에서 **구매 복원**을 누르게 해 영수증 재검증을 태운다.
+
+---
+
+## 6.7 잘못된 화면을 배포했다 — 프론트 롤백
+
+🔴 **앱은 웹을 원격으로 불러온다**(`capacitor.config.json` 의 `server.url`). 그래서 `main` 푸시가
+스토어 심사 없이 **전 사용자 앱에 바로** 퍼지고, 되돌리기도 같은 길로 한다.
+
+```bash
+git fetch origin main && git switch main && git pull
+git log --oneline -5                    # 문제 커밋 확인
+git revert --no-edit <문제커밋>          # 여러 개면 새것부터 차례로. 강제 푸시·reset 금지
+git push origin main                     # deploy.yml 이 lint·테스트 후 자동 배포(몇 분)
+```
+
+확인:
+1. Actions `Deploy to GitHub Pages` 가 초록인지 — 실패하면 **이전 화면이 그대로 서빙 중**이다(더 나빠지지는 않는다).
+2. 배포본의 빌드값이 새 커밋인지: `https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/build.txt`
+   (이 레포는 테스트 프론트다. 운영 프론트는 `itdasy-frontend` 레포에서 같은 절차)
+3. 사용자 폰: GitHub Pages 가 `index.html` 을 최대 10분 캐시한다. 앱은 **부팅 3초 뒤** `build.txt` 를
+   대조해 다르면 캐시를 비우고 한 번 다시 불러온다(세션당 1회, `index.html` 상단 가드).
+   **이미 켜져 있는 앱은 다음에 켤 때 바뀐다.** 급하면 원장님께 앱을 완전히 껐다 켜게 안내한다.
+
+⚠️ 네이티브 쪽(플러그인·권한·아이콘)은 이 방법으로 안 돌아간다 — 스토어 재심사가 필요하다.
+그래서 웹 코드는 옛 네이티브 앱에서도 죽지 않게 플러그인 유무를 확인하고 쓴다(`isAvailable()` 가드).
 
 ---
 
