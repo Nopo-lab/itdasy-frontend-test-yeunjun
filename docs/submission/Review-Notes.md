@@ -22,8 +22,8 @@ Itdasy is an AI-powered operations assistant for solo beauty salon owners in Kor
 
 - Primary language: **Korean**. English not translated yet.
 - All data in the demo account is fictional (`(샘플)` prefix).
-- App uses Google Gemini API for AI features — customer names are pseudonymized (`고객#1`) before sending to external servers.
-- Data transit: TLS 1.3. At rest: Supabase Postgres encryption.
+- App uses Google Gemini API for AI features. The AI assistant replaces customer names in the customer list with pseudonyms (`고객#1`). Instagram DM reply drafts include the sender's display name for the greeting; phone and card numbers in the message are masked first. AI features require the owner's explicit AI consent in the app.
+- Data transit: HTTPS (TLS). At rest: Supabase Postgres encryption; uploaded photos are in a private storage bucket served by short-lived signed URLs.
 - Users can delete their account from Settings → 로그아웃 → 탈퇴.
 
 ## Sign in with Apple
@@ -41,10 +41,10 @@ Web and Android may continue to show Google/Kakao login during staging, but the 
 
 ## IAP Products (if subscribed plans are active)
 
-- `itdasy_pro_monthly_9900` — Itdasy Pro (₩9,900 KRW per month, 10-day free trial)
+- `itdasy_pro_monthly_9900` — Itdasy Pro (₩9,900 KRW per month, 14-day free trial)
 - `itdasy_pro_yearly_99000` — Itdasy Pro annual (₩99,000 KRW per year, no trial), same subscription group
 - `itdasy_membership_monthly_6900` — deprecated 2026-09-02; kept active only so existing subscribers keep renewing
-- 1-week free trial on first subscription (Introductory Offer), no credit card required
+- 14-day free trial on the monthly plan only (Introductory Offer). The store requires a valid payment method; the subscription renews automatically unless cancelled at least 24 hours before the trial ends
 
 ## Korean law compliance
 

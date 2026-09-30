@@ -62,15 +62,15 @@ The AI writes captions in your voice. Upload just 2 before/after photos and it a
 ━━━━━━━━━━━━━━━━━━━━
 🔒 Privacy First
 ━━━━━━━━━━━━━━━━━━━━
-TLS 1.3 for all traffic. Customer data is fully isolated per salon — never exposed across shops. Customer names are pseudonymized before reaching Google's AI servers. Compliant with Korean PIPA, EU GDPR, and California CCPA.
+All traffic is encrypted over HTTPS. Customer data is separated per salon and cannot be read from another salon's account. When the AI assistant receives your customer list, names are replaced with pseudonyms (Customer#1); phone and card numbers in customer messages are masked before the AI drafts a reply.
 
 ━━━━━━━━━━━━━━━━━━━━
 💎 Pricing
 ━━━━━━━━━━━━━━━━━━━━
-Free: 50 customers · 5 AI captions/month
+Free: unlimited manual customers, bookings and sales · 1 AI caption per day
 Itdasy Pro (₩9,900/mo or ₩99,000/yr): Everything — AI captions, Itbi assistant, photo editing, Instagram integration
 
-1-week free trial · No credit card required · Cancel anytime
+14-day free trial on the monthly plan · Cancel anytime in your store account
 ```
 
 ## What's New (up to 4000 chars)

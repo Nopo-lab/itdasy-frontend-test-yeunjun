@@ -38,7 +38,7 @@ Google Play Console → App content → **Data safety** 페이지 기입용.
 ## 3. 보안
 
 ### Q. 데이터 전송 시 암호화됩니까?
-**A: 예 (Yes)** — 모든 통신 TLS 1.3
+**A: 예 (Yes)** — 모든 통신 HTTPS(TLS) 암호화
 
 ### Q. 사용자가 데이터 삭제를 요청할 수 있습니까?
 **A: 예 (Yes)**
