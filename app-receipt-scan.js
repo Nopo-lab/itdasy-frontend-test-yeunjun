@@ -125,7 +125,12 @@
   // - 최종 결과는 항상 Gemini (서버) 응답 사용. Tesseract 는 순수 프리뷰용
   // - iOS Safari 16+ 지원. 구버전 / 실패 시 조용히 skip
   // - 첫 사용 시 korean traineddata ~15MB 다운로드 → 브라우저 캐시. 두 번째부터는 빠름
-  const TESSERACT_CDN = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+  // [운영리스크 2026-09-30 C4] `@5` 처럼 버전이 떠 있으면 CDN 쪽에서 파일이 바뀌어도 그대로 실행된다.
+  //   정확한 버전으로 고정하고 무결성 해시(SRI)를 붙인다. 해시는 npm 배포본에서 계산했다
+  //   (jsDelivr 는 npm 파일을 바이트 그대로 서빙 — 이미 쓰던 phosphor 해시로 교차확인).
+  //   버전을 올릴 땐 `npm pack tesseract.js@<ver>` → `openssl dgst -sha384 -binary dist/tesseract.min.js | base64` 로 다시 계산.
+  const TESSERACT_CDN = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+  const TESSERACT_SRI = 'sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F';
   let _tesseractLoading = null;
 
   function _loadTesseract() {
@@ -134,6 +139,8 @@
     _tesseractLoading = new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = TESSERACT_CDN;
+      s.integrity = TESSERACT_SRI;
+      s.crossOrigin = 'anonymous';
       s.async = true;
       s.onload = () => resolve(window.Tesseract || null);
       s.onerror = () => reject(new Error('tesseract_load_failed'));

@@ -3,7 +3,8 @@
 **대상 환경:** Cloud Run staging (`itdasy-backend-staging-644329093453.asia-northeast3.run.app`)
 **Meta App ID (staging):** `1532504155139761`
 **Instagram App ID (staging):** `1253045740322624`
-**Verify Token (staging):** `YKbG7RNifv`
+**Verify Token (staging):** Secret Manager 에서 확인 — 문서에 적지 않는다.
+> 🔴 [2026-09-30] 예전 이 자리에 평문 토큰이 있었다. git 이력에 남아 있으므로 **재발급 전까지는 노출된 값으로 간주**한다.
 
 진입: https://developers.facebook.com/apps → 위 ID 의 앱 선택.
 
@@ -14,7 +15,7 @@
 ## 0. ⚠️ 즉시 점검 — Scope flag 오설정
 
 **현재 상태 (staging Cloud Run env):**
-- `INSTAGRAM_FULL_SCOPE=MAL2IOViT0uct9KUn4e322yzj6187FEE` ← random 값
+- `INSTAGRAM_FULL_SCOPE=<랜덤 문자열>` ← `1` 이 아닌 값(당시 실측. 값 자체는 문서에서 지움)
 - 백엔드 코드: `if os.getenv("INSTAGRAM_FULL_SCOPE", "0") == "1"` 만 full scope 활성
 - 즉 **현재 staging 은 basic scope 만 사용 중** — DM/Comments/Publish 요청 동작 안 함
 
@@ -71,7 +72,7 @@
 
 **검증 URL (Meta 가 GET 호출):**
 ```
-GET /instagram/dm-reply/webhook?hub.mode=subscribe&hub.verify_token=YKbG7RNifv&hub.challenge=XXX
+GET /instagram/dm-reply/webhook?hub.mode=subscribe&hub.verify_token=<VERIFY_TOKEN>&hub.challenge=XXX
 ```
 
 **Subscribe 시도 → Pass 조건:**
@@ -89,11 +90,11 @@ GET /instagram/dm-reply/webhook?hub.mode=subscribe&hub.verify_token=YKbG7RNifv&h
 
 **위치:** Meta 앱 → Webhooks → Instagram → Edit Subscription → **Verify Token** 칸
 
-**정상값:** `YKbG7RNifv` (현재 Cloud Run env 값)
+**정상값:** Cloud Run env 의 현재 값과 콘솔 값이 **같을 것** (값은 Secret Manager 에서 확인)
 
 **확인 방법 (수동 검증):**
 ```bash
-curl "https://itdasy-backend-staging-644329093453.asia-northeast3.run.app/instagram/dm-reply/webhook?hub.mode=subscribe&hub.verify_token=YKbG7RNifv&hub.challenge=ping123"
+curl "https://itdasy-backend-staging-644329093453.asia-northeast3.run.app/instagram/dm-reply/webhook?hub.mode=subscribe&hub.verify_token=<VERIFY_TOKEN>&hub.challenge=ping123"
 # Pass: "ping123" 그대로 반환
 # Fail: 403 / 503
 ```

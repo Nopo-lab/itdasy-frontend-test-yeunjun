@@ -48,10 +48,18 @@
     _emit();
   }
 
+  // [운영리스크 2026-09-30 C4] CDN 스크립트 무결성 해시(npm 배포본에서 계산). 버전을 바꾸면 해시도 같이 바꿔야 한다.
+  const _SRI = {
+    'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js':
+      'sha384-pOkvCduBp3ORdjN1AjyFmfqUVQgXx9uLzkSGhyQmY38Twuio9zpGr18wToL06B+2',
+    'https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.5/dist/face-landmarks-detection.min.js':
+      'sha384-V+H5KxiRlr+q5w/wjbLXFiUbvGfRpRGDUs51Rg4g+NRBD9gUFawN+uHFHP+ecec0',
+  };
   function _loadScript(src) {
     return new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = src;
+      if (_SRI[src]) { s.integrity = _SRI[src]; s.crossOrigin = 'anonymous'; }
       s.async = true;
       s.onload = () => resolve();
       s.onerror = () => reject(new Error('script load fail: ' + src));
