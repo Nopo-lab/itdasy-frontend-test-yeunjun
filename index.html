@@ -2740,20 +2740,6 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
 <script src="app-portfolio.js?v=local-260831v5" defer></script>
 <script src="app-portfolio-tags.js?v=local-260831v5" defer></script>
 <script src="app-ai.js?v=local-260831v5" defer></script>
-<!-- @imgly/background-removal — 누끼 화면 진입 시에만 lazy 로드 (parse-blocking 100~200ms 절감) -->
-<script>
-window._lazyImgly = function _lazyImgly() {
-  if (window._imglyLoading) return window._imglyLoading;
-  window._imglyLoading = new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/index.umd.js';
-    s.onload = () => res(window.imgly_bgr || window['@imgly/background-removal']);
-    s.onerror = () => rej(new Error('배경제거 보조모듈(imgly) 로드 실패 — 네트워크를 확인해 주세요'));
-    document.head.appendChild(s);
-  });
-  return window._imglyLoading;
-};
-</script>
 <script src="app-photo-enhance.js?v=local-260831v5" defer></script>
 <script src="app-sample-captions.js?v=20260705-v709-fillwide" defer></script>
 <script src="app-push.js?v=20260815-firebase-on" defer></script>

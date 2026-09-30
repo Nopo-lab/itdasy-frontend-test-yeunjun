@@ -386,7 +386,6 @@
           var reason, t;
           if (/한도|429|quota/i.test(msg)) { reason = 'quota'; t = (e && e.message) || '오늘 배경 제거 한도를 다 썼어요'; }
           else if (offline) { reason = 'network'; t = '네트워크 연결을 확인해 주세요'; }
-          else if (/imgly|removeBackground|_lazyImgly/i.test(msg)) { reason = 'imgly'; t = '누끼 모듈을 불러오지 못했어요 — 잠시 후 다시'; }
           else if (/누끼|배경|remove-bg|서버|HTTP|status|40\d|50\d|fetch|network/i.test(msg)) { reason = 'server_removebg'; t = '서버 누끼 처리에 실패했어요 — 잠시 후 다시'; }
           else if (/image|load|decode|invalid|unsupported|format|event:error/i.test(msg)) { reason = 'bad_image'; t = '이 사진은 배경 처리를 못 했어요 — 다른 사진으로 시도해 주세요'; }
           // 사유 특정 불가 — 꾸며내지 않고 정직하게 재시도 안내

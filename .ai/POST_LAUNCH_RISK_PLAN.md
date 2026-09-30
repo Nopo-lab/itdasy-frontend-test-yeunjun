@@ -50,7 +50,7 @@
 | F3 | ✅ **2026-09-30 Supabase Pro 전환**(사용자 확인). Pro 기본 = 일일 백업 7일. **PITR 은 애드온**이라 따로 켜야 한다 | 사용자 · Supabase 요금제 | 우리 GCS 백업(400일)은 유지 — 7일 넘는 복구·부분 복구·계정 사고 대비 |
 | F4 | ✅ **운영 백엔드가 분리돼 있다**: 운영 `itdasy-backend-prod`(레포 `itdasy_backend`, 수동 배포) / 테스트 `itdasy-backend-test`(Supabase `itdasy-test`). 이 레포 프론트는 테스트를 본다 | 백엔드 README · `scripts/ops_guard_check.py` · `app-core.js:131` | 8/1 기록("운영 서비스 없음")은 낡았다. 런북 명령을 `$SVC` 로 바꿈 |
 | F5 | 2026-09-16 출시 인증 = **RELEASE HOLD**. PASS 14 / NOT VERIFIED 8 / BLOCKED 3 | `T-904/release-certification.md §1` | BLOCKED 3 = 옛 API 키 폐기 · 법률 검토 · 실결제. 전부 사람 손 |
-| F6 | GCP 빌링이 실제로 잠겨 배포 3건이 밀린 적 있다 | 커밋 `9dc67a1` | 카드·빌링 문제는 가설이 아니라 **재발 이력** |
+| F6 | 🟢 | ~~클라이언트(휴대폰) 누끼 폴백이 항상 실패~~ | ✅ **삭제함(2026-09-30 원영 결정)**. 두 겹으로 죽어 있었고(스크립트 파일 없음·모델 경로 비어 있음), 살리면 첫 사용 때 약 100MB 다운로드. 늘 실패하면서 한도 초과(429) 문구를 "누끼 모듈을 못 불러왔어요" 로 덮던 버그도 같이 사라짐. 가드 `__tests__/no-client-nukki-fallback-2026-09-30.test.js` | — | Claude | 완료 | — |
 | F7 | 푸시 알림: `app-push.js` 가 `20260815-firebase-on` 으로 갱신돼 있다. Firebase 파일 배치·실발송은 **실기기 미확인** | `index.html` script 태그 · `FIREBASE_SETUP.md` | 리마인드·알림 기능이 스토어 설명에 있으면 실기기 확인 필요 |
 | F8 | IAP 는 코드 완비, **실기기 결제 0회**. 콘솔 상품 미등록 | `IAP_SETUP.md` · `LAUNCH_REMAINING.md §A` | 첫 결제가 곧 첫 테스트가 된다 |
 | F9 | Meta: `content_publish`·DM 봇은 심사 대기. 토큰은 60일 만료 | `RUNBOOK.md §4` · `APP_FEATURE_INDEX.md` | 심사 통과 순간 env 를 바꿔야 하고, 60일마다 재연결 안내가 필요 |

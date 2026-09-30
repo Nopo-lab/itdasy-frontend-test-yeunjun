@@ -227,12 +227,11 @@ async function main() {
     peOpen: typeof (window.PhotoEditor && window.PhotoEditor.open) === 'function',
   }));
 
-  // ── [8] 실패 안내 — 서버 500 + imgly 폴백 차단 → '합성 실패' 토스트 (조용히 죽지 않는지) ──
+  // ── [8] 실패 안내 — 서버 500 → '합성 실패' 토스트 (조용히 죽지 않는지). 휴대폰 폴백은 2026-09-30 삭제 ──
   await page.unroute('**/image/remove-bg');
   await page.route('**/image/remove-bg', route => route.fulfill({ status: 500, contentType: 'text/plain', body: 'fail' }));
   const failCase = await page.evaluate(async () => {
-    // imgly 폴백 차단 → compose._removeBg 가 throw → bg-tab catch → toast
-    window.imglyRemoveBackground = undefined; window._lazyImgly = undefined;
+    // 서버 실패 → compose._removeBg 가 throw → bg-tab catch → toast
     window.__toastLog = [];
     await window.__openPE('face', { initial_tab: 'bg' });
     await window.__gotoBg();
