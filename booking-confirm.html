@@ -70,14 +70,14 @@
 <script>
 (function () {
   'use strict';
-  // [2026-05-04] 환경별 API 자동 선택 (itdasy-frontend: 운영 / test-yeunjun: 스테이징)
+  // [2026-10-01] 이 레포(test-yeunjun)는 테스트 백엔드만 본다 — app-core.js 의 TEST_API 와 같은 주소.
+  //   예전엔 운영(이름은 staging) 주소가 박혀 있어 테스트 백엔드가 만든 확정 링크가 운영 서버로 가서
+  //   토큰을 못 찾았다(1e8a261 이 oauth-return·reset-password 만 고치고 이 파일을 빠뜨렸다).
+  //   가드: __tests__/api-target-local-only-2026-09-23.test.js
   var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  var isTest  = window.location.hostname.includes('test') || window.location.pathname.includes('test');
   var API = isLocal
     ? 'http://localhost:8000'
-    : (isTest
-        ? 'https://itdasy-backend-staging-644329093453.asia-northeast3.run.app'
-        : 'https://itdasy-backend-staging-644329093453.asia-northeast3.run.app');
+    : 'https://itdasy-backend-test-644329093453.asia-northeast3.run.app';
   function apiUrl(path) {
     var raw = String(path == null ? '' : path);
     if (/^https?:\/\//i.test(raw)) return raw;

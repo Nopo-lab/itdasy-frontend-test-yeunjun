@@ -158,10 +158,13 @@ PC(`@media (width >= 768px)`)엔 고정 사이드바 `#sideNav`(`.side-nav.ms-si
 **언어**: 한국말, 쉬운말. 원영님은 코딩 초보.
 
 - 역할: 연준 전용 프론트 검증 레포. 배포 `https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/`
-- 🚨 **백엔드는 운영이다.** `PROD_API` = `https://itdasy-backend-staging-644329093453.asia-northeast3.run.app`
-  이름은 staging 이지만 `env=production` 이고 **실사용자 DB(Supabase `itdasy-staging` / hsxxqomfbdernepykils)** 를 본다.
-  이 사이트(`nopo-lab.github.io/itdasy-frontend-test-yeunjun/`)는 살아 있고, 여기서 넣은 돈은 진짜 돈이다.
-  토큰 키: `itdasy_token::staging` (키 이름도 이름만 staging)
+- 🚨 **백엔드 주소는 `app-core.js` 의 `TEST_API` 하나다** (2026-09-26 `b1ae1e7`·`1e8a261` 부터)
+  = `https://itdasy-backend-test-644329093453.asia-northeast3.run.app` (테스트 전용 Cloud Run).
+  `itdasy-backend-staging-644329093453…` 은 **이름만 staging 인 운영**(`env=production`, 실사용자 DB Supabase `itdasy-staging` / hsxxqomfbdernepykils)이라
+  이 레포의 어떤 페이지도 거기 붙으면 안 된다. 독립 HTML(`booking-confirm.html`·`admin/*.html`·`oauth-return.html`·`reset-password.html`)은
+  app-core.js 를 안 읽으므로 주소가 각자 박혀 있다 — **전부 같은 호스트**여야 하고 가드는 `__tests__/api-target-local-only-2026-09-23.test.js`
+  (2026-10-01: `1e8a261` 이 booking-confirm·admin 3개를 빠뜨려 손님 예약확정 링크가 운영 서버로 가던 것을 잡았다).
+  토큰 키: `itdasy_token::staging` (주소에 `test` 가 들어도 키 이름은 staging 으로 유지 — 바꾸면 기존 로그인이 전부 풀린다)
 - 💾 **운영 DB 백업의 단일 소유자가 이 레포다.** `.github/workflows/supabase-backup.yml`
   매일 KST 03:00 · artifact 30일 · 실패 시 잡 FAIL + Discord 알림.
   다른 레포에 백업을 늘리지 마라 — 새벽에 어느 게 진짜인지 구분 못 한다.

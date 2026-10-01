@@ -77,3 +77,35 @@ describe.each([
     expect(htmlApi(file, marker, opts)).toBe(want);
   });
 });
+
+/* [2026-10-01] 1e8a261 이 oauth-return·reset-password 만 고치고 **booking-confirm.html 과 admin/*.html 을
+ * 빠뜨려** 그 세 페이지는 운영(이름은 staging) 백엔드로 계속 붙었다. 손님이 받는 예약 확정 링크는
+ * 테스트 백엔드가 발급한 토큰인데 운영 서버가 검증하니 항상 실패한다. 독립 페이지는 app-core.js 를
+ * 안 읽으므로 주소가 각자 박혀 있다 — 전부 같은 호스트인지 여기서 고정한다. */
+describe('독립 페이지(app-core.js 를 안 읽는 HTML)도 같은 백엔드를 본다', () => {
+  const STANDALONE = ['booking-confirm.html', 'admin/support-reply.html', 'admin/moderation-reply.html'];
+
+  test.each(STANDALONE)('%s 는 운영(staging) 주소를 참조하지 않는다', (file) => {
+    const s = fs.readFileSync(path.join(ROOT, file), 'utf8');
+    expect(s).not.toMatch(/itdasy-backend-staging-/);
+    expect(s).toContain(PROD);
+  });
+
+  test('booking-confirm.html: localhost 는 로컬, 배포 도메인은 테스트 백엔드', () => {
+    expect(htmlApi('booking-confirm.html', 'var isLocal', { host: 'localhost' })).toBe(LOCAL);
+    expect(htmlApi('booking-confirm.html', 'var isLocal', { host: 'nopo-lab.github.io' })).toBe(PROD);
+  });
+
+  test.each(['admin/support-reply.html', 'admin/moderation-reply.html'])('%s: 토큰 키가 app-core.js 와 같다', (file) => {
+    const s = fs.readFileSync(path.join(ROOT, file), 'utf8');
+    const a = s.indexOf('const PROD_API');
+    const b = s.indexOf(';', s.indexOf('const TOKEN_KEY', a));
+    const key = vm.runInNewContext(s.slice(a, b + 1) + '\n;TOKEN_KEY', ctx({ host: 'nopo-lab.github.io' }));
+    const core = fs.readFileSync(path.join(ROOT, 'app-core.js'), 'utf8');
+    const ca = core.indexOf('const PROD_API');
+    const cb = core.indexOf(';', core.indexOf('const _TOKEN_KEY', ca));
+    const coreKey = vm.runInNewContext(core.slice(ca, cb + 1) + '\n;_TOKEN_KEY', ctx({ host: 'nopo-lab.github.io' }));
+    expect(key).toBe(coreKey);
+    expect(key).toBe('itdasy_token::staging');
+  });
+});

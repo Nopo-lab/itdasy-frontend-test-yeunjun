@@ -44,7 +44,7 @@
 | 구분 | 값 |
 |------|-----|
 | 웹 배포 | https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/ |
-| 스테이징 API | https://itdasy-backend-staging-644329093453.asia-northeast3.run.app |
+| 테스트 API | https://itdasy-backend-test-644329093453.asia-northeast3.run.app (`app-core.js` `TEST_API`; 운영 이름 staging 주소로 붙지 않는다) |
 | 운영 API | (별도 레포에서 관리) |
 | localStorage 토큰 키 | `itdasy_token::staging` (운영/로컬과 격리) |
 | Capacitor scheme | `itdasy://` (OAuth 딥링크용) |

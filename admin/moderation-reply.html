@@ -137,11 +137,13 @@
 <script>
 (function() {
   // ===== 설정 =====
-  const PROD_API = 'https://itdasy-backend-staging-644329093453.asia-northeast3.run.app';
+  // [2026-10-01] app-core.js 의 TEST_API 와 같은 주소(이 레포는 테스트 백엔드만 본다).
+  const PROD_API = 'https://itdasy-backend-test-644329093453.asia-northeast3.run.app';
   const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
     ? 'http://localhost:8000'
     : PROD_API;
-  const TOKEN_KEY = 'itdasy_token::' + (API.includes('staging') ? 'staging' : (API.includes('localhost') ? 'local' : 'prod'));
+  // 토큰 키 파생은 app-core.js 와 동일해야 앱에서 로그인한 토큰을 여기서도 읽는다.
+  const TOKEN_KEY = 'itdasy_token::' + ((API.includes('staging') || API.includes('test')) ? 'staging' : (API.includes('localhost') ? 'local' : 'prod'));
 
   function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
   function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
