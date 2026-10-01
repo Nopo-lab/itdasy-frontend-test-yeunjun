@@ -750,6 +750,8 @@
           photos: _basesC,
           layers: (_lbpC[_aIdxC] || []).slice()
         });
+        if (window.ItdPhotoRecipes) _finalEs = window.ItdPhotoRecipes.restoreCarousel(_epsC, _finalEs, _aIdxC);
+        _lbpC = _finalEs.layersByPhoto || _lbpC;
         _carousel = { layersByPhoto: _lbpC, photoIdx: _aIdxC };
       }
     } catch (_ce) { void _ce; }
@@ -870,13 +872,13 @@
             var _eph = editablePhotos(), _rt = (meta.editState && meta.editState.ratio) || _wsRatio();
             _pp.forEach(function (e) {
               var tp = _eph[e.idx]; if (!tp || tp === p) return;   // 보던 장은 위에서 dataUrl 로 이미 저장
-              var _cb = _cleanBase(tp) || photoUrl(tp);
+              var _cb = e.photoUrl || _cleanBase(tp) || photoUrl(tp);
               var _fm = (meta.editState && meta.editState.fitMode === 'cover') ? 'cover' : 'contain';
-              window.ItdEditor.compose({ photoUrl: _cb, ratio: _rt, layers: e.layers, fitMode: _fm }).then(function (u) {
+              window.ItdEditor.compose({ photoUrl: _cb, ratio: _rt, layers: e.layers, fitMode: _fm, editState: e.editState }).then(function (u) {
                 if (!u) return;
                 tp.editedDataUrl = u; tp.storyEdited = true;
                 _syncOutputForEdit(tp, u, false);   // [버그수정 2026-07-17] 사진별 레이어 합성도 결과물 배열에 반영
-                tp.editState = { v: 1, layoutIdx: 0, layoutOrder: [], cellCrop: [], fitMode: _fm, ratio: _rt, adj: [], photoDraw: {}, photoBg: {}, photos: [_cb], layers: e.layers };
+                tp.editState = e.editState || { v: 1, layoutIdx: 0, layoutOrder: [], cellCrop: [], fitMode: _fm, ratio: _rt, adj: [], photoDraw: {}, photoBg: {}, photos: [_cb], layers: e.layers };
                 d.previewUrl = null;   // [#3] 편집 중간에는 내 콘텐츠 저장 안 함 — 최종(발행/연결/저장)에서만. 데이터는 메모리 유지.
                 /* [2026-09-12 ZH] 장별 합성은 **비동기**다 — 아래 `_persistEditQuiet()` 는 이미 지나갔다.
                    그래서 저장본엔 다른 장들의 글자가 하나도 없었다(실측: 3장 중 2장의 글자 소실).
