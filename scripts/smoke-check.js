@@ -101,6 +101,15 @@ if (!GIT_MODE) {
   if (appBuild && latestBuild && appBuild !== latestBuild) {
     fail(`APP_BUILD (${appBuild}) and __LATEST_BUILD__ (${latestBuild}) differ`);
   }
+  /* [2026-10-01] build.txt 도 같은 값이어야 한다. index.html 은 부팅 3초 뒤 build.txt 를 받아 __LATEST_BUILD__ 와
+     다르면 캐시·SW 를 비우고 리로드한다. 배포는 deploy.yml 이 넷을 한 값으로 쓰지만 레포 커밋은 build.txt 만
+     낡은 채 남을 수 있었다(실측 20260915 vs 20260916 → 로컬 부팅마다 리로드, 작업실 스모크 4/6 FAIL). */
+  let buildTxt = null;
+  try { buildTxt = fs.readFileSync(path.join(root, 'build.txt'), 'utf8').trim(); } catch (_e) { buildTxt = null; }
+  if (buildTxt == null) fail('build.txt not found');
+  else if (appBuild && buildTxt !== appBuild) {
+    fail(`build.txt (${buildTxt}) and APP_BUILD (${appBuild}) differ — 로컬/CI 부팅 3초 뒤 리로드가 난다`);
+  }
 }
 
 if (errors.length) {

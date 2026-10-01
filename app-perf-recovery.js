@@ -34,13 +34,19 @@
   const _prefetchAt = new Map();         // url → timestamp
   const PREFETCH_DEDUPE_MS = 30 * 1000;  // 30초 안에 한 URL 은 한 번만
 
-  async function _prefetch(url, swrKey) {
+  async function _prefetch(url, swrKey, opts) {
     try {
       const auth = window.authHeader && window.authHeader();
       if (!auth || !auth.Authorization) return;
-      const last = _prefetchAt.get(url) || 0;
+      // [2026-10-01 perf-03] dedupe 키에 계정(토큰 끝 24자)을 넣는다 — 로그아웃 직후 30초 안에 다른 계정으로
+      //   로그인하면 예전엔 URL 만 같아서 새 계정 워밍이 통째로 건너뛰어졌다(apiFetch 의 in-flight 키와 같은 방식).
+      const dedupeKey = url + '|' + String(auth.Authorization).slice(-24);
+      const last = _prefetchAt.get(dedupeKey) || 0;
       if (Date.now() - last < PREFETCH_DEDUPE_MS) return;
-      if (_prefetchInflight.has(url)) return _prefetchInflight.get(url);
+      if (_prefetchInflight.has(dedupeKey)) return _prefetchInflight.get(dedupeKey);
+      // LLM 경로(/assistant/suggestions)는 첫 계정에서 수십 초 걸린다 — 20초에 끊으면 서버는 계속 생성하고
+      //   결과만 버려져 다음 호출이 또 생성시킨다(이중 과금). 호출자가 timeoutMs 로 늘릴 수 있다.
+      const timeoutMs = (opts && opts.timeoutMs) || 20000;
 
       // 이미 신선한 캐시 있으면 skip
       try {
@@ -48,7 +54,7 @@
         if (raw) {
           const obj = JSON.parse(raw);
           if (obj && obj.t && (Date.now() - obj.t < 60 * 1000)) {
-            _prefetchAt.set(url, Date.now());
+            _prefetchAt.set(dedupeKey, Date.now());
             return;
           }
         }
@@ -56,7 +62,7 @@
 
       const p = (async () => {
         const ctl = new AbortController();
-        const timer = setTimeout(() => ctl.abort(), 20000); // Railway cold start 대응
+        const timer = setTimeout(() => ctl.abort(), timeoutMs); // Railway cold start 대응
         try {
           const res = await apiFetch(url, {
             headers: { ...auth },
@@ -78,11 +84,11 @@
           }
         } catch (_) { /* silent */ } finally {
           clearTimeout(timer);
-          _prefetchAt.set(url, Date.now());
-          _prefetchInflight.delete(url);
+          _prefetchAt.set(dedupeKey, Date.now());
+          _prefetchInflight.delete(dedupeKey);
         }
       })();
-      _prefetchInflight.set(url, p);
+      _prefetchInflight.set(dedupeKey, p);
       return p;
     } catch (_) { /* silent */ }
   }
@@ -96,14 +102,48 @@
     revenue:   { url: '/revenue?period=today', key: 'pv_cache::revenue::today' },
     service:   { url: '/services',             key: 'pv_cache::service' },
   };
+  /* [2026-10-01 perf-03] 오늘 00:00(로컬) 기준 ±90일 — **일 단위**라 하루 종일 같은 문자열이다.
+     예전엔 Date.now() 가 들어가 부를 때마다 다른 URL(ms 차이)이라 apiFetch 의 in-flight 코얼레싱('같은 URL')도,
+     위 _prefetchInflight(URL 키)도 못 합쳤다 — 실측: 부팅에서 app-core _preloadTabs 와 여기가 ms 만 다른
+     /bookings 를 각각, 대시보드 탭 터치/포커스 프리페치가 같은 의도의 요청을 3연발. 이제 SWR 키
+     pv_cache::bookings_all 과 URL 이 1:1 이다. app-core _preloadTabs 의 폴백도 같은 식을 쓴다. */
   function _bookingRange() {
-    const now = Date.now();
-    const f = new Date(now - 90 * 24 * 3600 * 1000).toISOString();
-    const t = new Date(now + 90 * 24 * 3600 * 1000).toISOString();
+    const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+    const f = new Date(d0.getTime() - 90 * 24 * 3600 * 1000).toISOString();
+    const t = new Date(d0.getTime() + 91 * 24 * 3600 * 1000).toISOString();
     return `/bookings?from=${encodeURIComponent(f)}&to=${encodeURIComponent(t)}`;
   }
   // 캘린더는 좁은 범위(현재월) 캐시도 채워둠 — Booking.list 가 같은 키 형식 쓰진 않지만
   // SWR 'pv_cache::bookings_all' 가 calendar _loadMonth 의 fallback 으로 활용됨.
+
+  /* [2026-10-01 perf-03] 부팅 프리페치 세트 — **단일 소유자**.
+     app-core _preloadTabs(로그인·토큰 부팅 스플래시)·app-dashboard 부팅 prefetch·아래 _criticalPathWarm 이
+     전부 이걸 부른다. 몇 번을 불러도 _prefetch 의 30초 dedupe + in-flight 공유 + 60초 신선 SWR 스킵으로
+     네트워크는 URL 당 1회다. 예전엔 세 계층이 같은 7개를 각자 시점에 불러(rAF vs rIC vs 로그인 preload)
+     코얼레싱을 비껴갔다 — 실측 2026-10-01 콜드 부팅 API 41건 중 같은 경로 2~3회가 14종.
+     반환 Promise 는 critical 7개가 끝나면 풀린다(스플래시가 _PRELOAD_CAP_MS 상한으로 기다리는 그것).
+     AI 2종은 백그라운드 — 첫 계정은 서버 캐시가 없어 수십 초 걸리므로 기다리지 않는다. */
+  const BOOT_PREFETCH = [
+    { url: '/today/brief',          key: 'pv_cache::today' },
+    { url: '/customers',            key: 'pv_cache::customers' },
+    { url: '/revenue?period=today', key: 'pv_cache::revenue::today' },
+    { url: '/revenue?period=week',  key: 'pv_cache::revenue::week' },
+    { url: '/revenue?period=month', key: 'pv_cache::revenue::month' },
+    { url: '/services',             key: 'pv_cache::service' },
+    { url: 'bookings',              key: 'pv_cache::bookings_all' },   // 'bookings' → _bookingRange()
+  ];
+  const BOOT_PREFETCH_BG = [
+    { url: '/assistant/suggestions', key: 'pv_cache::ai_suggest', timeoutMs: 120000 },   // LLM 경로 — app-core LLM_TIMEOUT_MS 와 동일
+  ];
+  function _prefetchBoot() {
+    const auth = window.authHeader && window.authHeader();
+    if (!auth || !auth.Authorization) return Promise.resolve([]);
+    BOOT_PREFETCH_BG.forEach(t => { try { _prefetch(t.url, t.key, { timeoutMs: t.timeoutMs }); } catch (_) { /* silent */ } });
+    return Promise.allSettled(BOOT_PREFETCH.map(t => {
+      try { return Promise.resolve(_prefetch(t.url === 'bookings' ? _bookingRange() : t.url, t.key)); }
+      catch (_) { return Promise.resolve(); }
+    }));
+  }
 
   // hover/touch 리스너 — 위임 방식. tab-bar 버튼 + 자주 쓰는 nav 트리거
   function _bindHoverPrefetch() {
@@ -154,17 +194,8 @@
   // 사용자 입력 먼저 우선이라 rAF 한 프레임만 기다림 (= ~16ms).
   // 매출은 기간별 키 분리 (today/week/month) — 사용자가 어느 탭 누르든 0ms.
   function _criticalPathWarm() {
-    const run = () => {
-      const auth = window.authHeader && window.authHeader();
-      if (!auth || !auth.Authorization) return;
-      _prefetch('/today/brief',           'pv_cache::today');
-      _prefetch('/customers',             'pv_cache::customers');
-      _prefetch('/revenue?period=today',  'pv_cache::revenue::today');
-      _prefetch('/revenue?period=week',   'pv_cache::revenue::week');
-      _prefetch('/revenue?period=month',  'pv_cache::revenue::month');
-      _prefetch('/services',              'pv_cache::service');
-      _prefetch(_bookingRange(),          'pv_cache::bookings_all');
-    };
+    // [2026-10-01 perf-03] 목록은 BOOT_PREFETCH(단일 소유자) — 여기서 따로 들고 있지 않는다.
+    const run = () => { _prefetchBoot(); };
     // requestAnimationFrame — 첫 프레임 그린 직후
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
     else setTimeout(run, 0);
@@ -193,6 +224,8 @@
   window._perfMark = _perfMark;
 
   window._perfPrefetch = _prefetch;
+  window._perfPrefetchBoot = _prefetchBoot;     // [2026-10-01 perf-03] 부팅 세트 단일 소유자 — app-core/app-dashboard 가 부른다
+  window._perfBookingRange = _bookingRange;     // [2026-10-01 perf-03] 결정적(일 단위) 예약 범위 URL
 
   // ============================================================
   // 1-B. Skeleton loaders — 공통 함수

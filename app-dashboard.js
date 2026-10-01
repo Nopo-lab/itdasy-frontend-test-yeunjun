@@ -17,10 +17,39 @@
   // T-326 — sessionStorage 캐시. [2026-04-30] 1분 → 5분 (재진입 hit 율 ↑, fetch 빈도 ↓)
   const _CACHE_TTL = 5 * 60 * 1000;
   function _cacheKey(path) { return 'dash_cache::' + path; }
+  /* [2026-10-01 perf-03] 부팅 워밍 소유자(app-perf-recovery _perfPrefetchBoot)가 채운 SWR(pv_cache::*)를
+     대시보드 캐시 형태({items,total} / brief 객체)로 읽는다. 예전엔 대시보드가 같은 URL 을 rIC 시점에
+     또 불러 자기 dash_cache:: 에 따로 담았다(실측 1879ms vs 소유자 2029ms → 네트워크 2회).
+     이제 소유자 캐시를 그대로 쓰니 '내 샵 관리' 첫 진입 0ms 는 그대로고 부팅 요청은 한 번이다.
+     SWR 형식: {t, d: items|object, n: total} — items 가 배열이면 {items, total} 로 감싼다. */
+  const _OWNER_SWR_KEYS = {
+    '/revenue?period=month': 'pv_cache::revenue::month',
+    '/revenue?period=today': 'pv_cache::revenue::today',
+    '/revenue?period=week':  'pv_cache::revenue::week',
+    '/customers':            'pv_cache::customers',
+    '/today/brief':          'pv_cache::today',
+  };
+  function _fromOwnerSWR(path, maxAgeMs) {
+    try {
+      const key = _OWNER_SWR_KEYS[path];
+      if (!key) return null;
+      const raw = sessionStorage.getItem(key);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || !obj.t) return null;
+      if (maxAgeMs && Date.now() - obj.t > maxAgeMs) return null;
+      const d = obj.d;
+      if (d == null) return null;
+      if (!Array.isArray(d)) return d;
+      return path === '/customers'
+        ? { items: d, total: Number.isFinite(obj.n) ? obj.n : d.length }
+        : { items: d };
+    } catch (_) { return null; }
+  }
   function _getCached(path) {
     try {
       const raw = sessionStorage.getItem(_cacheKey(path));
-      if (!raw) return null;
+      if (!raw) return _fromOwnerSWR(path, _CACHE_TTL);
       const { t, v } = JSON.parse(raw);
       if (Date.now() - t > _CACHE_TTL) return null;
       return v;
@@ -32,7 +61,7 @@
     try {
       const raw = sessionStorage.getItem(_cacheKey(path));
       if (!raw) {
-        return null;
+        return _fromOwnerSWR(path, 0);
       }
       const { v } = JSON.parse(raw);
       return v;
@@ -335,6 +364,14 @@
   // 2026-05-01 ── 우선순위 핵심 3개만 prefetch. 9개 동시 fetch → cold start 누적 + pool 폭주.
   // 나머지는 사용자가 dashboard 진입 시 lazy load. forecast/at-risk 는 거의 안 봄.
   async function prefetch() {
+    /* [2026-10-01 perf-03] 부팅 워밍은 단일 소유자(app-perf-recovery _perfPrefetchBoot)에게 맡긴다.
+       예전엔 여기서 같은 3개를 rIC 시점에 또 불러 소유자의 rAF 워밍과 시점이 어긋나 in-flight 코얼레싱이
+       안 됐다(실측 네트워크 2회). 게다가 탭이 실제로 쓰는 브리핑은 /today/brief?period=… 라 /today/brief
+       워밍은 쓰이지도 않았다. 소유자가 채운 SWR 은 위 _fromOwnerSWR 로 읽는다. */
+    if (typeof window._perfPrefetchBoot === 'function') {
+      try { await window._perfPrefetchBoot(); } catch (_) { /* silent */ }
+      return;
+    }
     const paths = ['/today/brief', '/revenue?period=month', '/customers'];
     await Promise.all(paths.map(p => _cachedGet(p).catch(() => null)));
   }

@@ -174,6 +174,8 @@ function apiUrl(path) {
    ⚠️ Response 본문은 한 번만 읽을 수 있으므로 소비자마다 clone() 을 준다.
    GET 만 합친다. POST/PATCH/DELETE 는 각각이 의미 있는 행위라 절대 합치면 안 된다. */
 const _inflightGET = new Map();
+// [2026-10-01 perf-05] 진행 중 GET 수 — js/loader.js 가 '홈 API 가 조용해진 뒤' 지연 그룹 선로딩을 시작할 때 본다.
+try { window.__itdasyInflightGET = function () { return _inflightGET.size; }; } catch (_e) { void _e; }
 
 function apiFetch(path, opts) {
   const url = apiUrl(path);
@@ -1104,6 +1106,9 @@ window._clearAllSWRCache = _clearAllSWRCache;
 //   새 토큰을 구분 못 하므로 user_id 기준으로 비교.
 // ──────────────────────────────────────────────
 const _USER_KEY_PREFIXES = ['itdasy_', 'itdasy:', 'pv_cache::', 'persona_'];
+// [2026-10-01] 로그아웃 정리에서도 살려 두는 **계정별** UI 선택 키(값에 데이터 없음, 키 끝에 user_id).
+//   예: 'itdasy_ipc_dismissed:42' — 인스타 안내 띠를 닫은 상태. 전엔 로그아웃마다 지워져 재로그인마다 다시 떴다.
+const _USER_KEEP_KEY_PREFIXES = ['itdasy_ipc_dismissed:'];
 // 운영·테스트 웹앱은 같은 GitHub Pages 원본을 공유하므로 서로의 환경별 토큰은 보존한다.
 const _ENV_TOKEN_KEYS = new Set([
   _TOKEN_KEY,
@@ -1163,6 +1168,7 @@ function _purgeUserScopedStorage() {
     try {
       Object.keys(storage).forEach(k => {
         if (_USER_KEY_KEEP.has(k)) return;
+        if (_USER_KEEP_KEY_PREFIXES.some(p => k.startsWith(p))) return; // [2026-10-01] 계정별 UI 선택(인스타 안내 띠 닫음 등)은 유지
         if (storage === localStorage && _ENV_TOKEN_KEYS.has(k)) return; // 환경별 토큰은 서로 지우지 않음
         const matchPrefix = _USER_KEY_PREFIXES.some(p => k.startsWith(p));
         const matchExact = _USER_KEY_EXACT.includes(k);
@@ -1485,6 +1491,27 @@ function authHeader() {
       const u = typeof input === 'string' ? input : (input && input.url) || '';
       return LLM_PATH_RE.test(u);
     } catch (_) { return false; }
+  }
+  // [2026-10-01 ai-quality-06] 백엔드 AI 핸들러가 '모델이 이미 돈' 실패를 알리는 detail 코드.
+  //   routers/persona.py·caption.py: detail = "ai_empty_response — …"(502) / "ai_timeout — …"(504) / "ai_failed — …"(500).
+  //   아래 재시도 분기의 가정("502/503/504 = 게이트웨이·콜드스타트 = 과금 전")이 2026-09-07 백엔드 변경
+  //   (핸들러 내부 실패를 502/504 로 승격)과 어긋났다. 이 응답은 **생성이 끝나고 실패한 것**이라(한도는 서버가 환불)
+  //   재시도 = 같은 질문을 또 생성 = 중복 과금이고, 진짜 504 는 서버가 75초를 다 쓴 뒤라 2번째 시도가
+  //   프런트 120초 상한에 걸려 결과까지 유실된다(실측 2026-10-01: 502 ai_empty_response → requests=4, 6초;
+  //   캡션 1회 = LLM 최대 2회라 한 탭에 Gemini 최대 8회). 원장이 [다시 만들기] 를 누르면 그때 다시 간다.
+  //   서버가 Retry-After 를 붙이면 아래 분기가 먼저 막는다 — 이건 그게 없을 때의 이중 방어.
+  const AI_FAILURE_CODE_RE = /^ai_[a-z_]+/;
+  async function _isAiHandlerFailure(res) {
+    try {
+      if (!res || typeof res.clone !== 'function') return false;
+      const txt = await res.clone().text();           // 본문은 clone 으로 — 호출부가 detail 을 읽어야 한다
+      if (!txt || txt.length > 4096) return false;
+      const d = JSON.parse(txt);
+      const detail = d && d.detail;
+      const code = typeof detail === 'string' ? detail
+        : (detail && (detail.code || detail.error || detail.message)) || '';
+      return AI_FAILURE_CODE_RE.test(String(code).trim());
+    } catch (_) { return false; }                     // JSON 이 아니면(콜드스타트 HTML 등) 기존대로 재시도
   }
 
   // 호출자 signal 보존하면서 timeout 까지 보호하는 fetch 헬퍼.
@@ -1863,6 +1890,8 @@ function authHeader() {
           ? (res.status === 502 || res.status === 503 || res.status === 504)
           : RETRY_STATUSES.has(res.status);
         if (retryable && _retryStatusOk) {
+          // [2026-10-01 ai-quality-06] LLM 경로의 5xx 라도 detail 이 ai_* 면 모델이 이미 돈 실패 — 재시도 금지.
+          if (isLlm && await _isAiHandlerFailure(res)) return res;
           if (attempt < MAX_RETRIES) {
             await _sleep(BACKOFF_MS[attempt] || 1500);
             attempt++;
@@ -2181,6 +2210,16 @@ async function logout(opts) {
   opts = opts || {};
   // [2026-05-08 28차 [J]] skipConfirm — disconnectInstagram 등 다른 흐름에서 이중 컨펌 방지
   if (!opts.skipConfirm && !(await nativeConfirm("확인", "로그아웃 하시겠습니까? 세션과 캐시가 모두 초기화됩니다."))) return;
+  // [2026-10-01 flow-workspace-photo-04] 작업실에 아직 서버에 못 올린 작업이 있으면 먼저 묻는다.
+  //   로그아웃은 아래 1단계에서 갤러리 DB 를 지우므로, 업로드가 막혀 보류된(dirty) 글은 여기서 취소하지 않으면
+  //   이 기기에서도 사라진다. 가드는 정착(최종 push)을 6초 상한으로 한 번 더 시도한 뒤 남은 건수를 묻는다.
+  //   취소하면 아무 부작용 없이(토큰 차단·워치독 전) 그대로 돌아간다.
+  try {
+    if (window.WorkspaceSync && typeof window.WorkspaceSync.guardLogout === 'function') {
+      const _okToLeave = await window.WorkspaceSync.guardLogout({ confirm: (m) => nativeConfirm('확인', m) });
+      if (!_okToLeave) return;
+    }
+  } catch (_e) { void _e; }
   if (_secureMode) localStorage.setItem(_TOKEN_BLOCKED_KEY, '1');
 
   // [2026-08-22 로그아웃 멈춤 픽스] 워치독 — 아래 정리 단계 어디서든 걸리면 8초 뒤 무조건 리로드.
@@ -3613,7 +3652,18 @@ if ('serviceWorker' in navigator && !_isCapacitor) {
   window.addEventListener('pointerdown', () => { window._userInteracted = true; }, { once: true, capture: true });
   window.addEventListener('keydown', () => { window._userInteracted = true; }, { once: true, capture: true });
 
+  // [2026-10-01 perf-04] 등록 시점에 이 페이지를 제어하던 SW 가 있었나. **없었으면 다음 controllerchange 는 '첫 설치'** 다.
+  //   sw.js 가 install 에서 skipWaiting + activate 에서 clients.claim 을 하므로 처음 설치되는 SW 도
+  //   controllerchange 를 낸다. 첫 설치는 지금 페이지가 이미 네트워크에서 올바른 번들을 받은 상태라
+  //   리로드로 얻는 게 없다 — 그런데 아래 '부팅 중 즉시 reload' 가 똑같이 돌아 첫 방문·SW 캐시 삭제 후·
+  //   빌드 대조 리로드 뒤 부팅이 전부 두 번 돌았다(실측 2026-10-01: document 로드 2회 [6ms, 1.3s],
+  //   Fast 3G 첫 진입 14.8s 중 11.5s 에 리로드 → 콜드 script 103개를 받은 뒤 처음부터 다시, 부팅 API 전부 ×2).
+  //   리로드가 의미 있는 건 '기존 controller 가 있던' 업데이트(옛 코드 + 새 캐시 불일치 정리)뿐이다.
+  let _swHadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
+    const _swFirstInstall = !_swHadController;
+    _swHadController = true;          // 같은 세션에서 또 바뀌면 그건 새 배포(업데이트)다
+    if (_swFirstInstall) return;
     // [2026-06-12] OAuth 복귀 직후 새 SW 활성화로 reload 되면 ?connected=success 가 날아가
     //   분석 오버레이가 못 뜬다. 연동 진행 중(itdasy_oauth_inflight)이면 reload 건너뜀.
     try { if (sessionStorage.getItem('itdasy_oauth_inflight')) return; } catch (_e) { void _e; }
@@ -3989,11 +4039,22 @@ Object.assign(window, {
 window._preloadTabs = async function () {
   const auth = window.authHeader && window.authHeader();
   if (!auth || !auth.Authorization) return;
+  /* [2026-10-01 perf-03] 프리페치 소유자는 app-perf-recovery 의 _prefetch(_perfPrefetchBoot) 하나다.
+     예전엔 여기(±3×30일·Date.now())와 app-perf-recovery _criticalPathWarm(±90일·Date.now())과
+     app-dashboard 부팅 prefetch 가 **같은 7개를 각자** 불렀다. 예약 범위는 ms 가 달라 apiFetch 의
+     in-flight 코얼레싱('같은 URL')도 못 합쳤다 — 실측 2026-10-01: 한 문서 안에서 /bookings ±90일 ×2,
+     SW 리로드까지 합치면 콜드 부팅 API 41건 중 같은 경로 2~3회가 14종. 소유자는 30초 dedupe +
+     in-flight 공유 + 60초 신선 SWR 스킵을 갖고 있어 몇 번을 불러도 네트워크는 URL 당 1회다. */
+  if (typeof window._perfPrefetchBoot === 'function') {
+    try { await window._perfPrefetchBoot(); } catch (_) { /* silent — 캐시 워밍이다 */ }
+    return;
+  }
+  // ── 폴백: perf-recovery 가 아직/못 로드된 경우에만 스스로 데운다 (목록·범위는 소유자와 같다) ──
   const headers = { ...auth };
-  // 예약은 전체 ±3개월 한 번에 prefetch (날짜 스크롤 0ms)
-  const now = Date.now();
-  const bookingFrom = new Date(now - 3 * 30 * 24 * 3600 * 1000).toISOString();
-  const bookingTo = new Date(now + 3 * 30 * 24 * 3600 * 1000).toISOString();
+  // 예약은 오늘 00:00 기준 ±90일 **일 단위** — 하루 종일 같은 URL (app-perf-recovery _bookingRange 와 동일식)
+  const _d0 = new Date(); _d0.setHours(0, 0, 0, 0);
+  const bookingFrom = new Date(_d0.getTime() - 90 * 24 * 3600 * 1000).toISOString();
+  const bookingTo = new Date(_d0.getTime() + 91 * 24 * 3600 * 1000).toISOString();
   // [2026-04-26 0초딜레이] revenue 는 기간별 키 분리 — 사용자가 어떤 기간 탭 누르든 0ms
   const tabs = [
     { url: '/customers',            swrKey: 'pv_cache::customers' },

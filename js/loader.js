@@ -157,12 +157,60 @@
   _stub('openRevenueHub', 'revenue', '매출 화면 준비 중…');
   _stub('openRevenueInput', 'revenue', '매출 화면 준비 중…');
 
-  /* ── 유휴 선로딩 — 홈 첫 페인트를 막지 않게 load 이후 idle 에 시작.
-       잇비(매일 쓰는 기능) → 주변 기능 → 사진(106개, 최대 덩어리) 순서. ── */
+  /* ── 유휴 선로딩 — 홈이 **그려지고 홈 API 가 조용해진 뒤** 시작한다.
+       [2026-10-01 perf-05] 예전엔 window load 직후 requestIdleCallback(timeout 4000) 로 바로 체인을 돌렸다.
+       'idle' 은 메인스레드 기준이라 네트워크가 바쁜지(홈 하이드레이션 fetch 4~5건) 보지 않고, load 는 defer
+       스크립트 실행 직후라 홈 API 와 정확히 겹쳤다. 실측: 무스로틀에서 5개 그룹(308파일·4.3MB)이 홈(.hv5 1329ms)
+       보다 먼저/동시에 전부 로드, Fast 3G 첫 방문은 photo 116파일 요청이 1.8s 에 시작돼 콜드 script·홈 API
+       (건당 570~590ms)와 HTTP/1.1 호스트당 6연결을 다퉜다 → 첫 진입 15s 의 구조적 원인.
+       이제: ① #homeV41Root 에 .hv5 가 있거나(홈 하이드레이션 완료) 토큰이 없거나(로그인 화면) ② 진행 중
+       apiFetch GET 0건(app-core window.__itdasyInflightGET) 이 250ms 연속 2번 참일 때 idle 콜백으로 시작.
+       홈이 영영 안 그려져도(연결 오류 카드 등) load+20s 상한에서 시작한다 — 선로딩이 막히면 안 되는 건
+       그대로다(진입은 어차피 스텁/ensure 가 보장). 순서는 매일 쓰는 예약(features)·매출(revenue) 먼저,
+       잇비·주변 기능, 사진(최대 덩어리)은 마지막. saveData 또는 effectiveType 2g/3g 면 photo 는 선로딩하지
+       않는다 — 작업실 진입 스텁이 그때 ensure 하므로 기능은 그대로고 데이터만 아낀다. ── */
+  const PREFETCH_ORDER = ['features', 'revenue', 'assistant', 'extras', 'photo'];
+  const PREFETCH_SETTLE_CAP_MS = 20000;
+  const PREFETCH_POLL_MS = 250;
+  function _homeSettled() {
+    try {
+      const root = document.getElementById('homeV41Root');
+      if (!root) return true;                                   // 홈 루트가 없는 페이지 — 기다릴 게 없다
+      if (root.querySelector('.hv5')) return true;              // 홈 하이드레이션 완료
+      if (typeof window.getToken === 'function' && !window.getToken()) return true;   // 로그인 화면
+    } catch (_e) { return true; }
+    return false;
+  }
+  function _apiIdle() {
+    try { return typeof window.__itdasyInflightGET !== 'function' || window.__itdasyInflightGET() === 0; }
+    catch (_e) { return true; }
+  }
+  function _skipPhoto() {
+    try {
+      const c = navigator.connection;
+      if (!c) return false;
+      if (c.saveData) return true;
+      return /(^|-)(2g|3g)$/.test(String(c.effectiveType || ''));
+    } catch (_e) { return false; }
+  }
   function _prefetch() {
-    const go = () => { ensure('assistant').then(() => ensure('features')).then(() => ensure('revenue')).then(() => ensure('extras')).then(() => ensure('photo')); };
-    if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 4000 });
-    else setTimeout(go, 1500);
+    const go = () => {
+      const groups = PREFETCH_ORDER.filter((g) => !(g === 'photo' && _skipPhoto()));
+      groups.reduce((p, g) => p.then(() => ensure(g)), Promise.resolve());
+    };
+    const idle = () => {
+      if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 4000 });
+      else setTimeout(go, 1500);
+    };
+    const started = Date.now();
+    let quietTicks = 0;
+    const tick = () => {
+      const ready = _homeSettled() && _apiIdle();
+      quietTicks = ready ? quietTicks + 1 : 0;
+      if (quietTicks >= 2 || Date.now() - started >= PREFETCH_SETTLE_CAP_MS) { idle(); return; }
+      setTimeout(tick, PREFETCH_POLL_MS);
+    };
+    tick();
   }
   if (document.readyState === 'complete') _prefetch();
   else window.addEventListener('load', _prefetch, { once: true });
