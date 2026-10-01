@@ -13,6 +13,45 @@
 
 ---
 
+## 2026-10-01 출시 마감 라운드 (브랜치 `ccr-d5f1311f-u6e0c1` · 백엔드 `ccr-d5f1311f-be`)
+
+> 14영역 감사(재현 기반) → P0/P1 전부 수정. 상세·검증 근거는 `docs/closeout/REPORT.md`, 재개 지점은 `docs/closeout/STATE.md`.
+
+**홈·첫 사용**
+- 홈은 항상 보인다 — 인스타 미연동 홍보 카드(`#homePreConnect`)가 홈을 대체하지 않는다(CSS 영구 숨김). 안내는 상단 한 줄 띠 `#ipcMiniBar`(연결 버튼 + 44px ✕)뿐이고 닫음은 계정별 키 `itdasy_ipc_dismissed:<uid>`(로그아웃 정리에서 보존, `app-core.js _USER_KEEP_KEY_PREFIXES`). `homeStartGuide`(사진으로 시작) 자동 노출 중단. (`app-instagram.js`, `index.html`)
+- AI 동의 카드(`js/ai-consent-home.js`): 기본 한 줄 요약(`needs`) + [자세히 보고 설정](`needs-open`, 전체 안내문 뒤 동의) + [나중에](7일, `itdasy_ai_consent_later_v1:<uid>`, 배너도 조용히). '필수 기능만' 뒤엔 홈에서 사라지고 설정/AI 기능이 `open({force})` 로 연다.
+- 쿠키/오류진단 배너(`app-cookie-consent.js`): 작게·탭바 위(`_placeAboveTabBar` 재측정), `.subscreen-overlay.is-open` 동안 숨김, 카드가 `deferToCombined()` 중이면 8초 안전장치가 다시 띄우지 않음(`_cardHandled`).
+- HomeV41: 렌더 중 들어온 refresh/data-changed 는 pending 큐로 합쳐 재렌더(로그인 직후 홈 스켈레톤 영구 잔류 수정). 로그인 전(웹)엔 네트워크 렌더 없음. 오늘의 예약은 **KST 달력일**로 비교(`js/home/v41-renderers.js kstYmd`, `app-myshop-v3.js _kstYmd`). DM 큐 건수 단일 소스 = 고객 메시지 카드(`HomeV41.setDmQueueCount`). 숨은 TodayBrief 컨테이너는 네트워크 0. 잇비 카드에 생일 줄.
+- 설정 허브: 계정 섹션 **비밀번호 변경** 행(`changepw → openChangePwModal`, 소셜 계정 비노출). 샵 정보 저장 시 `shop_name`·헤더·내 샵 관리 즉시 갱신.
+
+**고객·예약**
+- `app-customer.js`: `_fetchFresh` 는 순수 조회(호출자가 `_cache` 대입) → 재진입 시 서버 결과가 다르면 실제로 재렌더. 서버 검색 결과(`_serverHits`)는 create/update/remove 와 함께 갱신·외부 변경 시 재조회.
+- 고객 상세 편집 모달 z 10800(`--z-customer-edit`). 오버레이 z 사다리 SSOT = `style-components.css :root --z-*`.
+- `app-calendar-view.js`: 첫 진입 로딩 상태(`_fetchState`) → 실패 시 `.dt-error`+다시 시도, 통계는 받기 전 '—'(0건 금지). 월 뷰 `_capMonthCells` 읽기/쓰기 분리·칩 프레임 분할(최대 longtask ≈370→≈200ms). 예약 폼은 그 날 영업시간 기준, 휴무/영업시간 밖 안내 + 저장 전 확인(막지 않음).
+- `app-booking-api.js Booking.shopHours(date)` 정본 = 설정 `business_hours_json`(미러 키 `itdasy_business_hours_json` 하나, `ensureShopHours/setShopHours/hoursIssue`).
+- BE: 같은 시각 UNIQUE(`uq_booking_user_starts_active`)가 confirmed·completed 만 본다(0070, 노쇼는 슬롯을 비움). 예약 PATCH 가 memo 를 바꿔도 시스템 마커(`[retouch_applied]` 등) 보존.
+
+**매출·회원권**
+- `app-revenue.js`: 멱등키를 '저장 의도' 단위로(`_txnSig/_txnFor/_txnDone`) — 타임아웃 뒤 재클릭도 같은 `client_txn_id`. 읽기 세대 `_mutGen`(저장 뒤 도착한 옛 목록 폐기, `_g=` 코얼레싱 분리). 저장 중 라벨, 한 건 상한 `Revenue.MAX_KRW`=5,000만원(422 번역), 음수는 환불 안내. 로드 실패 '다시 불러오기'. 환불 조회/기록은 `Revenue.refunds/refund`(인증 자동) — `js/revenue-edit.js` 직접 호출 금지(소스가드). 세션 변경 판정은 JWT sub.
+- `app-core.js`: Authorization 없이 나간 요청의 401 은 세션 만료로 처리하지 않음(`_initHasAuthHeader`).
+- BE: PATCH /revenue 는 환불액 미만으로 못 줄임(400), 예약 금액 PATCH 는 409(`RefundExceedsAmount`). 방문 컬럼 갱신은 `services/customer_visits.touch_visit` 한 곳(GREATEST). 회원권 만료 정본 `services/membership_ledger`(세 경로 400 + UPDATE WHERE). `GET /customers?q=` NUL 제거.
+
+**작업실**
+- 레이아웃 구성(`layoutComp/layoutCards/photoFit`) 저장·복원, 옛 저장본은 templateOutputs 로 역산, `composeCards` 가 안 바뀐 카드 재굽기 안 함. 사진 편집은 카드 단위(`_applyCardEdit`). 캡션 전에도 '나중에 이어서하기', `close()` 가 미저장 변경을 조용히 임시 저장(`_slotSig`). 다중 카드 캐러셀 실제 비율, '폰에 저장' 전부(`WorkspaceAdapter.saveImages`).
+- `workspace-sync.js`: 업로드 미완료면 upsert 보류(dirty), `heldCount/unsyncedCount/guardLogout`(로그아웃 전 확인 — `app-core.js logout` 이 부른다).
+- BE `POST /workspace/slots/upsert`: 서버본에 사진이 있는데 `photos=[]` 면 409 `photos_would_be_cleared`(서버본 동봉), `clear_photos:true` 로만 삭제. `customer_id` 소유 검증.
+- `scripts/ws-flow-smoke.js` 9/9 · `scripts/wsv2-multipair-qa.js` 재작성 17항목. `index.html` 서버 빌드 대조는 localhost 건너뜀, `build.txt == APP_BUILD` 는 jest·smoke 가 강제.
+
+**캡션·AI**
+- 진입점 5곳(시트/잇비 대화/잇비 사진/즉석/음성) 공통 빌더 `_capBasePayload` + 통로 `_capRequestGenerate`(clarification 가드). `use_persona` 는 인스타 연동 시 true, 로더 문구 정직화. 사실 출처는 원장 문구뿐(24인치·만족 멘트 주입 제거, 미매핑 category null). 레거시 `/caption/generate` status 분기.
+- BE: `services/caption_generator._call_and_parse` 가 매 LLM 호출 전 `release_db`. `caption_truthfulness.scrub_ungrounded_commercial_sentences`(가격·할인·예약시간·소요시간·지점·연락처) 1차·최종 + 레거시 3곳. 502 `ai_*`/504 에 `Retry-After: 3`, 프런트는 `ai_*` detail 이면 자동 재시도 금지(`_isAiHandlerFailure`). 레거시 안내문은 한도 환불 + `status:'clarification'`.
+
+**부팅·성능**
+- 부팅 프리페치 단일 소유자 `app-perf-recovery._prefetchBoot`(`_preloadTabs`·대시보드 위임, 예약 범위 일 단위 URL) — 콜드 부팅 API 43→24. SW 첫 설치는 리로드 안 함(`_swHadController`). 지연 그룹은 홈 하이드레이션+API 유휴 뒤, saveData/2g·3g 면 photo 제외(`js/loader.js`). `/persona/consent` 는 `_nc` 대신 `cache:'no-store'`.
+
+**인박스·테넌트·견고성(BE)**
+- DM 큐 빈 화면 `X-Token-State` 분기(none 연결 / expired 재연결). 웹훅: enforce 인데 APP_SECRET 없으면 처리 안 함(`secret_missing`). 페르소나 서명/포스트 남의 것 404(RULE-003). 재고 조정 `CASE` 클램프(PG 500 수정). 하네스 추출 범위 `routers/*.py`+`DB_manage/*_router.py`, INVARIANT-2b(본문 FK)/5b(app.routes 대조).
+
 ## 2026-09-22 T-913 보안 보강
 
 - 로그인: 휴대폰 안전 저장 완료 뒤 로그인 처리, 저장/초기읽기/로그아웃 순서 경합 차단. 실패·중단 시 다음 부팅에 옛 로그인 부활 방지.
