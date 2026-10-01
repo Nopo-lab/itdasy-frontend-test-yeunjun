@@ -87,10 +87,19 @@
       img.src = url;
     } catch (_e) { cb([]); }
   }
+  // Update only the finished photo; preserve caption focus, selection and IME composition.
+  function refreshCarouselImage(root, photoId, displayUrl) {
+    if (!root || !root.classList.contains('is-open')) return;
+    root.querySelectorAll('[data-fl-carslide]').forEach(function (slide) {
+      if (slide.getAttribute('data-fl-carslide') !== String(photoId)) return;
+      var image = slide.querySelector('.ig-car__img, .cap-car__img');
+      if (image) image.style.backgroundImage = 'url("' + displayUrl + '")';
+    });
+  }
   window.WSFlowUtil = {
     uid: uid, toast: toast, esc: esc, fileToDataUrl: fileToDataUrl,
     _isRealShopName: _isRealShopName, _thEsc: _thEsc, barClass: barClass, _caret: _caret,
     _purposeCat: _purposeCat, _containBlit: _containBlit, clone: clone, _parseHashes: _parseHashes,
-    filterCss: filterCss, _extractPalette: _extractPalette
+    filterCss: filterCss, _extractPalette: _extractPalette, refreshCarouselImage: refreshCarouselImage
   };
 })();

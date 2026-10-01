@@ -884,6 +884,7 @@
                    그래서 저장본엔 다른 장들의 글자가 하나도 없었다(실측: 3장 중 2장의 글자 소실).
                    합성이 끝난 이 시점에 한 번 더 적는다. buildSlot 이 d.slot 을 고정하므로 같은 id 를 덮어쓴다. */
                 try { _persistEditQuiet(); } catch (_pq) { void _pq; }
+                if (!d._dead && editablePhotos().indexOf(tp) >= 0 && !window.ItdEditor.isOpen()) _displayItems().forEach(function (it) { WSU.refreshCarouselImage(el, it.id, _blobDisp(it.url)); });
               });
             });
           }
