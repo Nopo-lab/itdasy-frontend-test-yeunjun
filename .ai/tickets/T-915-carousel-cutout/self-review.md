@@ -28,3 +28,7 @@
 - Final:3346PASS2skipped226suites; lint0errors; smokePASS; independent reviewer no blockers. Runtime reopen regression reproduced on567df5c, revalidation after next test Pages deployment.
 
 - Live cloud saved photos proved uniform white. Sync flattened transparent draw/mask PNG to white JPEG and server also flattened. Frontend skips white fill and uses PNG for PNG/WEBP sources; backend coordinated alpha fix. Existing corrupted CBT drawing layers will be cleared through editor UI; no customer data repair guessed.
+
+- False conflict unit reproduction: same photo edit with different nested key order failed signature equality and created photo conflict. Canonicalize object keys before hashing, retain array order and value changes. Actual 409 source still not conclusively attributed; clean runtime draft will verify no duplicate copies.
+
+- v3 rollout compatibility: keep v2 base comparison and auxiliary legacy signature for pending acknowledgments. Old measuredbase fixture supports7regressions;3356PASS2skip; independent review no blockers. Existingv2keyorderfalsecopiesmaypersistfirsttransition, never silently overwrite conflicting edits.
