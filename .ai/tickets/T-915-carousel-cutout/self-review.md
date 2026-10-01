@@ -26,3 +26,5 @@
 - Deployed QA found untouched reopened carousel original empty string caused cutout to silently return. Restore null and accept legacy empty originals; original restore refuses missing data. Behavioral regressions cover second photo after reopening.
 
 - Final:3346PASS2skipped226suites; lint0errors; smokePASS; independent reviewer no blockers. Runtime reopen regression reproduced on567df5c, revalidation after next test Pages deployment.
+
+- Live cloud saved photos proved uniform white. Sync flattened transparent draw/mask PNG to white JPEG and server also flattened. Frontend skips white fill and uses PNG for PNG/WEBP sources; backend coordinated alpha fix. Existing corrupted CBT drawing layers will be cleared through editor UI; no customer data repair guessed.

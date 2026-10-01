@@ -133,9 +133,10 @@
     });
   }
 
-  // ── 이미지 dataURL → JPEG blob (최장축 1440, q0.86) — Cloud Run 32MB·저장비용 방어 ──
-  function _dataUrlToJpegBlob(dataUrl, maxDim, q) {
+  // Workspace media: keep PNG/WEBP masks and drawings transparent; resize to 1440.
+  function _dataUrlToUploadBlob(dataUrl, maxDim, q) {
     maxDim = maxDim || 1440; q = q || 0.86;
+    var mime = /^data:image\/(png|webp)[;,]/i.test(dataUrl) ? 'image/png' : 'image/jpeg';
     return new Promise(function (resolve) {
       try {
         var img = new Image();
@@ -145,9 +146,9 @@
           var cw = Math.max(1, Math.round(w * sc)), ch = Math.max(1, Math.round(h * sc));
           var cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
           var cx = cv.getContext('2d');
-          cx.fillStyle = '#fff'; cx.fillRect(0, 0, cw, ch);
+          if (mime === 'image/jpeg') { cx.fillStyle = '#fff'; cx.fillRect(0, 0, cw, ch); }
           cx.drawImage(img, 0, 0, cw, ch);
-          if (cv.toBlob) cv.toBlob(function (b) { resolve(b); }, 'image/jpeg', q);
+          if (cv.toBlob) cv.toBlob(function (b) { resolve(b); }, mime, q);
           else resolve(null);
         };
         img.onerror = function () { resolve(null); };
@@ -160,9 +161,9 @@
   var _uploadCache = new Map();
   function uploadImage(dataUrl) {
     if (_uploadCache.has(dataUrl)) return Promise.resolve(_uploadCache.get(dataUrl));
-    return _dataUrlToJpegBlob(dataUrl).then(function (blob) {
+    return _dataUrlToUploadBlob(dataUrl).then(function (blob) {
       if (!blob) return null;
-      var fd = new FormData(); fd.append('image', blob, 'ws.jpg');
+      var fd = new FormData(); fd.append('image', blob, blob.type === 'image/png' ? 'ws.png' : 'ws.jpg');
       return window.apiFetch('/workspace/slots/image', { method: 'POST', headers: authHeader(), body: fd })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (j) { var u = j && j.url; if (u) _uploadCache.set(dataUrl, u); return u || null; })

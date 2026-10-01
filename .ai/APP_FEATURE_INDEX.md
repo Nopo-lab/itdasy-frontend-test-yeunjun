@@ -363,3 +363,5 @@ _갱신 이력: 2026-07-10 전수분석 → 2026-07-23 아이콘 스티커 → *
 - T-915: 누끼 처리 중 완료를 막고 사진별 빠른 배경 선택은 하나의 누끼 응답으로 최신 색을 합성한다. 회귀: `cutout-pending-save.test.js`.
 
 - T-915 reopened untouched originals use null; legacy empty originals initialize on first cutout.
+
+- T-915 cloud workspace upload keeps PNG/WEBP editable alpha; final JPEG photos keep old compression.
