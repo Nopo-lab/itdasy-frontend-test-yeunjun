@@ -2816,7 +2816,7 @@
   function doCutout(idx, silent) {
     if (!(window.PhotoEditorBgCompose && window.PhotoEditorBgCompose.compose)) { if (!silent) toastIt('배경 제거 모듈을 불러오지 못했어요'); return; }
     var i = (idx != null ? idx : S.adjSel);
-    if (!S.origPhotos) S.origPhotos = []; if (S.origPhotos[i] == null) S.origPhotos[i] = S.photos[i];   // 원본 1회 보관
+    if (!S.origPhotos) S.origPhotos = []; if (!S.origPhotos[i]) S.origPhotos[i] = S.photos[i];   // 원본 1회 보관
     var src = S.origPhotos[i]; if (!src) return;
     var _jobs = S._cutoutPending || (S._cutoutPending = {});
     if (_jobs[i]) return;   // Same photo: latest color stays in photoBg; reuse the pending matte request.
@@ -2885,7 +2885,7 @@
     else doCutout(S.adjSel);   // 처음 배경 고르면 자동 누끼로 반영(예전엔 아무 일도 안 나 '적용 안 됨')
   }
   function undoCutout() {
-    var i = S.adjSel; if (!(S.origPhotos && S.origPhotos[i] != null)) { toastIt('되돌릴 원본이 없어요'); return; }
+    var i = S.adjSel; if (!(S.origPhotos && S.origPhotos[i])) { toastIt('되돌릴 원본이 없어요'); return; }
     _cancelCutout(i);
     var wasShown = (S.photoUrl === S.photos[i]); var orig = S.origPhotos[i];
     var _preUrl = S.photos[i], _preCut = !!(S.cutSet && S.cutSet[i]);   // [#9] 되돌리기용 스냅샷

@@ -27,7 +27,7 @@
       var index = single ? 0 : i;
       out.photos[i] = (es.photos && es.photos[index]) || full.photos[i];
       out.adj[i] = Object.assign({}, (es.adj && es.adj[index]) || {});
-      out.origPhotos[i] = (es.origPhotos && es.origPhotos[index]) || '';
+      out.origPhotos[i] = (es.origPhotos && es.origPhotos[index]) || null;
       maps.forEach(function (k) { if (es[k] && es[k][index] != null) out[k][i] = es[k][index]; });
       out.layersByPhoto[i] = (single || es.photoIdx === index) ? (es.layers || []) :
         ((es.layersByPhoto && es.layersByPhoto[index]) || []);

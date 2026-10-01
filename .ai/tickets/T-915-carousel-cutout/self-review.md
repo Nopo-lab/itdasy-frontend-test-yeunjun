@@ -22,3 +22,7 @@
 - Pending-cutout follow-up: block Done while any photo is processing; reuse one pending matte request and recompose only the latest background with that cache. Failure/cancel/new-session regressions covered.
 
 - Final verification: 3343 passed /2 skipped /226 suites; lint0errors177warnings; smoke104scripts204lazy; overlay73. Original and photo undo/redo invalidate pending job tokens; late success/failure cannot overwrite or unlock a replacement job. Six behavioral regressions pass. Independent reviewer found no remaining blockers; deployed runtime verification remains a separate gate.
+
+- Deployed QA found untouched reopened carousel original empty string caused cutout to silently return. Restore null and accept legacy empty originals; original restore refuses missing data. Behavioral regressions cover second photo after reopening.
+
+- Final:3346PASS2skipped226suites; lint0errors; smokePASS; independent reviewer no blockers. Runtime reopen regression reproduced on567df5c, revalidation after next test Pages deployment.
