@@ -305,6 +305,23 @@
     });
   }
 
+  // [ai-quality-05 2026-10-01] 안내문(clarification) 화면 — 결과 박스·'맘에 들어요' 없이 되묻고 직접 입력으로 보낸다.
+  function _renderClarify(text) {
+    _state.step = 3;
+    _state.result = '';
+    const body = document.getElementById('psv-body');
+    body.innerHTML = `
+      <div class="psv-title">조금만 더 알려주세요</div>
+      <div class="psv-sub" id="psv-clarify">${_escape(text)}</div>
+      <div class="psv-action-row">
+        <button class="psv-ghost" id="psv-clarify-back">처음으로</button>
+        <button class="psv-primary" id="psv-clarify-custom">직접 적기</button>
+      </div>
+    `;
+    document.getElementById('psv-clarify-back').addEventListener('click', _renderStep1);
+    document.getElementById('psv-clarify-custom').addEventListener('click', _renderStep2Custom);
+  }
+
   function _escape(s) {
     return String(s || '').replace(/[&<>"']/g, (c) => ({
       '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;',
@@ -317,12 +334,13 @@
     const shopType = (localStorage.getItem('shop_type') || '붙임머리');
     const intent = _state.intent;
     let description, segment;
+    // [ai-quality-07 2026-10-01] '만족스러운 결과' 는 아무도 말한 적 없는 사실 — 카드가 뜻하는 상황(신규/단골 인사)만 적는다.
     if (intent === 'new') {
       segment = 'new';
-      description = `${shopType} ${_state.service} 시술. 처음 오신 신규 손님. 만족스러운 결과.`;
+      description = `${shopType} ${_state.service} 시술. 처음 오신 신규 손님께 보내는 인사 메시지.`;
     } else if (intent === 'regular') {
       segment = 'vip';
-      description = `${shopType} ${_state.service} 시술. 자주 와주시는 단골 손님. 오랜만 안부 인사.`;
+      description = `${shopType} ${_state.service} 시술. 자주 와주시는 단골 손님께 보내는 안부 인사.`;
     } else {
       segment = null;
       description = _state.customText;
@@ -333,23 +351,25 @@
       if (typeof window.authHeader === 'function') {
         Object.assign(headers, window.authHeader());
       }
-      const apiBase = window.API || '';
-      const res = await fetch(apiBase + '/caption/generate', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          description,
-          platform: 'instagram',
-          customer_segment: segment,
-        }),
-      });
+      // [2026-10-01] 공용 통로(apiFetch: 타임아웃·401 처리)로 — 직접 fetch 는 app-core 규칙 위반. 없으면 fetch 폴백.
+      const reqInit = { method: 'POST', headers, body: JSON.stringify({ description, platform: 'instagram', customer_segment: segment }) };
+      const res = (typeof window.apiFetch === 'function')
+        ? await window.apiFetch('/caption/generate', reqInit)
+        : await fetch((window.API || '') + '/caption/generate', reqInit);
       if (!res.ok) {
         let detail = '';
         try { const j = await res.json(); detail = j.detail || ''; } catch (_e) { void _e; }
         _renderResult('생성에 실패했어요. 잠시 후 다시 시도해주세요.\n\n' + (detail || '서버 응답: ' + res.status));
         return;
       }
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      // [ai-quality-05 2026-10-01] status:'clarification' 은 AI 가 쓴 메시지가 아니라 안내문(시술 신호 없음) —
+      //   '테스트 메시지 완성 / 맘에 들어요' 로 보여주면 안내문이 결과가 된다. 되묻기 화면으로 분기.
+      //   (백엔드가 status 를 붙이기 전 응답엔 status 가 없으므로 기존 동작 그대로 — 하위 호환)
+      if (data && data.status === 'clarification') {
+        _renderClarify(String(data.caption || '시술 내용을 조금만 더 알려주시면 글을 써드릴게요.'));
+        return;
+      }
       const text = (data.caption || '').trim() || '메시지가 비어있어요. 다시 시도해주세요.';
       _renderResult(text);
     } catch (e) {

@@ -71,6 +71,82 @@ function _capServerErrorMessage(raw) {
   return null;
 }
 
+/* ═══ [ai-quality-03/07 2026-10-01] 캡션 payload 는 여기서 한 번만 만든다 ═══════════════
+   진입점 5곳(글쓰기 시트·잇비 대화·잇비 사진·즉석·음성)이 각자 payload 를 조립하다 보니
+   같은 결함이 파일마다 따로 남았다(감사 실측):
+     · use_persona 를 보내지 않아 원장 말투(인스타 분석·few-shot·서명)가 **항상 꺼진 채**
+       로더만 '원장님 말투로 쓰는 중…' 을 보여줬다(백엔드 schemas.GenerateRequest 기본값 False).
+     · 입력에 없는 '24인치'(업종 defaultTag)·'손님께서 좋아하셨음' 이 photo_context 로 들어갔다 —
+       백엔드는 photo_context 를 '근거' 로 보므로 프런트가 만든 환각 재료는 거르지 못한다.
+     · 미매핑 업종이 'extension'·'wax'(백엔드 enum 에 없음) 로 강제됐다.
+   규칙:
+     ① 사실 출처는 원장이 직접 쓴/고른 문구(user_text)뿐. 업종 기본태그·만족 멘트·인치 주입 금지.
+        user_text 가 없으면 업종명만('붙임머리 시술.'), 업종도 없으면 '뷰티 시술.'.
+     ② category 는 ServiceCategories.infer(시술 문구+업종) — 못 맞추면 null(백엔드가 전체 풀 사용).
+     ③ use_persona 는 작업실 flow 와 같은 기준(_igConn = 인스타 연동). 호출자가 boolean 을 주면 그 값.
+     ④ strict_user_context 는 항상 true, variation_seed 는 요청마다 새로(같은 입력 반복 → 같은 글 방지).
+   작업실(CaptionEngine.generate)은 샵/고객 파싱이 얹힌 별도 경로라 그대로 두되 키 집합은 같다. */
+function _capPersonaOn() {
+  try {
+    if (window.WorkspaceAdapter && typeof window.WorkspaceAdapter.instagram === 'function') {
+      return !!window.WorkspaceAdapter.instagram().connected;
+    }
+  } catch (_e) { void _e; }
+  // 작업실 어댑터가 아직 안 올라온 화면(글쓰기 시트·잇비·즉석)에서는 어댑터와 같은 캐시 키를 본다.
+  try { return localStorage.getItem('itdasy:ig_connected_cache') === '1'; } catch (_e) { return false; }
+}
+
+const _CAP_INTENTS = ['generate', 'rewrite', 'longer', 'instagram'];
+const _CAP_LENGTHS = ['short', 'medium', 'long', 'max'];
+
+function _capVariationSeed(intent) {
+  const base = (_CAP_INTENTS.indexOf(intent) >= 0) ? intent : 'generate';
+  return (base + '-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1e9).toString(36)).slice(0, 64);
+}
+
+function _capBasePayload(opts) {
+  opts = opts || {};
+  const norm = (v) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+  let shopType = '';
+  try { shopType = norm(localStorage.getItem('shop_type')); } catch (_e) { shopType = ''; }
+  const userText = norm(opts.user_text);
+  const context = norm(opts.context);
+  const service = norm(opts.service);
+  // 리드 문장 = 원장 문구. 없으면 업종명만('붙임머리 시술.') — defaultTag(24인치)·만족 멘트는 어디서도 안 붙는다.
+  //   업종이 한글 라벨이 아니면('beauty' 같은 코드값·빈값) 중립 '뷰티 시술.'.
+  const shopLabel = /[가-힣]/.test(shopType) ? shopType : '';
+  const lead = userText ? (userText.replace(/[.。\s]+$/, '') + '.') : (shopLabel ? shopLabel + ' 시술.' : '뷰티 시술.');
+  const intent = (_CAP_INTENTS.indexOf(opts.caption_intent) >= 0) ? opts.caption_intent : 'generate';
+  const payload = {
+    category: _inferCaptionCategory(shopType, [service, userText].filter(Boolean).join(' ')),
+    photo_context: (context ? (lead + ' ' + context) : lead).slice(0, 500),
+    length_tier: (_CAP_LENGTHS.indexOf(opts.length_tier) >= 0) ? opts.length_tier : 'medium',
+    tone_override: opts.tone_override || 'normal',
+    caption_intent: intent,
+    strict_user_context: opts.strict_user_context !== false,
+    use_persona: (typeof opts.use_persona === 'boolean') ? opts.use_persona : _capPersonaOn(),
+    variation_seed: norm(opts.variation_seed).slice(0, 64) || _capVariationSeed(intent),
+  };
+  if (service) payload.service = service.slice(0, 80);
+  const tk = norm(opts.treatment_keyword) || userText;
+  if (tk) payload.treatment_keyword = tk.slice(0, 80);
+  const extra = norm(opts.extra_notes);
+  if (extra) payload.extra_notes = extra.slice(0, 300);
+  const prev = String(opts.previous_caption || '').trim();
+  if (prev) payload.previous_caption = prev.slice(0, 1500);
+  const cust = norm(opts.customer_name);
+  if (cust) payload.customer_name = cust.slice(0, 20);
+  return payload;
+}
+
+/* 공용 요청 통로 — 타임아웃(_personaFetch)·clarification 가드(_capAssertGenerated)·스펙 검사까지 한 번에.
+   잇비·즉석·음성처럼 다른 파일에서 /persona/generate 를 부를 땐 apiFetch 를 직접 치지 말고 이걸 쓴다.
+   (2026-09-07 게이트가 app-caption 에만 들어가고 잇비는 직접호출이라 안내문이 캡션으로 표시됐다 — ai-quality-04) */
+async function _capRequestGenerate(payload) {
+  if (typeof window._assertSpec === 'function') window._assertSpec('POST /persona/generate', payload);
+  return _capAssertGenerated(await _personaFetch('POST', '/persona/generate', payload));
+}
+
 // ===== 시술 키워드 태그(SHOP_KEYWORDS+localStorage+UI) → js/caption/caption-keyword-tags.js 로 분리(B-분할) =====
 
 // ===== 해시태그 셔플 믹싱 =====
@@ -329,19 +405,6 @@ async function _doGenerateCaptionImpl(scenario, closePopup, inlineHost) {
   }
   if (btn) btn.disabled = true;
 
-  showCaptionLoader();
-
-  const shopType = localStorage.getItem('shop_type') || '붙임머리';
-  // [2026-06-12] shop_type 이 SHOP_CONFIG 에 없으면(예: 'beauty') 붙임머리 cfg+defaultTag('24인치')
-  //   강제 폴백 → "인치 선택: 24인치" 가 들어가 업종 무관 붙임머리 캡션이 나오던 버그.
-  //   미매핑 업종은 중립 문구로, defaultTag·업종 라벨(인치 등) 주입 금지.
-  const cfg = SHOP_CONFIG[shopType];
-  const types = getSel('typeTags');
-  // 매핑된 업종만 "업종 시술. 라벨: 태그." / 미매핑은 "뷰티 시술." + 사용자가 직접 고른 태그만.
-  const baseContext = cfg
-    ? `${shopType} 시술. ${cfg.tagLabel}: ${types.length > 0 ? types.join(', ') : cfg.defaultTag}.`
-    : (types.length > 0 ? `뷰티 시술. 선택: ${types.join(', ')}.` : '뷰티 시술.');
-
   // 작업실 슬롯 연결 정보
   const slotNote = (typeof _captionSlotId !== 'undefined' && _captionSlotId && typeof _slots !== 'undefined')
     ? (() => { const s = _slots.find(sl => sl.id === _captionSlotId); return s ? `손님: ${s.label}. 사진 ${s.photos.filter(p=>!p.hidden).length}장. ` : ''; })()
@@ -353,30 +416,29 @@ async function _doGenerateCaptionImpl(scenario, closePopup, inlineHost) {
     : '';
   const specialText = (scenario && scenario.special_context) ? String(scenario.special_context).trim() : '';
 
-  // [v557 근본수정] 사용자가 직접 입력한 시술 문구를 '현재 시술'의 유일 출처로 우선한다.
+  // [v557 근본수정] 사용자가 직접 입력한 시술 문구(없으면 직접 고른 태그)를 '현재 시술'의 유일 출처로 우선한다.
   //   (기존 버그) shop 보일러플레이트("<업종> 시술. 인치: 24인치")가 photo_context 앞에 붙고
   //   사용자 입력은 뒤에 special_context 로만 들어가, 업종 무관 캡션(예: '젤네일' 입력 → 붙임머리 캡션)이 나왔다.
-  //   원인: ① 사용자 입력이 authoritative 한 treatment_keyword 로 안 감 ② defaultTag(24인치 등) 가 본문을 끌고감.
-  //   수정: 사용자 입력(시술 문구 or 선택 태그) = treatment_keyword + photo_context 리드. 업종 defaultTag 미주입.
+  const types = getSel('typeTags');
   const userTx = specialText || (types && types.length ? types.join(', ') : '');
-  // [v561] 카테고리 = 시술 입력 텍스트 + 업종 추론 (붙임머리 자동 폴백 제거).
-  const category = _inferCaptionCategory(shopType, userTx);
-  let photo_context;
-  if (userTx) {
-    photo_context = `${userTx}. ${slotNote}${axesText}`.replace(/\s+/g, ' ').trim();
-  } else {
-    // 사용자 입력이 전혀 없을 때만 업종 기본 맥락(샵 정체성은 백엔드 identity 블록에도 있음).
-    photo_context = `${baseContext} ${slotNote}${axesText}`.replace(/\s+/g, ' ').trim();
-  }
-  const length_tier   = 'medium';
-  // [v555/v558] 말투 카드 선택값(없으면 추천 기본값 natural). regenerate 도 이 payload 를 상속.
-  const tone_override = (window._selectedTone || 'natural');
 
-  const payload = { category, photo_context, length_tier, tone_override };
-  // [v557] 사용자 시술 문구를 authoritative 키워드로 전달 → 백엔드가 본문/해시태그에 우선 반영(보일러플레이트 무시).
-  if (userTx) payload.treatment_keyword = userTx.slice(0, 80);
+  // [ai-quality-03/07 2026-10-01] payload 는 공통 빌더(_capBasePayload)로.
+  //   · use_persona(인스타 연동 기준)·strict_user_context·variation_seed 가 작업실과 같은 키 집합으로 나간다 —
+  //     예전엔 셋 다 빠져 원장 말투가 항상 꺼졌다.
+  //   · 문구가 하나도 없을 때 `${shopType} 시술. 인치 선택: 24인치.` 를 끼워 넣던 else 분기도 사라진다(빌더는 업종명만).
+  //   · category 는 v561 그대로 시술 문구+업종 추론(미매핑 null).
+  const payload = _capBasePayload({
+    user_text: userTx,
+    context: `${slotNote}${axesText}`,
+    length_tier: 'medium',
+    // [v555/v558] 말투 카드 선택값(없으면 추천 기본값 natural). regenerate 도 이 payload 를 상속.
+    tone_override: (window._selectedTone || 'natural'),
+  });
   _lastGeneratePayload = payload;  // 재생성 버튼용
   if (typeof window._assertSpec === 'function') window._assertSpec('POST /persona/generate', payload);
+
+  // 로더는 payload 가 말하는 대로만 — 페르소나가 안 실리면 '원장님 말투로 쓰는 중' 이라고 하지 않는다.
+  showCaptionLoader({ usePersona: payload.use_persona === true });
 
   try {
     // [2026-04-26 픽스] _personaFetch는 이미 파싱된 JSON을 반환한다.
@@ -713,6 +775,8 @@ async function regenerateCaption(overrides = {}) {
   const payload = { ..._lastGeneratePayload, ...overrides };
   // [v555] 다시쓰기/더 길게/인스타스럽게에도 현재 선택한 말투 유지(명시 override 우선).
   if (!('tone_override' in overrides) && window._selectedTone) payload.tone_override = window._selectedTone;
+  // [2026-10-01] 재생성은 매번 새 시드 — 같은 payload 를 그대로 다시 보내 같은 글이 나오던 것 방지(작업실 flow 와 동일).
+  if (!('variation_seed' in overrides)) payload.variation_seed = _capVariationSeed(payload.caption_intent);
   _lastGeneratePayload = payload;
   const ta = document.getElementById('captionText');
   if (ta) { ta.value = '새로 쓰는 중...'; _capAutoGrow(ta); }
@@ -918,6 +982,11 @@ Object.assign(window, {
   showOnboardingCaptionPopup,
   saveOnboardingCaption,
   _capSchedulePatch,
+  // [ai-quality-03/04/07 2026-10-01] 잇비·즉석·음성이 같은 payload 빌더·요청 통로·clarification 가드를 쓴다.
+  _capBasePayload,
+  _capRequestGenerate,
+  _capAssertGenerated,
+  _capPersonaOn,
   generateCaption,
   openInstagramProfile,
   closeUploadDone,

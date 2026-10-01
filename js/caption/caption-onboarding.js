@@ -22,15 +22,27 @@ async function showOnboardingCaptionPopup() {
   if (saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '0.5'; }
 
   try {
-    const shopType = localStorage.getItem('shop_type') || '붙임머리';
+    const shopType = (localStorage.getItem('shop_type') || '').trim();
+    // [ai-quality-07 2026-10-01] '오늘 새로운 손님. 결과 대만족.' 은 아무도 말한 적 없는 사실이었다 — 말투 테스트용
+    //   샘플만 청한다(가격·할인·손님 반응 같은 사실 주장 없이). 미매핑 업종은 '뷰티 시술' 로 중립.
+    const description = (shopType ? shopType + ' 시술' : '뷰티 시술')
+      + ' 소개 글 샘플. 말투 테스트용이라 가격·할인·예약 시간·손님 반응 같은 사실은 넣지 말고 평소 말투만 보여주세요.';
     const res = await apiFetch('/caption/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeader() },
-      body: JSON.stringify({ description: `${shopType} 시술. 오늘 새로운 손님. 결과 대만족.`, platform: 'instagram' }),
+      body: JSON.stringify({ description, platform: 'instagram' }),
     });
     if (res.ok) {
-      const d = await res.json();
-      ta.value = d.caption.trim();
+      const d = await res.json().catch(() => ({}));
+      // [ai-quality-05 2026-10-01] status:'clarification' 은 AI 가 쓴 글이 아니라 안내문(시술 신호 없음) — textarea 에
+      //   꽂으면 원장이 안내문을 '내 말투' 로 저장하게 된다. 토스트로만 알리고 직접 입력을 청한다.
+      //   (백엔드가 status 를 붙이기 전 응답엔 status 가 없으므로 기존 동작 그대로 — 하위 호환)
+      if (d && d.status === 'clarification') {
+        if (typeof showToast === 'function') showToast(String(d.caption || '시술 내용을 조금만 더 알려주시면 글을 써드릴게요.').split('\n')[0]);
+        ta.value = '직접 평소 쓰시는 말투로 한 문단 입력해주시면 학습할게요!';
+      } else {
+        ta.value = String((d && d.caption) || '').trim() || '직접 평소 쓰시는 말투로 한 문단 입력해주시면 학습할게요!';
+      }
     } else {
       // [2026-04-26] 무음 실패 금지 — 사용자한테 명시적으로 알림 (Meta 심사 블로커)
       const errMsg = (await res.text().catch(() => '')) || `HTTP ${res.status}`;

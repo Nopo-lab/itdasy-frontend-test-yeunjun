@@ -3635,72 +3635,65 @@
     return true;
   }
 
-  // [v182 2026-05-18] 챗봇에서 백엔드 /persona/generate 호출 — app-caption.js
-  //   _doGenerateCaption 와 동일 payload 구조로 동일 품질 캡션 보장.
-  //   photo_context = `${shopType} 시술. ${cfg.tagLabel}: ${typeStr}. ${axesText}`
-  //   category = _CAP_CAT_MAP[shopType] || 'extension' (백엔드는 ['extension','nail'] 만 받음)
-  //   반환: { caption, error } — 실패 사유 호출자에 명시.
+  // [v182 2026-05-18] 챗봇에서 백엔드 /persona/generate 호출 — 반환: { caption, error, clarification? } (실패 사유 호출자에 명시).
+  // [ai-quality-04/07 2026-10-01] 이 파일이 payload 를 따로 만들며 cfg.defaultTag('24인치')·'손님께서 좋아하셨음'·
+  //   CAT_MAP 폴백 'extension' 을 주입했고(v557/v561 수정이 app-caption.js 에만 들어감), apiFetch 를 직접 불러
+  //   status:'clarification' 안내문을 캡션으로 돌려줬다(래퍼 우회 직접호출). 이제 app-caption 의 공통 빌더
+  //   (_capBasePayload: 사실 출처 = 원장 메시지뿐, 미매핑 업종 null, use_persona 인스타 연동 기준)와
+  //   공용 요청 통로(_capRequestGenerate: 타임아웃 + clarification 가드)를 쓴다.
+  // 사진 메시지에서 시술 문구만 — 요청어('이 사진 인스타에 올려줘', '예쁘게 보정해서')를 걷어낸 뒤, 남은 문구에
+  //   시술 어휘(ServiceCategories 사전·인치/재시술)가 있을 때만 사실 출처(treatment_keyword)로 쓴다.
+  //   '이 사진 에 올려' 같은 찌꺼기가 최우선 키워드로 가면 안 된다. 원문은 어차피 맥락(photo_context)에 그대로 실린다.
+  function _chatPhotoService(q) {
+    const stripped = String(q || '')
+      .replace(/(이|요|그|저)\s*사진|사진|인스타(그램)?|insta|sns|피드|스토리|캡션|해시\s*태그|hashtag|문구|홍보\s*글|게시|업로드|포스트|올려|올릴|보정|편집|예쁘게|꾸며|꾸미|해서|해줘|만들어|만들|주세요|줘|생성|작성|써|뽑아|좀|다시/gi, ' ')
+      .replace(/(에|으로|로|을|를|은|는)(?=\s|$)/g, ' ')
+      .replace(/[,.·\s]+/g, ' ').trim();
+    if (stripped.length < 2) return '';
+    const SC = window.ServiceCategories;
+    const known = (SC && typeof SC.infer === 'function') ? !!SC.infer(stripped) : false;
+    if (!known && !/\d{1,3}\s*인치|재시술|리터치/.test(stripped)) return '';
+    return stripped.slice(0, 80);
+  }
+
   async function _generateChatCaption(opts) {
-    // app-core.js SHOP_CONFIG 와 동일 키 (window 노출됨, 없으면 폴백)
-    const SC = window.SHOP_CONFIG || {
-      '붙임머리': { tagLabel: '인치 선택', defaultTag: '24인치' },
-      '네일아트': { tagLabel: '시술 종류', defaultTag: '젤네일' },
-    };
-    const CAT_MAP = { '붙임머리': 'extension', '네일아트': 'nail', '네일': 'nail' };
-
-    let shopType = '';
-    try { shopType = localStorage.getItem('shop_type') || '붙임머리'; } catch (_e) { shopType = '붙임머리'; }
-    // [2026-06-12] 미매핑 shop_type(예 'beauty')에 붙임머리 cfg/defaultTag('24인치') 강제 폴백하던 버그.
-    const cfg = SC[shopType];  // 미매핑이면 undefined → 아래에서 중립 문구
-    const category = CAT_MAP[shopType] || 'extension';
-
-    const q = (opts.question || '').trim();
-
-    // axesText — 챗봇 메시지 + 고객. _doGenerateCaption 의 axes.customer/situation/photo 자리.
-    let axesText = '';
-    if (opts.customerCtx && opts.customerCtx.name) {
-      axesText = opts.customerCtx.name + ' 손님. ' + (q || '오늘 시술 후 자연스럽게 마무리') + '.';
-    } else if (q) {
-      axesText = q + '.';
-    } else {
-      axesText = '오늘 시술 후 자연스럽게 마무리. 손님께서 좋아하셨음.';
+    if (typeof window._capBasePayload !== 'function' || typeof window._capRequestGenerate !== 'function') {
+      return { caption: '', error: '캡션 모듈이 아직 준비되지 않았어요. 잠시 후 다시 시도해주세요.' };
     }
-
-    // 매핑 업종만 "업종 시술. 라벨: 태그." (인치는 메시지에서 추출, 없으면 defaultTag).
-    //   미매핑은 "뷰티 시술." 중립 — 사용자 원문은 axesText 에 이미 담겨 정보 손실 없음.
-    let baseCtx;
-    if (cfg) {
-      const lenMatch = q.match(/(\d{1,3}\s*인치)/);
-      const typeStr = lenMatch ? lenMatch[1].replace(/\s+/g, '') : cfg.defaultTag;
-      baseCtx = `${shopType} 시술. ${cfg.tagLabel}: ${typeStr}.`;
-    } else {
-      baseCtx = '뷰티 시술.';
-    }
-    const photo_context = (`${baseCtx} ${axesText}`).trim().slice(0, 500);
-
+    const q = String(opts.question || '').trim();
+    const svc = _chatPhotoService(q);
+    const custName = (opts.customerCtx && opts.customerCtx.name) ? String(opts.customerCtx.name).trim() : '';
+    const ctxBits = [];
+    if (custName) ctxBits.push(custName + ' 손님.');
+    if (q && q !== svc) ctxBits.push(q.replace(/[.。\s]+$/, '') + '.');
+    const payload = window._capBasePayload({
+      user_text: svc,
+      context: ctxBits.join(' '),
+      customer_name: custName,
+      length_tier: 'medium',
+      tone_override: 'normal',
+    });
     try {
-      const headers = window.authHeader ? Object.assign({}, window.authHeader()) : {};
-      headers['Content-Type'] = 'application/json';
-      const res = await window.apiFetch('/persona/generate', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          category,
-          photo_context,
-          length_tier: 'medium',
-          tone_override: 'normal',
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        console.warn('[chat-caption] /persona/generate 실패:', res.status, data);
-        return { caption: '', error: _captionErrorMessage(res.status, data.detail) };
-      }
+      const data = await window._capRequestGenerate(payload);
       return { caption: _captionWithTags(data), error: null };
     } catch (e) {
-      console.warn('[chat-caption] 네트워크 실패:', e);
-      return { caption: '', error: '네트워크 오류 — 잠시 후 다시 시도해주세요' };
+      // 안내문(clarification)은 캡션이 아니다 — 호출자가 '캡션 없이' 진행하도록 error 로만 돌려준다.
+      if (e && e.code === 'CAPTION_CLARIFICATION') {
+        return { caption: '', error: String(e.message || '시술 내용을 조금만 더 알려주시면 글을 써드릴게요.').split('\n')[0], clarification: true };
+      }
+      console.warn('[chat-caption] /persona/generate 실패:', e);
+      return { caption: '', error: _chatCaptionFailText(e) };
     }
+  }
+
+  // 공용 통로(_personaFetch)가 던진 에러 → 원장님 말. '401' 은 세션 만료, 나머지는 서버 detail 그대로(이미 사람 말).
+  function _chatCaptionFailText(e) {
+    const msg = String((e && e.message) || '');
+    if (msg === '401') return _captionErrorMessage(401, '');
+    if (/Failed to fetch|Load failed|NetworkError/i.test(msg)) return '네트워크 오류 — 잠시 후 다시 시도해주세요';
+    if (/시간이 너무 오래 걸려요/.test(msg)) return msg;   // _personaFetch 120초 상한
+    if (/^HTTP 5\d\d$/.test(msg)) return '서버가 잠깐 불안정해요. 1분 후 다시 시도해주세요.';
+    return _captionErrorMessage(0, msg);
   }
 
   function _captionErrorMessage(status, detailValue) {
@@ -3712,8 +3705,11 @@
       }
       return '홈의 AI 사용 설정에서 동의하면 캡션을 만들 수 있어요.';
     }
-    if (/quota_exceeded:caption/.test(detail)) return '오늘 캡션 한도(3회)를 다 쓰셨어요. 내일 다시!';
-    return detail ? detail.slice(0, 100) : '캡션 생성 실패';
+    // [2026-10-01] 한도 숫자는 서버 detail(quota_exceeded:caption:N)에서 — '(3회)' 고정은 Free 일 1회와 어긋났다(ai-quality-10).
+    const _qm = detail.match(/quota_exceeded:caption(?::(\d+))?/);
+    if (_qm) return '오늘 캡션 한도' + (_qm[1] ? '(' + _qm[1] + '회)' : '') + '를 다 쓰셨어요. 내일 다시!';
+    // 서버 detail 은 이미 사람 말('ai_timeout — AI 응답이 평소보다 오래 걸려요…') — 앞의 코드 꼬리표만 뗀다.
+    return detail ? detail.replace(/^ai_[a-z_]+\s*[—-]\s*/, '').slice(0, 100) : '캡션 생성 실패';
   }
 
   function _captionWithTags(data) {
@@ -4958,16 +4954,7 @@
     if (len === 'short') return ' 캡션을 핵심만 담아 짧고 간결하게 작성해주세요.';
     return '';
   }
-  function _capCategory() {
-    // [M1] 백엔드 GenerateRequest 는 category Literal["extension","nail"] 만 받음.
-    //   shop_type 만 보지 말고, 사용자가 입력한 시술(네일/패디/젤)도 nail 로 인식.
-    try {
-      const svc = (_capCtx && _capCtx.service) || '';
-      if (/네일|패디|젤네일|패디큐어/.test(svc)) return 'nail';
-      if (/네일/.test(localStorage.getItem('shop_type') || '')) return 'nail';
-      return 'extension';
-    } catch (_e) { return 'extension'; }
-  }
+  // [ai-quality-07 2026-10-01] _capCategory(네일/아니면 extension 2분법) 제거 — 분류는 공통 빌더(ServiceCategories.infer, 7종+null).
   function _capApplyAdjust(q, c) {
     if (/(더\s*길게|길게|분량.*(늘|많)|자세히|상세히|풍부)/.test(q)) c.len = 'long';
     if (/(짧게|간결|핵심만|줄여)/.test(q)) c.len = 'short';
@@ -4983,31 +4970,49 @@
     const stripped = String(q || '').replace(/(캡션|문구|해시\s*태그|hashtag|홍보\s*글|인스타|insta|sns|피드|스토리|글|만들어|만들|줘|주세요|생성|작성|써|뽑아|해줘|좀|다시)/gi, '').trim();
     return stripped.length >= 2 ? stripped : '';
   }
+  // [ai-quality-03/04 2026-10-01] 공통 빌더 + 공용 요청 통로. 반환 { ok, text } | { ok:false, clarification } | { ok:false, error }.
+  //   예전엔 apiFetch 를 직접 불러 use_persona·treatment_keyword 가 빠지고(원장 말투 항상 OFF),
+  //   status:'clarification' 안내문을 캡션으로 돌려줘 칩·신고 버튼이 붙고 c.last 에까지 저장됐다.
   async function _capGenerate() {
     const c = _capCtx;
-    const headers = window.authHeader ? Object.assign({}, window.authHeader()) : {};
-    headers['Content-Type'] = 'application/json';
-    const tags = c.moreTags ? ' 해시태그를 평소보다 더 다양하게 많이(시술·업종·지역 태그 포함) 넣어주세요.' : '';
-    const vary = c.last ? ' 이전과 다른 새로운 버전으로 작성해주세요.' : '';
+    if (typeof window._capBasePayload !== 'function' || typeof window._capRequestGenerate !== 'function') {
+      return { ok: false, error: '캡션 모듈이 아직 준비되지 않았어요. 잠시 후 다시 시도해주세요.' };
+    }
     const svc = (c.service || '').trim();
+    const persona = (typeof window._capPersonaOn === 'function') ? window._capPersonaOn() : false;
+    const bits = [];
     // [M1] 입력 시술을 본문에 반드시 반영하고, 입력 안 한 다른 시술은 언급하지 않도록 명시.
-    const svcLead = svc
-      ? (svc + ' 시술. 반드시 이 시술 중심으로 본문을 쓰고, 입력한 시술 외 다른 시술은 언급하지 마세요. ')
-      : ((localStorage.getItem('shop_type') || '') + ' 시술. ');
+    if (svc) bits.push('반드시 이 시술 중심으로 본문을 쓰고, 입력한 시술 외 다른 시술은 언급하지 마세요.');
+    // 인스타 말투 힌트는 페르소나가 실제로 실릴 때만 — 연동이 끊긴 뒤 남은 옛 분석값으로 '우리 말투' 라고 하지 않는다.
+    if (persona) bits.push(_capInstaHint().trim());
+    bits.push(_capLenInstruction(c.len).trim());
+    if (c.moreTags) bits.push('해시태그를 평소보다 더 다양하게 많이(시술·업종·지역 태그 포함) 넣어주세요.');
     // [M2] 후기 말투 요청 시 1인칭 고객 후기체로.
-    const review = c.reviewVoice ? ' 고객이 직접 남긴 후기 말투(1인칭 고객 시점, 만족 후기체)로 작성해주세요.' : '';
-    const ctxStr = (svcLead + _capInstaHint() + _capLenInstruction(c.len) + tags + vary + review + ' 인스타 업로드용 캡션.').slice(0, 500);
-    const body = { category: _capCategory(), photo_context: ctxStr, length_tier: c.len || 'medium', tone_override: c.tone || 'normal', service: svc || '' };
-    let res;
-    try { res = await window.apiFetch('/persona/generate', { method: 'POST', headers, body: JSON.stringify(body) }); }
-    catch (_e) { return null; }
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return null;
+    if (c.reviewVoice) bits.push('고객이 직접 남긴 후기 말투(1인칭 고객 시점, 만족 후기체)로 작성해주세요.');
+    bits.push('인스타 업로드용 캡션.');
+    const payload = window._capBasePayload({
+      user_text: svc,
+      service: svc,
+      context: bits.filter(Boolean).join(' '),
+      length_tier: c.len || 'medium',
+      tone_override: c.tone || 'normal',
+      use_persona: persona,
+      // 직전 캡션이 있으면 백엔드 변형 필드로(이전과 다른 버전·더 길게) — 문장 지시 대신 API 계약을 쓴다.
+      caption_intent: c.last ? (c.len === 'long' ? 'longer' : 'rewrite') : 'generate',
+      previous_caption: c.last || '',
+    });
+    let data;
+    try { data = await window._capRequestGenerate(payload); }
+    catch (e) {
+      if (e && e.code === 'CAPTION_CLARIFICATION') return { ok: false, clarification: String(e.message || '').split('\n')[0] };
+      return { ok: false, error: _chatCaptionFailText(e) };
+    }
     const cap = (data.caption || '').trim();
     const hts = Array.isArray(data.hashtags) ? data.hashtags.map(t => '#' + String(t).replace(/^#+/, '')).join(' ') : '';
     const full = hts ? (cap + '\n\n' + hts) : cap;
-    if (full) c.last = full;
-    return full || null;
+    if (!full) return { ok: false, error: '캡션을 만들지 못했어요. 잠시 후 다시 시도해 주세요.' };
+    c.last = full;
+    return { ok: true, text: full };
   }
   async function _tryCaptionConversation(input, q) {
     const t = String(q || '').trim();
@@ -5043,11 +5048,21 @@
     _history.push({ role: 'assistant', text: '캡션을 쓰고 있어요…', _capPending: true });
     _renderHistory();
     _sendInFlight = true;
-    let cap = null;
-    try { cap = await _capGenerate(); } catch (_e) { cap = null; } finally { _sendInFlight = false; }
+    let r = null;
+    try { r = await _capGenerate(); } catch (_e) { r = null; } finally { _sendInFlight = false; }
     for (let i = _history.length - 1; i >= 0; i--) { if (_history[i]._capPending) { _history.splice(i, 1); break; } }
-    if (!cap) { _history.push({ role: 'assistant', text: '캡션을 만들지 못했어요. 잠시 후 다시 시도해 주세요.' }); _renderHistory(); return true; }
-    _history.push({ role: 'assistant', text: cap, related: ['더 길게', '짧게', '캡션 다시', '해시태그 더 넣어줘', '더 인스타스럽게'] });
+    if (!r || !r.ok) {
+      if (r && r.clarification) {
+        // [ai-quality-04] 안내문은 캡션이 아니다 — 재생성 칩 없이 되묻고, 다음 메시지를 시술 내역으로 받는다(c.last 미갱신).
+        _capCtx.awaiting = true;
+        _history.push({ role: 'assistant', text: '어떤 시술인지 조금 더 알려주세요. ' + r.clarification + '\n예: "속눈썹펌, 처진 속눈썹, 자연스럽게, 유지력 강조"' });
+      } else {
+        _history.push({ role: 'assistant', text: (r && r.error) || '캡션을 만들지 못했어요. 잠시 후 다시 시도해 주세요.' });
+      }
+      _renderHistory();
+      return true;
+    }
+    _history.push({ role: 'assistant', text: r.text, related: ['더 길게', '짧게', '캡션 다시', '해시태그 더 넣어줘', '더 인스타스럽게'] });
     _renderHistory();
     return true;
   }

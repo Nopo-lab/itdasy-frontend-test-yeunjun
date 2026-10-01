@@ -24,7 +24,6 @@
   'use strict';
 
   // ── 헬퍼 ─────────────────────────────────────────────────────────
-  function _api() { return (window.API || ''); }
   function _toast(msg) { if (typeof window.showToast === 'function') window.showToast(msg); }
   function _esc(s) { return window._esc(s); } /* [2026-06-11] 중복 제거 — app-core 정본 위임 */
   function _svg(id, size) {
@@ -32,18 +31,8 @@
     return '<svg width="' + sz + '" height="' + sz + '" style="vertical-align:-2px;" aria-hidden="true"><use href="#' + id + '"/></svg>';
   }
 
-  async function _fetchJson(method, path, body) {
-    const headers = window.authHeader ? window.authHeader() : {};
-    if (body && !(body instanceof FormData)) headers['Content-Type'] = 'application/json';
-    const res = await window.apiFetch(path, {
-      method,
-      headers,
-      body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
-    return data;
-  }
+  // [ai-quality-03/04 2026-10-01] 자체 _fetchJson 제거 — /persona/generate 는 app-caption 의 공용 통로
+  //   (window._capRequestGenerate: apiFetch + 120초 타임아웃 + clarification 가드)로만 부른다.
 
   // ── 카테고리 / 해시태그 (app-instant-caption 과 통일) ────────────
   const SHOP_TAGS = {
@@ -57,20 +46,12 @@
     '피부':     ['피부관리', '피부케어', '에스테틱', '모공관리', '수분관리'],
     '반영구':   ['반영구', '반영구메이크업', '눈썹문신', '입술문신', '아이라인반영구'],
   };
-  const _CAT_MAP = {
-    '붙임머리': 'extension', '네일아트': 'nail', '네일': 'nail',
-    '헤어': 'hair', '헤어샵': 'hair',
-    '속눈썹': 'lash',
-    '왁싱': 'wax',
-    '피부': 'skin',
-    '반영구': 'tattoo',
-  };
-
+  // [ai-quality-07 2026-10-01] 업종→category 표(_CAT_MAP) 제거 — 'wax' 는 백엔드 enum 에 없고 미매핑은 'extension' 으로
+  //   강제됐다. 분류는 app-caption 의 공통 빌더(ServiceCategories.infer: 메모+업종, 미매핑 null)가 한다.
   function _shopMeta() {
     const shopType = localStorage.getItem('shop_type') || '붙임머리';
     return {
       shopType,
-      category: _CAT_MAP[shopType] || 'extension',
       baseTags: SHOP_TAGS[shopType] || SHOP_TAGS['붙임머리'],
     };
   }
@@ -120,27 +101,23 @@
   }
 
   // ── 캡션 생성 (백엔드 /persona/generate) ────────────────────────
+  // [ai-quality-03/07 2026-10-01] 공통 빌더(_capBasePayload) — 음성 메모가 유일한 사실 출처(user_text → treatment_keyword,
+  //   v560 그대로), category 는 메모+업종 추론(미매핑 null — 예전엔 네일 메모여도 업종표의 'extension'), use_persona 는
+  //   인스타 연동 기준. 요청은 공용 통로(_capRequestGenerate) — status:'clarification' 은 CAPTION_CLARIFICATION 에러로
+  //   던져져 호출자(_runGenerate)의 catch 가 안내한다(2026-09-07 게이트 유지).
   async function _generateCaptionFromVoice(voiceText) {
-    const meta = _shopMeta();
+    if (typeof window._capBasePayload !== 'function' || typeof window._capRequestGenerate !== 'function') {
+      throw new Error('캡션 모듈이 아직 준비되지 않았어요. 잠시 후 다시 시도해주세요.');
+    }
     const trimmed = String(voiceText || '').trim();
-
-    const payload = {
-      category: meta.category,
-      photo_context: meta.shopType + ' 시술 완료. 원장님 메모: ' + (trimmed || '(없음)'),
+    const payload = window._capBasePayload({
+      user_text: trimmed,
+      context: '시술 완료. 원장님이 직접 말한 메모 기준.',
       extra_notes: trimmed,
       length_tier: 'medium',
       tone_override: 'normal',
-    };
-    // [v560] 음성 메모 = 원장님이 직접 말한 시술 맥락 → authoritative treatment_keyword 로 전달
-    //   (백엔드가 모호한 photo_context 대신 이 키워드를 본문 근거로 우선 사용 → 환각 차단 보강).
-    if (trimmed) payload.treatment_keyword = trimmed.slice(0, 80);
-
-    const data = await _fetchJson('POST', '/persona/generate', payload);
-    // [AI 릴리스 게이트 2026-09-07] status:'clarification' 은 캡션이 아니라 안내문이다
-    //   (LLM 미호출·한도 미차감). 캡션으로 취급하면 화면엔 생성 성공처럼 보인다.
-    if (data && data.status === 'clarification') {
-      throw new Error(String(data.caption || '시술 내용을 조금만 더 알려주시면 글을 써드릴게요.'));
-    }
+    });
+    const data = await window._capRequestGenerate(payload);
     return data.caption || '';
   }
 

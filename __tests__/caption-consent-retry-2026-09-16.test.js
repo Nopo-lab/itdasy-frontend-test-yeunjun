@@ -51,8 +51,12 @@ describe('캡션 AI 동의 안내', () => {
     expect(caption).toMatch(/window\.apiFetch\(path,/);
     expect(caption).toMatch(/AiConsentHome\.open/);
     expect(caption).not.toMatch(/_inlineConfirm\(/);
-    expect(instant).toMatch(/window\.apiFetch\(path,/);
-    expect(voice).toMatch(/window\.apiFetch\(path,/);
-    expect((assistant.match(/window\.apiFetch\('\/persona\/generate'/g) || []).length).toBe(2);
+    // [2026-10-01 ai-quality-03/07] 즉석·음성도 자체 _fetchJson 대신 app-caption 공용 통로(_capRequestGenerate → _personaFetch → apiFetch).
+    expect(instant).toMatch(/window\._capRequestGenerate\(/);
+    expect(voice).toMatch(/window\._capRequestGenerate\(/);
+    // [ai-quality-04 2026-10-01] 잇비 두 경로(대화형 _capGenerate · 사진 _generateChatCaption)는 apiFetch 를 직접 치지 않고
+    //   app-caption 의 공용 통로(_capRequestGenerate → _personaFetch → apiFetch)를 탄다 — 직접호출이 다시 생기면 여기서 걸린다.
+    expect((assistant.match(/window\.apiFetch\('\/persona\/generate'/g) || []).length).toBe(0);
+    expect((assistant.match(/window\._capRequestGenerate\(/g) || []).length).toBe(2);
   });
 });

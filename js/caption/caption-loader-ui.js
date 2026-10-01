@@ -32,15 +32,22 @@ function _clFill(i, word) {
   chip.classList.add('filled');
 }
 
-function showCaptionLoader() {
+/* [ai-quality-03 2026-10-01] opts.usePersona — 이번 요청에 원장 말투(payload.use_persona)가 실제로 실리는지.
+   예전엔 use_persona 를 보내지도 않으면서 저장된 인스타 분석값으로 칩을 채우고 '원장님 말투로 쓰는 중…' 을
+   보여줬다 — 글은 기본 말투로 나오는데 화면만 원장 말투라고 말하는 거짓 연출. 호출자(app-caption)가
+   payload 를 만든 뒤 그 값을 넘기고, 꺼져 있으면 중립 칩 + 정직한 문구를 쓴다. */
+function showCaptionLoader(opts) {
   const popup = document.getElementById('captionLoadingPopup');
   if (!popup) return;
   popup.style.display = 'flex';
   _clReset();
+  const usePersona = !!(opts && opts.usePersona === true);
 
-  // 페르소나 데이터로 최종 칩 값 결정 (없으면 무난한 기본값)
+  // 페르소나가 실리는 요청일 때만 저장 스타일로 최종 칩 값 결정 (아니면 무난한 기본값)
   let raw = {};
-  try { raw = JSON.parse(localStorage.getItem('itdasy_latest_analysis') || '{}'); } catch (_e) { raw = {}; }
+  if (usePersona) {
+    try { raw = JSON.parse(localStorage.getItem('itdasy_latest_analysis') || '{}') || {}; } catch (_e) { raw = {}; }
+  }
   const avgLen = parseInt(raw.avg_caption_length) || 0;
   const lenWord = avgLen > 0 ? (avgLen < 50 ? '짧게' : avgLen > 120 ? '길게' : '보통') : '보통';
   const emojiMatch = (raw.emojis || '').match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u);
@@ -56,7 +63,7 @@ function showCaptionLoader() {
 
   // 안내 문구 순환
   const msgEl = document.getElementById('clMsg');
-  const msgs = ['원장님 말투로 쓰는 중…', 'AI가 글 구상 중이에요…', '해시태그 고르는 중…', '거의 다 됐어요…'];
+  const msgs = [usePersona ? '원장님 말투로 쓰는 중…' : '잇데이 기본 말투로 쓰는 중…', 'AI가 글 구상 중이에요…', '해시태그 고르는 중…', '거의 다 됐어요…'];
   let mi = 0;
   if (msgEl) msgEl.textContent = msgs[0];
   const mt = setInterval(() => {

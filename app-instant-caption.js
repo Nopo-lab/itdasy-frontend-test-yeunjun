@@ -37,55 +37,16 @@
     '기타':     ['뷰티샵', '뷰티스타그램', '오늘의시술', '셀프케어'],
   };
 
-  const _CAT_MAP = {
-    '붙임머리': 'extension', '네일아트': 'nail', '네일': 'nail',
-    '헤어': 'hair', '헤어샵': 'hair',
-    '속눈썹': 'lash',
-    '왁싱': 'wax',
-    '피부': 'skin',
-    '반영구': 'tattoo',
-    // [v192] 신규 6종 — 백엔드 GenerateRequest 는 Literal["extension","nail"] 만 받음 → extension 폴백
-    '메이크업': 'extension',
-    '눈썹':     'extension',
-    '두피탈모': 'extension',
-    '패디':     'nail',     // 네일과 동일 API category
-    '바디':     'extension',
-    '기타':     'extension',
-  };
+  // [ai-quality-07 2026-10-01] 업종→category 표(_CAT_MAP) 제거 — 'wax' 는 백엔드 enum 에 없고 미매핑은 'extension' 으로
+  //   강제됐다. 분류는 app-caption 의 공통 빌더(ServiceCategories.infer, 미매핑 null)가 한다.
 
-  function _api() { return (window.API || ''); }
   function _toast(msg) { if (typeof window.showToast === 'function') window.showToast(msg); }
   function _brandKit() { return (window.BrandKit && typeof window.BrandKit.get === 'function') ? window.BrandKit.get() : {}; }
   function _brandVoiceHint() {
     return (window.BrandKit && typeof window.BrandKit.voiceHint === 'function') ? window.BrandKit.voiceHint() : '';
   }
-
-  async function _fetchJson(method, path, body) {
-    const headers = window.authHeader ? window.authHeader() : {};
-    if (body && !(body instanceof FormData)) headers['Content-Type'] = 'application/json';
-    const url = _api() + path;
-    let res;
-    try {
-      res = await window.apiFetch(path, {
-        method,
-        headers,
-        body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
-      });
-    } catch (netErr) {
-      console.error('[instant-caption] fetch 실패:', method, url, netErr);
-      throw netErr;
-    }
-    // [2026-04-26] res.json() 은 단 한 번만 호출. 이중 호출은 stream 소진 → TypeError 의 원인.
-    const data = await res.json().catch((parseErr) => {
-      console.error('[instant-caption] JSON parse 실패:', parseErr, 'status=', res.status);
-      return {};
-    });
-    if (!res.ok) {
-      console.error('[instant-caption] HTTP error:', res.status, data);
-      throw new Error(data.detail || ('HTTP ' + res.status));
-    }
-    return data;
-  }
+  // [ai-quality-03/04 2026-10-01] 자체 _fetchJson 제거 — /persona/generate 는 app-caption 의 공용 통로
+  //   (window._capRequestGenerate: apiFetch + 120초 타임아웃 + clarification 가드)로만 부른다.
 
   // ── (a) 시술 카테고리·키워드 자동 추출 ─────────────────────────────
   // 비용 방어: shop_type 기반 기본 키워드 + 파일명·EXIF 힌트 + 얼굴 감지(선택)
@@ -100,7 +61,6 @@
     const colorHint = (nameHint.match(/(블랙|브라운|애쉬|옴브레|하이라이트|블론드)/) || [])[0] || '';
 
     return {
-      category: _CAT_MAP[shopType] || 'extension',
       shopType,
       baseTags,
       lengthHint,
@@ -109,29 +69,28 @@
   }
 
   // ── (b) 캡션 생성 (페르소나 기반) ──────────────────────────────────
+  // [ai-quality-03/07 2026-10-01] '자연스럽고 만족스러운 마무리. 손님께서 좋아하셨음.' 고정 주입 제거 — 사진 한 장을
+  //   받았을 뿐 손님 반응은 아무도 말하지 않았다(백엔드는 photo_context 를 근거로 보므로 못 거른다).
+  //   payload 는 공통 빌더(_capBasePayload): 업종명 리드 + 파일명 힌트(인치·컬러)만 맥락으로, category 는
+  //   업종 추론(미매핑 null), use_persona 는 인스타 연동 기준. 요청은 공용 통로(_capRequestGenerate) —
+  //   status:'clarification' 은 거기서 CAPTION_CLARIFICATION 에러로 던져지므로 아래 catch 가 그대로 안내한다.
   async function _generateCaption(meta) {
-    const cfg = meta;
-    const parts = [];
-    parts.push(`${cfg.shopType} 시술 후 결과 사진.`);
-    if (cfg.lengthHint) parts.push(cfg.lengthHint + ' 길이.');
-    if (cfg.colorHint) parts.push(cfg.colorHint + ' 컬러.');
-    parts.push('자연스럽고 만족스러운 마무리. 손님께서 좋아하셨음.');
+    if (typeof window._capBasePayload !== 'function' || typeof window._capRequestGenerate !== 'function') {
+      throw new Error('캡션 모듈이 아직 준비되지 않았어요. 잠시 후 다시 시도해주세요.');
+    }
+    const parts = ['시술 후 결과 사진.'];
+    if (meta.lengthHint) parts.push(meta.lengthHint + ' 길이.');
+    if (meta.colorHint) parts.push(meta.colorHint + ' 컬러.');
     const voice = _brandVoiceHint();
     if (voice) parts.push('[샵 말투 기억] ' + voice);
 
-    const payload = {
-      category: cfg.category,
-      photo_context: parts.join(' '),
+    const payload = window._capBasePayload({
+      user_text: '',
+      context: parts.join(' '),
       length_tier: 'medium',
       tone_override: 'normal',
-    };
-
-    const data = await _fetchJson('POST', '/persona/generate', payload);
-    // [AI 릴리스 게이트 2026-09-07] status:'clarification' 은 캡션이 아니라 안내문이다
-    //   (LLM 미호출·한도 미차감). 캡션으로 취급하면 화면엔 생성 성공처럼 보인다.
-    if (data && data.status === 'clarification') {
-      throw new Error(String(data.caption || '시술 내용을 조금만 더 알려주시면 글을 써드릴게요.'));
-    }
+    });
+    const data = await window._capRequestGenerate(payload);
     return data.caption || '';
   }
 
