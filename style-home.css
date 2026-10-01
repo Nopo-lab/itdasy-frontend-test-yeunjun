@@ -715,6 +715,15 @@ body.itdasy-locked > :not(#lockOverlay):not(#signupOverlay):not(script):not(styl
 .ai-consent-home__secondary { border: 1px solid rgba(213,138,149,.38); color: var(--brand-strong, #a85b69); background: transparent; }
 .ai-consent-home__link { display: inline-block; margin-top: 8px; color: var(--brand-strong, #a85b69); font-size: 11px; text-decoration: underline; }
 .ai-consent-home[data-state="error"] { border-color: rgba(190,80,80,.32); }
+/* [2026-10-01] 기본(needs)은 한 줄 요약만 — 전체 안내문·동의 버튼·링크는 펼친 뒤(needs-open)·강제 열기·partial 에서만. */
+.ai-consent-home__brief { margin: 0; color: var(--text3, #666); font-size: 12px; line-height: 1.5; }
+.ai-consent-home[data-state="needs"] { padding: 12px 14px; }
+.ai-consent-home[data-state="needs"] .ai-consent-home__title { font-size: 14px; margin-bottom: 4px; }
+.ai-consent-home[data-state="needs"] [data-ai-consent-full] { display: none !important; }
+.ai-consent-home:not([data-state="needs"]) [data-ai-consent-brief],
+.ai-consent-home:not([data-state="needs"]) [data-ai-consent-brief-actions] { display: none !important; }
+.ai-consent-home[data-state="needs"] .ai-consent-home__actions { margin-top: 8px; }
+.ai-consent-home[data-state="needs"] .ai-consent-home__actions button { min-height: 40px; padding: 7px 12px; }
 
 @media (width <= 420px) {
   .ai-consent-home { padding: 14px; }

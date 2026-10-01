@@ -172,14 +172,30 @@ function _kickIgTextStyleBuild(force) {
 }
 
 function _igStatusGiveUp() {
-  // 재시도 전부 실패 — 캐시가 '연동됨'이면 그대로 두고(오탐 방지), 아니면 연동 안내로 폴백.
+  // 재시도 전부 실패 — 캐시가 '연동됨'이면 그대로 두고(오탐 방지), 아니면 상단 띠로만 안내(홈은 그대로).
   try {
     if (localStorage.getItem('itdasy:ig_connected_cache') === '1') return;
-    const pre = document.getElementById('homePreConnect');
-    const post = document.getElementById('homePostConnect');
-    if (pre) pre.style.display = 'flex';
-    if (post) post.style.display = 'none';
+    _setIpcMiniBar(!_ipcDismissed());
   } catch (_e) { /* ignore */ }
+}
+
+// [2026-10-01] 인스타 안내 띠 — 계정별 '닫음' 기억. 키에 user_id 를 붙여 로그아웃 정리(_purgeUserScopedStorage)에서 살아남는다
+//   (app-core 가 'itdasy_ipc_dismissed:' 접두사를 보존). 옛 단일 키도 읽어 준다.
+function _ipcDismissKey() {
+  let uid = '';
+  try { uid = typeof window.getMyUserId === 'function' ? String(window.getMyUserId() || '') : ''; } catch (_e) { uid = ''; }
+  return uid ? 'itdasy_ipc_dismissed:' + uid : 'itdasy_ipc_dismissed';
+}
+function _ipcDismissed() {
+  try { return localStorage.getItem(_ipcDismissKey()) === '1' || localStorage.getItem('itdasy_ipc_dismissed') === '1'; }
+  catch (_e) { return false; }
+}
+function _forgetIpcDismissed() {
+  try { localStorage.removeItem(_ipcDismissKey()); localStorage.removeItem('itdasy_ipc_dismissed'); } catch (_e) { void _e; }
+}
+function _setIpcMiniBar(show) {
+  const bar = document.getElementById('ipcMiniBar');
+  if (bar) bar.style.display = show ? 'flex' : 'none';
 }
 
 async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
@@ -269,13 +285,10 @@ async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
         if ('profile_picture_url' in data) localStorage.setItem('itdasy:ig_profile_pic', data.profile_picture_url || '');
         if (data.handle) localStorage.setItem('itdasy:ig_handle', data.handle);
       } catch (_e) { /* ignore */ }
-      document.getElementById('homePreConnect').style.display = 'none';
-      document.getElementById('homePostConnect').style.display = 'flex';
-      // [2026-05-08 hotfix] 연결됐으면 mini-bar 도 숨김
-      const bar = document.getElementById('ipcMiniBar');
-      if (bar) bar.style.display = 'none';
-      // [2026-05-08 28차 2단계] 인스타 연결되면 dismissed 자동 해제 — 해제 후 다시 미연결 시 카드 다시 보이게
-      try { localStorage.removeItem('itdasy_ipc_dismissed'); } catch (_e) { void _e; }
+      // [2026-10-01] 홈은 항상 보인다(#homePostConnect 는 CSS 기본 flex, #homePreConnect 는 영구 숨김) — 띠만 끈다.
+      _setIpcMiniBar(false);
+      // [2026-05-08 28차 2단계] 인스타 연결되면 dismissed 자동 해제 — 해제 후 다시 미연결 시 띠가 다시 보이게
+      _forgetIpcDismissed();
       _instaHandle = data.handle || '';
       updateHeaderProfile(_instaHandle, data.persona ? data.persona.tone : null, data.profile_picture_url || '');
       updateStep('stepInsta', true);
@@ -322,21 +335,12 @@ async function checkInstaStatus(fromLogin = false, _attempt = 0, _seq = 0) {
       //   미연결 + 카드 visible       → 잇비 카드만
       //   미연결 + 카드 dismissed     → 메인홈만
       //   연결됨                      → 메인홈만 (위 if(data.connected) 처리)
-      const dismissed = (function(){ try { return localStorage.getItem('itdasy_ipc_dismissed') === '1'; } catch (_) { return false; } })();
-      const miniBar = document.getElementById('ipcMiniBar');
-      if (dismissed) {
-        document.getElementById('homePreConnect').style.display = 'none';
-        document.getElementById('homePostConnect').style.display = 'flex';
-        if (miniBar) miniBar.style.display = 'flex';
-      } else {
-        document.getElementById('homePreConnect').style.display = 'flex';
-        document.getElementById('homePostConnect').style.display = 'none';
-        if (miniBar) miniBar.style.display = 'none';
-      }
+      // [2026-10-01] 미연동이어도 홈(오늘 예약·문의)은 그대로 보인다. 안내는 상단 한 줄 띠(#ipcMiniBar)뿐이고
+      //   ✕ 로 닫으면 계정별로 기억한다(로그아웃해도 유지). 전면 홍보 카드로 홈을 가리던 동작은 없앴다(원장 지적).
+      _setIpcMiniBar(!_ipcDismissed());
       updateStep('stepInsta', false);
       updateStep('stepPersona', false);
       updateStep('stepCaption', false);
-      // [A안] 인스타 건너뛴 상태면 "사진으로 시작" 가이드 노출 (연결/닫음이면 자동 숨김)
       _syncStartGuide();
     }
     // [QA #8] single source-of-truth — 매 fetch 결과를 store 에 저장 + 변경 이벤트 dispatch.
@@ -1469,19 +1473,11 @@ window.showIgReturnFailModal = showIgReturnFailModal;
 //   - 토스트로 재진입 경로 안내
 //   - itdasy_ prefix 라 logout 시 _purgeUserScopedStorage 가 자연 정리
 function _dismissIpcCard() {
-  try { localStorage.setItem('itdasy_ipc_dismissed', '1'); } catch (_e) { void _e; }
-  const card = document.getElementById('homePreConnect');
-  if (card) card.style.display = 'none';
-  // 카드 닫으면 메인홈 visible 시킴 (교차 표시)
-  const post = document.getElementById('homePostConnect');
-  if (post) post.style.display = 'flex';
-  // [2026-05-08 hotfix] 메인홈 상단에 작은 띠 표시 — 재진입 경로
-  const bar = document.getElementById('ipcMiniBar');
-  if (bar) bar.style.display = 'flex';
-  // [A안 2026-07-21] 인스타 건너뛰면 "사진으로 시작" 가이드 카드 노출 — 인스타 없이도 핵심가치 진입로.
-  _syncStartGuide();
+  // [2026-10-01] ✕ = 띠를 닫고 계정별로 기억. 전면 카드/가이드 카드로 바꿔 띄우지 않는다 — 홈은 홈이어야 한다.
+  try { localStorage.setItem(_ipcDismissKey(), '1'); } catch (_e) { void _e; }
+  _setIpcMiniBar(false);
   if (typeof showToast === 'function') {
-    showToast('설정에서 다시 인스타 연결할 수 있어요');
+    showToast('설정 > 연동에서 언제든 인스타를 연결할 수 있어요');
   }
 }
 window._dismissIpcCard = _dismissIpcCard;
@@ -1489,15 +1485,11 @@ window._dismissIpcCard = _dismissIpcCard;
 // [A안 2026-07-21] "사진으로 시작" 가이드(#homeStartGuide) 노출 동기화 — 전부 sync 신호.
 //   조건: 인스타 건너뜀 + 미연동 + 안 닫음. 인스타 연결하거나 ✕ 닫으면 사라짐.
 function _syncStartGuide() {
+  // [2026-10-01] 자동 노출 중단. 전면 홍보 카드를 없앤 마당에 그 자리에 623px 가이드 카드가 대신 올라오면
+  //   같은 문제다. 마크업(#homeStartGuide)과 닫기 핸들러는 남겨 두되 홈에서는 항상 숨긴다.
   const el = document.getElementById('homeStartGuide');
   if (!el) return;
-  let connected = false, skipped = false, guideDismissed = false;
-  try {
-    connected = localStorage.getItem('itdasy:ig_connected_cache') === '1';
-    skipped = localStorage.getItem('itdasy_ipc_dismissed') === '1';
-    guideDismissed = localStorage.getItem('itdasy_home_guide_dismissed') === '1';
-  } catch (_e) { /* ignore */ }
-  el.style.display = (skipped && !connected && !guideDismissed) ? 'block' : 'none';
+  el.style.display = 'none';
 }
 window._syncStartGuide = _syncStartGuide;
 

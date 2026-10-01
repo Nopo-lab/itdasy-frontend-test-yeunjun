@@ -154,6 +154,13 @@ window.__LATEST_BUILD__ = '20260916-ai-consent-home';
   //  · 실패(오프라인·404)하면 조용히 넘어간다 — 이 검사 때문에 앱이 못 뜨면 안 된다.
   setTimeout(function () {
     try {
+      // [2026-10-01] 로컬(localhost/127.0.0.1)엔 비교할 '서버' 가 없다 — 레포를 그대로 서빙하므로 build.txt 는
+      //   커밋 시점 값이고 __LATEST_BUILD__ 와 어긋날 수 있다(실측 20260915 vs 20260916 → 부팅 3초 뒤 리로드,
+      //   리로드 뒤엔 지연 그룹이 없어 작업실 스모크 4/6 FAIL, 모든 로컬 Playwright 하네스가 플래그를 심어야 했다).
+      //   Capacitor 앱도 hostname 이 localhost 인데 거긴 build.txt 가 번들 안의 파일이라 대조 자체가 무의미하다.
+      //   레포 안 정합(build.txt == APP_BUILD == __LATEST_BUILD__)은 jest·scripts/smoke-check.js 가 지킨다.
+      var _h = location.hostname;
+      if (_h === 'localhost' || _h === '127.0.0.1') return;
       if (sessionStorage.getItem('srv_build_checked')) return;
       var mine = window.__LATEST_BUILD__;
       if (!mine) return;
@@ -1483,17 +1490,23 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
     <div class="ai-consent-home__body">
       <div class="ai-consent-home__eyebrow">AI 사용 설정</div>
       <h2 class="ai-consent-home__title" data-ai-consent-title>AI 기능을 켜둘까요?</h2>
-      <p class="ai-consent-home__copy" data-ai-consent-copy>
+      <!-- [2026-10-01] 기본은 한 줄 요약 + [자세히 보고 설정]/[나중에]. 전체 안내문·동의 버튼은 펼쳤을 때만(동의는 안내문을 본 뒤에). -->
+      <p class="ai-consent-home__brief" data-ai-consent-brief>캡션·사진 설명·음성 기능에 AI를 써요. 켜기 전엔 입력 내용이 외부로 나가지 않아요.</p>
+      <p class="ai-consent-home__copy" data-ai-consent-copy data-ai-consent-full>
         캡션·사진 설명·음성 기능을 쓰면 입력한 내용이 Google Cloud Vertex AI(Gemini) 등 외부 처리업체로 전송됩니다.
         앱 오류가 났을 때 원인을 빨리 찾기 위한 진단 정보도 함께 보내요.
         처리 목적과 보유기간은 개인정보처리방침에서 확인할 수 있어요.
       </p>
-      <p class="ai-consent-home__status" data-ai-consent-status></p>
-      <div class="ai-consent-home__actions">
+      <p class="ai-consent-home__status" data-ai-consent-status data-ai-consent-full></p>
+      <div class="ai-consent-home__actions" data-ai-consent-brief-actions>
+        <button type="button" class="ai-consent-home__primary" data-ai-consent-action="expand">자세히 보고 설정</button>
+        <button type="button" class="ai-consent-home__secondary" data-ai-consent-action="later">나중에</button>
+      </div>
+      <div class="ai-consent-home__actions" data-ai-consent-full>
         <button type="button" class="ai-consent-home__primary" data-ai-consent-action="all">전체 동의</button>
         <button type="button" class="ai-consent-home__secondary" data-ai-consent-action="partial">필수 기능만 사용</button>
       </div>
-      <a class="ai-consent-home__link" href="https://itdasy.com/privacy.html#ai-processing" target="_blank" rel="noopener">개인정보처리방침에서 자세히 보기</a>
+      <a class="ai-consent-home__link" data-ai-consent-full href="https://itdasy.com/privacy.html#ai-processing" target="_blank" rel="noopener">개인정보처리방침에서 자세히 보기</a>
     </div>
   </section>
 
@@ -1501,10 +1514,11 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
        checkInstaStatus 가 실제 상태로 마지막에 덮어씀. 첫 방문은 캐시 없어 그대로 pre-connect.
        [2026-05-08 v117] OAuth 직후 (?connected=success) 도 잇비카드 즉시 숨김 — status 호출 결과 기다리지 않음. -->
   <style>
-    /* 기본은 숨김 — 특이도 (0,1,0). 아래 .ig-connected-cache 규칙이 (0,2,0) 이라 이긴다. */
-    #homePostConnect { display: none; }
-    html.ig-connected-cache #homePreConnect { display: none; }
-    html.ig-connected-cache #homePostConnect { display: flex; }
+    /* [2026-10-01] 홈은 항상 보인다. 인스타 홍보 전면 카드(#homePreConnect)는 더 이상 홈을 대체하지 않는다 —
+       미연동 안내는 상단 한 줄 띠(#ipcMiniBar, ✕ 로 닫힘)로만. 전엔 "미연결 + 안 닫음 → 잇비 카드만" 이라
+       오늘 예약·문의가 있는 홈이 통째로 가려졌고, 닫은 상태가 로그아웃 때 지워져 매번 다시 떴다(원장 지적). */
+    #homePreConnect { display: none !important; }
+    #homePostConnect { display: flex; }
     @keyframes itb-pulse { 0%,100% { transform:scale(1); opacity:1; } 50% { transform:scale(1.08); opacity:.8; } }
     .itb-pulse { animation: itb-pulse 1.8s ease-in-out infinite; }
     @keyframes itb-float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-7px); } }
@@ -1640,14 +1654,20 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
   </div>
 
   <!-- 잇비 카드 닫음 후 메인홈 상단에 표시 — 재진입 경로 -->
-  <div id="ipcMiniBar" class="ipc-mini-bar" style="display:none;"
-       data-static-action="connect-instagram" data-haptic="light">
-    <span class="ipc-mini-bar-text">인스타 연결하면 잇비 시작</span>
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-         stroke="currentColor" stroke-width="2"
-         stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="9 18 15 12 9 6"/>
-    </svg>
+  <!-- [2026-10-01] 한 줄 띠 = 연결하기(본문) + ✕(닫기, 계정별로 기억). 전면 카드 대신 이것만 쓴다. -->
+  <div id="ipcMiniBar" class="ipc-mini-bar" style="display:none;" role="group" aria-label="인스타 연결 안내">
+    <button type="button" class="ipc-mini-bar-main" data-static-action="connect-instagram" data-haptic="light">
+      <span class="ipc-mini-bar-text">인스타 연결하면 잇비가 사장님 말투를 배워요</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+    <button type="button" class="ipc-mini-bar-close" data-static-action="dismiss-ipc" aria-label="인스타 연결 안내 닫기" data-haptic="light">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
   </div>
 
   <!-- ── 인스타 건너뛴 신규 사장님 — "사진으로 시작" 가이드 (IPC 형제 카드, 같은 .ipc-* 디자인 재사용) ──

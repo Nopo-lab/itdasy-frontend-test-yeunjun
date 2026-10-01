@@ -11,11 +11,17 @@
 
   const CARD_ID = 'aiConsentHomeCard';
   const DECISION_KEY = 'itdasy_ai_consent_decision_v1';
+  // [2026-10-01] '나중에' — 7일 동안 홈 카드를 숨긴다(계정별). AI 기능을 실제로 쓰려 하면 그 자리에서
+  //   AiConsentHome.open({force:true}) 가 다시 여니(캡션·잇비·음성·즉석 전부 배선돼 있음) 동의 없이 AI 가 도는 일은 없다.
+  const LATER_KEY = 'itdasy_ai_consent_later_v1';
+  const LATER_MS = 7 * 24 * 60 * 60 * 1000;
   const AI_VERSION = '2.0';
   let _status = null;
   let _request = null;
   let _busy = false;
   let _forceOpen = false;
+  let _expanded = false;   // 사용자가 [자세히 보고 설정] 을 눌러 전체 안내문을 펼친 상태
+  let _quietHide = false;  // '나중에' 로 숨길 땐 쿠키 배너를 되살리지 않는다(팝업 2개 금지)
   let _bound = false;
 
   function _card() { return document.getElementById(CARD_ID); }
@@ -41,6 +47,19 @@
       && (!snapshot.userId || !current.userId || snapshot.userId === current.userId);
   }
   function _decisionKey(userId) { return userId ? `${DECISION_KEY}:${userId}` : ''; }
+  function _laterKey(userId) { return userId ? `${LATER_KEY}:${userId}` : ''; }
+  function _laterUntil(userId) {
+    const key = _laterKey(userId);
+    if (!key) return 0;
+    try { return Number(localStorage.getItem(key) || 0) || 0; }
+    catch (e) { console.warn('[ai-consent-home] 나중에 읽기 실패:', e); return 0; }
+  }
+  function _rememberLater(userId) {
+    const key = _laterKey(userId);
+    if (!key) return;
+    try { localStorage.setItem(key, String(Date.now() + LATER_MS)); }
+    catch (e) { console.warn('[ai-consent-home] 나중에 저장 실패:', e); }
+  }
   function _readDecision(userId) {
     const key = _decisionKey(userId);
     if (!key) return '';
@@ -83,6 +102,8 @@
   function _hide() {
     const card = _card();
     if (card) card.hidden = true;
+    // '나중에' 로 접은 경우엔 배너도 조용히 — 카드 대신 배너가 튀어나오면 팝업이 하나 더 생기는 셈이다.
+    if (_quietHide) { _quietHide = false; return; }
     // 이 카드가 안 뜨면 쿠키 동의는 원래대로 배너가 받아야 한다.
     _releaseCookieBanner();
   }
@@ -127,9 +148,19 @@
       return;
     }
 
-    const compact = !_forceOpen && _readDecision(_userId()) === 'partial';
+    const userId = _userId();
+    const decision = _readDecision(userId);
+    if (!_forceOpen) {
+      // [2026-10-01] 이미 '필수 기능만' 을 골랐으면 홈에 카드를 남기지 않는다 — 설정 > AI 사용 설정(또는 AI 기능을 쓰는 순간)에서 켠다.
+      if (decision === 'partial') { _hide(); return; }
+      // '나중에' 로 접어 둔 동안은 조용히(배너도 안 띄움).
+      if (_laterUntil(userId) > Date.now()) { _quietHide = true; _hide(); return; }
+    }
+
+    const compact = _forceOpen && decision === 'partial';   // 설정/기능에서 연 경우: 'AI 기능 켜기' 한 버튼
+    const expanded = _forceOpen || _expanded;
     _show();
-    card.dataset.state = compact ? 'partial' : 'needs';
+    card.dataset.state = compact ? 'partial' : (expanded ? 'needs-open' : 'needs');
     _text('[data-ai-consent-title]', compact ? 'AI 기능은 꺼져 있어요' : 'AI 기능을 켜둘까요?');
     _text('[data-ai-consent-copy]', compact
       ? '캡션·사진 설명을 쓰려면 AI 사용 동의를 켜주세요. 동의 전에는 입력 내용이 외부 처리업체로 전송되지 않아요.'
@@ -150,12 +181,24 @@
     _buttons(false);
   }
 
+  function _later() {
+    const userId = _userId();
+    _rememberLater(userId);
+    _expanded = false;
+    _quietHide = true;
+    _hide();
+    _toast('설정 > AI 사용 설정에서 언제든 켤 수 있어요.');
+  }
+
   async function _loadStatus(snapshot) {
-    // 캐시 무효화는 쿼리 파라미터(_nc)로 한다. `Cache-Control` 헤더를 붙이면
-    // 교차 출처 요청이 CORS 프리플라이트를 타는데, 백엔드 allow_headers 에
-    // Cache-Control 이 없어 400 으로 막혀 상태 조회가 항상 실패했다(T-912 회귀).
-    const res = await window.apiFetch(`/persona/consent?_nc=${Date.now()}`, {
+    // 캐시 무효화는 fetch 옵션 `cache:'no-store'` 로 한다(헤더가 아니라 프리플라이트 없음).
+    //   `Cache-Control` 헤더를 붙이면 교차 출처 요청이 CORS 프리플라이트를 타는데, 백엔드 allow_headers 에
+    //   Cache-Control 이 없어 400 으로 막혀 상태 조회가 항상 실패했다(T-912 회귀).
+    //   [2026-10-01 perf-frontend-03] 예전의 `?_nc=Date.now()` 는 URL 을 매번 다르게 만들어 부팅의 두 트리거
+    //   (_init 즉시 + session-ready, 37ms 간격)가 apiFetch 의 in-flight 코얼레싱을 못 타고 2번 나갔다.
+    const res = await window.apiFetch('/persona/consent', {
       method: 'GET',
+      cache: 'no-store',
       headers: { Authorization: snapshot.authorization },
     });
     const data = await res.json().catch(() => ({}));
@@ -259,6 +302,8 @@
     if (action === 'all') _save(true);
     else if (action === 'partial') _save(false);
     else if (action === 'retry') refresh({ force: true, reveal: true });
+    else if (action === 'expand') { _expanded = true; if (_status) _renderStatus(_status); else refresh({ force: true, reveal: true }); }
+    else if (action === 'later') _later();
   }
 
   function _init() {
@@ -267,6 +312,7 @@
     _card().addEventListener('click', _onAction);
     window.addEventListener('itdasy:session-ready', () => {
       _forceOpen = false;
+      _expanded = false;
       refresh({ force: true });
     });
     if (_authorization()) refresh({ force: true });
