@@ -24,6 +24,9 @@
   let _hasMore = false;
   let _serverHits = null;   // {q, items} — 서버 검색 중일 때만 채워진다
   let _searchTimer = null;
+  // [2026-10-01 flow-customers-bookings-03] 이 모듈의 create/update/remove 가 진행 중인가.
+  //   data-changed 리스너가 "내가 쏜 이벤트" 와 "다른 경로(잇비·DM·다른 탭)" 를 구분하는 데 쓴다.
+  let _ownMutation = false;
 
   function _now() { return new Date().toISOString(); }
 
@@ -184,7 +187,7 @@
     if (sent) {
       _isOffline = false;
       _clearSWR();
-      try { await _fetchFresh(); } catch (_e) { void _e; }
+      try { _cache = await _fetchFresh(); } catch (_e) { void _e; }
       if (window.showToast) window.showToast(`오프라인에 저장했던 손님 ${sent}명을 올렸어요`);
       try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_customer', optimistic: false } })); } catch (_e) { void _e; }
     }
@@ -216,13 +219,18 @@
     window._customerDataListenerInit = true;
     window.addEventListener('itdasy:data-changed', async (e) => {
       const k = e.detail && e.detail.kind;
+      // 이 모듈의 create/update/remove 가 쏜 이벤트인가 — await 전(동기 구간)에 읽어야 한다
+      const own = _ownMutation;
       // [v212] delete_customer 추가 — 디테일에서 삭제 시 목록 즉시 갱신
       if (k === 'create_customer' || k === 'update_customer' || k === 'delete_customer' ||
           k === 'create_revenue' || k === 'create_booking') {
         _clearSWR();
         const sheet = document.getElementById('customerSheet');
         if (sheet && sheet.style.display === 'flex') {
-          try { await _fetchFresh(); _rerender && _rerender(); } catch (_e) { void _e; }
+          try { _cache = await _fetchFresh(); _rerender && _rerender(); } catch (_e) { void _e; }
+          // [2026-10-01 flow-customers-bookings-03] 서버 검색 중에 **다른 경로**(잇비·DM·다른 탭)가 손님을
+          //   바꿨으면 서버 검색 결과도 다시 받는다. 이 모듈이 직접 바꾼 건 create/update/remove 가 이미 맞췄다.
+          if (!own) _refreshServerHits();
           // PC 면 우측 디테일이 삭제된 고객을 보여주고 있을 수 있음 → 빈 상태로 복귀
           if (k === 'delete_customer') {
             const mount = sheet.querySelector('#cdDetailMount');
@@ -246,28 +254,34 @@
     return keep.length ? keep.concat(items) : items;
   }
 
+  /* [2026-10-01 perf-frontend-02] **순수 조회** — _cache 를 건드리지 않는다. 호출자가 `_cache = await _fetchFresh()` 로 대입한다.
+     예전엔 여기서 `_cache = items` 로 먼저 덮고 그 _cache 를 돌려줬다. 그래서 openCustomers 의
+     `sig(fresh) !== sig(_cache)` 는 fresh === _cache 라 **항상 같았고** _rerender() 가 한 번도 안 불렸다 —
+     2026-09-09 의 "여는 순간 서버와 맞춘다" 는 네트워크만 1회 더 나갈 뿐 화면은 그대로였다.
+     실측(Playwright): 다른 경로로 POST /customers 201 → 고객관리 재진입 → 즉시/3초/10초 모두 미표시,
+     그 사이 허브가 보낸 GET /customers 응답엔 새 손님이 있었다. list() 의 stale 분기(길이·첫 id 비교)도
+     같은 이유로 죽어 있었다. 캐시가 "바뀌었는지" 를 알려면 조회가 캐시를 덮어선 안 된다. */
   async function _fetchFresh() {
     if (window.CustomerCache?.fetchFresh) {
       const items = _mergeOptimistic(await window.CustomerCache.fetchFresh());
       _isOffline = false;
-      _cache = items;
       // [출시감사 2026-08-05 P0-1] 이 분기가 우선순위라, 여기서 total 을 안 받으면
       //   아래 직접 fetch 경로에서 아무리 채워도 실제로는 늘 0 이다.
       const t = window.CustomerCache._lastTotal;
       _total = Number.isFinite(t) ? t : items.length;
       _hasMore = !!window.CustomerCache._lastHasMore;
-      return _cache;
+      return items;
     }
     const d = await _api('GET', '/customers');
     _isOffline = false;
-    _cache = _mergeOptimistic(d.items || []);
+    const items = _mergeOptimistic(d.items || []);
     // [출시감사 2026-08-05 P0-1] 서버가 알려주는 **진짜 전체 수**를 들고 있는다.
     //   예전엔 응답 total 이 잘린 개수(=200)와 같아서 화면이 "전체 200명" 이라고 우겼다.
     //   DB 에 10만 명이 있어도 그렇게 보였다. 이제 total > 캐시길이면 서버 검색으로 넘어간다.
-    _total = Number.isFinite(d.total) ? d.total : _cache.length;
+    _total = Number.isFinite(d.total) ? d.total : items.length;
     _hasMore = !!d.has_more;
-    _writeSWR(_cache);
-    return _cache;
+    _writeSWR(items);
+    return items;
   }
 
   // [출시감사 2026-08-05 P0-1] 캐시 밖 손님을 찾기 위한 서버 검색.
@@ -277,6 +291,34 @@
     const off = Number(offset) || 0;
     const d = await _api('GET', '/customers?limit=200&offset=' + off + '&q=' + encodeURIComponent(q));
     return { items: d.items || [], total: Number(d.total) || 0, hasMore: !!d.has_more };
+  }
+
+  /* [2026-10-01 flow-customers-bookings-03] **서버 검색 결과(_serverHits)도 캐시다.**
+     캐시가 두 벌(_cache · _serverHits)인데 create/update/remove 는 _cache 만 고쳤다. search() 는
+     `_serverHits.q === q` 면 _serverHits.items 를 돌려주므로, 300명 샵에서 검색 → 삭제하면 서버는 지웠는데
+     목록엔 같은 행이 남았고(탭하면 404 → "불러오기 실패"), 이름을 바꿔도 옛 이름이 남았다(실측).
+     _cache 를 고치는 자리마다 같은 변경을 _serverHits 에도 건다 — 두 캐시가 같은 사실을 본다. */
+  function _sameId(a, b) { return String(a) === String(b); }
+  function _patchHits(fn) {
+    if (!_serverHits || !Array.isArray(_serverHits.items)) return;
+    const next = fn(_serverHits.items.slice());
+    if (!Array.isArray(next)) return;
+    const delta = next.length - _serverHits.items.length;
+    _serverHits.items = next;
+    if (delta) _serverHits.total = Math.max(next.length, (Number(_serverHits.total) || 0) + delta);
+  }
+  // 다른 경로가 손님을 바꿨을 때 — 현재 검색어로 서버 결과를 다시 받는다(검색어가 그새 바뀌면 버린다).
+  async function _refreshServerHits() {
+    const hits = _serverHits;
+    if (!hits || _isOffline) return;
+    try {
+      const r = await searchServer(hits.q);
+      if (_serverHits !== hits) return;   // 검색어가 바뀌었거나 새 결과가 이미 들어왔다
+      const sig = (arr) => (arr || []).map(c => c && (String(c.id) + ':' + (c.name || ''))).join(',');
+      const changed = sig(r.items) !== sig(hits.items);
+      _serverHits = { q: hits.q, items: r.items, total: r.total, hasMore: r.hasMore };
+      if (changed && _rerender) _rerender();
+    } catch (_e) { void _e; }
   }
 
   // [고객관리 릴리즈게이트 2026-09-06] 검색 결과도 이어받는다.
@@ -356,6 +398,7 @@
       if (!swr.fresh) {
         _fetchFresh().then(fresh => {
           // [BUG-R3-1] JSON.stringify 전체 비교 제거 — 건수/첫ID 간이 비교로 전환
+          // [2026-10-01] _fetchFresh 가 _cache 를 덮지 않게 되면서 이 비교가 비로소 동작한다.
           if (fresh.length !== _cache.length || (fresh[0] && _cache[0] && fresh[0].id !== _cache[0].id)) {
             _cache = fresh;
             _rerender && _rerender();  // UI 자동 갱신
@@ -366,7 +409,8 @@
     }
     // 2. 첫 진입 — 네트워크 대기 (한 번뿐)
     try {
-      return await _fetchFresh();
+      _cache = await _fetchFresh();
+      return _cache;
     } catch (e) {
       // [출시감사 2026-08-05 P1-4] `network-down` 추가.
       //   예전엔 endpoint-missing / no-token 만 오프라인으로 봤다. 진짜 네트워크 끊김은
@@ -423,7 +467,11 @@
       _optimistic: true,
     };
     if (_cache) _cache.unshift(optimisticRecord);
+    // 서버 검색 중이면(검색 0건 → "새 손님으로 등록" 경로) 검색어에 맞는 손님만 결과에도 넣는다
+    _patchHits(items => _matchesQuery(optimisticRecord, _serverHits.q) ? [optimisticRecord].concat(items) : items);
+    _ownMutation = true;
     try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_customer', optimistic: true } })); } catch (_e) { void _e; }
+    finally { _ownMutation = false; }
     try {
       const created = await _api('POST', '/customers', data);
       // 옵티미스틱 항목을 실제 데이터로 교체
@@ -432,14 +480,24 @@
         if (idx >= 0) _cache[idx] = created;
         else _cache.unshift(created);
       }
+      _patchHits(items => {
+        const i = items.findIndex(c => _sameId(c.id, optimisticRecord.id));
+        if (i >= 0) { items[i] = created; return items; }
+        return _matchesQuery(created, _serverHits.q) ? [created].concat(items) : items;
+      });
       _writeSWR(_cache);  // SWR 캐시 동기
+      _ownMutation = true;
       try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_customer', optimistic: false } })); } catch (_e) { void _e; }
+      finally { _ownMutation = false; }
       return created;
     } catch (err) {
       // 실패 — 옵티미스틱 항목 제거
       if (_cache) _cache = _cache.filter(c => c.id !== optimisticRecord.id);
+      _patchHits(items => items.filter(c => !_sameId(c.id, optimisticRecord.id)));
       _writeSWR(_cache);
+      _ownMutation = true;
       try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_customer', optimistic: false, rollback: true } })); } catch (_e) { void _e; }
+      finally { _ownMutation = false; }
       // [출시감사 2026-08-05 P1-4] 네트워크가 끊긴 거면 입력을 버리지 말고 오프라인에 담아둔다.
       //   예전엔 그냥 토스트 띄우고 throw → 원장님이 적은 손님 정보가 그대로 사라졌다.
       if (err && err.message === 'network-down') {
@@ -479,9 +537,12 @@
       const i = _cache.findIndex(c => c.id === id);
       if (i >= 0) _cache[i] = updated;
     }
+    _patchHits(items => items.map(c => (_sameId(c.id, id) ? updated : c)));   // 서버 검색 결과에도 새 이름
     _writeSWR(_cache);  // SWR 캐시 동기
     // [2026-04-26 A9] mutation 이벤트 누락 보충 (대시보드·시트 자동 새로고침)
+    _ownMutation = true;
     try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'update_customer', optimistic: false } })); } catch (_e) { void _e; }
+    finally { _ownMutation = false; }
     return updated;
   }
 
@@ -490,14 +551,20 @@
       const list = _loadOffline().filter(c => c.id !== id);
       _saveOffline(list);
       _cache = list;
+      _patchHits(items => items.filter(c => !_sameId(c.id, id)));
+      _ownMutation = true;
       try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'delete_customer', customer_id: id, optimistic: false } })); } catch (_e) { void _e; }
+      finally { _ownMutation = false; }
       return { ok: true };
     }
     await _api('DELETE', '/customers/' + id);
     if (_cache) _cache = _cache.filter(c => c.id !== id);
+    _patchHits(items => items.filter(c => !_sameId(c.id, id)));   // 서버 검색 결과에서도 지운다 — 유령 행(404) 방지
     _writeSWR(_cache);  // SWR 캐시 동기
     // [2026-04-26 A9] mutation 이벤트 누락 보충
-    try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'delete_customer', optimistic: false } })); } catch (_e) { void _e; }
+    _ownMutation = true;
+    try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'delete_customer', customer_id: id, optimistic: false } })); } catch (_e) { void _e; }
+    finally { _ownMutation = false; }
     return { ok: true };
   }
 
@@ -516,13 +583,9 @@
   }
 
   // ── 검색 ────────────────────────────────────────────────
-  function search(query) {
-    if (!_cache) return [];
-    const q = String(query || '').trim().toLowerCase();
-    if (!q) return _cache;
-    // [출시감사 2026-08-05 P0-1] 서버 검색 결과가 도착해 있으면 그걸 쓴다.
-    //   캐시(200건) 안에서만 찾던 게 P0 의 정체였다.
-    if (_serverHits && _serverHits.q === q) return _serverHits.items;
+  // 손님 한 명이 (소문자·trim 된) 검색어에 걸리는가 — search() 와 create() 가 같은 규칙을 쓴다.
+  function _matchesQuery(c, q) {
+    if (!c || !q) return false;
     // [2026-08-05] 공백 무시 — **서버와 같은 규칙**이어야 한다.
     //   백엔드에만 넣었더니 손님 200명 이하인 샵(=대다수)은 서버 검색을 아예 안 타서
     //   `"테 스트손님1"` 이 라이브에서 0건이었다(실측). 규칙이 갈리면 화면마다 결과가 달라진다.
@@ -530,7 +593,7 @@
     const sq = s => String(s || '').toLowerCase().replace(/\s+/g, '');
     // 전화는 하이픈·공백을 뺀 숫자로도 맞춰본다 (010-1234-5678 ↔ 01012345678)
     const qd = q.replace(/\D/g, '');
-    return _cache.filter(c =>
+    return !!(
       (c.name && c.name.toLowerCase().includes(q)) ||
       (c.name && qs && sq(c.name).includes(qs)) ||
       // 전화는 **숫자 3자리 이상**일 때만 부분일치 — 서버와 같은 규칙이다.
@@ -540,6 +603,15 @@
       (c.tags || []).some(t => t.toLowerCase().includes(q)) ||
       (c.name && _chosungMatch(q, c.name))
     );
+  }
+  function search(query) {
+    if (!_cache) return [];
+    const q = String(query || '').trim().toLowerCase();
+    if (!q) return _cache;
+    // [출시감사 2026-08-05 P0-1] 서버 검색 결과가 도착해 있으면 그걸 쓴다.
+    //   캐시(200건) 안에서만 찾던 게 P0 의 정체였다.
+    if (_serverHits && _serverHits.q === q) return _serverHits.items;
+    return _cache.filter(c => _matchesQuery(c, q));
   }
 
   // [v212] PC 한 화면 분할 판정 — 사이드바(232px) + 좌목록(380px) + 디테일(통계 3카드) 까지 모두 표시되려면
@@ -786,7 +858,7 @@
           if (window.hapticLight) window.hapticLight();
           if (window.showToast) window.showToast(`${done + 1}건을 하나로 합쳤어요`);
           _clearSWR();
-          await _fetchFresh();
+          _cache = await _fetchFresh();
           await fetchDuplicates();
           if ((_dupGroups || []).length) _openMergeScreen();
           else { _isDetailOpen = false; history.back(); }
@@ -1471,6 +1543,8 @@
     const swr = _readSWR();
     if (swr) {
       _cache = swr.items;
+      // list() 와 같은 복원 — 없으면 '전체 N명' 이 캐시 길이(200)로 보인다
+      if (Number.isFinite(swr.total)) _total = swr.total;
       _rerender();  // 즉시 표시
       /* [2026-09-09] 화면을 **여는 순간**에는 캐시가 신선해도 서버와 한 번 맞춘다.
          예전엔 `list()` 를 불렀는데, `list()` 는 `swr.fresh`(2분 이내)면 네트워크를 아예
@@ -1485,11 +1559,15 @@
 
          그래서 목록을 여는 이 경로에서만 강제로 갱신한다(비용: 진입당 GET 1회.
          서버도 `customers_list:{user}` 를 5분 캐시하므로 대부분 캐시 히트다).
-         내용이 같으면 다시 그리지 않는다 — 스크롤·검색 상태를 건드리지 않기 위해서다. */
+         내용이 같으면 다시 그리지 않는다 — 스크롤·검색 상태를 건드리지 않기 위해서다.
+         [2026-10-01 perf-frontend-02] 이 비교가 실제로 동작한 적이 없었다 — _fetchFresh 가 _cache 를 먼저
+         덮어서 fresh === _cache 였다. 이제 _fetchFresh 는 순수 조회라 비교가 산다(가드 테스트:
+         customer-list-fresh-rerender-2026-10-01). 서버가 센 전체 수가 바뀐 것도 다시 그릴 이유다. */
+      const totalBefore = _total;
       _fetchFresh().then((fresh) => {
         if (!Array.isArray(fresh)) return;
         const sig = (arr) => (arr || []).map((c) => c && c.id).join(',');
-        if (sig(fresh) !== sig(_cache)) { _cache = fresh; _rerender(); }
+        if (sig(fresh) !== sig(_cache) || _total !== totalBefore) { _cache = fresh; _rerender(); }
       }).catch(() => {});
     } else {
       box.innerHTML = (typeof window._renderSkeleton === 'function')
@@ -1521,7 +1599,7 @@
       btn.dataset.busy = '1';
       btn.textContent = '불러오는 중…';
       try {
-        await _fetchFresh();
+        _cache = await _fetchFresh();
         _isOffline = false;
         _rerender && _rerender();
       } catch (_e) {
@@ -1578,7 +1656,7 @@
         const minItems = 5; // 최소 5명은 있어야 캐시로 인정 (신규 가입자 제외)
         if (!_cache || _cache.length < minItems || !swr || !swr.fresh) {
           try {
-            await _fetchFresh();
+            _cache = await _fetchFresh();
           } catch (_e) {
             try { await list(); }
             catch (_e2) { if (!_cache || !_cache.length) _pickLoadFailed = true; }
@@ -1651,7 +1729,7 @@
             const retryBtn = listEl.querySelector('[data-pick-retry]');
             if (retryBtn) retryBtn.addEventListener('click', async () => {
               retryBtn.disabled = true; retryBtn.textContent = '불러오는 중…';
-              try { await _fetchFresh(); _pickLoadFailed = false; }
+              try { _cache = await _fetchFresh(); _pickLoadFailed = false; }
               catch (_e) { try { await list(); if (_cache && _cache.length) _pickLoadFailed = false; } catch (_e2) { void _e2; } }
               render();
             });

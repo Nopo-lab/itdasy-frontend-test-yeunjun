@@ -57,7 +57,9 @@
     sheet.id = 'customerDashSheet';
     // [v208] 풀화면 시트 — PC 디테일과 동일한 v4 본문을 그대로 표시.
     // [핫픽스D #3] z-index 10600 — 잇비 채팅(assistantSheet 10500) 위로 떠야 함(채팅에서 "고객 기록 열기" 시 뒤에 깔리던 버그).
-    sheet.style.cssText = 'position:fixed;inset:0;z-index:10600;display:none;background:var(--surface,#fff);overflow-y:auto;';
+    // [2026-10-01] 값의 정본은 style-components.css :root 의 `--z-customer-detail`(오버레이 z 사다리 SSOT).
+    //   리터럴은 폴백이자 가드 테스트가 파싱하는 값 — 바꿀 땐 토큰과 함께(customer-edit-modal-above-detail 테스트가 대조).
+    sheet.style.cssText = 'position:fixed;inset:0;z-index:10600;z-index:var(--z-customer-detail,10600);display:none;background:var(--surface,#fff);overflow-y:auto;';
     sheet.innerHTML = `
       <div class="cust-detail" style="position:relative;width:100%;max-width:720px;margin:0 auto;min-height:100vh;background:var(--surface,#fff);">
         <div class="cv4-detail-mobile-head">
@@ -619,11 +621,18 @@
   window._openCustomerEditSheet = function (c) {
     c = c || {};
     const isNew = !c.id;
+    /* [2026-10-01 flow-customers-bookings-01] z-index 10010 → 10800 (`--z-customer-edit`).
+       실측(390px): 상세 시트(10600, 핫픽스D#3 이 올림)에서 [정보수정] 을 눌러도 아무 변화가 없었다 —
+       모달은 DOM 에 있는데 **호출자 시트 뒤에** 그려져 보이지도 눌리지도 않았다(저장 버튼 클릭 타임아웃).
+       PC 는 상세가 목록 시트(9998) 안에 그려져 가려지지 않아 모바일에서만 났다.
+       이 모달을 여는 화면은 목록(9998)·상세(10600)·잇비→상세 경로라, 그 전부와 회원권(10650)·DM 미리보기(10700)
+       위이면서 확인창(12000) 아래인 자리 = 10800. 값의 정본은 style-components.css :root 의 z 사다리.
+       (기존 가드 customer-edit-modal-layer.test 가 아래 id 선언 300자 안에서 숫자를 파싱한다 — 그 사이에 주석 금지) */
     const old = document.getElementById('custEditModal');
     if (old) old.remove();
     const wrap = document.createElement('div');
     wrap.id = 'custEditModal';
-    wrap.style.cssText = 'position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:20px;';
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:10800;z-index:var(--z-customer-edit,10800);background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:20px;';
     wrap.innerHTML = _customerEditHtml(c, isNew);
     document.body.appendChild(wrap);
     /* [2026-09-02 API/E2E 게이트] 이 모달은 **어떤 레이어 스택에도 등록돼 있지 않았다.**

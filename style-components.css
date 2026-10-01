@@ -502,12 +502,28 @@ details[open] > summary > svg:first-child { transform: rotate(180deg); }
    ≥768px:232px · ≥1200px:260px. .side-nav width + body padding +
    모든 hub/overlay/작업실 left 오프셋이 var(--side-nav-width) 참조.
    폭 바꾸려면 여기 두 줄만. ⚠️ 하드코딩 232/260 새로 넣지 말 것. (v716) */
+/* 🔑 오버레이 z-index 사다리 SSOT (2026-10-01, flow-customers-bookings-01)
+   레이어 숫자가 파일마다 흩어져 있어 한쪽만 올리면 다른 쪽이 뒤에 깔렸다(고객 상세 10600 ↑ 후
+   정보수정 모달 10010 이 상세 뒤에 그려져 모바일에서 쓸 수 없었다). 새 오버레이는 여기서 자리를 고르고
+   `z-index:NNNN;z-index:var(--z-…, NNNN)` 꼴로 읽는다(리터럴은 폴백이자 가드 테스트가 파싱하는 값).
+   값은 각 파일의 기존 숫자와 같다 — 한쪽만 바꾸면 __tests__/customer-edit-modal-above-detail-2026-10-01 이 잡는다. */
 :root {
   --side-nav-width: 232px;
+  --z-customer-list: 9998;      /* app-customer.js #customerSheet (고객 목록) */
+  --z-side-nav: 10000;          /* #sideNav (PC 사이드바, style-responsive.css) */
+  --z-assistant: 10500;         /* app-assistant.js #assistantSheet (잇비) */
+  --z-customer-detail: 10600;   /* app-customer-dashboard.js #customerDashSheet (고객 상세, 잇비 위) */
+  --z-membership: 10650;        /* app-membership.js #membershipSheet (회원권, 상세 위) */
+  --z-dm-preview: 10700;        /* app-dm-preview.js (DM 미리보기) */
+  --z-customer-edit: 10800;     /* app-customer-dashboard.js #custEditModal (손님 추가/정보수정 — 여는 화면 전부 위) */
+  --z-customer-picker: 10800;   /* app-customer.js 손님 고르기 시트 (편집 모달과 동시에 열리지 않는다) */
+  --z-app-header-pc: 11000;     /* .app-header (PC, style-responsive.css) */
+  --z-confirm-toast: 12000;     /* .bk-confirm-toast (style-base.css) — 모든 시트 위의 확인창 */
 }
 @media (width >= 1200px) {
   :root { --side-nav-width: 260px; }
 }
+
 
 .cw-chatbot-card {
   display: flex; align-items: center; gap: 10px;

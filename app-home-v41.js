@@ -337,7 +337,19 @@
 
   // ─────────── 메인 렌더 ───────────
   let _lastContainerId = null;
+  /* [2026-10-01 perf-frontend-01] false | { pending: null | opts }
+     렌더 중이면 객체다. 그 사이 들어온 렌더 요청은 **버리지 않고** pending 에 합쳐 두고, finally 에서
+     한 번 더 그린다(그때의 토큰으로). 로그인 직후·계정 전환·DM 보내고 홈 복귀가 전부 이 경우였다 —
+     예전 `if (_inFlight) return;` 은 조용히 삼켜서 "탭을 왕복해야 그려지는" 홈을 만들었다.
+     보류분 합치기: force 는 하나라도 force 면 force, channels 는 전원이 false 일 때만 false. */
   let _inFlight = false;
+  function _mergeOpts(a, b) {
+    a = a || {}; b = b || {};
+    return {
+      force: !!(a.force || b.force),
+      channels: (a.channels === false && b.channels === false) ? false : true,
+    };
+  }
 
   function _hydrateHome(container, brief, dmQueueCount) {
     container.innerHTML = window.HomeV41Render.compose(brief, dmQueueCount);
@@ -400,6 +412,33 @@
       </div>`;
   }
 
+  /* [2026-10-01 perf-frontend-01] 토큰 없이 렌더가 시작됐을 때 — 그릴지, 기다릴지를 **여기서** 정한다.
+     실측(390px Playwright): 토큰 없이 부팅 → 1.5s/4.5s 뒤 로그인 → 30초가 지나도 홈은 스켈레톤.
+       ① 예전엔 토큰이 없어도 네트워크 렌더를 시작해 ~5.8s(헤더 대기 3s + 백오프) 동안 _inFlight 였고
+       ② 그 사이 로그인 훅의 refresh() 는 `if (_inFlight) return;` 으로 버려졌고(→ pending 큐로 해결)
+       ③ 초기 렌더는 끝날 때 토큰이 달라졌다고(없음 → 있음) 조기 return 해 스켈레톤이 영영 남았다.
+     웹은 토큰이 localStorage 동기라 "지금 없으면 정말 없는 것" → 로그인 전엔 스켈레톤도 요청도 안 띄운다
+     (null). 로그인 훅(app-core refreshAfterAuth → refresh())이 그때 그린다 — refresh() 는 마운트 전에도 동작한다.
+     네이티브(Capacitor)는 보안저장 하이드레이션이 비동기라 끝나기 전엔 "없다" 를 믿지 않고, 예전처럼 스켈레톤을
+     띄우고 헤더를 최대 3초 기다린 뒤 **그 토큰으로** 4개 요청을 전부 보낸다(예전엔 brief 만 기다리고 나머지는
+     무인증으로 0 을 받았고, 그마저 끝에서 토큰 불일치로 버려졌다).
+     돌려주는 값: 렌더에 쓸 Authorization · null(로그인 전 — 그리지 않는다) · undefined(3초가 지나도 하이드레이션이
+     안 끝남 — 예전 흐름대로 진행해 brief 재시도가 판단한다). */
+  async function _awaitRenderAuth(container) {
+    const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    const settled = () => !native || (typeof window._tokenReadyCheck === 'function' ? !!window._tokenReadyCheck() : true);
+    if (settled()) return null;
+    _showSkeleton(container);
+    const t0 = Date.now();
+    while (!_authHeaders() && Date.now() - t0 < 3000) await new Promise(r => setTimeout(r, 100));
+    const auth = _authHeaders()?.Authorization;
+    if (auth) return auth;
+    if (!settled()) return undefined;
+    const sk = container.querySelector('.hv5-skel');   // 하이드레이션이 끝났는데 토큰이 없다 = 로그아웃 상태
+    if (sk) sk.remove();
+    return null;
+  }
+
   // 채널 배지 직전 값 — 예약류 변경 때 재조회 대신 이 값을 쓴다(위 주석 참조)
   let _lastDmCount = 0, _lastCmtCount = 0;
   async function _doRender(containerId, opts) {
@@ -421,12 +460,16 @@
       } catch (_e) { /* fall through */ }
     }
 
-    if (_inFlight) return;
-    _inFlight = true;
-    const renderAuth = _authHeaders()?.Authorization;
-    // [2026-08-22 UX-COLD] 캐시로 그린 게 없으면(진짜 첫 진입) fetch 기다리는 동안 스켈레톤.
-    _showSkeleton(container);
+    // 렌더 중이면 보류분에 합친다 — 끝나면 한 번 더 (아래 finally). 예전엔 여기서 그냥 버렸다.
+    if (_inFlight) { _inFlight.pending = _mergeOpts(_inFlight.pending, opts); return; }
+    _inFlight = { pending: null };
+    let renderAuth = _authHeaders()?.Authorization;
     try {
+      // [2026-10-01 perf-frontend-01] 토큰 없이 시작했으면 _awaitRenderAuth 가 정한다 (null = 로그인 전, 그리지 않는다)
+      if (!renderAuth) renderAuth = await _awaitRenderAuth(container);
+      if (renderAuth === null) return;
+      // [2026-08-22 UX-COLD] 캐시로 그린 게 없으면(진짜 첫 진입) fetch 기다리는 동안 스켈레톤.
+      _showSkeleton(container);
       /* [2026-09-03 최종 클로저] 채널 배지(DM·댓글)는 **예약·매출·고객 변경과 무관**하다.
          예전엔 data-changed 마다 4개를 통째로 다시 불렀고, 게다가 brief 백엔드 지연 대응
          재시도(1500·4000ms)까지 같은 4개를 반복해서, 예약 저장 1회에
@@ -462,7 +505,9 @@
       _hydrateHome(container, merged, dmQueueCount);
       requestAnimationFrame(() => { window.scrollTo(0, 0); });
     } finally {
+      const next = _inFlight && _inFlight.pending;
       _inFlight = false;
+      if (next) _doRender(container, next);   // 보류된 요청 — 현재 토큰으로 다시
     }
   }
 
@@ -502,7 +547,9 @@
   window.HomeV41 = {
     async render(containerId) { return _doRender(containerId || 'homeV41Root'); },
     async refresh() {
-      if (_lastContainerId) return _doRender(_lastContainerId, { force: true });
+      // [2026-10-01 perf-frontend-01] 마운트 전(로그인 전엔 _autoMount 가 그리지 않는다)에도 홈 루트로
+      //   그린다 — 로그인 훅(app-core refreshAfterAuth)이 refresh() 하나로 첫 렌더까지 책임진다.
+      return _doRender(_lastContainerId || 'homeV41Root', { force: true });
     },
   };
 
@@ -531,7 +578,7 @@
   // ─────────── 자동 부트스트랩 ───────────
   function _autoMount() {
     const el = document.getElementById('homeV41Root');
-    if (el) _doRender(el);
+    if (el) _doRender(el);   // 토큰이 없으면(웹) _doRender 가 조용히 끝난다 — 로그인 훅이 그린다
     // [v206 2026-05-19] 모닝 브리핑 마운트 제거 — AI비서 실시간 분석과 중복.
     //   homeMorningMount div 자체는 호환성 위해 남겨둠 (display:none).
     //   TodayMorning 모듈은 유지 (다른 진입점에서 사용 가능).
@@ -552,6 +599,9 @@
     };
     window.addEventListener('itdasy:data-changed', (ev) => {
       const kind = (ev && ev.detail && ev.detail.kind) || '';
+      // [2026-10-01] kind:'auth' 는 app-core.refreshAfterAuth 가 **바로 앞에서 refresh() 를 부른 뒤** 다른
+      //   모듈(플랜·내 샵 관리)을 깨우려고 쏘는 신호다. 여기서도 받으면 같은 토큰으로 brief 를 두 번 부른다.
+      if (kind === 'auth') return;
       const isBookingish = /booking|revenue|completion|customer/.test(kind);
       // [v201] 안전망 — booking/revenue/completion 관련이면 brief SWR 캐시 즉시 삭제.
       //   booking-api 측 무효화가 있긴 하지만 racy 케이스 방어.
