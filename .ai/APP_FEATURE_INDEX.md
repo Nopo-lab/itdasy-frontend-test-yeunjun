@@ -365,3 +365,5 @@ _갱신 이력: 2026-07-10 전수분석 → 2026-07-23 아이콘 스티커 → *
 - T-915 reopened untouched originals use null; legacy empty originals initialize on first cutout.
 
 - T-915 cloud workspace upload keeps PNG/WEBP editable alpha; final JPEG photos keep old compression.
+
+- T-915 edit-state sync signatures sort nested object keys; equivalent cloud/local JSON stays the same edit.

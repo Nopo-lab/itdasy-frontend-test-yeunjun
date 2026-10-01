@@ -240,10 +240,13 @@
      _sig 가 영영 안 맞아 **한 번도 발동하지 못했다.**
      이미지 참조를 토큰 하나로 바꾸면 양쪽이 같은 값을 낸다. 레이어·문구·개수가
      진짜로 다르면 여전히 다른 값이 나오므로 **실제 충돌 감지는 그대로다.** */
-  function _imgAgnostic(es) {
+  function _imgAgnostic(es, legacy) {
     try {
       return JSON.stringify(es, function (k, v) {
         if (typeof v === 'string' && (v.indexOf('data:image') === 0 || /^https?:\/\//.test(v))) return '<img>';
+        if (!legacy && v && typeof v === 'object' && !Array.isArray(v)) {
+          var sorted = Object.create(null); Object.keys(v).sort().forEach(function (key) { sorted[key] = v[key]; }); return sorted;
+        }
         return v;
       });
     } catch (_e) { return ''; }
@@ -255,27 +258,30 @@
     return str.length + '.' + h.toString(36);
   }
   /** 사진 집합의 서명 — id 순서 + 편집상태만. blob 없이 '바뀌었나'만 본다.
-      `v2:` 는 포맷 표식이다. 예전 포맷으로 저장된 `_base` 는 다음 동기화 한 번에
+      `v3:` 는 키순서 정규화 포맷, `v2:` base는 기존 비교 방식으로 호환한다. 예전 포맷으로 저장된 `_base` 는 다음 동기화 한 번에
       `makeBase` 가 새로 쓰므로 창이 한 주기로 닫힌다. */
-  function photoSig(slot) {
+  function photoSig(slot, legacy) {
     try {
       var ps = (slot && slot.photos) || [];
       if (!ps.length) return '';   // 기존 계약 유지 — 사진이 없으면 빈 문자열(workspace-sync-merge.test.js)
-      return 'v2:' + ps.map(function (p) {
-        return String(p && p.id) + ':' + String(p && p.role || '') + ':' + (p && p.editState ? _hash(_imgAgnostic(p.editState)) : '0');
+      return (legacy ? 'v2:' : 'v3:') + ps.map(function (p) {
+        return String(p && p.id) + ':' + String(p && p.role || '') + ':' + (p && p.editState ? _hash(_imgAgnostic(p.editState, legacy)) : '0');
       }).join('|');
     } catch (_e) { return ''; }
   }
   /** 합의 스냅샷 — 이 값 위에서 다음 편집이 일어난다. */
   function makeBase(slot) {
-    var b = { _sig: photoSig(slot) };
+    var b = { _sig: photoSig(slot), _legacySig: photoSig(slot, true) };
     MERGE_FIELDS.forEach(function (k) { b[k] = slot ? slot[k] : undefined; });
     return b;
   }
   /** 두 지문이 같은 내용을 가리키나 — '서버본이 내가 보낸 그것인가' 판정용. */
   function sameBaseSig(a, b) {
     if (!a || !b) return false;
-    if (!sameVal(a._sig, b._sig)) return false;
+    var as = a._sig, bs = b._sig;
+    if (String(as || '').indexOf('v2:') === 0 && String(bs || '').indexOf('v3:') === 0) bs = b._legacySig;
+    else if (String(bs || '').indexOf('v2:') === 0 && String(as || '').indexOf('v3:') === 0) as = a._legacySig;
+    if (!sameVal(as, bs)) return false;
     for (var i = 0; i < MERGE_FIELDS.length; i++) {
       if (!sameVal(a[MERGE_FIELDS[i]], b[MERGE_FIELDS[i]])) return false;
     }
@@ -298,7 +304,8 @@
       conflicts.push(k); out[k] = l;                       // 진짜 충돌 — 일단 내 것 두고 아래서 분리
     });
     // 사진은 필드로 못 쪼갠다(순서·추가·삭제가 얽힘) → 서명으로 '한쪽만 바꿨나'만 본다.
-    var bs = base ? base._sig : '', ls = photoSig(local), rs = photoSig(remote);
+    var bs = base ? base._sig : '', legacy = String(bs || '').indexOf('v2:') === 0;
+    var ls = photoSig(local, legacy), rs = photoSig(remote, legacy);
     if (ls !== rs) {
       if (ls === bs) out.photos = remote.photos;           // 내가 사진 안 건드림 → 상대 것
       else if (rs === bs) out.photos = local.photos;       // 상대가 안 건드림 → 내 것

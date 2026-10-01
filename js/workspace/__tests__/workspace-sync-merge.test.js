@@ -21,7 +21,7 @@ function loadSync() {
   global.setTimeout = () => 0;
   const file = path.join(__dirname, '..', 'workspace-sync.js');
   // eslint-disable-next-line no-eval
-  eval(fs.readFileSync(file, 'utf8'));
+  eval(fs.readFileSync(file, 'utf8').replace('makeBase: makeBase,', 'makeBase: makeBase, sameBaseSig: sameBaseSig,'));
   global.setTimeout = realTimeout;
   return global.window.WorkspaceSync && global.window.WorkspaceSync._debug;
 }
@@ -105,5 +105,41 @@ describe('makeBase — 서버로 새면 안 되는 순수 로컬 상태', () => 
     const b = D.makeBase({ caption: 'c', photos: [{ id: 'p1', dataUrl: 'data:image/png;base64,AAAA' }] });
     expect(JSON.stringify(b)).not.toContain('data:image');
     expect(typeof b._sig).toBe('string');
+  });
+});
+
+describe('JSON object order cannot turn the same photo edit into a conflict', () => {
+  const local={photos:[{id:'qa',role:'hero',editState:{photos:['data:image/png;base64,synthetic'],photoBg:{0:{color:'#D58A95',img:null}},adj:[{b:100,c:100,s:100}],layers:[]}}]};
+  const remote={photos:[{id:'qa',role:'hero',editState:{layers:[],adj:[{s:100,c:100,b:100}],photoBg:{0:{img:null,color:'#D58A95'}},photos:['https://test.invalid/storage/image.png']}}]};
+  test('nested reordered keys and data/cloud image references have one signature',()=>{
+    expect(D.photoSig(local)).toBe(D.photoSig(remote));
+  });
+  test('identical concurrent edits do not create a false photo conflict',()=>{
+    const unchanged={photos:[{id:'qa',role:'hero'}]};
+    expect(D.merge3(D.makeBase(unchanged),local,remote).conflicts).toEqual([]);
+  });
+  test('actual color change still requires conflict handling',()=>{
+    const changed=JSON.parse(JSON.stringify(remote));changed.photos[0].editState.photoBg[0].color='#000000';
+    expect(D.photoSig(local)).not.toBe(D.photoSig(changed));
+  });
+});
+
+describe('existing v2 bases and pending pushes survive the v3 transition',()=>{
+  // Measured with the actual pre-change origin/main implementation (8af0b30).
+  const oldBase={_sig:'v2:qa:hero:113.15gcre'};
+  const oldPhoto={photos:[{id:'qa',role:'hero',editState:{photos:['data:image/png;base64,synthetic'],photoBg:{0:{color:'#D58A95',img:null}},adj:[{b:100,c:100,s:100}],layers:[]}}]};
+  function changed(color){const x=JSON.parse(JSON.stringify(oldPhoto));x.photos[0].editState.photoBg[0].color=color;return x;}
+  test('remote-only photo edit against an old base does not become two-sided conflict',()=>{
+    const newer=changed('#000000');const r=D.merge3(oldBase,oldPhoto,newer);expect(r.conflicts).toEqual([]);expect(r.slot.photos).toEqual(newer.photos);
+  });
+  test('local-only photo edit against an old base retains the local edit',()=>{
+    const newer=changed('#FFFFFF');const r=D.merge3(oldBase,newer,oldPhoto);expect(r.conflicts).toEqual([]);expect(r.slot.photos).toEqual(newer.photos);
+  });
+  test('old pending push matches the unchanged newly received state',()=>{
+    expect(D.sameBaseSig(oldBase,D.makeBase(oldPhoto))).toBe(true);expect(D.sameBaseSig(D.makeBase(oldPhoto),oldBase)).toBe(true);
+  });
+  test('actual competing edits and changed pending payload stay distinct',()=>{
+    expect(D.merge3(oldBase,changed('#000000'),changed('#FFFFFF')).conflicts).toEqual(['photos']);
+    expect(D.sameBaseSig(oldBase,D.makeBase(changed('#000000')))).toBe(false);
   });
 });
