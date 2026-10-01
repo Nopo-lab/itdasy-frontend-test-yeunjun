@@ -32,3 +32,6 @@
 - False conflict unit reproduction: same photo edit with different nested key order failed signature equality and created photo conflict. Canonicalize object keys before hashing, retain array order and value changes. Actual 409 source still not conclusively attributed; clean runtime draft will verify no duplicate copies.
 
 - v3 rollout compatibility: keep v2 base comparison and auxiliary legacy signature for pending acknowledgments. Old measuredbase fixture supports7regressions;3356PASS2skip; independent review no blockers. Existingv2keyorderfalsecopiesmaypersistfirsttransition, never silently overwrite conflicting edits.
+
+## Final palette state repair
+Actual test cloud roundtrip now preserves PNG alpha and nonwhite final JPEG. Reopened pink second photo had a stale white palette marker; switching first retained the second photo marker. syncAdjSliders now derives class and aria-pressed from the active photo state. Five DOM behavior regressions cover reopen, untouched-photo switch, custom image/color, legacy empty values and recent-image state. Independent review completed without blockers after both edge fixes. Full suite3361PASS2skip, lint0errors177existingwarnings, smokePASS. Actual TEST Pages validation remains required after deployment. Production excluded.

@@ -2711,6 +2711,15 @@
     }
   }
   function syncAdjSliders() {
+    var bg = (S.photoBg && S.photoBg[S.adjSel]) || { color: '#FFFFFF' };
+    var currentImage = document.createElement('span');
+    currentImage.style.backgroundImage = bg.img ? _cssUrl(bg.img) : '';
+    if (refs.adjCutBg) refs.adjCutBg.querySelectorAll('[data-cutbg],[data-cutbgimg]').forEach(function (b) {
+      var color = b.getAttribute('data-cutbg');
+      var on = color ? !bg.img && String(bg.color || '#FFFFFF').toUpperCase() === color.toUpperCase() : !!bg.img && b.style.backgroundImage === currentImage.style.backgroundImage;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
     if (window.ItdStudioControls) window.ItdStudioControls.sync();
     var a = adjOf(S.adjSel);
     ADJ_CTRLS.forEach(function (c) {
