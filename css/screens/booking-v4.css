@@ -1545,6 +1545,44 @@
 /* [2026-08-31] 모바일 통계 — 카드 2장(.bk-stat-card--m, ≈140px)을 1줄 바로 교체.
    달력이 그만큼 위로 올라와서 칸당 한 명 더 들어간다. 탭하면 완료·예정·노쇼·취소가 펼쳐진다.
    주 뷰에서는 JS 가 아예 안 그린다(_renderMobileCards). */
+/* [perf-frontend-06 2026-10-01] hidden 속성이 실제로 숨기게 한다.
+   .bk-month-m__events / __evt 는 CSS 가 display:flex 를 주므로 UA 의 [hidden]{display:none} 이 **밀려서**
+   JS 가 el.hidden=true 를 해도 그대로 보였다(실측: hidden 뒤에도 getComputedStyle display 'flex', 높이 13px).
+   _capMonthCells 의 넘침 숨김과 _revealMonthChips 의 프레임 분할 둘 다 이 규칙이 있어야 동작한다. */
+#cal-overlay .bk-month-m__events[hidden],
+#cal-overlay .bk-month-m__evt[hidden],
+#cal-overlay .bk-month-m__more[hidden],
+#cal-overlay .bk-pc-month__events[hidden],
+#cal-overlay .bk-pc-month__evt[hidden],
+#cal-overlay .bk-pc-month__more[hidden] { display: none; }
+
+/* [mobile-ux-01 2026-10-01] 첫 로드 '모름' 상태 — 로딩 / 실패(+다시 시도). 빈 달력·'0건' 대신 이걸 그린다. */
+.bk-load {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 20px;
+  color: var(--text-subtle, #8B95A1);
+  font-size: 13px;
+  text-align: center;
+}
+.bk-load__spin {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid var(--border, #E5E8EB);
+  border-top-color: var(--primary, #BC6675);
+  animation: bk-load-spin .8s linear infinite;
+}
+@keyframes bk-load-spin { to { transform: rotate(360deg); } }
+.bk-load--err { justify-content: flex-start; padding-top: 24px; }
+.bk-load--err .dt-error { width: 100%; max-width: 420px; text-align: left; line-height: 1.5; margin-bottom: 0; }
+.bk-load--err .dt-error b { color: var(--text, #191F28); }
+.bk-statbar.is-pending .bk-statbar__sum { cursor: default; }
+.bk-statbar.is-pending b, .bk-stat-card.is-pending .bk-stat-card__count { color: var(--text-subtle, #8B95A1); }
 .bk-statbar { padding: 4px 12px 8px; flex: 0 0 auto; }
 .bk-statbar__sum {
   width: 100%;

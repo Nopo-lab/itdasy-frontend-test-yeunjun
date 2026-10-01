@@ -116,6 +116,34 @@
   const _now = () => new Date().toISOString();
   const _uuid = () => (crypto?.randomUUID ? crypto.randomUUID() : 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10));
   const _esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
+
+  // ── 멱등키는 '저장 의도' 단위 (money-integrity-01 · 2026-10-01) ────────────
+  //
+  // 예전엔 create() 가 **호출마다** 새 client_txn_id 를 만들었다. 느린 망에서 20초 타임아웃이 나면
+  // 서버는 이미 저장했는데 화면엔 모달이 그대로 남고 저장 버튼이 다시 살아난다(의도된 UX).
+  // 원장님이 다시 누르면 **새 키**로 나가므로 서버 멱등(uq_revenue_user_txn)이 못 잡는다 →
+  // 매출 2건, 회원권 결제면 잔액도 두 번 빠진다. 실측(2026-10-01, 로컬): 첫 POST 응답 23초 지연 →
+  // 재클릭 → 서버 행 2건(txn 둘 다 다름).
+  //
+  // app-membership.js 의 _txnFor/_txnDone 과 같은 규칙: "같은 내용으로 아직 성공 못 한 시도" 만
+  // 키를 재사용하고, 성공(201 / 멱등 200)하면 즉시 버린다. 영구 고정하면 같은 손님에게 같은 금액을
+  // 진짜로 두 번 받을 때 막히므로 안 된다.
+  //   서명 = 금액|결제수단|고객id|고객명|시술명|회원권차감|기록일(호출부가 넘긴 것만).
+  //   메모는 서명에서 뺀다 — 재시도 사이에 메모 한 글자 고쳤다고 돈이 두 번 잡히면 안 된다.
+  //   recorded_at 을 자동(_now())으로 채우는 경우는 호출마다 값이 달라져 서명에 넣으면 무의미하다.
+  const _pendingTxn = new Map();   // signature → client_txn_id
+  function _txnSig(d, recordedAtFromCaller) {
+    return [
+      d.amount, d.method || '', d.customer_id || '', d.customer_name || '', d.service_name || '',
+      d.use_membership ? 1 : 0, recordedAtFromCaller ? String(recordedAtFromCaller).slice(0, 10) : '',
+    ].join('|');
+  }
+  function _txnFor(sig) {
+    let key = _pendingTxn.get(sig);
+    if (!key) { key = _uuid(); _pendingTxn.set(sig, key); }
+    return key;
+  }
+  function _txnDone(sig) { _pendingTxn.delete(sig); }
   // [T-913] PC 판정은 CSS 셸(@media (width >= 768px) and (height >= 600px),
   //   style-responsive.css:26)과 **같은 조건**이어야 한다. 어긋나면 그 틈의 기기가
   //   '데스크톱 껍데기 안에 폰 화면'을 그린다 — 아이패드 세로(1032)에서 실측으로
@@ -278,15 +306,16 @@
       //   손님은 선불금을 무한정 다시 쓸 수 있고 매출은 부풀려진다 — 방문마다 누적된다.
       //   백엔드는 atomic UPDATE(잔액≥금액 조건)로 제대로 구현돼 있었다. 프론트만 안 보냈다.
       use_membership: !!payload.use_membership,
-      // [출시감사 2026-08-01] 멱등키 — 저장 시도마다 새 uuid.
-      //   20초 타임아웃으로 끊기면 서버는 이미 저장했는데 프론트엔 '저장 실패' 가 뜬다.
-      //   원장님이 다시 누르면 매출이 2건이 되고 회원권 결제면 잔액도 두 번 빠졌다.
-      //   같은 키로 다시 오면 서버가 기존 레코드를 그대로 돌려준다(revenue.py 멱등 검사).
-      client_txn_id: payload.client_txn_id || _uuid(),
     };
+    // [출시감사 2026-08-01] 멱등키 — 같은 키로 다시 오면 서버가 기존 레코드를 그대로 돌려준다(revenue.py 멱등 검사).
+    // [money-integrity-01 2026-10-01] 키는 호출마다가 아니라 **저장 의도마다** — 위 _txnFor 참고.
+    //   호출부가 직접 키를 넘기면(외부 모듈) 그걸 쓰고, 아니면 서명별 pending 키를 재사용한다.
+    const _sig = _txnSig(data, payload.recorded_at);
+    data.client_txn_id = payload.client_txn_id || _txnFor(_sig);
     if (_isOffline) {
       const record = { id: _uuid(), shop_id: localStorage.getItem('shop_id') || 'offline', ...data, created_at: _now() };
       const all = _loadOffline(); all.unshift(record); _saveOffline(all);
+      _txnDone(_sig);
       try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_revenue', optimistic: false } })); } catch (_e) { void _e; }
       return record;
     }
@@ -295,6 +324,7 @@
     try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'create_revenue', optimistic: true } })); } catch (_e) { void _e; }
     try {
       const created = await _api('POST', '/revenue', data);
+      _txnDone(_sig);   // 성공했으니 이 키는 버린다 — 다음 같은 금액 저장은 새 시도다
       const idx = _items.findIndex(r => r.id === optimistic.id);
       if (idx >= 0) _items[idx] = created;
       else _items.unshift(created);
@@ -529,6 +559,13 @@
     /* PROFIT_HIDDEN */ // if (act === 'incentive-cfg') return _openIncentiveSettings();
     if (act === 'qa-add') return _submitQuickAdd();
     if (act === 'add-form') return _openAddForm();
+    // [mobile-ux-02] 로드 실패 화면의 '다시 불러오기' — 목록·요약을 다시 받는다. 또 실패하면 같은 화면이 남는다(조용히 0원이 되지 않는다).
+    if (act === 'retry-load') {
+      if (btn.disabled) return;
+      btn.disabled = true; btn.textContent = '불러오는 중…';
+      _loadAndRender();
+      return;
+    }
     if (act === 'load-more') { _revWindow += 50; _rerender(); return; }
     if (act === 'delete') { const id = btn.dataset.id; if (id) _deleteEntry(id); return; }
     if (act === 'side-go') {
@@ -1089,8 +1126,30 @@
     catch (_e) {
       console.warn('[revenue] load 실패:', _e);
       const target = sheet.querySelector(_cachedIsPC ? '#rvPCMain' : '#rvBody');
-      if (target) target.innerHTML = '<div style="padding:30px;text-align:center;color:var(--danger);">불러오기 실패</div>';
+      // [mobile-ux-02 2026-10-01] 예전엔 '불러오기 실패' 한 줄로 본문을 덮고 끝 — 재시도 수단이 없어
+      //   닫고 다시 여는 수밖에 없었다(실측 2026-10-01: GET /revenue* 500 → #rvBody "불러오기 실패", retry 0).
+      //   RevenueMonth._failedHTML 과 같은 모양(사실 그대로 + '다시 불러오기')으로 그린다. PC 는 '+ 매출 입력' 헤더를 남긴다.
+      if (target) target.innerHTML = (_cachedIsPC ? _renderPCHeaderHTML() : '') + _loadFailedHTML(_e);
     }
+  }
+  // 네트워크가 끊긴 것(오프라인·타임아웃)과 서버가 실패한 것(5xx)을 가른다 — 문구가 달라야 원장이 할 일을 안다.
+  function _isNetworkDown(err) {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+      const n = String((err && err.name) || ''), m = String((err && err.message) || '');
+      if (n === 'AbortError') return true;
+      return /Failed to fetch|NetworkError|Load failed|network/i.test(m) && !(err && typeof err.status === 'number');
+    } catch (_e) { return false; }
+  }
+  function _loadFailedHTML(err) {
+    const down = _isNetworkDown(err);
+    const title = down ? '인터넷 연결이 없어서 매출을 불러오지 못했어요' : '매출을 불러오지 못했어요';
+    const sub = down ? '연결이 돌아오면 다시 시도해 주세요. 기록된 매출은 그대로 있어요.'
+                     : '서버가 잠시 응답하지 않아요. 기록된 매출은 그대로 있어요.';
+    return `<div class="rv-load-failed" data-rv-load-failed role="alert">
+      <div class="dt-error"><div><b>${title}</b><br>${sub}
+        <br><button type="button" class="dt-retry" data-rv-act="retry-load">다시 불러오기</button></div></div>
+    </div>`;
   }
 
   // ── open / close ────────────────────────────────────────
@@ -1240,6 +1299,8 @@
     _renderDonut, _loadDonutAsync,
     _renderPCHeaderHTML, _renderPCChartShellHTML,
     _submitQuickAdd, _rerender,
+    // [mobile-ux-02] 목록+요약을 다시 받는 재시도 진입점 — RevenueMonth 의 '다시 불러오기' 가 쓴다.
+    _reload: _loadAndRender,
     // [2026-05-20] generic SWR — revenue-month 등 분할 파일이 동일 캐싱 패턴 재활용.
     _swrReadKey, _swrWriteKey,
   };

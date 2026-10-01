@@ -783,3 +783,13 @@ body.rv-mode { overflow: hidden; }
     transition: none;
   }
 }
+
+/* [mobile-ux-02 2026-10-01] 매출 로드 실패 — 사실 그대로 + '다시 불러오기' (.dt-error 는 details.css 공용) */
+.rv-load-failed { padding: 28px 20px; }
+.rv-load-failed .dt-error {
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.5;
+  text-align: left;
+}
+.rv-load-failed .dt-error b { color: var(--text, #191F28); }

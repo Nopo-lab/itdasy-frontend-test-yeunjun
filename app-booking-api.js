@@ -6,9 +6,126 @@
   'use strict';
 
   const OFFLINE_KEY    = 'itdasy_bookings_offline_v1';
-  const SHOP_HOURS_KEY = 'itdasy_shop_hours_v1';
   // [§10] 기본 표시 09:00~24:00 — 야간 예약(23:40~익일) 가시성 확보. 자정 넘김은 _expandHoursForItems가 추가 확장.
+  //   영업시간 설정이 없을 때만 쓴다(아래 shopHours 참고).
   const DEFAULT_HOURS  = { start: 9, end: 24, slotMin: 30 };
+
+  /* [flow-customers-bookings-04 2026-10-01] 영업시간 정본 = 설정의 business_hours_json
+       스키마 {"mon":{"open":"10:00","close":"20:00","off":false}, …} — app-shop-settings.js 가 로컬 'itdasy_business_hours_json'
+       에 쓰고 PUT /shop/settings 로 올린다.
+     예전엔 여기서 'itdasy_shop_hours_v1' 을 읽었는데 **그 키를 쓰는 코드가 레포 어디에도 없어서** 항상
+       DEFAULT_HOURS(9~24) 였다. 설정에서 "금요일 휴무 · 10~18시" 로 저장해도 달력 시간축·예약 폼 슬롯·기본 시작시각은
+       몰랐고(실측 2026-10-01: 휴무일 폼 기본 시작 20:30, 안내 없음, 저장 201), 저장 키가 세 개
+       (itdasy_shop_hours / itdasy_business_hours_json / itdasy_shop_hours_v1) 로 갈라져 있었다.
+     지금: 로컬 미러 키는 설정 화면과 같은 BH_KEY 하나. 이 기기에서 설정 화면을 연 적이 없어도 맞게
+       ensureShopHours() 가 GET /shop/settings 로 미러를 채운다(예약관리 진입 시 1회, 5분 TTL).
+       shopHours(date) 는 그 날짜(요일)의 {start,end,off,…} 를, 인자 없이 부르면 영업일 전체를 덮는 범위를 준다. */
+  const BH_KEY   = 'itdasy_business_hours_json';
+  const DOW_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const DOW_KO   = ['일', '월', '화', '수', '목', '금', '토'];
+  const BH_TTL   = 5 * 60 * 1000;
+  let _bhMem = null;        // 파싱된 business_hours_json (세션 캐시) — null 이면 설정 없음
+  let _bhLoaded = false;    // 로컬 미러를 한 번이라도 읽었나
+  let _bhFetchedAt = 0;
+
+  function _parseBH(raw) {
+    try {
+      let v = raw;
+      if (typeof v === 'string') { if (!v.trim()) return null; v = JSON.parse(v); }
+      if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+      const out = {}; let any = false;
+      DOW_KEYS.forEach(k => {
+        const d = v[k];
+        if (!d || typeof d !== 'object') return;
+        const open = /^\d{1,2}:\d{2}$/.test(String(d.open || '')) ? String(d.open) : '10:00';
+        const close = /^\d{1,2}:\d{2}$/.test(String(d.close || '')) ? String(d.close) : '20:00';
+        out[k] = { open, close, off: !!d.off };
+        any = true;
+      });
+      return any ? out : null;
+    } catch (_e) { return null; }
+  }
+  function _readBH() {
+    if (!_bhLoaded) {
+      _bhLoaded = true;
+      try { _bhMem = _parseBH(localStorage.getItem(BH_KEY)); } catch (_e) { _bhMem = null; }
+    }
+    return _bhMem;
+  }
+  // 설정 저장 직후(app-shop-settings) · 서버 응답 반영 — 미러와 메모리를 같이 바꾼다.
+  function setShopHours(bhJson) {
+    const p = _parseBH(bhJson);
+    if (!p) return _readBH();         // 서버에 값이 없으면(미설정 '{}') 로컬 미러는 그대로 둔다 — 설정 화면(_hydrate)과 같은 규칙
+    _bhLoaded = true;
+    _bhMem = p;
+    try { localStorage.setItem(BH_KEY, JSON.stringify(p)); } catch (_e) { void _e; }
+    return p;
+  }
+  async function ensureShopHours(opts) {
+    const force = !!(opts && opts.force);
+    if (!force && _bhFetchedAt && Date.now() - _bhFetchedAt < BH_TTL) return _readBH();
+    try {
+      const d = await _api('GET', '/shop/settings');
+      _bhFetchedAt = Date.now();
+      if (d && Object.prototype.hasOwnProperty.call(d, 'business_hours_json')) setShopHours(d.business_hours_json);
+    } catch (_e) { /* 못 받으면 로컬 미러·기본값으로 — 예약 화면을 막지 않는다 */ }
+    return _readBH();
+  }
+  const _toMin = (hm) => { const a = String(hm || '').split(':'); return (+a[0] || 0) * 60 + (+a[1] || 0); };
+  const _dateOf = (d) => {
+    if (d instanceof Date) return isNaN(d) ? null : d;
+    if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) { const x = new Date(d.slice(0, 10) + 'T00:00:00'); return isNaN(x) ? null : x; }
+    return null;
+  };
+  function _dayHours(bh, key) {
+    const d = bh && bh[key];
+    if (!d) return null;
+    let openMin = _toMin(d.open), closeMin = _toMin(d.close);
+    if (closeMin <= openMin) closeMin = 24 * 60;          // 자정 넘김(22:00~02:00) 은 이 날의 축에선 24시까지
+    return { openMin, closeMin, open: d.open, close: d.close, off: !!d.off };
+  }
+  function _shopHours(date) {
+    const bh = _readBH();
+    if (!bh) return { ...DEFAULT_HOURS, off: false, hasSettings: false };
+    const dt = _dateOf(date);
+    if (dt) {
+      const key = DOW_KEYS[dt.getDay()];
+      const dh = _dayHours(bh, key);
+      if (dh && !dh.off) {
+        return {
+          start: Math.max(0, Math.min(23, Math.floor(dh.openMin / 60))),
+          end: Math.max(1, Math.min(24, Math.ceil(dh.closeMin / 60))),
+          slotMin: DEFAULT_HOURS.slotMin, off: false, hasSettings: true, dow: key,
+          open: dh.open, close: dh.close, openMin: dh.openMin, closeMin: dh.closeMin,
+        };
+      }
+      // 휴무일(또는 그 요일 설정 없음) — 폼은 그래도 열려야 하므로 영업일 전체 범위를 축으로 준다
+      const all = _shopHours();
+      return { ...all, off: !!(dh && dh.off), hasSettings: true, dow: key };
+    }
+    // 날짜 없음 — 영업일 전체를 덮는 범위 (주간 시간축 등)
+    let s = 24 * 60, e = 0, any = false;
+    DOW_KEYS.forEach(k => { const dh = _dayHours(bh, k); if (!dh || dh.off) return; any = true; s = Math.min(s, dh.openMin); e = Math.max(e, dh.closeMin); });
+    if (!any) return { ...DEFAULT_HOURS, off: false, hasSettings: true };
+    const start = Math.max(0, Math.min(23, Math.floor(s / 60)));
+    return { start, end: Math.max(start + 1, Math.min(24, Math.ceil(e / 60))), slotMin: DEFAULT_HOURS.slotMin, off: false, hasSettings: true };
+  }
+  // 폼 저장 전 안내용 — 휴무일 / 영업시간 밖이면 사유를 돌려준다(막지는 않는다). 설정이 없으면 null.
+  function hoursIssue(dateStr, sTime, eTime) {
+    const h = _shopHours(dateStr);
+    if (!h.hasSettings) return null;
+    const dt = _dateOf(dateStr);
+    const label = dt ? `${dt.getMonth() + 1}월 ${dt.getDate()}일(${DOW_KO[dt.getDay()]})` : String(dateStr || '');
+    if (h.off) return { kind: 'off', msg: `${label}은 휴무일로 설정돼 있어요` };
+    if (h.openMin == null) return null;
+    const s = _toMin(sTime);
+    let e = eTime ? _toMin(eTime) : s;
+    if (e <= s) e += 24 * 60;
+    if (s < h.openMin || e > h.closeMin) {
+      return { kind: 'outside', msg: `영업시간(${h.open}~${h.close}) 밖이에요`, open: h.open, close: h.close };
+    }
+    return null;
+  }
 
   let _items    = [];
   let _isOffline = false;
@@ -20,14 +137,6 @@
   function _uuid() {
     if (crypto && crypto.randomUUID) return crypto.randomUUID();
     return 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
-  }
-
-  function _shopHours() {
-    try {
-      const raw = localStorage.getItem(SHOP_HOURS_KEY);
-      if (raw) return { ...DEFAULT_HOURS, ...JSON.parse(raw) };
-    } catch (_) { /* ignore */ }
-    return { ...DEFAULT_HOURS };
   }
 
   function _loadOffline() {
@@ -356,6 +465,8 @@
   window.Booking = {
     list, create, update, remove, hasConflict, findConflict, dayConflict,
     shopHours: _shopHours,
+    // [flow-customers-bookings-04] 영업시간 정본 연결 — 설정 저장(setShopHours) · 진입 시 서버 동기화(ensureShopHours) · 폼 안내(hoursIssue)
+    setShopHours, ensureShopHours, hoursIssue,
     getCustomerLearning,
     _invalidateCache,
     get _items()    { return _items; },

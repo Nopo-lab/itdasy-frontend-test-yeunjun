@@ -587,7 +587,10 @@
           return;
         } else if (act === 'retry-load') {
           btn.disabled = true; btn.textContent = '불러오는 중…';
-          _triggerRerender();
+          // [mobile-ux-02 2026-10-01] 요약만 다시 받으면 목록(_items)이 실패한 채로 남는다 → 목록+요약을 함께 다시 받는다.
+          const reload = _R()._reload;
+          if (typeof reload === 'function') { try { reload(); } catch (_e) { _triggerRerender(); } }
+          else _triggerRerender();
           return;
         } else if (act === 'prev-month') {
           _goPrevMonth();

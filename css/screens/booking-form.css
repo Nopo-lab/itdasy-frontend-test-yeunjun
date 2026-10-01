@@ -72,6 +72,20 @@
 .bf-date-text { font-size:14px; font-weight:500; color:#191F28; letter-spacing:-0.3px; }
 .bf-date-meta { font-size:11px; color:#8B95A1; margin-top:2px; letter-spacing:-0.2px; }
 .bf-date-meta:empty { display:none; }
+/* [flow-customers-bookings-04 2026-10-01] 휴무일·영업시간 밖 안내 — 막지 않고 알린다 */
+.bf-hours-notice {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, .10);
+  border: 1px solid rgba(245, 158, 11, .35);
+  color: #92400E;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.2px;
+}
+.bf-hours-notice[hidden] { display: none; }
 .bf-date-chev { color:#8B95A1; font-size:18px; line-height:1; flex-shrink:0; }
 .bf-date-native { position:absolute; opacity:0; pointer-events:none; width:0; height:0; }
 

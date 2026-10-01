@@ -90,6 +90,13 @@
   // [2026-05-23] _staffList / _activeStaffIds 제거 — 직원 기능 폐지
   let _miniMonth = null;         // PC 미니캘 표시 월 {y, m}
   let _cachedIsPC = false;
+  /* [mobile-ux-01 2026-10-01] 첫 로드는 '모름' 에서 시작한다 — 'loading' | 'ready' | 'error'.
+     예전엔 레이아웃을 그리면서 _mappedCache(초기값 []) 로 **빈 달력 + '오늘 0건 · 이번달 0건'** 을 먼저
+     그리고, 그 뒤 `_mappedCache = await _loadMonth()` 에 try/catch 가 없어 실패하면 그 거짓 빈 상태가
+     그대로 남았다(오류 문구·재시도 없음). 실측(2026-10-01, GET /bookings 500 고정): 6초 재시도 뒤
+     reject 됐는데 화면은 빈 달력 + '0건'. '0건' 은 숫자이므로 틀린 정보다 — 모르면 '—' 로 둔다. */
+  let _fetchState = 'loading';
+  let _fetchErr = null;
 
   // ============================================================
   // §1 헬퍼
@@ -293,7 +300,8 @@
       //   360px 폰에서도 4글자 이름이 한 줄에 들어간다. 상태는 이제 칩 배경색이 말한다(범례 동일).
       //   PC/모바일 마크업 통일 — 크기 차이는 CSS 미디어쿼리로만 낸다(isPC 미사용).
       //   몇 줄까지 보일지는 여기서 안 정한다. 칸 높이를 실측하는 _capMonthCells 가 정한다.
-      h += `<div class="${p}__events">`;
+      // [perf-frontend-06] 예약관리 자체 렌더(opts.deferChips)는 칩 상자를 hidden 으로 넣고 _revealMonthChips 가 프레임을 나눠 켠다.
+      h += `<div class="${p}__events"${opts && opts.deferChips ? ' hidden' : ''}>`;
       its.forEach((it, i) => {
         h += `<div class="${p}__evt ${_chipCls(it.status, i)}">`
            +   `<span class="${p}__evt-t">${_fmtCell(new Date(it._raw.starts_at))}</span>`
@@ -342,30 +350,50 @@
   //   들어가는 만큼만 남긴다 — 이게 "말일이 스크롤된다"의 근본 해결.
   //   ⚠️ 넘치는 칩을 DOM 에서 지우지 말 것. 통계를 접었다 펴면 칸이 커지는데 그때 되살려야 한다.
   //   → hidden 속성 토글만 한다(멱등, 몇 번 불려도 같은 결과).
+  /* [perf-frontend-06 2026-10-01] 읽기/쓰기를 단계로 나눈다.
+     예전엔 칸마다 "hidden 쓰기 → clientHeight 읽기 → '+9' 쓰기 → offsetHeight 읽기 → hidden 쓰기" 를
+     반복해서, 칸 수만큼(한 달 30칸 × 2~3회) **강제 레이아웃**이 났다. 예약 200건·CPU 4x 실측:
+     이 함수 + _sizeMonthRows 가 한 프레임에 440ms(프로파일 self time 135ms + 307ms) — 월 뷰
+     longtask 의 거의 전부였다. 지금은 ① 전부 펼치기(쓰기) ② 한 번의 레이아웃으로 전부 재기(읽기)
+     ③ '+N' 줄 높이는 한 칸만 재서 공유(같은 클래스라 같은 높이) ④ 넘치는 칩만 숨기기(쓰기).
+     결과(hidden/+N)는 예전과 같다 — 멱등. */
   function _capMonthCells(root) {
     if (!root) return;
-    root.querySelectorAll('.bk-month-m__events, .bk-pc-month__events').forEach(box => {
+    const boxes = Array.prototype.slice.call(root.querySelectorAll('.bk-month-m__events, .bk-pc-month__events'));
+    const entries = [];
+    boxes.forEach(box => {
+      if (box.hidden) return;   // [perf-frontend-06] 아직 안 켜진 상자는 다음 라운드에
       const more = box.querySelector('.bk-month-m__more, .bk-pc-month__more');
       const chips = Array.prototype.filter.call(box.children, el => el !== more);
       if (!chips.length) return;
       chips.forEach(el => { el.hidden = false; });
       if (more) more.hidden = true;
-      const avail = box.clientHeight;
-      const gap = parseFloat(getComputedStyle(box).rowGap) || 0;
-      const unit = chips[0].offsetHeight + gap;
-      if (!avail || !unit) return;
-      let cap = Math.max(1, Math.floor((avail + gap) / unit));
-      // 넘칠 때만 "+N" 줄 자리를 빼고 다시 센다(안 넘치면 뺄 이유가 없다).
-      // 빈 문자열이면 높이가 0 이라 측정이 안 된다 → 더미 텍스트 넣고 잰다.
-      if (chips.length > cap && more) {
-        more.textContent = '+9';
-        more.hidden = false;
-        cap = Math.max(1, Math.floor((avail - more.offsetHeight + gap) / unit));
-        more.hidden = true;
-      }
-      if (chips.length <= cap) return;
-      chips.slice(cap).forEach(el => { el.hidden = true; });
-      if (more) { more.textContent = '+' + (chips.length - cap); more.hidden = false; }
+      entries.push({ box, more, chips });
+    });
+    if (!entries.length) return;
+    entries.forEach(e => {
+      e.avail = e.box.clientHeight;
+      e.gap = parseFloat(getComputedStyle(e.box).rowGap) || 0;
+      e.unit = e.chips[0].offsetHeight + e.gap;
+      e.cap = (e.avail && e.unit) ? Math.max(1, Math.floor((e.avail + e.gap) / e.unit)) : 0;
+    });
+    // 넘칠 때만 "+N" 줄 자리를 빼고 다시 센다(안 넘치면 뺄 이유가 없다).
+    // 빈 문자열이면 높이가 0 이라 측정이 안 된다 → 더미 텍스트 넣고 잰다. 한 칸만 잰다.
+    const over = entries.filter(e => e.cap && e.chips.length > e.cap && e.more);
+    let moreH = 0;
+    if (over.length) {
+      const m = over[0].more;
+      m.textContent = '+9'; m.hidden = false;
+      moreH = m.offsetHeight;
+      m.hidden = true;
+    }
+    entries.forEach(e => {
+      if (!e.cap) return;
+      let cap = e.cap;
+      if (e.chips.length > cap && e.more) cap = Math.max(1, Math.floor((e.avail - moreH + e.gap) / e.unit));
+      if (e.chips.length <= cap) return;
+      e.chips.slice(cap).forEach(el => { el.hidden = true; });
+      if (e.more) { e.more.textContent = '+' + (e.chips.length - cap); e.more.hidden = false; }
     });
   }
   // [2026-08-31] 주별 칸 높이 유동화 — CSS 의 grid-auto-rows:1fr 을 대체한다.
@@ -381,8 +409,9 @@
     const cells = Array.prototype.slice.call(grid.children);
     if (cells.length < 7) return;
     // 칩이 한 개도 없는 달이면 잴 게 없다 → 인라인 높이를 걷어내고 CSS 기본값(78px)에 맡긴다.
-    const box = grid.querySelector('.bk-month-m__events');
-    const chip = grid.querySelector('.bk-month-m__evt');
+    // [perf-frontend-06] 아직 안 켜진(hidden) 상자는 높이가 0 — 켜진 상자/칩으로만 잰다.
+    const box = grid.querySelector('.bk-month-m__events:not([hidden])');
+    const chip = box && box.querySelector('.bk-month-m__evt');
     if (!box || !chip) { grid.style.gridTemplateRows = ''; return; }
     const gap = parseFloat(getComputedStyle(box).rowGap) || 0;
     const unit = chip.offsetHeight + gap;
@@ -401,12 +430,47 @@
     }
     grid.style.gridTemplateRows = rows.map(h => h + 'px').join(' ');
   }
+  /* [perf-frontend-06 2026-10-01] 칩을 프레임을 나눠 켠다.
+     원인 분해(evidence/perf-frontend/fix_probe_layout.json, CPU 4x·예약 200건·칩 120개):
+       innerHTML 파싱 2ms · 스타일 재계산 ~25ms · **첫 레이아웃 140~260ms** — 칩 안의 글자 묶음(시각·이름 240개)
+       셰이핑이 거의 전부다(이름을 ASCII 로 바꾸면 17~30ms). 한 프레임에 전부 재면 그게 그대로 긴 작업이 된다.
+     처리: 칩 상자는 hidden 으로 넣고(레이아웃 안 함) ① 첫 상자만 켜서 칩 높이를 재고 행 높이를 **먼저** 확정(첫 페인트에
+       최종 높이 — 나중에 뛰지 않는다) ② 나머지 상자는 rAF 로 세 묶음에 나눠 켠다 ③ 마지막에 _capMonthCellsSoon 으로
+       넘침(+N)을 한 번 정리. 결과 DOM 은 예전과 같다(hidden 만 벗겨진다). */
+  let _revealSeq = 0;
+  function _revealMonthChips(body) {
+    const my = ++_revealSeq;
+    const boxes = Array.prototype.slice.call(body.querySelectorAll('.bk-month-m__events[hidden], .bk-pc-month__events[hidden]'));
+    if (!boxes.length) { _capMonthCellsSoon(); return; }
+    boxes[0].hidden = false;
+    _sizeMonthRows(body);                      // 칩 1상자 + 뼈대만 재는 작은 레이아웃
+    const rest = boxes.slice(1);
+    const CHUNKS = 3;
+    const size = Math.max(1, Math.ceil(rest.length / CHUNKS));
+    let i = 0;
+    const step = () => {
+      if (my !== _revealSeq || !body.isConnected) return;
+      rest.slice(i, i + size).forEach(b => { b.hidden = false; });
+      i += size;
+      if (i < rest.length) requestAnimationFrame(step);
+      else _capMonthCellsSoon();
+    };
+    if (rest.length) requestAnimationFrame(step);
+    else _capMonthCellsSoon();
+  }
+  // [perf-frontend-06 2026-10-01] 같은 프레임의 중복 호출을 하나로 합친다.
+  //   _renderViewBody 가 직접 한 번, 그 안의 _refreshMobileCards 가 또 한 번 불러서
+  //   한 프레임에 실측(레이아웃 강제)이 **두 번** 돌았다. 결과는 멱등이라 한 번이면 된다.
+  let _capRaf = 0;
   function _capMonthCellsSoon() {
     const o = _overlay(); if (!o || _curView !== 'month') return;
+    if (_capRaf) return;
     // 순서 중요 — 먼저 행 높이를 확정하고, 그 다음 남는 걸 자른다.
     // 반대로 하면 1fr 시절 높이 기준으로 잘라놓고 칸만 커져서 빈칸이 생긴다.
-    requestAnimationFrame(() => {
-      const root = o.querySelector('#bk-body');
+    _capRaf = requestAnimationFrame(() => {
+      _capRaf = 0;
+      const o2 = _overlay(); if (!o2 || _curView !== 'month') return;
+      const root = o2.querySelector('#bk-body');
       _sizeMonthRows(root);
       _capMonthCells(root);
     });
@@ -417,7 +481,7 @@
     let h = '<div class="bk-month-m"><div class="bk-month-m__dow-row">';
     DOW.forEach(d => { h += '<div class="bk-month-m__dow">' + d + '</div>'; });
     h += '</div><div class="bk-month-m__cells">';
-    h += _buildMonthGrid(year, month, mapped, 'bk-month-m', false);
+    h += _buildMonthGrid(year, month, mapped, 'bk-month-m', false, { deferChips: true });
     return h + '</div></div>';
   }
 
@@ -637,7 +701,7 @@
     let h = '<div class="bk-pc-month"><div class="bk-pc-month__dow-row">';
     DOW.forEach(d => { h += '<div class="bk-pc-month__dow">' + d + '</div>'; });
     h += '</div><div class="bk-pc-month__cells">';
-    h += _buildMonthGrid(year, month, mapped, 'bk-pc-month', true);
+    h += _buildMonthGrid(year, month, mapped, 'bk-pc-month', true, { deferChips: true });
     return h + '</div></div>';
   }
 
@@ -896,7 +960,22 @@
     return h + '</div>';
   }
 
+  // [mobile-ux-01] 아직 못 받았으면 숫자를 쓰지 않는다 — '0건' 은 틀린 정보다.
+  function _renderStatPendingCard(label) {
+    const note = _fetchState === 'error' ? '불러오지 못했어요' : '불러오는 중…';
+    return '<div class="bk-stat-card is-pending" data-cal-stats-pending>'
+         +   '<div class="bk-stat-card__head"><div>'
+         +     '<div class="bk-stat-card__label">' + _esc(label) + '</div>'
+         +     '<div class="bk-stat-card__note">' + note + '</div>'
+         +   '</div><div class="bk-stat-card__count">—</div></div>'
+         + '</div>';
+  }
   function _renderStats() {
+    if (_fetchState !== 'ready') {
+      return '<div class="bk-stats" style="display:flex;flex-direction:column;gap:14px;">'
+           + _renderStatPendingCard('오늘') + _renderStatPendingCard(_curView === 'month' ? '이번달' : '이번주')
+           + '</div>';
+    }
     const s = _calcStats(_mappedCache);
     return '<div class="bk-stats" style="display:flex;flex-direction:column;gap:14px;">'
          + _renderStatCard('today', s)
@@ -910,6 +989,12 @@
   let _statOpen = false;
   function _renderMobileCards() {
     if (_curView === 'week') return '';
+    if (_fetchState !== 'ready') {
+      // [mobile-ux-01] 로드 전/실패엔 '—' — 접힘/펼침도 없다(펼칠 숫자가 없다).
+      return '<div class="bk-statbar is-pending" id="bk-mobile-stats" data-cal-stats-pending aria-busy="' + (_fetchState === 'loading') + '">'
+           +   '<div class="bk-statbar__sum"><span>오늘 <b>—</b></span><i class="bk-statbar__div"></i><span>이번달 <b>—</b></span></div>'
+           + '</div>';
+    }
     const s = _calcStats(_mappedCache);
     const rows = [
       [s.todayLabel, s.todayDone, s.todayUpcoming, s.todayNoShow, s.todayCancel],
@@ -1194,13 +1279,21 @@
     _updateOfflineBadge();
     _updateHeaderLabel();
     _saveState();
+    // [mobile-ux-01] 아직 못 받았거나 실패했으면 달력 대신 그 사실을 그린다 — 빈 달력은 거짓이다.
+    if (_fetchState !== 'ready') {
+      body.innerHTML = _fetchState === 'error' ? _loadErrorHTML(_fetchErr) : _loadingHTML();
+      _bindLoadRetry(body);
+      _refreshPCLeft();
+      _refreshMobileCards();
+      return;
+    }
     if (_curView === 'month') {
       const visible = _visibleCache();
       const html = _cachedIsPC ? _renderMonthPC(_curYear, _curMonth, visible)
                                : _renderMonthMobile(_curYear, _curMonth, visible);
       body.innerHTML = html;
       _bindMonthCells(body);
-      _capMonthCellsSoon();
+      _revealMonthChips(body);
     } else if (_curView === 'week') {
       _renderWeekView(body);
     } else {
@@ -1208,6 +1301,46 @@
     }
     _refreshPCLeft();
     _refreshMobileCards();
+  }
+
+  // [mobile-ux-01] 로딩 / 실패 본문. 실패는 고객관리(.dt-error + 다시 시도)와 같은 모양.
+  function _loadingHTML() {
+    return '<div class="bk-load" data-cal-loading role="status" aria-live="polite">'
+         +   '<div class="bk-load__spin" aria-hidden="true"></div>'
+         +   '<div class="bk-load__t">예약을 불러오는 중…</div>'
+         + '</div>';
+  }
+  // 네트워크가 끊긴 것(오프라인·타임아웃)과 서버가 실패한 것(5xx)을 가른다 — 문구가 달라야 원장이 할 일을 안다.
+  function _isNetworkDown(err) {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+      const n = String((err && err.name) || ''), m = String((err && err.message) || '');
+      if (n === 'AbortError') return true;
+      return /Failed to fetch|NetworkError|Load failed|network/i.test(m) && !(err && typeof err.status === 'number');
+    } catch (_e) { return false; }
+  }
+  function _loadErrorHTML(err) {
+    const down = _isNetworkDown(err);
+    const title = down ? '인터넷 연결이 없어서 예약을 불러오지 못했어요' : '예약을 불러오지 못했어요';
+    const sub = down ? '연결이 돌아오면 다시 시도해 주세요. 기록된 예약은 그대로 있어요.'
+                     : '서버가 잠시 응답하지 않아요. 기록된 예약은 그대로 있어요.';
+    return '<div class="bk-load bk-load--err" data-cal-error role="alert">'
+         +   '<div class="dt-error"><div><b>' + title + '</b><br>' + sub
+         +     '<br><button type="button" class="dt-retry" data-cal-retry>다시 시도</button></div></div>'
+         + '</div>';
+  }
+  function _bindLoadRetry(body) {
+    const btn = body && body.querySelector('[data-cal-retry]');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      btn.disabled = true; btn.textContent = '불러오는 중…';
+      _retryLoad();
+    });
+  }
+  async function _retryLoad() {
+    _fetchState = 'loading'; _fetchErr = null;
+    _renderViewBody();
+    await _reloadAndRender();
   }
 
   function _renderWeekView(body) {
@@ -1740,6 +1873,7 @@
         <span class="bf-date-chev" aria-hidden="true" style="display:inline-flex;align-items:center;"><svg width="17" height="17"><use href="#ic-chevron-right"/></svg></span>
       </button>
       <input type="date" id="bfDate" class="bf-date-native" value="${dateStr}" />
+      <div id="bfHoursNotice" class="bf-hours-notice" role="status" hidden></div>
     </div>`;
     // 시간 휠 (3개)
     html += `<div class="bf-card compact">
@@ -2296,6 +2430,23 @@
         el.style.display = conflict ? 'block' : 'none';
         if (conflict) el.textContent = _conflictMsg(conflict);
       }
+      _checkHours(d, `${_pad(_startH)}:${_pad(_startM)}`, `${_pad(eh)}:${_pad(em)}`);
+    }
+    // [flow-customers-bookings-04 2026-10-01] 휴무일 / 영업시간 밖 안내 — 날짜·시간·소요시간이 바뀔 때마다(_checkConflict 와 같은 길목).
+    //   막지 않는다. 원장이 모르고 넘어가지 않게만 한다(저장 전 확인은 _bindFormSave).
+    function _checkHours(d, sTime, eTime) {
+      const el = body.querySelector('#bfHoursNotice');
+      if (!el || !window.Booking || typeof window.Booking.hoursIssue !== 'function') return;
+      const issue = window.Booking.hoursIssue(d, sTime, eTime);
+      el.hidden = !issue;
+      el.textContent = issue ? issue.msg + ' — 그래도 예약할 수 있어요' : '';
+      el.dataset.kind = issue ? issue.kind : '';
+      // 날짜 카드 메타에도 '휴무일' 을 남긴다 ("N건 예약됨" 과 나란히)
+      const meta = body.querySelector('#bfDateMeta');
+      if (meta) {
+        const base = (meta.textContent || '').replace(/\s*·?\s*휴무일$/, '').trim();
+        meta.textContent = (issue && issue.kind === 'off') ? (base ? base + ' · 휴무일' : '휴무일') : base;
+      }
     }
     _checkConflict();
 
@@ -2418,6 +2569,22 @@
          ⚠️ 이 줄들은 아래 try 블록 **밖**이라 finally 의 잠금 해제도 안 돈다.
          진입부의 #bfDate null 가드와 같은 이유 — await 뒤에도 한 번 더 봐야 한다. */
       if (!body.isConnected || !body.querySelector('#bfCustName')) { _bail(); return; }
+      // [flow-customers-bookings-04 2026-10-01] 휴무일·영업시간 밖이면 한 번 확인받는다 — 수기 예약을 막지는 않는다.
+      //   예전엔 설정에 금요일 휴무·10~18시를 저장해도 폼이 몰라서 '저장했어요' 로 조용히 넘어갔다(실측 2026-10-01).
+      //   같은 날짜·시간으로 이미 '그래도 저장' 을 눌렀으면 다시 묻지 않는다(_hoursOkFor).
+      {
+        const _issue = (window.Booking && typeof window.Booking.hoursIssue === 'function')
+          ? window.Booking.hoursIssue(d, sTime, eTime) : null;
+        const _sigH = d + '|' + sTime + '|' + eTime;
+        if (_issue && body._hoursOkFor !== _sigH && typeof window._inlineConfirm === 'function') {
+          window._inlineConfirm(_issue.msg + '\n그래도 예약을 저장할까요?', () => {
+            body._hoursOkFor = _sigH;
+            const again = body.querySelector('#bfSave');
+            if (again) again.click();   // 잠금은 아래 _bail 로 이미 풀려 있다 — 같은 핸들러가 확인된 서명으로 다시 돈다
+          }, function () { /* 아니요 — 폼 유지, 날짜/시간을 고치게 둔다 */ }, { okText: '그래도 저장', cancelText: '아니요' });
+          _bail(); return;
+        }
+      }
       // [2026-06-10] 신규 예약은 고객 필수 — 이름 없는 "이름 없음" 예약 생성 차단.
       //   (기존 예약 수정은 과거 데이터 호환 위해 그대로 허용)
       if (!existing && !body.querySelector('#bfCustName').value.trim()) {
@@ -2590,13 +2757,15 @@
   function _openForm(date, existing) {
     const o = _overlay(); if (!o) return;
     const body = o.querySelector("#bk-body"); if (!body) return;
-    const hours  = window.Booking.shopHours();
-    const slots  = _buildSlots(hours);
     const pend   = window._pendingBookingSlot;
     window._pendingBookingSlot = null;
     const pendS  = pend?.starts_at ? new Date(pend.starts_at) : null;
     const pendE  = pend?.ends_at   ? new Date(pend.ends_at)   : null;
     const defDate = existing ? new Date(existing.starts_at) : (pendS || date);
+    // [flow-customers-bookings-04] 그 날짜(요일)의 영업시간 — 기본 시작시각이 영업 시작(예: 10:00)이 된다.
+    //   휴무일이면 영업일 전체 범위를 쓴다(수기 예약은 막지 않는다 — 안내는 #bfHoursNotice, 저장 전 확인은 _bindFormSave).
+    const hours  = window.Booking.shopHours(_ds(defDate));
+    const slots  = _buildSlots(hours);
     const _auto = (!existing && !pendS) ? _defaultNewSlot(_ds(defDate), slots) : null;
     const dateStr = _auto ? _auto.dateStr : _ds(defDate);
     const defS = existing ? _fmt(new Date(existing.starts_at)) : (pendS ? _fmt(pendS) : _auto.start);
@@ -2689,12 +2858,19 @@
       const mapped = await _loadMonth(_curYear, _curMonth);
       if (my !== _navSeq) return;   // 더 최근 전환이 있었음 — 늦게 온 stale 달 무시
       _mappedCache = mapped;
+      _fetchState = 'ready'; _fetchErr = null;
       _renderViewBody();
     } catch (err) {
       if (my !== _navSeq) return;
-      // [카오스 P2-1] 월 이동 중 로드 실패 무음 → 헤더/그리드 불일치 방지: 알리고 캐시 유지
+      // [카오스 P2-1] 월 이동 중 로드 실패 무음 → 헤더/그리드 불일치 방지.
+      // [mobile-ux-01] 헤더는 새 달인데 그리드는 옛 달(또는 빈 달)이면 거짓이다 → 본문에 실패 + 다시 시도.
+      //   토스트에도 '다시 시도' 를 붙인다(본문을 스크롤해 내려간 상태에서도 바로 누를 수 있게).
       console.warn('[cal] 월 로드 실패:', err);
-      if (window.showToast) window.showToast('예약을 불러오지 못했어요. 잠시 후 다시 시도해주세요');
+      _fetchState = 'error'; _fetchErr = err;
+      _renderViewBody();
+      if (window.showToast) {
+        window.showToast('예약을 불러오지 못했어요', { type: 'error', action: { label: '다시 시도', onClick: _retryLoad } });
+      }
     }
   }
   function _prefetch(year, month) {
@@ -2826,6 +3002,9 @@
     _curView = 'month';
     _miniMonth = { y: _curYear, m: _curMonth };
     _cachedIsPC = _isPC();
+    // [mobile-ux-01] '모름' 으로 시작 — 레이아웃은 로딩 표시를 그리고, 숫자는 받은 뒤에만 쓴다.
+    //   옛 세션의 _mappedCache 도 비운다(실패했을 때 지난 데이터가 '현재' 처럼 남지 않게).
+    _fetchState = 'loading'; _fetchErr = null; _mappedCache = [];
 
     // [2026-05-23] 직원 목록 로드 제거 — 직원 기능 폐지
 
@@ -2844,9 +3023,25 @@
       window.loadServiceTemplates().catch(() => {});
     }
 
-    _mappedCache = await _loadMonth(_curYear, _curMonth);
-    _renderViewBody();
-    _prefetchNeighbors();
+    // [flow-customers-bookings-04] 영업시간 정본(설정 business_hours_json)을 서버에서 한 번 맞춘다 — 예약 목록과 병렬,
+    //   최대 1.5초만 기다린다(설정 조회가 느려도 달력을 잡아두지 않는다. 늦게 오면 그 뒤 폼부터 반영).
+    const _hoursP = (window.Booking && typeof window.Booking.ensureShopHours === 'function')
+      ? window.Booking.ensureShopHours().catch(() => null) : Promise.resolve(null);
+    // [mobile-ux-01] 실패해도 reject 하지 않는다 — 본문에 실패 + '다시 시도' 를 그린다(고객관리와 같은 모양).
+    //   예전엔 여기서 그대로 reject 돼 호출부는 에러를 받는데 화면엔 빈 달력 + '0건' 이 남았다.
+    const _my = ++_navSeq;
+    try {
+      const [mapped] = await Promise.all([
+        _loadMonth(_curYear, _curMonth),
+        Promise.race([_hoursP, new Promise(r => setTimeout(r, 1500))]),
+      ]);
+      if (_my === _navSeq) { _mappedCache = mapped; _fetchState = 'ready'; _fetchErr = null; }
+    } catch (err) {
+      console.warn('[cal] 첫 로드 실패:', err);
+      if (_my === _navSeq) { _fetchState = 'error'; _fetchErr = err; }
+    }
+    if (_my === _navSeq) _renderViewBody();
+    if (_fetchState === 'ready') _prefetchNeighbors();
 
     // 고객 dashboard → "예약잡기" 진입: 자동으로 예약 추가 폼 표시.
     // _pendingBookingCustomer 는 _bindFormExtras 가 소비하므로 여기선 트리거만.
@@ -2911,6 +3106,7 @@
       if (!_overlay()) return;
       try {
         _mappedCache = await _loadMonth(_curYear, _curMonth);
+        _fetchState = 'ready'; _fetchErr = null;
         _renderViewBody();
       } catch (_e) { void _e; }
     });
@@ -2926,6 +3122,7 @@
       if (!_overlay()) return;
       try {
         _mappedCache = await _loadMonth(_curYear, _curMonth);
+        _fetchState = 'ready'; _fetchErr = null;
         _renderViewBody();
       } catch (_e) { void _e; }
     });

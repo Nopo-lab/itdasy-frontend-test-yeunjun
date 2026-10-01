@@ -342,6 +342,10 @@
         if (bh && typeof bh === 'object' && !Array.isArray(bh)) {
           _DAY_KEYS.forEach(k => { if (bh[k]) hours[k] = { ...hours[k], ...bh[k] }; });
           _serverHadHours = true;
+          // [flow-customers-bookings-04 2026-10-01] 서버 영업시간을 예약 쪽 정본 미러('itdasy_business_hours_json')에도 반영.
+          if (window.Booking && typeof window.Booking.setShopHours === 'function') {
+            try { window.Booking.setShopHours(bh); } catch (_e) { void _e; }
+          }
         }
         // [2026-07-25 예약QA F5] 알림톡 자동발송 스위치 서버값 반영.
         const _alSw = document.getElementById('ssAlimtalkSwitch');
@@ -433,6 +437,10 @@
       await _safeSet('itdasy_shop_addr', payload.address);
       localStorage.setItem('itdasy_shop_hours', _hrText);
       if (payload.business_hours_json) localStorage.setItem('itdasy_business_hours_json', payload.business_hours_json);
+      // [flow-customers-bookings-04 2026-10-01] 예약 쪽 정본(window.Booking.shopHours)이 같은 키를 읽는다 — 메모리 캐시도 바로 갱신.
+      if (payload.business_hours_json && window.Booking && typeof window.Booking.setShopHours === 'function') {
+        try { window.Booking.setShopHours(payload.business_hours_json); } catch (_e) { void _e; }
+      }
       // [보안감사 L-8] payload.solo_mode 는 폐지돼 항상 undefined → 문자열 "undefined" 저장되던 것 제거.
     } catch (_e) { void _e; }
 
