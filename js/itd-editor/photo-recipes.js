@@ -17,6 +17,24 @@
       return { idx: i, photoUrl: url, layers: layers, editState: edit };
     }).filter(Boolean);
   }
+  /* Restore editable bases, never flattened exports (which would bake layers twice). */
+  function restoreCarousel(photos, full, active) {
+    var out = Object.assign({}, full, { photos: [], adj: [], origPhotos: [], layersByPhoto: {} });
+    var maps = ['fgMask', 'photoBg', 'photoDraw', 'presetByPhoto'];
+    maps.forEach(function (k) { out[k] = {}; });
+    photos.forEach(function (photo, i) {
+      var es = photo.editState || {}, single = es.photos && es.photos.length === 1;
+      var index = single ? 0 : i;
+      out.photos[i] = (es.photos && es.photos[index]) || full.photos[i];
+      out.adj[i] = Object.assign({}, (es.adj && es.adj[index]) || {});
+      out.origPhotos[i] = (es.origPhotos && es.origPhotos[index]) || '';
+      maps.forEach(function (k) { if (es[k] && es[k][index] != null) out[k][i] = es[k][index]; });
+      out.layersByPhoto[i] = (single || es.photoIdx === index) ? (es.layers || []) :
+        ((es.layersByPhoto && es.layersByPhoto[index]) || []);
+    });
+    out.photoIdx = active; out.layers = out.layersByPhoto[active] || [];
+    return out;
+  }
   function drawing(canvas, state, load, current) {
     var src = state.photoDraw && state.photoDraw[state.adjSel || 0];
     if (!src) return Promise.resolve();
@@ -32,5 +50,5 @@
     var w = img.width * scale, h = img.height * scale;
     ctx.drawImage(img, (width - w) / 2, (height - h) / 2, w, h);
   }
-  window.ItdPhotoRecipes = { collect: collect, drawing: drawing, background: background };
+  window.ItdPhotoRecipes = { collect: collect, restoreCarousel: restoreCarousel, drawing: drawing, background: background };
 })();
