@@ -1346,7 +1346,7 @@ async function connectInstagram() {
     const goUrl = `${API}/instagram/go?${_entry}&origin=${origin}&return_to=${returnToEnc}`;
 
     if (_IG_BROWSER && isNative && window.Capacitor?.Plugins?.Browser) {
-      window.Capacitor.Plugins.Browser.open({ url: goUrl });
+      await window.Capacitor.Plugins.Browser.open({ url: goUrl });
     } else {
       window.location.href = goUrl;
     }

@@ -49,7 +49,7 @@
 | 채널 연동(인스타·네이버·카카오) | `app-integrations-hub.js`, `app-naver-*.js`, `app-kakao-hub.js` | `integrations.py`, `talktalk.py`, `services/kakao_alimtalk.py`, `*_oauth.py` |
 | AI 비서(잇비) 챗봇 | `app-assistant.js`, `assistant-intent-router.js`, `js/assistant/**` | `assistant.py`, `assistant_facts.py`, `nl_query.py` |
 | 캡션 생성·페르소나 학습 | `app-caption*.js`, `app-instant-caption.js`, `app-persona-survey.js` | `persona.py`, `caption.py`, `services/caption_generator.py`, `fingerprint_*` |
-| 인스타 발행·인사이트 | `app-instagram.js`, `js/workspace/workspace-adapter.js` | `instagram.py`, `instagram_insights.py`, `scheduled_publisher.py` |
+| 인스타 연결·앱 복귀·발행·인사이트 | `app-instagram.js`, `app-oauth-return.js`(연결 복귀 시 로그인 창 닫기·출발 표시 정리), `js/workspace/workspace-adapter.js` | `instagram.py`, `instagram_insights.py`, `scheduled_publisher.py` |
 | 사진 편집·누끼·보정 | `app-photo-editor*.js`(60), `js/photo-editor/**`, `js/itd-editor/**` | `image.py`, `photo_editor_ai.py`, `photo_editor_generative.py` |
 | **작업실**(사진→레이아웃→캡션→발행) | `js/workspace/**`, `js/workspace/flow/**` | `workspace_sync.py` |
 | 템플릿·가격표·후기·전후 | `js/photo-editor/template-*`, `js/assistant/core/template-*` | `templates.py`, `services/*_ocr.py` |

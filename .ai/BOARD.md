@@ -1788,3 +1788,7 @@ SN-7 백엔드 결선:
 | `itdasy-frontend-test-yeunjun` | `64e0d29` | Phase 6.3 전체 |
 | `itdasy-frontend` (운영) | `557f63e` | Lane C1 까지 |
 | `itdasy-promo` | PR #3 머지 / PR #4 대기 | Phase 6.3 일부 |
+
+## T-904 — 인스타 연결 오류·앱 복귀 (2026-10-02)
+- bootstrap:OK @ 2026-10-02
+- 테스트 환경만 수정. 실제 Invalid redirect_uri 화면 확인. Meta 등록 주소 확인은 로그인 대기.

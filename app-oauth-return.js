@@ -102,6 +102,14 @@
     return true;
   }
 
+  function _finishInstagramReturn() {
+    try { sessionStorage.removeItem('itdasy_oauth_inflight'); } catch (e) { console.warn('[oauth-return] 연결 표시 정리 실패', e); }
+    const browser = window.Capacitor?.Plugins?.Browser;
+    if (typeof browser?.close !== 'function') return;
+    try { Promise.resolve(browser.close()).catch(() => console.warn('[oauth-return] 로그인 창 닫기 실패')); }
+    catch (e) { console.warn('[oauth-return] 로그인 창 닫기 실패', e); }
+  }
+
   function _handleReturn(url) {
     if (!url) return;
     try {
@@ -112,6 +120,7 @@
       if (_handleSocialLogin(u, url)) return;
 
       if (u.searchParams.get('connected') === 'success') {
+        _finishInstagramReturn();
         if (window.showToast) window.showToast('인스타 연동 완료!');
 
         // [QA #3] 인스타 상태 재조회 — 함수 존재 가드 + 다중 alias 시도.
@@ -144,6 +153,7 @@
           }, 800);
         } catch (_e3) { /* ignore */ }
       } else if (u.searchParams.get('ig_conflict') === '1') {
+        _finishInstagramReturn();
         // [2026-09-12] 이 인스타 계정이 이미 다른 잇데이 계정에 물려 있다.
         //   웹은 app-core 가 같은 신호를 처리한다. 네이티브는 처리하는 데가 없어서
         //   **아무 일도 안 일어난 것처럼** 보였다(BE 가 이제 딥링크로도 보낸다).
@@ -151,6 +161,7 @@
         if (typeof window.showInstaConflictModal === 'function') window.showInstaConflictModal(h);
         else if (window.showToast) window.showToast('이 인스타 계정은 다른 잇데이 계정에서 쓰고 있어요');
       } else if (u.searchParams.get('ig_error')) {
+        _finishInstagramReturn();
         // [2026-09-12] 백엔드가 실패 사유를 슬러그로 실어 딥링크로 돌려보낸다.
         //   웹(app-core 의 ?ig_error 처리)과 **같은 문구·같은 모달**을 쓴다 — 두 벌로 갈리면
         //   한쪽만 고쳐지는 게 이 레포의 단골 사고다.
