@@ -1162,6 +1162,7 @@
     // [#9] 누끼/원본(사진 교체)도 되돌리기(↩)로 되돌린다 — 예전엔 undo 스택 밖이라 ↩가 무반응이었음.
     if (op.op === 'photo') {
       var st = undo ? op.before : op.after, pi = op.idx;
+      _cancelCutout(pi);
       S.photos[pi] = st.url; S.cutSet = S.cutSet || {}; S.cutSet[pi] = !!st.cut;
       if (isSingleL(S.layout) && pi === S.adjSel) { S.photoUrl = st.url; S.photoCss = _cssUrl(st.url); if (refs.photo) refs.photo.style.backgroundImage = S.photoCss; }
       renderAdjust(); renderLayoutStrip(); renderCollage(); applyAdjToDisplay();
@@ -2804,11 +2805,22 @@
   function loadBgPref() { try { return JSON.parse(localStorage.getItem('itdasy:itd_bg') || '{}'); } catch (_) { return {}; } }
   function saveBgPref() { try { localStorage.setItem('itdasy:itd_bg', JSON.stringify({ color: S.collageBg, img: S.collageBgImg || null })); } catch (_) { void _; } }
   // [누끼] 사진 배경 제거 → '고른 배경'(색/이미지)으로 합성. 매트(removedBg)를 캐시해 다음 배경 변경은 0초(API 0).
+  function _cancelCutout(i) {
+    if (S._cutoutPending) delete S._cutoutPending[i];
+    if (i === S.adjSel && refs.adjCut) { refs.adjCut.disabled = false; refs.adjCut.classList.remove('is-busy'); }
+  }
+  function _cutoutBg(i) {
+    var bg = S.photoBg && S.photoBg[i];
+    return bg ? (bg.img ? { imageData: bg.img } : { color: bg.color || '#FFFFFF' }) : { color: '#FFFFFF' };
+  }
   function doCutout(idx, silent) {
     if (!(window.PhotoEditorBgCompose && window.PhotoEditorBgCompose.compose)) { if (!silent) toastIt('배경 제거 모듈을 불러오지 못했어요'); return; }
     var i = (idx != null ? idx : S.adjSel);
     if (!S.origPhotos) S.origPhotos = []; if (S.origPhotos[i] == null) S.origPhotos[i] = S.photos[i];   // 원본 1회 보관
     var src = S.origPhotos[i]; if (!src) return;
+    var _jobs = S._cutoutPending || (S._cutoutPending = {});
+    if (_jobs[i]) return;   // Same photo: latest color stays in photoBg; reuse the pending matte request.
+    var _job = {}; _jobs[i] = _job;
     var _preUrl = S.photos[i], _preCut = !!(S.cutSet && S.cutSet[i]);   // [#9] 되돌리기용 이전 상태 스냅샷
     S.matte = S.matte || {}; S.cutSet = S.cutSet || {};
     var cached = S.matte[i] || null;   // 매트 있으면 누끼 재요청 없이 배경만 다시 입힘(빠름)
@@ -2816,16 +2828,17 @@
     if (!silent) toastIt(cached ? '배경 입히는 중…' : '배경 지우는 중…');
     // [#8] 누끼 배경은 사진별 — S.photoBg[i] 우선(없으면 흰색). 한 사진 배경 바꿔도 다른 사진 안 바뀜.
     S.photoBg = S.photoBg || {};
-    var _pb = S.photoBg[i];
-    var bg = _pb ? (_pb.img ? { imageData: _pb.img } : { color: _pb.color || '#FFFFFF' }) : { color: '#FFFFFF' };
+    var bg = _cutoutBg(i);
     var _sess = S;   // [audit] 세션 스냅샷 — 누끼 대기 중 back으로 닫고 재진입하면 옛 결과가 새 세션 사진을 덮던 버그 방지.
     // [2026-07-26 원영] targetRatio '4:5' → 'original' — 누끼는 배경만 바꾸고 구도(위치·크기)는 원본 그대로.
     //   '4:5' 강제 크롭 + 인물 재배치가 "누끼 땄더니 확대·이동" 버그의 원인이었음.
-    window.PhotoEditorBgCompose.compose({ srcUrl: src, bg: bg, targetRatio: 'original', preRemovedBgUrl: cached }).then(function (r) {
-      if (S !== _sess || !root.classList.contains('is-open')) return;   // 편집기 닫혔거나 다른 세션 → 무시(유령 반영 방지)
-      if (!silent && refs.adjCut) { refs.adjCut.disabled = false; refs.adjCut.classList.remove('is-busy'); }
+    Promise.resolve().then(function () { return window.PhotoEditorBgCompose.compose({ srcUrl: src, bg: bg, targetRatio: 'original', preRemovedBgUrl: cached }); }).then(function (r) {
+      if (S !== _sess || _jobs[i] !== _job || !root.classList.contains('is-open')) return;   // 편집기 닫혔거나 다른 세션 → 무시(유령 반영 방지)
       if (!r || !r.composedDataUrl) { if (!silent) toastIt('배경 제거에 실패했어요'); return; }
       if (r.removedBgDataUrl) S.matte[i] = r.removedBgDataUrl;   // 매트 캐시
+      if (JSON.stringify(_cutoutBg(i)) !== JSON.stringify(bg)) {
+        delete _jobs[i]; doCutout(i, silent); return;   // Recompose latest choice with the returned matte, not a second provider request.
+      }
       // [#11 2026-07-18] 합성본 정렬 사람 마스크 — 기본 보정(밝기·대비·채도·온도·선명도)을 사람에만 걸 때 쓴다.
       //   removedBgDataUrl(누끼 PNG)은 자기 좌표계라 place 로 배치·크롭된 합성본과 안 맞음 → compose 가 정렬해 준 것만 씀.
       if (r.personMaskDataUrl) S.fgMask[i] = r.personMaskDataUrl; else delete S.fgMask[i];
@@ -2850,14 +2863,16 @@
         }
       }
     }).catch(function (e) {
-      if (S !== _sess || !root.classList.contains('is-open')) return;   // 닫힌/다른 세션 → 무시
-      if (!silent && refs.adjCut) { refs.adjCut.disabled = false; refs.adjCut.classList.remove('is-busy'); }
+      if (S !== _sess || _jobs[i] !== _job || !root.classList.contains('is-open')) return;   // 닫힌/다른 세션 → 무시
       // [#2] 실패 사유를 사람말로 — 한도(429)·로그인·네트워크 구분(무엇이 막혔는지 보이게).
       var msg = String((e && e.message) || e || '');
       var human = /한도|429/.test(msg) ? msg
         : /401|auth|로그인/.test(msg) ? '로그인이 필요해요(누끼는 서버 처리예요)'
         : '배경 제거에 실패했어요 — 네트워크/한도를 확인해 주세요';
       if (!silent) toastIt(human);
+    }).finally(function () {
+      if (_jobs[i] === _job) delete _jobs[i];
+      if (S === _sess && root.classList.contains('is-open') && !_jobs[i] && refs.adjCut) { refs.adjCut.disabled = false; refs.adjCut.classList.remove('is-busy'); }
     });
   }
   // 배경(색/이미지) 바뀌면 이미 누끼한 사진들을 캐시 매트로 즉시 재합성(0초).
@@ -2871,6 +2886,7 @@
   }
   function undoCutout() {
     var i = S.adjSel; if (!(S.origPhotos && S.origPhotos[i] != null)) { toastIt('되돌릴 원본이 없어요'); return; }
+    _cancelCutout(i);
     var wasShown = (S.photoUrl === S.photos[i]); var orig = S.origPhotos[i];
     var _preUrl = S.photos[i], _preCut = !!(S.cutSet && S.cutSet[i]);   // [#9] 되돌리기용 스냅샷
     S.photos[i] = orig; if (S.cutSet) S.cutSet[i] = false;
@@ -3534,6 +3550,7 @@
     if (refs.peek) refs.peek.addEventListener('click', function () { togglePeek(); });   // [P2-2]
     if (refs.addText) refs.addText.addEventListener('click', function () { addText(); });   // [#4] 글자 추가(항상 새 텍스트)
     refs.done.addEventListener('click', function () {
+      if (Object.keys(S._cutoutPending || {}).length) { toastIt('배경 적용 중이에요. 적용이 끝나면 완료를 눌러 주세요'); return; }
       if (S._bgLoading) { toastIt('배경 사진을 불러오는 중이에요. 잠시 후 완료를 눌러 주세요'); return; }
       if (S._saving) return;   // [audit] 완료 더블탭 방지(저장 중 재클릭 무시)
       S._saving = true;
