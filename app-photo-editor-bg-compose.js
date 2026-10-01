@@ -81,39 +81,18 @@
   }
 
   async function _removeBg(srcDataUrl) {
-    try {
-      const fd = new FormData();
-      fd.append('file', _blobFromDataUrl(srcDataUrl), 'photo.jpg');
-      const res = await apiFetch('/image/remove-bg', { method: 'POST', headers: authHeader(), body: fd });
-      // [2026-06-10] 한도 문구에 리셋 시점 + 대안 안내 추가 (이탈 방지)
-      if (res.status === 429) throw new Error('오늘 배경제거 한도를 다 썼어요 — 내일 0시에 다시 채워져요. 플랜·구독에서 한도를 늘릴 수도 있어요');
-      if (!res.ok) throw new Error('서버 누끼 실패');
-      return await res.blob();
-    } catch (serverErr) {
-      console.warn('[bg-compose] 서버 누끼 실패, 클라이언트 폴백:', serverErr);
-      // [#4] 폴백 버그 수정 — _lazyImgly 는 '모듈 객체'를 반환한다. 옛 코드는 정의된 적 없는
-      //   전역 imglyRemoveBackground 를 봐서 항상 throw → 서버 실패 시 누끼 완전 실패였음.
-      var fn = _resolveImgly();
-      if (typeof fn !== 'function' && typeof window._lazyImgly === 'function') {
-        var mod = await window._lazyImgly();
-        fn = _resolveImgly(mod);
-      }
-      if (typeof fn !== 'function') throw serverErr;
-      return await fn(_blobFromDataUrl(srcDataUrl), {
-        publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/',
-      });
-    }
-  }
-  // 로드된 imgly 모듈에서 removeBackground 함수를 안전하게 꺼낸다(전역/모듈/UMD 네임스페이스 모두 대응).
-  function _resolveImgly(mod) {
-    var cands = [
-      mod && mod.removeBackground, mod && mod.default && mod.default.removeBackground,
-      (typeof window !== 'undefined') && window.imgly_bgr && window.imgly_bgr.removeBackground,
-      (typeof window !== 'undefined') && window['@imgly/background-removal'] && window['@imgly/background-removal'].removeBackground,
-      (typeof imglyRemoveBackground !== 'undefined') ? imglyRemoveBackground : null
-    ];
-    for (var i = 0; i < cands.length; i++) { if (typeof cands[i] === 'function') return cands[i]; }
-    return null;
+    // [2026-09-30 원영 결정] 휴대폰 누끼 폴백(imgly) 삭제 — 서버 누끼만 쓴다.
+    //   ① 두 겹으로 죽어 있었다: 불러오던 `index.umd.js` 가 1.7.0 에 없고, 모델 경로(jsDelivr npm)엔 모델이 없다.
+    //   ② 살리면 첫 사용 때 폰이 약 100MB(모델 88MB + 실행엔진)를 받는다.
+    //   ③ 늘 실패하면서 서버 오류 문구를 덮었다 — 한도 초과(429)인데 "누끼 모듈을 못 불러왔어요" 가 떴다.
+    //   서버가 실패하면 그 문구를 그대로 올린다(작업실 어댑터가 사유별 안내로 바꾼다).
+    const fd = new FormData();
+    fd.append('file', _blobFromDataUrl(srcDataUrl), 'photo.jpg');
+    const res = await apiFetch('/image/remove-bg', { method: 'POST', headers: authHeader(), body: fd });
+    // [2026-06-10] 한도 문구에 리셋 시점 + 대안 안내 추가 (이탈 방지)
+    if (res.status === 429) throw new Error('오늘 배경제거 한도를 다 썼어요 — 내일 0시에 다시 채워져요. 플랜·구독에서 한도를 늘릴 수도 있어요');
+    if (!res.ok) throw new Error('서버 누끼 실패');
+    return await res.blob();
   }
 
   /* [2026-07-26 원영] 인물 재배치(_alphaBBox+_personPlacement, 인물만 오려 97% 확대·중앙정렬) 폐기 —

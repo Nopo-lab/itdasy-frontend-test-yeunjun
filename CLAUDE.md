@@ -84,6 +84,12 @@ LLM 쿼터 주의, 반복해서 나온 진짜 원인 패턴(래퍼 우회 직접
 **구현 여부 파이프라인**(프론트 버튼→API→라우팅→권한→DB→실사용→dead/stub/TODO) · 10 케이스 · 하루 사용 흐름 · **붙여넣는 감사 프롬프트** + 진행 트래커.
 👉 돌리는 순서: 인증 → 결제 → 회원권 → 예약(🔴) → 매출 → 고객 → DM → 댓글 → 잇비(🟠) → 작업실 → 연동 → 설정(🟡🟢).
 
+## 🛡️ 출시 후 운영 리스크 플랜 — `.ai/POST_LAUNCH_RISK_PLAN.md`
+
+**심사 통과 뒤 실제 운영에서 터지는 것**(인프라·데이터·보안·결제·외부정책·AI·발송·법·배포·감시·CS·계정소유권 12영역)을
+리스크 레지스터로 정리. 각 항목에 지금 상태(실측 근거)·막는 조치·담당·기한(D-0/W1/M1/Q)·완료 판정이 붙어 있다.
+출시 버튼 전 필수(D-0) 트래커 + 분기 드릴 목록 + 붙여넣는 조사 프롬프트 포함. 장애 대응 절차는 `RUNBOOK.md` 가 정본.
+
 ## 🔐 보안 3원칙 — **코드 쓰면서 지켜라** (2026-08-02, 실제 사고 기반)
 
 > 같은 실수가 계속 재발해서 규칙으로 굳혔다. **감사에서 잡는 게 아니라 쓸 때 안 만드는 게 목표다.**
@@ -158,10 +164,13 @@ PC(`@media (width >= 768px)`)엔 고정 사이드바 `#sideNav`(`.side-nav.ms-si
 **언어**: 한국말, 쉬운말. 원영님은 코딩 초보.
 
 - 역할: 연준 전용 프론트 검증 레포. 배포 `https://nopo-lab.github.io/itdasy-frontend-test-yeunjun/`
-- 🚨 **백엔드는 운영이다.** `PROD_API` = `https://itdasy-backend-staging-644329093453.asia-northeast3.run.app`
-  이름은 staging 이지만 `env=production` 이고 **실사용자 DB(Supabase `itdasy-staging` / hsxxqomfbdernepykils)** 를 본다.
-  이 사이트(`nopo-lab.github.io/itdasy-frontend-test-yeunjun/`)는 살아 있고, 여기서 넣은 돈은 진짜 돈이다.
-  토큰 키: `itdasy_token::staging` (키 이름도 이름만 staging)
+- 🔀 **백엔드가 운영/테스트로 나뉘었다 (2026-09-26 `b1ae1e7` · 2026-09-30 확인).**
+  이 레포의 `PROD_API` = `https://itdasy-backend-test-644329093453.asia-northeast3.run.app` (테스트 서비스 · Supabase `itdasy-test`).
+  운영은 Cloud Run `itdasy-backend-prod`(운영 레포 `Nopo-lab/itdasy_backend`)이고 운영 프론트는 `itdasy-frontend` 다.
+  토큰 키는 여전히 `itdasy_token::staging` (API 주소에 test 가 들어가도 같은 키 — `app-core.js` `_TOKEN_KEY`).
+  옛 문구("이 사이트의 백엔드 = staging = 운영 DB")는 9월 26일 전 기준이다. 서비스·DB 표는 `RUNBOOK.md` 맨 위.
+  DB: 운영 = Supabase `itdasy-staging`(hsxxqomfbdernepykils, 이름만 staging) · 테스트 = `itdasy-test`(pgsvvcjrifbidwpwfdst) · 옛 = `beauty-platform`(wlwauinqvmegnqdtbrtg, 미사용).
+  근거는 `RUNBOOK.md` 맨 위(2026-09-30). 콘솔에서 운영 서비스 DATABASE_URL 을 한 번 눈으로 보면 확정.
 - 💾 **운영 DB 백업의 단일 소유자가 이 레포다.** `.github/workflows/supabase-backup.yml`
   매일 KST 03:00 · artifact 30일 · 실패 시 잡 FAIL + Discord 알림.
   다른 레포에 백업을 늘리지 마라 — 새벽에 어느 게 진짜인지 구분 못 한다.

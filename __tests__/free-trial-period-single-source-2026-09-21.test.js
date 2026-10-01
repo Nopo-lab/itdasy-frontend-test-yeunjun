@@ -32,6 +32,15 @@ const FILES = [
   'support.html',
   'terms.html',
   'landing/index.html',
+  // [운영리스크 2026-09-30] 스토어 소개 정본도 본다. `scripts/play_publish.py` 가 이 JSON 을
+  //   그대로 Play 콘솔에 올린다 — 여기만 "10일 무료 체험" 으로 남아 있었다(앱·약관·랜딩은 14일).
+  //   스토어 설명과 실제 결제 조건이 다르면 심사 반려·소비자 분쟁 사유다.
+  'store/play/listing.ko-KR.json',
+  'docs/submission/App-Store-Metadata.md',
+  'docs/submission/Play-Store-Metadata.md',
+  'docs/submission/Release-Copy-2026-09-15.md',
+  'docs/submission/Review-Notes.md',
+  'terms-en.html',
 ];
 
 /**
@@ -43,6 +52,8 @@ const PATTERNS = [
   /(\d+)\s*일\s*(?:동안\s*)?무료/g, // "10일 무료", "10일 동안 무료"
   /무료\s*체험\s*\(?\s*(\d+)\s*일/g, // "무료 체험 10일", "무료체험(10일)"
   /(\d+)\s*일\s*체험/g, // "10일 체험"
+  // [운영리스크 2026-09-30] 영문 약관·스토어 문서도 본다. `terms-en.html` 이 "10-day" 였다.
+  /(\d+)[- ]day\s+(?:free\s+)?trial/gi, // "10-day free trial", "7 day trial"
 ];
 
 const OK = '14';

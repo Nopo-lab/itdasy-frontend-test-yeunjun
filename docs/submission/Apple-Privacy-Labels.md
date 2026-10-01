@@ -151,10 +151,10 @@ Sentry, Gemini, 내부 로그 모두 "자사 서비스 내" 사용이며 광고 
 
 | SDK / Service | 용도 | 전송 데이터 | 모델 학습? | 위치 |
 |---|---|---|---|---|
-| Google Gemini API | AI 캡션/챗봇 | 가명처리된 텍스트(`고객#1` 등) | ❌ No | 미국 |
+| Google Gemini API | AI 캡션/챗봇/DM 답장 초안/사진 분석 | 캡션 입력·시술 사진, AI 비서 질문(고객 목록은 `고객#1` 가명), DM 원문(전화·카드번호 가림, 호칭용 이름 포함) | ❌ No | 미국 |
 | Meta Graph API | Instagram OAuth/발행 | Instagram User ID, 토큰 | ❌ No | 미국/아일랜드 |
 | Replicate / Remove.bg | AI 누끼 | 업로드 사진 (즉시 파기) | ❌ No | 미국/독일 |
-| Cloudflare R2 | 이미지 스토리지 | 업로드 사진 | — | 미국 |
+| Supabase Storage | 이미지 스토리지 (비공개 버킷 `user-uploads`, 만료 주소로만 열람) | 업로드 사진 | — | Supabase 프로젝트 리전 — 콘솔에서 확인 후 기재 |
 | Supabase | DB 관리 | 전체 DB 레코드 | — | 미국 |
 | Google Cloud Platform (Cloud Run) | 서버 호스팅 | 모든 개인정보 | — | 대한민국 (서울 asia-northeast3) |
 | Sentry | 크래시 로깅 | 에러 스택 (PII 스크러빙됨) | — | 미국 |

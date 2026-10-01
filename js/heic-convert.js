@@ -11,6 +11,8 @@
 
   const HEIC_EXT_RE = /\.(heic|heif)$/i;
   const CDN_URL = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+  // [운영리스크 2026-09-30 C4] 무결성 해시 — CDN 파일이 바뀌면 실행하지 않는다(npm 배포본에서 계산).
+  const CDN_SRI = 'sha384-OTofQ0MEeiSgh62havBcemCIK0gqj809wX6UA0uPISNMRnR6NZyCdGzX3SbLrgwL';
 
   function isHeic(file) {
     if (!file) return false;
@@ -33,6 +35,8 @@
     _libPromise = new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = CDN_URL;
+      s.integrity = CDN_SRI;
+      s.crossOrigin = 'anonymous';
       s.onload = () => resolve();
       s.onerror = () => { _libPromise = null; reject(new Error('heic2any CDN 로드 실패')); };
       document.head.appendChild(s);

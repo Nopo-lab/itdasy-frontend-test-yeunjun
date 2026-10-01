@@ -74,7 +74,7 @@ AI Instagram marketing for solo beauty salon owners. Captions, photo editing, sc
 | Device or other IDs | ❌ | ❌ | — | — | — | — |
 
 ### Security Practices
-- ✅ Data is encrypted in transit (TLS 1.3, HSTS)
+- ✅ Data is encrypted in transit (HTTPS/TLS, HSTS)
 - ✅ You can request that data be deleted (in-app Delete Account, or email request)
 - ✅ Passwords are hashed (bcrypt), never stored in plaintext
 - ✅ Compliant with Google Play Families Policy (age 13+)
@@ -107,11 +107,11 @@ AI Instagram marketing for solo beauty salon owners. Captions, photo editing, sc
 ## IAP Products
 
 ### Subscription Details
-Monthly and yearly products renew on their respective billing periods. The app describes a 10-day trial for the monthly product; verify eligibility and the configured offer in Play Console before submission. The yearly product has no trial in the current app copy.
+Monthly and yearly products renew on their respective billing periods. The app describes a 14-day trial for the monthly product; verify eligibility and the configured offer in Play Console before submission. The yearly product has no trial in the current app copy.
 
 | Product ID | Base Plan | Pricing (KR) | Pricing (US) | Description |
 |---|---|---|---|---|
-| `itdasy_pro_monthly_9900` | monthly-autorenew | ₩9,900 | $6.99 | Itdasy Pro — all features for solo beauty shop owners (10-day free trial) |
+| `itdasy_pro_monthly_9900` | monthly-autorenew | ₩9,900 | $6.99 | Itdasy Pro — all features for solo beauty shop owners (14-day free trial) |
 | `itdasy_pro_yearly_99000` | yearly-autorenew | ₩99,000 | — | Itdasy Pro (annual) — 2 months free. **Same subscription group as monthly** (required for plan switching) |
 | ~~`itdasy_membership_monthly_6900`~~ | monthly-autorenew | (legacy price) | — | ⚠️ **DEPRECATED 2026-09-02 — deactivate, do NOT delete, do NOT re-price.** Existing subscribers' renewal receipts still arrive; deleting it drops them to free, and raising its price would force an increase on them |
 
