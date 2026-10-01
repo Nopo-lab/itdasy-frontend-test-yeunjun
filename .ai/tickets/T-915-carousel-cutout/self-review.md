@@ -18,3 +18,7 @@
 후속 검사: 225 suites /3336 PASS /2 skipped /0fail. npm run lint:ci 오류0. 새 유틸리티는 기존 flow/util.js에 분리, 큰 플로우는 연결1줄만. 닫힌 플로우·다른 초안·열린 편집기에는 갱신하지 않음. 입력창 노드·값·선택 범위 유지 검사 통과.
 
 - Follow-up review: both cap-car and ig-car markup refresh by the current display item ID, including output pair IDs; Korean input nodes stay untouched.
+
+- Pending-cutout follow-up: block Done while any photo is processing; reuse one pending matte request and recompose only the latest background with that cache. Failure/cancel/new-session regressions covered.
+
+- Final verification: 3343 passed /2 skipped /226 suites; lint0errors177warnings; smoke104scripts204lazy; overlay73. Original and photo undo/redo invalidate pending job tokens; late success/failure cannot overwrite or unlock a replacement job. Six behavioral regressions pass. Independent reviewer found no remaining blockers; deployed runtime verification remains a separate gate.
