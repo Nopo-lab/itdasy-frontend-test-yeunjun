@@ -93,16 +93,30 @@
     try { return await window.loadSlotsFromDB(); }
     catch (_e) { return []; }
   }
-  // DM 자동응답 승인 대기 큐 — 사장 확인 필요한 답장 N건
-  async function _fetchDMQueueCount() {
-    const headers = _authHeaders();
-    if (!window.API || !headers) return 0;
+  /* [flow-home-daily-retention-04 2026-10-01] DM 큐 건수 — 더 이상 홈이 직접 받지 않는다.
+     예전 _fetchDMQueueCount 가 렌더마다 /dm-confirm-queue 를 받았는데(실측 82초 세션 18건), 홈 화면에선 [F1] 뒤로
+     아무도 그 숫자를 안 쓰고, 같은 엔드포인트를 고객 메시지 카드(app-home-customer-msgs.js)가 10초마다 따로 폴링한다.
+     숫자는 그 카드가 단일 소스다 — 받을 때마다 setDmQueueCount 로 알려주고, 여기선 마지막 값만 기억해
+     SWR 캐시(_dmQueueCount)에 싣는다. 내 샵 관리 '손님 문의 · 답해둘 게 N개' 가 그 캐시를 읽는다(app-myshop-v3 _inquiryCounts). */
+  function _knownDmQueueCount() {
     try {
-      const res = await apiFetch('/dm-confirm-queue', { headers });
-      if (!res.ok) return 0;
-      const data = await res.json();
-      return Array.isArray(data) ? data.length : (Array.isArray(data.items) ? data.items.length : 0);
-    } catch (_e) { return 0; }
+      const m = window.HomeCustomerMsgs;
+      if (m && typeof m.count === 'function') { const n = m.count(); if (Number.isFinite(n)) return n; }
+    } catch (_e) { void _e; }
+    return _lastDmCount;
+  }
+  function setDmQueueCount(n) {
+    const v = Number(n);
+    if (!Number.isFinite(v) || v < 0) return;
+    _lastDmCount = v;
+    try {
+      const raw = sessionStorage.getItem(SWR_KEY);
+      if (!raw) return;
+      const obj = JSON.parse(raw);
+      if (!obj || !obj.d || obj.d._dmQueueCount === v) return;
+      obj.d._dmQueueCount = v;
+      sessionStorage.setItem(SWR_KEY, JSON.stringify(obj));
+    } catch (_e) { void _e; }
   }
   // [2026-07-20 v785] 답 안 한 댓글 문의 N건 — "AI 잇비가 챙겼어요" 카드용.
   //   비용 방어: 인스타 미연동이면 API 호출 자체를 안 함 (0 반환).
@@ -351,8 +365,8 @@
     };
   }
 
-  function _hydrateHome(container, brief, dmQueueCount) {
-    container.innerHTML = window.HomeV41Render.compose(brief, dmQueueCount);
+  function _hydrateHome(container, brief) {
+    container.innerHTML = window.HomeV41Render.compose(brief);
     _setupCarousel(container);
     _bindEvents(container, brief);
     window.HomeV41Render.syncAvatar(container);
@@ -447,11 +461,11 @@
     if (!container) return;
     _lastContainerId = container.id || _lastContainerId;
 
-    // SWR: 캐시 즉시 (DM 큐 카운트는 캐시에 없으니 0 으로 시작)
+    // SWR: 캐시 즉시
     const swr = _readSWR();
     if (swr && swr.d) {
       try {
-        _hydrateHome(container, swr.d, swr.d._dmQueueCount || 0);
+        _hydrateHome(container, swr.d);
         _watchHeaderAvatar();
         // [2026-07-24] force(=홈 복귀·앱 포그라운드·수동 새로고침)면 fresh 여도 네트워크 재요청.
         //   안 그러면 DM/댓글이 60초 SWR 창에 갇혀 "최신 아님"으로 보였다(실측). refresh() 는
@@ -476,13 +490,13 @@
          /dm-confirm-queue 3회 · /instagram/comment-queue 2회가 나갔다(실측).
          지연을 따라잡아야 하는 건 brief 뿐이다 → 그때는 배지 직전 값을 재사용한다. */
       const _skipChannels = !!(opts && opts.channels === false);
-      const [briefRaw, slots, dmQueueCount, commentQueueCount] = await Promise.all([
+      const [briefRaw, slots, commentQueueCount] = await Promise.all([
         _fetchBrief().catch(() => null),
         _fetchSlots().catch(() => []),
-        _skipChannels ? Promise.resolve(_lastDmCount) : _fetchDMQueueCount().catch(() => 0),
         _skipChannels ? Promise.resolve(_lastCmtCount) : _fetchCommentQueueCount().catch(() => 0),
       ]);
       if (renderAuth !== _authHeaders()?.Authorization) return;
+      const dmQueueCount = _knownDmQueueCount();   // 고객 메시지 카드가 받은 마지막 값 (홈이 따로 받지 않는다)
       _lastDmCount = dmQueueCount; _lastCmtCount = commentQueueCount;
       // [2026-08-17 보스] 세션 만료(AUTH) — 에러 카드 금지. 게이트가 로그인 화면을 띄우고,
       //   재로그인 훅(app-core)이 refresh() 로 다시 그린다. 캐시 있으면 그걸로 유지.
@@ -502,7 +516,7 @@
       merged._commentQueueCount = commentQueueCount;   // [v785] alertItems 가 brief 에서 읽음 (SWR 캐시에도 실림)
       // 실패한 빈 brief 는 SWR 캐시에 저장 금지 (캐시 오염 방지)
       if (!briefFailed) { try { _writeSWR(merged); } catch (_e) { void _e; } }
-      _hydrateHome(container, merged, dmQueueCount);
+      _hydrateHome(container, merged);
       requestAnimationFrame(() => { window.scrollTo(0, 0); });
     } finally {
       const next = _inFlight && _inFlight.pending;
@@ -551,6 +565,8 @@
       //   그린다 — 로그인 훅(app-core refreshAfterAuth)이 refresh() 하나로 첫 렌더까지 책임진다.
       return _doRender(_lastContainerId || 'homeV41Root', { force: true });
     },
+    // [flow-home-daily-retention-04] 고객 메시지 카드(단일 소스)가 받은 DM 큐 건수를 알려준다 → SWR 캐시 _dmQueueCount 갱신
+    setDmQueueCount,
   };
 
   // [2026-07-24] 홈 복귀 시 최신화 — 앱을 다른 앱에 갔다 돌아오거나(visibilitychange),

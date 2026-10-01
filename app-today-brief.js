@@ -290,9 +290,22 @@
   // 마지막으로 render 된 컨테이너 기억 (re-render 용)
   let _lastContainerId = null;
 
+  /* [flow-home-daily-retention-04 2026-10-01] 숨은 컨테이너엔 그리지 않는다 — 네트워크도 쓰지 않는다.
+     홈이 v4.1 로 바뀌면서 index.html 의 #home-today-brief 는 display:none 이 됐는데, app-core 는 홈 탭마다 여전히
+     TodayBrief.render('home-today-brief') 를 불러 /today/brief + /assistant/suggestions(LLM, 수십 초) 를 받았다.
+     아무도 못 보는 카드를 위해 매번 서버를 태운 셈(실측 부팅 25초 /today/brief 2 · /assistant/suggestions 2). */
+  function _isHidden(el) {
+    try {
+      if (el.getAttribute('aria-hidden') === 'true') return true;
+      const cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
+      return !!(cs && cs.display === 'none');
+    } catch (_e) { return false; }
+  }
+
   async function _doRender(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
+    if (_isHidden(container)) return;
     _lastContainerId = containerId;
 
     // [2026-04-26 0초딜레이] SWR 캐시 즉시 렌더 — 0ms

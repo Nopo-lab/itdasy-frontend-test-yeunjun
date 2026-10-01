@@ -162,7 +162,9 @@ describe('홈 배지 — 예약류 변경에 채널 재조회 안 함', () => {
 
   test('_doRender 가 채널 스킵 옵션을 받는다', () => {
     expect(code).toMatch(/opts && opts\.channels === false/);
-    expect(code).toMatch(/_skipChannels \? Promise\.resolve\(_lastDmCount\)/);
+    // [2026-10-01 flow-home-daily-retention-04] DM 큐 건수는 홈이 더 이상 직접 받지 않는다(고객 메시지 카드가 단일 소스) —
+    //   재조회 자체가 0 이므로 스킵 분기도 없다. 호출이 되살아나지 않는지만 본다.
+    expect(code).not.toMatch(/apiFetch\(\s*['"`]\/dm-confirm-queue/);
     expect(code).toMatch(/_skipChannels \? Promise\.resolve\(_lastCmtCount\)/);
   });
 

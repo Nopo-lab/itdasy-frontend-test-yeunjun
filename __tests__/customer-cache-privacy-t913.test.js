@@ -149,12 +149,13 @@ describe.each(['app-dashboard.js', 'app-customer.js', 'app-revenue.js'])('%s pri
   function start(h) {
     Object.assign(h.context, {
       _getCached: () => null, _setCached: h.writes, _writeSWR: h.writes,
-      _writeSWRPeriod: h.writes, _periodInflight: {},
+      _writeSWRPeriod: h.writes, _periodInflight: {}, _mutGen: 0,
       _computeRange: () => ({ from: '2026-09-01', to: '2026-09-30' }),
       _mergeOptimistic: items => items, _cache: [], _isOffline: false, _total: 0, _hasMore: false,
     });
+    // [2026-10-01 flow-revenue-stats-ui-01] app-revenue _api 는 세션 비교를 _sameSession/_subOf 로 한다(사용자 sub 기준) — 함께 싣는다.
     const names = file === 'app-dashboard.js' ? ['_apiGet'] :
-      file === 'app-customer.js' ? ['_api', '_fetchFresh'] : ['_api', '_fetchPeriodData'];
+      file === 'app-customer.js' ? ['_api', '_fetchFresh'] : ['_api', '_fetchPeriodData', '_sameSession', '_subOf'];
     loadFunctions(file, names, h.context);
     if (file === 'app-dashboard.js') return h.context._apiGet('/dashboard');
     if (file === 'app-customer.js') return h.context._fetchFresh();
@@ -197,7 +198,7 @@ describe.each(['app-home-v41.js', 'app-myshop-v3.js'])('%s final screen boundary
       // changes: the final render guard must not rely on the brief guard alone.
       _fetchBrief: () => file === 'app-home-v41.js' ? Promise.resolve(oldBrief) : pending.promise,
       _fetchSlots: () => pending.promise,
-      _fetchDMQueueCount: async () => 0, _fetchCommentQueueCount: async () => 0,
+      _knownDmQueueCount: () => 0, _fetchCommentQueueCount: async () => 0,   // [2026-10-01] 홈은 DM 큐를 직접 받지 않는다(flow-home-daily-retention-04)
       _showSkeleton: jest.fn(), _watchHeaderAvatar: jest.fn(), _bindEvents: jest.fn(),
       _writeSWR: writes, _hydrateHome: rendered, _composeHTML: rendered,
       requestAnimationFrame: callback => callback(), window: { scrollTo: jest.fn() },

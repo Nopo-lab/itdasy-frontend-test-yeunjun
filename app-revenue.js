@@ -171,6 +171,47 @@
   const _saveOffline = (list) => { try { localStorage.setItem(OFFLINE_KEY, JSON.stringify(list)); } catch (_) { /* silent */ } };
 
   // ── 네트워크 ────────────────────────────────────────────
+  /* [flow-revenue-stats-ui-05 2026-10-01] 한 건 금액 상한 — 백엔드 schemas/revenue.py MAX_KRW 와 같은 값.
+     화면 네 입력 경로가 이 숫자를 몰라서 99,999,999 까지 입력·활성이었고, 눌러야 서버 422 가
+     '요청 형식이 올바르지 않습니다' 로만 떴다. 상한은 **입력 시점**에 알려준다. */
+  const MAX_KRW = 50000000;
+  const MAX_KRW_TEXT = '한 건 최대 5,000만원이에요';
+  /* 서버 422 의 errors[] 를 원장이 읽을 수 있는 한 줄로. 금액 상한이면 상한 금액을 그대로 말한다.
+     (실측 응답: {"detail":"요청 형식이 올바르지 않습니다.","errors":[{"field":"body.amount","msg":"Input should be less than or equal to 50000000"}]}) */
+  function _readable422(d) {
+    try {
+      const errs = (d && Array.isArray(d.errors)) ? d.errors : [];
+      for (const er of errs) {
+        const field = String((er && er.field) || '');
+        const msg = String((er && er.msg) || '');
+        const m = msg.match(/less than or equal to\s*(\d+)/i);
+        if (/amount/.test(field) && m) return `한 건 최대 ${Number(m[1]).toLocaleString('ko-KR')}원까지 기록할 수 있어요`;
+        if (/amount/.test(field) && /greater than/i.test(msg)) return '금액은 0원보다 커야 해요';
+      }
+    } catch (_e) { void _e; }
+    return null;
+  }
+  /* [flow-revenue-stats-ui-01 2026-10-01] 요청을 보낼 때와 받을 때의 **사용자**가 같은지 본다.
+     예전엔 토큰 문자열을 비교해서, 같은 원장의 토큰 갱신(만료 임박 자동 갱신·401 뒤 갱신)도 전부
+     'session_changed' 로 던졌다 — 서버엔 반영됐는데 화면은 '수정 실패' 인 거짓 실패(실측 inline_slow2_390.log).
+     JWT payload 의 sub 를 읽어 비교하고, 못 읽는 토큰이면 예전처럼 문자열로 비교한다. */
+  function _subOf(authorization) {
+    try {
+      const t = String(authorization || '').replace(/^Bearer\s+/i, '');
+      const seg = t.split('.')[1];
+      if (!seg) return null;
+      const json = atob(seg.replace(/-/g, '+').replace(/_/g, '/'));
+      const p = JSON.parse(json);
+      return (p && p.sub != null) ? String(p.sub) : null;
+    } catch (_e) { return null; }
+  }
+  function _sameSession(before, after) {
+    if (before === after) return true;
+    if (!after) return false;                 // 요청 중 로그아웃
+    const a = _subOf(before), b = _subOf(after);
+    if (a != null && b != null) return a === b;
+    return false;
+  }
   async function _api(method, path, body) {
     if (!window.API || !window.authHeader) throw new Error('no-auth');
     const auth = window.authHeader();
@@ -188,13 +229,24 @@
       try { d = await res.json(); } catch (_) { /* body 없음 */ }
       // [P2 2026-09-13] status 를 실어 보낸다 — 호출부가 "서버가 분명히 거절(4xx)" 과
       //   "결과를 모름(네트워크·타임아웃·5xx)" 을 가를 수 있어야 한다(회원권 _fetch 와 같은 계약).
-      const he = new Error((d && d.detail) || ('HTTP ' + res.status));
+      const readable = res.status === 422 ? _readable422(d) : null;
+      const he = new Error(readable || (d && typeof d.detail === 'string' && d.detail) || ('HTTP ' + res.status));
       he.status = res.status;
+      if (readable) he._userMessage = true;   // 호출부가 _humanError 로 뭉개지 않고 그대로 보여도 되는 문구
       throw he;
     }
     const data = res.status === 204 ? null : await res.json();
-    if (auth.Authorization !== window.authHeader()?.Authorization) throw new Error('session_changed');
+    if (!_sameSession(auth.Authorization, window.authHeader()?.Authorization)) throw new Error('session_changed');
     return data;
+  }
+  // [flow-revenue-stats-ui-01] 환불 조회/기록 — revenue-edit.js 가 쓰던 '헤더 없는 window.apiFetch 직접 호출' 을
+  //   이 공용 경로(_api, 인증 자동)로 통일한다. 헤더 없는 401 이 '세션 만료' 로 오해돼 강제 로그아웃까지 갔다.
+  async function refunds(id) {
+    return _api('GET', '/revenue/' + encodeURIComponent(id) + '/refunds');
+  }
+  async function refund(id, clientTxnId) {
+    const txn = clientTxnId || ('refund-' + id + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8));
+    return _api('POST', '/revenue/' + encodeURIComponent(id) + '/refund', { client_txn_id: txn });
   }
 
   // ── SWR ────────────────────────────────────────────────
@@ -222,7 +274,21 @@
   }
   function _readSWRPeriod(p) { return _swrReadKey(_swrKey(p), _SWR_TTL); }
   function _writeSWRPeriod(p, items) { _swrWriteKey(_swrKey(p), items); }
+  /* [flow-revenue-stats-ui-02 2026-10-01] 변경 세대(generation).
+     저장 **직전에** 떠 있던 GET /revenue 가 저장 **뒤에** 도착하면(실측 race_list.log: GET 54ms → POST 141ms 완료
+     → GET 1643ms 도착) 커밋 전 장부가 새 타임스탬프로 캐시되고 _items 를 덮어 방금 저장한 매출이 60초간 사라졌다.
+     규칙: 쓰기 성공·캐시 무효화마다 세대를 올리고 in-flight 를 버린다. 세대가 바뀐 뒤 도착한 응답은
+     캐시에도 _items 에도 쓰지 않고 다시 받는다. 변경 뒤의 읽기는 URL 에 세대(_g)를 실어 app-core 의
+     같은 URL GET 코얼레싱이 **변경 전 요청과 합치지 못하게** 한다(세대 0 = 변경 없음 = URL 그대로, 부팅 프리페치와 공유). */
+  let _mutGen = 0;
+  const _readGen = () => _mutGen;
+  const _genParam = () => (_mutGen > 0 ? '&_g=' + _mutGen : '');
+  function _invalidateReads() {
+    _mutGen += 1;
+    Object.keys(_periodInflight).forEach((k) => { _periodInflight[k] = null; });
+  }
   function _clearSWRRevenue() {
+    _invalidateReads();
     // [v221] revenue 관련 캐시 prefix 일괄 삭제
     try {
       const PREFIX = 'pv_cache::revenue::';
@@ -240,11 +306,20 @@
     if (_periodInflight[p]) return _periodInflight[p];
     // [v221] 항상 custom + 계산된 from/to 로 호출
     const r = _computeRange();
-    const url = `/revenue?period=custom&from=${r.from}&to=${r.to}`;
-    _periodInflight[p] = _api('GET', url)
-      .then(d => { const items = d.items || []; _writeSWRPeriod(p, items); return items; })
-      .finally(() => { _periodInflight[p] = null; });
-    return _periodInflight[p];
+    const gen = _mutGen;
+    const url = `/revenue?period=custom&from=${r.from}&to=${r.to}` + (gen > 0 ? '&_g=' + gen : '');
+    const pr = _api('GET', url)
+      .then(d => {
+        if (gen !== _mutGen) {
+          // 변경 전에 시작한 읽기 — 커밋 전 장부일 수 있다. 캐시에 쓰지 않고 현재 세대로 다시 받는다.
+          if (_periodInflight[p] === pr) _periodInflight[p] = null;
+          return _fetchPeriodData(p);
+        }
+        const items = d.items || []; _writeSWRPeriod(p, items); return items;
+      })
+      .finally(() => { if (_periodInflight[p] === pr) _periodInflight[p] = null; });
+    _periodInflight[p] = pr;
+    return pr;
   }
   async function _fetchPeriod(p) {
     const items = await _fetchPeriodData(p);
@@ -847,9 +922,19 @@
       if (!amount || amount <= 0) {
         if (window.showToast) window.showToast('금액을 입력해 주세요'); return;
       }
+      /* [flow-revenue-stats-ui-05/06] 상한·음수는 _syncSave 가 버튼을 막지만, 라벨 갱신 전 탭·프로그램 클릭을 대비해 한 번 더. */
+      if (amount > MAX_KRW) { if (window.showToast) window.showToast(MAX_KRW_TEXT); return; }
+      if (/-/.test(String(modal.querySelector('#rfAmount').value))) { if (window.showToast) window.showToast('돈을 돌려준 거면 매출 행을 눌러 [환불] 로 기록해요'); return; }
       modal._rfSaving = true;
       const _saveBtn = ev && ev.currentTarget && ev.currentTarget.tagName === 'BUTTON' ? ev.currentTarget : null;
+      /* [flow-revenue-stats-ui-04 2026-10-01] 저장 중 표시. 예전엔 disabled 만 걸고 글자는 '12,000원 기록하기' 그대로라
+         느린 망에선 눌린 건지 알 수 없었다(실측 d_double_390.log 0.4s: disabled=true, text 불변). 인라인 편집·시술완료·
+         회원권 충전은 모두 '저장 중…' 을 쓴다 — 같은 모양으로. 12초 넘게 걸리면 '결과 확인 중…' 으로 바꿔 멱등 재시도를
+         유도하지 않는다(회원권 _SLOW_NOTICE 와 같은 기준). */
+      const _busyLabel = (t) => { if (!_saveBtn) return; _saveBtn.textContent = t; _saveBtn.setAttribute('aria-busy', 'true'); _saveBtn.style.background = '#C8CCD2'; _saveBtn.style.cursor = 'wait'; };
       if (_saveBtn) _saveBtn.disabled = true;
+      _busyLabel('저장 중…');
+      const _slowTimer = setTimeout(() => { if (modal._rfSaving) _busyLabel('결과 확인 중…'); }, 12000);
       const useMem = ctx.method === 'membership';
       const payload = {
         amount, method: ctx.method,
@@ -884,11 +969,16 @@
         // [P2 2026-09-13] 데이터 계층이 이미 "결과를 확인하지 못했어요" 라고 했으면 여기서
         //   "저장 실패" 를 또 띄우지 않는다 — 같은 사건에 모름+실패 동시 표시(거짓 실패).
         if (!(e && e._unknownShown) && window.showToast) {
-          window.showToast('저장 실패: ' + (window._humanError ? window._humanError(e) : (e?.message || '')), { error: true });
+          // [flow-revenue-stats-ui-05] _api 가 422 를 읽을 수 있는 문구(상한 금액)로 바꿔 줬으면 그대로 — _humanError 는 '입력 형식' 으로 뭉갠다.
+          const reason = (e && e._userMessage) ? e.message : (window._humanError ? window._humanError(e) : (e?.message || ''));
+          window.showToast('저장 실패: ' + reason, { error: true });
         }
       } finally {
+        clearTimeout(_slowTimer);
         modal._rfSaving = false;
-        if (_saveBtn) _saveBtn.disabled = false;
+        if (_saveBtn) { _saveBtn.removeAttribute('aria-busy'); _saveBtn.style.cursor = ''; }
+        if (typeof ctx._syncSave === 'function') ctx._syncSave();   // 라벨·활성·색을 입력값 기준으로 복원
+        else if (_saveBtn) _saveBtn.disabled = false;
       }
     };
   }
@@ -911,15 +1001,41 @@
 
     // ── 금액: 콤마 자동 포맷 + 저장 버튼 라벨 연동 ──
     const _getAmt = () => parseInt(String(amtInput.value).replace(/[^0-9]/g, ''), 10) || 0;
+    /* [flow-revenue-stats-ui-05] 5,000만원 넘으면 버튼이 **이유를 말하며** 꺼진다. 잘라 넣지 않는다 —
+       원장이 친 숫자를 몰래 바꾸면 "왜 4,999만원이지?" 가 된다. 넘는 순간 한 번 토스트. */
+    let _overToasted = false;
+    let _negToasted = false;
+    const NEG_TEXT = '환불은 매출 행의 [환불] 로 기록해요';
+    const _isNeg = () => /-/.test(String(amtInput.value));
     const _syncSave = () => {
       const a = _getAmt();
-      saveBtn.disabled = a <= 0;
-      saveBtn.textContent = a > 0 ? `${a.toLocaleString('ko-KR')}원 ${_isEdit ? '수정 저장' : '기록하기'}` : '금액을 입력해주세요';
-      saveBtn.style.background = a > 0 ? '#191F28' : '#C8CCD2';
-      saveBtn.style.cursor = a > 0 ? 'pointer' : 'not-allowed';
+      const over = a > MAX_KRW;
+      const neg = _isNeg();
+      if (over && !_overToasted && window.showToast) window.showToast(MAX_KRW_TEXT);
+      _overToasted = over;
+      const ok = a > 0 && !over && !neg;
+      saveBtn.disabled = !ok;
+      saveBtn.textContent = ok ? `${a.toLocaleString('ko-KR')}원 ${_isEdit ? '수정 저장' : '기록하기'}` : (neg ? NEG_TEXT : (over ? MAX_KRW_TEXT : '금액을 입력해주세요'));
+      saveBtn.style.background = ok ? '#191F28' : '#C8CCD2';
+      saveBtn.style.cursor = ok ? 'pointer' : 'not-allowed';
     };
+    ctx._syncSave = _syncSave;   // 저장 끝난 뒤 버튼 복원용
     const _setAmt = (n) => { amtInput.value = n > 0 ? n.toLocaleString('ko-KR') : ''; _syncSave(); };
-    amtInput.addEventListener('input', () => { _setAmt(_getAmt()); });
+    amtInput.addEventListener('input', () => {
+      /* [flow-revenue-stats-ui-06] '-5000' 은 부호를 지워 +5,000 으로 저장됐다(실측 f_bounds.log: 매출 +5,000원).
+         여기엔 환불 개념이 따로 있다 — 음수는 값으로 삼지 않는다. 부호를 **지우지 않고 보여 준 채** 버튼이 이유를 말하며
+         꺼진다(PC 에서 '-' 를 먼저 치고 숫자를 이어 쳐도 '-5,000' 으로 남아 양수로 둔갑하지 않는다). 모바일 숫자 키패드엔 '-' 가 없다. */
+      if (_isNeg()) {
+        const digits = String(amtInput.value).replace(/[^0-9]/g, '');
+        amtInput.value = '-' + (digits ? parseInt(digits, 10).toLocaleString('ko-KR') : '');
+        if (!_negToasted && window.showToast) window.showToast('돈을 돌려준 거면 매출 행을 눌러 [환불] 로 기록해요');
+        _negToasted = true;
+        _syncSave();
+        return;
+      }
+      _negToasted = false;
+      _setAmt(_getAmt());
+    });
     modal.querySelectorAll('[data-rf-add]').forEach(b => b.addEventListener('click', () => {
       _setAmt(_getAmt() + (parseInt(b.dataset.rfAdd, 10) || 0));
     }));
@@ -1287,6 +1403,12 @@
   // ── public 객체 + 내부 API export (today/month 가 참조) ─
   window.Revenue = {
     list, create, update, remove,
+    // [flow-revenue-stats-ui-01] 환불 조회/기록 공용 경로 (revenue-edit.js 가 쓴다 — 직접 apiFetch 금지)
+    refunds, refund,
+    // [flow-revenue-stats-ui-05] 한 건 금액 상한 — 입력 경로들이 이 값을 본다
+    MAX_KRW, MAX_KRW_TEXT,
+    // [flow-revenue-stats-ui-02] 변경 세대 — revenue-month 가 stale 요약을 캐시에 쓰지 않기 위해 읽는다
+    _readGen, _genParam,
     // 내부 헬퍼·유틸 (분할 파일이 참조)
     _esc, _formatMan, _isPC, _tagHTML, _rvShopExample, _deleteConfirmMsg,
     PERIODS, PERIOD_LABEL, TAG_LABEL,
@@ -1332,8 +1454,16 @@
           // [qa-G #1] 예약금(deposit)·예약 상태 변경도 확정매출(예약금)·예정매출 요약에 영향 → 캐시 무효화 후 재조회.
           //   예약 상세에서 예약금 저장 시 update_booking/create_booking 이 발생하므로 매출 요약을 갱신해야 반영됨.
           k.indexOf('booking') !== -1) {
-        _clearSWRRevenue();
         const sheet = document.getElementById('revenueSheet');
+        /* [flow-revenue-stats-ui-02] 낙관적 알림(optimistic:true)은 **서버에 아직 없는** 변경이다.
+           예전엔 여기서도 캐시를 지우고 GET /revenue 를 보냈는데, 그게 POST 보다 먼저 나가 커밋 전 장부를
+           받아오는 경쟁의 출발점이었다(실측 race_list.log). 서버 재조회는 확정 알림(optimistic:false)에서 한다.
+           여기선 _items 에 이미 들어간 낙관적 행으로 화면만 다시 그린다. */
+        if (e.detail && e.detail.optimistic === true) {
+          if (sheet && sheet.style.display !== 'none') { try { await _rerender(); } catch (_err) { void _err; } }
+          return;
+        }
+        _clearSWRRevenue();
         if (sheet && sheet.style.display !== 'none') {
           try { await _loadAndRender(); } catch (_err) { void _err; }
         }

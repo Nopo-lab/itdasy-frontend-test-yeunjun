@@ -88,18 +88,28 @@
     return _planLabel().replace(/\s*플랜$/g, '');
   }
   // [2026-05-19] _won/_wonShort 삭제 → formatMoney (format-money.js 공통 유틸)
-  function _todayYMD() {
-    // [2026-06-10] 로컬 날짜로 — toISOString()은 UTC 라 KST 0~9시에 어제로 어긋남.
-    const n = new Date();
-    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+  // [2026-10-01 flow-home-daily-retention-01] 홈 v4.1 과 같은 규칙 — '오늘' 도 예약 시각도 **KST 달력일**로 비교한다.
+  //   예전엔 로컬 날짜 문자열과 UTC ISO 문자열을 startsWith 로 비교해 KST 00:00~08:59 예약이 빠졌다.
+  function _kstYmd(v) {
+    const d = v instanceof Date ? v : new Date(v);
+    if (Number.isNaN(d.getTime())) return '';
+    try {
+      const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d);
+      const g = (t) => (p.find((x) => x.type === t) || {}).value || '';
+      return `${g('year')}-${g('month')}-${g('day')}`;
+    } catch (_e) {
+      const k = new Date(d.getTime() + 9 * 3600 * 1000);
+      return `${k.getUTCFullYear()}-${String(k.getUTCMonth() + 1).padStart(2, '0')}-${String(k.getUTCDate()).padStart(2, '0')}`;
+    }
   }
+  function _todayYMD() { return _kstYmd(new Date()); }
   function _todayBookingsList(brief) {
     // [2026-06-10] 취소·노쇼 제외 — 홈/캘린더와 카운트 기준 통일 (BE 필터의 이중 방어).
     const list = (brief && brief.today_bookings) || [];
     const ymd = _todayYMD();
     return list
       .filter(b => b.status !== 'cancelled' && b.status !== 'no_show')
-      .filter(b => (b.starts_at || '').startsWith(ymd))
+      .filter(b => _kstYmd(b.starts_at) === ymd)
       .sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)));
   }
   function _hhmm(iso) {

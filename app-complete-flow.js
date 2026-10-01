@@ -411,7 +411,9 @@
     c._memBalLoading = true;
     // 응답이 매달려도 '확인 중' 에 영영 머물지 않게 8초 상한(라이브에서 한 번 멈춘 채 남음).
     const _timeout = new Promise((res) => setTimeout(() => res(null), 8000));
-    Promise.race([Promise.resolve(window.apiFetch ? window.apiFetch('/customers/' + encodeURIComponent(c.customer_id)) : null), _timeout])
+    // [2026-10-01 flow-revenue-stats-ui-01 동류] apiFetch 는 인증 헤더를 자동으로 싣지 않는다 — 없으면 401 → 세션 만료 오판.
+    const _auth = (typeof window.authHeader === 'function') ? window.authHeader() : {};
+    Promise.race([Promise.resolve(window.apiFetch ? window.apiFetch('/customers/' + encodeURIComponent(c.customer_id), { headers: _auth }) : null), _timeout])
       .then((r) => (r && r.ok ? r.json() : null))
       .then((d) => { c._memBal = (d && d.membership_balance != null && Number.isFinite(Number(d.membership_balance))) ? Number(d.membership_balance) : null; })
       .catch(() => { c._memBal = null; })

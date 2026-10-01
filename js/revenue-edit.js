@@ -1,7 +1,9 @@
 /* 매출 한 건 인라인 편집 — [버그2]
    행 탭 → 그 행 바로 아래로 편집 패널이 펼쳐진다(팝업·화면이동 없음).
-   금액 수정 + 결제수단 변경 + 삭제. 저장=BE PATCH /revenue/{id}, 삭제=DELETE /revenue/{id}
-   (window.Revenue.update / window.Revenue.remove — 둘 다 window.apiFetch 인증 사용).
+   금액 수정 + 결제수단 변경 + 삭제 + 환불. 저장=BE PATCH /revenue/{id}, 삭제=DELETE /revenue/{id},
+   환불 조회/기록=GET/POST /revenue/{id}/refund(s)
+   (전부 window.Revenue.* 공용 경로 — 인증 헤더는 Revenue._api 한 곳이 붙인다. 여기서 apiFetch 직접 호출 금지:
+    헤더 없는 401 이 '세션 만료' 로 오해돼 강제 로그아웃까지 갔다, flow-revenue-stats-ui-01).
    성공 시 'itdasy:data-changed' 이벤트로 목록·합계 즉시 갱신(app-revenue.js 리스너가 SWR clear+재로드).
    app-revenue.js(1000줄+)에서 분리한 소형 모듈. */
 (function () {
@@ -119,11 +121,14 @@
     } else {
       refundBtn.hidden = false;
       // 이미 일부 환불된 매출이면 남은 금액을 먼저 알려준다 — 눌러보고 실패하는 것보다 낫다.
+      /* [flow-revenue-stats-ui-01 2026-10-01] 예전엔 window.apiFetch 를 **헤더 없이** 직접 불렀다 → 서버 401 →
+         app-core 가 '세션 만료' 로 해석해 토큰 강제 갱신, 갱신이 실패하면 원장 강제 로그아웃(실측 refresh_fail_500.log).
+         인증은 Revenue._api 한 곳이 책임진다 — 공용 경로(Revenue.refunds)만 쓴다. */
       (async () => {
         try {
-          const r = await window.apiFetch('/revenue/' + item.id + '/refunds');
-          if (!r.ok) return;
-          const d = await r.json();
+          if (typeof R.refunds !== 'function') return;
+          const d = await R.refunds(item.id);
+          if (!d) return;
           refundInfo = d;
           if (d.refunded_total > 0) {
             noteEl.hidden = false;
@@ -145,6 +150,9 @@
       if (busy) return;
       const amount = Math.round(+amtInput.value || 0);
       if (!(amount > 0)) { if (window.showToast) window.showToast('금액을 확인해 주세요'); return; }
+      // [flow-revenue-stats-ui-05] 상한은 입력 자리에서 말한다 — 서버 422 '요청 형식' 보다 먼저.
+      const MAX = Number(R.MAX_KRW) || 50000000;
+      if (amount > MAX) { if (window.showToast) window.showToast(R.MAX_KRW_TEXT || '한 건 최대 5,000만원이에요'); return; }
       busy = true; saveBtn.disabled = true; delBtn.disabled = true; saveBtn.textContent = '저장 중…';
       try {
         await R.update(item.id, { amount, method });
@@ -193,16 +201,9 @@
           // 멱등키 — 타임아웃으로 끊겨 원장님이 다시 눌러도 두 번 환불되지 않는다.
           const txn = 'refund-' + item.id + '-' + Date.now() + '-'
                     + Math.random().toString(36).slice(2, 8);
-          const res = await window.apiFetch('/revenue/' + item.id + '/refund', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ client_txn_id: txn }),
-          });
-          if (!res.ok) {
-            let msg = '';
-            try { msg = (await res.json()).detail || ''; } catch (_e) { void _e; }
-            throw new Error(msg || ('HTTP ' + res.status));
-          }
+          // [flow-revenue-stats-ui-01] 공용 경로(Revenue.refund = _api, 인증 자동). 위 refunds 조회와 같은 이유.
+          if (typeof R.refund !== 'function') throw new Error('매출 모듈이 아직 준비되지 않았어요');
+          await R.refund(item.id, txn);
           if (window.showToast) window.showToast('환불로 기록했어요', 'success');
           closeAll();
           _emitChanged('refund_revenue');

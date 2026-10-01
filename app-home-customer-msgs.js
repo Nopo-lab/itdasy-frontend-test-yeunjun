@@ -210,8 +210,12 @@
     _cache = Array.isArray(d) ? d : (Array.isArray(d.items) ? d.items : []);
     _lastFetch = Date.now();
     _failed = false;
+    // [flow-home-daily-retention-04 2026-10-01] 이 카드가 /dm-confirm-queue 의 단일 소스 — 홈 v4.1 이 따로 받지 않고 여기서 받은 건수를 쓴다.
+    try { if (window.HomeV41 && typeof window.HomeV41.setDmQueueCount === 'function') window.HomeV41.setDmQueueCount(_cache.length); } catch (_e) { void _e; }
     return true;
   }
+  // 마지막으로 받은 큐 건수 (아직 못 받았으면 null)
+  function count() { return Array.isArray(_cache) ? _cache.length : null; }
 
   async function refresh() {
     _renderFromCache();                 // 캐시로 즉시 페인트 (DOM 재생성 직후)
@@ -403,5 +407,5 @@
     _init();
   }
 
-  window.HomeCustomerMsgs = { refresh };
+  window.HomeCustomerMsgs = { refresh, count };
 })();

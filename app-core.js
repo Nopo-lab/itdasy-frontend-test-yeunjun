@@ -177,6 +177,16 @@ const _inflightGET = new Map();
 // [2026-10-01 perf-05] 진행 중 GET 수 — js/loader.js 가 '홈 API 가 조용해진 뒤' 지연 그룹 선로딩을 시작할 때 본다.
 try { window.__itdasyInflightGET = function () { return _inflightGET.size; }; } catch (_e) { void _e; }
 
+/** 요청 init 에 Authorization 헤더가 실렸는가 (Headers 객체·plain object 모두). */
+function _initHasAuthHeader(init) {
+  try {
+    const h = init && init.headers;
+    if (!h) return false;
+    if (typeof Headers !== 'undefined' && h instanceof Headers) return !!h.get('Authorization');
+    return Object.keys(h).some((k) => k.toLowerCase() === 'authorization' && h[k]);
+  } catch (_e) { return false; }
+}
+
 function apiFetch(path, opts) {
   const url = apiUrl(path);
   const method = ((opts && opts.method) || 'GET').toUpperCase();
@@ -1844,6 +1854,13 @@ function authHeader() {
              login() 은 이미 "아이디 또는 비밀번호가 달라요" 를 자기가 띄운다. 여기선 잠금만
              유지하고 만료 배너는 세우지 않는다. 진짜 만료(/auth/refresh 401)는 그대로 배너. */
           if (url.includes('/auth/login')) return res;
+          /* [2026-10-01 flow-revenue-stats-ui-01] Authorization 을 **싣지 않은** 요청의 401 은 세션 만료가 아니라
+             호출부 버그(헤더 누락)다. 그걸 만료로 해석해 토큰 갱신·강제 로그아웃까지 가면 원장이 입력하던 매출이
+             날아간다(실측). 응답은 그대로 돌려주고 콘솔에만 남긴다 — 호출부가 고쳐야 할 일. */
+          if (!_initHasAuthHeader(init)) {
+            try { console.warn('[apiFetch] 인증 헤더 없는 요청의 401 — 세션 만료로 처리하지 않음:', url); } catch (_e) { void _e; }
+            return res;
+          }
           if (url.includes('/auth/refresh')) {
             _handle401();
             return res;
@@ -3962,6 +3979,9 @@ Object.assign(window, {
   openDeleteAccountModal,
   closeDeleteAccountModal,
   confirmDeleteAccount,
+  // [flow-account-firstrun-01 2026-10-01] 설정 허브(app-settings-hub.js 'changepw')가 여는 이름 — 명시적으로 노출
+  openChangePwModal,
+  closeChangePwModal,
   expandSmartMenu,
   initMulti,
   getSel,

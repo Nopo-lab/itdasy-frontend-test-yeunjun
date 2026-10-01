@@ -93,22 +93,31 @@
   }
 
   async function _doFetchSummary(auth, isCur) {
+    const R = _R();
+    /* [flow-revenue-stats-ui-02 2026-10-01] 변경 세대 — app-revenue.js 와 같은 규칙.
+       저장 직전에 떠 있던 요약 응답이 저장 뒤 도착하면 커밋 전 합계가 새 타임스탬프로 캐시됐다(race_summary 와 같은 경쟁).
+       세대가 바뀐 뒤 도착한 응답은 캐시에 쓰지 않고 다시 받는다. URL 의 _g 는 app-core 코얼레서가 변경 전 요청과 합치지 못하게 한다. */
+    const gen = (typeof R._readGen === 'function') ? R._readGen() : 0;
+    const genParam = (typeof R._genParam === 'function') ? R._genParam() : '';
     let url = '/revenue/summary?period=month';
     if (!isCur) url += '&year=' + _viewYear + '&month=' + _viewMonth;
+    url += genParam;
     const res = await apiFetch(url, { headers: { ...auth, 'Content-Type': 'application/json' } });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const summary = await _withBookingOverlay(await res.json());
-    const R = _R();
+    const raw = await res.json();
+    if (typeof R._readGen === 'function' && R._readGen() !== gen) return _doFetchSummary(auth, isCur);
+    const summary = await _withBookingOverlay(raw);
     if (R._swrWriteKey) R._swrWriteKey(_monthSwrKey(), summary);
     if (!isCur) {
       try {
         const r2 = await fetch(
-          apiUrl('/revenue?period=month&year=' + _viewYear + '&month=' + _viewMonth),
+          apiUrl('/revenue?period=month&year=' + _viewYear + '&month=' + _viewMonth + genParam),
           { headers: { ...auth, 'Content-Type': 'application/json' } }
         );
         /* [2026-09-13 UX·돈] 목록을 못 받으면 **빈 목록(=날짜마다 0원)** 으로 그렸다. 모르면 0 이라고 하지 않는다. */
         if (!r2.ok) throw new Error('HTTP ' + r2.status);
         const d = await r2.json();
+        if (typeof R._readGen === 'function' && R._readGen() !== gen) return _doFetchSummary(auth, isCur);
         _viewItems = Array.isArray(d.items) ? d.items : [];
         if (R._swrWriteKey) R._swrWriteKey(_monthItemsSwrKey(), _viewItems);
       } catch (_e) { _viewItems = null; throw _e; }

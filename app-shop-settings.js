@@ -448,6 +448,17 @@
     if (window.ShopDrawer && window.ShopDrawer.refreshHeader) {
       try { window.ShopDrawer.refreshHeader(); } catch (_e) { void _e; }
     }
+    /* [flow-account-firstrun-05 2026-10-01] 이름 정본은 `shop_name` 키다 — 헤더(updateHeaderProfile)·홈 v4.1·내 샵 관리·
+       설정 허브가 전부 그 키를 읽는다. 예전엔 여기서 `itdasy_shop_name` 만 갱신해서 새로고침 전까지 헤더·내 샵 관리가
+       옛 이름이었다(실측 s6: .ms-shop__name-t = 'tenant-b…의 샵'). 키를 같이 갱신하고 그 키를 읽는 화면을 바로 다시 그린다. */
+    try { localStorage.setItem('shop_name', payload.shop_name); } catch (_e) { void _e; }
+    try {
+      if (typeof window.updateHeaderProfile === 'function') {
+        const handle = (typeof window._instaHandle === 'string') ? window._instaHandle : '';
+        window.updateHeaderProfile(handle, null, '');
+      }
+    } catch (_e) { void _e; }
+    try { window.dispatchEvent(new CustomEvent('itdasy:data-changed', { detail: { kind: 'shop_settings', optimistic: false } })); } catch (_e) { void _e; }
 
     // 백엔드 동기화 (실패해도 로컬은 유지)
     try {

@@ -216,6 +216,40 @@
     return { ok: 0, cat: '리터치 시기', dot: '#0D9488', hl, desc: '안내 보낼 타이밍이에요', btn: '고객 보기', act: 'openCustomers', alert: true };
   }
 
+  /* [flow-home-daily-retention-06 2026-10-01] 생일 — brief 가 birthdays_this_week 를 계산하고 alert_count 에 더하는데
+     홈 어디에도 안 보였다(표시 파일 app-killer-widgets.js 는 2026-07-27 로드 제거). 데이터 없으면 null(조건부 노출).
+     한 줄만: 이름 + 오늘/날짜 → 고객 보기. 발송 플로우는 없으니 '보내기' 라고 쓰지 않는다. */
+  function cardBirthday(brief) {
+    const raw = Array.isArray(brief.birthdays_this_week) ? brief.birthdays_this_week.filter(Boolean) : [];
+    if (!raw.length) return null;
+    const today = kstYmd(new Date());
+    const when = (b) => {
+      const ymd = String((b && b.date) || '').slice(0, 10);
+      if (!ymd) return '';
+      if (ymd === today) return '오늘';
+      const m = ymd.match(/^\d{4}-(\d{2})-(\d{2})$/);
+      if (!m) return '';
+      const d = new Date(ymd + 'T12:00:00+09:00');   // 정오 KST = 같은 날 03:00Z → getUTCDay 가 KST 요일
+      const dow = Number.isFinite(d.getTime()) ? '일월화수목금토'.charAt(d.getUTCDay()) : '';
+      return `${Number(m[1])}/${Number(m[2])}${dow ? `(${dow})` : ''}`;
+    };
+    const base = { ok: 0, cat: '생일', dot: 'var(--brand,#D58A95)', alert: true, btn: '고객 보기', act: 'openCustomers' };
+    if (raw.length === 1) {
+      const b = raw[0];
+      const name = b.name || '손님';
+      const w = when(b);
+      return { ...base, hl: `${name}님 ${w ? w + ' ' : ''}생일이에요`, desc: '축하 한마디 보내기 좋은 날', rowVal: `${name}님 ${w || ''}`.trim() };
+    }
+    const first = raw[0];
+    const w = when(first);
+    return {
+      ...base,
+      hl: `이번주 생일 손님 ${raw.length}명`,
+      desc: `${first.name || '손님'}${w ? ` ${w}` : ''} 외 ${raw.length - 1}명`,
+      rowVal: `${raw.length}명 · ${first.name || '손님'}${w ? ` ${w}` : ''}`,
+    };
+  }
+
   function buildCarouselCards(brief) {
     const data = brief || {};
     // [2026-07-08] brief 요청 실패 — "없어요"로 단정하지 않고 재시도 카드 1장만.
@@ -232,20 +266,36 @@
       cardEmptySlots(data),
       cardMembership(data),
       cardRetouch(data),
+      cardBirthday(data),
     ].filter(Boolean);
     return cards.sort((a, b) => a.ok - b.ok);
   }
 
+  /* [flow-home-daily-retention-01 2026-10-01] 달력 날짜는 **KST** 로 — 백엔드(utils/business_day)와 같은 기준.
+     예전엔 로컬 날짜 문자열(2026-10-01)과 starts_at ISO 문자열을 startsWith 로 비교했다. 서버(sqlite 도 운영 Postgres 도)는
+     '2026-09-30T23:30:00+00:00' 처럼 UTC 로 직렬화하므로 KST 00:00~08:59 예약은 전날 문자열이 되어 **탈락**했다
+     (실측 swr-boundary.png: brief 5건 vs 홈 4건, 같은 화면 '미완료 예약' 엔 그 예약이 있음). 문자열 접두가 아니라
+     시각을 해석해 KST 달력일로 비교한다. 기기 시간대가 달라도 매장(한국) 기준이 맞다. */
+  function kstYmd(v) {
+    const d = v instanceof Date ? v : new Date(v);
+    if (!Number.isFinite(d.getTime())) return '';
+    try { return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }); }
+    catch (_e) {
+      // Intl 시간대 미지원 환경 — UTC+9 를 직접 더한다
+      const k = new Date(d.getTime() + 9 * 3600 * 1000);
+      return `${k.getUTCFullYear()}-${String(k.getUTCMonth() + 1).padStart(2, '0')}-${String(k.getUTCDate()).padStart(2, '0')}`;
+    }
+  }
   function todayBookings(brief) {
-    // [2026-06-10] ①취소·노쇼 제외 (BE 필터의 프론트 이중 방어 — 캘린더 기준과 통일)
-    //   ②"오늘" 비교를 로컬 날짜로 — toISOString()은 UTC 라 KST 0~9시에 어제로 어긋남.
+    // [2026-06-10] 취소·노쇼 제외 (BE 필터의 프론트 이중 방어 — 캘린더 기준과 통일)
+    //   "오늘" 은 KST 달력일 — 어제 받아 둔 SWR 캐시가 자정 넘어 보일 때 어제 예약을 오늘로 그리지 않기 위한 필터.
     const list = (brief && brief.today_bookings) || [];
-    const n = new Date();
-    const ymd = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+    const today = kstYmd(new Date());
+    const t = (b) => Date.parse((b && b.starts_at) || '');
     return list
       .filter(b => b.status !== 'cancelled' && b.status !== 'no_show')
-      .filter(b => (b.starts_at || '').startsWith(ymd))
-      .sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)));
+      .filter(b => kstYmd(b.starts_at) === today)
+      .sort((a, b) => (Number.isFinite(t(a)) && Number.isFinite(t(b))) ? t(a) - t(b) : String(a.starts_at).localeCompare(String(b.starts_at)));
   }
 
   function statusLabel(s) {
@@ -295,16 +345,7 @@
     </div>`;
   }
 
-  function _fallbackBookings(brief) {
-    let bk = Array.isArray(brief.today_bookings) ? brief.today_bookings : [];
-    if (bk.length || !window.Booking || typeof window.Booking.list !== 'function') return bk;
-    try {
-      const all = window.Booking._items || [];
-      const ymd = new Date().toISOString().slice(0, 10);
-      bk = all.filter(b => b && (b.starts_at || '').slice(0, 10) === ymd);
-    } catch (_e) { /* silent */ }
-    return bk;
-  }
+  // [flow-home-daily-retention-01] _fallbackBookings 삭제 — 호출부가 없는 죽은 코드였고, 같은 UTC 날짜 비교 결함을 품고 있었다.
 
 
 
@@ -492,9 +533,11 @@
     } catch (_e) { return ''; }
   }
 
-  function alertItems(brief, dmQueueCount) {
+  function alertItems(brief) {
     const items = [];
     // [F1] 홈 "답장 N건 써뒀어요" 항목 — 실시간 DM 카드와 중복 → 제거
+    // [flow-home-daily-retention-04 2026-10-01] dmQueueCount 인자 삭제 — [F1] 뒤로 아무도 안 썼는데 HomeV41 이 매 렌더마다
+    //   /dm-confirm-queue 를 받아 넘기고 있었다(고객 메시지 카드가 같은 엔드포인트를 따로 폴링). 숫자의 단일 소스는 그 카드다.
     // [2026-07-20 v785] 답 안 한 댓글 문의 — DM과 달리 홈에 다른 노출이 없어 중복 아님.
     //   공개 방치라 오히려 DM보다 급함. 탭 → 댓글 응대 큐.
     const cq = Number(brief && brief._commentQueueCount) || 0;
@@ -513,8 +556,8 @@
     } catch (_e) { /* ignore */ }
   }
 
-  function renderAlerts(brief, dmQueueCount) {
-    const items = alertItems(brief, dmQueueCount);
+  function renderAlerts(brief) {
+    const items = alertItems(brief);
     if (!items.length) return '';
     const total = items.reduce((s, it) => s + it.count, 0);
     return `<div class="hv5-card">
@@ -666,11 +709,11 @@
     </section>`;
   }
 
-  function compose(brief, dmQueueCount) {
+  function compose(brief) {
     ensureStyles();
     const cards = buildCarouselCards(brief);
     const bookingHtml = renderBooking(brief);
-    const alertsHtml = renderAlerts(brief, dmQueueCount || 0);
+    const alertsHtml = renderAlerts(brief);
     // [2026-08-16] 홈 순서: 오늘의 예약 → 고객 메시지 → AI 잇비(챗봇+실시간 분석 통합).
     //   renderHeader 가 연 <div class="hv5"> 는 여기서 닫는다 (구 renderAiRecs 가 닫던 것).
     return [

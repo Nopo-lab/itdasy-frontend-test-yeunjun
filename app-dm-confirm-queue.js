@@ -8,6 +8,11 @@
 
   function _esc(s) { return window._esc(s); } /* [2026-06-11] 중복 제거 — app-core 정본 위임 */
 
+  /* [flow-inbox-dm-comments-05 2026-10-01] 인스타 토큰 상태 — GET /dm-confirm-queue 응답 헤더 X-Token-State
+     (routers/dm_confirm_queue.py: ok / expired / none). 예전엔 _fetch 가 JSON 만 돌려주고 헤더를 버려서,
+     인스타를 한 번도 안 붙인 계정도 '답장이 필요한 메시지가 없어요 ✨ 잇비가 잘 챙기고 있어요' 였다 —
+     다음 행동(인스타 연결)을 말해주지 않았다. 홈 고객 메시지 카드(app-home-customer-msgs.js)와 같은 헤더를 읽는다. */
+  let _tokenState = 'ok';
   async function _fetch(method, path, body) {
     const headers = window.authHeader ? window.authHeader() : {};
     if (body) headers['Content-Type'] = 'application/json';
@@ -15,6 +20,10 @@
       method, headers,
       body: body ? JSON.stringify(body) : undefined,
     });
+    try {
+      const ts = res.headers && typeof res.headers.get === 'function' ? res.headers.get('X-Token-State') : null;
+      if (ts) _tokenState = String(ts).toLowerCase();
+    } catch (_e) { void _e; }
     const d = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(d.detail || ('HTTP ' + res.status));
     return d;
@@ -717,6 +726,27 @@
     });
   }
 
+  /* [flow-inbox-dm-comments-05] 0건 화면 3분기 — 문구는 댓글 큐(app-comment-reply-queue _emptyStateHtml)·홈 카드와 같은 말.
+     none(한 번도 연결 안 함) → 연결 안내 / expired(연결됐다가 끊김) → 재연결 / ok → 진짜 0건. 모르면(헤더 없음) ok. */
+  function _emptyStateHtml() {
+    const WRAP = 'text-align:center;padding:40px 20px;';
+    const TITLE = 'font-size:15px;font-weight:700;color:#191F28;margin-bottom:6px;';
+    const DESC = 'font-size:13px;color:#8B95A1;line-height:1.7;';
+    const BTN = 'margin-top:16px;padding:12px 20px;border:none;border-radius:13px;background:#191F28;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;';
+    const box = (title, desc, btn) => `<div style="${WRAP}"><div style="${TITLE}">${title}</div><div style="${DESC}">${desc}</div>${btn || ''}</div>`;
+    if (_tokenState === 'none') {
+      return box('인스타가 연결되어 있지 않아요',
+        '인스타를 연결하면 손님이 보낸 DM 을<br>여기에 모아 답장을 추천해 드려요.',
+        `<button type="button" data-dcq-connect style="${BTN}">인스타 연결하기</button>`);
+    }
+    if (_tokenState === 'expired') {
+      return box('인스타 연결이 끊겼어요',
+        '다시 연결하면 손님 DM 을 다시 받아요.<br>그동안 온 메시지는 인스타 앱에서 확인해 주세요.',
+        `<button type="button" data-dcq-connect style="${BTN}">다시 연결하기</button>`);
+    }
+    return `<div style="text-align:center;color:var(--text-subtle);padding:40px 20px;font-size:13px;line-height:1.6;">답장이 필요한 메시지가 없어요 ✨<br>잇비가 잘 챙기고 있어요.</div>`;
+  }
+
   // [2026-06-16] 캐시(_lastItems) → 활성 필터 적용 후 렌더 + 핸들러 바인딩(동작 보존).
   function _applyAndRender() {
     const list = document.getElementById('dcqList');
@@ -724,7 +754,15 @@
     const all = _lastItems || [];
     _updateTabCounts(all);
     if (!all.length) {
-      list.innerHTML = `<div style="text-align:center;color:var(--text-subtle);padding:40px 20px;font-size:13px;line-height:1.6;">답장이 필요한 메시지가 없어요 ✨<br>잇비가 잘 챙기고 있어요.</div>`;
+      list.innerHTML = _emptyStateHtml();
+      // 연결 안내 버튼 → 연동 허브. 시트를 먼저 닫고(히스토리 정리) 연다 — 댓글 큐 _goAfterClose 와 같은 순서.
+      const go = list.querySelector('[data-dcq-connect]');
+      if (go) go.addEventListener('click', () => {
+        close();
+        const open = () => { if (typeof window.openIntegrationsHub === 'function') window.openIntegrationsHub(); };
+        if (typeof window.__afterHistorySettles === 'function') window.__afterHistorySettles(open);
+        else setTimeout(open, 0);
+      });
       return;
     }
     const items = _activeFilter === 'all' ? all : all.filter(it => _normChannel(it.channel) === _activeFilter);

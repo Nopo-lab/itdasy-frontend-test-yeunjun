@@ -55,6 +55,13 @@
     const provLabel = provMap[String(prov).toLowerCase()] || (prov ? prov : '이메일');
     return { provLabel, email };
   }
+  // 이메일(비밀번호) 계정인가 — 소셜(google/kakao/naver/apple)은 비밀번호가 없어 '비밀번호 변경' 이 성립하지 않는다.
+  //   provider 를 모르면(옛 저장값 없음) 이메일로 본다 — 행을 숨겨서 길을 막는 쪽이 더 나쁘다.
+  function _hasPassword() {
+    let prov = '';
+    try { prov = String(localStorage.getItem('user_oauth_provider') || '').toLowerCase(); } catch (_e) { void _e; }
+    return !prov || prov === 'email';
+  }
   // 연동된 인스타 핸들 / 프사.
   // [2026-09-12] 판정 기준을 **연동 여부 하나**로 통일한다.
   //   예전엔 배지는 `itdasy:ig_handle`, 아바타는 `itdasy:ig_profile_pic` — 서로 다른 키 두 개를
@@ -124,6 +131,10 @@
       <div class="ms-sh">
         ${_rowHTML('subscription','ic-credit-card', '구독 관리',          '플랜 · 결제 · 취소', { boxColor: 'pink' })}
         ${_rowHTML('membership','ic-ticket',    '회원권',             '만료 임박 고객 · 충전 안내', { boxColor: 'coral' })}
+        ${/* [flow-account-firstrun-01 2026-10-01] 비밀번호 변경 — 모달·API(app-core openChangePwModal / POST /auth/change-password)는
+             2026-08-01 에 완성됐는데 여는 버튼이 아무도 열지 않는 레거시 #settingsSheet 에만 있어 앱 어디서도 도달할 수 없었다
+             (계정 탈퇴가 2026-07-26 에 같은 이유로 막혔던 것과 동일). 소셜 로그인 계정은 비밀번호가 없으니 행을 그리지 않는다. */ ''}
+        ${_hasPassword() ? _rowHTML('changepw', 'ic-lock', '비밀번호 변경', '바꾸면 다른 기기는 다시 로그인', { boxColor: 'blue' }) : ''}
         ${_rowHTML('deleteaccount','ic-trash-2', '계정 탈퇴',          '모든 데이터 영구 삭제', { boxColor: 'coral', danger: true })}
       </div>
     `;
@@ -280,6 +291,8 @@
     // [보안감사 C-2 2026-07-26] 계정 탈퇴 — 삭제 로직·모달·API 는 완성돼 있었으나(app-core openDeleteAccountModal)
     //   여는 UI 경로가 끊겨 있어(레거시 settingsSheet 미오픈) 앱심사 필수 요건(Apple 5.1.1)이 도달 불가였다.
     if (act === 'deleteaccount'){ close(); setTimeout(() => window.openDeleteAccountModal && window.openDeleteAccountModal(), 200); return; }
+    // [flow-account-firstrun-01] 비밀번호 변경 — 허브가 정본 진입점. 모달은 app-core(#changePwModal).
+    if (act === 'changepw')  { close(); setTimeout(() => window.openChangePwModal && window.openChangePwModal(), 200); return; }
     // [2026-06-09] 'support'/'logout' 라우트 제거 — 설정·연동에서 빠지고 사이드바/내샵관리 하단으로 이전.
     if (act === 'haptic') {
       try { window.toggleHapticSetting && window.toggleHapticSetting(); window.updateHapticToggleLabel && window.updateHapticToggleLabel(); } catch (_e) { void _e; }
