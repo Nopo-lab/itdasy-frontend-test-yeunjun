@@ -24,3 +24,10 @@ test('closed flow and absent photo cannot update another preview', () => {
   root.classList.add('is-open'); window.WSFlowUtil.refreshCarouselImage(root, 'missing', 'blob:wrong');
   expect(root.querySelector('.ig-car__img').style.backgroundImage).toContain('old-first');
 });
+
+test('pre-caption carousel and output pair IDs refresh with their displayed item IDs', () => {
+  const root = document.getElementById('flow');
+  root.innerHTML = '<div data-fl-carslide="pair-2"><div class="cap-car__img" style="background-image:url(old-output)"></div></div>';
+  window.WSFlowUtil.refreshCarouselImage(root, 'pair-2', 'blob:edited-output');
+  expect(root.querySelector('.cap-car__img').style.backgroundImage).toContain('blob:edited-output');
+});

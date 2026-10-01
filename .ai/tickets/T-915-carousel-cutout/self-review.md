@@ -16,3 +16,5 @@
 테스트 a144224에서 실제 두 장 누끼 저장/재열기 상태는 보존됐으나 캡션 미리보기는 비동기 장별 합성이 끝나기 전에 그린 원본을 유지. 장별 합성이 완료된 후, 해당 사진이 현재 초안에 있고 편집기가 닫혀 있을 때만 사진 미리보기 요소만 교체해 캡션 입력·커서·한글 조합을 보존. 운영 제외. 수정 줄1개, 로드 순서/새 전역 변경 없음. 전체 검사 및 독립 검토 후 테스트 배포로 재검증.
 
 후속 검사: 225 suites /3336 PASS /2 skipped /0fail. npm run lint:ci 오류0. 새 유틸리티는 기존 flow/util.js에 분리, 큰 플로우는 연결1줄만. 닫힌 플로우·다른 초안·열린 편집기에는 갱신하지 않음. 입력창 노드·값·선택 범위 유지 검사 통과.
+
+- Follow-up review: both cap-car and ig-car markup refresh by the current display item ID, including output pair IDs; Korean input nodes stay untouched.

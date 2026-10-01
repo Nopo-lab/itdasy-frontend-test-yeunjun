@@ -92,7 +92,7 @@
     if (!root || !root.classList.contains('is-open')) return;
     root.querySelectorAll('[data-fl-carslide]').forEach(function (slide) {
       if (slide.getAttribute('data-fl-carslide') !== String(photoId)) return;
-      var image = slide.querySelector('.ig-car__img');
+      var image = slide.querySelector('.ig-car__img, .cap-car__img');
       if (image) image.style.backgroundImage = 'url("' + displayUrl + '")';
     });
   }
