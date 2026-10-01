@@ -63,8 +63,14 @@ async function openWorkspace(page) {
 
 (async () => {
   const srv = await serve();
-  const browser = await chromium.launch();
+  // 컨테이너(root)에선 샌드박스가 없다 — CI/로컬 둘 다 통과하게 root 일 때만 끈다.
+  const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
+  const browser = await chromium.launch(isRoot ? { args: ['--no-sandbox'] } : {});
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  /* [2026-10-01 flow-workspace-photo-07] 레포를 그대로 서빙하면 index.html 의 서버 빌드 대조(build.txt vs __LATEST_BUILD__)가
+     부팅 3초 뒤 1회 리로드를 일으키고, 리로드 뒤엔 photo 그룹이 지연 로드라 WorkspaceLayout 이 없어 4/6 FAIL 이 났다.
+     앱 자체의 세션당 1회 가드 키(srv_build_checked)를 미리 심어 스모크 안에서는 대조를 건너뛴다 — 제품 코드 무수정. */
+  await page.addInitScript(() => { try { sessionStorage.setItem('srv_build_checked', '1'); } catch (e) { void e; } });
   const errs = [];
   page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));

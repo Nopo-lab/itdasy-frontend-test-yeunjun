@@ -472,6 +472,30 @@
   var _status = { pending: 0, failed: false, at: 0 };
   var _roundFailed = false, _retryTimer = null;
   function status() { return { pending: _status.pending, failed: _status.failed, at: _status.at }; }
+  var _heldSlots = {};   // [2026-10-01 04] 사진 업로드 미완료로 upsert 를 보류한 슬롯 id — heldCount() 로 노출
+  function heldCount() { return Object.keys(_heldSlots).length; }
+  /* [2026-10-01 flow-workspace-photo-04] 아직 서버에 못 올린 작업 수 — 로그아웃 직전 확인용.
+     로그아웃은 갤러리 DB(슬롯)를 지우므로, dirty 슬롯이 남아 있으면 그 작업은 이 기기에서도 서버에서도 사라진다. */
+  function unsyncedCount() {
+    return loadAllLocal().then(function (slots) {
+      return (slots || []).filter(function (s) { return s && s.syncState !== 'synced' && !foreignSlot(s); }).length;
+    }).catch(function () { return 0; });
+  }
+  /* 로그아웃 가드 — 정착(최종 push)을 한 번 더 시도한 뒤 남은 미전송 작업이 있으면 사용자에게 묻는다.
+     true = 진행해도 됨 / false = 사용자가 취소. opts.confirm 으로 확인 함수를 바꿀 수 있다(테스트·네이티브 다이얼로그).
+     ⚠️ app-core 의 로그아웃이 await 하는 자리라 매달리면 안 된다 — 정착은 6초 상한. */
+  function guardLogout(opts) {
+    opts = opts || {};
+    var settle = ready() ? Promise.race([settleSlot().catch(function () {}), new Promise(function (res) { setTimeout(res, opts.settleMs || 6000); })]) : Promise.resolve();
+    return settle.then(unsyncedCount).then(function (n) {
+      if (!n) return true;
+      var ask = opts.confirm || (typeof window.confirm === 'function' ? window.confirm.bind(window) : null);
+      if (!ask) return true;
+      var msg = '아직 서버에 못 올린 작업이 ' + n + '건 있어요.\n지금 로그아웃하면 그 작업은 이 기기에서 지워지고 다른 기기에서도 볼 수 없어요.\n그래도 로그아웃할까요?';
+      // confirm 이 Promise 를 돌려줘도(앱의 nativeConfirm) 결과를 기다린다 — `!!promise` 는 항상 true 라 취소가 안 먹는다.
+      try { return Promise.resolve(ask(msg)).then(function (v) { return !!v; }, function () { return true; }); } catch (_e) { return true; }
+    }).catch(function () { return true; });
+  }
   function _publishStatus(slots) {
     var pending = (slots || []).filter(function (s) { return s && s.syncState !== 'synced'; }).length;
     var failed = _roundFailed && pending > 0;
@@ -510,6 +534,13 @@
     var _pendingBase = null;
     return buildPayload(slot).then(function (built) {
       var payload = built.payload, complete = built._complete;
+      /* [2026-10-01 flow-workspace-photo-04] 사진 업로드가 하나라도 실패했으면 **upsert 를 보내지 않는다.**
+         예전엔 _complete=false 여도 upsert 가 나갔다 — 서버 upsert 는 사진을 전체 교체하므로 서버본이 사진 0장
+         (photos:[], outputUrl:null)이 됐고, 로그아웃(로컬 삭제)·다른 기기 pull 이 그 빈 서버본을 받아 사진이 영구 소실됐다
+         (실측 scn-f2 [F2a]: image 400×3 → upsert photos:[] → 초기화·pull 후 nPhotos 0). 이제 로컬 dirty 로 남겨 다음 라운드에
+         다시 올리고, 이번 라운드는 실패로 세어 원장에게 "아직 못 올렸어요" 가 보이게 한다. */
+      if (!complete) { log('pushSlot upload incomplete — hold upsert, keep dirty', slot && slot.id); _roundFailed = true; _heldSlots[String(slot && slot.id)] = true; return { _held: true }; }
+      delete _heldSlots[String(slot && slot.id)];
       _pendingBase = makeBase(slot);   // payload 를 만든 그 시점의 내용
       /* 🔴 보내기 **전에** 남긴다. 응답이 아예 안 오는(행) 경우엔 실패 콜백도 안 돌고,
          그 상태로 새로고침하면 흔적이 통째로 사라져 다음 409 에서 또 사본이 생긴다.
@@ -860,14 +891,16 @@
 
   // ── init ───────────────────────────────────────────────────
   function init() {
-    if (!enabled()) { window.WorkspaceSync = { enabled: false, sync: function () { return Promise.resolve(); }, hydratePhotos: function () { return Promise.resolve(false); }, beginEdit: function () {}, settleSlot: function () { return Promise.resolve(); }, clearLocal: clearLocal }; return; }
+    if (!enabled()) { window.WorkspaceSync = { enabled: false, sync: function () { return Promise.resolve(); }, hydratePhotos: function () { return Promise.resolve(false); }, beginEdit: function () {}, settleSlot: function () { return Promise.resolve(); }, clearLocal: clearLocal, unsyncedCount: function () { return Promise.resolve(0); }, guardLogout: function () { return Promise.resolve(true); } }; return; }
     wrapGlobals();
     /* 지난번 정리가 타임아웃으로 못 끝났으면(다른 연결이 붙잡고 있었음) 여기서 다시 시도한다.
        그때는 로그인 경로가 아니라 await 하는 사람이 없으므로 매달려도 화면을 막지 않는다. */
     try {
       if (localStorage.getItem(PURGE_PENDING_KEY) === '1') clearLocal();
     } catch (_e) { void 0; }
-    window.WorkspaceSync = { enabled: true, status: status, sync: sync, pull: pull, push: pushAll, hydratePhotos: hydratePhotos, beginEdit: beginEdit, settleSlot: settleSlot, clearLocal: clearLocal, _debug: { accountSwitched: accountSwitched, foreignSlot: foreignSlot, buildPayload: buildPayload, remoteToLocal: remoteToLocal, hydratePhotos: hydratePhotos, merge3: merge3, makeBase: makeBase, photoSig: photoSig } };
+    window.WorkspaceSync = { enabled: true, status: status, sync: sync, pull: pull, push: pushAll, hydratePhotos: hydratePhotos, beginEdit: beginEdit, settleSlot: settleSlot, clearLocal: clearLocal,
+      unsyncedCount: unsyncedCount, guardLogout: guardLogout, heldCount: heldCount,   // [2026-10-01 04] 로그아웃 전 미전송 작업 확인(app-core 가 부른다) · 업로드 보류 수
+      _debug: { accountSwitched: accountSwitched, foreignSlot: foreignSlot, buildPayload: buildPayload, remoteToLocal: remoteToLocal, hydratePhotos: hydratePhotos, merge3: merge3, makeBase: makeBase, photoSig: photoSig, pushSlot: pushSlot } };
     // 최초 동기화 — 로그인 상태 갖춰지면. 아니면 이후 트리거에서 재시도.
     var tries = 0;
     (function boot() { if (ready()) { sync(); } else if (tries++ < 20) { setTimeout(boot, 800); } })();

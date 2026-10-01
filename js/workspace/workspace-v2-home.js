@@ -17,7 +17,14 @@
   //   (안 그러면 캡션 완성 슬롯 '이어서 편집' 시 폐지된 단독 preview 화면으로 새어 '예전 화면' 처럼 보였음)
   var ACT2SCREEN = { '사진 편집':'edit', '누끼/배경':'edit', '비율 자르기':'edit', '템플릿':'edit', '게시글 생성':'caption', '인스타 미리보기':'caption', '고객 연결':'connect' };
   // [요청1 2026-07-13] 상태머신 preview/done 도 caption 으로(통합 화면 = 결과+발행+피드). 캡션 있는 슬롯은 open() 이 d.caption 복원 → 결과 화면 표시.
-  var KEY2SCREEN = { upload:'upload', edit:'edit', caption:'caption', customer:'connect', preview:'caption', done:'caption' };
+  /* [2026-10-01 flow-workspace-photo-01] crop(사진 있음·캡션 없음)을 명시한다. 예전엔 매핑이 없어 'edit' 폴백 →
+     layout + 편집기 강제 진입이었고, 그 편집기 완료 뒤 레이아웃 화면이 저장본 구성을 잃은 채(flat) 그려졌다.
+     합성본이 이미 있는 글은 캡션(결과) 화면으로, 사진만 있는 글은 레이아웃 고르기로 — 편집기는 원장이 누를 때만. */
+  var KEY2SCREEN = { upload:'upload', crop:'layout', edit:'edit', caption:'caption', customer:'connect', preview:'caption', done:'caption' };
+  function _resumeScreen(slot, key) {
+    if (key === 'crop' && slot && slot.templateOutputs && slot.templateOutputs.length) return 'caption';
+    return KEY2SCREEN[key] || 'edit';
+  }
 
   function _esc(v) {
     return String(v == null ? '' : v).replace(/[&<>"']/g, function (ch) {
@@ -465,7 +472,7 @@
     if (!slot) return;
     var st = ST();
     var next = st.nextAction(slot);
-    var screen = KEY2SCREEN[next.key] || 'edit';
+    var screen = _resumeScreen(slot, next.key);
     // [2026-07-22] 리줌 카드도 드로어와 동일하게 edit 목적지는 인스타식 편집기(ItdEditor)로 — 옛 슬라이더(A) 방지.
     if (screen === 'edit') { _launchFlow(slotId, 'layout', { _openStory: true }); return; }
     _launchFlow(slotId, screen);
@@ -479,7 +486,7 @@
     if (actKey === 'next') {
       var slot = _slotsCache.filter(function (s) { return s.id === _drawerSlotId; })[0];
       var k = slot ? ST().nextAction(slot).key : 'edit';
-      screen = KEY2SCREEN[k] || 'edit';
+      screen = _resumeScreen(slot, k);
     } else { screen = ACT2SCREEN[actKey] || 'edit'; }
     // [2026-07-22] '사진 편집'(edit 목적지)은 인스타식 편집기(ItdEditor)로 — 옛 슬라이더 화면(A) 아님.
     if (screen === 'edit') { _launchFlow(_drawerSlotId, 'layout', { _openStory: true }); return; }

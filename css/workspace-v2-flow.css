@@ -615,11 +615,14 @@ body.itd-edit-fs .wsv2flow .ed-vptools .ed-vpbtn i { color: #fff; }
 .wsv2flow .ig-photo--sq { aspect-ratio: 1 / 1; }   /* [#5] 정사각 선택 시 완성 미리보기도 1:1 */
 /* [v564·필수6] 인스타 미리보기 carousel — 게시글 carousel 과 동일 스와이프, IG 비율 */
 .wsv2flow .ig-car { margin: 0; }
-.wsv2flow .ig-car__track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.wsv2flow .ig-car__track { display: flex; align-items: center; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }   /* [2026-10-01 05] 비율이 다른 결과물 슬라이드는 가운데 — stretch 면 inline aspect-ratio 가 먹지 않는다 */
 .wsv2flow .ig-car__track::-webkit-scrollbar { display: none; }
 .wsv2flow .ig-car__slide { position: relative; flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; aspect-ratio: 4 / 5; background: #000; cursor: pointer; }   /* [#2] 한 장씩 스냅 / [#4] 330px 고정 → 선택 규격(4:5) 비율 — 위아래 잘림 제거 */
 .wsv2flow .ig-car--sq .ig-car__slide { aspect-ratio: 1 / 1; }   /* [#18] 정사각 1:1 선택 시 미리보기도 정사각 */
 .wsv2flow .ig-car__img { position: absolute; inset: 0; background-size: cover; background-position: center; }
+/* [2026-10-01 flow-workspace-photo-05] 구워진 결과물 슬라이드(data-fl-igout)는 JS 가 실제 픽셀 비율을 inline aspect-ratio 로 준다.
+   비율이 맞으면 contain=cover 지만, 크기를 아직 못 읽은 첫 렌더에서도 1:1 합성본의 BEFORE/AFTER 가 잘리지 않게 contain. */
+.wsv2flow .ig-car__slide[data-fl-igout] .ig-car__img { background-size: contain; }
 .wsv2flow .ig-car__dots { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 0 3px; }
 .wsv2flow .ig-car__dot { width: 6px; height: 6px; padding: 0; border: 0; border-radius: 50%; background: var(--border-strong); cursor: pointer; transition: width .2s, background .2s; }
 .wsv2flow .ig-car__dot.on { width: 16px; border-radius: 3px; background: var(--brand-strong); }

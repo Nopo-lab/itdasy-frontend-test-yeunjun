@@ -784,6 +784,47 @@
       });
     },
 
+    /* [2026-10-01 flow-workspace-photo-06] 카드가 여러 장인 글의 '폰에 저장' — **전부** 저장한다.
+       네이티브: 파일 여러 개를 공유 시트 한 번으로(사진첩 저장 가능한 유일한 경로).
+       웹: <a download> 를 같은 제스처 안에서 순서대로(itdasy-1.jpg, -2 …). 브라우저가 '여러 파일 다운로드' 허용을
+       물을 수 있지만 그건 사용자 선택이다 — 1장만 저장하고 "저장했어요" 라고 말하는 것보다 낫다.
+       반환: { ok, via, saved, total } — saved 가 total 보다 작으면 호출부가 그렇게 말한다. */
+    saveImages: function (dataUrls, name) {
+      var urls = (dataUrls || []).filter(function (u) { return typeof u === 'string' && u; });
+      if (!urls.length) return Promise.resolve({ ok: false, reason: 'no_image', saved: 0, total: 0 });
+      if (urls.length === 1) return this.saveImage(urls[0], name).then(function (r) { return Object.assign({ saved: r && r.ok ? 1 : 0, total: 1 }, r || {}); });
+      var base = (name || 'itdasy');
+      var fnameAt = function (i) { return base + '-' + (i + 1) + '.jpg'; };
+      var viaShare = function () {
+        if (!(navigator.share && navigator.canShare)) return Promise.resolve(false);
+        return Promise.all(urls.map(function (u, i) {
+          return fetch(u).then(function (r) { return r.blob(); }).then(function (blob) { return new File([blob], fnameAt(i), { type: blob.type || 'image/jpeg' }); });
+        })).then(function (files) {
+          if (!navigator.canShare({ files: files })) return false;
+          return navigator.share({ files: files, title: '사진 ' + files.length + '장 저장' }).then(function () { return true; });
+        }).catch(function (e) { return (e && e.name === 'AbortError') ? 'aborted' : false; });
+      };
+      return viaShare().then(function (shared) {
+        if (shared === true) { toast('사진 ' + urls.length + '장을 저장했어요'); return { ok: true, via: 'share', saved: urls.length, total: urls.length }; }
+        if (shared === 'aborted') return { ok: false, reason: 'aborted', saved: 0, total: urls.length };
+        var isNative = false;
+        try { isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (_e) { void _e; }
+        if (isNative) { toast('사진을 저장하지 못했어요 — 화면을 길게 눌러 저장해 주세요'); return { ok: false, reason: 'native_no_share', saved: 0, total: urls.length }; }
+        var saved = 0;
+        urls.forEach(function (u, i) {
+          try {
+            var a = document.createElement('a');
+            a.href = u; a.download = fnameAt(i);
+            document.body.appendChild(a); a.click(); a.remove();
+            saved++;
+          } catch (_e2) { void _e2; }
+        });
+        if (!saved) { toast('사진을 저장하지 못했어요'); return { ok: false, reason: 'download_failed', saved: 0, total: urls.length }; }
+        toast(saved === urls.length ? ('사진 ' + saved + '장을 저장했어요') : (urls.length + '장 중 ' + saved + '장만 저장했어요'));
+        return { ok: true, via: 'download', saved: saved, total: urls.length };
+      });
+    },
+
     // 가격표 — 전용 OCR 흐름 (사진 편집/홍보 흐름과 분리)
     openPriceList: function () {
       if (has(window.openPricelistUpload)) { window.openPricelistUpload(); return { ok: true }; }

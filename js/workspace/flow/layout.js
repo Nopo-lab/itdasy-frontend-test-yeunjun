@@ -65,6 +65,70 @@
     // 모아보기 묶음 크기 → 콜라주 재료 (2=좌우, 3=3분할, 4=2×2)
     function _gridIdFor(k) { return k === 2 ? 'wsl-collage-2' : (k === 3 ? 'wsl-strip-3' : 'wsl-grid-4'); }
     function _card(layoutId, ids) { return { id: 'wsc-' + (++_seq), layout: layoutId ? _layoutById(layoutId) : null, photoIds: ids.slice() }; }
+
+    /* [2026-10-01 flow-workspace-photo-01] 저장본 → 구성 복원.
+       buildSlot 은 templateOutputs 만 저장하고 구성 키(wsComp)·카드(wsCards)는 세션 메모리에만 있었다.
+       그래서 전·후 합치기로 저장한 글을 홈에서 다시 열면 _ensureCards 가 'flat' 으로 카드를 재전개하고,
+       '이대로 게시글 쓰기' 한 번에 composeCards 가 합성본을 그대로 N장으로 덮어썼다
+       (실측 scn-e-resume: 저장본 [wsl-ba-lr, null] → 재진입 화면 flat* → 저장 후 [null, null, null]).
+       이제 ① workspaceContext.layoutComp / layoutCards(구성 키·카드·슬롯 focal/zoom)를 저장·복원하고,
+          ② 그게 없는 옛 저장본·동기화본은 templateOutputs[].templateId/photoIds 로 카드를 역산한다.
+       'flat' 재전개는 둘 다 안 될 때(사진이 바뀌어 역산 불가)만. */
+    var TPL2COMP = { 'wsl-ba-lr': 'ba', 'wsl-collage-2': 'merge-lr', 'wsl-collage-2-tb': 'merge-tb', 'wsl-strip-3': 'grid', 'wsl-grid-4': 'grid', 'wsl-cover-1l2': 'grid2' };
+    function _sameIds(a, b) { a = a || []; b = b || []; return a.length === b.length && a.every(function (v, i) { return String(v) === String(b[i]); }); }
+    // 카드 목록이 지금 사진과 맞는가 — 선택 사진 전부를 정확히 한 번씩 담아야 한다(빠지거나 겹치면 역산 불가).
+    function _coversPhotos(cards) {
+      var eps = editablePhotos() || [], seen = {}, cnt = 0, dup = false;
+      cards.forEach(function (c) { (c.photoIds || []).forEach(function (id) { var k = String(id); if (seen[k]) dup = true; seen[k] = 1; cnt++; }); });
+      return !dup && cnt === eps.length && cards.every(function (c) { return (c.photoIds || []).length > 0; }) && eps.every(function (p) { return !!seen[String(p.id)]; });
+    }
+    function _bumpSeq(id) { var m = /^wsc-(\d+)$/.exec(String(id || '')); if (m && +m[1] > _seq) _seq = +m[1]; }
+    // 카드/결과물 목록({templateId}) → 구성 키. 첫 카드가 콜라주면 그 종류, 첫 카드가 그대로인데 뒤에 콜라주가 있으면 cover.
+    function inferComp(list, n) {
+      if (!Array.isArray(list) || !list.length) return null;
+      var first = list[0] && list[0].templateId;
+      var key = first ? (TPL2COMP[first] || null) : (list.slice(1).some(function (o) { return o && o.templateId; }) ? 'cover' : 'flat');
+      return (key && _compOptions(n).some(function (o) { return o.key === key; })) ? key : null;
+    }
+    // 저장된 카드(layoutCards: {id, layoutId, photoIds, slots}) 또는 결과물(templateOutputs: {pairId, templateId, photoIds}) → 카드.
+    //   레이아웃은 프리셋 클론(+ 저장된 focal/zoom). 카드 id 는 저장값/pairId 를 그대로 써서 결과물과 짝이 맞게.
+    function _cardsFrom(list, pick) {
+      if (!Array.isArray(list) || !list.length) return null;
+      var cards = [];
+      for (var i = 0; i < list.length; i++) {
+        var e = pick(list[i]); if (!e || !Array.isArray(e.photoIds) || !e.photoIds.length) return null;
+        var L = e.layoutId ? _layoutById(e.layoutId) : null;
+        if ((e.layoutId && !L) || (L && e.strictSlots && (L.photoSlots || []).length !== e.photoIds.length)) return null;
+        (L && Array.isArray(e.slots) ? e.slots : []).forEach(function (ss) {
+          var sl = (L.photoSlots || []).filter(function (x) { return x.id === ss.id; })[0]; if (!sl) return;
+          if (ss.fx != null && ss.fy != null) sl.focal = { x: +ss.fx, y: +ss.fy };
+          if (ss.zoom) sl.zoom = +ss.zoom;
+        });
+        cards.push({ id: e.id || ('wsc-' + (++_seq)), layout: L, photoIds: e.photoIds.map(String) });
+        _bumpSeq(e.id);
+      }
+      return _coversPhotos(cards) ? cards : null;
+    }
+    function _restoreCards() {
+      var d = D(), n = (editablePhotos() || []).length;
+      if (n < 2) return null;
+      var cards = _cardsFrom(d._wsSavedCards, function (sv) { return sv && { id: sv.id, layoutId: sv.layoutId, photoIds: sv.photoIds, slots: sv.slots }; })
+        || _cardsFrom(d.templateOutputs, function (o) { return o && { id: o.pairId, layoutId: o.templateId, photoIds: o.photoIds, strictSlots: true }; });
+      if (!cards) return null;
+      var comp = (d.wsComp && _compOptions(n).some(function (o) { return o.key === d.wsComp; })) ? d.wsComp
+        : inferComp(cards.map(function (c) { return { templateId: c.layout ? c.layout.id : null }; }), n);
+      return comp ? { cards: cards, comp: comp } : null;   // 구성 선택지와 못 맞추면(장수가 달라짐 등) 화면이 거짓말을 하게 되므로 재전개
+    }
+    // buildSlot 이 저장하는 형태. 아직 레이아웃을 거치지 않은 세션(카드 없음)은 null — 저장본의 값을 유지하라는 뜻.
+    function cardsForSave() {
+      var d = D();
+      if (!Array.isArray(d.wsCards)) return null;
+      return d.wsCards.map(function (c) {
+        var slots = c.layout ? (c.layout.photoSlots || []).map(function (sl) { return { id: sl.id, fx: sl.focal ? sl.focal.x : 0.5, fy: sl.focal ? sl.focal.y : 0.5, zoom: sl.zoom || 1 }; }) : null;
+        return { id: c.id, layoutId: c.layout ? c.layout.id : null, photoIds: (c.photoIds || []).slice(), slots: slots };
+      });
+    }
+
     // 구성 → 카드 배열. 카드 1개 = 올라갈 이미지 1장(레이아웃 없으면 사진 그대로).
     function _buildCards(comp) {
       var eps = editablePhotos() || [], n = eps.length;
@@ -109,6 +173,12 @@
     function _ensureCards() {
       var d = D(), n = (editablePhotos() || []).length;
       if (d.wsComp && !_compOptions(n).some(function (o) { return o.key === d.wsComp; })) d.wsComp = null;   // 장수가 바뀌어 안 맞는 구성이면 '그대로'
+      // [2026-10-01 01] 세션 첫 진입(카드 없음)이면 저장본·결과물에서 먼저 복원한다 — 'flat' 재전개는 그다음.
+      if (!Array.isArray(d.wsCards) && !d._wsRestoreTried) {
+        d._wsRestoreTried = true;
+        var r = _restoreCards();
+        if (r) { d.wsComp = r.comp; d.wsCards = r.cards; d._wsSig = _sig(); }
+      }
       var sig = _sig();
       if (d._wsSig !== sig || !Array.isArray(d.wsCards) || (!d.wsCards.length && n)) {
         d.wsCards = _buildCards(_curComp());
@@ -132,13 +202,27 @@
       var cards = d.wsCards || [];
       if (!WL || !cards.length) return Promise.resolve(null);
       var _compAtStart = d.wsComp;   // [v779 카오스QA] 굽는 도중 구성 변경 감지용
+      /* [2026-10-01 01] 안 바뀐 카드는 다시 굽지 않는다. 예전엔 매번 전부 새로 구워서
+         원장이 편집기로 꾸민 합성본(storyEdited)이 '이대로 게시글 쓰기' 한 번에 사라졌고, 재진입한 글도 같은 재료로 또 구웠다.
+         같은 카드(pairId·레이아웃·사진 집합)의 결과물이 있으면 그 객체를 그대로 쓴다 —
+         단 슬롯을 드래그해 다시 맞췄거나(c._dirty) 지난 굽기에 못 불러온 칸(missing)이 있으면 다시 굽는다. */
+      var prevOuts = d.templateOutputs || [];
+      function _prevFor(c) {
+        var lid = c.layout ? c.layout.id : null;
+        return prevOuts.filter(function (o) { return o && o.pairId === c.id && (o.templateId || null) === lid && _sameIds(o.photoIds, c.photoIds); })[0] || null;
+      }
       return Promise.all(cards.map(function (c, i) {
-        var ps = _cardPhotos(c);
+        var ps = _cardPhotos(c), prev = _prevFor(c);
         if (!c.layout) {
           var p0 = ps[0];
-          return Promise.resolve(p0 ? { pairId: c.id, templateId: null, beforePhotoId: null, afterPhotoId: null,
-            outputUrl: (p0.editedDataUrl || p0.dataUrl || photoUrl(p0)), pairLabel: (i + 1) + '번째', photoIds: c.photoIds.slice() } : null);
+          if (!p0) return Promise.resolve(null);
+          var url0 = p0.editedDataUrl || p0.dataUrl || photoUrl(p0);
+          // 그대로 카드: 사진이 그대로면 기존 결과물 객체 유지(자동 꾸밈 원판·지문이 살아 캡션 화면에서 또 안 굽는다)
+          if (prev && prev.outputUrl && (prev._autoBase || prev.outputUrl) === url0) { prev.pairLabel = (i + 1) + '번째'; return Promise.resolve(prev); }
+          return Promise.resolve({ pairId: c.id, templateId: null, beforePhotoId: null, afterPhotoId: null,
+            outputUrl: url0, pairLabel: (i + 1) + '번째', photoIds: c.photoIds.slice() });
         }
+        if (prev && prev.outputUrl && (prev.storyEdited || (!c._dirty && !(prev.missing > 0)))) { prev.pairLabel = (i + 1) + '번째'; return Promise.resolve(prev); }
         var map = _cardAssign(c) || {};
         var bId = null, aId = null;
         (c.layout.photoSlots || []).forEach(function (sl) {
@@ -147,6 +231,7 @@
         });
         var _meta = {};
         return Promise.resolve(WL.composeLayout(_fillLayoutText(c.layout), ps, map, _meta)).then(function (url) {
+          if (url) c._dirty = false;
           return url ? { pairId: c.id, templateId: c.layout.id, beforePhotoId: bId, afterPhotoId: aId,
             // [2026-07-24] 이 출력이 실제로 구워진 비율(콜라주 STARTER 는 대개 '1:1').
             //   캡션 자동합성(_autoComposeTemplate)이 작업기억 꾸밈을 얹을 때 이 비율로 굽지 않으면,
@@ -332,7 +417,7 @@
         // mount 가 host.className/innerHTML 을 통째로 갈아치운다(→ '.wsl-stage') — 그래서 전용 안쪽 host 에만 붙인다.
         window.WorkspaceSlotStage.mount(host, {
           layout: c.layout, photos: _cardPhotos(c), assign: _cardAssign(c),
-          onChange: function () { D().previewUrl = null; D().templateOutput = null; _syncAlias(); }   // 재조정 시 옛 합성본 무효화
+          onChange: function () { c._dirty = true; D().previewUrl = null; D().templateOutput = null; _syncAlias(); }   // 재조정 시 옛 합성본 무효화(이 카드만 다시 굽는다)
         });
       });
     }
@@ -367,21 +452,27 @@
       }
       return null;
     }
-    function _wsLayoutEditState() {
+    function _cardById(id) { return (CARDS() || []).filter(function (c) { return c.id === id; })[0] || null; }
+    // 활성 표시 id → 결과물. 'wslayout'(단일 합성본 표시 id)·지정 없음 → 첫 결과물. 사진 id 등 결과물이 아니면 null.
+    function _outputFor(activeId) {
+      var outs = D().templateOutputs || [];
+      return (activeId && activeId !== 'wslayout') ? (outs.filter(function (o) { return o && o.pairId === activeId; })[0] || null) : (outs[0] || null);
+    }
+    function _wsLayoutEditState(activeId) {
       try {
-        // [v779 보스] 레이아웃은 처음 고른 대로 고정 — 사진편집은 '합쳐진 1장'(합성본)을 편집한다.
-        //   합성본이 있으면 그걸 단일 이미지로 연다 → 편집기/캡션전/캡션후 세 화면 통일(원장 지적 "다 달라").
-        // [v779] 자동합성(시술명·작업기억 텍스트를 구움) 전 원판(_autoBase)이 있으면 그걸 연다(이중 굽기 방지).
-        // [v779 4장버그] 모드 판정을 outputUrl() 과 동일하게 스칼라+배열 기준으로 통일 — 드래그·구성변경으로
-        //   스칼라만 null 되도 배열에 합성본 있으면 composite 로.
-        // [v779 재오픈] ★ 이 검사를 카드(세션 전용 wsCards) 검사보다 먼저 둔다 — 재오픈 초안은 wsCards 가
-        //   복원 안 돼 아래 L 검사에서 null 나 원본 사진이 열리고 편집이 발행에 반영 안 되던 버그.
-        var _o0 = (D().templateOutputs || [])[0];
-        var _comp = D().templateOutput || (_o0 && _o0.outputUrl);
-        if (_comp) {
-          return { mode: 'composite', photoUrl: (_o0 && _o0._autoBase) || _comp };
-        }
-        var c = CARDS()[0];
+        /* [2026-10-01 flow-workspace-photo-02] 편집 대상은 **카드** 단위다.
+           예전엔 activeDisplayId 와 무관하게 늘 templateOutputs[0](첫 카드 합성본)을 열었다. 그래서 캐러셀 2번째 장
+           (그대로 사진)을 보며 '사진 편집'을 누르면 편집기엔 1번 전후 합성본이 뜨고, 완료본은 2번 자리에 저장돼
+           2번 사진이 사라졌다(실측 scn-d-edit: 편집기 1080×1080 전후색 → outs[1] 교체, photos[0].editedDataUrl 오염).
+           · 레이아웃 카드(templateId 있음)에 합성본 → 그 카드의 합성본(자동 꾸밈 전 원판 우선)을 단일 이미지로.
+           · 그대로 카드(templateId 없음) → null = 사진 경로(그 사진의 깨끗한 원판을 연다, 결과는 그 사진·그 카드로).
+           · 합성본이 아직 없는 레이아웃 카드 → 편집기 콜라주 모드(프리셋 매칭) — 결과는 그 카드의 결과물로 들어간다.
+           [v779 보스] 레이아웃은 처음 고른 대로 고정 — 사진편집은 '합쳐진 1장'(합성본)을 편집한다는 원칙은 그대로. */
+        var o = _outputFor(activeId);
+        if (o && !o.templateId) return null;
+        if (o && o.outputUrl) return { mode: 'composite', photoUrl: o._autoBase || o.outputUrl, card: o, cardId: o.pairId };
+        if (activeId && !o && (editablePhotos() || []).some(function (p) { return String(p.id) === String(activeId); })) return null;   // 보던 게 사진이면 사진 경로
+        var c = (activeId && _cardById(activeId)) || (CARDS() || []).filter(function (x) { return x.layout; })[0] || CARDS()[0];
         var L = c && c.layout; if (!L || !Array.isArray(L.photoSlots) || !L.photoSlots.length) return null;
         var slots = L.photoSlots;
         var assign = _cardAssign(c) || {};
@@ -395,11 +486,11 @@
             crop.push({ s: Math.max(1, Math.min(4, sl.zoom || 1)), tx: 0, ty: 0 });   // zoom만 이식(focal은 편집기서 재조정)
           });
           if (urls.every(function (u) { return !u; })) return null;
-          return { mode: 'collage', photos: urls, editState: {
+          return { mode: 'collage', photos: urls, cardRef: c, cardId: c.id, editState: {
             v: 1, layoutIdx: m.idx, layoutOrder: urls.map(function (_u, i) { return i; }),
             cellCrop: crop, fitMode: 'cover', ratio: (L.ratio || '4:5') } };
         }
-        if (D().templateOutput) return { mode: 'composite', photoUrl: D().templateOutput };
+        if (D().templateOutput) return { mode: 'composite', photoUrl: D().templateOutput, cardId: (c && c.id) || null };
         return null;
       } catch (_e) { return null; }
     }
@@ -524,7 +615,8 @@
       renderLayout: renderLayout, _wsMountStage: _wsMountStage,
       _wsLayoutEditState: _wsLayoutEditState, _fillLayoutText: _fillLayoutText,
       composeCards: composeCards, hasReviewCard: hasReviewCard, handleClick: handleClick,
-      compOptions: compOptions, applyComp: applyComp
+      compOptions: compOptions, applyComp: applyComp,
+      cardsForSave: cardsForSave, inferComp: inferComp   // [2026-10-01 01] 저장 형태 · 구성 역산(테스트/저장 경로가 쓴다)
     };
   }
   window.WSFlowLayout = { create: create };

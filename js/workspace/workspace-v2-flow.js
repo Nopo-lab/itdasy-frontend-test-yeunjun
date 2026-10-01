@@ -231,8 +231,10 @@
         if (!(im.naturalWidth > 0 && im.naturalHeight > 0)) { delete _outDims[u]; return; }
         _outDims[u] = { w: im.naturalWidth, h: im.naturalHeight };
         var disp = _blobDisp(u);
-        Array.prototype.forEach.call(document.querySelectorAll('.ig-photo[data-fl-igout]'), function (n) {
-          if (String(n.style.backgroundImage || '').indexOf(disp) >= 0) n.style.aspectRatio = im.naturalWidth + ' / ' + im.naturalHeight;
+        // [2026-10-01 05] 단일 칸(.ig-photo)과 캐러셀 슬라이드(.ig-car__slide — 이미지는 안쪽 .ig-car__img) 둘 다 갱신.
+        Array.prototype.forEach.call(document.querySelectorAll('[data-fl-igout]'), function (n) {
+          var holder = (n.classList && n.classList.contains('ig-car__slide')) ? n.querySelector('.ig-car__img') : n;
+          if (holder && String(holder.style.backgroundImage || '').indexOf(disp) >= 0) n.style.aspectRatio = im.naturalWidth + ' / ' + im.naturalHeight;
         });
       };
       im.onerror = function () { delete _outDims[u]; };
@@ -456,6 +458,7 @@
        ③ 재오픈해서 구운 것만 있고 원판(_autoBase)이 없으면 다시 굽지 않는다(그 위에 또 얹게 되므로).
      _autoBase(텍스트 없는 원판)는 메모리에만 둔다 — buildSlot 이 떼어낸다(dataURL 2벌 = 저장 폭탄·sync 100KB 컷). */
   function _cardWasEdited(o) {
+    if (o && o.storyEdited) return true;   // [2026-10-01 02] 카드(합성본) 자체를 원장이 편집기로 꾸민 표식 — 사진 모델을 더럽히지 않는다
     var ids = (o && o.photoIds) || [];
     if (!ids.length) return false;
     return (d.photos || []).some(function (p) { return p && p.storyEdited && ids.indexOf(p.id) >= 0; });
@@ -611,6 +614,13 @@
     if (d && d.activeDisplayId) {
       var ph = (d.photos || []).filter(function (p) { return p.id === d.activeDisplayId; })[0];
       if (ph) return ph;
+      /* [2026-10-01 02] 캐러셀 id 가 '그대로 카드'(templateId 없음)의 pairId 면 그 카드가 담은 사진이 편집 대상이다.
+         예전엔 못 찾으면 curPhoto()(첫 사진)로 떨어져, 2번째 장을 보며 편집해도 1번 사진 자리에 저장됐다. */
+      var oc = (d.templateOutputs || []).filter(function (o) { return o && o.pairId === d.activeDisplayId; })[0];
+      if (oc && !oc.templateId && oc.photoIds && oc.photoIds.length) {
+        ph = (d.photos || []).filter(function (p) { return String(p.id) === String(oc.photoIds[0]); })[0];
+        if (ph) return ph;
+      }
     }
     return curPhoto();
   }
@@ -620,6 +630,78 @@
   function _mergeWmLayers(base, wm) {
     return (window.WorkMemoryEngine && window.WorkMemoryEngine.mergeEditState)
       ? window.WorkMemoryEngine.mergeEditState(base, wm) : (base || wm || null);
+  }
+  /* [2026-10-01 flow-workspace-photo-02] 레이아웃 카드(합성본·콜라주) 편집 결과를 **그 카드에만** 적는다.
+     사진 모델(photos[].editedDataUrl/storyEdited/editState)은 건드리지 않는다 — 예전엔 첫 사진에 합성본을 넣어
+     사진 모델이 오염됐고(photos[0].editedDataUrl = 전후 합성본), _syncOutputForEdit 의 isWs 폴백이 '보던 카드'에
+     결과를 써서 카드가 섞였다. 아직 결과물이 없는 카드(콜라주 모드)는 그 카드 자리에 결과물을 새로 만든다. */
+  function _applyCardEdit(wsEd, dataUrl, meta) {
+    if (!d || !wsEd || !dataUrl) return null;
+    var outs = d.templateOutputs || (d.templateOutputs = []);
+    var o = wsEd.card || null;
+    if (!o && wsEd.cardId) o = outs.filter(function (x) { return x && x.pairId === wsEd.cardId; })[0] || null;
+    if (!o && !wsEd.cardId) o = outs[0] || null;   // 옛 저장본(templateOutput 스칼라만) — 첫 결과물
+    if (!o) {
+      var c = wsEd.cardRef; if (!c) return null;
+      var bId = null, aId = null, map = null;
+      try { map = (window.WorkspaceLayout && c.layout) ? window.WorkspaceLayout.autoAssign((c.photoIds || []).map(_photoById).filter(Boolean), c.layout) : null; } catch (_ae) { map = null; }
+      ((c.layout && c.layout.photoSlots) || []).forEach(function (sl) {
+        if (sl.role === 'before' && map && map[sl.id]) bId = map[sl.id].id;
+        if (sl.role === 'after' && map && map[sl.id]) aId = map[sl.id].id;
+      });
+      o = { pairId: c.id, templateId: c.layout ? c.layout.id : null, beforePhotoId: bId, afterPhotoId: aId, outputUrl: null,
+        ratio: (c.layout && c.layout.ratio) || null, pairLabel: '', photoIds: (c.photoIds || []).slice() };
+      var cards = d.wsCards || [], at = cards.indexOf(c);
+      outs.splice(at >= 0 ? Math.min(at, outs.length) : outs.length, 0, o);
+      outs.forEach(function (x, i) { if (x) x.pairLabel = (i + 1) + '번째'; });
+    }
+    if (!o._autoBase && wsEd.photoUrl) o._autoBase = wsEd.photoUrl;   // 편집기를 연 원판(세션 전용) — 다음 열기에서 또 겹쳐 굽지 않게
+    o.outputUrl = dataUrl;
+    o.storyEdited = true;
+    if (meta && meta.editState) o.editState = meta.editState;
+    delete o.autoSig;   // 자동 꾸밈 지문은 더 이상 의미 없다(원장 편집본이 이긴다 — _cardWasEdited)
+    if (o === outs[0]) { d.templateOutput = dataUrl; if (o.templateId) d.templateOutputId = o.templateId; }
+    d.previewUrl = null;
+    return o;
+  }
+  /* [T8-F] 관찰 세션을 닫아 **보관만** 한다 — 여기서 학습하지 않는다.
+     발행할지 저장할지 그냥 닫을지가 증거 강도를 좌우하는데 그건 아직 모른다.
+     undo(통째 되돌리기) 여부는 _lastApply.undone 이 들고 있다(T4·T5 와 같은 출처).
+     [T5] dismissed veto 기록 — 원장이 '기억에서 온 role 없는 문구'를 지운 채 **저장 완료**했으면
+     그 문구를 다시는 자동으로 안 얹는다(3회 조건을 재충족해도). 취소로 닫힌 세션은 판정 안 함.
+     통째 빼기 판정은 meta.wmKept(남은 wm 레이어 수, 스티커·선 포함) —
+     0 = 자동화 거부(배너 되돌리기/↩)라 문구 판단 아님 / 1+ = 자동화는 수용, 그 문구만 싫다.
+     (텍스트 개수 비교로 하면 wm 문구가 1개뿐일 때 지워도 '전부 사라짐'이 되어 veto 가 영영 안 걸린다 —
+      브라우저 실측으로 잡은 결함.) [2026-10-01] onDone 에서 떼어냄 — 동작 동일. */
+  function _onEditorDoneLearn(meta) {
+    try {
+      if (window.WMLearn) {
+        var _apL = window.WorkMemoryEngine && window.WorkMemoryEngine._lastApply;
+        window.WMLearn.hold({ undone: !!(_apL && _apL.undone) });
+      }
+    } catch (_t8f) { void _t8f; }
+    try {
+      var ap = window.WorkMemoryEngine && window.WorkMemoryEngine._lastApply;
+      if (ap && ap.texts && ap.texts.length && !ap.undone && meta && meta.editState && window.WorkMemory && window.WorkMemory.dismissText) {
+        var _fin = {};
+        (meta.editState.layers || []).forEach(function (l) {
+          if (l && !l.role && (l.type === 'text' || l.type === 'badge') && l.text) _fin[window.WorkMemoryEngine.normalizeText(l.text)] = 1;
+        });
+        var gone = ap.texts.filter(function (t) { return !_fin[t]; });
+        if (gone.length && meta.wmKept > 0) gone.forEach(function (t) { window.WorkMemory.dismissText(t); });
+      }
+    } catch (_tde) { void _tde; }
+  }
+  // [캐러셀] 편집기에서 (콜라주 아닌 단일 레이아웃으로) 새로 추가한 사진 → 플로우 사진목록에 별도 사진으로 반영.
+  //   원장님 요청: "편집기 추가 사진도 캐러셀로". 이러면 여러 장 게시(캐러셀) 후보가 된다. [2026-10-01] onDone 에서 떼어냄 — 동작 동일.
+  function _absorbEditorNewPhotos(meta) {
+    try {
+      ((meta && meta.newPhotos) || []).forEach(function (u) {
+        if (!u) return;
+        var dup = d.photos.some(function (q) { return q.dataUrl === u || q.editedDataUrl === u || q.baseUrl === u; });
+        if (!dup) d.photos.push({ id: uid(), dataUrl: u, baseUrl: u, role: 'hero', selected: true, selSeq: ++d._selSeq });
+      });
+    } catch (_npe) { void _npe; }
   }
   function _openStoryEditor(o) {
     o = o || {};
@@ -660,7 +742,18 @@
     //   (예전엔 항상 원본 단일 사진으로 열려 레이아웃이 통째 사라졌음 — 2026-07-10 버그수정)
     // [v779 재오픈] d.wsLayout 은 레이아웃 화면을 방문해야만 채워지는 세션 별칭 → 재오픈 초안엔 없다.
     //   합성본(templateOutput/배열)이 있으면 게이트를 열어 composite 편집이 되게 한다(원본 열림·편집 미반영 방지).
-    var _wsEd = ((d.wsLayout || d.templateOutput || (d.templateOutputs && d.templateOutputs.length)) && !_hasBg) ? _wsLayoutEditState() : null;
+    // [2026-10-01 02] 보고 있던 카드(activeDisplayId) 기준으로 편집 대상을 정한다 — 늘 첫 카드가 아니라.
+    var _wsEd = ((d.wsLayout || d.templateOutput || (d.templateOutputs && d.templateOutputs.length)) && !_hasBg) ? _wsLayoutEditState(d.activeDisplayId) : null;
+    var _isCardEd = !!(_wsEd && _wsEd.mode === 'composite');
+    /* [2026-10-01 02] 레이아웃 카드가 섞인 글에서 '그대로 카드' 한 장을 편집할 땐 편집기에 **그 한 장만** 넘긴다.
+       전체 사진 목록을 넘기면 편집기는 첫 장을 활성(adjSel=0)으로 알고 meta.photoIdx=0 을 돌려줘, 완료본이 1번 사진
+       (합성본 안의 사진)에 쓰였다 — 화면엔 아무 변화도 없고 저장본만 더러워진다(QA Q7b 실측). 사진이 전부 그대로인 글은
+       예전처럼 전체 목록(썸네일로 장 넘기기·장별 레이어). */
+    var _hasLayoutCard = (d.templateOutputs || []).some(function (o) { return o && o.templateId; });
+    var _soloPhoto = _isCardEd || (!_wsEd && _hasLayoutCard);
+    var _edPhotosFull = !_soloPhoto && !(_wsEd && _wsEd.mode === 'collage');   // 편집기 사진 목록 == editablePhotos() 인가(meta.photoIdx/perPhoto 를 그 순서로 해석해도 되는가)
+    // 카드 편집의 '이어서 편집' 스냅샷은 카드 것(사진의 editState 가 아니라). 방금 스타일을 골랐으면(_freshPick) 건너뛴다.
+    if (_isCardEd) _restore = (!_freshPick && _wsEd.card && _wsEd.card.editState) || null;
     var photo = (_wsEd && _wsEd.mode === 'composite') ? _wsEd.photoUrl
       : (_wsEd && _wsEd.mode === 'collage') ? (_wsEd.photos[0] || _cleanBase(p0) || outputUrl())
       : (_restore ? (_cleanBase(p0) || outputUrl())
@@ -674,6 +767,8 @@
       var _eps0 = editablePhotos() || [];
       var _actP = _activeEditPhoto();
       var _pIdx = _actP ? _eps0.map(function (p) { return p && p.id; }).indexOf(_actP.id) : 0;
+      // [2026-10-01 02] 카드 편집이면 '몇 번째 장'은 사진이 아니라 카드 순서다(2번째 카드부터 시술 텍스트 생략).
+      if (_isCardEd && _wsEd.card) _pIdx = (d.templateOutputs || []).indexOf(_wsEd.card);
       if (_pIdx > 0) {
         // [T1 엔진 2026-08-17] 발행 미리보기 bake(_autoComposeTemplate)와 같은 규칙을 엔진에서 — 한쪽만 고쳐 어긋나던 구조 제거.
         layers = (window.WorkMemoryEngine && window.WorkMemoryEngine.stripServiceText) ? window.WorkMemoryEngine.stripServiceText(layers) : layers;
@@ -711,6 +806,7 @@
        (게이트가 둘인데 하나만 고친 것 — 이 레포에서 반복해서 나온 패턴이라 명시해 둔다.
         실측: A 저장 → B 선택 → 편집기가 여전히 A. `_restore` 는 null 이었는데도.) */
     var _finalEs = (_wsEd && _wsEd.mode === 'collage') ? _mergeWmLayers(_wsEd.editState, _wmEd)
+      : _isCardEd ? (_restore || _wmEd)   // [2026-10-01 02] 카드 편집은 사진의 editState 로 폴백하지 않는다
       : (_restore || ((o.fresh || _freshPick) ? _wmEd : ((p0 && p0.editState) || _wmEd)));
     /* [2026-09-12 ZH] 🔴 **캐러셀 3장을 다시 열면 사진이 1장만 들어왔다.**
        장별 편집은 사진마다 editState 를 따로 갖는데, 두 종류가 섞여 있다.
@@ -730,7 +826,7 @@
     var _carousel = null;
     try {
       var _epsC = editablePhotos() || [];
-      if (_restore && _epsC.length > 1 && !(_wsEd && _wsEd.mode === 'collage')) {
+      if (_restore && _epsC.length > 1 && !(_wsEd && _wsEd.mode === 'collage') && !_soloPhoto) {
         var _basesC = _epsC.map(function (p) { return _cleanBase(p) || photoUrl(p); });
         var _lbpC = {};
         _epsC.forEach(function (p, i) {
@@ -789,8 +885,10 @@
          (실측: 가로 사진 발행본의 45%가 흰 여백이었고 바꿀 방법이 화면에 없었다). */
       fitMode: (d._wsFit === 'cover' ? 'cover' : (d._wsFit === 'contain' ? 'contain' : null)),
       photoUrl: photo,
-      photos: (_wsEd && _wsEd.mode === 'collage') ? _wsEd.photos : (editablePhotos() || []).map(function (p) { return p.editedDataUrl || _cleanBase(p) || photoUrl(p); }),   // [itd][#5] 콜라주 셀은 편집본 우선 · [ws-hyper] 레이아웃 매칭 시 슬롯 순서대로
-      ratio: built.ratio,
+      // [2026-10-01 02] 카드(합성본) 편집은 그 한 장만 — 다른 사진 썸네일로 장을 바꿔 엉뚱한 카드에 쓰이지 않게.
+      photos: _soloPhoto ? [photo] : (_wsEd && _wsEd.mode === 'collage') ? _wsEd.photos : (editablePhotos() || []).map(function (p) { return p.editedDataUrl || _cleanBase(p) || photoUrl(p); }),   // [itd][#5] 콜라주 셀은 편집본 우선 · [ws-hyper] 레이아웃 매칭 시 슬롯 순서대로
+      // [2026-10-01 02] 합성본은 구워진 비율(1:1 콜라주 등) 그대로 연다 — 샵 프레임(4:5)으로 열면 흰 여백이 생기고 완료본 크기가 바뀐다.
+      ratio: (_isCardEd && _wsEd.card && _wsEd.card.ratio) || built.ratio,
       shopName: (built.ss && (built.ss.name || built.ss.shopName)) || (window.WorkspaceAdapter && window.WorkspaceAdapter.shopName && window.WorkspaceAdapter.shopName()) || '',
       layers: layers,
       autoArranged: autoArranged,
@@ -815,32 +913,7 @@
       })(),
       onDone: function (dataUrl, meta) {
         _hideWmBanner();   // [T4] 편집기가 닫히면 배너·타이머 정리(다음 세션에 낡은 배너 금지)
-        /* [T8-F] 관찰 세션을 닫아 **보관만** 한다 — 여기서 학습하지 않는다.
-           발행할지 저장할지 그냥 닫을지가 증거 강도를 좌우하는데 그건 아직 모른다.
-           undo(통째 되돌리기) 여부는 _lastApply.undone 이 들고 있다(T4·T5 와 같은 출처). */
-        try {
-          if (window.WMLearn) {
-            var _apL = window.WorkMemoryEngine && window.WorkMemoryEngine._lastApply;
-            window.WMLearn.hold({ undone: !!(_apL && _apL.undone) });
-          }
-        } catch (_t8f) { void _t8f; }
-        /* [T5] dismissed veto 기록 — 원장이 '기억에서 온 role 없는 문구'를 지운 채 **저장 완료**했으면
-           그 문구를 다시는 자동으로 안 얹는다(3회 조건을 재충족해도). 취소로 닫힌 세션은 판정 안 함.
-           통째 빼기 판정은 meta.wmKept(남은 wm 레이어 수, 스티커·선 포함) —
-           0 = 자동화 거부(배너 되돌리기/↩)라 문구 판단 아님 / 1+ = 자동화는 수용, 그 문구만 싫다.
-           (텍스트 개수 비교로 하면 wm 문구가 1개뿐일 때 지워도 '전부 사라짐'이 되어 veto 가 영영 안 걸린다 —
-            브라우저 실측으로 잡은 결함.) */
-        try {
-          var ap = window.WorkMemoryEngine && window.WorkMemoryEngine._lastApply;
-          if (ap && ap.texts && ap.texts.length && !ap.undone && meta && meta.editState && window.WorkMemory && window.WorkMemory.dismissText) {
-            var _fin = {};
-            (meta.editState.layers || []).forEach(function (l) {
-              if (l && !l.role && (l.type === 'text' || l.type === 'badge') && l.text) _fin[window.WorkMemoryEngine.normalizeText(l.text)] = 1;
-            });
-            var gone = ap.texts.filter(function (t) { return !_fin[t]; });
-            if (gone.length && meta.wmKept > 0) gone.forEach(function (t) { window.WorkMemory.dismissText(t); });
-          }
-        } catch (_tde) { void _tde; }
+        _onEditorDoneLearn(meta);   // [T8-F] 관찰 보관 · [T5] 지운 문구 veto (본체는 아래 헬퍼 — 동작 동일)
         var p = p0 || _activeEditPhoto();   // [#5] 열 때 잡은 '보던 장'에 저장(편집 중 바뀌지 않게 고정)
         /* [2026-09-12 ZH] 다만 **편집기 안에서 장을 바꿨으면 그 장이 맞다.**
            p0 고정은 '편집 중 플로우 쪽 상태가 흔들려도 엉뚱한 장에 쓰지 않게' 하려던 것인데,
@@ -848,27 +921,20 @@
            실측(2026-09-12, 3장 캐러셀 · 장마다 다른 글자): [완료] 후 발행본이
            [헤어+B2hair, 헤어, 속눈썹] — **네일 사진이 통째로 사라지고** 헤어가 두 장 나왔다.
            편집기가 알려준 번호가 있으면 그걸 쓴다(없으면 기존 동작 그대로). */
-        if (meta && meta.photoIdx != null) {
+        if (meta && meta.photoIdx != null && _edPhotosFull) {   // [2026-10-01 02] 편집기 목록이 전체 사진일 때만 그 번호를 믿는다
           var _tpNow = (editablePhotos() || [])[meta.photoIdx];
           if (_tpNow) p = _tpNow;
         }
-        if (p) { p.editedDataUrl = dataUrl; p.storyEdited = true; if (meta && meta.editState) p.editState = meta.editState; }   // [#11] 편집 상태 보존 → 재편집 이어가기
-        if (_wsEd) { d.templateOutput = dataUrl; d.previewUrl = null; }   // [ws-hyper] 편집한 레이아웃 합성본을 대표 이미지로 → 미리보기/발행/저장에 반영
-        _syncOutputForEdit(p, dataUrl, !!_wsEd);   // [버그수정 2026-07-17] 결과물 배열에도 반영(안 하면 발행이 편집 전 합성본을 올림)
-        // [캐러셀] 편집기에서 (콜라주 아닌 단일 레이아웃으로) 새로 추가한 사진 → 플로우 사진목록에 별도 사진으로 반영.
-        //   원장님 요청: "편집기 추가 사진도 캐러셀로". 이러면 여러 장 게시(캐러셀) 후보가 된다.
-        try {
-          var _np = (meta && meta.newPhotos) || [];
-          _np.forEach(function (u) {
-            if (!u) return;
-            var dup = d.photos.some(function (q) { return q.dataUrl === u || q.editedDataUrl === u || q.baseUrl === u; });
-            if (!dup) d.photos.push({ id: uid(), dataUrl: u, baseUrl: u, role: 'hero', selected: true, selSeq: ++d._selSeq });
-          });
-        } catch (_npe) { void _npe; }
+        // [2026-10-01 02] 레이아웃 카드(합성본·콜라주) 편집은 카드에만 적는다 — 사진 모델은 그대로.
+        var _cardEd = !!(_wsEd && (_wsEd.mode === 'composite' || _wsEd.mode === 'collage'));
+        if (_cardEd) { _applyCardEdit(_wsEd, dataUrl, meta); }
+        else if (p) { p.editedDataUrl = dataUrl; p.storyEdited = true; if (meta && meta.editState) p.editState = meta.editState; }   // [#11] 편집 상태 보존 → 재편집 이어가기
+        if (!_cardEd) _syncOutputForEdit(p, dataUrl, false);   // [버그수정 2026-07-17] 결과물 배열에도 반영(안 하면 발행이 편집 전 합성본을 올림) — 그 사진의 출력에만
+        _absorbEditorNewPhotos(meta);   // [캐러셀] 편집기에서 새로 추가한 사진 → 플로우 사진목록(본체는 아래 헬퍼)
         // [#5/#6] 사진별 레이어 — 각 장을 자기 텍스트/스티커로 합성해 캐러셀 장별로 다르게 게시되게(현재 보던 장 제외).
         try {
           var _pp = meta && meta.perPhoto;
-          if (_pp && _pp.length && window.ItdEditor && window.ItdEditor.compose) {
+          if (_pp && _pp.length && _edPhotosFull && window.ItdEditor && window.ItdEditor.compose) {   // [2026-10-01 02] 한 장만 넘긴 세션의 번호는 전체 목록 번호가 아니다
             var _eph = editablePhotos(), _rt = (meta.editState && meta.editState.ratio) || _wsRatio();
             _pp.forEach(function (e) {
               var tp = _eph[e.idx]; if (!tp || tp === p) return;   // 보던 장은 위에서 dataUrl 로 이미 저장
@@ -1809,7 +1875,14 @@
 	    var slides = items.map(function (it) {
 	      var toggleAttr = it.kind === 'output' && it.expandable ? ' data-fl-tplexpand="' + esc(it.id) + '"'
 	        : (it.ofPair ? ' data-fl-tplcollapse="' + esc(it.ofPair) + '"' : '');
-	      return '<div class="ig-car__slide" data-fl-carslide="' + esc(it.id) + '"' + toggleAttr + '>' +
+	      /* [2026-10-01 flow-workspace-photo-05] 다중 슬라이드도 단일 분기와 같은 규칙 — 구워진 결과물(kind 'output')은
+	         **실제 픽셀 비율**로 칸을 잡는다. 예전엔 4:5 고정+cover 라 1:1 전후 합성본의 BEFORE/AFTER 가 좌우 10%씩 잘렸다. */
+	      var _ar = '';
+	      if (it.kind === 'output' && it.url) {
+	        var _od = _outDims[it.url] || _capPreviewDims[it.url];
+	        if (_od) _ar = ' style="aspect-ratio:' + _od.w + ' / ' + _od.h + '"'; else _probeOutDims(it.url);
+	      }
+	      return '<div class="ig-car__slide" data-fl-carslide="' + esc(it.id) + '"' + toggleAttr + (it.kind === 'output' ? ' data-fl-igout="1"' : '') + _ar + '>' +
 	        '<div class="ig-car__img" style="background-image:url(' + esc(_blobDisp(it.url)) + ')"></div></div>';
 	    }).join('');
 	    var dots = items.map(function (it) { return '<button type="button" class="ig-car__dot' + (it.id === active ? ' on' : '') + '" data-fl-cardot="' + esc(it.id) + '" aria-label="이 사진 보기"></button>'; }).join('');
@@ -2210,7 +2283,10 @@
     cta.classList.toggle('wsv2flow__cta--ghost', !!(CTA[name] && CTA[name].ghost));
     // [캡션] 생성 트리거는 아래 '시나리오 칩(상황 선택)' 하나로 통일.
     //  생성 전(결과 없음)엔 하단 CTA 숨김 → 칩을 눌러 생성. 생성 후 '고객 연결로' 노출.
-    if (name === 'caption' && !String(d.caption || '').trim()) bar.classList.add('hidden');
+    /* [2026-10-01 flow-workspace-photo-03] 캡션 전에도 사진이 있으면 '나중에 이어서하기'(ghost)를 보인다.
+       예전엔 캡션이 비면 액션바를 통째로 숨겨서, AI 가 죽어 있는 동안엔 작업을 저장할 수단이 화면에 없었다
+       (실측 scn-b-misc: CTA display:none → 뒤로가기 ×3 → 새 슬롯 0). 사진도 캡션도 없을 때(글만 쓰기)만 숨긴다. */
+    if (name === 'caption' && !String(d.caption || '').trim() && !(editablePhotos() || []).length) bar.classList.add('hidden');
     // [fix 2026-07-12] 같은 화면 재렌더(샵 선택·다시 생성 등)면 스크롤 유지 — 화면 전환일 때만 맨 위로.
     var act = el.querySelector('.wsv2flow__s.active');
     if (act) act.scrollTop = ((name === _prevCur) || opts.keepScroll) ? _prevScrollTop : 0;
@@ -2454,6 +2530,9 @@
            → 글이 만들어진 순간 조용히 슬롯에 적는다(편집 완료와 같은 `_persistEditQuiet` — 토스트·갤러리·학습 없음). */
         try { _persistEditQuiet(); } catch (_pq) { void _pq; }
       } else { toast(r.toast || '게시글 생성에 실패했어요'); }
+      /* [2026-10-01 03] AI 가 실패해도 사진·구성은 안 사라진다 — 하단 '나중에 이어서하기' 가 보이고, 나가면(close) 임시 저장된다.
+         그걸 말해 준다. (실패 분기에서 바로 슬롯을 쓰지는 않는다 — caption-generated-persists 2026-09-13 계약: 빈 글로 슬롯 생성 금지.) */
+      if (!r.ok && (editablePhotos() || []).length) toast('사진과 구성은 그대로 있어요 — 잠시 뒤 다시 만들거나, 아래 \'나중에 이어서하기\'로 저장해 두세요');
       // [보스요청 2026-07-12] 생성 후 인스타 미리보기 자동 점프 제거 — 캡션 결과 화면(사진 편집·캡션 직접 수정)에
       //   머물고, 원장이 하단 '인스타 미리보기로' CTA 를 눌러야 preview 로 이동.
       setScreen('caption');
@@ -2486,6 +2565,7 @@
       // [버그수정] 낡은 요청의 실패 토스트는 생략하되, 화면 갱신은 그대로(로딩 스피너 고착 방지).
       if (_myToken !== _genToken) { setScreen('caption'); return; }
       toast('게시글 생성에 실패했어요 — 네트워크를 확인하고 다시 시도해 주세요');
+      if ((editablePhotos() || []).length) toast('사진과 구성은 그대로 있어요 — 잠시 뒤 다시 만들거나, 아래 \'나중에 이어서하기\'로 저장해 두세요');   // [2026-10-01 03]
       setScreen('caption');
     });
   }
@@ -2540,8 +2620,14 @@
       //   실패로 보고 그냥 머문다 — 다시 누르면 된다.
       if (a === 'saveimg') {
         if (!window.WorkspaceAdapter) return;
-        Promise.resolve(window.WorkspaceAdapter.saveImage(outputUrl(), d.service || 'itdasy'))
-          .then(function (r) { if (r && r.ok) { _markPrepared(); _askPublishedSheet(); } })
+        /* [2026-10-01 flow-workspace-photo-06] 카드가 여러 장이면 **전부** 순서대로 저장한다. 예전엔 보고 있던 1장만
+           내려받고 곧바로 "인스타에 올리셨어요?" 를 물어, 나머지 카드는 저장되지 않았는데 안내도 없었다(실측 scn-f2 [F2c]). */
+        var _imgs = _displayItems().map(function (it) { return it && it.url; }).filter(Boolean);
+        var _saveP = (_imgs.length > 1 && window.WorkspaceAdapter.saveImages)
+          ? window.WorkspaceAdapter.saveImages(_imgs, d.service || 'itdasy')
+          : window.WorkspaceAdapter.saveImage(outputUrl(), d.service || 'itdasy');
+        Promise.resolve(_saveP)
+          .then(function (r) { if (r && r.ok) { _markPrepared(); _askPublishedSheet(r.saved || 1); } })
           .catch(function () { /* saveImage 가 토스트로 이미 알린다 */ });
         return;
       }
@@ -3334,6 +3420,15 @@
 	      captionMode: d.captionMode || 'normal',
       createdFrom: 'workspace_v2',
     });
+    /* [2026-10-01 flow-workspace-photo-01] 레이아웃 구성(구성 키·카드·슬롯 focal/zoom·사진 채우기)을 저장 모델에 넣는다.
+       예전엔 templateOutputs 만 저장해서 재진입 시 구성이 'flat' 으로 초기화되고 합성본이 사라졌다.
+       아직 레이아웃을 거치지 않은 세션(카드 없음)은 저장본 값을 그대로 둔다(덮어쓰지 않음). */
+    try {
+      var _lc = (_WSL && _WSL.cardsForSave) ? _WSL.cardsForSave() : null;
+      if (_lc) { slot.workspaceContext.layoutCards = _lc; slot.workspaceContext.layoutComp = d.wsComp || 'flat'; }
+      else if (d.wsComp) slot.workspaceContext.layoutComp = d.wsComp;
+      if (d._wsFit === 'cover' || d._wsFit === 'contain') slot.workspaceContext.photoFit = d._wsFit;
+    } catch (_lce) { void _lce; }
     slot.captionMeta = {
       mode: d.captionMode || 'normal', length_tier: d.capLen || 'medium', tone_override: d.capTone || 'normal',
       generatedAt: d.caption ? ((slot.captionMeta && slot.captionMeta.generatedAt) || now) : null, log_id: d.logId || null,
@@ -3347,7 +3442,19 @@
     slot.dedupeKey = slot.dedupeKey || ('ws2:' + slot.id);
     slot.source = slot.source || 'workspace_v2';
     d.slot = slot;   // [#13] 만든 슬롯을 고정 — 이후 저장(에디터 완료·발행 등)이 같은 id 를 갱신하게. 예전엔 매번 새 id 라 콘텐츠가 중복 저장됐음.
+    d._savedSig = _slotSig();   // [2026-10-01 03] 이 시점 = 저장본과 같다
     return slot;
+  }
+
+  /* [2026-10-01 03] 저장본 대비 '바뀐 게 있나' 지문 — 사진(id·역할·편집본 길이)·결과물(카드·편집표식·길이)·글·고객·해시태그.
+     close() 가 이 값이 다를 때만 조용히 임시 저장한다(같으면 아무것도 안 한다).
+     구성 키(wsComp)·채우기(_wsFit)는 넣지 않는다 — 실제로 바뀌면 결과물이 비워져 어차피 지문이 달라지고,
+     옛 저장본을 열 때 결과물로 **역산**된 구성까지 '변경' 으로 세면 보기만 하고 닫아도 "임시 저장했어요" 가 뜬다. */
+  function _slotSig() {
+    if (!d) return '';
+    var ph = (d.photos || []).map(function (p) { return (p.id || '') + ':' + (p.role || '') + ':' + String(p.editedDataUrl || p.dataUrl || '').length + (p.selected === false ? ':x' : ''); });
+    var outs = (d.templateOutputs || []).map(function (o) { return o ? (o.pairId + ':' + (o.templateId || '') + ':' + String(o.outputUrl || '').length + (o.storyEdited ? ':e' : '')) : ''; });
+    return [ph.join(','), outs.join(','), d.caption || '', d.service || '', d.specialNote || '', d.customerId || '', (d.hashtags || []).join(' ')].join('|');
   }
 
   /* [PE-01 2026-09-11] 편집 결과만 조용히 영속화. `save()` 와 일부러 다르다:
@@ -3358,7 +3465,8 @@
     try {
       if (!d.photos || !d.photos.length) return;              // 적을 게 없으면 슬롯도 만들지 않는다
       if (typeof window.saveSlotToDB !== 'function') return;   // 저장소 없으면 조용히 포기(편집기는 이미 닫혔다)
-      Promise.resolve(window.saveSlotToDB(buildSlot())).catch(function (_e) { void _e; });
+      // [2026-10-01 03] 저장 완료 시점이 필요한 호출부(close → 홈 갱신)를 위해 프로미스를 세션에 남긴다(fire-and-forget 계약은 그대로).
+      d._persistP = Promise.resolve(window.saveSlotToDB(buildSlot())).then(function () { return true; }).catch(function (_e) { void _e; return false; });
     } catch (_e) { void _e; }
   }
 
@@ -3385,7 +3493,7 @@
   }
   // [v547] 게시 완료 자동화/복귀 — 실 IG 업로드(publishInstagramV2)는 성공 시 이미 자동 published(아래 publish()).
   //   하지만 '이미지 저장→수동 게시' 흐름은 콜백이 없어, 저장 직후 확인 sheet 로 게시 완료를 표시·영속.
-  function _askPublishedSheet() {
+  function _askPublishedSheet(savedN) {
     if (!el) return;
     _closePublishSheet();
     var wrap = document.createElement('div');
@@ -3396,7 +3504,7 @@
         '<div class="pub-ask__grip"></div>' +
         '<div class="pub-ask__ic"><i class="ph-duotone ph-instagram-logo"></i></div>' +
         '<div class="pub-ask__t">인스타에 올리셨어요?</div>' +
-        '<div class="pub-ask__d">이미지를 기기에 저장했어요.<br>인스타에 올렸다면 게시 완료로 표시해 둘게요.</div>' +
+        '<div class="pub-ask__d">' + (savedN > 1 ? '이미지 ' + savedN + '장을 기기에 저장했어요.' : '이미지를 기기에 저장했어요.') + '<br>인스타에 올렸다면 게시 완료로 표시해 둘게요.</div>' +
         '<div class="pub-ask__btns">' +
           '<button type="button" class="pub-ask__not" data-fl="pubnot">아직이에요</button>' +
           '<button type="button" class="pub-ask__done" data-fl="pubdone"><i class="ph-bold ph-check"></i>게시 완료</button>' +
@@ -3710,6 +3818,9 @@
 	      template: (wc && wc.templateLabel) || null, templateId: (wc && wc.templateId) || null,
 	      templateOutput: (slot && slot.templateOutput) || null, templateOutputId: (wc && wc.templateId) || null,
 	      templateOutputs: _hydrateOutputs(slot, wc), activeDisplayId: null,
+	      // [2026-10-01 01] 저장된 레이아웃 구성 복원 — 카드 자체는 layout.js _ensureCards 가 (지금 사진과 맞는지 검증하며) 되살린다.
+	      wsComp: (wc && wc.layoutComp) || null, _wsSavedCards: (wc && Array.isArray(wc.layoutCards)) ? wc.layoutCards : null,
+	      _wsFit: (wc && (wc.photoFit === 'cover' || wc.photoFit === 'contain')) ? wc.photoFit : null,
 	      tplCat: ctx.tplLabel || (wc && wc.type === 'before_after' ? '전후' : null),
 	      tplPurpose: purpose, captionMode: capMode, defaultRole: ctx.role || 'hero',
       textOnly: !!(opts.textOnly),
@@ -3726,6 +3837,7 @@
       _wsFmt: _slotFormat(slot),   // [2026-09-03] 기존 게시물이면 그 게시물의 크기, 새 게시물이면 null(=전역 기본)
 	    };
 	    if (d.photos.length && !hadRoles) reassignRoles();
+    d._savedSig = _slotSig();   // [2026-10-01 03] 연 시점의 지문 — 닫을 때 이것과 다르면 임시 저장
     el.classList.add('is-open');
     // [slot-sync coalesce] 편집 플로우 열림 — 정착(close/발행) 전까지 매 저장 업로드 억제.
     try { if (window.WorkspaceSync && window.WorkspaceSync.beginEdit) window.WorkspaceSync.beginEdit(); } catch (_be) { void _be; }
@@ -3853,6 +3965,17 @@
     if (!_navBack()) close();   // [v531] navStack 비면 close → 작업실 홈
   }
   function close() {
+    /* [2026-10-01 flow-workspace-photo-03] 닫히는 모든 경로(뒤로가기·시스템 back·프로그램적 close)에서
+       저장 안 된 변경이 있으면 조용히 임시 저장한다. 예전엔 캡션 전(AI 실패 포함) 뒤로가기 ×3 이면 사진·합성본이
+       확인창 없이 전부 사라졌다(실측 scn-b-misc: 새 슬롯 0 · saveSlotToDB 0회).
+       save() 가 부른 close(d._saving)·저장 직후(_savedSig 동일)·글만 쓰기(textOnly)엔 안 돈다. */
+    try {
+      if (d && !d._dead && !d._saving && !d.textOnly && (d.photos || []).length && _slotSig() !== d._savedSig) {
+        _persistEditQuiet();
+        Promise.resolve(d._persistP).then(function (ok) { if (ok && window.WorkspaceV2 && window.WorkspaceV2.refresh) window.WorkspaceV2.refresh(); });
+        toast('작업을 임시 저장했어요 — 작업실에서 이어서 할 수 있어요');
+      }
+    } catch (_ps) { void _ps; }
     if (el) el.classList.remove('is-open');
     // [v779] 전체화면 편집 상태 정리 — ESC/토글 아닌 경로(하단 CTA·시스템 back·닫기)로 나가면
     //   body.itd-edit-fs 와 d.edFull 이 잔존해 재진입/CSS 변경 시 검은 오버레이 고착 소지가 있었다.
