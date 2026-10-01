@@ -66,7 +66,7 @@ describe('AI 동의 카드 — 한 줄 요약이 기본, 결정·나중에 뒤�
     expect(card.querySelector('[data-ai-consent-action="all"]').textContent).toBe('전체 동의');
   });
 
-  test('[나중에] → 7일 숨김(계정별) + 쿠키 배너를 되살리지 않는다(팝업 2개 금지) + 다음 refresh 에도 숨김', async () => {
+  test('[나중에] → 7일 숨김(계정별) + 쿠키/오류진단 동의는 배너에 돌려준다(영영 못 받는 일 없음) + 다음 refresh 에도 숨김', async () => {
     const card = mountConsent();
     await window.AiConsentHome.refresh({ force: true });
     window.itdasyConsent.releaseDeferred.mockClear();
@@ -74,11 +74,11 @@ describe('AI 동의 카드 — 한 줄 요약이 기본, 결정·나중에 뒤�
     expect(card.hidden).toBe(true);
     const until = Number(localStorage.getItem('itdasy_ai_consent_later_v1:7'));
     expect(until).toBeGreaterThan(Date.now() + 6 * 24 * 3600 * 1000);
-    expect(window.itdasyConsent.releaseDeferred).not.toHaveBeenCalled();
+    // 리뷰 지적: '나중에' 가 배너까지 침묵시키면 _cardHandled 때문에 8초 안전장치도 안 돌아 7일간 동의를 못 받는다 → 배너는 돌려준다
+    expect(window.itdasyConsent.releaseDeferred).toHaveBeenCalledTimes(1);
     expect(window.showToast).toHaveBeenCalledWith(expect.stringContaining('설정'));
     await window.AiConsentHome.refresh({ force: true });
     expect(card.hidden).toBe(true);
-    expect(window.itdasyConsent.releaseDeferred).not.toHaveBeenCalled();
   });
 
   test('나중에 숨긴 동안에도 AI 기능/설정에서 open({force}) 하면 전체 안내문으로 뜬다', async () => {

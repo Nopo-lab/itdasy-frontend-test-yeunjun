@@ -475,8 +475,14 @@
     }
 
     // 렌더 중이면 보류분에 합친다 — 끝나면 한 번 더 (아래 finally). 예전엔 여기서 그냥 버렸다.
-    if (_inFlight) { _inFlight.pending = _mergeOpts(_inFlight.pending, opts); return; }
-    _inFlight = { pending: null };
+    if (_inFlight) {
+      // force(홈 복귀·로그인 훅) 이거나 토큰이 바뀐 요청만 보류한다 — 같은 토큰의 일반 요청은 진행 중인 렌더가 같은 데이터를 준다
+      // (포그라운드 복귀 때 visibilitychange+focus 가 연달아 와 brief/슬롯/댓글큐를 두 번 받던 것, 리뷰 지적).
+      const _authNow = _authHeaders()?.Authorization;
+      if ((opts && opts.force) || _authNow !== _inFlight.auth) _inFlight.pending = _mergeOpts(_inFlight.pending, opts);
+      return;
+    }
+    _inFlight = { pending: null, auth: _authHeaders()?.Authorization };
     let renderAuth = _authHeaders()?.Authorization;
     try {
       // [2026-10-01 perf-frontend-01] 토큰 없이 시작했으면 _awaitRenderAuth 가 정한다 (null = 로그인 전, 그리지 않는다)

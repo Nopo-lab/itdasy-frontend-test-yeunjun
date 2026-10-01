@@ -138,9 +138,13 @@
       d.use_membership ? 1 : 0, recordedAtFromCaller ? String(recordedAtFromCaller).slice(0, 10) : '',
     ].join('|');
   }
+  // 보류 키는 10분 뒤 버린다 — 타임아웃됐지만 서버엔 저장된 뒤, 같은 날 같은 금액·손님·시술로 **다른** 매출을 또 넣으면
+  // 같은 키로 옛 레코드가 돌아와 두 번째 매출이 조용히 사라진다(리뷰 지적). 모달을 닫아도 버린다(_closeAddModal).
+  const PENDING_TXN_TTL = 10 * 60 * 1000;
   function _txnFor(sig) {
-    let key = _pendingTxn.get(sig);
-    if (!key) { key = _uuid(); _pendingTxn.set(sig, key); }
+    const ent = _pendingTxn.get(sig);
+    let key = (ent && (Date.now() - ent.at) < PENDING_TXN_TTL) ? ent.key : null;
+    if (!key) { key = _uuid(); _pendingTxn.set(sig, { key, at: Date.now() }); }
     return key;
   }
   function _txnDone(sig) { _pendingTxn.delete(sig); }
@@ -868,6 +872,8 @@
     _wireAddForm(modal, prefill);
   }
   function _closeAddModal() {
+    _pendingTxn.clear();   // 모달을 닫았다 = 이 저장 의도는 끝났다(성공이든 포기든). 다음 입력은 새 키.
+
     const m = document.getElementById('rvAddModal');
     if (m) m.remove();
   }

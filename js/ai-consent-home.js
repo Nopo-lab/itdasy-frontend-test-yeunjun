@@ -21,7 +21,6 @@
   let _busy = false;
   let _forceOpen = false;
   let _expanded = false;   // 사용자가 [자세히 보고 설정] 을 눌러 전체 안내문을 펼친 상태
-  let _quietHide = false;  // '나중에' 로 숨길 땐 쿠키 배너를 되살리지 않는다(팝업 2개 금지)
   let _bound = false;
 
   function _card() { return document.getElementById(CARD_ID); }
@@ -102,9 +101,8 @@
   function _hide() {
     const card = _card();
     if (card) card.hidden = true;
-    // '나중에' 로 접은 경우엔 배너도 조용히 — 카드 대신 배너가 튀어나오면 팝업이 하나 더 생기는 셈이다.
-    if (_quietHide) { _quietHide = false; return; }
-    // 이 카드가 안 뜨면 쿠키 동의는 원래대로 배너가 받아야 한다.
+    // 이 카드가 안 뜨면 쿠키/오류진단 동의는 원래대로 배너가 받는다('나중에' 포함 — 안 그러면 7일 동안 그 동의를 영영 못 받는다).
+    //   배너는 2026-10-01 부터 작고 탭바 위에 앉으며 한 번 고르면 다시 안 뜬다.
     _releaseCookieBanner();
   }
   function _show() {
@@ -153,8 +151,8 @@
     if (!_forceOpen) {
       // [2026-10-01] 이미 '필수 기능만' 을 골랐으면 홈에 카드를 남기지 않는다 — 설정 > AI 사용 설정(또는 AI 기능을 쓰는 순간)에서 켠다.
       if (decision === 'partial') { _hide(); return; }
-      // '나중에' 로 접어 둔 동안은 조용히(배너도 안 띄움).
-      if (_laterUntil(userId) > Date.now()) { _quietHide = true; _hide(); return; }
+      // '나중에' 로 접어 둔 동안은 AI 카드만 숨긴다(쿠키/오류진단 동의는 배너가 받는다).
+      if (_laterUntil(userId) > Date.now()) { _hide(); return; }
     }
 
     const compact = _forceOpen && decision === 'partial';   // 설정/기능에서 연 경우: 'AI 기능 켜기' 한 버튼
@@ -185,7 +183,6 @@
     const userId = _userId();
     _rememberLater(userId);
     _expanded = false;
-    _quietHide = true;
     _hide();
     _toast('설정 > AI 사용 설정에서 언제든 켤 수 있어요.');
   }

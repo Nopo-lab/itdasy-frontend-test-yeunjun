@@ -1854,13 +1854,6 @@ function authHeader() {
              login() 은 이미 "아이디 또는 비밀번호가 달라요" 를 자기가 띄운다. 여기선 잠금만
              유지하고 만료 배너는 세우지 않는다. 진짜 만료(/auth/refresh 401)는 그대로 배너. */
           if (url.includes('/auth/login')) return res;
-          /* [2026-10-01 flow-revenue-stats-ui-01] Authorization 을 **싣지 않은** 요청의 401 은 세션 만료가 아니라
-             호출부 버그(헤더 누락)다. 그걸 만료로 해석해 토큰 갱신·강제 로그아웃까지 가면 원장이 입력하던 매출이
-             날아간다(실측). 응답은 그대로 돌려주고 콘솔에만 남긴다 — 호출부가 고쳐야 할 일. */
-          if (!_initHasAuthHeader(init)) {
-            try { console.warn('[apiFetch] 인증 헤더 없는 요청의 401 — 세션 만료로 처리하지 않음:', url); } catch (_e) { void _e; }
-            return res;
-          }
           if (url.includes('/auth/refresh')) {
             _handle401();
             return res;
@@ -1870,6 +1863,14 @@ function authHeader() {
              401 을 아무도 처리하지 않았다.** 잠금화면을 닫아 버린 사용자는 그 뒤로 영영
              "다시 로그인하라" 는 말을 못 듣고, 화면은 옛 데이터를 그대로 띄운 채 남았다. */
           if (!getToken()) { _handle401(); return res; }
+          /* [2026-10-01 flow-revenue-stats-ui-01] 토큰은 **있는데** Authorization 을 싣지 않은 요청의 401 은 세션 만료가
+             아니라 호출부 버그(헤더 누락)다. 그걸 만료로 해석해 토큰 갱신·강제 로그아웃까지 가면 원장이 입력하던 매출이
+             날아간다(실측). 응답은 그대로 돌려주고 콘솔에만 남긴다. (토큰이 없는 경우는 위 SESS-1 이 먼저 잠근다 —
+             이 가드를 그 앞에 두면 authHeader() 가 {} 인 모든 요청이 여기서 빠져 잠금이 영영 안 선다.) */
+          if (!_initHasAuthHeader(init)) {
+            try { console.warn('[apiFetch] 인증 헤더 없는 요청의 401 — 세션 만료로 처리하지 않음:', url); } catch (_e) { void _e; }
+            return res;
+          }
           /* [2026-09-11 SESS-2] 갱신에 **성공한 뒤**의 재시도 실패는 세션 만료가 아니다.
              예전엔 `_tryRefresh()` 와 재시도를 한 try 로 묶어서, 재시도가 타임아웃·네트워크로
              실패하면 `_handle401()` 이 돌아 원장을 **강제 로그아웃**시키고 작성 중이던 글을
@@ -2233,7 +2234,11 @@ async function logout(opts) {
   //   취소하면 아무 부작용 없이(토큰 차단·워치독 전) 그대로 돌아간다.
   try {
     if (window.WorkspaceSync && typeof window.WorkspaceSync.guardLogout === 'function') {
-      const _okToLeave = await window.WorkspaceSync.guardLogout({ confirm: (m) => nativeConfirm('확인', m) });
+      // 8초 상한 — IndexedDB 가 다른 연결에 잡혀 있으면(로그아웃 멈춤 사고의 원인) 가드가 매달릴 수 있다. 그땐 묻지 않고 진행.
+      const _okToLeave = await Promise.race([
+        window.WorkspaceSync.guardLogout({ confirm: (m) => nativeConfirm('확인', m) }),
+        new Promise((res) => setTimeout(() => res(true), 8000)),
+      ]);
       if (!_okToLeave) return;
     }
   } catch (_e) { void _e; }
@@ -3677,6 +3682,9 @@ if ('serviceWorker' in navigator && !_isCapacitor) {
   //   Fast 3G 첫 진입 14.8s 중 11.5s 에 리로드 → 콜드 script 103개를 받은 뒤 처음부터 다시, 부팅 API 전부 ×2).
   //   리로드가 의미 있는 건 '기존 controller 가 있던' 업데이트(옛 코드 + 새 캐시 불일치 정리)뿐이다.
   let _swHadController = !!navigator.serviceWorker.controller;
+  // 하드 리로드(Shift+F5)·빌드 대조 unregister 뒤의 페이지는 controller 가 없지만 '첫 설치' 가 아니다 — 등록이 남아 있으면
+  // 그 뒤 활성화되는 SW 는 새 배포(업데이트)이므로 리로드가 필요하다.
+  try { navigator.serviceWorker.getRegistration().then((r) => { if (r) _swHadController = true; }).catch(() => {}); } catch (_e) { void _e; }
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     const _swFirstInstall = !_swHadController;
     _swHadController = true;          // 같은 세션에서 또 바뀌면 그건 새 배포(업데이트)다

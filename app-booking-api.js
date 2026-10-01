@@ -61,6 +61,10 @@
     try { localStorage.setItem(BH_KEY, JSON.stringify(p)); } catch (_e) { void _e; }
     return p;
   }
+  // 계정이 바뀌면(로그아웃·재로그인, 세션 만료 뒤 다른 계정) 메모리 캐시를 버린다 — 아니면 B 매장이 A 의 영업시간을 본다(리뷰 지적).
+  try {
+    window.addEventListener('itdasy:session-ready', () => { _bhMem = null; _bhLoaded = false; _bhFetchedAt = 0; });
+  } catch (_e) { void _e; }
   async function ensureShopHours(opts) {
     const force = !!(opts && opts.force);
     if (!force && _bhFetchedAt && Date.now() - _bhFetchedAt < BH_TTL) return _readBH();
@@ -81,7 +85,7 @@
     const d = bh && bh[key];
     if (!d) return null;
     let openMin = _toMin(d.open), closeMin = _toMin(d.close);
-    if (closeMin <= openMin) closeMin = 24 * 60;          // 자정 넘김(22:00~02:00) 은 이 날의 축에선 24시까지
+    if (closeMin <= openMin) closeMin += 24 * 60;         // 자정 넘김(22:00~02:00) — 02:00 은 그 날 기준 26:00 (축은 _shopHours 가 24 로 자른다)
     return { openMin, closeMin, open: d.open, close: d.close, off: !!d.off };
   }
   function _shopHours(date) {

@@ -160,7 +160,8 @@ window.__LATEST_BUILD__ = '20260916-ai-consent-home';
       //   Capacitor 앱도 hostname 이 localhost 인데 거긴 build.txt 가 번들 안의 파일이라 대조 자체가 무의미하다.
       //   레포 안 정합(build.txt == APP_BUILD == __LATEST_BUILD__)은 jest·scripts/smoke-check.js 가 지킨다.
       var _h = location.hostname;
-      if (_h === 'localhost' || _h === '127.0.0.1') return;
+      var _native = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+      if (!_native && (_h === 'localhost' || _h === '127.0.0.1')) return;   // 앱(Capacitor)도 hostname 이 localhost — 규칙대로 네이티브는 제외
       if (sessionStorage.getItem('srv_build_checked')) return;
       var mine = window.__LATEST_BUILD__;
       if (!mine) return;

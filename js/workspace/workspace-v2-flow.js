@@ -3452,8 +3452,9 @@
      옛 저장본을 열 때 결과물로 **역산**된 구성까지 '변경' 으로 세면 보기만 하고 닫아도 "임시 저장했어요" 가 뜬다. */
   function _slotSig() {
     if (!d) return '';
-    var ph = (d.photos || []).map(function (p) { return (p.id || '') + ':' + (p.role || '') + ':' + String(p.editedDataUrl || p.dataUrl || '').length + (p.selected === false ? ':x' : ''); });
-    var outs = (d.templateOutputs || []).map(function (o) { return o ? (o.pairId + ':' + (o.templateId || '') + ':' + String(o.outputUrl || '').length + (o.storyEdited ? ':e' : '')) : ''; });
+    // 데이터 URL 길이는 쓰지 않는다 — hydratePhotos 가 https→data: 로 바꾸면 보기만 한 글도 '변경' 으로 세어 재업로드했다(리뷰 지적).
+    var ph = (d.photos || []).map(function (p) { return (p.id || '') + ':' + (p.role || '') + (p.editedDataUrl ? ':e' : '') + (p.selected === false ? ':x' : ''); });
+    var outs = (d.templateOutputs || []).map(function (o) { return o ? (o.pairId + ':' + (o.templateId || '') + (o.outputUrl ? ':o' : '') + (o.storyEdited ? ':e' : '')) : ''; });
     return [ph.join(','), outs.join(','), d.caption || '', d.service || '', d.specialNote || '', d.customerId || '', (d.hashtags || []).join(' ')].join('|');
   }
 

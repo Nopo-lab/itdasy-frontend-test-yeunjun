@@ -410,8 +410,10 @@
     if (cells.length < 7) return;
     // 칩이 한 개도 없는 달이면 잴 게 없다 → 인라인 높이를 걷어내고 CSS 기본값(78px)에 맡긴다.
     // [perf-frontend-06] 아직 안 켜진(hidden) 상자는 높이가 0 — 켜진 상자/칩으로만 잰다.
-    const box = grid.querySelector('.bk-month-m__events:not([hidden])');
-    const chip = box && box.querySelector('.bk-month-m__evt');
+    // 1일에 예약이 없는 달이면 첫 상자는 비어 있다 — 보이는 상자 중 칩이 있는 첫 상자로 잰다(리뷰 지적).
+    let box = null, chip = null;
+    const vis = grid.querySelectorAll('.bk-month-m__events:not([hidden])');
+    for (let k = 0; k < vis.length; k++) { const c = vis[k].querySelector('.bk-month-m__evt'); if (c) { box = vis[k]; chip = c; break; } }
     if (!box || !chip) { grid.style.gridTemplateRows = ''; return; }
     const gap = parseFloat(getComputedStyle(box).rowGap) || 0;
     const unit = chip.offsetHeight + gap;
@@ -442,9 +444,12 @@
     const my = ++_revealSeq;
     const boxes = Array.prototype.slice.call(body.querySelectorAll('.bk-month-m__events[hidden], .bk-pc-month__events[hidden]'));
     if (!boxes.length) { _capMonthCellsSoon(); return; }
-    boxes[0].hidden = false;
+    // 칩이 있는 첫 상자를 먼저 켠다(1일이 비어 있으면 boxes[0] 로는 행 높이를 못 잰다).
+    let firstIdx = boxes.findIndex(b => b.querySelector('.bk-month-m__evt, .bk-pc-month__evt'));
+    if (firstIdx < 0) firstIdx = 0;
+    boxes[firstIdx].hidden = false;
     _sizeMonthRows(body);                      // 칩 1상자 + 뼈대만 재는 작은 레이아웃
-    const rest = boxes.slice(1);
+    const rest = boxes.filter((_, i) => i !== firstIdx);
     const CHUNKS = 3;
     const size = Math.max(1, Math.ceil(rest.length / CHUNKS));
     let i = 0;
@@ -2764,9 +2769,15 @@
     const defDate = existing ? new Date(existing.starts_at) : (pendS || date);
     // [flow-customers-bookings-04] 그 날짜(요일)의 영업시간 — 기본 시작시각이 영업 시작(예: 10:00)이 된다.
     //   휴무일이면 영업일 전체 범위를 쓴다(수기 예약은 막지 않는다 — 안내는 #bfHoursNotice, 저장 전 확인은 _bindFormSave).
-    const hours  = window.Booking.shopHours(_ds(defDate));
-    const slots  = _buildSlots(hours);
-    const _auto = (!existing && !pendS) ? _defaultNewSlot(_ds(defDate), slots) : null;
+    let hours  = window.Booking.shopHours(_ds(defDate));
+    let slots  = _buildSlots(hours);
+    let _auto = (!existing && !pendS) ? _defaultNewSlot(_ds(defDate), slots) : null;
+    if (_auto && _auto.dateStr !== _ds(defDate)) {
+      // 22:30 이후엔 기본 날짜가 내일로 넘어간다 — 축·기본 시작도 **내일의** 영업시간으로(리뷰 지적).
+      hours = window.Booking.shopHours(_auto.dateStr);
+      slots = _buildSlots(hours);
+      _auto = _defaultNewSlot(_auto.dateStr, slots);
+    }
     const dateStr = _auto ? _auto.dateStr : _ds(defDate);
     const defS = existing ? _fmt(new Date(existing.starts_at)) : (pendS ? _fmt(pendS) : _auto.start);
     const defE = existing ? _fmt(new Date(existing.ends_at))   : (pendE ? _fmt(pendE) : _auto.end);

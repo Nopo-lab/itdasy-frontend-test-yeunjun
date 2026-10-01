@@ -484,9 +484,19 @@
   /* 로그아웃 가드 — 정착(최종 push)을 한 번 더 시도한 뒤 남은 미전송 작업이 있으면 사용자에게 묻는다.
      true = 진행해도 됨 / false = 사용자가 취소. opts.confirm 으로 확인 함수를 바꿀 수 있다(테스트·네이티브 다이얼로그).
      ⚠️ app-core 의 로그아웃이 await 하는 자리라 매달리면 안 된다 — 정착은 6초 상한. */
+  function _waitPushIdle(ms) {
+    // pushAll 은 이미 도는 중이면 즉시 no-op 이라, 그 사이에 세면 곧 올라갈 슬롯까지 '미전송' 으로 센다(리뷰 지적).
+    var until = Date.now() + ms;
+    return new Promise(function (res) {
+      (function tick() { if (!_pushing || Date.now() > until) return res(); setTimeout(tick, 100); })();
+    });
+  }
   function guardLogout(opts) {
     opts = opts || {};
-    var settle = ready() ? Promise.race([settleSlot().catch(function () {}), new Promise(function (res) { setTimeout(res, opts.settleMs || 6000); })]) : Promise.resolve();
+    var budget = opts.settleMs || 6000;
+    var settle = ready()
+      ? _waitPushIdle(budget).then(function () { return Promise.race([settleSlot().catch(function () {}), new Promise(function (res) { setTimeout(res, budget); })]); })
+      : Promise.resolve();
     return settle.then(unsyncedCount).then(function (n) {
       if (!n) return true;
       var ask = opts.confirm || (typeof window.confirm === 'function' ? window.confirm.bind(window) : null);
