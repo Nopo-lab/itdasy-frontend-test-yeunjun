@@ -73,3 +73,13 @@ test('undo/redo invalidates an old photo job without clearing a replacement job'
     expect(ctx.S.photos[0]).toBe('new-photo');expect(Object.keys(ctx.S._cutoutPending)).toHaveLength(0);
   }
 });
+
+test('reopened legacy empty originals initialize from the selected photo', async () => {
+  const compose=jest.fn().mockResolvedValue({composedDataUrl:'cutout-second',removedBgDataUrl:'matte'});
+  const {ctx}=harness(compose);ctx.S.origPhotos=['original-first',''];ctx.S.adjSel=1;ctx.doCutout();await flush();
+  expect(compose.mock.calls[0][0].srcUrl).toBe('original-second');expect(ctx.S.photos[1]).toBe('cutout-second');
+});
+test('restore original with no saved original cannot blank the photo', () => {
+  const {ctx}=harness(jest.fn());ctx.S.origPhotos=[''];ctx.undoCutout();
+  expect(ctx.S.photos[0]).toBe('original-first');expect(ctx.toastIt).toHaveBeenCalledWith('되돌릴 원본이 없어요');
+});

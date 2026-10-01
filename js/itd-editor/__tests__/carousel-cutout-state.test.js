@@ -55,3 +55,8 @@ test('legacy single-photo state never assigns its mask or corrections to an unto
   expect(restored.fgMask[0]).toBeUndefined();
   expect(restored.fgMask[1]).toBe('mask-2');
 });
+
+test('untouched restored photos keep a missing original eligible for first cutout', () => {
+  const full=edited(), restored=recipes.restoreCarousel([{editState:full},{}],full,1);
+  expect(restored.origPhotos[0]).toBe('original-1');expect(restored.origPhotos[1]).toBeNull();
+});
