@@ -17,6 +17,9 @@ function lightOnly(css) {
 
 const files = fs.readdirSync(path.join(ROOT, 'css/screens')).filter((f) => f.endsWith('.css')).map((f) => 'css/screens/' + f)
   .concat(['style-base.css', 'style-components.css']);
+// [리드 2026-10-02 mobile-ux-04 잔여] JS 인라인 스타일의 글자색도 같은 규칙 — 잇비·DM 큐·댓글 큐·매출 월간.
+//   (background/stroke/fill 의 #8B95A1 과 비활성 버튼 글자색 삼항은 글자 대비 대상이 아니라 남긴다.)
+const jsFiles = ['app-assistant.js', 'app-dm-confirm-queue.js', 'app-comment-reply-queue.js', 'app-revenue-month.js'];
 
 test('라이트모드에서 글자색 #8B95A1 하드코딩이 없다 (→ var(--text-subtle))', () => {
   const bad = [];
@@ -35,6 +38,16 @@ test('고객 목록 보조문구(.c-sub/.c-last)·섹션 헤더(.sec-hd)·인덱
   expect(css).not.toMatch(/\.sec-hd\s*\{[^}]*#BBB\b/i);
   expect(css).not.toMatch(/\.idx-bar\s*(button|span)?\s*\{[^}]*#BBB\b/i);
   expect(css).not.toMatch(/#C4C4C4/i);
+});
+
+test('JS 인라인 글자색 color:#8B95A1 하드코딩이 없다 (잇비·DM 큐·댓글 큐·매출 월간)', () => {
+  const bad = [];
+  for (const f of jsFiles) {
+    const src = read(f);
+    const re = /(?<![a-zA-Z-])color\s*:\s*#8B95A1\b/gi;
+    let m; while ((m = re.exec(src))) bad.push(f + ' @' + src.slice(0, m.index).split('\n').length);
+  }
+  expect(bad).toEqual([]);
 });
 
 test("홈 '나중에 할게요'(.ipc-skip) 가 #A8B0BA(2.2:1) 가 아니다", () => {

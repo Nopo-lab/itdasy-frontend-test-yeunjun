@@ -55,9 +55,9 @@
           <strong style="font-size:17px;color:#191F28;">실시간 DM</strong>
           <span id="dcqCount" style="font-size:11px;background:#F2F4F6;color:#4E5968;padding:2px 8px;border-radius:99px;font-weight:700;">0건</span>
           <button id="dcqSettings" aria-label="자동응답 설정" title="자동응답 설정" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#4E5968;display:inline-flex;align-items:center;justify-content:center;padding:0;"><svg width="20" height="20" aria-hidden="true"><use href="#ic-settings"/></svg></button>
-          <button id="dcqClose" aria-label="닫기" style="background:none;border:none;cursor:pointer;color:#8B95A1;display:inline-flex;align-items:center;justify-content:center;padding:0;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-x"/></svg></button>
+          <button id="dcqClose" aria-label="닫기" style="background:none;border:none;cursor:pointer;color:var(--text-subtle, #6B7684);display:inline-flex;align-items:center;justify-content:center;padding:0;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
-        <div style="font-size:11.5px;color:#8B95A1;margin-bottom:12px;line-height:1.5;">
+        <div style="font-size:11.5px;color:var(--text-subtle, #6B7684);margin-bottom:12px;line-height:1.5;">
           답장이 필요한 손님 메시지예요. 잇비 추천 답장을 확인하고 전송하세요.
         </div>
         <style>@keyframes dcqSpin{to{transform:rotate(360deg)}}
@@ -69,7 +69,7 @@
              세로 음수 마진으로 헤더 줄 높이도 그대로). 박스가 실제라 겹치지 않는다. */
           #dcqClose, #dcqSettings{width:44px;height:44px;margin-top:-9px;margin-bottom:-9px;flex:none;position:relative;}
           #dcqClose{margin-right:-10px;}
-          .dcq-tab{font-size:12.5px;padding:6px 11px;border-radius:9px;border:1px solid #E5E8EB;background:#fff;color:#8B95A1;white-space:nowrap;cursor:pointer;font-weight:600;font-family:inherit;flex:none;position:relative;}
+          .dcq-tab{font-size:12.5px;padding:6px 11px;border-radius:9px;border:1px solid #E5E8EB;background:#fff;color:var(--text-subtle, #6B7684);white-space:nowrap;cursor:pointer;font-weight:600;font-family:inherit;flex:none;position:relative;}
           /* [2026-10-01 mobile-ux-03] 채널 탭 59×31 — 보이는 크기 그대로, ::after 로 세로 44. 줄바꿈되면 row-gap 12 로 안 겹친다.
              #dcqTabs 가 overflow-x:auto 라 세로 확장이 잘린다 → padding-block 7 + margin-block -7 로 여유(customer-v4 .cv4-chips 와 같은 식). */
           .dcq-tab::after{content:'';position:absolute;left:0;right:0;top:50%;height:max(100%,44px);transform:translateY(-50%);}
@@ -196,7 +196,7 @@
       // [2026-07-02] 러너웨이 항상 표기 — 뒤로 남은 여유(원장이 겹침 판단하게)
       const _rw = _fmtRunway(am.runway_min);
       const _rwTxt = _rw ? ` · 뒤로 ${_rw}` : '';
-      return `<div style="font-size:12px;color:#8B95A1;margin:10px 0 2px;">✓ 캘린더 확인 · ${_esc(dateStr + t)}${_rwTxt} 비어있음</div>`;
+      return `<div style="font-size:12px;color:var(--text-subtle, #6B7684);margin:10px 0 2px;">✓ 캘린더 확인 · ${_esc(dateStr + t)}${_rwTxt} 비어있음</div>`;
     }
     return `<div style="font-size:12px;color:#BC6675;margin:10px 0 2px;">✕ 그 시간 예약 있음 — 대안 필요</div>`;
   }
@@ -230,7 +230,7 @@
     if (!am.deposit_sent) return '';
     // [2026-07-14 #31] 확정 멘트 수정 가능 — 연필 누르면 textarea 로 전환, 확정 시 그 문구로 발송.
     return `<div style="margin-top:10px;padding:10px 12px;border:1px solid #E5E8EB;border-radius:12px;background:#FAFBFC;">
-      <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:#8B95A1;font-weight:700;margin-bottom:5px;">
+      <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--text-subtle, #6B7684);font-weight:700;margin-bottom:5px;">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
         확정 시 손님에게 갈 멘트
         <button type="button" class="dcq-cpv-edit" style="margin-left:auto;display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border:1px solid #E5E8EB;background:#fff;color:#4E5968;font-weight:600;font-size:10.5px;border-radius:8px;cursor:pointer;">
@@ -275,11 +275,11 @@
     if (!_isMeaningless(memo))  chips.push({ prefix: '요청', val: memo });
     if (!chips.length) return '';
     return `<div style="margin-top:8px;padding:8px 10px;border:1px solid #E5E8EB;border-radius:10px;background:#fff;">
-      <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:#8B95A1;font-weight:700;margin-bottom:6px;">
+      <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--text-subtle, #6B7684);font-weight:700;margin-bottom:6px;">
         <svg width="12" height="12" aria-hidden="true"><use href="#ic-bot"/></svg>잇비가 정리한 정보
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;">
-      ${chips.map(c => `<span style="font-size:11px;color:#4E5968;background:#F2F4F6;padding:3px 9px;border-radius:99px;"><span style="color:#8B95A1;font-size:11px;">${c.prefix}</span> ${_esc(String(c.val))}</span>`).join('')}
+      ${chips.map(c => `<span style="font-size:11px;color:#4E5968;background:#F2F4F6;padding:3px 9px;border-radius:99px;"><span style="color:var(--text-subtle, #6B7684);font-size:11px;">${c.prefix}</span> ${_esc(String(c.val))}</span>`).join('')}
       </div>
     </div>`;
   }
@@ -313,7 +313,7 @@
     const _ymd = am.starts_at_iso ? String(am.starts_at_iso).split('T')[0] : '';
     const _btn = (step, lbl, path) => `<button class="dcq-dur-btn" data-step="${step}" aria-label="${lbl}" style="width:28px;height:28px;border:1px solid #E5E8EB;background:#F2F4F6;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#4E5968;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">${path}</svg></button>`;
     return `<div class="dcq-dur-wrap" style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid #E5E8EB;border-radius:12px;background:#fff;">
-      <span style="font-size:12px;color:#8B95A1;font-weight:700;">예상 시술 시간</span>
+      <span style="font-size:12px;color:var(--text-subtle, #6B7684);font-weight:700;">예상 시술 시간</span>
       <div style="display:flex;align-items:center;gap:10px;">
         ${_btn(-30, '30분 줄이기', '<path d="M5 12h14"/>')}
         <span class="dcq-dur" data-dur="${init}" data-runway="${Number.isFinite(_rwMin) ? _rwMin : ''}" style="min-width:64px;text-align:center;font-size:13.5px;font-weight:700;color:#191F28;">${_fmtDur(init)}</span>
@@ -352,7 +352,7 @@
     if (!to) return '';
     const from = am.old_time_disp || '';
     const arrow = from
-      ? `<span style="color:#8B95A1;text-decoration:line-through;">${_esc(String(from))}</span>
+      ? `<span style="color:var(--text-subtle, #6B7684);text-decoration:line-through;">${_esc(String(from))}</span>
          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B95A1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;"><path d="M5 12h14M13 6l6 6-6 6"/></svg> `
       : '';
     return `<div style="margin-top:8px;padding:9px 12px;border:1px solid #E5E8EB;border-radius:12px;background:#fff;display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
@@ -369,7 +369,7 @@
     return `<div style="margin-top:8px;padding:9px 12px;border:1px solid #E5E8EB;border-radius:12px;background:#fff;display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
       <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#BC6675;font-weight:700;">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/><path d="m9 16 6-6M15 16l-6-6"/></svg>예약 취소</span>
-      <span style="font-size:13px;color:#8B95A1;font-weight:600;text-decoration:line-through;">${when}</span>
+      <span style="font-size:13px;color:var(--text-subtle, #6B7684);font-weight:600;text-decoration:line-through;">${when}</span>
     </div>`;
   }
   // deposit_sent 단계: 메인 버튼이 [입금 확인+예약 확정]이므로 별도 버튼 불필요
@@ -572,16 +572,16 @@
         ${sendFormBadge}
         ${bookingAlreadyMadeBadge}
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;">
-          <div style="width:36px;height:36px;border-radius:50%;background:#F2F4F6;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#8B95A1;overflow:hidden;position:relative;">${_AVATAR_SVG}${avImg}</div>
+          <div style="width:36px;height:36px;border-radius:50%;background:#F2F4F6;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-subtle, #6B7684);overflow:hidden;position:relative;">${_AVATAR_SVG}${avImg}</div>
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;">
               <span style="font-size:14px;font-weight:700;color:#191F28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(name)}</span>
               ${_gradeBadge(it.customer_grade)}
             </div>
-            <div style="font-size:11px;color:#8B95A1;margin-top:1px;">${_waitKo(it.minutes_waiting)} · ${_esc(_intentKo(it.intent))}</div>
-            ${summary ? `<div style="font-size:11px;color:#8B95A1;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(summary)}</div>` : ''}
+            <div style="font-size:11px;color:var(--text-subtle, #6B7684);margin-top:1px;">${_waitKo(it.minutes_waiting)} · ${_esc(_intentKo(it.intent))}</div>
+            ${summary ? `<div style="font-size:11px;color:var(--text-subtle, #6B7684);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(summary)}</div>` : ''}
           </div>
-          ${(_normChannel(it.channel) === 'instagram' && it.sender_igsid) ? `<button class="dcq-thread" data-sender="${_esc(it.sender_igsid)}" title="이 손님과 나눈 대화 전체 보기" style="flex-shrink:0;align-self:center;background:none;border:none;padding:8px 2px 8px 8px;color:#8B95A1;font-size:11.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:1px;font-family:inherit;white-space:nowrap;">
+          ${(_normChannel(it.channel) === 'instagram' && it.sender_igsid) ? `<button class="dcq-thread" data-sender="${_esc(it.sender_igsid)}" title="이 손님과 나눈 대화 전체 보기" style="flex-shrink:0;align-self:center;background:none;border:none;padding:8px 2px 8px 8px;color:var(--text-subtle, #6B7684);font-size:11.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:1px;font-family:inherit;white-space:nowrap;">
             대화 전체<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
           </button>` : ''}
         </div>
@@ -603,8 +603,8 @@
           <div style="width:30px;height:30px;border-radius:50%;background:#F7EFF0;color:#BC6675;flex-shrink:0;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" aria-hidden="true"><use href="#ic-bot"/></svg></div>
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px;">
-              <div style="font-size:11px;color:#8B95A1;font-weight:600;">${isSendForm ? '보낼 예약 양식 (탭하면 발송)' : '잇비 추천 답장'}</div>
-              ${isSendForm ? '' : `<button type="button" class="dcq-regen" title="새 정보 반영해서 답장 다시 만들기" style="background:none;border:none;padding:2px 4px;font-size:11px;color:#8B95A1;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:3px;">
+              <div style="font-size:11px;color:var(--text-subtle, #6B7684);font-weight:600;">${isSendForm ? '보낼 예약 양식 (탭하면 발송)' : '잇비 추천 답장'}</div>
+              ${isSendForm ? '' : `<button type="button" class="dcq-regen" title="새 정보 반영해서 답장 다시 만들기" style="background:none;border:none;padding:2px 4px;font-size:11px;color:var(--text-subtle, #6B7684);font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:3px;">
                 <svg class="dcq-regen-ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>다시 만들기</button>`}
             </div>
             <div class="dcq-draft" style="background:#F2F4F6;color:#191F28;border-radius:13px;border-top-left-radius:4px;padding:10px 13px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">${_esc(draft)}</div>
@@ -616,7 +616,7 @@
           ${(!noDraft && _rawDraft && (!isFormAuto || _rawDraft)) ? `<button class="dcq-send" data-act="${isSendForm ? 'send-form' : 'send'}" style="flex:1;padding:11px;border:none;${_mainBtnStyle(it)}color:#fff;font-weight:700;font-size:13px;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7Z"/></svg>${_esc(_mainBtnLabel(it))}</button>` : ''}
           ${(noDraft || isSendForm || isSetAddress || am.deposit_sent || (isFormAuto && !_rawDraft)) ? '' : `<button class="dcq-edit-btn" data-act="edit" style="padding:11px 14px;border:1px solid #E5E8EB;background:#fff;color:#191F28;font-weight:600;font-size:13px;border-radius:13px;cursor:pointer;">수정</button>`}
-          <button class="dcq-discard" data-act="discard" title="카드 무시 (정보 보존)" style="padding:11px 14px;border:1px solid #E5E8EB;background:#fff;color:#8B95A1;font-weight:600;font-size:13px;border-radius:13px;cursor:pointer;">무시</button>
+          <button class="dcq-discard" data-act="discard" title="카드 무시 (정보 보존)" style="padding:11px 14px;border:1px solid #E5E8EB;background:#fff;color:var(--text-subtle, #6B7684);font-weight:600;font-size:13px;border-radius:13px;cursor:pointer;">무시</button>
         </div>
         ${_depositConfirmBtn(it)}
         <div style="text-align:center;margin-top:8px;">
@@ -752,7 +752,7 @@
   function _emptyStateHtml() {
     const WRAP = 'text-align:center;padding:40px 20px;';
     const TITLE = 'font-size:15px;font-weight:700;color:#191F28;margin-bottom:6px;';
-    const DESC = 'font-size:13px;color:#8B95A1;line-height:1.7;';
+    const DESC = 'font-size:13px;color:var(--text-subtle, #6B7684);line-height:1.7;';
     const BTN = 'margin-top:16px;min-height:44px;padding:12px 20px;border:none;border-radius:13px;background:#191F28;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;';
     const box = (title, desc, btn) => `<div style="${WRAP}"><div style="${TITLE}">${title}</div><div style="${DESC}">${desc}</div>${btn || ''}</div>`;
     if (_tokenState === 'none') {
@@ -788,7 +788,7 @@
     }
     const items = _activeFilter === 'all' ? all : all.filter(it => _normChannel(it.channel) === _activeFilter);
     if (!items.length) {
-      list.innerHTML = `<div style="text-align:center;color:#8B95A1;padding:40px 20px;font-size:13px;line-height:1.6;">${_esc(_CH_LABEL[_activeFilter] || '')} 채널 메시지가 없어요</div>`;
+      list.innerHTML = `<div style="text-align:center;color:var(--text-subtle, #6B7684);padding:40px 20px;font-size:13px;line-height:1.6;">${_esc(_CH_LABEL[_activeFilter] || '')} 채널 메시지가 없어요</div>`;
       return;
     }
     list.innerHTML = items.map(_cardHtml).join('');

@@ -324,7 +324,7 @@
   var _BUBBLE = 'background:#F2F4F6;color:#191F28;border-radius:13px;border-top-left-radius:4px;padding:11px 13px;font-size:15px;line-height:1.55;white-space:pre-wrap;word-break:break-word;';
   var _DMBUBBLE = 'background:#F7F8FA;color:#191F28;border-radius:13px;border-top-left-radius:4px;padding:11px 13px;font-size:15px;line-height:1.55;white-space:pre-wrap;word-break:break-word;';
   function _editArea(icon, label, cls, id, val) {
-    return '<div style="font-size:13px;color:#8B95A1;font-weight:600;margin-bottom:3px;display:flex;align-items:center;gap:4px;">' + icon + label + ' · 수정</div>' +
+    return '<div style="font-size:13px;color:var(--text-subtle, #6B7684);font-weight:600;margin-bottom:3px;display:flex;align-items:center;gap:4px;">' + icon + label + ' · 수정</div>' +
       '<textarea class="' + cls + '" data-id="' + _esc(id) + '" rows="3" style="width:100%;padding:9px 12px;border:1px solid #BC6675;border-radius:12px;font-size:15px;line-height:1.55;background:#fff;color:#191F28;box-sizing:border-box;font-family:inherit;resize:vertical;">' + _esc(val) + '</textarea>';
   }
   // 표시/발송용 최종 문구 — 편집(override)했으면 그 값, 아니면 설정 반영값
@@ -333,7 +333,7 @@
   // [v787] 채널 라벨줄 공통 — 아이콘+라벨(13px) 좌, 토글 우측 끝(margin-left:auto → 세로선 정렬)
   function _chRow(icon, label, on, kind, id, badges) {
     return '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;">' +
-      '<span style="font-size:13px;color:#8B95A1;font-weight:600;display:inline-flex;align-items:center;gap:4px;">' + icon + label + '</span>' +
+      '<span style="font-size:13px;color:var(--text-subtle, #6B7684);font-weight:600;display:inline-flex;align-items:center;gap:4px;">' + icon + label + '</span>' +
       (badges || '') + _tgHtml(on, kind, id) + '</div>';
   }
 
@@ -359,7 +359,7 @@
     var isTemplate = it.draftSource !== 'ai' && !it._override && !it.manual;
     var pubBadges = (it.manual ? '<span style="font-size:10px;font-weight:700;color:#0F766E;background:#E7F6EF;border-radius:7px;padding:1px 6px;">내 멘트</span>' : '') +
       (it._override ? '<span style="font-size:10px;font-weight:700;color:#BC6675;background:#F7EFF0;border-radius:7px;padding:1px 6px;">수정함</span>' : '') +
-      (isTemplate ? '<span style="font-size:10px;font-weight:700;color:#8B95A1;background:#F2F4F6;border-radius:7px;padding:1px 6px;">기본 문구</span>' : '');
+      (isTemplate ? '<span style="font-size:10px;font-weight:700;color:var(--text-subtle, #6B7684);background:#F2F4F6;border-radius:7px;padding:1px 6px;">기본 문구</span>' : '');
     var pubHtml = '<div style="margin-bottom:10px;">' + _chRow(IC.comment, '공개 답글', pubOn, 'pub', it.id, pubBadges) +
       (pubOn ? '<div style="' + _BUBBLE + '">' + _esc(_displayPublic(it)) + '</div>'
              : '<div style="font-size:13px;color:#B0B8C1;padding:1px 2px 0;">공개 답글 안 달아요</div>') + '</div>';
@@ -370,7 +370,7 @@
        같은 걸 두 번 만든 상태이기도 했다.
        → 공개 답글로 "DM 드릴게요" 같은 약속을 하지 않고(백엔드 nodm_public 이 문구를 갈아끼움),
          손님이 DM 을 보내오면 그때부터 DM 엔진이 이어받는다. 중복이 구조적으로 불가능해진다. */
-    var dmHtml = '<div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#8B95A1;background:#F7F8FA;border-radius:11px;padding:9px 11px;">' +
+    var dmHtml = '<div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-subtle, #6B7684);background:#F7F8FA;border-radius:11px;padding:9px 11px;">' +
       IC.mail + '<span>DM은 <b>DM 자동응답</b>이 맡아요 — 손님이 DM 보내면 거기서 이어져요</span></div>';
     // CTA — 공개 답글만 남으므로 라벨도 단순해진다(DM 토글 없음).
     var sendOff = !pubOn;
@@ -378,7 +378,7 @@
     // 아바타 — BE profile_pic(댓글↔DM 매칭) 있으면 사진, 없으면 이니셜
     var avatar = it.pic
       ? '<div style="width:38px;height:38px;border-radius:50%;flex-shrink:0;background:#F2F4F6 center/cover no-repeat;background-image:url(' + _esc(it.pic) + ');"></div>'
-      : '<div style="width:38px;height:38px;border-radius:50%;background:#F2F4F6;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#8B95A1;font-size:14px;font-weight:700;">' + _esc(it.av) + '</div>';
+      : '<div style="width:38px;height:38px;border-radius:50%;background:#F2F4F6;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text-subtle, #6B7684);font-size:14px;font-weight:700;">' + _esc(it.av) + '</div>';
     return '<div class="crq-item" data-id="' + _esc(it.id) + '" style="background:#fff;border:.5px solid #E5E8EB;border-radius:18px;padding:14px;margin-bottom:10px;">' +
       // 발신자
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:11px;">' + avatar +
@@ -393,7 +393,7 @@
             /* [2026-09-02] 기존 고객 표시. **DB 에 실제 값이 있을 때만** 그린다 — 방문 0회면 숫자를 만들지 않는다. */
             (it.isCustomer ? '<span style="font-size:10px;font-weight:700;color:#3B5BDB;background:#EDF2FF;border-radius:8px;padding:2px 7px;">' +
               (it.visitCount > 0 ? (it.isRegular ? '단골 · ' : '') + it.visitCount + '회 방문' : '기존 고객') + '</span>' : '') + '</div>' +
-          '<div style="font-size:13px;color:#8B95A1;margin-top:1px;">' + _ago(it) + '</div>' +
+          '<div style="font-size:13px;color:var(--text-subtle, #6B7684);margin-top:1px;">' + _ago(it) + '</div>' +
         '</div>' +
       '</div>' + strip +
       // 손님 댓글 원문
@@ -410,7 +410,7 @@
       '<div style="display:flex;gap:8px;margin-top:13px;align-items:center;">' +
         '<button class="crq-send" data-id="' + _esc(it.id) + '"' + (sendOff ? ' disabled' : '') + ' style="flex:1;min-height:44px;padding:12px;border:none;background:' + (sendOff ? '#E5E8EB' : '#191F28') + ';color:' + (sendOff ? '#8B95A1' : '#fff') + ';font-weight:700;font-size:15px;border-radius:13px;cursor:' + (sendOff ? 'default' : 'pointer') + ';display:flex;align-items:center;justify-content:center;gap:5px;">' + (sendOff ? '' : IC.send) + sendLabel + '</button>' +
         '<button class="crq-edit" data-id="' + _esc(it.id) + '" style="padding:12px 14px;border:1px solid ' + (it._editing ? '#BC6675' : '#E5E8EB') + ';background:#fff;color:' + (it._editing ? '#BC6675' : '#191F28') + ';font-weight:600;font-size:15px;border-radius:13px;cursor:pointer;">' + (it._editing ? '완료' : '수정') + '</button>' +
-        '<button class="crq-discard" data-id="' + _esc(it.id) + '" style="min-width:44px;min-height:44px;padding:12px 6px;border:none;background:none;color:#8B95A1;font-weight:600;font-size:13px;cursor:pointer;">무시</button>' +
+        '<button class="crq-discard" data-id="' + _esc(it.id) + '" style="min-width:44px;min-height:44px;padding:12px 6px;border:none;background:none;color:var(--text-subtle, #6B7684);font-weight:600;font-size:13px;cursor:pointer;">무시</button>' +
       '</div>' +
       /* [2026-09-02] 보조 행동 — **고객이 확실히 매칭됐을 때만** 뜬다.
          미매칭 카드에는 안 그린다: 누르면 엉뚱한 고객이 열리거나 아무 일도 안 나는 버튼이 되기 때문.
@@ -513,10 +513,10 @@
       (it.thumb
         ? '<div style="aspect-ratio:1/1;border-radius:14px;background:#E5E8EB center/cover no-repeat;background-image:url(' + _esc(it.thumb) + ');margin-bottom:12px;"></div>'
         : '<div style="aspect-ratio:1/1;border-radius:14px;background:#F2F4F6;display:flex;align-items:center;justify-content:center;color:#C9CDD4;margin-bottom:12px;">' + _svg('<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>', { w: 36 }) + '</div>') +
-      '<div style="font-size:11px;color:#8B95A1;margin-bottom:6px;display:flex;align-items:center;gap:4px;">' + (dstr ? dstr + ' 발행 · ' : '') + IC.heart + ' 좋아요 ' + (it.likes || 0) + '</div>' +
+      '<div style="font-size:11px;color:var(--text-subtle, #6B7684);margin-bottom:6px;display:flex;align-items:center;gap:4px;">' + (dstr ? dstr + ' 발행 · ' : '') + IC.heart + ' 좋아요 ' + (it.likes || 0) + '</div>' +
       '<div style="font-size:13px;color:#191F28;line-height:1.55;white-space:pre-wrap;word-break:break-word;max-height:130px;overflow-y:auto;margin-bottom:14px;">' + _esc(it.mediaFull || it.media) + '</div>' +
       (it.permalink ? '<button class="crq-peek-open" style="width:100%;padding:12px;border:1px solid #E5E8EB;background:#fff;color:#191F28;font-weight:600;font-size:13px;border-radius:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">' + IC.ig + '인스타에서 열기</button>' : '') +
-      '<button class="crq-peek-close" style="width:100%;padding:11px;border:none;background:none;color:#8B95A1;font-size:13px;font-weight:600;cursor:pointer;margin-top:2px;">닫기</button></div>';
+      '<button class="crq-peek-close" style="width:100%;padding:11px;border:none;background:none;color:var(--text-subtle, #6B7684);font-size:13px;font-weight:600;cursor:pointer;margin-top:2px;">닫기</button></div>';
     w.addEventListener('click', function (e) {
       if (e.target.closest && e.target.closest('.crq-peek-open')) {
         try { if (window.openLink) window.openLink(it.permalink); else window.open(it.permalink, '_blank', 'noopener'); } catch (_o) { void _o; }
@@ -542,7 +542,7 @@
       '<span style="width:6px;height:6px;border-radius:50%;flex-shrink:0;background:' + (urgent ? '#DC2626' : '#16B55E') + ';"></span>' +
       '<span style="font-size:15px;color:#191F28;"><b>대기 ' + count + '건</b>' +
         (urgent ? '<span style="color:#DC2626;font-weight:700;"> · 먼저 볼 것 ' + urgent + '건</span>' : '') +
-        (_weekReplied > 0 ? '<span style="color:#8B95A1;font-weight:400;"> · 이번 주 ' + _weekReplied + '건 응대</span>' : '') + '</span>' +
+        (_weekReplied > 0 ? '<span style="color:var(--text-subtle, #6B7684);font-weight:400;"> · 이번 주 ' + _weekReplied + '건 응대</span>' : '') + '</span>' +
       '<button class="crq-sort" style="margin-left:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:4px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:#6B7684;padding:4px 8px;min-height:44px;">' +
         IC.sort + (_sort === 'old' ? '오래된순' : '최신순') + '</button></div>';
   }
@@ -559,7 +559,7 @@
   function _emptyStateHtml() {
     var WRAP = 'text-align:center;padding:44px 24px;';
     var TITLE = 'font-size:15px;font-weight:700;color:#191F28;margin-bottom:6px;';
-    var DESC = 'font-size:13px;color:#8B95A1;line-height:1.7;';
+    var DESC = 'font-size:13px;color:var(--text-subtle, #6B7684);line-height:1.7;';
     var BTN = 'margin-top:16px;padding:12px 20px;border:none;border-radius:13px;background:#191F28;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;';
     function box(title, desc, btn) {
       return '<div style="' + WRAP + '"><div style="' + TITLE + '">' + title + '</div>' +
@@ -727,7 +727,7 @@
     var S = _settings;
     var CARD = 'background:#fff;border:.5px solid #E5E8EB;border-radius:18px;padding:15px;margin-bottom:11px;';
     var TITLE = 'font-size:15px;font-weight:700;color:#191F28;';
-    var SUB = 'font-size:13px;color:#8B95A1;';
+    var SUB = 'font-size:13px;color:var(--text-subtle, #6B7684);';
     function _chip(key, label) {
       var on = S.intents[key] !== false;
       return '<span class="crq-intent" role="switch" tabindex="0" aria-checked="' + (on ? 'true' : 'false') + '" data-intent="' + key + '" style="cursor:pointer;font-size:15px;font-weight:' + (on ? 700 : 500) + ';padding:10px 18px;border-radius:14px;' +
@@ -736,7 +736,7 @@
     function _emojiOpt(e) {
       var on = S.emoji === e;
       return '<span class="crq-emoji" role="radio" tabindex="0" aria-checked="' + (on ? 'true' : 'false') + '" data-emoji="' + e + '" style="cursor:pointer;min-width:36px;text-align:center;font-size:' + (e ? '16px' : '15px') + ';padding:8px 10px;border-radius:12px;' +
-        (on ? 'background:#191F28;color:#fff;' : 'background:#F7F8FA;color:#8B95A1;box-shadow:inset 0 0 0 1px #E5E8EB;') + '">' + (e || '없음') + '</span>';
+        (on ? 'background:#191F28;color:#fff;' : 'background:#F7F8FA;color:var(--text-subtle, #6B7684);box-shadow:inset 0 0 0 1px #E5E8EB;') + '">' + (e || '없음') + '</span>';
     }
     // 마스터 토글 — 카드 토글(crq-tg)과 같은 생김새, 설정 전용 클래스(핸들러 분리)
     /* [2026-09-06] `role="switch"` 만 있고 tabindex 가 없어서 **키보드로 못 닿았다.**
@@ -760,7 +760,7 @@
           '<span style="position:absolute;top:2px;left:' + (S.quiet_outside ? '15px' : '2px') + ';width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.15);transition:left .15s;"></span></span></div>' +
         (S.quiet_outside ? '<div style="display:flex;align-items:center;gap:10px;">' +
           '<input class="crq-time" type="time" data-field="start" value="' + _esc(S.active_hours.start) + '" style="flex:1;padding:11px 12px;border:none;border-radius:12px;font-size:15px;background:#F7F8FA;color:#191F28;box-sizing:border-box;font-family:inherit;text-align:center;">' +
-          '<span style="color:#8B95A1;font-size:15px;">~</span>' +
+          '<span style="color:var(--text-subtle, #6B7684);font-size:15px;">~</span>' +
           '<input class="crq-time" type="time" data-field="end" value="' + _esc(S.active_hours.end) + '" style="flex:1;padding:11px 12px;border:none;border-radius:12px;font-size:15px;background:#F7F8FA;color:#191F28;box-sizing:border-box;font-family:inherit;text-align:center;"></div>' : '') +
         '</div>' +
       /* [2026-09-01] '예약 링크' 입력칸 제거. 설명은 "DM 답장 끝에 자동으로 붙어요" 였는데

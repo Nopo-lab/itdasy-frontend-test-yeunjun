@@ -346,7 +346,7 @@
           <button type="button" data-pm-nav="exit" style="border:none;background:transparent;color:#BC6675;font-size:11.5px;font-weight:800;cursor:pointer;padding:4px 6px;">종료</button>
         </div>
         <div id="asstBody" style="flex:1;overflow-y:auto;padding:4px 4px 14px;"></div>
-        <div id="asstQuickLabel" style="font-size:11px;color:#8B95A1;padding:8px 4px 4px;font-weight:600;">이런 것도 돼요</div>
+        <div id="asstQuickLabel" style="font-size:11px;color:var(--text-subtle, #6B7684);padding:8px 4px 4px;font-weight:600;">이런 것도 돼요</div>
         <div id="asstSuggest" style="display:flex;gap:6px;overflow-x:auto;margin-top:0;padding:4px 0;"></div>
         <div id="asstTypeahead" style="display:none;gap:6px;overflow-x:auto;margin-top:6px;padding:2px 0;"></div>
         <!-- [v178 2026-05-18] 사진 펜딩 영역 — 갤러리/카메라 선택 후 여기 미리보기. 송신 전까지 보임 -->
@@ -625,7 +625,7 @@
         </div>`;
     // [2026-08-16] 오늘의 브리핑 — 메시지 앞 중앙 날짜칩 (카톡 날짜칩 스타일)
     const briefChipHtml = m.briefing_day
-      ? `<div data-asst-briefing style="display:flex;justify-content:center;margin:6px 0 12px;"><span style="padding:5px 12px;border-radius:999px;background:#F2F4F6;color:#8B95A1;font-size:11.5px;font-weight:600;">오늘의 브리핑</span></div>`
+      ? `<div data-asst-briefing style="display:flex;justify-content:center;margin:6px 0 12px;"><span style="padding:5px 12px;border-radius:999px;background:#F2F4F6;color:var(--text-subtle, #6B7684);font-size:11.5px;font-weight:600;">오늘의 브리핑</span></div>`
       : '';
     return `${briefChipHtml}<div class="asst-msg asst-msg--ai" style="display:flex;gap:10px;margin-bottom:14px;align-items:flex-start;">
       <div style="width:40px;height:40px;border-radius:50%;background:#F7EFF0;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#BC6675;">${_svg('ic-bot', 22)}</div>
@@ -694,10 +694,10 @@
       const rows = [];
       rows.push(`<div style="font-weight:700;font-size:15px;color:#191F28;">${who}${svc ? ` <span style="font-weight:500;color:#4E5968;">· ${svc}</span>` : ''}</div>`);
       rows.push(`<div style="font-size:13px;color:#4E5968;margin-top:3px;">${_esc(human)} · ${status}</div>`);
-      if (deposit > 0) rows.push(`<div style="font-size:12px;color:#8B95A1;margin-top:2px;">예약금 ${deposit.toLocaleString()}원</div>`);
-      if (amount > 0) rows.push(`<div style="font-size:12px;color:#8B95A1;margin-top:2px;">예상 시술비 ${amount.toLocaleString()}원</div>`);
-      if (phone) rows.push(`<div style="font-size:12px;color:#8B95A1;margin-top:2px;">${_esc(phone)}</div>`);
-      if (memo) rows.push(`<div style="font-size:12px;color:#8B95A1;margin-top:4px;white-space:pre-wrap;">메모 ${memo}</div>`);
+      if (deposit > 0) rows.push(`<div style="font-size:12px;color:var(--text-subtle, #6B7684);margin-top:2px;">예약금 ${deposit.toLocaleString()}원</div>`);
+      if (amount > 0) rows.push(`<div style="font-size:12px;color:var(--text-subtle, #6B7684);margin-top:2px;">예상 시술비 ${amount.toLocaleString()}원</div>`);
+      if (phone) rows.push(`<div style="font-size:12px;color:var(--text-subtle, #6B7684);margin-top:2px;">${_esc(phone)}</div>`);
+      if (memo) rows.push(`<div style="font-size:12px;color:var(--text-subtle, #6B7684);margin-top:4px;white-space:pre-wrap;">메모 ${memo}</div>`);
       const cChange = `${b.customer_name || '고객'} ${mdNum} ${d.getHours()}시 예약 시간 바꿔`;
       const cCancel = `${b.customer_name || '고객'} ${mdNum} ${hhmm} 예약 취소`;
       const chips = `<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">`
@@ -772,7 +772,7 @@
       const roleLabel = _PM_ROLE_LABEL[a.role] || '';
       // 역할 배지(지정됐을 때만) — 잇비 카드 배지와 동일 토큰(연보라). 제외는 회색.
       const roleBadge = roleLabel
-        ? `<span style="font-size:11px;font-weight:700;border-radius:8px;padding:2px 7px;margin-left:6px;${a.role === 'exclude' ? 'color:#8B95A1;background:#F2F4F6;' : 'color:#8B5CF6;background:#F3EEFF;'}">${roleLabel}</span>`
+        ? `<span style="font-size:11px;font-weight:700;border-radius:8px;padding:2px 7px;margin-left:6px;${a.role === 'exclude' ? 'color:var(--text-subtle, #6B7684);background:#F2F4F6;' : 'color:#8B5CF6;background:#F3EEFF;'}">${roleLabel}</span>`
         : '';
       return `<div style="display:flex;gap:12px;align-items:center;border:0.5px solid #E5E8EB;border-radius:16px;padding:10px;background:#fff;box-shadow:0 1px 4px rgba(17,24,39,.045);">
         <div style="position:relative;flex-shrink:0;">
@@ -787,7 +787,7 @@
     }).join('');
     const hint = pr.allExcluded
       ? '<div style="font-size:12.5px;color:#BC6675;margin-top:10px;font-weight:600;">쓸 사진이 없어요. 최소 한 장은 역할을 골라주세요.</div>'
-      : (pr.baOk ? '<div style="font-size:12.5px;color:#16B55E;margin-top:10px;font-weight:600;">전·후 사진이 준비됐어요 — “이대로 진행”을 누르면 전후 카드를 만들어요.</div>' : '<div style="font-size:12px;color:#8B95A1;margin-top:10px;">전·후 두 장이면 전후 카드, 한 장은 홍보컷으로 만들어요.</div>');
+      : (pr.baOk ? '<div style="font-size:12.5px;color:#16B55E;margin-top:10px;font-weight:600;">전·후 사진이 준비됐어요 — “이대로 진행”을 누르면 전후 카드를 만들어요.</div>' : '<div style="font-size:12px;color:var(--text-subtle, #6B7684);margin-top:10px;">전·후 두 장이면 전후 카드, 한 장은 홍보컷으로 만들어요.</div>');
     const proceed = `<button type="button" data-pm-proceed="${idx}" style="margin-top:12px;width:100%;min-height:48px;padding:13px;border:none;border-radius:12px;background:#191F28;color:#fff;font-size:14px;font-weight:700;cursor:pointer;touch-action:manipulation;">이대로 진행</button>`;
     return `<div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">${cards}</div>${hint}${proceed}`;
   }
@@ -848,7 +848,7 @@
         style="flex:0 0 132px;display:flex;flex-direction:column;gap:7px;padding:10px;border:0.5px solid #E5E8EB;border-radius:14px;background:#fff;cursor:pointer;text-align:left;font-family:inherit;">
         ${thumb}
         <span style="font-size:12.5px;font-weight:700;color:#191F28;line-height:1.3;">${_esc(o.name)}</span>
-        <span style="font-size:11px;color:#8B95A1;line-height:1.35;">${_esc(o.desc || '')}</span>
+        <span style="font-size:11px;color:var(--text-subtle, #6B7684);line-height:1.35;">${_esc(o.desc || '')}</span>
       </button>`;
     }).join('');
     return `<div style="margin-top:10px;display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;">${cards}</div>`;
@@ -982,7 +982,7 @@
         • 단골 안부 · 메시지 초안 작성<br>
         • 사진만 올려도 OK — 카톡 캡처·명함·영수증 자동 인식<br>
         • 말투 분석 리포트<br>
-        <span style="font-size:11px;color:#8B95A1;">예: "김서연 2시 예약 추가" · "사진 보정해줘" · 카톡 캡처/명함 사진 그냥 올리기</span>
+        <span style="font-size:11px;color:var(--text-subtle, #6B7684);">예: "김서연 2시 예약 추가" · "사진 보정해줘" · 카톡 캡처/명함 사진 그냥 올리기</span>
       </div>
     </div>`;
   }
@@ -1331,7 +1331,7 @@
     const ex = extra || {};
     if (ex.select) {
       list.push(`<div style="display:flex;align-items:center;gap:8px;">
-        <span style="width:52px;font-size:11px;color:#8B95A1;font-weight:600;">${label}</span>
+        <span style="width:52px;font-size:11px;color:var(--text-subtle, #6B7684);font-weight:600;">${label}</span>
         <select data-single-field="${historyIdx}:${field}" style="flex:1;padding:9px 12px;border:none;border-radius:10px;font-size:13px;background:#F7F8FA;color:#191F28;color-scheme:light;outline:none;">
           <option value=""${val ? '' : ' selected'}>선택</option>${_categoryOptionsHtml(val)}
         </select>
@@ -1339,7 +1339,7 @@
       return;
     }
     list.push(`<div style="display:flex;align-items:center;gap:8px;">
-      <span style="width:52px;font-size:11px;color:#8B95A1;font-weight:600;">${label}</span>
+      <span style="width:52px;font-size:11px;color:var(--text-subtle, #6B7684);font-weight:600;">${label}</span>
       <input data-single-field="${historyIdx}:${field}" type="${ex.type || 'text'}" value="${_esc(val == null ? '' : val)}" style="flex:1;padding:9px 12px;border:none;border-radius:10px;font-size:13px;background:#F7F8FA;color:#191F28;color-scheme:light;outline:none;" />
     </div>`);
   }
@@ -1348,7 +1348,7 @@
     if (action.kind === 'upsert_inventory') {
       if (!Array.isArray(p.items)) p.items = [];
       if ('memo' in p) addField('memo', '메모', p.memo);
-      return `<div style="font-size:11px;font-weight:600;color:#8B95A1;margin-bottom:4px;">품목</div>
+      return `<div style="font-size:11px;font-weight:600;color:var(--text-subtle, #6B7684);margin-bottom:4px;">품목</div>
         ${_renderItemsEditor(String(historyIdx), p.items, {
           fieldAttr: 'single-field', addAttr: 'single-item-add', delAttr: 'single-item-delete', color: kindBadge.color,
         })}`;
@@ -1364,11 +1364,11 @@
   }
 
   function _singleExpenseEditors(historyIdx, p, kindBadge) {
-    return `<div style="font-size:11px;font-weight:600;color:#8B95A1;margin:10px 0 4px;">품목 (정가 기준)</div>
+    return `<div style="font-size:11px;font-weight:600;color:var(--text-subtle, #6B7684);margin:10px 0 4px;">품목 (정가 기준)</div>
       ${_renderItemsEditor(String(historyIdx), p.items, {
         fieldAttr: 'single-field', addAttr: 'single-item-add', delAttr: 'single-item-delete', color: kindBadge.color,
       })}
-      <div style="font-size:11px;font-weight:600;color:#8B95A1;margin:10px 0 4px;">할인·쿠폰·포인트</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-subtle, #6B7684);margin:10px 0 4px;">할인·쿠폰·포인트</div>
       ${_renderAdjustmentsEditor(String(historyIdx), p.adjustments, {
         fieldAttr: 'single-field', addAttr: 'single-adjustment-add', delAttr: 'single-adjustment-delete', color: kindBadge.color,
       })}
@@ -1386,7 +1386,7 @@
     if ('memo' in p) addField('memo', '메모', p.memo);
     if (editFields.length) return;
     editFields.push(`<div style="display:flex;align-items:center;gap:8px;">
-      <span style="width:52px;font-size:11px;color:#8B95A1;font-weight:600;">내용</span>
+      <span style="width:52px;font-size:11px;color:var(--text-subtle, #6B7684);font-weight:600;">내용</span>
       <input data-single-field="${historyIdx}:confirmation_text" value="${_esc(action.confirmation_text || '')}" style="flex:1;padding:9px 12px;border:none;border-radius:10px;font-size:13px;background:#F7F8FA;color:#191F28;color-scheme:light;outline:none;" />
     </div>`);
   }
@@ -1413,7 +1413,7 @@
       <div style="display:flex;gap:6px;">
         <button data-action-edit="${historyIdx}" style="flex:1;padding:11px;border:0.5px solid #E5E8EB;border-radius:10px;background:#FFFFFF;color:#4E5968;font-weight:600;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:5px;">${_svg('ic-edit-3', 14)} 수정</button>
         <button data-action-run="${historyIdx}" style="flex:2;padding:11px;border:none;border-radius:10px;background:#191F28;color:#FFFFFF;font-weight:700;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:5px;letter-spacing:-0.2px;">${_runLabel} ${_svg('ic-check', 14)}</button>
-        <button data-action-cancel="${historyIdx}" style="flex:1;padding:11px;border:0.5px solid #E5E8EB;border-radius:10px;background:#FFFFFF;color:#8B95A1;cursor:pointer;font-size:13px;font-weight:500;">취소</button>
+        <button data-action-cancel="${historyIdx}" style="flex:1;padding:11px;border:0.5px solid #E5E8EB;border-radius:10px;background:#FFFFFF;color:var(--text-subtle, #6B7684);cursor:pointer;font-size:13px;font-weight:500;">취소</button>
       </div>
     </div>`;
   }
@@ -1507,7 +1507,7 @@
     }
     const row = (label, field, val, placeholder) => `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-        <span style="width:52px;font-size:11px;color:#8B95A1;font-weight:600;">${label}</span>
+        <span style="width:52px;font-size:11px;color:var(--text-subtle, #6B7684);font-weight:600;">${label}</span>
         <input data-fallback-field="${field}" data-fallback-idx="${historyIdx}" value="${_esc(val || '')}" placeholder="${_esc(placeholder)}"
           style="flex:1;padding:9px 12px;border:none;border-radius:10px;font-size:13px;background:#F7F8FA;color:#191F28;color-scheme:light;outline:none;" />
       </div>`;
@@ -2589,7 +2589,7 @@
     ov.style.cssText = 'position:absolute;inset:0;z-index:40;background:rgba(25,31,40,.38);display:flex;align-items:flex-end;justify-content:center;padding:16px;';
     ov.innerHTML = '<div style="width:100%;max-width:390px;max-height:72vh;overflow:auto;background:#fff;border-radius:22px 22px 18px 18px;padding:16px;box-shadow:0 -10px 34px rgba(25,31,40,.22);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">' +
-      '<div><strong style="font-size:16px;color:#191F28;">템플릿 선택</strong><div style="font-size:12px;color:#8B95A1;margin-top:3px;">고르면 채팅창에서 적용본을 바로 보여드려요.</div></div>' +
+      '<div><strong style="font-size:16px;color:#191F28;">템플릿 선택</strong><div style="font-size:12px;color:var(--text-subtle, #6B7684);margin-top:3px;">고르면 채팅창에서 적용본을 바로 보여드려요.</div></div>' +
       '<button class="ss-close" type="button" data-asst-tpl-close aria-label="닫기" style="border:0;background:transparent;border-radius:999px;width:34px;height:34px;font-size:18px;cursor:pointer;"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button></div>' +
       '<div data-asst-tpl-grid style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">' + cards + '</div></div>';
     host.appendChild(ov);
@@ -2605,7 +2605,7 @@
     let list = ids && ids.length ? ids : _recommendTemplateIds('인스타 홍보 템플릿');
     if ((!list || !list.length) && Array.isArray(TV.TEMPLATES)) list = TV.TEMPLATES.slice(0, 6).map(t => t.id);
     const html = list.map(id => TV.recoCardHtml(id)).filter(Boolean).join('');
-    return html || '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#8B95A1;font-size:13px;">추천 템플릿을 불러오는 중이에요.</div>';
+    return html || '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--text-subtle, #6B7684);font-size:13px;">추천 템플릿을 불러오는 중이에요.</div>';
   }
 
   function _removeAssistantTemplatePicker() {
@@ -3337,7 +3337,7 @@
     const _row = (k, t, sub) => `<button data-tool-act="${k}" style="text-align:left;padding:14px 16px;border:none;border-radius:14px;background:#F7F8FA;cursor:pointer;display:flex;flex-direction:column;gap:2px;"><div style="font-size:14px;font-weight:700;color:#191F28;">${t}</div><div style="font-size:11px;color:#6B7684;">${sub}</div></button>`;
     box.innerHTML = `
       <div style="width:100%;max-width:380px;background:#fff;border-radius:20px;padding:16px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 12px 40px rgba(0,0,0,0.25);">
-        <div style="font-size:12px;color:#8B95A1;font-weight:700;padding:4px 4px 6px;">잇비 도구</div>
+        <div style="font-size:12px;color:var(--text-subtle, #6B7684);font-weight:700;padding:4px 4px 6px;">잇비 도구</div>
         ${_row('memo', '잇비 메모', '영구 메모 · 자동 학습 패턴')}
         ${_row('import_tpl', '가격표·홍보물로 만들기', '기존 가격표 사진 → 우리 카드로 재구성')}
         ${_row('undo', '액션 되돌리기', '잇비가 한 일 되돌리기')}
