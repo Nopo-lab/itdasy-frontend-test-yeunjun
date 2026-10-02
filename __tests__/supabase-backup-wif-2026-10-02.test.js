@@ -18,6 +18,8 @@ describe('Supabase 장기 백업 연결', () => {
     expect(workflow).toContain('id-token: write');
     expect(workflow).toContain('issues: write');
     expect(workflow).toContain('[OPS] Supabase 백업 실패');
+    expect(workflow).toContain('REPOSITORY: ${{ github.repository }}');
+    expect(workflow).toContain('gh issue list -R "$REPOSITORY"');
     expect(workflow).toContain('Create or update GitHub backup alert');
     expect(workflow).toContain('Close recovered GitHub backup alert');
   });
