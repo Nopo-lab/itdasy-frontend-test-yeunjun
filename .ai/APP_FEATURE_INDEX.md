@@ -58,6 +58,10 @@
 - 대비: 라이트모드 글자색 `#8B95A1` 하드코딩 0건(css/screens·style-base·style-components + JS 인라인 4파일) → `var(--text-subtle)`. 가드 `__tests__/contrast-subtle-token-2026-10-01.test.js`.
 - DM 큐 설정 아이콘 phosphor → 스프라이트 `#ic-settings`. 댓글 큐 사용자명 말줄임+title.
 
+**구독·결제·IAP (BE-F)**
+- 레거시 `POST /subscription/start-trial`·`POST /subscription/cancel` **제거**(체험은 스토어 인트로 오퍼만, 해지는 `/billing/cancel` 하나 · 스토어 구독은 409 '스토어에서 해지'). Apple 환불 영수증 복원 부활 가드(`_parse_apple_latest.revoked_at`·`_refunded_receipt_replay`, verify 응답 `status='failed'`; 새 transaction_id+미래 만료만 활성화). Google 결제 보류: BE 가 토큰 선저장(`status='pending'`, 권한 없음) → RTDN PURCHASED 로 활성화, FE `app-iap.js` 는 `VerifyResponse.status==='ok'` 만 finish(`reason:'pending'` 안내). 웹 PortOne 환불 웹훅 전이(`/billing/webhook` CANCELLED→이력 refunded+구독 refunded/free+빌링키 폐기, PARTIAL→이력 표시). 플랜 팝업 보조문구·해지경로는 `app-plan.js _updateCtaSub/_applyCancelPathText` 가 상태별로, 가입 오버레이 '가입은 무료 · 카드 등록 없음'. `/persona/consent` 검증 실패 422.
+- 인증: `utils/security.get_current_user/_optional/get_admin_user` 가 요청 세션(get_db)을 재사용 — 요청당 DB 커넥션 1개(예전 2~3개, 풀 자기-교착 원인).
+
 **부팅·성능**
 - 부팅 프리페치 단일 소유자 `app-perf-recovery._prefetchBoot`(`_preloadTabs`·대시보드 위임, 예약 범위 일 단위 URL) — 콜드 부팅 API 43→24. SW 첫 설치는 리로드 안 함(`_swHadController`). 지연 그룹은 홈 하이드레이션+API 유휴 뒤, saveData/2g·3g 면 photo 제외(`js/loader.js`). `/persona/consent` 는 `_nc` 대신 `cache:'no-store'`.
 

@@ -1,0 +1,159 @@
+{
+ "area": "과거 결함 이력 재검증 (요구사항 §6) — past-defects-regression",
+ "findings": [
+  {
+   "id": "past-defects-regression-01",
+   "severity": "P2",
+   "title": "쓰기 엔드포인트 동시 요청이 인스턴스 1개에 ~50~75건 이상 몰리면 DB 풀이 30초(pool_timeout) 동안 자기-교착 — 성공 요청도 30~60초, 나머지는 503",
+   "flow": "같은 매장에서 POST /revenue · POST /memberships/topup 를 동시에 75~100건 발사(멱등키 같든 다르든 동일). 운영은 Cloud Run --concurrency 8 (deploy-cloudrun.yml:128) 로 인스턴스당 동시요청이 풀(7+1) 이하라 현재는 잠복 결함. 로컬/CI/concurrency 상향 시 즉시 드러난다.",
+   "repro_steps": "1) PG 백엔드(8032, DB_POOL_SIZE=4/overflow=1 기본값)에 로그인. 2) burst_monitor.py N same : 같은 client_txn_id 로 POST /revenue N건 동시. 3) N=20/40/48/60 → 전부 0.4~0.8초 201. N=75 → 36×201 + 39×503, p50 30.5s. N=100 → 60×201 + 40×503, p50 30.7s. distinct 키 100건 → 29×201 + 71×503, max 60.8s. 4) 같은 시각 pg_stat_activity: 풀 상한(5) 만큼의 세션이 핸들러 마지막 SELECT 뒤 'idle in transaction' 으로 30초 정체. 5) faulthandler 스레드 덤프(8033): anyio 워커 40개 전부 sqlalchemy QueuePool checkout 대기(38개 routers/revenue.py:247 첫 쿼리, 2개 utils/security.py:227 is_blacklisted) — 연결을 쥔 5세션은 어떤 스레드도 실행 중이 아님(핸들러는 끝났는데 반환이 안 됨).",
+   "evidence": "/tmp/claude-0/-home-user-itdasy-frontend-test-yeunjun/b4c5c14d-2380-5986-819a-31346aed0ee9/scratchpad/evidence/past-defects-regression/burst_threshold.log: 'MODE same N 60 codes {201: 60} elapsed 0.8' / 'MODE same N 75 codes {201: 36, 503: 39} elapsed 30.9 lat p50/p90/max 30.54 30.62 30.68' / 'MODE distinct N 100 codes {201: 29, 503: 71} elapsed 61.0 ... max 60.85'. /tmp/claude-0/-home-user-itdasy-frontend-test-yeunjun/b4c5c14d-2380-5986-819a-31346aed0ee9/scratchpad/evidence/past-defects-regression/burst_100_same.log: 't=0.8s 5207|idle in transaction|Client|ClientRead|0|SELECT revenue_records.id ...' ×5 pid, 30초 지속. /tmp/claude-0/-home-user-itdasy-frontend-test-yeunjun/b4c5c14d-2380-5986-819a-31346aed0ee9/scratchpad/evidence/past-defects-regression/server-8033.log(SIGUSR1 덤프): 40 threads 'sqlalchemy/pool/impl.py line 158 in _do_get' ← 'routers/revenue.py line 247 in create_revenue'(38) / 'utils/jwt_blacklist.py line 43 in is_blacklisted'(2). server-8032.log: 'sqlalchemy.exc.TimeoutError: QueuePool limit of size 4 overflow 1 reached, connection timed out, timeout 30.00' → '[DB_BUSY] ... 503 + Retry-After 로 전환', '[SLOW] POST /revenue duration=60.31s status=201', '[AUTH] 세션 유효성 확인 실패 — 요청 거부(fail-closed) · QueuePool limit'. repro_pg50.out.json: topup 100건(50 동시) 99×200 + 1×503(fail-closed 인증) elapsed 30.42s. 데이터 무결성은 유지: 키당 revenue_records 1행(42키=42행), 잔액 50,000 정확.",
+   "reproduced": true,
+   "root_cause": "요청 1건이 DB 커넥션을 두 번 받는다 — get_current_user 가 자체 SessionLocal()(utils/security.py:225) 로 블랙리스트·epoch 확인, 그 뒤 get_db 세션이 또 받는다. 동시요청이 anyio 워커(기본 40) 를 넘기면 커넥션을 쥔 요청의 세션 반환(get_db finally → FastAPI 0.136 은 request_stack 이 응답 send 뒤에 닫힘, fastapi/routing.py:116-121)이 대기 중인 워커들에 밀려 풀이 비워지지 않고, 대기자는 pool_timeout(30s) 뒤 503. pool_timeout=30 은 '스파이크를 대기로 흡수' 하려 둔 값(database.py:119)인데, 이 교착에서는 모든 요청을 30초로 늘려 놓는 역효과. 정확한 블로킹 링크(응답 send 경로 vs 커넥션 반환)는 50분 예산 안에 확정 못 함 — 임계값(60 OK/75 stall, topup 은 50 에서 stall)과 덤프로 현상은 확정.",
+   "files": [
+    {
+     "repo": "be",
+     "path": "database.py",
+     "line": 170
+    },
+    {
+     "repo": "be",
+     "path": "utils/security.py",
+     "line": 225
+    },
+    {
+     "repo": "be",
+     "path": "routers/revenue.py",
+     "line": 247
+    },
+    {
+     "repo": "be",
+     "path": "main.py",
+     "line": 783
+    },
+    {
+     "repo": "be",
+     "path": ".github/workflows/deploy-cloudrun.yml",
+     "line": 128
+    }
+   ],
+   "proposed_fix": "(1) 요청 세션의 pool_timeout 을 2~3초로 낮추고 초과분은 즉시 503+Retry-After(이미 있는 DB_BUSY 경로) — 30초 매달림을 없앤다. (2) get_current_user 의 별도 SessionLocal 을 없애고 get_db 세션을 주입받아 커넥션 1개/요청으로 만든다(블랙리스트·min_valid_iat 조회를 같은 세션에서). (3) 앱 레벨 동시 핸들러 상한(anyio CapacityLimiter 또는 세마포어 = pool_size+max_overflow) 을 두어 풀보다 많은 핸들러가 동시에 진입하지 못하게 한다 — Cloud Run concurrency 설정 하나에 의존하지 않도록. 증상 땜질(풀 키우기) 금지: 풀을 키워도 임계값만 올라간다.",
+   "fix_scope": "be",
+   "test_plan": "tests/pg 에 'write burst' 테스트 추가: 실제 uvicorn + Postgres, DB_POOL_SIZE=4 로 POST /revenue 100건 동시(멱등키 distinct) → p90 < 3s, 503 은 Retry-After 헤더 동반, 'idle in transaction' 세션 age < 2s 를 pg_stat_activity 로 단언. get_current_user 리팩터 후 요청당 checkout 횟수 1 을 pool 이벤트 카운터로 단언. 기존 tests/pg/test_pg_concurrency.py · test_pg_membership_concurrency 는 그대로 통과해야 함.",
+   "confidence": 0.7
+  }
+ ],
+ "verified_ok": [
+  {
+   "item": "1 회원권 충전 멱등성·중복 반영",
+   "evidence": "현재 코드 routers/memberships.py:205-290 — client_txn_id 필수(400) + 원자 UPDATE + 원장행 uq_revenue_user_txn UNIQUE + IntegrityError 흡수 + 본문 불일치 409. 실측(PG 서버 8032, repro_pg50.py): 같은 키 topup 100건 동시(50 스레드) → 잔액 50,000(1회만 반영), 같은 키·다른 금액 → 409 '같은 요청 식별자로 다른 내용', 키 없음 → 400. use 같은 키 50건 동시 → 잔액 50,000→40,000(1회 차감). SQL: 키당 revenue_records 정확히 1행(42키=42행), 모든 고객 membership_balance == SUM(membership_delta) (sql-membership-invariant.txt 빈 결과). 테스트: tests/test_money_txn_body_mismatch_2026_10_01.py · test_revenue_idempotency.py · test_revenue_membership_dedup.py · test_p0_2_membership_restore · test_p0_2b_membership_complete (sqlite 배치 PASS), tests/pg/test_pg_membership_concurrency_2026_09_07.py · test_pg_money_be_b1_2026_10_01.py · test_pg_same_txn_key_across_tenants · test_pg_concurrency.py (내 PG DB itdasy_relaudit_pastdef, 53 passed)."
+  },
+  {
+   "item": "1b 매출 저장 멱등성(client_txn_id)",
+   "evidence": "routers/revenue.py:234-410 — 키 필수, SELECT 빠른경로 + UNIQUE 충돌 흡수 + 지문 불일치 409. 실측: 같은 키 POST /revenue 100건(50 동시) → 전부 201(멱등 응답), DB 행 1개; 같은 키·다른 금액 → 409. 'pd-burst-*' 키 20/40/48/60/75/100 발사 뒤 SQL having count(*)<>1 → 0건."
+  },
+  {
+   "item": "2 고객 페이지네이션 누락/중복·정렬 안정성",
+   "evidence": "routers/customers.py:234-236 order_by(created_at desc, id desc) 보조키. 실측: 같은 초에 고객 60명 동시 생성(20 스레드) 후 limit=7 offset 페이징 전수 순회 → total 76 = 페이지 합 76, unique 76, 전체 조회 대비 누락 0·중복 0 (repro_pg50.out.json item2_pagination). 테스트 tests/test_revenue_list_pagination.py · test_customer_release_gate_2026_09_06.py PASS."
+  },
+  {
+   "item": "3 직접 매출 경로의 고객 이력/재방문 반영",
+   "evidence": "routers/revenue.py:373-382 → services/customer_visits.touch_visit(334) 단일 통로(visit_count+1 SQL식, last_visit_at CASE 로 더 늦은 쪽만). 실측: 새 고객에 POST /revenue recorded_at=2026-09-29 → 다시 2026-08-01(과거) → visit_count 0→2, last_visit_at = 2026-09-29(과거 매출로 역행하지 않음). 테스트 test_visit_touch_single_helper_2026_10_01.py · test_p1_9_visit_single_truth · test_visit_truth_single_source · test_visit_count_and_false_success PASS."
+  },
+  {
+   "item": "4 NUL 등 비정상 입력 500",
+   "evidence": "schemas/base.InputModel 전역 NUL 제거(현재 코드). 실측(PostgreSQL 서버 — sqlite 와 달리 PG 는 NUL 을 거부하므로 진짜 검증): customers.create name/memo, customers?q=, revenue memo/service_name, bookings memo, memberships/use memo, shop/settings shop_name 전부 201/200 이고 저장값은 NUL 제거('손님\\0이름'→'손님이름'); customer PATCH name 은 409 duplicate_customer(NUL 제거 후 중복 판정 — 정상). 500 0건. 테스트 tests/test_nul_input_all_models_2026_10_01.py · test_revenue_nul_byte.py · test_customers_search_nul_2026_10_01.py PASS, tests/pg/test_pg_nul_inputs_2026_10_01.py PASS(내 PG DB)."
+  },
+  {
+   "item": "5 (부분) 백그라운드 루프 커넥션 반납·긴 트랜잭션",
+   "evidence": "tests/pg/test_pg_bg_loops_idle_in_txn_2026_10_01.py PASS(내 PG DB, scheduled_publisher·토큰갱신 루프가 idle in transaction 을 남기지 않음), tests/test_stale_connection_retry_2026_09_01.py · test_ai_pool_hold_repro_2026_08_20.py PASS, tests/pg/test_pg_retry_after_commit_2026_09_12.py PASS. 단 요청 경로 버스트는 finding-01 참조."
+  },
+  {
+   "item": "6 Instagram page_id 식별 실패 시 잘못된 매장 폴백",
+   "evidence": "services/channels/instagram.py:152-175 match_shop — instagram_user_id/instagram_page_id 명시 일치만, 단일사용자 fallback 삭제(H-1); 댓글 경로 routers/dm_autoreply.py:4162-4179 도 동일(no_shop 이면 return). 실측(8032): POST /instagram/dm-reply/webhook 미지 entry id 999999999999 → {status:ok, mode:secret_missing} 200, 처리 0건(APP_SECRET 없는 로컬은 fail-open 하지 않고 중단 — 서버 로그 '[DM_BOT] APP_SECRET 미설정'). 테스트 test_ig_page_id_ownership_2026_09_06.py · test_p1_7_8_instagram_identity · test_tenant_webhook_routing_2026_08_20.py PASS, tests/pg/test_pg_ig_callback_page_id_conflict_2026_09_08.py PASS."
+  },
+  {
+   "item": "7 공개 스토리지 경로·파일 접근 권한·테넌트별 캐시 격리",
+   "evidence": "utils/cloud_storage.py:139-146 canonicalize_user_url 이 '{user_id}/' 접두사 아니면 ValueError → routers/image.py:62-88 403. 실측(8032, user 1 토큰): supabase://user-uploads/2/photos/x.jpg → 403 '다른 사용자의 저장소 경로', /12/ → 403, '../1/' → 403, 자기 경로 /1/ → 503(로컬 스토리지 미설정 — 소유 검사가 스토리지 접근보다 앞섬), 비관리 URL(googleapis/evil) → 400. 테스트 test_private_storage_urls_2026_09_15.py · test_tenant_storage_keys_2026_08_20.py · test_signed_image_url_refresh_2026_09_23.py PASS."
+  },
+  {
+   "item": "8 AI 429/타임아웃/실패 복구",
+   "evidence": "실측(8032, 가짜 키): /assistant/ask 자유질문 → 0.08~0.14s 만에 500 {detail:'AI 응답에 문제가 생겼어요…'}(routers/assistant.py:6616 통제된 메시지, 스택 노출 없음, [ITBI] backend_exception 텔레메트리 기록), /caption/generate → 502 'ai_failed' 0.05s; 규칙 기반 의도(오늘 예약)는 LLM 없이 즉답. 429 출처 태깅·Retry-After 노출·세마포어 루프: tests/test_ai_429_tagging_2026_08_20.py · test_ai_retry_after_2026_10_01.py · test_f5_retry_after_exposed_2026_08_24.py · test_gemini_semaphore_loop.py PASS. 프런트 __tests__/assistant-execute-timeout-idempotent-retry.test.js PASS."
+  },
+  {
+   "item": "9 스케줄러/복구 작업 중복 실행",
+   "evidence": "services/cron_lock.py:76-131 SingletonScheduler.add_job 기본 singleton=True(advisory lock), main.py:1270-1364 모든 잡이 이 래퍼로 등록(reminder 만 자체 락으로 singleton=False 명시). 테스트 tests/test_cron_singleton_2026_08_06.py · test_dm_sweep_recovery.py · test_p0_4_webhook_dlq_2026_08_23.py PASS, tests/pg/test_pg_recovery_and_consistency.py PASS. (실 advisory lock 경합은 PG 테스트가 담당; 로컬 실행 재현은 생략)"
+  },
+  {
+   "item": "10a 예약 저장 연타(UNIQUE 0070)",
+   "evidence": "실측(8032 PG): 같은 slot POST /bookings 20건 동시 → 1×201 + 19×409, 해당 시각 예약 1건. 테스트 tests/test_booking_no_show_unique_2026_10_01.py PASS, tests/pg/test_pg_booking_no_show_unique_2026_10_01.py PASS. 프런트 __tests__/booking-save-doubleclick.test.js PASS."
+  },
+  {
+   "item": "10b 댓글 발송 dismiss 선점 P0 · DM 확정 큐 멱등",
+   "evidence": "tests/test_comment_dismiss_blocks_reply_p0.py · test_comment_reply_idempotency.py · test_dm_confirm_send_retry_idempotent_2026_10_01.py PASS. 프런트 comment-queue-hardening · comment-reply-inprogress · comment-reply-unverified · comment-draft-refresh-recovery PASS(132 tests)."
+  },
+  {
+   "item": "10c IAP 웹훅/갱신 미반영",
+   "evidence": "tests/test_iap.py · test_iap_renewal.py · test_iap_adversarial_e2e_2026_09_07.py PASS(c2baa1a 작업트리 기준 — BE-F 가 동시에 routers/iap.py 를 수정 중이므로 머지 뒤 재실행 필요). 프런트 iap-pending-purchase-2026-10-01.test.js PASS."
+  },
+  {
+   "item": "10d 오프라인 오판 · 로컬 전용 API 타깃",
+   "evidence": "프런트 __tests__/api-target-local-only-2026-09-23.test.js PASS, calendar-first-load-state-2026-10-01 · customer-cache-privacy-t913 · automation-consent PASS. (오프라인 전용 단일 테스트 파일은 이름으로 없음 — navigator.onLine 을 다루는 8개 스위트 전부 PASS)"
+  },
+  {
+   "item": "DM 웹훅 secret_missing",
+   "evidence": "APP_SECRET 미설정 로컬에서 서명 없음/잘못된 서명 모두 {mode:secret_missing} 으로 즉시 종료, 이벤트 처리 0건(routers/dm_autoreply.py:3955-3965)."
+  }
+ ],
+ "blocked": [
+  {
+   "item": "6 실제 Meta 서명이 붙은 웹훅으로 page_id → 매장 매칭 종단 재현",
+   "reason": "로컬에 INSTAGRAM_APP_SECRET 이 없어 서명 검증 전에 secret_missing 으로 끝난다(의도된 fail-closed). 매칭 로직은 단위/PG 테스트와 코드 읽기로만 확인."
+  },
+  {
+   "item": "7 실제 Supabase 비공개 버킷 signed URL 발급·만료",
+   "reason": "CLOUD_STORAGE_ENABLED=false·SUPABASE 미설정 — 자기 경로는 503. 소유 검사 게이트까지만 실측."
+  },
+  {
+   "item": "8 Vertex 실제 429/타임아웃",
+   "reason": "가짜 키라 SSL/인증 실패 경로만 실측. 429 분류·Retry-After 는 mock 테스트로 확인."
+  },
+  {
+   "item": "10c IAP 실제 스토어 RTDN/S2S",
+   "reason": "실결제 금지 + routers/iap.py 가 다른 에이전트(BE-F) 수정 중 — 현재 작업트리 테스트 PASS 까지만."
+  }
+ ],
+ "measurements": [
+  {
+   "what": "POST /revenue 같은 멱등키 동시 N건 — 지연/상태",
+   "env": "로컬 uvicorn 8032 + PostgreSQL 16(5433) DB_POOL_SIZE=4/overflow 1, anyio 기본 40 워커",
+   "value": "N=20: 0.4s 전부 201 · N=40: 0.4s · N=48: 0.4s · N=60: 0.8s · N=75: 30.9s(36×201/39×503, p50 30.5s) · N=100: 31.0s(60×201/40×503, p50 30.7s)"
+  },
+  {
+   "what": "POST /revenue 서로 다른 멱등키 100건 동시",
+   "env": "동일",
+   "value": "61.0s, 29×201 + 71×503, p90 60.8s"
+  },
+  {
+   "what": "GET /customers?limit=5 100건 동시(읽기, async 핸들러)",
+   "env": "동일",
+   "value": "1.4s 전부 200, p50 0.94s — 읽기 경로는 교착 없음"
+  },
+  {
+   "what": "POST /memberships/topup 같은 키 100건(50 동시)",
+   "env": "동일",
+   "value": "30.4s, 99×200 + 1×503(fail-closed 인증), 잔액 50,000 정확"
+  },
+  {
+   "what": "백엔드 테스트 실행",
+   "env": "sqlite 배치 35파일 / PG 배치 10파일(itdasy_relaudit_pastdef)",
+   "value": "sqlite 328 passed, 1 skipped (131s) · PG 53 passed (25.5s) · 프런트 jest 12 스위트 180 tests PASS"
+  },
+  {
+   "what": "AI 실패 경로 응답 시간",
+   "env": "가짜 GEMINI 키",
+   "value": "/assistant/ask 0.08~0.14s 500(통제 메시지) · /caption/generate 0.05s 502 ai_failed"
+  }
+ ],
+ "notes": "환경: 세션 시작 시 8000 서버·PG 5433 둘 다 꺼져 있어 PG 를 pg_ctl 로 재기동(데이터 보존)하고 전용 서버 8031(sqlite 복사본)·8032/8033(PG, 내 DB) 을 띄워 실측 — 끝나고 전부 종료. 다른 DB 는 건드리지 않음. 제품 파일 수정 0. 과거 문서 PASS 는 근거로 쓰지 않았고 모든 verified_ok 는 현재 코드(c2baa1a)·현재 실행 결과다. finding-01 은 운영에서 Cloud Run --concurrency 8 이 가리고 있는 잠복 결함이라 P2 로 두었지만, 그 설정 하나가 유일한 방어선이고 pool_timeout=30 이 '느려도 성공' 대신 '30초 매달린 뒤 503' 을 만든다는 점에서 출시 전 (1)pool_timeout 단축 + (2)인증 세션 통합은 권장. 증거 디렉터리: /tmp/claude-0/-home-user-itdasy-frontend-test-yeunjun/b4c5c14d-2380-5986-819a-31346aed0ee9/scratchpad/evidence/past-defects-regression (repro_pg.py/repro_pg50.py, burst_monitor.py, burst_get.py, *.log, *.out.json, sql-*.txt, server-803x.log, pytest-*.log, jest-*.log). 인덱스 갱신 문구(수정 시): '.ai/APP_FEATURE_INDEX.md 백엔드 안정성 항목에 \"요청당 DB 커넥션 1개·pool_timeout 단축(과거결함 재검증 2026-10-02)\" 추가'."
+}

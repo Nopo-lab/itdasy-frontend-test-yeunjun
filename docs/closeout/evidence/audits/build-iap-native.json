@@ -1,0 +1,357 @@
+{
+ "area": "앱 빌드·구독·결제 (요구사항 §11) — build-iap-native",
+ "findings": [
+  {
+   "id": "build-iap-native-01",
+   "severity": "P1",
+   "title": "POST /subscription/start-trial — 결제·스토어 없이 누구나 Pro(membership) 14일 자가 부여, 만료 후 무한 반복 가능",
+   "flow": "무료 계정 토큰 → POST /subscription/start-trial → plan=membership status=trial → 유료 전용 API 게이트(is_paid_or_bypass) 통과. 체험 종료 후 /subscription/status 가 free 로 내리면 다시 start-trial 가능(횟수 제한 없음). 프런트는 이 엔드포인트를 호출하지 않는다(grep 0건) — 죽은 엔드포인트가 열려 있다.",
+   "repro_steps": "1) 합성 무료 계정(id=15) 로그인 2) POST /photo-editor/ai/analyze → 403 pro_required 확인 3) POST /subscription/start-trial → 200 4) GET /subscription/status → plan membership/status trial, /iap/status active:true 5) POST /photo-editor/ai/analyze → 502 vision_failed(=유료 게이트 통과, AI 키만 가짜) 6) 로컬 sqlite 로 trial_ends_at 과거로 → GET /subscription/status → free 7) POST /subscription/start-trial → 다시 200 (3회 반복 확인)",
+   "evidence": "probe3-trial.log: '## P1 free analyze (consented) -> {\"detail\":\"pro_required\"} [403]' / '## P3 POST /subscription/start-trial → {\"status\":\"ok\",\"message\":\"14일 무료체험이 시작되었습니다!\"} [200]' / '## P4 {\"plan\":\"membership\",\"status\":\"trial\",...limits caption_daily 10, assistant_monthly 150}' / '## P5 /iap/status {\"plan\":\"membership\",\"active\":true}' / '## P6 analyze after start-trial → {\"detail\":\"vision_failed\"} [502]'. probe4-trial-repeat-cancel.log: '## R2 status → plan free' / '## R3 start-trial AGAIN → 200' / '## R5 third round → 200'. 로컬 env 에 ITDASY_STAGING_BYPASS_ALL·IAP_*_VERIFY_DISABLED 없음(/proc/793/environ 확인) → 우회 변수 아님.",
+   "reproduced": true,
+   "root_cause": "routers/subscription.py:303-325 start_trial 이 인증만 요구하고 결제·스토어·1회성 검사 없이 plan='membership' status='trial' 을 저장한다. 반복 차단은 'plan != free'·'status == trial' 두 조건뿐이라 만료(status=expired, plan=free) 뒤엔 통과한다. utils/entitlement.py:104-107·110 이 status='trial' 을 유료로 인정하므로 모든 쿼터·pro_required 게이트가 열린다. 주석(:298)에 '프론트 호출 0건·레거시' 라고 적혀 있는데 엔드포인트는 그대로 살아 있다.",
+   "files": [
+    {
+     "repo": "be",
+     "path": "routers/subscription.py",
+     "line": 303
+    },
+    {
+     "repo": "be",
+     "path": "routers/subscription.py",
+     "line": 306
+    },
+    {
+     "repo": "be",
+     "path": "utils/entitlement.py",
+     "line": 104
+    },
+    {
+     "repo": "be",
+     "path": "tests/test_release_audit_2026_08_12.py",
+     "line": 413
+    }
+   ],
+   "proposed_fix": "엔드포인트를 제거한다(체험은 Apple/Google 인트로 오퍼가 스토어에서 관리하고, 웹 PortOne 은 체험이 없다 — 서버가 체험을 줄 근거가 없다). 라우트를 지우면 main.py 등록·OpenAPI·test_release_audit_2026_08_12.py:413(데모 계정 403 기대) 를 같이 손본다. 남겨야 한다면: (a) DB 에 trial_used_at 컬럼 + 계정당 1회 UNIQUE/조건 검사, (b) 스토어 구독 이력(store/product_id/pg_provider) 있는 계정 거부, (c) 관리자 전용. 증상 땜질(프런트에서만 숨김) 금지.",
+   "fix_scope": "be",
+   "test_plan": "pytest: 무료 계정 POST /subscription/start-trial → 404/410(제거) 또는 403; 제거 후 effective_plan(status='trial') 경로가 남은 데이터(기존 trial 행)만 처리하는지 회귀. test_release_audit_2026_08_12.py:413 기대값 갱신. 로컬 재현 스크립트 probe3/probe4 재실행으로 analyze 가 403 유지되는지 확인.",
+   "confidence": 0.95
+  },
+  {
+   "id": "build-iap-native-02",
+   "severity": "P1",
+   "title": "Apple 환불(REFUND) 뒤 '구매 복원'(/iap/apple-verify 재전송)이 환불된 구독을 active 로 되살린다 — cancellation_date 무시",
+   "flow": "원장이 Apple 에 환불 → S2S REFUND → status=refunded plan=free (정상). 그 뒤 앱의 '구매 복원' 버튼(app-plan.js doRestorePurchases → CdvPurchase restorePurchases → approved → /iap/apple-verify) 또는 재기동 재검증이 같은 영수증을 보낸다. Apple verifyReceipt 는 환불된 거래를 latest_receipt_info 에 cancellation_date_ms 와 함께 원래 expires_date_ms 그대로 돌려주는데, 서버는 cancellation_date 를 읽지 않고 expires_at 만 보고 upsert → status active, plan pro, next_bill_at 미래 → 유료 권한 복구(돈은 환불됨).",
+   "repro_steps": "1) Subscription(apple, pro, active, next_bill +20d) 생성 2) iap._mark_ended(status='refunded') (REFUND 웹훅 반영과 동일) → effective=free 3) Apple 문서 형식 verifyReceipt 응답(latest_receipt_info[0] 에 cancellation_date_ms, expires_date_ms=+20d) 를 iap._parse_apple_latest 에 투입 4) 그 결과로 iap._upsert_subscription 호출(= /iap/apple-verify 핸들러 본문과 동일 인자) 5) status/plan/effective_plan 확인",
+   "evidence": "apple_refund_restore_probe.log: 'after REFUND : refunded free effective= free' / \"parsed : {'product_id': 'itdasy_pro_monthly_9900', ..., 'expires_at': '2026-10-21T18:47:59+00:00', 'auto_renewing': True} | has cancellation key in parsed? False\" / 'after restore: active pro next_bill_at= 2026-10-21 18:47:59 effective= pro' / 'RESULT: BUG_REPRODUCED'. (Apple 실서버는 못 부르므로 verifyReceipt 응답은 fixture — _parse_apple_latest·_upsert_subscription 은 실제 코드 호출.) grep 'cancellation_date' routers/iap.py utils/*.py → 0건. 기존 test_refund_revokes_and_restore_cannot_revive_it 는 '옛 DID_RENEW 웹훅' 만 검사하고 apple-verify 재전송 경로는 없다.",
+   "reproduced": true,
+   "root_cause": "routers/iap.py:220-243 _parse_apple_latest 가 cancellation_date_ms/cancellation_reason 을 전혀 보지 않고 expires_date_ms 만 정규화한다. routers/iap.py:355-456 _upsert_subscription 은 '구매 경로' 라 status 를 무조건 'active' 로 덮는다(:411) — 웹훅 경로의 _mark_active 와 달리 refunded/expired 가드가 없다. Google 은 REVOKED 후 Play API 가 expiryTime 을 과거로 돌려줘 자연히 막히지만 Apple 은 만료일을 그대로 유지하므로 Apple 만 뚫린다.",
+   "files": [
+    {
+     "repo": "be",
+     "path": "routers/iap.py",
+     "line": 220
+    },
+    {
+     "repo": "be",
+     "path": "routers/iap.py",
+     "line": 411
+    },
+    {
+     "repo": "be",
+     "path": "routers/iap.py",
+     "line": 806
+    }
+   ],
+   "proposed_fix": "(1) _parse_apple_latest 에서 cancellation_date_ms 가 있으면 'revoked_at' 을 함께 돌려주고, 최신 거래가 환불된 것이면 expires_at 을 cancellation_date 로 자르거나 refunded 신호를 반환. (2) verify_apple 에서 revoked 신호면 _upsert 대신 _mark_ended(status='refunded') 로 유지하고 VerifyResponse status='failed'/plan='free' 반환(클라이언트는 tx.finish 하지 않음 — 환불 거래라 재통지돼도 같은 결과). (3) _upsert_subscription 에 '같은 original_transaction_id 가 이미 status=refunded 이고 expires_at 이 기존 next_bill_at 보다 크지 않으면 되살리지 않는다' 가드 — 새 거래(새 otid/더 큰 만료일)만 활성화. 웹훅 쪽 _mark_active 와 같은 규칙으로 통일.",
+   "fix_scope": "be",
+   "test_plan": "pytest(tests/test_iap_adversarial_e2e_*.py 추가): REFUND 반영 → monkeypatch _verify_apple_receipt 가 cancellation_date 포함 응답 반환 → POST /iap/apple-verify → status 가 active 로 바뀌지 않고 effective_plan=free, /iap/status active=false. 반대 케이스: 환불 뒤 **새** 거래(새 transaction_id·더 큰 expires) 는 활성화돼야 한다(진짜 재구매 회귀). 기존 210개 IAP 테스트 유지.",
+   "confidence": 0.85
+  },
+  {
+   "id": "build-iap-native-03",
+   "severity": "P2",
+   "title": "Google 결제 보류(paymentState=0, 계좌이체·편의점)를 클라이언트가 '결제 성공' 으로 처리 — 거짓 '멤버십이 시작됐어요' + tx.finish() + 서버는 토큰을 저장하지 않아 뒤따르는 RTDN PURCHASED 가 unmatched",
+   "flow": "안드로이드에서 느린 결제수단으로 구매 → 플러그인 approved → /iap/google-verify → 서버가 {status:'pending', plan:'free'} 200 반환 → app-iap.js 는 res.ok 만 보고 성공 분기: tx.finish() 호출, plan-activated 이벤트(plan 'free'), purchaseMembership 이 {ok:true, plan:'free'} → app-plan.js 가 토스트 '멤버십이 시작됐어요 🎉' 띄우고 팝업 닫음, _currentPlan='free'. 서버는 pending 에서 Subscription 을 만들지 않으므로 결제가 확정돼 RTDN PURCHASED 가 와도 purchase_token 매칭 실패('unmatched') → 자동 활성화 경로 없음(플러그인이 미완료 거래를 재통지해 주길 기대하는 수밖에 없다).",
+   "repro_steps": "jsdom 에 app-iap.js 원본을 올리고 Capacitor(android)·CdvPurchase(approved 콜백·order)·apiFetch({status:'pending',plan:'free'}) 만 스텁 → ItdasyIAP.purchaseMembership('pro') 결과와 tx.finish 호출 수, plan-activated 이벤트 확인. 서버 측은 routers/iap.py:846-852 코드 확인(pending 이면 upsert 없이 반환).",
+   "evidence": "iap-pending-jsdom.log: 'purchaseMembership resolved: {\"ok\":true,\"plan\":\"free\"}' / 'tx.finish() called times: 1 | api calls: [\"/iap/google-verify {purchase_token..., product_id: itdasy_pro_monthly_9900}\"]' / 'itdasy:plan-activated dispatched with: {\"plan\":\"free\",\"store\":\"google\"}' / 'BUG_REPRODUCED'. app-plan.js:446-453 은 r.ok 면 무조건 '멤버십이 시작됐어요 🎉' + closePlanPopup. 실기기 결제 보류는 재현 불가(blocked) — 클라이언트 로직만 재현.",
+   "reproduced": true,
+   "root_cause": "app-iap.js:88-95 _api 가 HTTP 상태만 판정하고 VerifyResponse.status('ok'|'pending'|'failed') 를 보지 않는다. :164-168 approved 핸들러가 _verify 성공이면 무조건 finish+resolve ok. 서버 routers/iap.py:846-852 는 pending 을 200 으로 돌려주되 purchase_token 을 어디에도 남기지 않아 :684-690 RTDN 매칭(purchase_token 기준)이 불가능하다.",
+   "files": [
+    {
+     "repo": "fe",
+     "path": "app-iap.js",
+     "line": 88
+    },
+    {
+     "repo": "fe",
+     "path": "app-iap.js",
+     "line": 164
+    },
+    {
+     "repo": "fe",
+     "path": "app-plan.js",
+     "line": 446
+    },
+    {
+     "repo": "be",
+     "path": "routers/iap.py",
+     "line": 846
+    },
+    {
+     "repo": "be",
+     "path": "routers/iap.py",
+     "line": 684
+    }
+   ],
+   "proposed_fix": "FE: _verify 가 data.status !== 'ok' 면 reject/resolve({ok:false, reason:'pending'}) 하고 finish() 를 부르지 않는다(결제 확정 후 플러그인 재통지로 재검증). app-plan.js 는 reason 'pending' 에 '결제 확인 중이에요 — 결제가 완료되면 자동으로 열려요' 안내, 팝업 유지. BE: pending 에서도 Subscription 에 purchase_token/product_id/store 를 저장하되 plan='free' status='pending'(effective_plan 이 free 로 보도록 PAID 판정에서 제외)로 남겨 RTDN PURCHASED 가 매칭·활성화되게 한다.",
+   "fix_scope": "both",
+   "test_plan": "jest: CdvPurchase 스텁 + apiFetch pending → purchaseMembership {ok:false, reason:'pending'}, finish 미호출, plan-activated 미발생. pytest: google-verify(paymentState 0) → 행 생성(status pending) → RTDN PURCHASED(paymentState 1) → active/pro; pending 상태에서 is_paid_or_bypass False.",
+   "confidence": 0.85
+  },
+  {
+   "id": "build-iap-native-04",
+   "severity": "P2",
+   "title": "레거시 POST /subscription/cancel — 남은 유료 기간을 즉시 날리면서 응답은 '현재 기간까지 이용 가능', 스토어 구독이면 DB 만 취소되고 스토어 과금은 계속",
+   "flow": "유료(portone pro, 20일 남음) 계정이 POST /subscription/cancel 호출 → status='cancelled' → utils/entitlement.effective_plan 이 status∉(active,trial) 이라 즉시 free → 유료 게이트 403. 그런데 응답 메시지는 '현재 기간까지 이용 가능', /subscription/status 는 plan pro·다음 결제일 그대로(expired:false) → 화면은 Pro 배지/다음 결제일, 기능은 잠김. /billing/resume 은 '이미 이용 중' 이라 되돌릴 길도 없다. store=apple 구독에 부르면 DB 만 cancelled 되고 Apple 자동갱신은 계속(돈은 나가고 앱은 잠김). 프런트 호출 0건(진짜 해지는 /billing/cancel) — 죽은 엔드포인트.",
+   "repro_steps": "1) 합성 계정 구독을 sqlite 로 pro/active/portone/next_bill +20d 로 세팅 2) analyze → 502(게이트 통과) 3) POST /subscription/cancel → 200 '현재 기간까지 이용 가능' 4) GET /subscription/status → plan pro status cancelled 5) analyze → 403 pro_required 6) /iap/status active:false 7) /billing/resume → '이미 이용 중' 8) store=apple 로 바꿔 반복 → 동일",
+   "evidence": "probe4-trial-repeat-cancel.log: '## C3 analyze gate (paid) → [502]' / '## C4 legacy POST /subscription/cancel → {\"status\":\"ok\",\"message\":\"구독이 취소되었습니다. 현재 기간까지 이용 가능합니다.\"} [200]' / '## C5 {\"plan\":\"pro\",\"status\":\"cancelled\",\"next_bill_at\":\"2026-10-21...\",\"cancel_at_period_end\":false,\"expired\":false' / '## C6 → {\"detail\":\"pro_required\"} [403]' / '## C7 /iap/status active:false' / '## C8 billing/resume → 이미 이용 중인 구독이에요 [200]' / '## C9 apple sub → 200, status cancelled' / '## C10 → pro_required [403]'",
+   "reproduced": true,
+   "root_cause": "routers/subscription.py:329-339 가 토스 시절 레거시로 status='cancelled' 를 직접 쓴다. 2026-08 이후 정책(취소=cancel_at_period_end, 만료까지 유지; 스토어 구독은 서버 취소 금지)은 routers/billing.py:421-437 과 app-plan.js _storeOwner 에만 반영됐고 이 라우트는 남았다. entitlement.py:110 은 'cancelled' 를 즉시 무료로 본다.",
+   "files": [
+    {
+     "repo": "be",
+     "path": "routers/subscription.py",
+     "line": 329
+    },
+    {
+     "repo": "be",
+     "path": "routers/billing.py",
+     "line": 421
+    },
+    {
+     "repo": "be",
+     "path": "utils/entitlement.py",
+     "line": 110
+    }
+   ],
+   "proposed_fix": "라우트 삭제(해지는 /billing/cancel 하나로). 삭제 시 test_release_audit_2026_08_12.py:412(데모 403 기대) 갱신. 유지해야 하면 /billing/cancel 로 위임하고 store∈(apple,google) 이면 409 '스토어에서 해지' 로 거부.",
+   "fix_scope": "be",
+   "test_plan": "pytest: POST /subscription/cancel → 404/410; 유료 계정 /billing/cancel 후 만료일 전 is_paid True 유지(기존 test_cancel_keeps_pro_until_period_end). 스토어 구독 /billing/cancel → 409.",
+   "confidence": 0.9
+  },
+  {
+   "id": "build-iap-native-05",
+   "severity": "P2",
+   "title": "체험·해지 안내 문구가 실제 결제 경로와 다르다 — 회원가입 '14일 무료 체험 · 카드 정보 불필요', 플랜 팝업 '체험 기간엔 요금이 청구되지 않아요'·'해지는 기기 설정 → 구독' 이 웹·연간·기결제자에게도 고정 노출",
+   "flow": "가입 오버레이(#signupOverlay)는 '14일 무료 체험 · 카드 정보 불필요' 라고 적지만 가입 시 체험은 부여되지 않는다(FE 는 start-trial 미호출, 가입 직후 /subscription/status plan free·캡션 1/일 맛보기). 14일 체험은 스토어 인트로 오퍼(결제수단 등록 필수·자동 전환)에만 있고 웹 PortOne 은 체험 없이 즉시 청구(app-plan.js:166-169 주석 자체가 이를 인정). 플랜 팝업의 '.pw-cta-sub 체험 기간엔 요금이 청구되지 않아요' 는 정적 텍스트라 웹·연간·이미 유료인 계정에도 보이고, '해지는 기기 설정 → 구독에서' 기본 문구는 웹 PortOne 구독자(앱 내 '구독 취소' 버튼)에게 틀린 경로다.",
+   "repro_steps": "Playwright: 1) 127.0.0.1:5500/index.html → #goSignup → 오버레이 텍스트 캡처 2) 데모(유료 membership, 웹) 로그인 → 설정 허브 'subscription' 행 → 플랜 팝업 텍스트 캡처 3) 신규 합성 계정 /subscription/status 로 체험 미부여 확인",
+   "evidence": "pw-account-plan.log: 'SIGNUP OVERLAY TEXT: \"잇데이 회원가입\\n14일 무료 체험 · 카드 정보 불필요 ...' ; planPopup text(웹·유료 데모): '... 결제 준비 중 체험 기간엔 요금이 청구되지 않아요 다음 결제일 2027.10.1 구독 취소 구독 안내 · 14일 무료 체험 후 월 9,900원이 자동 결제돼요 ... · 해지는 기기 설정 → 구독에서 언제든 할 수 있어요 ...'. probe1.log '## 1 free /subscription/status {\"plan\":\"free\",...caption_daily 1}' (가입 직후 체험 없음). 스크린샷 pw-01-signup-overlay.png, pw-04-plan-popup.png. index.html:931, :2353, :2364.",
+   "reproduced": true,
+   "root_cause": "index.html:931 가입 카피가 결제 모델 개편(2026-09-02: 체험은 스토어 월간 오퍼만, 웹은 즉시 청구) 이전 문구 그대로. index.html:2353 .pw-cta-sub 는 조건 없는 정적 텍스트이고 app-plan.js 는 버튼 텍스트만 플랫폼별로 바꾼다(:168-169). _applyCancelPathText(app-plan.js:393-400)는 네이티브에서만 교체하고 웹 기본값이 '기기 설정 → 구독' 이다.",
+   "files": [
+    {
+     "repo": "fe",
+     "path": "index.html",
+     "line": 931
+    },
+    {
+     "repo": "fe",
+     "path": "index.html",
+     "line": 2353
+    },
+    {
+     "repo": "fe",
+     "path": "index.html",
+     "line": 2364
+    },
+    {
+     "repo": "fe",
+     "path": "app-plan.js",
+     "line": 393
+    }
+   ],
+   "proposed_fix": "가입 오버레이: '가입은 무료 · 카드 등록 없음' 처럼 사실만(체험 언급은 스토어 오퍼가 있는 네이티브에서만 조건부). 플랜 팝업: .pw-cta-sub 를 app-plan.js _updateActionButton 에서 상태별로 설정 — 네이티브+무료+월간 선택 시에만 '체험 기간엔…', 연간/웹/유료는 숨김 또는 '첫 결제일 …'. _applyCancelPathText 웹 분기: store 가 portone/null 이면 '이 화면의 구독 취소 버튼에서'. 약관(terms.html:99 '제공될 수 있습니다') 과 일치하도록.",
+   "fix_scope": "fe",
+   "test_plan": "jest(jsdom): _isNative false + free → .pw-cta-sub 숨김/문구; native+ios+free+pro → '체험 기간엔…' 표시; pro_yearly 선택 → 숨김; store portone → 해지 경로 문구 '구독 취소 버튼'. Playwright 가입 오버레이 텍스트에 '14일 무료 체험' 없음.",
+   "confidence": 0.7
+  },
+  {
+   "id": "build-iap-native-06",
+   "severity": "P2",
+   "title": "웹 PortOne 환불/취소 결제가 구독에 반영되지 않는다 — /billing/webhook 이 PAID 외 상태를 전부 무시(연간 99,000원 환불 후 최대 365일 Pro 유지)",
+   "flow": "운영자가 PortOne 콘솔에서 결제 취소(환불) → PortOne 웹훅 Transaction.Cancelled/PartialCancelled → billing_webhook 이 재조회 결과 status != PAID 면 {status:'ignored'} → Subscription.next_bill_at 그대로 → 환불 받은 계정이 기간 끝까지 Pro. IAP 쪽(REFUND/REVOKED → _mark_ended) 과 달리 웹 PG 에는 환불 전이가 없다.",
+   "repro_steps": "코드 경로 확인만(PortOne 실웹훅·실결제는 blocked). routers/billing.py:339-344: _already_processed 면 duplicate, 재조회 status != PAID 면 ignored. PaymentHistory.refunded_at 컬럼은 있으나 쓰는 코드 0건(grep).",
+   "evidence": "NOT_REPRODUCED — PortOne 자격증명 없음(로컬 /billing/config enabled:false, probe1.log '## 9'). 코드: billing.py:342-344 `if (paid.get(\"status\") or \"\").upper() != \"PAID\": return {\"status\": \"ignored\"}`; grep -n refunded_at routers/billing.py → 0건.",
+   "reproduced": false,
+   "root_cause": "billing.py 웹훅이 '결제 완료' 이벤트만 설계 범위에 뒀고(docstring :5-12), 취소/환불 이벤트에 대한 상태 전이(_mark_ended 상당)가 없다. 환불은 운영자가 수동으로 하므로 빈도는 낮지만 연간 결제에선 금액·기간이 크다.",
+   "files": [
+    {
+     "repo": "be",
+     "path": "routers/billing.py",
+     "line": 339
+    },
+    {
+     "repo": "be",
+     "path": "routers/billing.py",
+     "line": 141
+    }
+   ],
+   "proposed_fix": "웹훅에서 재조회 status 가 CANCELLED/PARTIAL_CANCELLED 이고 해당 payment_id 가 PaymentHistory 에 있으면: PaymentHistory.status='refunded', refunded_at 기록(멱등: 이미 refunded 면 skip), 전액 환불이면 Subscription 을 status='refunded' plan='free' next_bill_at=now 로(_mark_ended 와 같은 규칙), 빌링키 삭제. 부분 환불은 기간 비례 축소 또는 운영자 판단(최소 로그+알림).",
+   "fix_scope": "be",
+   "test_plan": "pytest(test_billing_portone.py 추가): _fetch_payment 를 monkeypatch 해 status CANCELLED 반환 → 웹훅 → Subscription free/refunded, PaymentHistory refunded_at 세팅, 같은 웹훅 재전송 시 변화 없음(멱등). PAID 경로 기존 테스트 유지.",
+   "confidence": 0.75
+  },
+  {
+   "id": "build-iap-native-07",
+   "severity": "P3",
+   "title": "웹에서 레거시 plan='membership' 유료 계정(데모·6,900 구독자)에 플랜 버튼이 '결제 준비 중'(비활성)으로 표시 — '현재 이용 중인 플랜입니다' 가 덮어써짐",
+   "flow": "웹 로그인(유료 membership) → 플랜 팝업 → _updateActionButton 이 '현재 이용 중인 플랜입니다' 로 잠근 뒤 _applyBillingAvailability 가 _selectedPlan('pro') !== _currentPlan('membership') 이라 통과해 /billing/config enabled:false 를 보고 '결제 준비 중' 으로 바꿈. plan 값이 'pro' 인 PortOne 구독자는 영향 없음.",
+   "repro_steps": "Playwright 데모(membership, store demo) 로그인 → 설정 허브 → subscription → #planActionBtn 텍스트/disabled 확인",
+   "evidence": "pw-account-plan.log: 'badge: 잇데이 Pro' / 'action: {\"text\":\"결제 준비 중\",\"disabled\":true}' / 'meta: {\"text\":\"다음 결제일 2027.10.1\"}'. 스크린샷 pw-04-plan-popup.png.",
+   "reproduced": true,
+   "root_cause": "app-plan.js:354-356 _applyBillingAvailability 의 조기 반환 조건이 plan 문자열 동일성만 보고, _updateActionButton(:133-136) 의 '유료 + 결제주체 미상 → 이용 중' 판정(sameAsNow)을 재사용하지 않는다.",
+   "files": [
+    {
+     "repo": "fe",
+     "path": "app-plan.js",
+     "line": 354
+    }
+   ],
+   "proposed_fix": "_applyBillingAvailability 에서 '현재 유료(isPaidPlan) 이고 sameAsNow 판정이면 return' — sameAsNow 계산을 함수로 뽑아 두 곳이 같은 규칙을 쓰게 한다.",
+   "fix_scope": "fe",
+   "test_plan": "jest(jsdom): _currentPlan='membership', billing enabled:false → 버튼 '현재 이용 중인 플랜입니다'; free → '결제 준비 중'.",
+   "confidence": 0.85
+  },
+  {
+   "id": "build-iap-native-08",
+   "severity": "P3",
+   "title": "(영역 밖 부수 발견) POST /persona/consent 에 version 을 빼면 500 — Pydantic ValidationError 미처리",
+   "flow": "{consent_type, agreed} 만 보내면 '서버 오류가 발생했습니다' 500; version 포함 시 200. 사진 AI 동의 저장 재시도 시 혼란.",
+   "repro_steps": "curl -X POST /persona/consent -d '{\"consent_type\":\"ai_vision_photo\",\"agreed\":true}'",
+   "evidence": "probe1.log '## 4 consent → {\"detail\":\"서버 오류가 발생했습니다...\"} [500]'; backend-local3.log:1347 '[UNHANDLED] rid=139c856b8048 path=/persona/consent ValidationError'; version 추가 시 200 (probe 재시도 출력).",
+   "reproduced": true,
+   "root_cause": "routers/persona.py:593-620 create_consent 가 body 를 dict 로 받아 수동으로 모델을 만들며 ValidationError 를 422 로 바꾸지 않는다.",
+   "files": [
+    {
+     "repo": "be",
+     "path": "routers/persona.py",
+     "line": 593
+    }
+   ],
+   "proposed_fix": "version 기본값('1.0') 부여 또는 ValidationError → 422 변환. 담당 영역(동의/페르소나) 에이전트에 이관.",
+   "fix_scope": "be",
+   "test_plan": "pytest: version 없는 body → 200(기본값) 또는 422, 500 아님.",
+   "confidence": 0.9
+  }
+ ],
+ "verified_ok": [
+  {
+   "item": "(b) 환경별 API 연결 — 네이티브(localhost 호스트)는 로컬 백엔드에 붙지 않는다; app-core.js·oauth-return.html·reset-password.html 세 파일 모두 `!isNativePlatform() && hostname∈{localhost,127.0.0.1}` 규칙",
+   "evidence": "npx jest __tests__/api-target-local-only-2026-09-23.test.js → 24 passed (jest-api-target.log: '앱(iOS/Android) localhost ✓' ×2, booking-confirm/admin 3개 포함). 코드: app-core.js:141-144 (_IS_NATIVE_APP → _IS_LOCALHOST → API), oauth-return.html:44-46, reset-password.html(IS_NATIVE/isLocal 분기). 토큰키 _TOKEN_KEY = 'itdasy_token::staging'(API 에 'test' 포함) app-core.js:222."
+  },
+  {
+   "item": "(a) 네이티브 프로젝트 존재·정합: android/ + ios/App 모두 존재, 패키지/번들 식별자·deployment target·딥링크 스킴 일치",
+   "evidence": "android/app/build.gradle namespace=applicationId=com.y2do.itdasy, MainActivity.java package com.y2do.itdasy (경로 일치); ios pbxproj PRODUCT_BUNDLE_IDENTIFIER=com.nopolab.itdasy ×2, IPHONEOS_DEPLOYMENT_TARGET=15.0 ×3 = Podfile platform :ios,'15.0'; AndroidManifest intent-filter data android:scheme=\"itdasy\"; Info.plist CFBundleURLSchemes=[itdasy]; AppDelegate.swift:36-46 open url/continue userActivity → ApplicationDelegateProxy. (capacitor.config.json plugins.App.urlScheme 은 무효 옵션이지만 실제 등록은 매니페스트/plist 에 있음 — Info.plist 주석과 일치)"
+  },
+  {
+   "item": "(a) 플러그인 목록·IAP 플러그인 설치 확인",
+   "evidence": "npx cap ls (cap-ls.log): android/ios 각 Capacitor 플러그인 10개(@aparajita/capacitor-secure-storage, app, browser, camera, dialog, haptics, push-notifications, share, splash-screen, status-bar) + Cordova 플러그인 cordova-plugin-purchase@13.18.0. capacitor.settings.gradle/Podfile 의 10개와 일치. android/app/capacitor.build.gradle 에 com.android.billingclient:billing:9.0.0, variables.gradle minSdk 24·compileSdk/targetSdk 36·AGP 8.13.0·cordovaAndroidVersion 14.0.1. npx cap doctor: core/android/ios 8.5.0 설치(최신 8.5.2) — 동작엔 무관."
+  },
+  {
+   "item": "(c) 서버 측 유료 권한 강제 — 클라이언트 상태와 무관하게 유료 전용 API 가 DB effective_plan 으로 거부",
+   "evidence": "probe1/probe3: 합성 무료 계정 → POST /photo-editor/ai/analyze 403 pro_required(동의 후), /photo-editor/generative/create 403; /subscription/status plan free·캡션 1/일. 서버 게이트 is_paid_or_bypass(utils/plan_limits.py:299-307) → effective_plan(DB) 만 본다. 로컬 env 에 ITDASY_STAGING_BYPASS_ALL·BYPASS_PLAN_LIMITS_EMAILS·IAP_*_VERIFY_DISABLED 없음(/proc/793/environ). 유료 상태(sqlite 세팅)에서는 같은 호출이 게이트 통과(502 vision_failed = AI 키 가짜) → 판정이 실제로 DB 기준임을 양방향으로 확인."
+  },
+  {
+   "item": "(d) 웹훅 인증·거부: Apple S2S / Google RTDN / PortOne / cron 이 위조·무인증 요청을 거부",
+   "evidence": "probe2-webhooks.log: POST /iap/google-rtdn (무인증) 401 'invalid Pub/Sub OIDC token', (가짜 Bearer) 401; POST /iap/apple-notification (가짜 JWS) 401 'signature verification failed'; POST /billing/webhook (서명 없음) 401; POST /billing/renew-due (시크릿 없음) 403; GET /iap/status 무인증 401. /iap/google-verify·apple-verify 는 스토어 자격증명 없을 때 409 '준비 중'(500 아님)."
+  },
+  {
+   "item": "(d) IAP 웹훅 중복·지연·순서역전 멱등 테스트 실행 — 전부 통과",
+   "evidence": "pytest 15파일(test_iap.py, test_iap_renewal.py, test_iap_e2e_matrix.py, test_iap_adversarial_e2e_2026_09_07.py, test_iap_grace.py, test_iap_config_check.py, test_billing_portone.py, test_billing_race.py, test_subscription_expired_flag_2026_09_21.py, test_play_integrity_2026_09_22.py, test_price_change_9900_gate_2026_09_07.py, test_payment_release_gate_2026_09_07.py, test_auth_and_subscription.py, test_plan_limits*.py) → '210 passed in 14.35s' (pytest-iap-batch.log). 포함 케이스: test_apple_renewal_is_idempotent, test_apple_stale_notification_cannot_shorten_period, test_google_redelivery_is_deduped, test_duplicate_webhook_does_not_extend, test_duplicate_webhook_concurrent, test_replay_concurrent_50, test_order_renew_then_expired, test_order_expired_then_renew, test_order_revoke_then_renew, test_order_refund_then_renew, test_expired_sub_is_not_resurrected_by_stale_renewal, test_live_renewal_still_activates_after_expiry, test_google_pending_payment_grants_nothing, test_apple_stale_signed_date_rejected, test_webhook_idempotent(PortOne), test_renew_due_charges_and_extends_once, test_replay_by_another_user_blocked."
+  },
+  {
+   "item": "(e) 상태 전이 존재 여부 — 코드 표 (notes 참조). 구매 성공/취소/실패/타임아웃/복원/갱신/만료/환불/유예/해지예약은 모두 코드에 있음; '보류(pending)' 만 클라이언트·RTDN 매칭에 구멍(finding 03), 웹 PG 환불 전이 없음(finding 06)",
+   "evidence": "app-iap.js:164-176(approved→verify→finish), :210-216(cancelled 6777006), :202-206(2분 timeout), :229-238(restore→refreshStatus active=effective_plan). routers/iap.py:574-655 Apple 전이, :657-746 Google 전이, :846-852 pending, utils/entitlement.py:83-124 만료·유예 판정, routers/billing.py cancel/resume/renew-due."
+  },
+  {
+   "item": "(f) 구독 가격·상품ID 일치: 월 9,900 / 연 99,000, 상품 itdasy_pro_monthly_9900 / itdasy_pro_yearly_99000, 체험 14일",
+   "evidence": "GET /subscription/plans (probe1 '## 8'): membership·pro price 9900 price_yearly 99000. app-iap.js:34-37 PRODUCTS == routers/iap.py:85-86 PRODUCT_TO_PLAN 키 == routers/billing.py:52-57 PLAN_PRICING(9900/99000, pro/pro_yearly). index.html:2329 '월 9,900원', :2334 '연 99,000원', :2361-2362 '14일 무료 체험 후 월 9,900원 / 연간 99,000원 체험 없음'; terms.html:97·99 (9,900/99,000, 14일); landing/index.html:220-229 (14일, ₩9,900, ₩99,000); subscription.py TRIAL_DAYS=14. jest __tests__/price-consistency-2026-09-07.test.js·paywall-plan-product-map.test.js 포함 전체 255 suites/3585 tests PASS(jest-iap-related.log)."
+  },
+  {
+   "item": "(g) 계정 삭제 화면 도달 + 실제 삭제 동작",
+   "evidence": "Playwright(pw-account-plan.log): 로그인 → window.openSettingsHub() → 허브 행 'deleteaccount'(계정 탈퇴 / 모든 데이터 영구 삭제) 클릭 → '#deleteAccountModal visible: true'(pw-03-delete-account-modal.png, '탈퇴' 입력 2단계). 서버: 합성 계정 DELETE /auth/delete-account → 200 {status:'pending', deleted:{subscriptions:1, customers:3, bookings:4, user_consents:3,...}, external_vendors:{...}} (probe5-delete-account.log); 이후 /auth/me 401 '세션이 만료', 재로그인 401, users 행은 deleted_15@withdrawn·is_active 0 으로 익명화, subscriptions/user_consents 0건."
+  },
+  {
+   "item": "(g) 구독 관리 화면 도달",
+   "evidence": "설정 허브 'subscription' 행 → '#planPopup visible: true' — 월/연 카드, 기능 비교표, #planCancelBtn '구독 취소'(display block, 웹 PortOne/demo 경로), #planRestoreBtn 숨김(웹; 네이티브+IAP 가용 시만 — app-plan.js:345-350 설계대로), 이용약관(terms.html)·개인정보처리방침(https://itdasy.com/privacy.html) 링크. 스크린샷 pw-04-plan-popup.png. 콘솔 에러 0건(CDN 차단 제외)."
+  },
+  {
+   "item": "(g) 개인정보 안내 도달",
+   "evidence": "DOM 내 정책 링크: https://itdasy.com/terms.html, https://itdasy.com/privacy.html, https://itdasy.com/privacy.html#ai-processing, terms.html, https://itdasy.com/privacy-en.html (가입 오버레이·설정 시트·플랜 팝업·AI 동의 카드). 정적 페이지 privacy.html, privacy-en.html, terms.html, terms-en.html, account-deletion.html, data-deletion.html 존재(ls)."
+  },
+  {
+   "item": "app-save-file.js / app-push.js / app-secure-storage.js 코드 검토 — 결함 없음",
+   "evidence": "app-save-file.js:75-77 네이티브에서 공유 불가 시 ok:false(거짓 성공 없음), AbortError → 'aborted'; app-push.js:11-12 웹 no-op, :64-68 안드로이드 google-services 가드(CI 가 주입 검증), 토큰은 getToken() 경유(:44); app-secure-storage.js AES-GCM+PBKDF2(사용자별 키, 난독화 수준 — 토큰 자체는 app-core 가 Capacitor SecureStorage 로 보관 :276-280)."
+  },
+  {
+   "item": "Android 빌드 워크플로 가드",
+   "evidence": ".github/workflows/android-build.yml: server.url 이 이 레포 Pages 인지 검사(:28-35), GOOGLE_SERVICES_JSON 시크릿 주입 + com.y2do.itdasy 포함 검사(:76-98), npx cap sync android, versionCode=github.run_number(:169), 키스토어 시크릿 디코드(:124-131). google-services.json 은 .gitignore(:39) — 로컬 부재는 정상."
+  }
+ ],
+ "blocked": [
+  {
+   "item": "(a) `npx cap sync` / Gradle(APK·AAB) / Xcode 빌드 실행",
+   "reason": "컨테이너에 Android SDK·JDK 21 설정·Xcode 없음. 또한 cap sync 는 android/app/src/main/assets·capacitor-cordova-*-plugins 를 생성해 제품 트리를 바꾸므로 읽기 전용 감사 규칙상 실행하지 않음. `npx cap doctor` 의 '[error] app/src/main/assets/public directory is missing' 은 sync 전 상태의 정상 메시지(www/index.html 은 server.url 리다이렉트 스텁). 빌드는 Actions 'Android Build' 수동 실행으로만 확인 가능."
+  },
+  {
+   "item": "서명 키·google-services.json·스토어 콘솔 설정(App Store Connect/Play Console 상품 itdasy_pro_monthly_9900·itdasy_pro_yearly_99000 등록, 인트로 오퍼 TWO_WEEKS, 구독 그룹)",
+   "reason": "GitHub Secrets·콘솔 접근 권한 없음. 코드·문서상 값만 대조함(subscription.py:295-297 주석이 ASC 실측 TWO_WEEKS 라고 적음)."
+  },
+  {
+   "item": "실결제·실영수증 검증(Apple verifyReceipt / App Store Server API, Google Play Developer API purchases.subscriptions.get, Pub/Sub OIDC 실토큰, PortOne 실웹훅)",
+   "reason": "자격증명 없음(APPLE_IAP_SHARED_SECRET·GOOGLE_PLAY_SERVICE_ACCOUNT_JSON·PORTONE_* 로컬 미설정 → 409/503 '준비 중'). 거부 경로와 mock 단위테스트(210개)로만 검증. finding 02 는 Apple 응답 fixture, finding 03 은 jsdom 스텁으로 재현."
+  },
+  {
+   "item": "실기기 IAP 흐름(StoreKit/Play Billing 결제창, 결제 보류, 복원, 딥링크 itdasy:// 복귀, Play Integrity 토큰)",
+   "reason": "iOS/Android 기기·에뮬레이터 없음. /integrity/challenge 발급(200)까지만 확인, /integrity/verify 는 Google decode 자격증명 필요."
+  },
+  {
+   "item": "운영 환경 변수(APPLE_APP_BUNDLE_ID, GOOGLE_PUBSUB_VERIFICATION_AUDIENCE, IAP_SANDBOX_ALLOW_EMAILS, ENVIRONMENT=production 시 sandbox 차단) 실제 값",
+   "reason": "운영 서버 접근 금지 규칙. 코드 기본값(_DEFAULT_BUNDLE_ID=com.nopolab.itdasy, GOOGLE_PLAY_PACKAGE_NAME 기본 com.y2do.itdasy)만 확인."
+  }
+ ],
+ "measurements": [
+  {
+   "what": "백엔드 IAP/구독/결제 관련 pytest 15파일",
+   "env": "local sqlite venv python3.11",
+   "value": "210 passed, 59 warnings, 14.35s (pytest-iap-batch.log)"
+  },
+  {
+   "what": "프런트 jest 전체(작업 트리 포함)",
+   "env": "local jsdom",
+   "value": "255 suites / 3585 tests passed, 11.6s; api-target 가드 단독 24/24 0.28s"
+  },
+  {
+   "what": "npx cap ls",
+   "env": "repo node_modules",
+   "value": "android/ios: Capacitor 10 + Cordova 1(cordova-plugin-purchase 13.18.0)"
+  },
+  {
+   "what": "npx cap doctor",
+   "env": "repo node_modules",
+   "value": "core/android/ios 8.5.0 (latest 8.5.2), cli 8.5.2; error: assets/public missing (pre-sync), exit 1"
+  },
+  {
+   "what": "Playwright 동선(가입 오버레이·설정 허브·계정탈퇴 모달·플랜 팝업)",
+   "env": "chromium 390x844, 127.0.0.1:5500 → 127.0.0.1:8000",
+   "value": "모두 도달, 앱 콘솔 에러 0 (CDN 차단 제외), 스크린샷 4장"
+  },
+  {
+   "what": "합성 계정 생성·삭제",
+   "env": "local backend",
+   "value": "user_id=15 register 201 → delete-account 200(pending) → 익명화 확인; 데모 계정 데이터는 건드리지 않음"
+  }
+ ],
+ "notes": "## (e) 상태 전이 표 (코드 기준)\n[클라이언트 app-iap.js] 구매 성공: approved→/iap/*-verify→tx.finish→{ok:true} (:164-168) ✔ | 사용자 취소: order() 에러 code 6777006/‘cancel’→reason cancelled, 조용히 (:210-216, app-plan.js:456) ✔ | 주문 실패: order_failed (:215-223) ✔ | 검증 실패: verify_failed, finish 안 함→다음 기동 재검증 (:169-172) ✔ | 상품 없음: no_product 안내 (:198, app-plan.js:460-465) ✔ | 중복 클릭: in_progress (:190) ✔ | 타임아웃: 2분 (:202-206) ✔ | 보류(pending): ✗ 성공으로 오인 (finding 03) | 복원: restorePurchases→/iap/status active(effective_plan) (:229-238) ✔ | 갱신/만료/환불/해지: 클라이언트 처리 없음(서버 웹훅+/subscription/status 로 반영, app-plan.js _loadStatus) ✔\n[서버 Apple S2S routers/iap.py:574-655] SUBSCRIBED·DID_RENEW·OFFER_REDEEMED·RENEWAL_EXTENDED·REFUND_REVERSED→_mark_active(만료 뒤 옛 알림 stale 가드, 단조연장) | EXPIRED·GRACE_PERIOD_EXPIRED→_mark_ended(expired) | REFUND·REVOKE→_mark_ended(refunded, now 클램프) | DID_CHANGE_RENEWAL_STATUS→cancel-scheduled / auto-renew-on | DID_FAIL_TO_RENEW→grace 연장 or billing-retry | 그 외(PRICE_INCREASE·CONSUMPTION_REQUEST·TEST·DID_CHANGE_RENEWAL_PREF·ONE_TIME_CHARGE 등)→noop | 중복: notificationUUID used_nonces(처리 성공 후 기록) | 서명: x5c→Apple Root CA G3 핀+leaf OID, bundleId 대조, signedDate 30일, 운영 Sandbox 무시\n[서버 Google RTDN :657-746] RECOVERED(1)·RENEWED(2)·PURCHASED(4)·RESTARTED(7)·IN_GRACE_PERIOD(6)→paymentState 게이트→_mark_active | CANCELED(3)→cancel-scheduled+만료일 동기화 | REVOKED(12)→refunded | EXPIRED(13)→expired | ON_HOLD(5)·DEFERRED(9)·PAUSED(10)·PAUSE_SCHEDULE_CHANGED(11)·PRICE_CHANGE_CONFIRMED(8)·PENDING_PURCHASE_CANCELED(20)→만료일만 동기화 | 중복: messageId used_nonces | 매칭: purchase_token(※ pending 구매는 토큰 미저장→unmatched, finding 03) | Play 조회 실패 시 unverified(연장 안 함)\n[서버 /iap/*-verify] Apple: verifyReceipt(운영 sandbox 차단, 심사계정 예외)→_upsert(status 무조건 active ※ finding 02) | Google: paymentState 0→status pending plan free(upsert 없음) / 1·2·3→upsert | 영수증 계정간 재사용: 부분 UNIQUE(0044)+409 | 동시 재전송: user_id UNIQUE 재시도\n[만료 판정 utils/entitlement.py] trial 종료→free, status∉(active,trial)→free, 만료일 경과→유예 3일(스토어·자동갱신·취소예약 아님·status active 한정) 후 free; /subscription/status 는 강등 직전 Google 재조회(reverify) | 웹 PortOne billing.py: issue/onetime/webhook→_activate(paymentId 멱등+uq_payment_key, 연간 365일) | cancel→cancel_at_period_end+빌링키 삭제 | resume | renew-due(주기별 고정 payment_id) | 환불 전이 ✗ (finding 06) | 레거시 /subscription/cancel·start-trial ✗ (finding 01·04)\n\n## 기타\n- 프런트 작업 트리에 다른 에이전트 수정(app-core.js 등 11파일 M + 새 테스트 7개)이 있어 jest 255 suites 는 그 상태 기준. 본 감사는 제품 파일을 수정하지 않음(git status 로 확인, 백엔드도 동일).\n- capacitor.config.json server.url 은 이 레포 Pages(test-yeunjun) — 스테이징 앱용으로 맞음(android-build.yml 가드와 일치). appId com.nopolab.itdasy(iOS) vs Android com.y2do.itdasy 는 의도된 분기(build.gradle·Info.plist 주석).\n- ios/App/Pods/Untitled.swift 가 추적 중(Pods 는 .gitignore) — 빈 잔재로 보이며 영향 없음(P3 미만, 정리 권장).\n- 인덱스 갱신 문구(리드용): APP_FEATURE_INDEX '구독/결제' 항목에 '레거시 /subscription/start-trial·/subscription/cancel 제거(2026-10-01 감사)', 'Apple 환불 후 복원 revive 가드', 'Google 결제 보류 클라이언트 처리(pending→ok:false, 토큰 선저장)', '웹 PortOne 환불 웹훅 전이' 반영.\n- 증거 파일: evidence/build-iap-native/{probe1.log, probe2-webhooks.log, probe3-trial.log, probe4-trial-repeat-cancel.log, probe5-delete-account.log, apple_refund_restore_probe.py/.log, iap-pending-jsdom.js/.log, pw-account-plan.js/.log, pw-0{1..4}-*.png, pytest-iap-batch.log, jest-api-target.log, jest-iap-related.log, cap-ls.log, cap-doctor.log}"
+}

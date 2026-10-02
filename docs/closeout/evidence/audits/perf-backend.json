@@ -1,0 +1,375 @@
+{
+ "area": "백엔드 성능 (§8) — PG 합성 50k 고객/100k 예약/100k 매출, 전용 인스턴스 127.0.0.1:8021 (rerun3, 2026-10-02)",
+ "findings": [
+  {
+   "id": "perf-backend-01",
+   "severity": "P1",
+   "title": "GET /bookings 가 from/to 없이 호출되면 매장 예약 전체(20,008건 · 8.44MB)를 상한 없이 내려보낸다 — 내샵관리(dashboard) 탭이 실제로 이렇게 부른다 (비캐시 p50 1141ms · p95 1211ms)",
+   "flow": "내샵관리 탭 진입 → app-dashboard.js:413 allPaths '/bookings' · :474 _cachedGet('/bookings') (범위 없음) → routers/bookings.list_bookings(:77) → db.query(Booking).filter(user_id, deleted_at IS NULL).order_by(starts_at).all() (:94-100, limit 없음) → BookingOut 전건 직렬화 → kv_cache 3분(:104) 에 8MB JSON 저장 → 프런트는 _aggregateStats(:297) 에서 upcoming_bookings 건수 하나만 계산",
+   "repro_steps": "1) 8021 인스턴스(PG perf3, 매장1 예약 20,008건 활성) 매장1 토큰으로 2) GET /bookings (쿼리스트링 없음) 10회 3) 캐시 회피용 GET /bookings?from=2000-01-01T00:00:00Z&to=2099-01-01T00:00:0NZ 5회 4) 작은 매장(매장5, 예약 ~4.1k) 같은 호출로 크기 비례 확인 — evidence/perf-backend/rerun3/bench3_8021.py (a), bench4_8021.py (c)",
+   "evidence": "bench3_run_8021.log:\nbookings_no_range_shop1 {'n': 10, 'p50_ms': 480.0, 'p95_ms': 1066.5, 'max_ms': 1066.5, 'items': 20008, 'bytes': 8442583, 'note': '1회차 비캐시, 이후 3분 캐시'}\nbookings_no_range_shop1_uncached {'n': 5, 'p50_ms': 1141.2, 'p95_ms': 1211.0, 'max_ms': 1211.0, 'items': 20008}\nbench4_run_8021.log:\nbookings_no_range_shop5_uncached {'n': 3, 'p50_ms': 173.3, 'p95_ms': 354.3, 'max_ms': 354.3, 'min_ms': 171.9, 'items': 4127, 'bytes': 1747148}\nqlog_8021.jsonl: GET /bookings nq=2~3 (SQL 자체는 수십 ms — 시간 대부분이 ORM 적재·pydantic 직렬화·8MB JSON) · 캐시 적중이어도 8MB 를 다시 직렬화해 p50 480ms\nEXPLAIN Q5 (bookings 무범위): 8.923ms (index)\n프런트 호출처: app-dashboard.js:413, :474 ('/bookings' 범위 없음) — 캘린더·부팅 프리페치(app-core.js:4130, app-perf-recovery.js:114)는 범위를 준다.",
+   "reproduced": true,
+   "root_cause": "list_bookings 가 from/to 를 선택값으로 받고 `.all()` 에 상한이 없다(routers/bookings.py:94-100). 대시보드 탭은 범위 없이 불러 전 기간을 받는다. 응답 크기가 매장 누적 예약 수에 선형이라(매장5 4.1k 건 → 매장1 20k 건) 오래 쓴 매장일수록 탭 진입이 느려지고, 캐시 키 `bookings_list:{uid}:_:_` 가 8MB 를 메모리에 들고 적중 때마다 다시 직렬화한다.",
+   "files": [
+    {
+     "repo": "be",
+     "path": "backend/routers/bookings.py",
+     "line": 77
+    },
+    {
+     "repo": "be",
+     "path": "backend/routers/bookings.py",
+     "line": 100
+    },
+    {
+     "repo": "fe",
+     "path": "app-dashboard.js",
+     "line": 413
+    },
+    {
+     "repo": "fe",
+     "path": "app-dashboard.js",
+     "line": 474
+    },
+    {
+     "repo": "fe",
+     "path": "app-dashboard.js",
+     "line": 297
+    }
+   ],
+   "proposed_fix": "BE: list_bookings 에 (1) from/to 둘 다 없으면 오늘 00:00 KST 기준 -30일~+90일 기본 범위, (2) 범위 폭 상한(예: 400일) 초과 시 400, (3) `.limit(MAX+1)` 과 `has_more`/`returned` 를 BookingListOut 에 추가(매출 목록 routers/revenue.py:199-213 과 같은 패턴). FE: app-dashboard.js 는 upcoming 건수만 쓰므로 `/today/brief` 의 upcoming_count(:171 에 이미 사용) 를 재사용하고 '/bookings' 호출을 allPaths(:413)·백그라운드 로드(:474) 에서 제거하거나 `/bookings?from=<now>&to=<now+90d>` 로 바꾼다.",
+   "fix_scope": "both",
+   "test_plan": "BE 단위: tests/test_bookings_list_default_range.py — (a) 범위 없이 호출 시 응답에 has_more·returned 가 있고 기본 범위 밖 예약이 안 오는지, (b) 400일 초과 범위 400, (c) 범위 내 정상 응답은 기존 테스트 그대로. PG: tests/pg 에 25k 예약 매장에서 무범위 호출 응답 ≤ 1MB · p95 < 500ms 계약. FE jest: app-dashboard 가 '/bookings' 를 범위 없이 fetch 하지 않는다(apiFetch mock 호출 URL 검사).",
+   "confidence": 0.95
+  },
+  {
+   "id": "perf-backend-02",
+   "severity": "P1",
+   "title": "/today/morning 콜드 경로가 고객 500명 × 3 쿼리 ≈ 1,300 쿼리(N+1) — 매장당 ~1.1초, 10개 매장 동시(아침 러시) p95 9.9초 · 같은 매장 동시 5발은 각자 계산(single-flight 미사용)",
+   "flow": "홈 모닝 브리핑 → GET /today/morning (routers/today.py:58, 5분 버킷 캐시 미스) → services/morning_brief.build_morning_brief(:339) → _build_customer_care(:92) → services/chip_scorer.score_chips_for_pool(:397) → customers.limit(500)(:449) 루프(:454) → 고객마다 build_customer_ctx(:65): (1) revenue_records 50건 SELECT(:83-90) (2) voided_booking_ids SELECT(:104) (3) bookings count SELECT(:144-150)",
+   "repro_steps": "1) 8021 매장1(고객 10k)·매장2~13(각 ~2.1k) 토큰 2) 새 5분 버킷에서 GET /today/morning 매장별 1회(콜드) 3) 새 버킷에서 매장 2~11 동시 c=10 4) 매장14 동시 c=5 (같은 키) 5) qlog_8021.jsonl 의 nq(요청당 쿼리 수) 확인 — evidence/perf-backend/rerun3/bench3_8021.py (b), bench4_8021.py (a)(b)",
+   "evidence": "bench3_run_8021.log:\ntoday_morning_cold_shop1_10k {'n': 1, 'p50_ms': 1112.9, 'p95_ms': 1112.9, 'max_ms': 1112.9, 'status': 200}\ntoday_morning_cold_shops2to13_c1 {'n': 12, 'p50_ms': 1141.6, 'p95_ms': 1189.3, 'max_ms': 1212.7, 'statuses': {'200': 12}} (서버 재시작 직후라 12개 매장 전부 콜드 — 고객 ~2.1k 매장도 10k 매장과 같은 ~1.1초 = 상한 500명에 묶인 고정 비용)\nbench4_run_8021.log:\ntoday_morning_cold_10shops_c10 {'n': 10, 'p50_ms': 5021.7, 'p95_ms': 9909.5, 'max_ms': 9909.5, 'min_ms': 4859.7, 'statuses': {'200': 10}}\ntoday_morning_cold_same_shop14_c5 {'n': 5, 'p50_ms': 4703.2, 'p95_ms': 4759.8, 'max_ms': 4759.8, 'min_ms': 4669.0, 'statuses': {'200': 5}} (min≈max → 5발 모두 각자 계산, 대기자가 결과를 나눠 받지 않음)\nqlog_analysis_8021.txt:\nGET /today/morning                                 183      2   1320       1.1     9.4  4839.9         0\n-- GET /today/morning nq=1258 sql_ms=428.1 ms=1041.5\n   x500: SELECT revenue_records.id AS revenue_records_id, revenue_records.user_id AS revenue_records_user_id, revenue_records.amount AS revenue_recor\n   x500: SELECT count(bookings.id) AS count_? FROM bookings WHERE bookings.user_id = ? AND bookings.customer_id = ? AND bookings.deleted_at IS NULL A\n   x195: SELECT bookings.id AS bookings_id FROM bookings WHERE bookings.user_id = ? AND bookings.id IN (?) AND (bookings.status = ? OR bookings.delet\n",
+   "reproduced": true,
+   "root_cause": "score_chips_for_pool(services/chip_scorer.py:397-470) 이 고객 풀을 `.limit(500)`(ORDER BY 없음 → 임의 500명)으로 끊은 뒤 **고객마다** build_customer_ctx 를 호출하고, build_customer_ctx(:65-200) 는 고객 1명당 매출 50건·무효 예약·다가오는 예약 수를 각각 질의한다 → 매 콜드 요청 1,250~1,320 쿼리. 500명 상한이 쿼리 폭발을 '1초'로 가둬 두지만 그 때문에 500명 넘는 매장은 돌봄 칩 후보에서 영구히 빠진다(매장 크기와 무관하게 항상 1초, 항상 임의 500명). routers/today.py:81-85 는 cache_get/cache_set 만 쓰고 utils/kv_cache.get_or_set(:233, single-flight) 을 안 써서 같은 매장 동시 콜드 요청이 각자 1,300 쿼리를 돈다(get_or_set 사용처 grep 0건).",
+   "files": [
+    {
+     "repo": "be",
+     "path": "backend/services/chip_scorer.py",
+     "line": 449
+    },
+    {
+     "repo": "be",
+     "path": "backend/services/chip_scorer.py",
+     "line": 83
+    },
+    {
+     "repo": "be",
+     "path": "backend/services/chip_scorer.py",
+     "line": 144
+    },
+    {
+     "repo": "be",
+     "path": "backend/services/morning_brief.py",
+     "line": 103
+    },
+    {
+     "repo": "be",
+     "path": "backend/routers/today.py",
+     "line": 81
+    },
+    {
+     "repo": "be",
+     "path": "backend/utils/kv_cache.py",
+     "line": 233
+    }
+   ],
+   "proposed_fix": "build_customer_ctx 의 3 질의를 풀 단위 일괄 질의 3개로 바꾼다: (1) 후보 고객 전체의 최근 매출을 `customer_id IN (...)` + row_number() over (partition by customer_id order by recorded_at desc) ≤ 50 한 번에, (2) 그 매출의 booking_id 로 voided_booking_ids 한 번에, (3) 다가오는 예약 수를 GROUP BY customer_id 한 번에 — 메모리에서 고객별 ctx 를 조립해 score_chips_for_customer 에 넘긴다(채점 함수 무변경). 후보 선정은 임의 500명 대신 last_visit_at/visit_count 기준 정렬(최근 방문 고객 우선) 또는 상한 제거. routers/today.py morning/brief 는 `await get_or_set(cache_key, lambda: asyncio.to_thread(...), ttl=300)` 로 바꿔 같은 매장 동시 콜드를 1회 계산으로 합친다.",
+   "fix_scope": "be",
+   "test_plan": "tests/test_chip_scorer_pool_query_count.py — sqlite 에서 고객 600명 매장에 SQLAlchemy before_cursor_execute 카운터를 걸어 score_chips_for_pool 쿼리 수가 고객 수와 무관(≤ 10)임을 단언, 결과 chips 가 기존 per-customer 구현과 동일(골든 비교). tests/pg 에 고객 10k 매장 콜드 /today/morning < 500ms. kv 단위: 같은 키 동시 5 요청에 factory 1회 호출(get_or_set 테스트가 이미 있으면 today 라우터 통합으로 확장). 기존 test_morning_brief_and_revenue_analysis.py · test_p1_5_ai_brief_chips.py · test_recommendation_chips_acceptance_2026_08_18.py 는 그대로 통과해야 한다.",
+   "confidence": 0.95
+  },
+  {
+   "id": "perf-backend-03",
+   "severity": "P1",
+   "title": "/revenue/forecast 가 8주치 매출 행 전체(매장1 ≈5,045건)를 ORM 객체로 끌어와 파이썬에서 주별 합산 — c=1 p95 266ms, c=5 p95 867ms, c=10 p95 2.0초(응답 642B); /today/brief 비캐시 경로도 같은 함수를 매번 부른다",
+   "flow": "매출 화면 예측 카드 / 홈 브리핑 → GET /revenue/forecast (routers/revenue.py:445 → services/revenue_forecaster.forecast_revenue) 또는 GET /today/brief 비캐시 → _compute_brief → forecast → weekly_history(services/revenue_forecaster.py:58): db.query(RevenueRecord).filter(user_id, recorded_at >= 8주전).all()(:66-72) → 파이썬 defaultdict 합산(:73-76)",
+   "repro_steps": "1) 8021 매장1 토큰 2) GET /revenue/forecast warm 50 × c=1/5/10 3) qlog 에서 nq=3·sql_ms 와 총 ms 비교 4) EXPLAIN Q9 — evidence/perf-backend/rerun3/bench_8021.py",
+   "evidence": "bench_run_8021.log:\nGET /revenue/forecast c=1 p50 70/p95 266 · c=5 p50 622/p95 867 · c=10 p50 1267/p95 1980 (err 0.0, bytes 642)\nqlog_analysis_8021.txt: GET /revenue/forecast nq=3 (sql_ms p50 ≈ 16ms vs 총 ms p50 수백 ms → 시간은 ORM 적재+파이썬)\nEXPLAIN Q9 (8주 전 행 전체 SELECT *): 1.949ms (index)\nperf3 매장1 8주 매출 행 수: 5,045 (psql count)\nbench3: today_brief_uncached_shop1 {'n': 10, 'p50_ms': 164.7, 'p95_ms': 339.4, 'max_ms': 339.4} (brief 비캐시도 forecast + compute_at_risk 포함)",
+   "reproduced": true,
+   "root_cause": "weekly_history(services/revenue_forecaster.py:58-85) 가 집계를 DB 에 맡기지 않고 `db.query(RevenueRecord).all()` 로 전 컬럼 행을 적재한다. 결과는 주별 합계 8개뿐이다. 매출이 쌓일수록(8주 × 일 매출 건수) 선형으로 느려지고, 동기 엔드포인트라 스레드풀에서 CPU(GIL) 를 잡아 동시성에서 서로 밀린다(c=1 70ms → c=10 1.27초). _compute_brief 가 능동 제안용으로 같은 함수를 부르므로 brief 비캐시 비용에도 포함된다.",
+   "files": [
+    {
+     "repo": "be",
+     "path": "backend/services/revenue_forecaster.py",
+     "line": 66
+    },
+    {
+     "repo": "be",
+     "path": "backend/routers/revenue.py",
+     "line": 445
+    },
+    {
+     "repo": "be",
+     "path": "backend/routers/today.py",
+     "line": 107
+    }
+   ],
+   "proposed_fix": "weekly_history 를 SQL GROUP BY 로: PG 는 `date_trunc('week', timezone('Asia/Seoul', recorded_at))`, sqlite 는 strftime 분기 — routers/revenue.py:33 의 _kst_date_label 과 같은 방언 분기 헬퍼를 services 로 옮겨 공용화. 반환 ≤ 8행(주별 sum(amount)). 월요일 00:00 KST 경계 규칙·빈 주 0 채우기·timeutil 고정 시각은 그대로. /revenue/forecast 응답은 kv_cache 5분(brief 와 같은 버킷) 으로 감싼다.",
+   "fix_scope": "be",
+   "test_plan": "tests/test_revenue_forecaster.py · test_revenue_forecaster_kst.py 기존 케이스 그대로 통과(주 경계·KST). 추가: 같은 데이터로 옛 파이썬 합산과 새 SQL 합산이 주별로 동일(골든), 쿼리 수 1. tests/pg: 매출 10만 건 DB 에서 forecast c=10 p95 < 500ms.",
+   "confidence": 0.95
+  },
+  {
+   "id": "perf-backend-04",
+   "severity": "P2",
+   "title": "GET /revenue 목록이 기본 2,000행 전체 컬럼을 매번 직렬화 — custom 90일 692KB(gzip ≈44KB) c=10 p95 1.12초 · month 415KB c=10 p95 772ms; 부팅 프리페치가 today/week/month 3종을 동시에 받고 대시보드는 잘린 items 를 다시 더해 합계를 낸다",
+   "flow": "부팅(app-core.js:4131-4133 today/week/month 프리페치) · 매출 화면(app-revenue.js:314 period=custom) · 내샵관리(app-dashboard.js:406-410, 463-466) → GET /revenue(routers/revenue.py:132) → agg 쿼리 1(:184-190) + 목록 limit+1(:199-205) → _revenue_outputs(RevenueOut 2,000건)(:66) → JSON → app-dashboard._aggregateStats(:292-295) 가 items 를 reduce 로 다시 합산",
+   "repro_steps": "1) 8021 매장1 2) GET /revenue?period=month · custom 90일 · today warm 50 × c=1/5/10 3) GET /revenue?period=custom 365일(기본 limit·limit=5000) 1회 — 응답 바이트·returned·has_more — evidence/perf-backend/rerun3/bench_8021.py, bench3_8021.py (d)",
+   "evidence": "bench_run_8021.log:\nGET /revenue?period=month c=1 p50 46/p95 212 · c=5 p50 211/p95 393 · c=10 p50 514/p95 772 (err 0.0, bytes 415327)\nGET /revenue?period=custom 90일 c=1 p50 82/p95 277 · c=5 p50 481/p95 610 · c=10 p50 760/p95 1118 (err 0.0, bytes 692269)\nGET /revenue?period=today c=1 p50 25/p95 31 · c=5 p50 103/p95 293 · c=10 p50 191/p95 402 (err 0.0, bytes 180035) (today 행 508건 중 ~450건은 이전 벤치의 POST /revenue 합성)\nbench3: revenue_custom_365d_shop1 {'n': 1, 'p50_ms': 85.5, 'p95_ms': 85.5, 'max_ms': 85.5, 'bytes': 688430, 'returned': 2000, 'has_more': True, 'count': 16335} · limit=5000 {'n': 1, 'p50_ms': 373.3, 'p95_ms': 373.3, 'max_ms': 373.3, 'bytes': 1735280, 'returned': 5000}\nqlog: GET /revenue nq=4, sql_ms p50 ≈ 8~12ms vs 총 ms 수백 ms (ORM 2,000행 + pydantic)\nEXPLAIN Q7 (month list limit 2001): 1.029ms (index) · Q6 (month agg): 1.228ms (index)",
+   "reproduced": true,
+   "root_cause": "routers/revenue.py:138 기본 limit 2,000 과 전 컬럼 RevenueOut 직렬화(:66). 집계는 이미 DB 가 내지만(:184) 호출처 대부분이 집계만 쓰면서 목록까지 통째로 받는다. 매출 화면 일/주 뷰는 소수 행만 필요하고 월 뷰도 2,000건을 다 그리지 않는다. 대시보드는 API 의 total 을 두고 items 를 다시 더한다(_aggregateStats:292-295) — 2,000건을 넘는 달엔 month_amount 가 잘린 값이 된다(합계 불일치 위험).",
+   "files": [
+    {
+     "repo": "be",
+     "path": "backend/routers/revenue.py",
+     "line": 138
+    },
+    {
+     "repo": "be",
+     "path": "backend/routers/revenue.py",
+     "line": 199
+    },
+    {
+     "repo": "fe",
+     "path": "app-dashboard.js",
+     "line": 292
+    },
+    {
+     "repo": "fe",
+     "path": "app-core.js",
+     "line": 4131
+    },
+    {
+     "repo": "fe",
+     "path": "app-revenue.js",
+     "line": 314
+    }
+   ],
+   "proposed_fix": "BE: 기본 limit 을 200 으로 내리고 offset 을 받아 페이지네이션(has_more/returned 이미 있음), `summary_only=1`(목록 생략, 집계만) 모드 추가. FE: app-dashboard.js _aggregateStats 가 month_amount/today_amount/period_amount 를 응답의 total/count 로 쓰도록(items 합산 제거), app-core 부팅 프리페치는 today 1종 + summary_only 로 축소(week/month 는 화면 진입 시), app-revenue 월 뷰는 페이지 단위 로드.",
+   "fix_scope": "both",
+   "test_plan": "tests/test_revenue_list_pagination.py 확장: 기본 limit 200·offset 페이징·summary_only 응답에 items 없음·total 은 limit 와 무관. FE jest: _aggregateStats 가 items 가 잘려도(has_more=true) total 을 쓰는지, 부팅 프리페치 URL 목록 스냅샷. tests/pg: 매출 10만 건 매장 GET /revenue?period=month c=10 p95 < 500ms.",
+   "confidence": 0.9
+  },
+  {
+   "id": "perf-backend-05",
+   "severity": "P2",
+   "title": "/revenue/summary 가 직전 달 매출 행 전체를 ORM 객체로 적재해 파이썬 합산(prev_items) + 예약 amount/deposit 도 행 단위 적재 — 과거월 조회 c=10 p95 730ms(응답 2KB), 이번달 c=10 p95 421ms",
+   "flow": "매출 화면 월 뷰(app-revenue-month.js) → GET /revenue/summary?period=month[&year&month](routers/revenue.py:459) → 합계·일별·결제수단은 SQL GROUP BY 인데 prev_items(:608-617, 직전 달 전 컬럼 ORM)·prev_full_rows(:620-628)·pending_rows(:567-577)·confirmed_deposit_rows(:582-593) 는 .all() 후 파이썬 sum",
+   "repro_steps": "1) 8021 매장1 2) GET /revenue/summary?period=month 와 ?year=2026&month=1..9 warm 50 × c=1/5/10 3) qlog 에서 nq=8~9·sql_ms 와 총 ms — evidence/perf-backend/rerun3/bench_8021.py",
+   "evidence": "bench_run_8021.log:\nGET /revenue/summary?period=month c=1 p50 21/p95 24 · c=5 p50 91/p95 277 · c=10 p50 212/p95 421 (err 0.0, bytes 660)\nGET /revenue/summary 과거월 c=1 p50 33/p95 228 · c=5 p50 156/p95 342 · c=10 p50 449/p95 730 (err 0.0, bytes 2065)\nqlog_analysis_8021.txt: GET /revenue/summary nq p50 8 · sql_ms p50 ≈ 29ms vs 총 ms p50 ≈ 90ms (차이 = 직전 달 2,251행 ORM 적재 + 파이썬 합산)\nperf3 매장1 9월 매출 행 2,251건(psql)",
+   "reproduced": true,
+   "root_cause": "revenue_summary 가 본월 집계는 SQL 로 옮겼지만(2026-05-20) 직전 달 동기간(prev_items, 전 컬럼 ORM :608)·직전 달 전체(prev_full_rows :620)·남은 예약 amount(pending_rows :567)·예약금(confirmed_deposit_rows :582)은 행 적재 후 파이썬 합산으로 남겼다. 직전 달 매출 건수에 비례해 느려지며 동시성에서 CPU 를 점유한다. 또 prev_same_count = len(prev_items)(:617) 라 환불 행도 세어 본월 count(_is_counted_sale) 규칙과 갈린다.",
+   "files": [
+    {
+     "repo": "be",
+     "path": "backend/routers/revenue.py",
+     "line": 608
+    },
+    {
+     "repo": "be",
+     "path": "backend/routers/revenue.py",
+     "line": 620
+    },
+    {
+     "repo": "be",
+     "path": "backend/routers/revenue.py",
+     "line": 567
+    },
+    {
+     "repo": "be",
+     "path": "backend/routers/revenue.py",
+     "line": 582
+    }
+   ],
+   "proposed_fix": "네 곳을 `db.query(func.coalesce(func.sum(...),0), func.count(...))...first()` 로 바꾼다(본월 totals_row 와 같은 방식, 쿼리 수 동일·행 적재 0). prev_same_count 는 본월과 같은 _is_counted_sale 규칙(환불 제외)으로 맞추고 응답 필드 의미를 docstring 에 적는다.",
+   "fix_scope": "be",
+   "test_plan": "tests/test_revenue_summary_prev_month.py — 직전 달에 환불 행이 섞인 데이터로 prev_same_total/prev_same_count/prev_full/pending_bookings_total/confirmed_deposit_total 이 옛 구현과 동일(환불 count 규칙은 의도 변경을 테스트에 명시). before_cursor_execute 카운터로 행 적재 쿼리(SELECT revenue_records.* / bookings.amount) 0건.",
+   "confidence": 0.9
+  },
+  {
+   "id": "perf-backend-06",
+   "severity": "P2",
+   "title": "compute_at_risk 가 후보 고객을 ORDER BY 없는 .limit(500) 으로 끊어 홈 브리핑·고객관리 이탈 탭의 at_risk/lost 집계가 실제의 약 1/10 (매장1 10k: 실제 1,102 → API summary total 114)이고, 후보 선정 서브쿼리가 bookings 전 테이블을 매 호출 seq scan 한다",
+   "flow": "홈 브리핑(/today/brief 비캐시 → routers/today.py:190 compute_at_risk) · 고객관리 이탈 탭(/retention/at-risk routers/retention.py:41 → summary_stats(items)) → services/retention_predictor.compute_at_risk(:128) → _active_sub(:149-158, 매출 ≥2건 고객, visit_filters NOT EXISTS 무효 예약) → customers .limit(500)(:167) → 파이썬 간격 계산(:180-227)",
+   "repro_steps": "1) 8021 매장1(10k)·매장5(~2.1k) 2) GET /retention/at-risk 각각 → summary 3) 같은 알고리즘을 SQL 로 재현(상한 없이) → 건수 비교 (evidence/perf-backend/rerun3/at_risk_uncapped_shop1.txt) 4) EXPLAIN Q10 — bench4_8021.py (f)",
+   "evidence": "bench4_run_8021.log:\nretention_at_risk_shop1 {'n': 1, 'p50_ms': 65.6, 'p95_ms': 65.6, 'max_ms': 65.6, 'min_ms': 65.6, 'summary': {'total': 114, 'at_risk': 36, 'lost': 78}}\nretention_at_risk_shop5 {'n': 1, 'p50_ms': 46.6, 'p95_ms': 46.6, 'max_ms': 46.6, 'min_ms': 46.6, 'summary': {'total': 152, 'at_risk': 43, 'lost': 109}}\nbench3: retention_at_risk_shop1 {'n': 5, 'p50_ms': 56.4, 'p95_ms': 64.5, 'max_ms': 64.5, 'summary': {'total': 114, 'at_risk': 36, 'lost': 78}, 'bytes': 26916}\nat_risk_uncapped_shop1.txt (SQL 재현, 상한 없음): candidates(>=2 visits) 4,853 · lost 740 · at_risk 362 → 합 1,102 vs API total 114\nEXPLAIN Q10 (_active_sub NOT EXISTS): 24.347ms seq_scan=bookings\npg_stat_user_tables (API 트래픽만):  bookings        |       16 |      1606942 |    77511 |        210",
+   "reproduced": true,
+   "root_cause": "retention_predictor.compute_at_risk 가 (1) 후보 500명을 정렬 없이 자르고(:167) 그 안에서만 at_risk/lost 를 판정해 홈 브리핑의 at_risk_count·/retention/at-risk 의 summary 가 매장 규모에 따라 틀린 숫자가 되며(어느 500명인지도 플래너 순서에 따라 바뀜), (2) visit_filters() 의 `NOT EXISTS (bookings WHERE id = revenue.booking_id AND (status='no_show' OR deleted_at IS NOT NULL))`(services/customer_visits.py:61-68) 가 bookings 를 (id, status/deleted_at) 로 보는 조건이라 플래너가 Hash Anti Join 으로 bookings 전체를 훑는다(10만 건, 성장 시 선형).",
+   "files": [
+    {
+     "repo": "be",
+     "path": "backend/services/retention_predictor.py",
+     "line": 167
+    },
+    {
+     "repo": "be",
+     "path": "backend/services/customer_visits.py",
+     "line": 61
+    },
+    {
+     "repo": "be",
+     "path": "backend/routers/retention.py",
+     "line": 41
+    },
+    {
+     "repo": "be",
+     "path": "backend/routers/today.py",
+     "line": 190
+    }
+   ],
+   "proposed_fix": "(1) 상한을 없애고 집계를 SQL 로: 고객별 count/min/max(recorded_at) 를 GROUP BY 로 받아 평균 간격 = (max-min)/(count-1) 로 계산하면(현 _compute_interval 과 수학적으로 동일) 행 적재 없이 전 고객 판정 가능. 상한을 꼭 둘 거면 last_visit_at 오름차순(오래 안 온 순) 정렬 + 응답 `capped: true` 로 FE 가 '500명 이상' 표기. (2) alembic 으로 부분 인덱스 `CREATE INDEX ix_bookings_voided ON bookings(id) WHERE status='no_show' OR deleted_at IS NOT NULL` 추가 — EXISTS 가 무효 예약(≈5.5k)만 보게 된다.",
+   "fix_scope": "be",
+   "test_plan": "tests/test_retention_at_risk_uncapped.py — 고객 700명(≥2 방문) 매장에서 summary.total 이 500 을 넘고 옛 per-row 구현과 고객별 status 가 동일(골든). tests/pg/test_pg_migrations.py 에 새 인덱스 존재 확인 + EXPLAIN 에 'Seq Scan on bookings' 없음 단언. 기존 test_log_retention·retention 관련 테스트 통과.",
+   "confidence": 0.9
+  },
+  {
+   "id": "perf-backend-07",
+   "severity": "P3",
+   "title": "예약 겹침 검사(create/update)가 두 비교식(starts_at < :end AND ends_at > :start)이라 EXCLUDE 가 만든 gist 인덱스를 못 타고 (user_id) 인덱스로 매장 예약 전부를 거른다 — 지금은 수 ms 지만 매장 예약 수에 비례; 모델의 모든 PK 에 index=True 로 중복 인덱스 64개",
+   "flow": "POST /bookings → routers/bookings.create_booking → services/booking_scope.has_overlap(:109) → overlap_filter(:83-96) EXISTS",
+   "repro_steps": "1) EXPLAIN Q14 (perf3) 2) pg_indexes 로 ix_*_id(PK 와 동일 컬럼) 인덱스 확인 3) POST /bookings 유효 슬롯 c=1/5 — evidence/perf-backend/rerun3/explain_perf3.sql, bench3_8021.py (f)",
+   "evidence": "EXPLAIN Q14 (overlap EXISTS): 3.608ms (index)\nbench3: post_bookings_valid_c1 {'n': 20, 'p50_ms': 17.2, 'p95_ms': 19.6, 'max_ms': 34.7, 'statuses': {'201': 20}} · post_bookings_valid_c5 {'n': 25, 'p50_ms': 33.7, 'p95_ms': 65.0, 'max_ms': 83.0, 'statuses': {'201': 25}}\nbench1: POST /bookings c=1 p50 20/p95 24 · c=5 p50 76/p95 93 · c=10 p50 140/p95 224 (err 0.0, bytes 437)\npg_indexes perf3: bookings 에 ix_bookings_id(=pkey) · customers ix_customers_id · revenue_records ix_revenue_records_id · customer_memos ix_customer_memos_id — models.py `primary_key=True, index=True` 64건(grep -c)",
+   "reproduced": true,
+   "root_cause": "overlap_filter 가 범위 연산자 대신 두 비교식을 쓰므로 excl_booking_user_timerange(gist, tstzrange) 를 못 쓴다. models.py 의 `Column(Integer, primary_key=True, index=True)` 는 PK 와 같은 컬럼의 btree 를 하나 더 만들어 쓰기마다 인덱스 유지 비용만 든다(읽기 이득 0).",
+   "files": [
+    {
+     "repo": "be",
+     "path": "backend/services/booking_scope.py",
+     "line": 92
+    },
+    {
+     "repo": "be",
+     "path": "backend/models.py",
+     "line": 13
+    }
+   ],
+   "proposed_fix": "PG 방언일 때 overlap_filter 를 `func.tstzrange(Booking.starts_at, Booking.ends_at).op('&&')(func.tstzrange(starts_at, ends_at))` 로(sqlite 는 기존 비교식 유지) 바꾸면 gist 인덱스를 탄다. 중복 PK 인덱스는 alembic 한 개로 `DROP INDEX ix_<table>_id` 64건 + models.py 의 `index=True` 제거(create_all 과 마이그레이션 양쪽). 출시 차단 아님.",
+   "fix_scope": "be",
+   "test_plan": "tests/test_booking_overlap_semantics(기존 겹침 테스트) 그대로 통과 + PG 에서 EXPLAIN 에 'excl_booking_user_timerange' 사용 단언. tests/pg/test_pg_migrations.py: ix_*_id 인덱스 부재 확인.",
+   "confidence": 0.85
+  }
+ ],
+ "verified_ok": [
+  {
+   "item": "고객 목록 첫 페이지(limit=200, 5분 캐시)·깊은 페이지(offset 200~9,000 비캐시)·마지막 페이지(offset 9,600)·이름 검색·전화 검색·limit=500 — 목표 p95 500ms 내",
+   "evidence": "bench_run_8021.log: 첫 페이지 c=1 p50 10/p95 12 · c=5 p50 43/p95 52 · c=10 p50 51/p95 103 (err 0.0, bytes 70271) | 깊은 offset c=1 p50 44/p95 52 · c=5 p50 116/p95 295 · c=10 p50 222/p95 477 (err 0.0, bytes 69698) | q=이름 c=1 p50 48/p95 58 · c=5 p50 74/p95 106 · c=10 p50 147/p95 236 (err 0.0, bytes 6957) | q=전화 c=1 p50 45/p95 56 · c=5 p50 75/p95 105 · c=10 p50 138/p95 216 (err 0.0, bytes 1082) | bench4 마지막 페이지 {'n': 5, 'p50_ms': 41.2, 'p95_ms': 46.1, 'max_ms': 46.1, 'min_ms': 40.2, 'returned': 199, 'total': 9799} | bench3 limit=500 {'n': 5, 'p50_ms': 67.9, 'p95_ms': 69.1, 'max_ms': 69.1, 'bytes': 174268}. qlog: GET /customers nq=7 고정(페이지 크기와 무관, N+1 없음). EXPLAIN Q1 offset 9000: 14.951ms (index) · Q2 ILIKE: 12.868ms (index) · Q3 전화: 12.047ms (index) (ILIKE 는 매장 행 9.8k 필터 — 1인샵 규모에선 20ms 수준, pg_trgm 은 불필요)"
+  },
+  {
+   "item": "예약 일/주/6주 범위 조회 — 3분 캐시 적중·비캐시(날짜/범위 변동) 모두 목표 내, 쿼리 수 2~3",
+   "evidence": "bench_run_8021.log: 일 캐시 c=1 p50 6/p95 8 · c=5 p50 18/p95 138 · c=10 p50 15/p95 29 (err 0.0, bytes 4624) | 주 캐시 c=1 p50 8/p95 10 · c=5 p50 14/p95 37 · c=10 p50 9/p95 30 (err 0.0, bytes 32042) | 6주 캐시 c=1 p50 18/p95 21 · c=5 p50 28/p95 71 · c=10 p50 47/p95 69 (err 0.0, bytes 203419) | 6주 비캐시 c=1 p50 30/p95 33 · c=5 p50 52/p95 295 · c=10 p50 106/p95 133 (err 0.0, bytes 202465) | 일 비캐시 c=1 p50 8/p95 10 · c=5 p50 28/p95 36 · c=10 p50 31/p95 62 (err 0.0, bytes 5496). EXPLAIN Q4 6주: 2.987ms (index) · Q15 오늘: 0.038ms (index) (ix_bookings_user_deleted_starts / user_id 인덱스)."
+  },
+  {
+   "item": "예약 생성(유효 슬롯, 겹침 검사 + EXCLUDE 제약)·매출 생성(client_txn_id 멱등키) — 지연·오류율 0, 캐시 무효화 포함",
+   "evidence": "bench_run_8021.log: POST /bookings c=1 p50 20/p95 24 · c=5 p50 76/p95 93 · c=10 p50 140/p95 224 (err 0.0, bytes 437) | POST /revenue c=1 p50 17/p95 20 · c=5 p50 53/p95 73 · c=10 p50 54/p95 133 (err 0.0, bytes 354). bench3: post_bookings_valid_c1 {'n': 20, 'p50_ms': 17.2, 'p95_ms': 19.6, 'max_ms': 34.7, 'statuses': {'201': 20}} · c5 {'n': 25, 'p50_ms': 33.7, 'p95_ms': 65.0, 'max_ms': 83.0, 'statuses': {'201': 25}} · post_revenue_c10 {'n': 30, 'p50_ms': 49.0, 'p95_ms': 100.8, 'max_ms': 110.0, 'statuses': {'201': 30}}. qlog: POST /bookings nq 3~7 · POST /revenue nq 7~10 (고정)."
+  },
+  {
+   "item": "매출 통계 — GET /revenue 의 total/count/net_total 과 /revenue/summary 의 본월 합계·일별·결제수단은 SQL 집계(행 적재 없음); today/이번달 목록·합계 p95 목표 내(c≤5)",
+   "evidence": "routers/revenue.py:184-190 agg · :632+ daily/by_method GROUP BY. EXPLAIN Q6 month agg 1.228ms (index) · Q8 daily group by 2.944ms (index). bench: /revenue?period=today c=1 p50 25/p95 31 · c=5 p50 103/p95 293 · c=10 p50 191/p95 402 (err 0.0, bytes 180035) · /revenue/summary?period=month c=1 p50 21/p95 24 · c=5 p50 91/p95 277 · c=10 p50 212/p95 421 (err 0.0, bytes 660)."
+  },
+  {
+   "item": "/today/brief — 5분 캐시 적중 및 비캐시(예약 생성으로 무효화 후) 모두 p95 500ms 내",
+   "evidence": "bench_run_8021.log: /today/brief c=1 p50 7/p95 9 · c=5 p50 8/p95 16 · c=10 p50 9/p95 21 (err 0.0, bytes 1428). bench3: today_brief_uncached_shop1 {'n': 10, 'p50_ms': 164.7, 'p95_ms': 339.4, 'max_ms': 339.4} (nq 17, 합계·건수는 SQL — routers/today.py:134-150)."
+  },
+  {
+   "item": "고객 상세·대시보드(10분 캐시)·메모·회원권 이력/통계/만료 — 모두 p95 500ms 내, 매출 많은 고객(최다 매출 상위 10명) 상세·대시보드 콜드도 목표 내",
+   "evidence": "bench_run_8021.log: 상세 c=1 p50 11/p95 16 · c=5 p50 20/p95 59 · c=10 p50 21/p95 50 (err 0.0, bytes 350) | dashboard c=1 p50 18/p95 23 · c=5 p50 23/p95 227 · c=10 p50 15/p95 24 (err 0.0, bytes 3619) | memos c=1 p50 12/p95 14 · c=5 p50 24/p95 32 · c=10 p50 16/p95 39 (err 0.0, bytes 197) | 회원권 history c=1 p50 9/p95 12 · c=5 p50 32/p95 42 · c=10 p50 51/p95 95 (err 0.0, bytes 635) | stats c=1 p50 17/p95 20 · c=5 p50 29/p95 54 · c=10 p50 29/p95 65 (err 0.0, bytes 131) | expiring c=1 p50 14/p95 17 · c=5 p50 17/p95 50 · c=10 p50 21/p95 50 (err 0.0, bytes 40885). bench4: customer_detail_heavy_c1 {'n': 10, 'p50_ms': 10.5, 'p95_ms': 12.4, 'max_ms': 12.4, 'min_ms': 10.1, 'status': 200} · customer_dashboard_heavy_cold_c1 {'n': 10, 'p50_ms': 17.3, 'p95_ms': 23.6, 'max_ms': 23.6, 'min_ms': 16.3, 'status': 200, 'bytes': 4350}. EXPLAIN Q13 expiring: 1.622ms (index) · Q12 고객별 매출: 0.022ms (index)."
+  },
+  {
+   "item": "N+1 전수 스캔 — 측정한 25개 경로 중 요청당 쿼리 수가 입력 크기에 비례하는 경로는 /today/morning(콜드) 하나뿐",
+   "evidence": "qlog_analysis_8021.txt 라우트별 nq p50/max: POST /bookings                                     210     10     10      15.1    44.4   158.5         0 | POST /revenue                                      185     10     10       8.1    33.6    97.8         0 | GET /revenue/summary                               310      8      9      32.0   106.2   474.7         0 | GET /customers                                     631      7      7      36.9    58.5   219.3         0 | GET /customers/{customer_id}                       165      6      6       3.2    12.9    43.6         0 | GET /memberships/stats                             155      6      6       9.4    20.3    53.0         0 | GET /auth/me                                        15      4      4       1.3     7.8    10.9         0 | GET /revenue                                       467      4      4      14.1   157.6   744.3         0 | GET /customers/{customer_id}/memos                 155      4      4       2.2    12.6    29.2         0 | GET /memberships/{customer_id}/history             155      4      4       4.0    22.9    72.4         0 | GET /retention/at-risk                               7      4      4      29.9    51.5    64.4         0 | GET /memberships/expiring                          156      3      3       3.5    14.6    44.2         0 | GET /revenue/forecast                              155      3      3      19.2   548.8  1443.2         0 | GET /bookings                                      793      2      3       1.2    16.9   100.1         0 | GET /today/brief                                   165      2     17       0.8     6.2   140.9         0 | GET /today/morning                                 183      2   1320       1.1     9.4  4839.9         0 | GET /customers/{customer_id}/dashboard             165      2     12       3.0    16.3    27.3         0 | GET /health                                          2      1      1       0.3     9.5    11.7       440"
+  },
+  {
+   "item": "GZip 압축이 1KB 이상 응답에 적용됨(네트워크 바이트) — 큰 응답의 전송량은 raw 의 6~7%",
+   "evidence": "raw=480676 gz=27112 /revenue?period=month\nraw=693738 gz=41964 /revenue?period=custom&from=2026-07-04&to=2026-10-02\nraw=203424 gz=13187 /bookings?from=2026-08-30T15:00:00Z&to=2026-10-11T15:00:00Z\nraw=70280 gz=6761 /customers?limit=200&offset=0\nraw=8465738 gz=505939 /bookings?from=2000-01-01T00:00:00Z&to=2099-01-01T00:00:59Z"
+  },
+  {
+   "item": "스키마 마이그레이션 0071 까지 PG 에서 적용된 DB 로 전체 측정 통과(500 오류 0건) · 핵심 복합 인덱스 존재",
+   "evidence": "alembic_version=0071_dm_log_external_received_at (psql). pg_indexes: ix_customers_user_deleted_created(user_id,deleted_at,created_at) · ix_bookings_user_deleted_starts(user_id,deleted_at,starts_at) · ix_bookings_user_status_starts · ix_revenue_user_recorded(user_id,recorded_at) · ix_revenue_user_customer(user_id,customer_id) · ix_customer_memos_user_customer · excl_booking_user_timerange(gist) · uq_revenue_user_txn · uq_customers_dedup. 모든 벤치 statuses 에 5xx 0건."
+  },
+  {
+   "item": "PG 느린 쿼리 로그(log_min_duration_statement=100ms, perf3 DB 한정) — 벤치 전 구간에서 100ms 넘는 SQL 문 자체는 극소수; 지연은 SQL 이 아니라 ORM 적재·파이썬 집계·직렬화",
+   "evidence": "slow statement lines: 0"
+  },
+  {
+   "item": "관련 단위테스트(sqlite) 현재 코드로 통과",
+   "evidence": "Read more about it in the\n          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).\n          \n    @app.on_event(\"startup\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n63 passed, 45 warnings in 27.28s"
+  }
+ ],
+ "blocked": [
+  {
+   "item": "Cloud Run 실제 인스턴스(CPU·메모리·--concurrency·DB_POOL_SIZE)에서의 재측정",
+   "reason": "운영/테스트 Cloud Run 접촉 금지(AGENT_CONTEXT 절대 규칙). 로컬 4 vCPU·PG 로컬 소켓 기준 수치이며, 운영은 Supabase 네트워크 RTT(수 ms/쿼리)가 더해져 N+1(finding 02, 1,300 쿼리) 은 더 나쁘게 나온다."
+  },
+  {
+   "item": "매장 20곳 전원 동시 아침 러시(c=20)",
+   "reason": "로그인 레이트리밋(IP 버킷 429)으로 매장 13·15~20 토큰을 새로 받는 데 수십 분이 걸려 생략. 보유 토큰 13개로 10개 매장 동시(c=10) 콜드 /today/morning 은 측정함(finding 02)."
+  },
+  {
+   "item": "Redis 공유 캐시 환경에서의 캐시 적중/single-flight 동작",
+   "reason": "로컬엔 REDIS_URL 이 없어 kv_cache 가 프로세스 메모리 폴백으로 동작. 멀티 인스턴스에서 캐시 미스가 인스턴스마다 나는 효과는 측정 불가(코드 utils/kv_cache.py:43-56 의 경고 로직만 확인)."
+  }
+ ],
+ "measurements": [
+  {
+   "what": "측정 환경",
+   "env": "로컬 컨테이너 4 vCPU(Intel Xeon 2.10GHz) · RAM 16GB · PostgreSQL 16.14 로컬 127.0.0.1:5433(shared_buffers 128MB, work_mem 4MB) · 백엔드 c2baa1a uvicorn 단일 워커 포트 8021(계측 래퍼 perf_app.py, 제품 코드 무수정) · DB itdasy_relaudit_perf3(이전 합성 DB 를 TEMPLATE 로 복제, alembic 0071) · 다른 에이전트 2개가 같은 CPU 를 공유 중",
+   "value": "uvicorn 단일 프로세스 · DB 풀 pool_size 4 + max_overflow 1 (database.py:140-141, 운영 기본값) · 동시성 5·10 은 풀(5) 이상이라 대기 포함 · kv_cache 메모리 폴백(REDIS_URL 없음)"
+  },
+  {
+   "what": "데이터 규모 (data_profile_perf3.txt)",
+   "env": "itdasy_relaudit_perf3",
+   "value": "users|21 · customers|50005 · customers_shop1|10000 · bookings|100467 · bookings_shop1|20460 · revenue_records|100690 · revenue_shop1|20517 · customer_memos|30000 · membership_customers|5101 · db_size|141 MB · 매장1 = 고객 10,000(활성 9,799)·예약 ≈20k·매출 ≈16k/년(이번달 1,198·오늘 508 — 오늘분 중 ~450건은 이전 벤치 POST 합성)"
+  },
+  {
+   "what": "warm 50 요청 p50/p95 (ms) — 동시성 1 / 5 / 10, 오류율 전부 0 (bench_run_8021.log)",
+   "env": "매장1(고객 9,799·예약 20k)",
+   "value": "GET /customers?limit=200 (첫 페이지·캐시 대상): 10/12 · 43/52 · 51/103 || GET /customers?limit=200&offset=N (깊은 페이: 44/52 · 116/295 · 222/477 || GET /customers?limit=20&q=김 (이름 검색): 48/58 · 74/106 · 147/236 || GET /customers?limit=20&q=<전화숫자> (전화 검색): 45/56 · 75/105 · 138/216 || GET /bookings 일 (고정 범위·캐시 대상): 6/8 · 18/138 · 15/29 || GET /bookings 주 (고정 범위·캐시 대상): 8/10 · 14/37 · 9/30 || GET /bookings 월그리드 6주 (고정 범위·캐시 대상): 18/21 · 28/71 · 47/69 || GET /bookings 월그리드 6주 (범위 변동·비캐시): 30/33 · 52/295 · 106/133 || GET /bookings 일 (날짜 변동·비캐시): 8/10 · 28/36 · 31/62 || GET /revenue?period=today: 25/31 · 103/293 · 191/402 || GET /revenue?period=month: 46/212 · 211/393 · 514/772 || GET /revenue?period=custom 90일: 82/277 · 481/610 · 760/1118 || GET /revenue/summary?period=month: 21/24 · 91/277 · 212/421 || GET /revenue/summary 과거월: 33/228 · 156/342 · 449/730 || GET /today/brief (5분 캐시): 7/9 · 8/16 · 9/21 || GET /today/morning (5분 캐시): 7/9 · 11/19 · 20/44 || GET /customers/{id} (상세): 11/16 · 20/59 · 21/50 || GET /customers/{id}/dashboard (10분 캐시·고객: 18/23 · 23/227 · 15/24 || GET /customers/{id}/memos: 12/14 · 24/32 · 16/39 || GET /memberships/{id}/history: 9/12 · 32/42 · 51/95 || GET /memberships/stats: 17/20 · 29/54 · 29/65 || GET /memberships/expiring?days=30: 14/17 · 17/50 · 21/50 || GET /revenue/forecast: 70/266 · 622/867 · 1267/1980 || POST /bookings (생성): 20/24 · 76/93 · 140/224 || POST /revenue (생성): 17/20 · 53/73 · 54/133"
+  },
+  {
+   "what": "비캐시·경계 경로 (bench3_run_8021.log)",
+   "env": "매장1 c=1 (별도 표기 외)",
+   "value": "bookings_no_range_shop1: {'n': 10, 'p50_ms': 480.0, 'p95_ms': 1066.5, 'max_ms': 1066.5, 'items': 20008, 'bytes': 8442583, 'note': '1회차 비캐시, 이후 3분 캐시'} || bookings_no_range_shop1_uncached: {'n': 5, 'p50_ms': 1141.2, 'p95_ms': 1211.0, 'max_ms': 1211.0, 'items': 20008} || today_morning_cold_shops2to13_c1: {'n': 12, 'p50_ms': 1141.6, 'p95_ms': 1189.3, 'max_ms': 1212.7, 'statuses': {'200': 12}} || today_morning_cold_shop1_10k: {'n': 1, 'p50_ms': 1112.9, 'p95_ms': 1112.9, 'max_ms': 1112.9, 'status': 200} || retention_at_risk_shop1: {'n': 5, 'p50_ms': 56.4, 'p95_ms': 64.5, 'max_ms': 64.5, 'summary': {'total': 114, 'at_risk': 36, 'lost': 78}, 'bytes': 26916} || revenue_custom_365d_shop1: {'n': 1, 'p50_ms': 85.5, 'p95_ms': 85.5, 'max_ms': 85.5, 'bytes': 688430, 'returned': 2000, 'has_more': True, 'count': 16335} || revenue_custom_365d_limit5000_shop1: {'n': 1, 'p50_ms': 373.3, 'p95_ms': 373.3, 'max_ms': 373.3, 'bytes': 1735280, 'returned': 5000} || customers_limit500_shop1: {'n': 5, 'p50_ms': 67.9, 'p95_ms': 69.1, 'max_ms': 69.1, 'bytes': 174268} || post_bookings_valid_c1: {'n': 20, 'p50_ms': 17.2, 'p95_ms': 19.6, 'max_ms': 34.7, 'statuses': {'201': 20}} || post_bookings_valid_c5: {'n': 25, 'p50_ms': 33.7, 'p95_ms': 65.0, 'max_ms': 83.0, 'statuses': {'201': 25}} || today_brief_uncached_shop1: {'n': 10, 'p50_ms': 164.7, 'p95_ms': 339.4, 'max_ms': 339.4} || post_revenue_c10: {'n': 30, 'p50_ms': 49.0, 'p95_ms': 100.8, 'max_ms': 110.0, 'statuses': {'201': 30}}"
+  },
+  {
+   "what": "추가 측정 (bench4_run_8021.log)",
+   "env": "8021 perf3",
+   "value": "today_morning_cold_10shops_c10: {'n': 10, 'p50_ms': 5021.7, 'p95_ms': 9909.5, 'max_ms': 9909.5, 'min_ms': 4859.7, 'statuses': {'200': 10}} || today_morning_cold_same_shop14_c5: {'n': 5, 'p50_ms': 4703.2, 'p95_ms': 4759.8, 'max_ms': 4759.8, 'min_ms': 4669.0, 'statuses': {'200': 5}} || bookings_no_range_shop5_uncached: {'n': 3, 'p50_ms': 173.3, 'p95_ms': 354.3, 'max_ms': 354.3, 'min_ms': 171.9, 'items': 4127, 'bytes': 1747148} || customers_last_page_offset9600_shop1: {'n': 5, 'p50_ms': 41.2, 'p95_ms': 46.1, 'max_ms': 46.1, 'min_ms': 40.2, 'returned': 199, 'total': 9799} || customer_detail_heavy_c1: {'n': 10, 'p50_ms': 10.5, 'p95_ms': 12.4, 'max_ms': 12.4, 'min_ms': 10.1, 'status': 200} || customer_dashboard_heavy_cold_c1: {'n': 10, 'p50_ms': 17.3, 'p95_ms': 23.6, 'max_ms': 23.6, 'min_ms': 16.3, 'status': 200, 'bytes': 4350} || retention_at_risk_shop5: {'n': 1, 'p50_ms': 46.6, 'p95_ms': 46.6, 'max_ms': 46.6, 'min_ms': 46.6, 'summary': {'total': 152, 'at_risk': 43, 'lost': 109}} || retention_at_risk_shop1: {'n': 1, 'p50_ms': 65.6, 'p95_ms': 65.6, 'max_ms': 65.6, 'min_ms': 65.6, 'summary': {'total': 114, 'at_risk': 36, 'lost': 78}}"
+  },
+  {
+   "what": "요청당 쿼리 수 nq (p50/max) 와 SQL 시간 비중 (qlog_analysis_8021.txt)",
+   "env": "8021 계측(perf_app.py SQLAlchemy cursor 이벤트)",
+   "value": "POST /bookings                                     210     10     10      15.1    44.4   158.5         0 | POST /revenue                                      185     10     10       8.1    33.6    97.8         0 | GET /revenue/summary                               310      8      9      32.0   106.2   474.7         0 | GET /customers                                     631      7      7      36.9    58.5   219.3         0 | GET /customers/{customer_id}                       165      6      6       3.2    12.9    43.6         0 | GET /memberships/stats                             155      6      6       9.4    20.3    53.0         0 | GET /auth/me                                        15      4      4       1.3     7.8    10.9         0 | GET /revenue                                       467      4      4      14.1   157.6   744.3         0 | GET /customers/{customer_id}/memos                 155      4      4       2.2    12.6    29.2         0 | GET /memberships/{customer_id}/history             155      4      4       4.0    22.9    72.4         0 | GET /retention/at-risk                               7      4      4      29.9    51.5    64.4         0 | GET /memberships/expiring                          156      3      3       3.5    14.6    44.2         0 | GET /revenue/forecast                              155      3      3      19.2   548.8  1443.2         0 | GET /bookings                                      793      2      3       1.2    16.9   100.1         0 | GET /today/brief                                   165      2     17       0.8     6.2   140.9         0 | GET /today/morning                                 183      2   1320       1.1     9.4  4839.9         0 | GET /customers/{customer_id}/dashboard             165      2     12       3.0    16.3    27.3         0 | GET /health                                          2      1      1       0.3     9.5    11.7       440 | === repeated SQL shapes per route (N+1 candidates; shape = SQL with literals/params stripped) ==="
+  },
+  {
+   "what": "테이블 스캔 (pg_stat_reset 후 bench1+bench3+bench4 누적, EXPLAIN 실행 전)",
+   "env": "pg_stat_user_tables perf3",
+   "value": "relname     | seq_scan | seq_tup_read | idx_scan | n_live_tup | -----------------+----------+--------------+----------+------------ | bookings        |       16 |      1606942 |    77511 |        210 | customer_memos  |        0 |            0 |      155 |          0 | customers       |        0 |            0 |     3233 |          0 | revenue_records |        0 |            0 |    36106 |        185 | (4 rows)"
+  },
+  {
+   "what": "EXPLAIN ANALYZE 실행시간/스캔 (explain_perf3.out)",
+   "env": "매장1",
+   "value": "Q1: 14.951ms (index) | Q2: 12.868ms (index) | Q3: 12.047ms (index) | Q4: 2.987ms (index) | Q5: 8.923ms (index) | Q6: 1.228ms (index) | Q7: 1.029ms (index) | Q8: 2.944ms (index) | Q9: 1.949ms (index) | Q10: 24.347ms seq_scan=bookings | Q11: 5.057ms (index) | Q12: 0.022ms (index) | Q13: 1.622ms (index) | Q14: 3.608ms (index) | Q15: 0.038ms (index)"
+  },
+  {
+   "what": "PG 느린 문장 로그(≥100ms, perf3 한정, pg_restart.log 발췌)",
+   "env": "bench3·bench4 구간(재시작 후)",
+   "value": "slow statement lines: 0"
+  },
+  {
+   "what": "응답 크기 raw → gzip (response_sizes_perf3.txt)",
+   "env": "매장1",
+   "value": "raw=480676 gz=27112 /revenue?period=month | raw=693738 gz=41964 /revenue?period=custom&from=2026-07-04&to=2026-10-02 | raw=203424 gz=13187 /bookings?from=2026-08-30T15:00:00Z&to=2026-10-11T15:00:00Z | raw=70280 gz=6761 /customers?limit=200&offset=0 | raw=8465738 gz=505939 /bookings?from=2000-01-01T00:00:00Z&to=2099-01-01T00:00:59Z"
+  }
+ ],
+ "notes": "이번 실행(rerun3)은 직전 두 실행(10-01 8001 · 10-02 8020)과 같은 합성 데이터(TEMPLATE 복제, 새 DB itdasy_relaudit_perf3)·같은 스크립트로 백엔드 c2baa1a 를 다시 측정한 것이다 — 관련 파일(routers/bookings·today·revenue·customers, services/chip_scorer·morning_brief·revenue_forecaster·retention_predictor·booking_scope·customer_visits, database.py)은 c921655 이후 변경 0건(git log)이라 결과가 같은 범위에서 재현됐다. 공통 패턴: 동시성 10 에서 p50 이 c=1 의 5~10배로 커지는 건 DB 풀 4+1=5 커넥션(database.py:140-141) 과 동기 엔드포인트의 파이썬 CPU(GIL, 4 vCPU 를 다른 에이전트 2개와 공유) 때문이며 풀 타임아웃·500 은 0건. 운영 Cloud Run 은 코드 주석대로 `--concurrency ≤ pool_size+max_overflow` 를 지켜야 한다. 목표 p95 500ms 미달 경로: GET /bookings 무범위(01) · /today/morning 콜드(02) · /revenue/forecast c≥5(03) · /revenue?period=custom 90일 c≥5 및 month c=10(04) · /revenue/summary 과거월 c=10(05). customers 깊은 offset c=10 p95 477ms 는 경계(SQL 20ms, 풀 대기) — 별도 조치 불요. SQL 자체는 거의 전부 인덱스를 타고 수십 ms 이내(EXPLAIN·느린 문장 로그)이며, 느린 경로의 공통 원인은 'DB 가 낼 집계를 파이썬이 행을 적재해 계산'(02·03·05·06)과 '상한 없는/과한 목록 직렬화'(01·04)다. 누락 인덱스는 bookings 무효예약 부분 인덱스(06) 하나뿐. 재사용 자산: evidence/perf-backend/{seed_perf.py, perf_app.py, qlog_analyze.py} + rerun3/{start8021.sh, bench_8021.py, bench3_8021.py, bench4_8021.py, explain_perf3.sql, build_results.py}. 8021 인스턴스는 보고 후 종료, DB itdasy_relaudit_perf3 는 남겨둠(다음 단계 회귀 측정용)."
+}

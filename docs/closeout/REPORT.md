@@ -15,7 +15,7 @@
 | 멀티테넌트 격리 | **VERIFIED (하네스 110 케이스 + 교차 실측)** | 2매장 교차 접근 전 영역 404. 하네스가 모든 마운트 라우터를 자동 추출 |
 | 성능 | **개선·측정됨 (로컬)** | 부팅 API 43→24, 문서 로드 2→1, 로그인 직후 홈 ∞→1.1s, 달력 최대 longtask 370→200ms |
 | 모바일 UX | **VERIFIED (웹) / 실기기 BLOCKED** | 거짓 빈 상태·재시도 P1 수정, 44px 미만 터치 대상 47→3(의도적 예외), 키보드 가림 웹 측 보정(4화면 pass), 대비 토큰, 5xx 문구 정직화. iOS 네이티브 키보드 플러그인은 승인 필요 |
-| 앱 빌드·IAP·스토어 | **코드 수정(BE-F 진행 중) / 빌드·실결제 BLOCKED** | 감사 8건(P1 2: 체험 자가 부여·환불 뒤 복원 부활) 수정 중 — §3.4. Xcode/Android SDK·서명키·스토어 콘솔·샌드박스 결제는 이 컨테이너에 없다 |
+| 앱 빌드·IAP·스토어 | **코드 수정 완료(mock 검증) / 빌드·실결제 BLOCKED** | 감사 8건(P1 2: 체험 자가 부여·환불 뒤 복원 부활) 전부 수정 — §3.4. Xcode/Android SDK·서명키·스토어 콘솔·샌드박스 결제는 이 컨테이너에 없다 |
 | 운영 배포 | **미실행** | 두 브랜치 모두 PR 전. 백엔드 `main` 머지 = 즉시 운영 배포이므로 리뷰 필수 |
 
 한 줄로: **로컬/격리 검증 완료, 외부 연동(Meta·결제·실기기·스토어) 검증 미완료.** 출시 준비 완료가 아니라 "코드 수정·격리 검증 완료 → PR 리뷰 → 스테이징 배포 → 외부 검증" 단계다.
@@ -94,8 +94,18 @@
 - 오류 문구(mobile-ux-07): 홈 brief 5xx → '서버가 잠깐 불안정해요'(인터넷 탓 금지), '다시 시도' 는 재렌더, `_humanError` 영문 원문 차단, DM 큐 실패 화면 '다시 시도'. 테스트 7(수정 전 5 실패).
 - 작업실(FE-G, flow-workspace-photo 02/07/08/09/10/11/12): 서버 409 `photos_would_be_cleared` 계약 배선(의도적 0장만 clear_photos 1회, 아니면 서버본 복구 — 영원히 dirty 금지), 사진 투입 디코드를 createImageBitmap+close 로(큰 사진 5장×3라운드 렌더러 RSS **794→622MB**, 메모리 압박 시 276MB 로 회수 실증), 캡션 입력 화면 다중 카드 캐러셀, 캡션 컨텍스트/저장 메타 카드 구성 기준, 읽기 실패 안내 원인별, navStack 선형화(뒤로가기 4→3번), 쿠키 배너가 작업실 CTA 를 덮지 않음. 테스트 6파일(수정 전 전부 실패). QA 스크립트 17/17.
 
-### 3.4 구독·결제·IAP (BE-F, 진행 중 — 완료 시 갱신)
-1차 감사(build-iap-native)가 잡은 8건을 수정 중: **P1** `POST /subscription/start-trial` 로 누구나 Pro 14일 자가 부여(라우트 제거) · **P1** Apple 환불 뒤 '구매 복원' 이 환불된 구독을 active 로 부활(cancellation_date 반영) · P2 Google 결제 보류를 성공으로 처리 · P2 레거시 `/subscription/cancel` 이 남은 유료 기간 즉시 소멸 · P2 웹 PortOne 환불 미반영 · P2 체험/해지 문구 · P3 레거시 플랜 버튼 비활성 · P3 `/persona/consent` version 누락 500.
+### 3.4 구독·결제·IAP (BE-F — 백엔드 `92b53dd` · 프런트 `c3233c0`) + 인증 커넥션 (`9310ec4`)
+1차 감사(build-iap-native)가 잡은 8건 전부 수정(수정 전 BE 20 실패 → 27 통과, FE 12 실패 → 18 통과; 관련 29파일 475 passed):
+- **P1** `POST /subscription/start-trial` — 인증만으로 누구나 Pro 14일 자가 부여·만료 후 무한 반복 → **라우트 제거**(체험은 스토어 인트로 오퍼만). 기존 trial 행 판정은 호환.
+- **P1** Apple 환불 뒤 '구매 복원' 이 환불된 구독을 active 로 부활 → `cancellation_date` 를 읽어 verify 는 failed/free, 같은 거래 재생은 가드, 새 거래·미래 만료만 활성화(재구매 회귀 포함). Google REVOKED 뒤 과거 만료 재검증도 부활 안 함.
+- P2 Google 결제 보류(계좌이체·편의점)를 클라이언트가 성공으로 처리 → `status==='ok'` 만 finish, 보류는 '결제 확인 중이에요' 안내; BE 는 토큰을 선저장(권한 없음)해 RTDN PURCHASED 가 매칭·활성화.
+- P2 레거시 `POST /subscription/cancel` 이 남은 유료 기간 즉시 소멸 → 제거, `/billing/cancel` 은 스토어 구독이면 409.
+- P2 웹 PortOne 환불/취소가 구독에 반영 안 됨(감사 땐 NOT_REPRODUCED, pytest 로 재현: 취소 웹훅이 duplicate 로 무시) → CANCELLED 전이(전액: 이력 refunded 멱등 + 구독 refunded/free + 빌링키 폐기, 부분: 이력 표시).
+- P2 체험·해지 문구가 결제 경로와 다름 → 가입 '가입은 무료 · 카드 등록 없음', 팝업 보조문구/해지 경로를 상태별로(Playwright 전/후 캡처).
+- P3 레거시 유료 플랜 버튼 '결제 준비 중' 비활성 → 공용 규칙. P3 `/persona/consent` version 누락 500 → 422.
+- 실결제·샌드박스·실기기 결제 보류 흐름은 BLOCKED(§6.3) — 전부 mock/jsdom.
+
+**인증 커넥션(past-defects-regression-01, P2 잠복)**: 요청 1건이 DB 커넥션을 2~3개 받아(인증이 자체 세션) 풀(4+1)보다 많은 동시 쓰기 요청(실측 60 OK / 75 stall)에서 자기-교착·30초 매달림 → 인증 조회가 요청 세션을 재사용(커넥션 1개/요청). `pool_timeout` 단축·앱 레벨 동시 상한은 운영 결정(§6.3). 운영 Cloud Run `--concurrency 8` 에선 발생 조건 자체가 안 생긴다.
 
 ## 4. 검증 결과
 
@@ -125,10 +135,11 @@
 | 합성 계정: 샘플 11건 → `GET /auth/sample/status` → purge → 0 → 재purge 0(멱등) | VERIFIED | `evidence/flow-account-firstrun/sample_status_purge_api.out` |
 
 ### 4.3 과거 결함 이력 재검증 (§6)
+재실행 감사(past-defects-regression, 현재 코드 `c2baa1a`·PG 전용 DB·실제 서버): **verified_ok 15 / 발견 1(P2, 잠복 — 위 인증 커넥션으로 수정)**. 원본 `docs/closeout/evidence/audits/past-defects-regression.json`.
 | 항목 | 판정 | 근거 |
 |---|---|---|
-| 회원권 충전 멱등/중복 | VERIFIED | 같은 키 동시 20발 → 1회(PG·sqlite) |
-| 고객 페이지네이션 누락/중복·정렬 | VERIFIED | limit 3~500 전수 순회 0건 |
+| 회원권 충전 멱등/중복 | VERIFIED | 같은 키 동시 20발 → 1회(PG·sqlite); 재감사 100건 동시·409·400·SQL 불변식 |
+| 고객 페이지네이션 누락/중복·정렬 | VERIFIED | limit 3~500 전수 순회 0건; 재감사 76명 누락 0·중복 0 |
 | 직접 매출 경로 재방문 반영 | FIXED+VERIFIED | `touch_visit` 단일 헬퍼, 역행 없음 |
 | NUL 입력 500 | FIXED+VERIFIED | 요청 본문 모델 109개 전부 `InputModel`(전수 가드), dict 본문 3곳 핸들러 제거, 실제 PG 67요청 500 0건 |
 | DB 풀 포화·세션 반환 | FIXED+VERIFIED | 캡션 경로 + 발행 워커 + 토큰 갱신 루프 모두 외부 대기 전 반납(PG `idle in transaction` 0 테스트) |
@@ -161,7 +172,7 @@
 ## 6. 남은 문제와 승인 필요 사항
 
 ### 6.1 진행 중
-- BE-F 구독·결제·IAP 수정(§3.4), perf-backend 감사(대량 PG 측정), past-defects-regression 감사(§4.3 의 현재 코드 재판정). 완료되면 §3.4/§4/§5 갱신.
+- BE-G 백엔드 성능 수정(perf-backend 감사 7건: GET /bookings 무범위 20k 건, /today/morning N+1 1,300쿼리, /revenue/forecast 행 적재, /revenue 2,000행, summary 파이썬 합산, at-risk 500 캡 집계 오류, 겹침 검사 인덱스). 완료되면 §5 전/후 표 갱신.
 
 ### 6.2 수정하지 않은 발견 (심각도 · 영향 · 조건)
 | ID | 심각도 | 내용 | 조건 |
@@ -177,7 +188,8 @@
 ### 6.3 승인·외부 필요 (BLOCKED)
 - Meta 실발송·실웹훅(승인된 테스트 수신처 필요), Apple/Google 샌드박스 결제·구독 복원, 실기기 빌드(Xcode/Android SDK·서명키), 스토어 콘솔 가격/상품 확인, 운영 DB 제약 실존 확인(`excl_booking_user_timerange` 등 — 배포 전 `alembic current` 와 0070 적용 점검), 운영 환경변수(`INSTAGRAM_APP_SECRET`, `DM_WEBHOOK_REQUIRE_SIGNATURE=enforce`) 확인.
 - 0070 마이그레이션은 중복 행이 있으면 중단한다. 배포 전 1회: `SELECT user_id, starts_at, COUNT(*) FROM bookings WHERE deleted_at IS NULL AND status IN ('confirmed','completed') GROUP BY 1,2 HAVING COUNT(*)>1;` → 0건 확인.
-- 제품 결정: 캡션 실패 즉시 영속(현재는 저장 버튼 + 닫을 때 임시저장), 달력 칩 마크업 단순화, 크론 싱글톤 락 폴백 fail-closed 전환 여부(현재는 진행+카운터), `@capacitor/keyboard` 도입.
+- 제품 결정: 캡션 실패 즉시 영속(현재는 저장 버튼 + 닫을 때 임시저장), 달력 칩 마크업 단순화, 크론 싱글톤 락 폴백 fail-closed 전환 여부(현재는 진행+카운터), `@capacitor/keyboard` 도입, DB `pool_timeout` 30s 단축 + 앱 레벨 동시 핸들러 상한(Cloud Run `--concurrency` 하나에 의존하지 않으려면), PortOne 부분 환불의 기간 비례 축소 정책.
+- 배포 전 확인: 제거된 `/subscription/start-trial`·`/subscription/cancel` 을 부르는 옛 클라이언트가 없는지(프런트 호출 0건 확인됨 — 네이티브 구버전 앱은 404 를 받는다).
 - 배포 전 1회: alembic 0071(`dm_message_logs.external_received_at` 컬럼+인덱스, 멱등) 적용 확인. 신규 가입이 빈 샵 이름으로 시작하므로 `/auth/me` 의 빈 `shop_name` 을 쓰는 외부 연동(알림톡 템플릿 등)이 있으면 온보딩 전 호출 시 '사장님' 폴백을 쓰는지 확인.
 
 ## 7. 배포 상태와 복구 방법
