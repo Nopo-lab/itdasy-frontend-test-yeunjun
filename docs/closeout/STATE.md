@@ -1,19 +1,19 @@
 # 마감 작업 상태 (docs/closeout/STATE.md)
 
-> 새 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-01 23:30 UTC (2차 수정 워크플로 진행 중)
+> 새 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-02 04:20 UTC (2차 백엔드 커밋 완료 · FE-F/FE-G·감사 3 재실행 중)
 
 ## 저장소 · 브랜치 · 커밋
 | 레포 | 경로 | 브랜치 | 상태 |
 |---|---|---|---|
-| 프런트 `Nopo-lab/itdasy-frontend-test-yeunjun` | `/home/user/itdasy-frontend-test-yeunjun` | `ccr-d5f1311f-u6e0c1` (origin/main `6f39a40` 기준) | 8커밋 푸시됨: `c4e246f` `232d4a3` `1238fd3` `6918ac8` `5c73422` `e603778` `57b509d` `6c0c010` |
-| 백엔드 `Nopo-lab/itdasy_backend-test` | `/home/user/itdasy_backend-test` (shallow clone) | `ccr-d5f1311f-be` (origin/main `8598863` 기준) | 5커밋 푸시됨: `57aec85` `ce50080` `9ae2965` `55b5710` `4a9f10c` |
+| 프런트 `Nopo-lab/itdasy-frontend-test-yeunjun` | `/home/user/itdasy-frontend-test-yeunjun` | `ccr-d5f1311f-u6e0c1` (origin/main `6f39a40` 기준) | 11커밋 푸시됨: `c4e246f` `232d4a3` `1238fd3` `6918ac8` `5c73422` `e603778` `57b509d` `6c0c010` `f4e983f` `ddf352d` `03f135c` |
+| 백엔드 `Nopo-lab/itdasy_backend-test` | `/home/user/itdasy_backend-test` (shallow clone) | `ccr-d5f1311f-be` (origin/main `8598863` 기준) | 8커밋 푸시됨: `57aec85` `ce50080` `9ae2965` `55b5710` `4a9f10c` `e046d47` `29e5fcb` `c921655` |
 
 - PR 은 만들지 않았다(사용자 명시 요청 없음). 백엔드는 `main` 머지 = 즉시 운영 배포이므로 반드시 PR 리뷰 후.
 - 운영 백엔드(`itdasy-backend-staging-…` = 운영)·운영 DB·실발송·실결제·배포·스토어 제출은 **하지 않았다**.
 
 ## 보호해야 할 것
 - 세션 시작 시 두 레포 모두 미커밋 변경 0, worktree 0. 다른 작업자 변경 없음.
-- 백엔드 작업트리에는 2차 수정 에이전트(BE-C 인박스, BE-D 견고성, BE-E 돈/발행)가 **미커밋 수정을 진행 중**일 수 있다 — `git status` 로 확인 후, 보고서(워크플로 `wf_d6ea8b16-2aa` 결과)를 읽고 커밋한다. 함부로 reset/checkout 금지.
+- 백엔드 2차 수정(BE-C/BE-D/BE-E + 리드)은 전부 커밋·푸시됨(작업트리 clean). 프런트 작업트리에는 FE-F(터치/키보드)·FE-G(작업실 잔여) 에이전트가 **미커밋 수정 진행 중**일 수 있다(워크플로 `wf_f4ba46da-b34`) — `git status` 확인 후 보고를 읽고 커밋. 함부로 reset/checkout 금지.
 
 ## 로컬 검증 환경 (이 세션에서 세운 것 — 컨테이너 재시작 시 다시 올린다)
 ```bash
@@ -49,10 +49,10 @@ su postgres -s /bin/bash -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/itdas
 8. 매출 환불 호출 인증·stale 목록·KST 오늘 필터·비밀번호 변경 도달 (`6c0c010`)
 9. 백엔드: 확정 메시지 날짜/이름 (`57aec85`) · AI 커넥션/환각/Retry-After (`ce50080`) · 노쇼 UNIQUE/작업실 가드/하네스 (`9ae2965`) · 환불 하한/방문 헬퍼/회원권 만료 (`55b5710`) · 재고 PG 500/웹훅 시크릿/등록≠방문 (`4a9f10c`)
 
-## 진행 항목 (워크플로 `wf_d6ea8b16-2aa`, 백그라운드)
-- BE-C 인박스: DM 발송 실패 vs 예약 생성 분리(inbox-01), 잇비 자동응답 켜기 승인 게이트(03), 액션 실패 ok:false(04), 웹훅 순서(06)
-- BE-D 견고성: NUL 전역 제거(InputModel), 백그라운드 루프 커넥션 점유(scheduled_publisher·토큰 갱신)
-- BE-E: 멱등키 다른 본문 409·0원 충전행, 고객 상세 membership_balance, **발행 crop → pad**(workspace-04 P1), 샘플 데이터 삭제 진입점
+## 완료(2차) — REPORT §3.3
+- BE-C 인박스 `e046d47` · BE-D 견고성 `29e5fcb` · BE-E 돈/발행/샘플 `c921655` · 프런트 쪽 `03f135c`
+
+## 진행 항목 (워크플로 `wf_f4ba46da-b34` 재실행, 백그라운드)
 - FE-F: 44px 터치 영역 일괄, 키보드 가림(visualViewport 훅), 대비/문구 P3
 - FE-G: 작업실 `clear_photos` 계약, 렌더러 메모리 누수, 캡션 미리보기/문맥/파일 안내/배너/navStack P3
 - 감사 3영역 재실행: perf-backend, build-iap-native, past-defects-regression

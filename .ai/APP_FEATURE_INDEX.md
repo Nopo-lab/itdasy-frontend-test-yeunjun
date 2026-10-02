@@ -24,6 +24,8 @@
 - HomeV41: 렌더 중 들어온 refresh/data-changed 는 pending 큐로 합쳐 재렌더(로그인 직후 홈 스켈레톤 영구 잔류 수정). 로그인 전(웹)엔 네트워크 렌더 없음. 오늘의 예약은 **KST 달력일**로 비교(`js/home/v41-renderers.js kstYmd`, `app-myshop-v3.js _kstYmd`). DM 큐 건수 단일 소스 = 고객 메시지 카드(`HomeV41.setDmQueueCount`). 숨은 TodayBrief 컨테이너는 네트워크 0. 잇비 카드에 생일 줄.
 - 설정 허브: 계정 섹션 **비밀번호 변경** 행(`changepw → openChangePwModal`, 소셜 계정 비노출). 샵 정보 저장 시 `shop_name`·헤더·내 샵 관리 즉시 갱신.
 - 설정 허브 **샘플 데이터 지우기** 행(`samplepurge`): 처음엔 숨김, `open()` 이 `GET /auth/sample/status`(has_sample·counts) 를 읽어 샘플이 남아 있을 때만 표시. 확인 → `POST /auth/sample/purge`(자기 매장만·멱등, 샘플 고객의 예약까지) → SWR 캐시 비움 + data-changed(force_sync) + 토스트. 실패면 행 유지·실패 토스트.
+- **온보딩(업종·샵 이름)이 신규 가입자에게 실제로 뜬다**: BE register/apple/google 이 ShopSettings 를 빈 이름으로 만든다(예전 "<이름>의 샵" 임시값을 `checkOnboarding` 이 완료로 오인). 옛 가입자는 `GET /shop/settings` 의 `shop_name_is_placeholder` 로 구제 — 이 기기에서 `_obFinish` 를 마친 적(onboarding_done=1)이 없으면 온보딩 표시. (`app-core.js checkOnboarding`, BE `routers/shop.py is_placeholder_shop_name`)
+- 오류 문구: 홈 brief 가 5xx 로 끝나면 '서버가 잠깐 불안정해요'(`data-home-error="server"`), fetch 예외만 네트워크 문구, '다시 시도' 는 `HomeV41.refresh()`(전체 새로고침 아님). `app-core.js _humanError` 는 한글 없는 원문을 원장에게 보이지 않는다(한국어 detail 은 통과). DM 큐 실패 화면 '다시 시도'(`_refresh`).
 
 **고객·예약**
 - `app-customer.js`: `_fetchFresh` 는 순수 조회(호출자가 `_cache` 대입) → 재진입 시 서버 결과가 다르면 실제로 재렌더. 서버 검색 결과(`_serverHits`)는 create/update/remove 와 함께 갱신·외부 변경 시 재조회.
@@ -49,6 +51,12 @@
 - 진입점 5곳(시트/잇비 대화/잇비 사진/즉석/음성) 공통 빌더 `_capBasePayload` + 통로 `_capRequestGenerate`(clarification 가드). `use_persona` 는 인스타 연동 시 true, 로더 문구 정직화. 사실 출처는 원장 문구뿐(24인치·만족 멘트 주입 제거, 미매핑 category null). 레거시 `/caption/generate` status 분기.
 - BE: `services/caption_generator._call_and_parse` 가 매 LLM 호출 전 `release_db`. `caption_truthfulness.scrub_ungrounded_commercial_sentences`(가격·할인·예약시간·소요시간·지점·연락처) 1차·최종 + 레거시 3곳. 502 `ai_*`/504 에 `Retry-After: 3`, 프런트는 `ai_*` detail 이면 자동 재시도 금지(`_isAiHandlerFailure`). 레거시 안내문은 한도 환불 + `status:'clarification'`.
 
+**모바일 공용 규칙(FE-F)**
+- 터치 히트 영역: `style-components.css` 끝 "터치 히트 영역 공용 규칙" — `.tap44`(보이는 크기 그대로 `::after` 44) + min-height 44 목록. 새 작은 버튼은 `.tap44`. 측정 `scratchpad/evidence/mobile-ux/pw-hit.js`(390×844 실측 47 → 3).
+- 키보드 가림: `app-core.js _viewportKeyboardHook` → `html.kb-open` · `--kb-inset` · `window.ViewportKeyboard{open,inset,refresh}` + 포커스 칸 scrollIntoView. 키보드 위에 떠야 하는 하단 버튼/시트는 `padding-bottom:var(--kb-inset)`(고객추가 모달·매출입력 시트·예약폼 루트·잇비 패널·DM 큐). 네이티브 `@capacitor/keyboard` 는 미도입(리드 승인 필요).
+- 대비: 라이트모드 글자색 `#8B95A1` 하드코딩 0건(css/screens·style-base·style-components + JS 인라인 4파일) → `var(--text-subtle)`. 가드 `__tests__/contrast-subtle-token-2026-10-01.test.js`.
+- DM 큐 설정 아이콘 phosphor → 스프라이트 `#ic-settings`. 댓글 큐 사용자명 말줄임+title.
+
 **부팅·성능**
 - 부팅 프리페치 단일 소유자 `app-perf-recovery._prefetchBoot`(`_preloadTabs`·대시보드 위임, 예약 범위 일 단위 URL) — 콜드 부팅 API 43→24. SW 첫 설치는 리로드 안 함(`_swHadController`). 지연 그룹은 홈 하이드레이션+API 유휴 뒤, saveData/2g·3g 면 photo 제외(`js/loader.js`). `/persona/consent` 는 `_nc` 대신 `cache:'no-store'`.
 
@@ -57,6 +65,7 @@
 - DM 확인 큐 [전송]: 예약 액션은 로그 단위 멱등 — `action_result_id` 를 예약과 **같은 트랜잭션**에 저장, 발송 실패(502) 본문에 '예약 #N은 만들어졌어요' 표시, 재전송은 같은 예약으로 발송만 재시도(카드 배지 `.dcq-booking-made`). 액션 실패는 `{ok:false, code:'action_failed'}` 로 **발송 안 함**(send/send_edit 같은 계약, 성공 응답 `booking_id` — 프런트 `isBookingCreated` 는 날짜 추정 금지). (`routers/dm_confirm_queue.py`, `app-dm-confirm-queue.js`)
 - 잇비 `toggle_dm_autoreply` 도 `automation_gate.has_consent` 검사(`ok:false consent_required`, 끄기는 항상 허용). **되돌리기**(`routers/assistant_undo.py`)로 켜는 것도 같은 검사 — 승인 철회 뒤 '끈 것' undo 로 enabled=True 부활 금지.
 - `DMMessageLog.external_received_at`(채널 payload timestamp, alembic 0071 + `main.py _ensure_col`). 큐·스레드·대화 로그·24h 창 정렬은 `services/dm_inbound_time.order_expr()` = coalesce(external_received_at, received_at) — 순서 역전 웹훅 방어. 수동 행은 NULL.
+- (리뷰 반영) 배칭을 켠 샵은 클레임 항목 `first_event_ts` 가 재조립 이벤트의 timestamp 로 실린다(스윕이 만든 행도 payload 시각). payload 시각 contextvar 는 `_process_dm_event` 가 세팅하고 finally 로 비운다(파서는 순수). 502 뒤 카드 시각이 바뀐 재전송은 **그 예약을 옮긴다**(충돌이면 ok:false·발송 없음). 승인 없는 되돌리기는 409.
 - 입력 위생: 모든 요청 본문 모델은 `schemas/base.py InputModel` 상속(NUL 0x00 재귀 제거, 109개 중 102개 전환 — 남은 7개는 BE-E 소유 파일, `tests/test_nul_input_all_models_2026_10_01.py _PENDING_LEAD`). 상속 누락은 그 테스트의 `app.routes` 전수 가드가 잡는다. 문자열 쿼리 파라미터는 `StrQuery/OptStrQuery`. ⚠ `Annotated[str, BeforeValidator]` 는 `= Query()` 에서 무시된다(실측).
 - 예약 발행 워커(`services/scheduled_publisher.py` `_PostSnapshot`)·IG 토큰 갱신 루프(`main.py _refresh_expiring_tokens` 튜플 + 샵별 `_short_session`)는 Meta 호출 전 DB 커넥션 반납 — bg 풀 'idle in transaction' 0. 크론 싱글톤 락 폴백 횟수는 `/health wiring.cron_lock_fallbacks`(0 이 정상, `services/cron_lock.fallback_stats`).
 

@@ -54,12 +54,30 @@
 | `55b5710` | 부분환불 매출 축소로 음수 장부 · 방문 컬럼 경로별 상이 · 만료 회원권 차감 · 검색 NUL 500 | FOR UPDATE+하한 400/409 · `touch_visit` 단일 헬퍼 · `membership_ledger` 만료 정본 · `_strip_nul` | 24 sqlite + 5 PG(실패→통과), 관련 700+ 회귀 통과 |
 | `4a9f10c` | **재고 +/- 가 PG 에서 100% 500**(P1) · 웹훅 APP_SECRET 없으면 fail-open(P1) · 잇비 등록=방문 1 · 쿼리 NUL | `CASE` 클램프 · enforce 면 처리 안 함 · visit 0 · `_strip_nul` | PG 테스트가 옛 코드에서 실패·새 코드 통과, 5 테스트 |
 
-### 3.3 2차 수정 (워크플로 진행 중 — 완료 시 이 절 갱신)
-- BE-C 인박스: inbox-01(발송 실패 vs 예약 생성, P1)·03·04·06
-- BE-D 견고성: 본문 NUL 전역 제거(13개 경로), 백그라운드 루프 커넥션 점유
-- BE-E: 멱등키 다른 본문 409, 0원 충전행, 고객 상세 잔액, **발행 crop→pad(P1)**, 샘플 데이터 삭제 진입점
-- FE-F: 44px 터치 영역, 키보드 가림, 대비·문구
-- FE-G: `clear_photos` 계약, 렌더러 메모리, 작업실 P3 5건
+### 3.3 2차 수정 (백엔드 3커밋 + 프런트 1커밋 — 완료 / 프런트 FE-F·FE-G 진행 중)
+
+**백엔드 `e046d47` fix(inbox)** — flow-inbox-dm-comments 01(P1)/03/04/06
+- [전송] 중 DM 발송만 실패해도 예약은 이미 생성 → 재전송이 "이미 예약이 있어요" 를 손님에게 보내던 사고: `action_result_id` 를 예약과 **같은 트랜잭션**에 저장하고, 재전송은 같은 예약으로 발송만 재시도(502 본문에 "예약 #N은 만들어졌어요"). 액션 실패는 `{ok:false, code:'action_failed'}` 로 **발송 안 함**(send/send_edit 같은 계약).
+- 잇비 "DM 자동응답 켜줘" 가 승인 게이트를 우회해 enabled=True 저장 → 이후 설정 저장 403 갇힘: `has_consent` 없으면 `ok:false consent_required`(끄기는 항상 허용). **되돌리기(undo)** 로 켜는 것도 같은 검사(리드 추가, 수정 전 실패 재현).
+- 웹훅 순서 역전: `DMMessageLog.external_received_at`(payload timestamp, alembic 0071) + 큐·스레드·대화 로그·24h 창 정렬 `coalesce(external_received_at, received_at)`.
+
+**백엔드 `29e5fcb` fix(robustness)** — backend-robustness 02/03
+- 문자열 NUL(0x00) → PG 500(13개+ 경로): `schemas/base.InputModel` 을 **109개 요청 본문 모델 전부** 상속(재귀 제거). `app.routes` 전수 가드 테스트(허용목록 0). dict 본문 3곳은 핸들러에서 `strip_nul_deep`. 실제 PG 67요청 → 500: 0.
+- 발행 워커·IG 토큰 갱신이 Meta 대기 중 bg 풀 커넥션을 'idle in transaction' 으로 점유: 스냅샷/튜플로 뜨고 `release_db` 후 await, 저장은 샵별 짧은 세션. PG `pg_stat_activity` 테스트로 0 확인. 크론 락 폴백은 error 로그 + `/health wiring.cron_lock_fallbacks`.
+
+**백엔드 `c921655` fix(money,publish,sample)** — money-integrity 05/06 · flow-revenue-stats-ui-03 · flow-workspace-photo-04(P1) · flow-account-firstrun-04
+- 같은 멱등키 + 다른 본문(고객·금액·대상)이면 409 `txn_body_mismatch`(매출 생성/환불·회원권 충전/차감, 빠른 경로+IntegrityError 경로). 실측 전: 50,000 충전 뒤 같은 키로 99,000 → 200/잔액 그대로(조용히 버림).
+- `record_revenue=false` 충전행(0원)이 '시술 1건' 으로 세어져 객단가가 반으로 — 목록·summary·일별 cnt 공통 규칙 `_is_counted_sale`.
+- 고객 상세 응답에 `membership_balance/active/expires_at` → '회원권 N만원' 라벨이 실제로 뜸.
+- **발행 crop → pad**: 단일 2:3→1:1 중앙 crop, 캐러셀 전부 4:5 crop 으로 전후 합성본 BEFORE/AFTER 가 잘리던 것 → 허용 범위(4:5~1.91:1) 안은 그대로, 밖은 흰 여백 pad, 캐러셀은 첫 장 비율 통일. Pillow 로 뱃지 보존 잠금.
+- `GET /auth/sample/status` + purge 가 샘플 고객의 예약까지(멱등). 로컬 실측: 11건 → purge → 0, 두 번째 0건.
+
+**프런트 `03f135c`** — 위 백엔드 계약의 프런트 쪽
+- DM 큐: 실패 토스트/카드 유지/예약 생성은 `booking_id` 로만, "예약 #N 은 이미 만들어졌어요" 배지.
+- 설정 허브 **샘플 데이터 지우기** 행(샘플이 남아 있을 때만 표시 → 확인 → purge → 캐시 비움·재조회·토스트, 실패면 행 유지). jest 7건.
+- 작업실 결과 미리보기 칸 비율 = 발행 규칙(캐러셀 첫 장 비율 통일, 결과물 contain+흰 바탕). 기존 '장마다 실비율' 테스트를 새 계약으로 갱신(+경계 clamp 2케이스).
+
+**진행 중(워크플로 재실행)**: FE-F 44px 터치 영역·키보드 가림, FE-G 작업실 `clear_photos` 계약·렌더러 메모리·P3, 감사 3영역(perf-backend·build-iap-native·past-defects-regression). 1차 실행은 세션 한도로 중단돼 재실행함.
 
 ## 4. 검증 결과
 
