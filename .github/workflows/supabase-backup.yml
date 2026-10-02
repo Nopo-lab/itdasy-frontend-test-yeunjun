@@ -24,6 +24,11 @@ on:
     - cron: "0 18 * * *"
   workflow_dispatch: {}
 
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
 jobs:
   backup:
     runs-on: ubuntu-latest
@@ -164,14 +169,15 @@ jobs:
       #    parent:false 로 루트에 올라가서 규칙이 하나도 안 걸리던 걸 잡았다)
       #
       # 서비스계정 itdasy-db-backup 은 이 버킷에 roles/storage.objectCreator **만** 갖는다.
-      #   키가 새도 기존 백업을 읽거나 지울 수 없다. 넣기만 된다.
+      #   GitHub 전용 무열쇠 연결이며 기존 백업을 읽거나 지울 수 없다. 넣기만 된다.
       - name: Auth to GCS
         id: gcsauth
         if: always()
         continue-on-error: true
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
-          credentials_json: ${{ secrets.GCP_BACKUP_SA_KEY }}
+          workload_identity_provider: ${{ secrets.GCP_BACKUP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_BACKUP_SERVICE_ACCOUNT }}
 
       - name: Upload backups to GCS
         id: gcs
@@ -253,3 +259,47 @@ jobs:
             FAILED=1
           fi
           exit $FAILED
+
+      - name: Create or update GitHub backup alert
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LIVE_OUTCOME: ${{ steps.live.outcome }}
+          ARCHIVE_OUTCOME: ${{ steps.archive.outcome }}
+          GCS_OUTCOME: ${{ steps.gcs.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TITLE='[OPS] Supabase 백업 실패'
+          cat > /tmp/backup-alert.md <<EOF
+          자동 백업에 문제가 생겼습니다.
+
+          - 실데이터 백업 파일: ${LIVE_OUTCOME}
+          - 참고용 백업 파일: ${ARCHIVE_OUTCOME}
+          - 장기 보관 전송: ${GCS_OUTCOME}
+          - 확인: ${RUN_URL}
+
+          비밀번호와 연결값은 이 알림에 기록하지 않습니다.
+          EOF
+          NUMBER=$(gh issue list --state open --search "${TITLE} in:title" --json number,title \
+            --jq '.[] | select(.title == "[OPS] Supabase 백업 실패") | .number' | head -n 1)
+          if [ -n "$NUMBER" ]; then
+            gh issue comment "$NUMBER" --body-file /tmp/backup-alert.md
+          else
+            gh issue create --title "$TITLE" --body-file /tmp/backup-alert.md
+          fi
+
+      - name: Close recovered GitHub backup alert
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          NUMBER=$(gh issue list --state open --search '"[OPS] Supabase 백업 실패" in:title' --json number,title \
+            --jq '.[] | select(.title == "[OPS] Supabase 백업 실패") | .number' | head -n 1)
+          if [ -n "$NUMBER" ]; then
+            gh issue close "$NUMBER" --comment "백업과 장기 보관 전송이 정상으로 돌아왔습니다. 확인: ${RUN_URL}"
+          fi
