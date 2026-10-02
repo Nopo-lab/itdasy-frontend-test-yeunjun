@@ -1,0 +1,42 @@
+[OK] Demo user 생성: review@itdasy.com (id=1)
+[OK] ShopSettings 생성
+[OK] Persona 생성 (말투 분석 완료 상태)
+[OK] Subscription Membership 플랜 부여
+[OK] 데모 데이터 시드 완료 — 고객 5·예약 7·매출 10·재고 3
+
+============================================================
+  이메일:   review@itdasy.com
+  비밀번호: (STORE_SUBMISSION.md 참조 — 로그에 남기지 않음)
+  플랜:     Membership (1년) + 데모 데이터 (고객 5명 · 매출 10건 · 예약 7건)
+============================================================
+→ 이 정보를 App Store Connect & Play Console Review Notes 에 복붙
+=== (c) automation gate — enable without consent
+POST dm-reply/settings enabled      -> 403 {'detail': {'code': 'consent_required', 'feature': 'dm_autoreply', 'consent_type': 'automation_dm_autoreply', 'version':
+PUT comment-reply-settings enabled  -> 403 {'detail': {'code': 'consent_required', 'feature': 'comment_autoreply', 'consent_type': 'automation_comment_autoreply', 
+PUT shop/dm-menu enabled            -> 403 {'detail': {'code': 'consent_required', 'feature': 'dm_quick_reply', 'consent_type': 'automation_dm_quick_reply', 'versi
+POST assistant/execute toggle       -> 200 {'ok': False, 'kind': 'toggle_dm_autoreply', 'code': 'consent_required', 'enabled': False, 'message': "DM 자동응답은 '내 샵 관리 → 잇비 자동화'에서 안내를 확인하고 동의한 뒤에 켤 수 있어요 🙏", 
+DB DMAutoReplySetting.enabled after assistant toggle: None
+UserConsent rows: 0
+automation_allowed(dm_autoreply): GateDecision(allow=False, reason='user_disabled', enabled=False, consented=False)
+GET settings shows enabled = False
+POST settings (read-modify-write with enabled=True) -> 403 {'detail': {'code': 'consent_required', 'feature': 'dm_autoreply', 'consent_type': 'automation_dm_autoreply', 'version':
+
+=== grant consent, then (b) send failure after booking created
+1st send (Meta fails)  -> 502 {'detail': '예약 #8은 만들어졌지만 손님에게 확정 DM 을 못 보냈어요. [전송]을 다시 누르면 같은 예약으로 발송만 다시 시도해요.', 'request_id': '6a134bec74e5'}
+  bookings: [(8, '홍길동', 'confirmed', '2026-10-03T05:00:00+00:00')]
+  customers: [(6, '홍길동', '0101234****')]
+  log status: pending_confirm | automation failures: 1
+2nd send (retry, Meta ok)-> 200 {'ok': True, 'message': '✅ 발송 완료 + 예약 #8 재사용(발송만 재시도)', 'action': {'ok': True, 'result_id': 8, 'reused': True, 'label': '예약 #8 재사용(발송만 재시도)', 'confirmation_message': '10월 3일 14:00 젤네일 예약 확정됐어요 ✨ 변경 원하시면 답장 주세요!'}, 'booking_id': 8}
+  bookings: [(8, '홍길동', 'confirmed')]
+  customers: [(6, '홍길동', '0101234****')]
+  log status: sent_after_confirm | reply_text sent to customer: '10월 3일 14:00 젤네일 예약 확정됐어요 ✨ 변경 원하시면 답장 주세요!'
+  send calls: [('fail', '10월 3일 14:00 젤네일 예약 확정됐어요 ✨ 변경'), ('ok', '10월 3일 14:00 젤네일 예약 확정됐어요 ✨ 변경 원하시면 답장 주')]
+
+=== (d) customer/booking visible via list APIs
+GET /customers?q=홍길동 -> 200 [(6, '홍길동', None)]
+GET /bookings -> 200 [(8, '홍길동', 6, '2026-10-03T05:00:00Z')]
+GET /dm-confirm-queue -> 200 items 0 X-Token-State ok
+
+=== send_edit after action fail returns 200+ok:false?
+send_edit past-time card -> 200 {'ok': False, 'message': '10월 1일 08:15는 이미 지난 시간이에요 🥹\n가능한 시간 새로 받아서 다시 확정해 주세요!'}
+send past-time card      -> 200 {'ok': False, 'code': 'action_failed', 'message': '10월 1일 08:15는 이미 지난 시간이에요 🥹\n가능한 시간 새로 받아서 다시 확정해 주세요!', 'action': {'ok': False, 'label': '예약 확정 실패 (지난 시간)', 'fail_message': '10월 1일 08:15는 이미 지난 시간 | calls: ('ok', '10월 3일 14:00 젤네일 예약 확정됐어요 ✨ 변경 원하시면 답장 주')

@@ -1,0 +1,18 @@
+{
+ "new_signup": {
+  "overlayHidden": false,
+  "display": "flex",
+  "onboarding_done": null,
+  "shop_name": null,
+  "obTitle": "사진만 올리면AI가 글을 만들어드려요 잇데이는 1인 샵 원장님 전용 AI 잇비예요 샵 종류를 선택해 주세요 ",
+  "pageErrors": []
+ },
+ "legacy_placeholder": {
+  "overlayHidden": false,
+  "display": "flex",
+  "onboarding_done": null,
+  "shop_name": "합성매장B의 샵",
+  "obTitle": "사진만 올리면AI가 글을 만들어드려요 잇데이는 1인 샵 원장님 전용 AI 잇비예요 샵 종류를 선택해 주세요 ",
+  "pageErrors": []
+ }
+}

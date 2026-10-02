@@ -1,0 +1,17 @@
+[OK] Demo user 생성: review@itdasy.com (id=1)
+[OK] ShopSettings 생성
+[OK] Persona 생성 (말투 분석 완료 상태)
+[OK] Subscription Membership 플랜 부여
+[OK] 데모 데이터 시드 완료 — 고객 5·예약 7·매출 10·재고 3
+
+============================================================
+  이메일:   review@itdasy.com
+  비밀번호: (STORE_SUBMISSION.md 참조 — 로그에 남기지 않음)
+  플랜:     Membership (1년) + 데모 데이터 (고객 5명 · 매출 10건 · 예약 7건)
+============================================================
+→ 이 정보를 App Store Connect & Play Console Review Notes 에 복붙
+10a newer first -> {'status': 'ok'}
+10b older second-> {'status': 'ok'}
+   stored: (1, 'cust4', '두번째(나중)', 'mid-new', '2026-10-01T23:17:39+00:00', 'external_received_at=2025-10-09T08:54:20+00:00')
+   stored: (2, 'cust4', '첫번째(먼저)', 'mid-old', '2026-10-01T23:17:39+00:00', 'external_received_at=2025-10-09T08:53:20+00:00')
+   thread order (build_threads): ['첫번째(먼저)', '두번째(나중)']

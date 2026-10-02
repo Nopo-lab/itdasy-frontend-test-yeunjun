@@ -1,0 +1,27 @@
+{
+  "reqs": [
+    {
+      "url": "/workspace/slots/upsert",
+      "m": "POST",
+      "photos": 0
+    }
+  ],
+  "dbIds": [
+    "slot-A"
+  ],
+  "db": [
+    {
+      "id": "slot-A",
+      "label": "A",
+      "photos": 0,
+      "sync": "dirty",
+      "conflictOf": null
+    }
+  ],
+  "toasts": [],
+  "status": {
+    "pending": 1,
+    "failed": false,
+    "at": 1790915749076
+  }
+}

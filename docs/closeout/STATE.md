@@ -1,19 +1,19 @@
 # 마감 작업 상태 (docs/closeout/STATE.md)
 
-> 새 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-02 04:20 UTC (2차 백엔드 커밋 완료 · FE-F/FE-G·감사 3 재실행 중)
+> 새 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-02 09:10 UTC (2차 전부 커밋 · BE-F IAP 수정 + 감사 2영역 재실행 중)
 
 ## 저장소 · 브랜치 · 커밋
 | 레포 | 경로 | 브랜치 | 상태 |
 |---|---|---|---|
-| 프런트 `Nopo-lab/itdasy-frontend-test-yeunjun` | `/home/user/itdasy-frontend-test-yeunjun` | `ccr-d5f1311f-u6e0c1` (origin/main `6f39a40` 기준) | 11커밋 푸시됨: `c4e246f` `232d4a3` `1238fd3` `6918ac8` `5c73422` `e603778` `57b509d` `6c0c010` `f4e983f` `ddf352d` `03f135c` |
-| 백엔드 `Nopo-lab/itdasy_backend-test` | `/home/user/itdasy_backend-test` (shallow clone) | `ccr-d5f1311f-be` (origin/main `8598863` 기준) | 8커밋 푸시됨: `57aec85` `ce50080` `9ae2965` `55b5710` `4a9f10c` `e046d47` `29e5fcb` `c921655` |
+| 프런트 `Nopo-lab/itdasy-frontend-test-yeunjun` | `/home/user/itdasy-frontend-test-yeunjun` | `ccr-d5f1311f-u6e0c1` (origin/main `6f39a40` 기준) | 20커밋 푸시됨 — 최신 `f969568`(작업실) ← `ecc2c76` `1db1ca8` `689b19d` `702068a` `64ad4af` `03f135c` `ddf352d` `f4e983f` `6c0c010` … `c4e246f` |
+| 백엔드 `Nopo-lab/itdasy_backend-test` | `/home/user/itdasy_backend-test` (shallow clone) | `ccr-d5f1311f-be` (origin/main `8598863` 기준) | 12커밋 푸시됨 — 최신 `c2baa1a`(inbox 리뷰 반영) ← `bf62caf` `a000e38` `c921655` `29e5fcb` `e046d47` `4a9f10c` `55b5710` `9ae2965` `ce50080` `57aec85` |
 
 - PR 은 만들지 않았다(사용자 명시 요청 없음). 백엔드는 `main` 머지 = 즉시 운영 배포이므로 반드시 PR 리뷰 후.
 - 운영 백엔드(`itdasy-backend-staging-…` = 운영)·운영 DB·실발송·실결제·배포·스토어 제출은 **하지 않았다**.
 
 ## 보호해야 할 것
 - 세션 시작 시 두 레포 모두 미커밋 변경 0, worktree 0. 다른 작업자 변경 없음.
-- 백엔드 2차 수정(BE-C/BE-D/BE-E + 리드)은 전부 커밋·푸시됨(작업트리 clean). 프런트 작업트리에는 FE-F(터치/키보드)·FE-G(작업실 잔여) 에이전트가 **미커밋 수정 진행 중**일 수 있다(워크플로 `wf_f4ba46da-b34`) — `git status` 확인 후 보고를 읽고 커밋. 함부로 reset/checkout 금지.
+- 2차 수정은 전부 커밋·푸시됨. **BE-F(구독·결제·IAP) 에이전트가 백엔드 routers/subscription.py·iap.py·billing.py·persona.py + 프런트 app-iap.js·app-plan.js·index.html 을 미커밋으로 고치는 중**일 수 있다 — `git status` 확인 후 보고를 읽고 커밋. 함부로 reset/checkout 금지.
 
 ## 로컬 검증 환경 (이 세션에서 세운 것 — 컨테이너 재시작 시 다시 올린다)
 ```bash
@@ -32,11 +32,12 @@ su postgres -s /bin/bash -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/itdas
 ## 테스트 현황
 | 검사 | 수정 전 기준선 | 최근 실행 (커밋 기준) |
 |---|---|---|
-| 프런트 `npx jest` | 228 suites / 3,363 | **255 suites / 3,585 PASS** (`6c0c010`) |
-| 프런트 `npm run lint:ci` | 0 errors / 177 warnings | 0 errors / 175 warnings |
-| 프런트 `npm run smoke` · `audit:overlay` | 통과 | 통과 |
-| 백엔드 `pytest tests` (sqlite) | 4,866 passed · 301 skipped | **4,998 passed · 311 skipped · 1 xfailed** (`55b5710` 직전 트리; 실패 3건은 seed 스크립트 변경을 되돌려 해소) |
-| 백엔드 `pytest tests/pg` (PG 16) | 221 passed | **231 passed** (`55b5710` 직전 트리) + 리드 PG 테스트 1 |
+| 프런트 `npx jest` | 228 suites / 3,363 | **269 suites / 3,680 PASS** (`f969568`) |
+| 프런트 `npm run lint:ci` | 0 errors / 177 warnings | 0 errors / 177 warnings |
+| 프런트 `npm run smoke` · `audit:overlay` · `scripts/wsv2-multipair-qa.js` | 통과 | 통과 · QA 17/17 |
+| 백엔드 `pytest tests` (sqlite) | 4,866 passed · 301 skipped | **5,094 passed · 322 skipped · 1 xfailed** (`c2baa1a`) |
+| 백엔드 `pytest tests/pg` (PG 16) | 221 passed | **242 passed** (`c2baa1a`) |
+| 최종 E2E 390px(11단계) | — | 11/11, 페이지 오류 0 (`docs/closeout/evidence/final-e2e/`) |
 
 ## 완료 항목 (요약 — 상세는 REPORT.md)
 1. 테스트 프런트가 운영 백엔드로 붙던 독립 페이지 3개 수정 (`c4e246f`)
@@ -52,10 +53,9 @@ su postgres -s /bin/bash -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/itdas
 ## 완료(2차) — REPORT §3.3
 - BE-C 인박스 `e046d47` · BE-D 견고성 `29e5fcb` · BE-E 돈/발행/샘플 `c921655` · 프런트 쪽 `03f135c`
 
-## 진행 항목 (워크플로 `wf_f4ba46da-b34` 재실행, 백그라운드)
-- FE-F: 44px 터치 영역 일괄, 키보드 가림(visualViewport 훅), 대비/문구 P3
-- FE-G: 작업실 `clear_photos` 계약, 렌더러 메모리 누수, 캡션 미리보기/문맥/파일 안내/배너/navStack P3
-- 감사 3영역 재실행: perf-backend, build-iap-native, past-defects-regression
+## 진행 항목 (단독 에이전트 3개, 백그라운드)
+- BE-F: build-iap-native 01~08 수정(P1 2건 포함) — 보고 후 검증·커밋·전체 pytest/jest 재실행
+- 감사 perf-backend(대량 PG 측정)·past-defects-regression 재실행 → `scratchpad/results/*.json` → REPORT §4.3/§5 반영
 
 ## 차단 요인 (이 컨테이너에서 불가)
 - Meta 실발송·실웹훅, Apple/Google 실결제·샌드박스, 실기기 빌드(Xcode/Android SDK 없음), 스토어 콘솔, 운영 DB/배포. 전부 BLOCKED 로 보고.

@@ -1,0 +1,20 @@
+boot:stable {"ok":true,"reloads":0}
+login:stable {"ok":true,"reloads":0}
+boot+login {"base":"http://127.0.0.1:5500","tok":true,"url":"http://127.0.0.1:5500/index.html"}
+api {"release":true,"size":0}
+rss0 {"mb":266}
+r1:compose {"mb":437,"screen":"caption"}
+r1:closed {"mb":474,"slots":1,"blobs":1,"toasts":["5장 추가됨","작업을 임시 저장했어요 — 작업실에서 이어서 할 수 있어요"]}
+s1:flow-dom {"lens":[116020,95836,3584,0,0]}
+s1:rss {"mb":459}
+s2:blob-release {"before":1,"released":0,"after":1}
+s2:rss {"mb":468}
+s3:blob-release-all {"released":1,"after":0}
+s3:rss {"mb":468}
+s4:home-dom {"removed":1}
+s4:rss {"mb":468}
+r2:compose {"mb":627,"screen":"caption"}
+r2:closed {"mb":629,"slots":2,"blobs":1,"toasts":["서버 연결이 불안정해요. 자동으로 다시 시도 중...","사진을 먼저 추가해 주세요.","5장 추가됨","작업을 임시 저장했어요 — 작업실에서 이어서 할 수 있어요"]}
+r3:compose {"mb":680,"screen":"caption"}
+r3:closed {"mb":689,"slots":3,"blobs":1,"toasts":["사진을 먼저 추가해 주세요.","5장 추가됨","작업을 임시 저장했어요 — 작업실에서 이어서 할 수 있어요","서버 연결이 불안정해요. 자동으로 다시 시도 중..."]}
+s5:pressure-critical {"mb":276}

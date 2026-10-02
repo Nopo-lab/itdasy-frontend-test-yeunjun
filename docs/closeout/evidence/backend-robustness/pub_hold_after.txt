@@ -1,0 +1,6 @@
+pending post id 5 user 1
+[before] pool checkedout=0 pg rows=[('idle', False), ('idle', False), ('idle', False), ('idle', False)]
+[during-external-call] pool checkedout=0 pg rows=[('idle', False), ('idle', False), ('idle', False), ('idle', False)]
+[after] pool checkedout=0 pg rows=[('idle', False), ('idle', False), ('idle', False), ('idle', False)]
+post status: sent
+RESULT during external call: (0, [('idle', False), ('idle', False), ('idle', False), ('idle', False)])

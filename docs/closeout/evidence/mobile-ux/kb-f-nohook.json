@@ -1,0 +1,141 @@
+{
+ "mode": "nohook",
+ "customerAdd": {
+  "control": {
+   "top": 669,
+   "bottom": 713,
+   "vh": 844,
+   "vvh": 844,
+   "coveredByKeyboard": true
+  },
+  "state": {
+   "kbOpen": false,
+   "inset": "0px",
+   "active": "cedName"
+  },
+  "after": {
+   "top": 669,
+   "bottom": 713,
+   "vh": 844,
+   "vvh": 544,
+   "visibleAboveKeyboard": false
+  },
+  "input": {
+   "top": 205,
+   "bottom": 247,
+   "vh": 844,
+   "vvh": 544,
+   "visibleAboveKeyboard": true
+  },
+  "afterScroll": {
+   "top": 669,
+   "bottom": 713,
+   "vh": 844,
+   "vvh": 544,
+   "visibleAboveKeyboard": false
+  },
+  "pass": false
+ },
+ "revenueAdd": {
+  "control": {
+   "top": 779,
+   "bottom": 826,
+   "vh": 844,
+   "vvh": 844,
+   "coveredByKeyboard": true
+  },
+  "state": {
+   "kbOpen": false,
+   "inset": "0px",
+   "active": "rfAmount"
+  },
+  "after": {
+   "top": 779,
+   "bottom": 826,
+   "vh": 844,
+   "vvh": 544,
+   "visibleAboveKeyboard": false
+  },
+  "input": {
+   "top": 318,
+   "bottom": 336,
+   "vh": 844,
+   "vvh": 544,
+   "visibleAboveKeyboard": true
+  },
+  "afterScroll": {
+   "top": 779,
+   "bottom": 826,
+   "vh": 844,
+   "vvh": 544,
+   "visibleAboveKeyboard": false
+  },
+  "pass": false
+ },
+ "bookingForm": {
+  "control": {
+   "top": 786,
+   "bottom": 834,
+   "vh": 844,
+   "vvh": 844,
+   "coveredByKeyboard": true
+  },
+  "state": {
+   "kbOpen": false,
+   "inset": "0px",
+   "active": "bfMemo"
+  },
+  "after": {
+   "top": 786,
+   "bottom": 834,
+   "vh": 844,
+   "vvh": 544,
+   "visibleAboveKeyboard": false
+  },
+  "input": {
+   "top": 664,
+   "bottom": 728,
+   "vh": 844,
+   "vvh": 544,
+   "visibleAboveKeyboard": false
+  },
+  "afterScroll": {
+   "top": 786,
+   "bottom": 834,
+   "vh": 844,
+   "vvh": 544,
+   "visibleAboveKeyboard": false
+  },
+  "pass": false
+ },
+ "assistant": {
+  "control": {
+   "top": 792,
+   "bottom": 832,
+   "vh": 844,
+   "vvh": 844,
+   "coveredByKeyboard": true
+  },
+  "state": {
+   "kbOpen": false,
+   "inset": "0px",
+   "active": "asstInput"
+  },
+  "after": {
+   "top": 792,
+   "bottom": 832,
+   "vh": 844,
+   "vvh": 544,
+   "visibleAboveKeyboard": false
+  },
+  "input": {
+   "top": 792,
+   "bottom": 832,
+   "vh": 844,
+   "vvh": 544,
+   "visibleAboveKeyboard": false
+  },
+  "afterScroll": null,
+  "pass": false
+ }
+}

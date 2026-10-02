@@ -1,0 +1,21 @@
+boot:stable {"ok":true,"reloads":0}
+login:stable {"ok":true,"reloads":0}
+boot+login {"base":"http://127.0.0.1:5500","tok":true,"url":"http://127.0.0.1:5500/index.html"}
+rss0 {"mb":{"totalMB":272,"renderers":[64,208]},"slots":0}
+poll {"s":"2.4","open":true,"screen":"layout","toasts":["5장 추가됨"],"errs":[]}
+mem:after5 {"usedMB":15.7,"totalMB":17.1}
+rss:after5 {"mb":{"totalMB":403,"renderers":[64,339]}}
+tiles {"strip":5,"tiles":0,"title":"레이아웃 고르기"}
+compose {"ms":123,"screen":"caption"}
+mem:after-compose {"usedMB":15.3,"totalMB":16.9}
+rss:after-compose {"mb":{"totalMB":493,"renderers":[64,429]}}
+mem:closed {"usedMB":15.7,"totalMB":18.2}
+rss:closed {"mb":{"totalMB":529,"renderers":[64,465]},"toasts":["작업을 임시 저장했어요 — 작업실에서 이어서 할 수 있어요"],"slots":1}
+mem:r2-compose {"usedMB":16.4,"totalMB":18.4}
+rss:r2-compose {"mb":{"totalMB":570,"renderers":[64,506]}}
+mem:r2-closed {"usedMB":15.9,"totalMB":17.7}
+rss:r2-closed {"mb":{"totalMB":573,"renderers":[64,509]},"slots":2,"toasts":["사진을 먼저 추가해 주세요.","5장 추가됨","작업을 임시 저장했어요 — 작업실에서 이어서 할 수 있어요"]}
+mem:r3-compose {"usedMB":16.2,"totalMB":18.5}
+rss:r3-compose {"mb":{"totalMB":619,"renderers":[64,555]}}
+mem:r3-closed {"usedMB":15.7,"totalMB":19.3}
+rss:r3-closed {"mb":{"totalMB":622,"renderers":[64,558]},"slots":3,"toasts":["사진을 먼저 추가해 주세요.","5장 추가됨","작업을 임시 저장했어요 — 작업실에서 이어서 할 수 있어요"]}

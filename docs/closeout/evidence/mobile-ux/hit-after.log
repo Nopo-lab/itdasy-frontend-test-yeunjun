@@ -1,0 +1,19 @@
+== login small 0/7
+== home small 1/11
+    81x35 (box 135x15) button#hv5CmsgWhy "DM이 왔는데 안 보이면? →"
+== dashboard small 0/9
+== customers small 0/17
+== customerDetail small 0/9
+== customerAdd small 0/3
+== calendar small 0/39
+== bookingForm small 0/20
+== revenue small 0/36
+== revenueAdd small 0/15
+== workshop small 0/7
+== settings small 0/11
+== dmQueue small 0/4
+== commentQueue small 0/3
+== assistant small 2/8
+    44x40 (box 44x19) button "AI 답변 신고"
+    44x40 (box 44x19) button "AI 답변 신고"
+TOTAL small 3 / 199

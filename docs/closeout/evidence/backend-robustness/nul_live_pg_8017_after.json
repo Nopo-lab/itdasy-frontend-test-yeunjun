@@ -1,0 +1,476 @@
+{
+ "total": 67,
+ "n500": 0,
+ "nul_echoed": 0,
+ "results": [
+  {
+   "method": "POST",
+   "path": "/services",
+   "variant": "NUL:name",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/services",
+   "variant": "NUL:category",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/services",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "PATCH",
+   "path": "/services/5",
+   "variant": "NUL:name",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PATCH",
+   "path": "/services/5",
+   "variant": "NUL:category",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PATCH",
+   "path": "/services/5",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/treatments",
+   "variant": "NUL:performed_at",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/treatments",
+   "variant": "NUL:service_name",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/treatments",
+   "variant": "NUL:memo",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/treatments",
+   "variant": "NUL:persona_note",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/treatments",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "PATCH",
+   "path": "/treatments/1",
+   "variant": "NUL:memo",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PATCH",
+   "path": "/treatments/1",
+   "variant": "NUL:service_name",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PATCH",
+   "path": "/treatments/1",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/inventory",
+   "variant": "NUL:name",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/inventory",
+   "variant": "NUL:unit",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/inventory",
+   "variant": "NUL:category",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/inventory",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "PATCH",
+   "path": "/inventory/4",
+   "variant": "NUL:name",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PATCH",
+   "path": "/inventory/4",
+   "variant": "NUL:unit",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PATCH",
+   "path": "/inventory/4",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/inventory/4/adjust",
+   "variant": "NUL:reason",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/inventory/4/adjust",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/waitlist",
+   "variant": "NUL:customer_name",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/waitlist",
+   "variant": "NUL:phone",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/waitlist",
+   "variant": "NUL:preferred_service",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/waitlist",
+   "variant": "NUL:memo",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/waitlist",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "PATCH",
+   "path": "/waitlist/1",
+   "variant": "NUL:memo",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PATCH",
+   "path": "/waitlist/1",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/customer-reviews",
+   "variant": "NUL:customer_name",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/customer-reviews",
+   "variant": "NUL:content",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/customer-reviews",
+   "variant": "NUL:review_link",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/customer-reviews",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/memberships/use",
+   "variant": "NUL:service_name",
+   "status": 400,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/memberships/use",
+   "variant": "NUL:memo",
+   "status": 400,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/memberships/use",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 400,
+   "nul_in_response": false
+  },
+  {
+   "method": "PUT",
+   "path": "/shop/settings",
+   "variant": "NUL:shop_name",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PUT",
+   "path": "/shop/settings",
+   "variant": "NUL:address",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PUT",
+   "path": "/shop/settings",
+   "variant": "NUL:phone",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PUT",
+   "path": "/shop/settings",
+   "variant": "NUL:tone",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PUT",
+   "path": "/shop/settings",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PUT",
+   "path": "/shop/persona",
+   "variant": "NUL:tone",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PUT",
+   "path": "/shop/persona",
+   "variant": "NUL:emojis",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PUT",
+   "path": "/shop/persona",
+   "variant": "NUL:hashtags",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PUT",
+   "path": "/shop/persona",
+   "variant": "NUL:fixed_footer",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PUT",
+   "path": "/shop/persona",
+   "variant": "NUL:caption_template",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "PUT",
+   "path": "/shop/persona",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/assistant/facts",
+   "variant": "NUL:text",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/assistant/facts",
+   "variant": "NUL:kind",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/assistant/facts",
+   "variant": "NUL:source",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/assistant/facts",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/dm-autoreply/manual-replies",
+   "variant": "NUL:title",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/dm-autoreply/manual-replies",
+   "variant": "NUL:trigger_keywords",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/dm-autoreply/manual-replies",
+   "variant": "NUL:reply_text",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/dm-autoreply/manual-replies",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/scheduled-posts",
+   "variant": "NUL:caption",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/scheduled-posts",
+   "variant": "NUL:hashtags",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/scheduled-posts",
+   "variant": "NUL:scheduled_at",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/scheduled-posts",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/workspace/slots/upsert",
+   "variant": "NUL:slot_id",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/workspace/slots/upsert",
+   "variant": "NUL:label",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/workspace/slots/upsert",
+   "variant": "NUL:caption",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/workspace/slots/upsert",
+   "variant": "NUL:hashtags",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/workspace/slots/upsert",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 200,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/support/messages",
+   "variant": "NUL:content",
+   "status": 201,
+   "nul_in_response": false
+  },
+  {
+   "method": "POST",
+   "path": "/support/messages",
+   "variant": "RAW:nul-in-json-escape",
+   "status": 201,
+   "nul_in_response": false
+  }
+ ]
+}

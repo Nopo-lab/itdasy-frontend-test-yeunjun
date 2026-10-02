@@ -1,0 +1,55 @@
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: REMOVEBG_API_KEY
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: INSTAGRAM_APP_ID
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: INSTAGRAM_APP_SECRET
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: META_APP_ID
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: META_APP_SECRET
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: META_REDIRECT_URI
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: SMS_API_KEY
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: SMS_API_URL
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: ALIGO_API_KEY
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: ALIGO_USER_ID
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: ALIGO_SENDER_KEY
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: PORTONE_API_SECRET
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: PORTONE_WEBHOOK_SECRET
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: PORTONE_STORE_ID
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: PORTONE_CHANNEL_KEY
+2026-10-01 23:22:16,239 [WARNING] utils.env_validator: 선택 환경변수 미설정: X_CRON_SECRET
+2026-10-01 23:22:16,239 [INFO] utils.env_validator: ✅ 환경변수 검증 통과
+2026-10-01 23:22:17,970 [INFO] services.generation: [GEMINI] API Key 폴백 모드
+/home/user/itdasy_backend-test/backend/routers/today.py:91: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+  period: str = Query("today", regex="^(today|week|month)$"),
+2026-10-01 23:22:18,646 [WARNING] root: [SCHEMA_DRIFT] user_style_fingerprints: missing=set(), extra={'hashtag_counts', 'emoji_counts'}. 수동 마이그레이션 필요.
+2026-10-01 23:22:18,704 [INFO] root: [SCHEMA] ix_dm_message_logs_panel 인덱스 추가 완료
+2026-10-01 23:22:18,707 [INFO] root: [SCHEMA] inventory_items.quantity 타입 확인 완료
+2026-10-01 23:22:18,709 [INFO] root: [SCHEMA] inventory_items.threshold 타입 확인 완료
+2026-10-01 23:22:18,718 [INFO] root: [SEED] review demo seed 시작
+2026-10-01 23:22:19,326 [INFO] root: [SEED] review demo seed 완료
+2026-10-01 23:22:19,327 [INFO] root: [CORS] allow_origins=['https://nopo-lab.github.io', 'https://itdasy.com', 'https://www.itdasy.com', 'capacitor://localhost', 'https://localhost', 'http://localhost:8000', 'http://localhost:5500', 'http://127.0.0.1:5500', 'http://localhost:3000']
+2026-10-01 23:22:19,751 [INFO] apscheduler.scheduler: Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-10-01 23:22:19,751 [INFO] apscheduler.scheduler: Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-10-01 23:22:19,753 [INFO] apscheduler.scheduler: Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-10-01 23:22:19,753 [INFO] apscheduler.scheduler: Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-10-01 23:22:19,754 [INFO] apscheduler.scheduler: Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-10-01 23:22:19,754 [INFO] root: [cron] dm_batch_sweep 미등록 — DM_BATCH_WINDOW_SEC=0 (배칭 전역 차단)
+2026-10-01 23:22:19,754 [INFO] apscheduler.scheduler: Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-10-01 23:22:19,754 [INFO] root: [cron] dm_failed_event_retry 등록 — 60초 간격
+2026-10-01 23:22:19,755 [INFO] apscheduler.scheduler: Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-10-01 23:22:19,755 [INFO] apscheduler.scheduler: Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-10-01 23:22:19,755 [INFO] apscheduler.scheduler: Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-10-01 23:22:19,756 [INFO] apscheduler.scheduler: Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-10-01 23:22:20,198 [INFO] root: ✅ DB_manage (클라우드 스토리지) 연동 완료
+2026-10-01 23:22:20,202 [INFO] root: ✅ Beauty Platform 브릿지 연동 완료
+2026-10-01 23:22:21,258 [INFO] root: instagram_token_refresh_success user_id=1 expires_at=2026-11-30T23:22:20.235612+00:00
+[OK] Demo user 비밀번호 재설정: review@itdasy.com
+[SKIP] 데모 데이터 최신 — 그대로 둔다
+
+============================================================
+  이메일:   review@itdasy.com
+  비밀번호: (STORE_SUBMISSION.md 참조 — 로그에 남기지 않음)
+  플랜:     Membership (1년) + 데모 데이터 (고객 5명 · 매출 10건 · 예약 7건)
+============================================================
+→ 이 정보를 App Store Connect & Play Console Review Notes 에 복붙
+[before] checkedout 0
+[during Meta call] pool checkedout=0 idle_in_txn=0 url=refresh_access_token
+[after] checkedout 0 result {'checked': 1, 'refreshed': 1, 'failed': 0, 'retryable': 0, 'reconnect_required': 0, 'notified': 0, 'liveness_checked': 0, 'liveness_invalid': 0}
+RESULT: (0, [])

@@ -1,0 +1,8 @@
+register (201, {'id': 17, 'email': 'lead-sample-1790914326@example.com', 'name': '합성매장B', 'is_active': True, 'created_at': '2026-10-02T04:12:07Z', 'oaut
+login 200
+status#1 (200, {'has_sample': True, 'total': 11, 'counts': {'customers': 3, 'bookings': 4, 'inventory': 4, 'revenues': 0}})
+customers#1 sample-names ['(샘플) 이수민', '(샘플) 박소영', '(샘플) 김지연']
+purge#1 (200, {'deleted': {'bookings': 4, 'inventory': 4, 'revenues': 0, 'customers': 3}})
+status#2 (200, {'has_sample': False, 'total': 0, 'counts': {'customers': 0, 'bookings': 0, 'inventory': 0, 'revenues': 0}})
+purge#2 (idempotent) (200, {'deleted': {'bookings': 0, 'inventory': 0, 'revenues': 0, 'customers': 0}})
+customers#2 remaining 0
