@@ -5,8 +5,9 @@
         구매 영수증/토큰을 백엔드로 보내 교차검증 → 멤버십 활성화.
 
    백엔드 계약(itdasy_backend routers/iap.py):
-     POST /iap/apple-verify  { transaction_id, receipt }        → { status, plan, expires_at, auto_renewing }
+     POST /iap/apple-verify  { transaction_id, receipt }        → { status, plan, expires_at, auto_renewing, message? }
      POST /iap/google-verify { purchase_token, product_id }     → 동일
+       status: 'ok' 만 성공. 'pending'(결제 보류)·'failed'(환불 영수증 등)는 200 이어도 finish 하지 않는다.
      GET  /iap/status                                            → { plan, active, auto_renewing, expires_at }
 
    플러그인: cordova-plugin-purchase (CdvPurchase, v13+).
@@ -120,7 +121,20 @@
     } catch (_e) { return _productIdFor(DEFAULT_PLAN); }
   }
 
-  // 승인된 트랜잭션을 백엔드에 검증 → 성공 시 true(그리고 _pending resolve)
+  // 승인된 트랜잭션을 백엔드에 검증 → { ok:true, data } 또는 { ok:false, reason, message }
+  //
+  // [build-iap-native-03 2026-10-02] **HTTP 200 ≠ 결제 성공.** 백엔드 VerifyResponse.status 가
+  //   'ok' 일 때만 성공이다. 'pending'(Google 결제 보류 — 계좌이체·편의점처럼 돈이 아직 안 들어온
+  //   상태)·'failed'(환불된 영수증 복원 등)도 200 으로 온다. 예전엔 res.ok 만 보고 성공 분기로
+  //   가서 보류 거래를 tx.finish() 로 acknowledge 하고 '멤버십이 시작됐어요' 를 띄웠다(jsdom 실측).
+  //   보류/실패는 finish 하지 않는다 — 결제가 확정되면 서버는 RTDN 으로 활성화하고, 플러그인은
+  //   미완료 거래를 다음 기동/복원 때 다시 approved 로 알려 재검증된다.
+  function _verifyOutcome(data) {
+    var st = data && data.status;
+    if (st === 'ok' || st === undefined) return { ok: true, data: data || {} };   // 구버전 BE(status 없음)는 ok 로 본다
+    if (st === 'pending') return { ok: false, reason: 'pending', message: (data && data.message) || '결제 확인 중이에요. 결제가 완료되면 자동으로 열려요.' };
+    return { ok: false, reason: 'verify_failed', message: (data && data.message) || '결제를 확인하지 못했어요' };
+  }
   function _verify(tx) {
     var plat = _platform();
     var call;
@@ -136,9 +150,11 @@
       return Promise.reject(new Error('지원하지 않는 결제 환경'));
     }
     return call.then(function (data) {
-      // 활성화 알림 — app-plan 등이 구독 UI 갱신
+      var out = _verifyOutcome(data);
+      if (!out.ok) return out;
+      // 활성화 알림 — app-plan 등이 구독 UI 갱신 (status 'ok' 일 때만)
       try { window.dispatchEvent(new CustomEvent('itdasy:plan-activated', { detail: { plan: (data && data.plan) || 'membership', store: plat } })); } catch (_e) { void _e; }
-      return data;
+      return out;
     });
   }
 
@@ -159,11 +175,18 @@
         return { id: id, type: ProductType.PAID_SUBSCRIPTION, platform: plat };
       }));
 
-      // 승인 → 백엔드 검증 → 성공 시에만 finish()(스토어에 소비 확정).
-      //   검증 실패면 finish 하지 않아 다음 기회(restore/재기동)에 재검증된다(과금 후 미활성 자가복구).
+      // 승인 → 백엔드 검증 → status 'ok' 일 때만 finish()(스토어에 소비 확정).
+      //   검증 실패·결제 보류면 finish 하지 않아 다음 기회(restore/재기동/RTDN)에 재검증된다
+      //   (과금 후 미활성 자가복구 · 보류 거래를 성공으로 오인하지 않기).
       store.when()
         .approved(function (tx) {
-          _verify(tx).then(function (data) {
+          _verify(tx).then(function (out) {
+            if (!out.ok) {
+              _lastError = out.message || '';
+              if (_pending) { _pending.resolve({ ok: false, reason: out.reason, message: out.message || '' }); _pending = null; }
+              return;
+            }
+            var data = out.data;
             try { tx.finish(); } catch (_e) { void _e; }
             if (_pending) { _pending.resolve({ ok: true, plan: (data && data.plan) || 'membership' }); _pending = null; }
           }).catch(function (err) {

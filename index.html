@@ -931,7 +931,9 @@ window.__LATEST_BUILD__ = '20260916-ai-consent-home';
 <!-- ───── 회원가입 오버레이 ───── -->
 <div class="lock-overlay" id="signupOverlay" style="display:none;">
   <div class="lock-title">잇데이 회원가입</div>
-  <div class="lock-sub" style="margin-bottom:8px;">14일 무료 체험 · 카드 정보 불필요</div>
+  <!-- [build-iap-native-05 2026-10-02] 가입 시 체험은 부여되지 않는다(서버 start-trial 제거, 14일 체험은
+       스토어 월간 인트로 오퍼에만). 사실만 적는다. -->
+  <div class="lock-sub" style="margin-bottom:8px;">가입은 무료 · 카드 등록 없음</div>
 
   <div style="margin:20px 0 18px;text-align:center;font-size:12px;color:var(--text3);line-height:1.6;">
     가입 즉시 샘플 데이터가 자동 주입되어 <br>바로 둘러볼 수 있어요.
@@ -2353,7 +2355,8 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
     </div>
 
     <button id="planActionBtn">14일 무료로 시작하기</button>
-    <div class="pw-cta-sub">체험 기간엔 요금이 청구되지 않아요</div>
+    <!-- 보조 문구는 app-plan.js _updateCtaSub 가 상태별로 채운다(네이티브 월간만 체험 문구) — 정적 체험 문구 금지 -->
+    <div class="pw-cta-sub" style="display:none;"></div>
     <div id="planSubMeta" style="display:none;text-align:center;margin-top:10px;font-size:12px;color:#666;"></div>
     <button id="planCancelBtn" style="display:none;width:100%;margin-top:10px;padding:12px;border-radius:12px;border:1px solid #e5e5e5;background:#fff;color:#999;font-size:13px;font-weight:700;cursor:pointer;min-height:44px;">구독 취소</button>
     <!-- [C-1] 앱스토어 IAP 구매 복원 — 네이티브+플러그인 있을 때만 app-plan.js 가 노출 (Apple 3.1.1 필수) -->
@@ -2361,8 +2364,8 @@ try { localStorage.removeItem('itdasy:fab_pos'); } catch (err) { console.warn('[
     <!-- [출시감사 2026-07-31] 자동갱신 구독 고지 — Apple 3.1.2 / Google Play 구독 정책 필수. -->
     <div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#f8f9fa;font-size:11px;line-height:1.6;color:#5f6368;">
       <div style="font-weight:700;color:#3c4043;margin-bottom:4px;">구독 안내</div>
-      · 14일 무료 체험 후 <b>월 9,900원</b>이 자동 결제돼요.<br>
-      · 연간 결제(99,000원)는 체험 없이 바로 시작돼요.<br>
+      · 앱(App Store·Play) 월간 결제는 14일 무료 체험 후 <b>월 9,900원</b>이 자동 결제돼요(체험 제공 여부는 스토어 정책·수혜 이력에 따라요).<br>
+      · 연간 결제(99,000원)와 웹 결제는 체험 없이 바로 시작돼요.<br>
       · 갱신 24시간 전까지 해지하지 않으면 다음 기간도 결제돼요.<br>
       · 해지는 <span id="planCancelPathTxt">기기 설정 → 구독</span>에서 언제든 할 수 있어요.<br>
       · <a class="legal-link" href="terms.html" target="_blank" rel="noopener" style="color:#5f6368;text-decoration:underline;">이용약관</a> ·

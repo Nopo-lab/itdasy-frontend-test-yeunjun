@@ -118,24 +118,54 @@
     return Object.keys(map).find((k) => map[k] === _productId) || null;
   }
 
+  const _isPaidNow = () => ['pro', 'premium', 'membership'].includes(_currentPlan);
+
+  // "고른 카드가 지금 이용 중인 플랜인가" — 버튼 잠금의 단일 규칙.
+  //
+  // [결제 게이트 2026-09-07] 예전엔 유료이기만 하면 월간·연간 **어느 카드를 골라도**
+  //   "현재 이용 중인 플랜입니다" 를 띄우고 버튼을 잠갔다. 실측(브라우저):
+  //     월간 결제자가 '연 99,000원' 카드를 누름 → 버튼 "현재 이용 중인 플랜입니다"(disabled)
+  //   ① 사실이 아니다 — 연간을 이용 중인 게 아니다.
+  //   ② 연간으로 올릴 길이 아예 없다. 연간 카드를 만든 이유(LTV)가 통째로 죽는다.
+  //   plan 컬럼은 둘 다 'pro' 라 구분이 안 되지만 product_id 는 구분된다 → 그걸 쓴다.
+  //
+  // [build-iap-native-07 2026-10-02] 이 판정이 _updateActionButton 안에만 있어서
+  //   _applyBillingAvailability 는 `_selectedPlan === _currentPlan` 문자열 비교만 했다.
+  //   레거시 plan='membership' 유료 계정(데모·6,900 구독자)은 카드 값('pro')과 달라 통과했고,
+  //   웹에서 /billing/config enabled:false 를 보고 '현재 이용 중' 을 **'결제 준비 중'(비활성)으로
+  //   덮어썼다**(Playwright 실측). 규칙을 함수로 뽑아 두 곳이 같은 판정을 쓴다.
+  //   결제 주체를 모르는 유료 구독(웹 PG·폐기 상품·데모, billingKey null)은 예전처럼 보수적으로 '이용 중'.
+  function _isSameAsNow() {
+    const key = _currentBillingKey();
+    return (_selectedPlan === _currentPlan) || (_isPaidNow() && (key !== null
+      ? _selectedPlan === key : (_selectedPlan === 'pro' || _selectedPlan === 'pro_yearly')));
+  }
+
+  // 버튼 아래 보조 문구(.pw-cta-sub). 상태에 맞는 사실만 말한다.
+  //
+  // [build-iap-native-05 2026-10-02] 예전엔 index.html 에 '체험 기간엔 요금이 청구되지 않아요' 가
+  //   **정적으로** 박혀 있어 웹(즉시 청구)·연간(체험 없음)·이미 유료인 계정에도 그대로 보였다.
+  //   14일 체험은 스토어 월간 인트로 오퍼에만 있다(연간 없음, 웹 PortOne 없음).
+  function _updateCtaSub() {
+    const el = document.querySelector('#planPopup .pw-cta-sub');
+    if (!el) return;
+    const text = (_isSameAsNow() || _isPaidNow()) ? ''   // 결제 버튼이 실제로 결제를 시작하는 상태에서만
+      : (_selectedPlan === 'pro_yearly') ? '체험 없이 바로 결제돼요 · 언제든 해지할 수 있어요'
+        : (_selectedPlan !== 'pro') ? ''
+          : _isNative() ? '체험 기간엔 요금이 청구되지 않아요 · 체험 종료 24시간 전까지 해지 가능'
+            : '바로 결제돼요 · 언제든 해지할 수 있어요';
+    el.textContent = text;
+    el.style.display = text ? 'block' : 'none';
+  }
+
   function _updateActionButton() {
     const btn = document.getElementById('planActionBtn');
     if (!btn) return;
-    const paidNow = ['pro', 'premium', 'membership'].includes(_currentPlan);
+    const paidNow = _isPaidNow();
     const billingKey = _currentBillingKey();
+    _updateCtaSub();
 
-    // [결제 게이트 2026-09-07] 예전엔 유료이기만 하면 월간·연간 **어느 카드를 골라도**
-    //   "현재 이용 중인 플랜입니다" 를 띄우고 버튼을 잠갔다. 실측(브라우저):
-    //     월간 결제자가 '연 99,000원' 카드를 누름 → 버튼 "현재 이용 중인 플랜입니다"(disabled)
-    //   ① 사실이 아니다 — 연간을 이용 중인 게 아니다.
-    //   ② 연간으로 올릴 길이 아예 없다. 연간 카드를 만든 이유(LTV)가 통째로 죽는다.
-    //   plan 컬럼은 둘 다 'pro' 라 구분이 안 되지만 product_id 는 구분된다 → 그걸 쓴다.
-    const sameAsNow = (_selectedPlan === _currentPlan)
-      || (paidNow && billingKey !== null && _selectedPlan === billingKey)
-      // 결제 주체를 모르는 유료 구독(웹 PG·폐기 상품·데모)은 예전처럼 보수적으로 '이용 중'.
-      || (paidNow && billingKey === null && (_selectedPlan === 'pro' || _selectedPlan === 'pro_yearly'));
-
-    if (sameAsNow) {
+    if (_isSameAsNow()) {
       btn.textContent = '현재 이용 중인 플랜입니다';
       btn.disabled = true;
       btn.style.opacity = '0.5';
@@ -302,7 +332,7 @@
     _resetIfUserChanged();
     const meta = document.getElementById('planSubMeta');
     const cancelBtn = document.getElementById('planCancelBtn');
-    const paid = ['pro', 'premium', 'membership'].includes(_currentPlan);  // [2026-07-26] membership 도 유료(취소·만료 UI 노출)
+    const paid = _isPaidNow();  // [2026-07-26] membership 도 유료(취소·만료 UI 노출)
     const owner = paid ? _storeOwner() : null;   // 'apple'|'google' 이면 스토어 관리 구독
     if (meta) {
       if (paid && _periodEnd) {
@@ -348,12 +378,14 @@
       const showRestore = _isNative() && window.ItdasyIAP && window.ItdasyIAP.isAvailable && window.ItdasyIAP.isAvailable();
       restoreBtn.style.display = showRestore ? 'block' : 'none';
     }
+    _applyCancelPathText();   // 결제 주체를 알게 된 뒤 해지 경로 문구를 맞춘다
   }
 
   // [graceful disable] 웹에서 결제 불가(env 미설정)면 결제 버튼 비활성. 네이티브는 별도(IAP).
+  //   이미 이용 중인 플랜(_isSameAsNow)이면 결제 버튼이 아니므로 건드리지 않는다 (build-iap-native-07).
   async function _applyBillingAvailability() {
     const btn = document.getElementById('planActionBtn');
-    if (!btn || _selectedPlan === _currentPlan || _isNative()) return;
+    if (!btn || _isNative() || _isSameAsNow()) return;
     if (!window.ItdasyBilling) return;
     try {
       const avail = await window.ItdasyBilling.isWebBillingAvailable();
@@ -389,14 +421,20 @@
 
   // [출시감사 2026-07-31] 자동갱신 구독 고지의 '해지 방법'은 플랫폼마다 경로가 다르다.
   //   Apple 3.1.2 는 해지 방법 안내를 요구하는데, 안드로이드에서 "Apple ID" 라고 적혀 있으면
-  //   틀린 안내가 된다. 기본 문구는 중립("기기 설정 → 구독")이고 네이티브에서만 정확한 경로로 교체.
+  //   틀린 안내가 된다. 네이티브는 플랫폼별 스토어 경로로 교체한다.
+  // [build-iap-native-05 2026-10-02] 웹의 기본값이 '기기 설정 → 구독' 이었는데, 웹 PortOne
+  //   구독자의 실제 해지 경로는 **이 화면의 '구독 취소' 버튼**이다(앱 설정에 가면 아무것도 없다).
+  //   결제 주체(_store)는 /subscription/status 응답 뒤에야 알 수 있으므로 _renderSubMeta 에서도
+  //   다시 부른다. 웹에서 스토어 구독을 보는 경우(앱에서 결제한 계정이 PC 로 로그인)만 스토어 경로.
+  //   _storeOwner() 가 이미 '스토어 구독인가(네이티브에서 store 미상이면 플랫폼 스토어)' 를 판정하므로
+  //   그 결과 하나로 문구를 고른다 — 해지 버튼 노출(_renderSubMeta)과 같은 판정이라 어긋날 수 없다.
   function _applyCancelPathText() {
     const el = document.getElementById('planCancelPathTxt');
-    if (!el || !_isNative()) return;
-    let p = '';
-    try { p = (window.Capacitor.getPlatform && window.Capacitor.getPlatform()) || ''; } catch (_e) { void 0; }
-    if (p === 'ios') el.textContent = 'iPhone 설정 → Apple 계정 → 구독';
-    else if (p === 'android') el.textContent = 'Play 스토어 → 프로필 → 결제 및 구독';
+    if (!el) return;
+    const owner = _storeOwner();
+    el.textContent = (owner === 'apple')
+      ? (_isNative() ? 'iPhone 설정 → Apple 계정 → 구독' : 'App Store(iPhone 설정 → Apple 계정 → 구독)')
+      : (owner === 'google') ? 'Play 스토어 → 프로필 → 결제 및 구독' : '이 화면의 구독 취소 버튼';
   }
 
   async function doPlanAction() {
@@ -407,8 +445,7 @@
     //   (비례배분·즉시전환/다음주기 여부까지). 앱에서 order() 를 다시 태우면 그룹 설정이
     //   어긋났을 때 구독 2개가 동시에 살아 **이중청구**가 된다. 그래서 구독관리로 보낸다.
     const _billingKey = _currentBillingKey();
-    const _paidNow = ['pro', 'premium', 'membership'].includes(_currentPlan);
-    if (_paidNow && _billingKey !== null && _selectedPlan !== _billingKey) {
+    if (_isPaidNow() && _billingKey !== null && _selectedPlan !== _billingKey) {
       _openStoreSubs();
       return;
     }
@@ -455,6 +492,9 @@
           if (_btn) { _btn.disabled = false; _btn.style.opacity = '1'; _btn.textContent = _orig; }
           if (r && r.reason === 'cancelled') return; // 사용자가 취소 — 조용히
           if (typeof window.showToast === 'function') {
+            // [build-iap-native-03 2026-10-02] 결제 보류(계좌이체·편의점 등) — 실패도 성공도 아니다.
+            //   돈이 들어오면 서버가 RTDN 으로 자동 활성화한다. 팝업은 그대로 두고 사실만 말한다.
+            if (r && r.reason === 'pending') { window.showToast(r.message || '결제 확인 중이에요. 결제가 완료되면 자동으로 열려요'); return; }
             // 스토어에 그 상품이 아직 없을 때. "결제 실패" 라고 하면 원장님이 카드 문제로
             //   오해한다 — 무엇이 없고 무엇을 하면 되는지 말한다.
             if (r && r.reason === 'no_product') {
@@ -602,7 +642,7 @@
   window.getCurrentPlanLabel = () => { _resetIfUserChanged(); return _planDisplayName(_currentPlan); };
   // [2026-07-26 결제] membership(정본 단일 멤버십)도 유료로 인식 — 예전엔 pro/premium 만 봐서
   //   6,900원 결제자가 무료 취급(취소 UI·유료기능 클라 게이트에서 배제)됐다.
-  window.isPaidPlan = () => { _resetIfUserChanged(); return ['pro', 'premium', 'membership'].includes(_currentPlan); };
+  window.isPaidPlan = () => { _resetIfUserChanged(); return _isPaidNow(); };
 
   // [C-1] 구매 복원 — 스토어에서 소유한 구독을 다시 활성화(기기 변경·재설치 후).
   async function doRestorePurchases() {
