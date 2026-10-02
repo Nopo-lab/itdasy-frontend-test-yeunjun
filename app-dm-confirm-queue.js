@@ -450,6 +450,17 @@
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
           잇비가 예약 양식 보냈어요
         </div>` : '';
+    /* [flow-inbox-dm-comments-01 2026-10-01] 예약은 이미 만들어졌는데 손님 DM 발송만 실패해 큐에 남은 카드.
+       BE 가 예약과 같은 트랜잭션에서 action_result_id 를 남기고, 재전송은 그 예약을 재사용해 발송만 다시 한다.
+       원장이 "예약이 안 됐나" 하고 캘린더에 수기로 또 만들지 않게 카드에서 말해 준다. */
+    const bookingAlreadyMadeBadge = (isBooking && Number(it.action_result_id) > 0)
+      ? `<div class="dcq-booking-made" style="display:flex;align-items:center;gap:8px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:10px 12px;margin-bottom:10px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/><path d="m9 16 2 2 4-4"/></svg>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12.5px;font-weight:700;color:#15803D;">예약 #${Number(it.action_result_id)} 은 이미 만들어졌어요</div>
+            <div style="font-size:11.5px;color:#166534;margin-top:1px;">손님에게 확정 메시지만 못 보냈어요. [전송]을 누르면 같은 예약으로 확정 메시지만 다시 보내요.</div>
+          </div>
+        </div>` : '';
     // [A] 발송 전 — 원장이 [양식 보내기] 눌러야 나감
     const sendFormBadge = isSendForm
       ? `<div style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#0F766E;background:#ECFDF5;padding:3px 9px;border-radius:99px;margin-bottom:8px;">
@@ -553,6 +564,7 @@
         ${_channelMark(it.channel)}
         ${formAutoBadge}
         ${sendFormBadge}
+        ${bookingAlreadyMadeBadge}
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;">
           <div style="width:36px;height:36px;border-radius:50%;background:#F2F4F6;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#8B95A1;overflow:hidden;position:relative;">${_AVATAR_SVG}${avImg}</div>
           <div style="flex:1;min-width:0;">
@@ -948,9 +960,14 @@
       }
       // send / send_edit 성공 시 → 예약 캐시 무효화 + 홈/벨 갱신 + Undo 토스트
       const isApproveSend = (action === 'send' || action === 'send_edit');
-      if (isApproveSend && r && r.ok === false) {
+      /* [flow-inbox-dm-comments-04 2026-10-01] 액션 실패는 실패다. BE send 는 이제 {ok:false, action} 으로
+         답하지만, 옛 서버(200 + {ok:true, action:{ok:false}})도 같은 분기로 — r.ok 만 보고 r.action.ok 를
+         안 봐서 예약이 없는데 '전송했어요 ✓ · 캘린더에서 보기' 가 떴다(실측 api_repro.out). */
+      const _actionFailed = !!(r && r.action && r.action.ok === false);
+      if (isApproveSend && r && (r.ok === false || _actionFailed)) {
         // [P1 C-1] BE 가 200 + {ok:false} 로 예약 액션 실패를 알린 경우 — 성공 처리 금지
-        if (window.showToast) window.showToast(r.message || '전송 실패');
+        // 옛 서버는 message 가 '✅ 발송 완료' 인 채로 action.ok=false 를 주므로 실패 사유를 먼저 쓴다.
+        if (window.showToast) window.showToast((_actionFailed && r.action.fail_message) || r.message || '전송 실패');
         btn.disabled = false; btn.style.opacity = '1';
         return;
       }
@@ -962,7 +979,9 @@
       // [F3] 전송 후 체크 토스트 — 밋밋한 "발송 완료" 대신 "전송했어요 ✓"
       const bookingYmd = card.dataset.bookingDate || '';
       const isReschedule = card.dataset.reschedule === '1';  // [2026-06-28] 예약 변경 확정
-      const isBookingCreated = isApproveSend && (r.booking_id || (action === 'send' && bookingYmd));
+      /* [inbox-04] '예약이 생겼다' 는 서버가 준 booking_id 로만 판정한다. 예전엔 카드의 data-booking-date 만으로
+         추정해서(action==='send' && bookingYmd) 액션이 실패해도 캘린더 CTA 를 띄웠다. */
+      const isBookingCreated = isApproveSend && !!r.booking_id;
       if (isReschedule && window.showToast) {
         try { window.showToast('예약 옮겼어요 ✓ · 캘린더에서 보기 →', { onClick: () => _gotoCalendar(bookingYmd) }); }
         catch (_t) { window.showToast('예약 옮겼어요 ✓'); }

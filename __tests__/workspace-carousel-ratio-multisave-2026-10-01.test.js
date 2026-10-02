@@ -5,6 +5,9 @@
  * 05 🔴 카드가 2장 이상이면 결과 캐러셀 칸이 4:5 고정+cover 라 1:1 전후 합성본(BEFORE/AFTER)이 좌우 10%씩 잘렸다.
  *     실측(scn-d [D3]): 슬라이드 350×438(0.800)·cover vs 결과물 1080×1080(1.000). 단일 결과물 분기(2026-09-13)에만 실제 비율이 있었다.
  *     수정: 다중 슬라이드도 kind 'output' 이면 실제 픽셀 비율을 inline aspect-ratio 로, 모르면 한 번 읽어 갱신.
+ *     [04 갱신 2026-10-01] 발행(BE publish-carousel-file)이 캐러셀을 **첫 장의 clamp 된 비율로 통일·pad** 하므로
+ *     미리보기도 같은 규칙 — 결과물 슬라이드 전부가 첫 장 비율(허용 범위 4:5~1.91:1 밖이면 경계)을 받는다.
+ *     장마다 실비율이면 발행본(통일)과 달라져 04 가 다시 깨진다.
  * 06 🔴 '폰에 저장' 이 보고 있던 1장만 내려받고 "인스타에 올리셨어요?" 를 물었다(나머지 카드 저장 안 됨·안내 없음).
  *     실측(scn-f2 [F2c]): 다운로드 ["itdasy.jpg"] · 카드 2.
  *     수정: 카드가 2장 이상이면 WorkspaceAdapter.saveImages 로 전부 저장하고 "N장을 저장했어요" + 시트에 N장 표시.
@@ -62,20 +65,34 @@ describe('05 — 다중 슬라이드도 구워진 결과물은 실제 비율', (
     images[1].naturalWidth = 1080; images[1].naturalHeight = 1350; images[1].onload();
     const after = document.querySelectorAll('.ig-car__slide');
     expect(after[0].style.aspectRatio).toBe('1080 / 1080');
-    expect(after[1].style.aspectRatio).toBe('1080 / 1350');
-    // 다시 그리면 처음부터 실제 비율
+    // [04] 두 번째 장은 자기 비율(4:5)이 아니라 **첫 장 비율**(발행 때 첫 장 비율로 통일·pad 되므로)
+    expect(after[1].style.aspectRatio).toBe('1080 / 1080');
+    // 다시 그리면 처음부터 첫 장 비율
     document.body.innerHTML = api._igCarouselHtml('x');
     const again = document.querySelectorAll('.ig-car__slide');
     expect(inlineAR(again[0])).toBe('1080 / 1080');
-    expect(inlineAR(again[1])).toBe('1080 / 1350');
+    expect(inlineAR(again[1])).toBe('1080 / 1080');
     expect(images.length).toBe(2);
+  });
+  test('[04] 첫 장이 허용 범위 밖(2:3)이면 경계 4:5 로 clamp 되고 나머지 장도 그 비율을 받는다', () => {
+    const { api } = loadCarousel({ items: ITEMS, capDims: { ba1: { w: 1440, h: 1920 }, flat1: { w: 1080, h: 1080 } } });
+    document.body.innerHTML = api._igCarouselHtml('x');
+    const s = document.querySelectorAll('.ig-car__slide');
+    expect(inlineAR(s[0])).toBe('4 / 5');
+    expect(inlineAR(s[1])).toBe('4 / 5');
+    // 너무 넓은 첫 장(2.5:1)은 1.91:1 경계
+    const wide = loadCarousel({ items: ITEMS, capDims: { ba1: { w: 2500, h: 1000 }, flat1: { w: 1080, h: 1080 } } });
+    document.body.innerHTML = wide.api._igCarouselHtml('x');
+    const w = document.querySelectorAll('.ig-car__slide');
+    expect(inlineAR(w[0])).toBe('191 / 100');
+    expect(inlineAR(w[1])).toBe('191 / 100');
   });
   test('캡션 화면이 이미 디코드한 크기가 있으면 바로 쓴다', () => {
     const { api, images } = loadCarousel({ items: ITEMS, capDims: { ba1: { w: 1080, h: 1080 }, flat1: { w: 1440, h: 1920 } } });
     document.body.innerHTML = api._igCarouselHtml('x');
     const s = document.querySelectorAll('.ig-car__slide');
     expect(inlineAR(s[0])).toBe('1080 / 1080');
-    expect(inlineAR(s[1])).toBe('1440 / 1920');
+    expect(inlineAR(s[1])).toBe('1080 / 1080');   // [04] 첫 장 비율로 통일(1440×1920 은 자기 비율이 아니라)
     expect(images.length).toBe(0);
   });
   test('원본 사진(kind photo) 슬라이드는 규격 칸 그대로(data-fl-igout 없음·읽지 않음)', () => {

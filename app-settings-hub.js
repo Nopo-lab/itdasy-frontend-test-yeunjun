@@ -126,6 +126,11 @@
         ${_rowHTML('ai-consent', 'ic-lock', 'AI 사용 설정', '캡션·사진 기능 동의 관리', { boxColor: 'blue' })}
         ${_rowHTML('sync',     'ic-refresh-cw', '데이터 새로고침', '최신 버전·데이터로 새로고침 (껐다 켠 효과)', { boxColor: 'blue' })}
         ${_rowHTML('backup',   'ic-download', '백업 · 내보내기',  '자동 백업 · 데이터 내보내기', { boxColor: 'pink' })}
+        ${/* [flow-account-firstrun-04 2026-10-01] 가입 때 자동으로 넣어 준 샘플(고객 3·예약 4·재고 4)을 지우는 유일한 진입점.
+             BE POST /auth/sample/purge 는 2026-04-21 부터 있었는데 프론트 어디에도 버튼이 없어 신규 원장은 홈 '오늘의 예약 1건 (샘플) 김지연'
+             을 손으로 하나씩 지워야 했다(실측 s6 homeAfterDismiss). GET /auth/sample/status 로 **샘플이 남아 있을 때만** 행을 보인다
+             (처음엔 hidden, open() 에서 조회). 지우면 캐시를 비우고 data-changed 를 쏴 홈·고객·캘린더가 다시 읽는다. */ ''}
+        ${_rowHTML('samplepurge', 'ic-trash-2', '샘플 데이터 지우기', '(샘플) 손님 · 예약 · 재고를 한 번에 삭제', { boxColor: 'coral', hidden: true })}
       </div>
       <div class="ms-section__title" style="margin-top:14px;">계정</div>
       <div class="ms-sh">
@@ -197,8 +202,10 @@
       : o.boxColor
         ? `<div class="ms-sh__icon"><span class="ic-box ic-box--sm ic-box--${_esc(o.boxColor)}">${_ic(icon, 14)}</span></div>`
         : `<div class="ms-sh__icon">${_ic(icon, 16)}</div>`;
+    // `hidden` 속성은 .ms-sh__row 의 display:flex 에 진다(명시도) — 인라인 display 로 숨긴다.
+    const hiddenAttr = o.hidden ? ' style="display:none"' : '';
     return `
-      <button type="button" class="ms-sh__row" data-act="${_esc(act)}">
+      <button type="button" class="ms-sh__row" data-act="${_esc(act)}"${hiddenAttr}>
         ${iconHtml}
         <div class="ms-sh__info">
           <div class="ms-sh__name"${nameStyle}>${_esc(name)}</div>
@@ -293,6 +300,8 @@
     if (act === 'deleteaccount'){ close(); setTimeout(() => window.openDeleteAccountModal && window.openDeleteAccountModal(), 200); return; }
     // [flow-account-firstrun-01] 비밀번호 변경 — 허브가 정본 진입점. 모달은 app-core(#changePwModal).
     if (act === 'changepw')  { close(); setTimeout(() => window.openChangePwModal && window.openChangePwModal(), 200); return; }
+    // [flow-account-firstrun-04] 샘플 데이터 지우기 — 확인 → POST /auth/sample/purge → 캐시 비움 + 재조회 신호.
+    if (act === 'samplepurge') { _purgeSample(); return; }
     // [2026-06-09] 'support'/'logout' 라우트 제거 — 설정·연동에서 빠지고 사이드바/내샵관리 하단으로 이전.
     if (act === 'haptic') {
       try { window.toggleHapticSetting && window.toggleHapticSetting(); window.updateHapticToggleLabel && window.updateHapticToggleLabel(); } catch (_e) { void _e; }
@@ -351,6 +360,75 @@
     if (_prevOverflow !== null) { document.body.style.overflow = _prevOverflow; _prevOverflow = null; }
   }
 
+  // ─── [flow-account-firstrun-04] 샘플 데이터 ──────────────────
+  // 행은 서버가 "아직 남아 있다" 고 할 때만 보인다 — 샘플이 없는 원장에게 '지우기' 를 보여주면
+  // 뭘 지우는지 모른 채 누르게 된다. 조회 실패(오프라인·401)면 행을 숨긴 채 둔다(지우기는 급하지 않다).
+  function _sampleRow() {
+    const sheet = document.getElementById('settingsHubSheet');
+    return sheet ? sheet.querySelector('.ms-sh__row[data-act="samplepurge"]') : null;
+  }
+  async function _refreshSampleRow() {
+    const row = _sampleRow();
+    if (!row || typeof window.apiFetch !== 'function') return;
+    try {
+      const res = await window.apiFetch('/auth/sample/status');
+      if (!res || !res.ok) return;
+      const st = await res.json();
+      const n = Number(st && st.total) || 0;
+      row.style.display = (st && st.has_sample) ? '' : 'none';
+      const meta = row.querySelector('.ms-sh__meta');
+      if (meta && n > 0) {
+        const c = (st.counts || {});
+        const parts = [];
+        if (c.customers) parts.push('손님 ' + c.customers);
+        if (c.bookings) parts.push('예약 ' + c.bookings);
+        if (c.inventory) parts.push('재고 ' + c.inventory);
+        meta.textContent = '(샘플) ' + (parts.join(' · ') || (n + '건')) + ' — 한 번에 삭제';
+      }
+    } catch (_e) { void _e; }
+  }
+  let _purging = false;
+  async function _purgeSample() {
+    if (_purging) return;
+    let ok = true;
+    try {
+      if (typeof window.nativeConfirm === 'function') {
+        ok = await window.nativeConfirm('샘플 데이터 지우기', '가입 때 넣어 드린 (샘플) 손님·예약·재고를 모두 지울까요?\n직접 입력한 데이터는 그대로 남아요.', '지우기', '취소');
+      } else if (typeof window.confirm === 'function') {
+        ok = window.confirm('(샘플) 손님·예약·재고를 모두 지울까요? 직접 입력한 데이터는 그대로 남아요.');
+      }
+    } catch (_e) { ok = false; }
+    if (!ok) return;
+    _purging = true;
+    const row = _sampleRow();
+    try {
+      if (row) row.disabled = true;
+      const res = await window.apiFetch('/auth/sample/purge', { method: 'POST' });
+      if (!res || !res.ok) throw new Error('purge ' + (res && res.status));
+      const data = await res.json().catch(() => ({}));
+      const d = (data && data.deleted) || {};
+      const n = (Number(d.customers) || 0) + (Number(d.bookings) || 0) + (Number(d.inventory) || 0) + (Number(d.revenues) || 0);
+      if (row) row.style.display = 'none';
+      // 홈·고객·캘린더가 들고 있는 SWR 캐시를 비우고 다시 읽게 한다.
+      //   force_sync 는 디바운스 없이 즉시(캘린더·홈), delete_customer 는 고객 목록 리스너의 정확 일치 분기.
+      try { if (typeof window._clearAllSWRCache === 'function') window._clearAllSWRCache(); } catch (_e) { void _e; }
+      try {
+        if (typeof window._fireDataChanged === 'function') {
+          window._fireDataChanged({ kind: 'force_sync' });
+          window._fireDataChanged({ kind: 'delete_customer' });
+        }
+      } catch (_e) { void _e; }
+      try { window.CustomerHub && window.CustomerHub.refresh && window.CustomerHub.refresh(); } catch (_e) { void _e; }
+      if (window.showToast) window.showToast(n > 0 ? ('샘플 ' + n + '건을 지웠어요') : '지울 샘플이 없어요');
+    } catch (_e) {
+      if (row) row.style.display = '';
+      if (window.showToast) window.showToast('샘플을 지우지 못했어요. 잠시 후 다시 시도해 주세요');
+    } finally {
+      _purging = false;
+      if (row) row.disabled = false;
+    }
+  }
+
   // ─── open / close ────────────────────────────────────────
   function open() {
     const sheet = _ensureSheet();
@@ -359,6 +437,7 @@
     else sheet.style.display = 'block';
     _lockBg();
     _refreshLabels();
+    _refreshSampleRow();   // [flow-account-firstrun-04] 샘플이 남아 있을 때만 '샘플 데이터 지우기' 행
     // [출시감사 2026-08-02] 안드로이드 뒤로가기 등록. 갤럭시 에뮬레이터 실측 —
     //   이 시트를 열고 뒤로가기를 누르면 **아무 반응이 없다**(시트가 그대로 떠 있다).
     //   계속 누르면 결국 앱 종료 확인이 뜬다. aiHub 와 같은 원인 — _registerSheet/

@@ -23,6 +23,7 @@
 - 쿠키/오류진단 배너(`app-cookie-consent.js`): 작게·탭바 위(`_placeAboveTabBar` 재측정), `.subscreen-overlay.is-open` 동안 숨김, 카드가 `deferToCombined()` 중이면 8초 안전장치가 다시 띄우지 않음(`_cardHandled`).
 - HomeV41: 렌더 중 들어온 refresh/data-changed 는 pending 큐로 합쳐 재렌더(로그인 직후 홈 스켈레톤 영구 잔류 수정). 로그인 전(웹)엔 네트워크 렌더 없음. 오늘의 예약은 **KST 달력일**로 비교(`js/home/v41-renderers.js kstYmd`, `app-myshop-v3.js _kstYmd`). DM 큐 건수 단일 소스 = 고객 메시지 카드(`HomeV41.setDmQueueCount`). 숨은 TodayBrief 컨테이너는 네트워크 0. 잇비 카드에 생일 줄.
 - 설정 허브: 계정 섹션 **비밀번호 변경** 행(`changepw → openChangePwModal`, 소셜 계정 비노출). 샵 정보 저장 시 `shop_name`·헤더·내 샵 관리 즉시 갱신.
+- 설정 허브 **샘플 데이터 지우기** 행(`samplepurge`): 처음엔 숨김, `open()` 이 `GET /auth/sample/status`(has_sample·counts) 를 읽어 샘플이 남아 있을 때만 표시. 확인 → `POST /auth/sample/purge`(자기 매장만·멱등, 샘플 고객의 예약까지) → SWR 캐시 비움 + data-changed(force_sync) + 토스트. 실패면 행 유지·실패 토스트.
 
 **고객·예약**
 - `app-customer.js`: `_fetchFresh` 는 순수 조회(호출자가 `_cache` 대입) → 재진입 시 서버 결과가 다르면 실제로 재렌더. 서버 검색 결과(`_serverHits`)는 create/update/remove 와 함께 갱신·외부 변경 시 재조회.
@@ -35,11 +36,13 @@
 - `app-revenue.js`: 멱등키를 '저장 의도' 단위로(`_txnSig/_txnFor/_txnDone`) — 타임아웃 뒤 재클릭도 같은 `client_txn_id`. 읽기 세대 `_mutGen`(저장 뒤 도착한 옛 목록 폐기, `_g=` 코얼레싱 분리). 저장 중 라벨, 한 건 상한 `Revenue.MAX_KRW`=5,000만원(422 번역), 음수는 환불 안내. 로드 실패 '다시 불러오기'. 환불 조회/기록은 `Revenue.refunds/refund`(인증 자동) — `js/revenue-edit.js` 직접 호출 금지(소스가드). 세션 변경 판정은 JWT sub.
 - `app-core.js`: Authorization 없이 나간 요청의 401 은 세션 만료로 처리하지 않음(`_initHasAuthHeader`).
 - BE: PATCH /revenue 는 환불액 미만으로 못 줄임(400), 예약 금액 PATCH 는 409(`RefundExceedsAmount`). 방문 컬럼 갱신은 `services/customer_visits.touch_visit` 한 곳(GREATEST). 회원권 만료 정본 `services/membership_ledger`(세 경로 400 + UPDATE WHERE). `GET /customers?q=` NUL 제거.
+- BE: 같은 `client_txn_id` 에 **다른 본문**(고객·금액·대상)이 오면 409 `X-Money-Error: txn_body_mismatch`(`utils/money_txn.reject_body_mismatch`, 매출 생성/환불·회원권 충전/차감의 빠른 경로+IntegrityError 경로 둘 다). `record_revenue=false` 충전행(amount=0·membership_delta>0)은 '시술 1건' 으로 세지 않음(`revenue._is_counted_sale`, 목록·summary·일별 공통). 고객 상세(`/customers/{id}/dashboard`) 응답에 `membership_active/balance/expires_at` → 상세 라벨 '회원권 N만원' 이 실제로 뜸.
 
 **작업실**
 - 레이아웃 구성(`layoutComp/layoutCards/photoFit`) 저장·복원, 옛 저장본은 templateOutputs 로 역산, `composeCards` 가 안 바뀐 카드 재굽기 안 함. 사진 편집은 카드 단위(`_applyCardEdit`). 캡션 전에도 '나중에 이어서하기', `close()` 가 미저장 변경을 조용히 임시 저장(`_slotSig`). 다중 카드 캐러셀 실제 비율, '폰에 저장' 전부(`WorkspaceAdapter.saveImages`).
 - `workspace-sync.js`: 업로드 미완료면 upsert 보류(dirty), `heldCount/unsyncedCount/guardLogout`(로그아웃 전 확인 — `app-core.js logout` 이 부른다).
 - BE `POST /workspace/slots/upsert`: 서버본에 사진이 있는데 `photos=[]` 면 409 `photos_would_be_cleared`(서버본 동봉), `clear_photos:true` 로만 삭제. `customer_id` 소유 검증.
+- 발행 비율: BE `routers/instagram.py _ig_fit_for_feed` — 허용 범위(4:5~1.91:1) 안은 그대로, 밖이면 **crop 대신 흰 여백 pad**, 캐러셀은 첫 장(clamp) 비율로 통일·pad(`to_instagram_safe` 의 force_ratio crop 폐지). 미리보기 `workspace-v2-flow.js _igFeedAspect/_igCarouselAspect/_applyIgOutAspect` 가 같은 규칙(결과물은 contain+흰 바탕, 캐러셀 슬라이드 전부 첫 장 비율). 전후 합성본 1:1 의 BEFORE/AFTER 뱃지가 발행본에서 잘리지 않는다.
 - `scripts/ws-flow-smoke.js` 9/9 · `scripts/wsv2-multipair-qa.js` 재작성 17항목. `index.html` 서버 빌드 대조는 localhost 건너뜀, `build.txt == APP_BUILD` 는 jest·smoke 가 강제.
 
 **캡션·AI**
@@ -51,6 +54,11 @@
 
 **인박스·테넌트·견고성(BE)**
 - DM 큐 빈 화면 `X-Token-State` 분기(none 연결 / expired 재연결). 웹훅: enforce 인데 APP_SECRET 없으면 처리 안 함(`secret_missing`). 페르소나 서명/포스트 남의 것 404(RULE-003). 재고 조정 `CASE` 클램프(PG 500 수정). 하네스 추출 범위 `routers/*.py`+`DB_manage/*_router.py`, INVARIANT-2b(본문 FK)/5b(app.routes 대조).
+- DM 확인 큐 [전송]: 예약 액션은 로그 단위 멱등 — `action_result_id` 를 예약과 **같은 트랜잭션**에 저장, 발송 실패(502) 본문에 '예약 #N은 만들어졌어요' 표시, 재전송은 같은 예약으로 발송만 재시도(카드 배지 `.dcq-booking-made`). 액션 실패는 `{ok:false, code:'action_failed'}` 로 **발송 안 함**(send/send_edit 같은 계약, 성공 응답 `booking_id` — 프런트 `isBookingCreated` 는 날짜 추정 금지). (`routers/dm_confirm_queue.py`, `app-dm-confirm-queue.js`)
+- 잇비 `toggle_dm_autoreply` 도 `automation_gate.has_consent` 검사(`ok:false consent_required`, 끄기는 항상 허용). **되돌리기**(`routers/assistant_undo.py`)로 켜는 것도 같은 검사 — 승인 철회 뒤 '끈 것' undo 로 enabled=True 부활 금지.
+- `DMMessageLog.external_received_at`(채널 payload timestamp, alembic 0071 + `main.py _ensure_col`). 큐·스레드·대화 로그·24h 창 정렬은 `services/dm_inbound_time.order_expr()` = coalesce(external_received_at, received_at) — 순서 역전 웹훅 방어. 수동 행은 NULL.
+- 입력 위생: 모든 요청 본문 모델은 `schemas/base.py InputModel` 상속(NUL 0x00 재귀 제거, 109개 중 102개 전환 — 남은 7개는 BE-E 소유 파일, `tests/test_nul_input_all_models_2026_10_01.py _PENDING_LEAD`). 상속 누락은 그 테스트의 `app.routes` 전수 가드가 잡는다. 문자열 쿼리 파라미터는 `StrQuery/OptStrQuery`. ⚠ `Annotated[str, BeforeValidator]` 는 `= Query()` 에서 무시된다(실측).
+- 예약 발행 워커(`services/scheduled_publisher.py` `_PostSnapshot`)·IG 토큰 갱신 루프(`main.py _refresh_expiring_tokens` 튜플 + 샵별 `_short_session`)는 Meta 호출 전 DB 커넥션 반납 — bg 풀 'idle in transaction' 0. 크론 싱글톤 락 폴백 횟수는 `/health wiring.cron_lock_fallbacks`(0 이 정상, `services/cron_lock.fallback_stats`).
 
 ## 2026-09-22 T-913 보안 보강
 

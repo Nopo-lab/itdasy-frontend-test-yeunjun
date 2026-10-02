@@ -222,6 +222,41 @@
   } catch (_pd) { void _pd; }
   // [2026-09-13 ZH S20 Run4] 결과 미리보기용 구워진 결과물 실제 크기(원본 URL → {w,h}). _igCarouselHtml 참조.
   var _outDims = {};
+  /* [2026-10-01 flow-workspace-photo-04] 미리보기 칸 비율 = **발행 규칙** (BE routers/instagram.py _ig_fit_for_feed 와 같은 규칙).
+       · 인스타 허용 범위(4:5 ~ 1.91:1) 안이면 실제 비율 그대로
+       · 밖이면 가장 가까운 경계(4:5 / 1.91:1) — 모자라는 쪽은 BE 가 흰 여백(letterbox)으로 채우므로 여기선 contain + 흰 바탕
+       · 캐러셀은 **첫 장 비율로 통일**(나머지 장은 그 칸에 contain). 첫 장 크기를 아직 모르면 기다렸다가 한 번에 맞춘다.
+     예전엔 BE 가 단일은 1:1·캐러셀은 4:5 로 중앙 crop 해서, 여기서 실비율로 보여준 1:1 전후 합성본의 BEFORE/AFTER 가 발행본에선 잘렸다. */
+  var _IG_AR_MIN = 0.8, _IG_AR_MAX = 1.91;
+  function _igFeedAspect(dm) {
+    if (!dm || !(dm.w > 0 && dm.h > 0)) return '';
+    var r = dm.w / dm.h;
+    if (r < _IG_AR_MIN) return '4 / 5';
+    if (r > _IG_AR_MAX) return '191 / 100';
+    return dm.w + ' / ' + dm.h;
+  }
+  function _igOutDims(u) { return u ? (_outDims[u] || _capPreviewDims[u] || null) : null; }
+  function _igFormatAspect() { return _wsFormat() === '11' ? '1 / 1' : '4 / 5'; }
+  // 캐러셀 통일 비율 — 첫 슬라이드가 결과물이면 그 (clamp 된) 비율, 원본 사진이면 선택 규격. 모르면 '' (기다린다).
+  function _igCarouselAspect(items) {
+    var f = items && items[0];
+    if (!f) return '';
+    return f.kind === 'output' ? _igFeedAspect(_igOutDims(f.url)) : _igFormatAspect();
+  }
+  function _applyIgOutAspect() {
+    Array.prototype.forEach.call(document.querySelectorAll('.ig-photo[data-fl-igout]'), function (n) {
+      var ar = _igFeedAspect(_igOutDims(n.getAttribute('data-fl-igurl')));
+      if (ar) n.style.aspectRatio = ar;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-fl-carousel]'), function (car) {
+      var slides = car.querySelectorAll('.ig-car__slide');
+      if (!slides.length) return;
+      var first = slides[0];
+      var ar = first.hasAttribute('data-fl-igout') ? _igFeedAspect(_igOutDims(first.getAttribute('data-fl-igurl'))) : _igFormatAspect();
+      if (!ar) return;
+      Array.prototype.forEach.call(slides, function (sl) { if (sl.hasAttribute('data-fl-igout')) sl.style.aspectRatio = ar; });
+    });
+  }
   function _probeOutDims(u) {
     if (!u || _outDims[u] === null) return;
     _outDims[u] = null;   // 읽는 중(중복 요청 방지) — 렌더에선 falsy 라 기존 칸으로 그린다
@@ -230,12 +265,8 @@
       im.onload = function () {
         if (!(im.naturalWidth > 0 && im.naturalHeight > 0)) { delete _outDims[u]; return; }
         _outDims[u] = { w: im.naturalWidth, h: im.naturalHeight };
-        var disp = _blobDisp(u);
-        // [2026-10-01 05] 단일 칸(.ig-photo)과 캐러셀 슬라이드(.ig-car__slide — 이미지는 안쪽 .ig-car__img) 둘 다 갱신.
-        Array.prototype.forEach.call(document.querySelectorAll('[data-fl-igout]'), function (n) {
-          var holder = (n.classList && n.classList.contains('ig-car__slide')) ? n.querySelector('.ig-car__img') : n;
-          if (holder && String(holder.style.backgroundImage || '').indexOf(disp) >= 0) n.style.aspectRatio = im.naturalWidth + ' / ' + im.naturalHeight;
-        });
+        // [2026-10-01 05/04] 단일 칸(.ig-photo)과 캐러셀 슬라이드 둘 다 — 발행 규칙으로 다시 맞춘다(캐러셀은 첫 장 기준 전부).
+        _applyIgOutAspect();
       };
       im.onerror = function () { delete _outDims[u]; };
       im.src = _blobDisp(u);
@@ -1864,23 +1895,30 @@
 	         구워진 결과물(kind 'output')만 **실제 픽셀 크기**로 칸 비율을 맞춘다(비율 추측 금지 — 모르면 한 번 읽어서).
 	         원본 사진(kind 'photo')은 기존 동작 그대로. */
 	      if (items.length && items[0].kind === 'output' && u) {
-	        var od = _outDims[u] || _capPreviewDims[u];
+	        var od = _igOutDims(u);
 	        if (!od) _probeOutDims(u);
-	        return '<div class="ig-photo' + (_wsFormat() === '11' ? ' ig-photo--sq' : '') + '" data-fl-igout="1" style="background-image:url(' + esc(_blobDisp(u)) + ')' +
-	          (od ? ';aspect-ratio:' + od.w + ' / ' + od.h : '') + '"></div>';
+	        /* [2026-10-01 flow-workspace-photo-04] 칸 비율은 발행 규칙(_igFeedAspect) — 범위 밖(예 2:3)이면 4:5 칸에 contain 으로
+	           흰 여백이 보인다 = 실제 발행본과 같은 그림. 범위 안이면 실비율이라 contain 과 cover 가 같다. */
+	        var ar1 = _igFeedAspect(od);
+	        return '<div class="ig-photo' + (_wsFormat() === '11' ? ' ig-photo--sq' : '') + '" data-fl-igout="1" data-fl-igurl="' + esc(u) + '" style="background-image:url(' + esc(_blobDisp(u)) + ');background-size:contain;background-color:#fff' +
+	          (ar1 ? ';aspect-ratio:' + ar1 : '') + '"></div>';
 	      }
 	      return '<div class="ig-photo' + (_wsFormat() === '11' ? ' ig-photo--sq' : '') + '" style="background-image:url(' + esc(_blobDisp(u)) + ')"></div>';
 	    }
 	    var active = (d.activeDisplayId && items.some(function (it) { return it.id === d.activeDisplayId; })) ? d.activeDisplayId : items[0].id;
+	    /* [2026-10-01 flow-workspace-photo-04] 캐러셀은 발행 때 **첫 장 비율로 통일**된다(BE publish-carousel-file). 미리보기도 같은 규칙 —
+	       첫 장(결과물이면 clamp 된 실비율, 원본 사진이면 선택 규격)의 비율을 모든 결과물 슬라이드에 준다. 첫 장 크기를 아직 모르면
+	       비워 두고(규격 칸) 읽힌 뒤 _applyIgOutAspect 가 한 번에 맞춘다. 예전(05)엔 장마다 실비율이라 발행본(통일)과 달랐다. */
+	    var _carAr = _igCarouselAspect(items);
 	    var slides = items.map(function (it) {
 	      var toggleAttr = it.kind === 'output' && it.expandable ? ' data-fl-tplexpand="' + esc(it.id) + '"'
 	        : (it.ofPair ? ' data-fl-tplcollapse="' + esc(it.ofPair) + '"' : '');
-	      /* [2026-10-01 flow-workspace-photo-05] 다중 슬라이드도 단일 분기와 같은 규칙 — 구워진 결과물(kind 'output')은
-	         **실제 픽셀 비율**로 칸을 잡는다. 예전엔 4:5 고정+cover 라 1:1 전후 합성본의 BEFORE/AFTER 가 좌우 10%씩 잘렸다. */
+	      /* [2026-10-01 flow-workspace-photo-05] 구워진 결과물(kind 'output')은 규격 고정+cover 가 아니라 contain(흰 바탕) — 1:1 전후
+	         합성본의 BEFORE/AFTER 가 잘리지 않는다. 비율 자체는 위 _carAr(첫 장 기준). */
 	      var _ar = '';
 	      if (it.kind === 'output' && it.url) {
-	        var _od = _outDims[it.url] || _capPreviewDims[it.url];
-	        if (_od) _ar = ' style="aspect-ratio:' + _od.w + ' / ' + _od.h + '"'; else _probeOutDims(it.url);
+	        if (!_igOutDims(it.url)) _probeOutDims(it.url);
+	        _ar = ' data-fl-igurl="' + esc(it.url) + '" style="background-color:#fff' + (_carAr ? ';aspect-ratio:' + _carAr : '') + '"';
 	      }
 	      return '<div class="ig-car__slide" data-fl-carslide="' + esc(it.id) + '"' + toggleAttr + (it.kind === 'output' ? ' data-fl-igout="1"' : '') + _ar + '>' +
 	        '<div class="ig-car__img" style="background-image:url(' + esc(_blobDisp(it.url)) + ')"></div></div>';
