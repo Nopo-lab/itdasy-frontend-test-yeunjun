@@ -68,7 +68,7 @@
 
 /* ── 가나다 섹션 헤더 + 인덱스바 ────────────────── */
 #customerSheet .sec-hd {
-  font-size:12px;color:#BBB;font-weight:600;padding:8px 0 4px;letter-spacing:1px;margin-top:4px;
+  font-size:12px;color:var(--text-subtle,#6B7684);font-weight:600;padding:8px 0 4px;letter-spacing:1px;margin-top:4px;
 }
 /* [2026-09-11 전기기 감사] 예전엔 `top:200px` 고정 + 9px 글자 + 15×16px 히트영역이었다.
    ① 200px 은 검색창 세로 구간과 겹쳐서, 검색창 오른쪽 끝을 누르면 자음이 잡혔다.
@@ -84,7 +84,7 @@
   user-select:none;-webkit-user-select:none;
 }
 #customerSheet .idx-bar span {
-  font-size:10px;color:#BBB;cursor:pointer;font-weight:600;
+  font-size:10px;color:var(--text-subtle,#6B7684);cursor:pointer;font-weight:600;
   flex:1 1 auto;min-height:20px;max-height:34px;
   display:flex;align-items:center;justify-content:center;
 }
@@ -140,11 +140,12 @@
 #customerSheet .c-badge.b1 { background:var(--surface-2,#F7F8FA);color:#999; }
 #customerSheet .c-badge.b2 { background:#EEFBF3;color:#16B55E; }
 #customerSheet .c-badge.b3 { background:#F7EFF0;color:#BC6675; }
-#customerSheet .c-sub { font-size:12px;color:#C4C4C4;margin-top:2px; }
+/* [2026-10-01 mobile-ux-04] #C4C4C4 = 1.7:1 → 토큰(#6B7684, 5.9:1). 50대+ 원장 눈엔 보조문구가 아예 안 읽혔다. */
+#customerSheet .c-sub { font-size:12px;color:var(--text-subtle,#6B7684);margin-top:2px; }
 /* [2026-07-08 A안] 꺾쇠(.c-arr) 삭제 → 우측 마지막 방문 + NEW 배지 */
 #customerSheet .c-badge.nw { background:#EEFBF3;color:#16B55E; }
 #customerSheet .c-last {
-  font-size:11.5px;color:#C4C4C4;text-align:right;flex-shrink:0;margin-left:8px;line-height:1.35;
+  font-size:11.5px;color:var(--text-subtle,#6B7684);text-align:right;flex-shrink:0;margin-left:8px;line-height:1.35;
 }
 #customerSheet .c-last span { display:block; }
 
@@ -192,6 +193,7 @@
 .cv4-detail .d-actions { display:flex;gap:8px;flex-wrap:wrap; }
 .cv4-detail .d-act {
   padding:10px 20px;border-radius:12px;border:1px solid var(--border,#F0F0F0);
+  min-height:44px; /* [2026-10-01 mobile-ux-03] 실측 40px — 4px 만 키운다(보이지도 않는다) */
   font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;
   background:var(--surface,#fff);color:#666;
 }

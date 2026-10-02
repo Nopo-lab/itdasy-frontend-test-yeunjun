@@ -90,7 +90,7 @@
 .ipc-trust { text-align: center; font-size: 10.5px; color: var(--text-subtle); margin-top: 8px; }
 .ipc-skip {
   display: block; width: 100%; text-align: center; font-size: 12px;
-  color: #A8B0BA; margin-top: 4px; padding: 6px 0; font-weight: 500;
+  color: var(--text-subtle, #6B7684); margin-top: 4px; padding: 6px 0; font-weight: 500; /* [2026-10-01 mobile-ux-04] #A8B0BA 2.2:1 → 5.9:1 */
   background: transparent; border: none; cursor: pointer; font-family: inherit;
   /* [2026-09-03 최종 클로저] 실측(390×844) 284×26px — 가로는 넉넉한데 **세로가 26px** 이라
      44px 미달이었다. 신규 CBT 원장이 첫 화면에서 누르는 유일한 탈출구다.

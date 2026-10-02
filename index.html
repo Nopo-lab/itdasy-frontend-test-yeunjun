@@ -301,7 +301,7 @@ window.__LATEST_BUILD__ = '20260916-ai-consent-home';
   .login-field:focus{border-color:var(--accent,var(--brand));background:var(--surface,#fff)}
   .login-pw-field{position:relative;margin-bottom:9px}
   .login-pw-field .login-field{margin-bottom:0;padding-right:48px}
-  .login-pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:40px;height:40px;border:none;background:transparent;cursor:pointer;color:#9aa3ac;display:flex;align-items:center;justify-content:center}
+  .login-pw-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:none;background:transparent;cursor:pointer;color:#9aa3ac;display:flex;align-items:center;justify-content:center}
 
   .login-cta{width:100%;height:54px;border-radius:14px;background:var(--text,#191F28);color:#fff;font-size:15px;font-weight:800;border:none;cursor:pointer;letter-spacing:-.3px;margin-top:6px;transition:transform .12s ease-out}
   .login-cta:active{transform:scale(.985)}
@@ -320,10 +320,12 @@ window.__LATEST_BUILD__ = '20260916-ai-consent-home';
   .login-social--apple{background:#000}
 
   .login-foot{text-align:center;font-size:13px;color:var(--text3,#98A1AC);margin-top:26px}
-  .login-foot a{color:var(--accent,var(--brand));font-weight:700;text-decoration:none}
+  /* [2026-10-01 mobile-ux-03] 회원가입 링크 51×15 → 44×44 (style-base .signup-switch-link 와 같은 방식, 줄 높이는 그대로) */
+  .login-foot a{color:var(--accent,var(--brand));font-weight:700;text-decoration:none;display:inline-flex;min-width:44px;min-height:44px;align-items:center;justify-content:center;margin-block:-13px}
 
   /* [2026-07-20 v780] 비밀번호 찾기 — 인라인 링크 + 안내 문구 */
-  .login-forgot{display:block;margin:0 0 2px auto;background:none;border:none;padding:5px 2px;font-size:12.5px;font-weight:600;color:var(--text3,#98A1AC);cursor:pointer;font-family:inherit;letter-spacing:-.2px;transition:color .15s}
+  /* [2026-10-01 mobile-ux-03] 138×27 → 높이 44 (음수 마진으로 줄 간격은 그대로). position:relative = 위 비밀번호칸(positioned)보다 나중에 칠해져 겹친 6px 도 내 것 */
+  .login-forgot{display:flex;align-items:center;min-height:44px;margin:-6px 0 -4px auto;position:relative;background:none;border:none;padding:0 2px;font-size:12.5px;font-weight:600;color:var(--text3,#98A1AC);cursor:pointer;font-family:inherit;letter-spacing:-.2px;transition:color .15s}
   .login-forgot.is-confirm{color:var(--accent,var(--brand));font-weight:700}
   .login-forgot:disabled{color:#c3cad2;cursor:default}
   .login-forgot-msg{font-size:12.5px;line-height:1.5;color:var(--text3,#98A1AC);text-align:right;margin-bottom:6px;letter-spacing:-.2px}

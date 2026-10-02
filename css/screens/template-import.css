@@ -35,7 +35,7 @@
   border: none;
   font-size: 24px;
   line-height: 1;
-  color: #8B95A1;
+  color: var(--text-subtle, #6B7684);
   cursor: pointer;
 }
 .tpli-desc {
@@ -143,7 +143,7 @@
 .tpli-raw > div {
   margin-top: 6px;
   font-size: 11px;
-  color: #8B95A1;
+  color: var(--text-subtle, #6B7684);
   line-height: 1.5;
   background: #F7F8FA;
   border-radius: 8px;

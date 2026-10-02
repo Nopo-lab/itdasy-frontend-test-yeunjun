@@ -25,9 +25,9 @@
   .bf-side-left, .bf-side-right { display:block; }
   .bf-side-right { position:sticky; top:14px; }
   .bf-side-left .bf-card { padding:11px 14px; }
-  .bf-side-left .bf-side-label { font-size:11px; color:#8B95A1; font-weight:500; letter-spacing:-0.2px; }
+  .bf-side-left .bf-side-label { font-size:11px; color:var(--text-subtle,#6B7684); font-weight:500; letter-spacing:-0.2px; }
   .bf-side-left .bf-side-date { font-size:13px; font-weight:500; color:#191F28; letter-spacing:-0.3px; margin-top:2px; }
-  .bf-side-left .bf-side-meta { font-size:11px; color:#8B95A1; margin-top:2px; }
+  .bf-side-left .bf-side-meta { font-size:11px; color:var(--text-subtle,#6B7684); margin-top:2px; }
 }
 @media (width <= 1099px) {
   .bf-side-left { display:none; }
@@ -45,7 +45,7 @@
 }
 .bf-card.compact { padding:10px 14px; }
 .bf-card .bf-label {
-  font-size:11px; color:#8B95A1; font-weight:500;
+  font-size:11px; color:var(--text-subtle,#6B7684); font-weight:500;
   letter-spacing:-0.2px; margin-bottom:6px;
   text-transform:none;
 }
@@ -70,7 +70,7 @@
 }
 .bf-date-card .bf-date-info { flex:1; min-width:0; }
 .bf-date-text { font-size:14px; font-weight:500; color:#191F28; letter-spacing:-0.3px; }
-.bf-date-meta { font-size:11px; color:#8B95A1; margin-top:2px; letter-spacing:-0.2px; }
+.bf-date-meta { font-size:11px; color:var(--text-subtle,#6B7684); margin-top:2px; letter-spacing:-0.2px; }
 .bf-date-meta:empty { display:none; }
 /* [flow-customers-bookings-04 2026-10-01] 휴무일·영업시간 밖 안내 — 막지 않고 알린다 */
 .bf-hours-notice {
@@ -86,7 +86,7 @@
   letter-spacing: -0.2px;
 }
 .bf-hours-notice[hidden] { display: none; }
-.bf-date-chev { color:#8B95A1; font-size:18px; line-height:1; flex-shrink:0; }
+.bf-date-chev { color:var(--text-subtle,#6B7684); font-size:18px; line-height:1; flex-shrink:0; }
 .bf-date-native { position:absolute; opacity:0; pointer-events:none; width:0; height:0; }
 
 /* 시간 휠 픽커 — 3컬럼 (오전/오후 · 12,1..11 · 분 10단위) */
@@ -147,12 +147,19 @@
   font-size:11px; color:#BC6675; font-weight:500;
   letter-spacing:-0.2px; font-variant-numeric:tabular-nums;
 }
-.bf-dur-chips { display:flex; gap:6px; flex-wrap:wrap; }
+/* [2026-10-01 mobile-ux-03] 칩 실측 33px. 보이는 크기는 그대로, ::after 로 세로 44 (style-components .tap44 와 같은 식).
+   줄바꿈되면 윗줄·아랫줄 히트 영역이 겹치지 않게 row-gap 12px. */
+.bf-dur-chips { display:flex; gap:12px 6px; flex-wrap:wrap; }
 .bf-dur-chip {
   padding:7px 14px; border-radius:999px; font-size:12px; font-weight:500;
   border:0.5px solid #E5E8EB; background:#fff; color:#4E5968;
   cursor:pointer; font-family:inherit; letter-spacing:-0.2px;
   transition: background .12s, color .12s, border-color .12s;
+  position:relative;
+}
+.bf-dur-chip::after, .bf-svc-chip::after {
+  content:''; position:absolute; left:0; right:0; top:50%;
+  height:max(100%, 44px); transform:translateY(-50%);
 }
 .bf-dur-chip:hover { background:#F7F8FA; color:#191F28; }
 .bf-dur-chip.on { background:#191F28; color:#fff; border-color:#191F28; }
@@ -184,17 +191,17 @@
 }
 .bf-cust-badge {
   font-size:11px; padding:1px 6px; border-radius:999px; font-weight:500;
-  background:#F2F4F6; color:#8B95A1;
+  background:#F2F4F6; color:var(--text-subtle,#6B7684);
 }
 .bf-cust-badge.green { background:#E1F5EE; color:#16B55E; }
 .bf-cust-badge.pink { background:#F7EFF0; color:#BC6675; }
-.bf-cust-meta { font-size:11px; color:#8B95A1; margin-top:2px; letter-spacing:-0.2px; }
-.bf-cust-empty-text { font-size:12px; color:#8B95A1; letter-spacing:-0.2px; }
-.bf-cust-chev { color:#8B95A1; font-size:18px; line-height:1; flex-shrink:0; }
+.bf-cust-meta { font-size:11px; color:var(--text-subtle,#6B7684); margin-top:2px; letter-spacing:-0.2px; }
+.bf-cust-empty-text { font-size:12px; color:var(--text-subtle,#6B7684); letter-spacing:-0.2px; }
+.bf-cust-chev { color:var(--text-subtle,#6B7684); font-size:18px; line-height:1; flex-shrink:0; }
 .bf-cust-clear {
   width:22px; height:22px; border-radius:50%;
   background:transparent; border:none; cursor:pointer;
-  color:#8B95A1; font-family:inherit;
+  color:var(--text-subtle,#6B7684); font-family:inherit;
   display:flex; align-items:center; justify-content:center;
   flex-shrink:0;
 }
@@ -202,18 +209,21 @@
 
 /* 시술 카드 */
 .bf-svc-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
-.bf-svc-sub { font-size:11px; color:#8B95A1; letter-spacing:-0.2px; }
-.bf-svc-more { font-size:11px; color:#8B95A1; cursor:pointer; background:none; border:none; font-family:inherit; }
-.bf-svc-chips { display:flex; gap:6px; flex-wrap:wrap; }
+.bf-svc-sub { font-size:11px; color:var(--text-subtle,#6B7684); letter-spacing:-0.2px; }
+.bf-svc-more { font-size:11px; color:var(--text-subtle,#6B7684); cursor:pointer; background:none; border:none; font-family:inherit; position:relative; padding:2px 4px; }
+/* '전체' 38×16 — 아래 8px 에 칩(탭 대상)이 붙어 있어 아래로는 못 넓힌다 → 카드 위 여백(11px) 쪽으로 44 */
+.bf-svc-more::after { content:''; position:absolute; left:-8px; right:-8px; bottom:-4px; height:44px; }
+.bf-svc-chips { display:flex; gap:12px 6px; flex-wrap:wrap; }
 .bf-svc-chip {
   padding:7px 14px; border-radius:999px; font-size:12px; font-weight:500;
   background:#fff; border:0.5px solid #E5E8EB; color:#4E5968;
   cursor:pointer; font-family:inherit; letter-spacing:-0.2px;
   transition: background .12s, color .12s, border-color .12s;
+  position:relative;
 }
 .bf-svc-chip:hover { background:#F7F8FA; color:#191F28; }
 .bf-svc-chip.on { background:#191F28; color:#fff; border-color:#191F28; }
-.bf-svc-chip.add { color:#8B95A1; border-style:dashed; }
+.bf-svc-chip.add { color:var(--text-subtle,#6B7684); border-style:dashed; }
 .bf-svc-input {
   width:100%; margin-top:8px; padding:10px 12px;
   background:#fff; border:0.5px solid #E5E8EB; border-radius:10px;
@@ -276,7 +286,7 @@
 }
 .bf-money-row.deposit { border-bottom:0.5px solid #F0F1F4; padding-bottom:10px; align-items:center; }
 .bf-money-row.total { padding:12px 0 4px; }
-.bf-money-key { font-size:11px; color:#8B95A1; letter-spacing:-0.2px; }
+.bf-money-key { font-size:11px; color:var(--text-subtle,#6B7684); letter-spacing:-0.2px; }
 .bf-money-row.total .bf-money-key { font-size:13px; color:#191F28; font-weight:500; }
 .bf-money-val {
   display:inline-flex; align-items:baseline; gap:3px;
@@ -314,7 +324,7 @@
   .bf-money-row.total .bf-money-val .bf-num { font-size:20px; letter-spacing:-0.5px; }
   .bf-money-row.total .bf-money-val .bf-money-unit { font-size:13px; }
 }
-.bf-money-unit { font-size:11px; color:#8B95A1; }
+.bf-money-unit { font-size:11px; color:var(--text-subtle,#6B7684); }
 /* 빈 값 → "탭해서 입력 ›" 분홍 텍스트 */
 .bf-amount-link {
   background:none; border:none; padding:0; margin:0;
@@ -348,10 +358,10 @@
   padding:0; cursor:pointer; font-family:inherit;
 }
 .bf-memo-toggle-left { display:flex; align-items:center; gap:6px; }
-.bf-memo-icon { font-size:11px; line-height:1; color:#8B95A1; transition: transform .2s; }
+.bf-memo-icon { font-size:11px; line-height:1; color:var(--text-subtle,#6B7684); transition: transform .2s; }
 .bf-memo-toggle.open .bf-memo-icon { transform: rotate(180deg); }
 .bf-memo-title { font-size:12px; font-weight:500; color:#191F28; letter-spacing:-0.2px; }
-.bf-memo-hint { font-size:11px; color:#8B95A1; letter-spacing:-0.2px; }
+.bf-memo-hint { font-size:11px; color:var(--text-subtle,#6B7684); letter-spacing:-0.2px; }
 .bf-memo-fields { margin-top:10px; display:none; }
 .bf-memo-toggle.open + .bf-memo-fields { display:block; }
 .bf-memo {
@@ -364,7 +374,7 @@
   scroll-margin-bottom:110px;
 }
 .bf-memo:focus { border-color:#191F28; }
-.bf-memo-counter { font-size:11px; color:#8B95A1; text-align:right; margin-top:4px; }
+.bf-memo-counter { font-size:11px; color:var(--text-subtle,#6B7684); text-align:right; margin-top:4px; }
 
 /* 충돌 경고 */
 .dt-conflict {
@@ -378,7 +388,8 @@
 /* 뒤로 버튼 */
 .cv-form-back {
   background:transparent; border:none; cursor:pointer;
-  font-size:13px; color:#8B95A1; padding:6px 8px;
+  min-height:44px; /* [2026-10-01 mobile-ux-03] 실측 362×30 */
+  font-size:13px; color:var(--text-subtle,#6B7684); padding:6px 8px;
   font-family:inherit; letter-spacing:-0.2px;
   margin-bottom:4px;
 }

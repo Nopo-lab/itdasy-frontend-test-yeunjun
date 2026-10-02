@@ -615,3 +615,45 @@ html.kb-open #bottomNavGroup {
   pointer-events: none;
   transition: opacity 0.12s ease;
 }
+
+/* ============================================================
+   [2026-10-01 mobile-ux-03/05] 터치 히트 영역 공용 규칙 + 키보드 인셋
+   ------------------------------------------------------------
+   왜: 감사(evidence/mobile-ux/pw-hit.js, 390×844, elementFromPoint 로 잰 실제 손가락 영역)에서
+       핵심 화면 47개 대상이 44px 미만이었다. 각 모듈이 인라인 스타일로 아이콘 크기+padding 4px 만
+       잡고, 최소 히트 영역을 보장하는 공용 규칙이 없었다(style-polish.css §14 계열은 셀렉터
+       나열식이라 새 버튼마다 또 빠진다).
+   규칙:
+     .tap44           — **보이는 크기는 그대로** 두고 ::after 로 탭 영역만 ≥44×44 (가로·세로 모두).
+                        칩/작은 아이콘처럼 키우면 레이아웃이 무너지는 것에 쓴다.
+                        ⚠️ 줄바꿈되는 칩 컨테이너는 row-gap ≥ 11px 로 윗줄·아랫줄 히트 영역이 안 겹치게.
+                        ⚠️ overflow:hidden/auto 컨테이너 안이면 잘린다 → 컨테이너에 padding-block + 음수 margin-block.
+                        ⚠️ 이미 ::after 를 쓰는 요소엔 쓰지 말 것(.dmm-tg 처럼 노브로 쓰는 경우).
+     실제 44 목록      — 보통 버튼(텍스트 버튼·CTA)은 그냥 min-height 44 로 키운다. 1~4px 차이는 보이지도 않는다.
+   측정: OUT_NAME=hit-after node evidence/mobile-ux/pw-hit.js (before 47 → after 는 보고서 참고).
+   ============================================================ */
+.tap44 { position: relative; }
+.tap44::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+  /* 시각 효과 없음 — 순수 히트박스 */
+}
+/* 실제 높이 44 — 폭은 넉넉하고 높이만 40~42 였던 보통 버튼들 */
+.crq-reconnect { min-height: 44px; }           /* 댓글 큐 '인스타 연결하기' 142×42 */
+[data-dcq-connect] { min-height: 44px; }       /* DM 큐 '인스타 연결하기' 142×42 (BTN 문자열에도 있음 — 이중 안전) */
+.asst-chips--hub button,
+.asst-chips--brief button { min-height: 44px; }  /* 잇비 브리핑/액션 허브 '빈시간 보기 / 재방문 초안' 240×40 */
+.wshc-who { min-height: 44px; }                /* 작업실 '인스타 연결' 212×42 (css/workspace-home-c.css 는 작업실 소유) */
+
+/* ── 키보드 인셋 (app-core.js _viewportKeyboardHook 이 html.kb-open + --kb-inset 을 공급) ──
+   iOS 는 키보드가 떠도 레이아웃 뷰포트가 안 줄어 fixed/sticky 하단 버튼이 키보드 뒤에 남는다.
+   루트에 가린 만큼 padding-bottom 을 주면 안의 스크롤 영역이 줄어들어 sticky CTA 가 키보드 위로 올라오고
+   마지막 입력칸까지 스크롤로 닿는다. 안드로이드/PC 는 --kb-inset 이 0 이라 아무 변화 없음.
+   모달(#custEditModal·#rvAddModal)·잇비 패널은 인라인 스타일이 padding/inset 을 들고 있어 각 JS 에서 var 를 쓴다. */
+html.kb-open #cal-overlay.bk-root--mobile { padding-bottom: var(--kb-inset, 0px); }
+html.kb-open #dmConfirmQueueSheet { padding-bottom: var(--kb-inset, 0px); }

@@ -513,7 +513,7 @@
     const title = isNew ? '고객 추가' : '고객 정보수정';
     const saveLabel = isNew ? '추가' : '저장';
     return `
-      <div style="background:var(--surface,#fff);border-radius:18px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;padding:24px;box-shadow:0 24px 64px rgba(0,0,0,0.18);">
+      <div style="background:var(--surface,#fff);border-radius:18px;width:100%;max-width:480px;max-height:min(88vh, calc(100vh - 40px - var(--kb-inset, 0px)));overflow-y:auto;padding:24px;box-shadow:0 24px 64px rgba(0,0,0,0.18);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
           <strong style="font-size:18px;color:var(--text);">${title}</strong>
           <button class="ss-close" type="button" id="custEditClose" aria-label="닫기" style="background:transparent;border:none;width:32px;height:32px;border-radius:50%;font-size:14px;cursor:pointer;color:var(--text);"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
@@ -632,7 +632,8 @@
     if (old) old.remove();
     const wrap = document.createElement('div');
     wrap.id = 'custEditModal';
-    wrap.style.cssText = 'position:fixed;inset:0;z-index:10800;z-index:var(--z-customer-edit,10800);background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:20px;';
+    // [2026-10-01 mobile-ux-05] --kb-inset(app-core _viewportKeyboardHook) — iOS 키보드가 가린 만큼 아래 여백. 카드 max-height 도 같이 줄여 '추가' 버튼이 스크롤로 닿는다.
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:10800;z-index:var(--z-customer-edit,10800);background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:20px 20px calc(20px + var(--kb-inset, 0px));';
     wrap.innerHTML = _customerEditHtml(c, isNew);
     document.body.appendChild(wrap);
     /* [2026-09-02 API/E2E 게이트] 이 모달은 **어떤 레이어 스택에도 등록돼 있지 않았다.**

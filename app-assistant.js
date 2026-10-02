@@ -330,7 +330,7 @@
     sheet.style.cssText = 'position:fixed;inset:0;z-index:10500;display:none;background:rgba(0,0,0,0.7);opacity:0;pointer-events:none;transition:opacity 0.05s ease-out;';
     // [2026-04-26 A5] 시트 내부 패널: safe-area-inset-top 추가 (노치 회피)
     sheet.innerHTML = `
-      <div id="assistantSheetPanel" style="position:absolute;inset:auto 0 0 0;background:#FFFFFF;border-radius:20px 20px 0 0;height:88vh;height:88dvh;display:flex;flex-direction:column;padding:max(8px,var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 16px max(12px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));">
+      <div id="assistantSheetPanel" style="position:absolute;inset:auto 0 var(--kb-inset, 0px) 0;max-height:calc(100% - var(--kb-inset, 0px));background:#FFFFFF;border-radius:20px 20px 0 0;height:88vh;height:88dvh;display:flex;flex-direction:column;padding:max(8px,var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 16px max(12px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));">
         <div id="assistantSheetHeader" style="display:grid;grid-template-columns:32px 1fr 32px;align-items:center;gap:8px;margin-bottom:10px;height:44px;">
           <button data-assistant-close aria-label="닫기" title="닫기" style="background:transparent;border:none;width:32px;height:32px;border-radius:50%;color:#191F28;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;justify-self:start;">${_svg('ic-x', 18)}</button>
           <div style="display:inline-flex;align-items:center;justify-content:center;gap:6px;">

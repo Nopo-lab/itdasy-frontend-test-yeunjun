@@ -692,7 +692,7 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
   cursor: pointer; line-height: 1;
 }
 .hv5-rev-chip:active { background: #F7F8FA; }
-.hv5-rev-chip-label { font-size: 11px; color: #8B95A1; font-weight: 500; margin-bottom: 2px; }
+.hv5-rev-chip-label { font-size: 11px; color: var(--text-subtle, #6B7684); font-weight: 500; margin-bottom: 2px; }
 .hv5-rev-chip-amt { font-size: 16px; color: #191F28; font-weight: 500; letter-spacing: -0.3px; }
 .hv5-rev-chip-amt > span { font-size: 16px; color: #191F28; letter-spacing: -0.3px; }
 
@@ -739,10 +739,10 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 .hv5-rev-sum:active { background: #F2F4F6; }
 .hv5-rev-sum-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .hv5-rev-sum-bot { border-top: 0.5px solid #E5E8EB; margin-top: 8px; padding-top: 8px; }
-.hv5-rev-sum-label { font-size: 11px; color: #8B95A1; font-weight: 500; letter-spacing: -0.2px; }
+.hv5-rev-sum-label { font-size: 11px; color: var(--text-subtle, #6B7684); font-weight: 500; letter-spacing: -0.2px; }
 .hv5-rev-sum-val { display: inline-flex; align-items: baseline; gap: 2px; }
 .hv5-rev-sum-val > span:first-child { font-size: 18px; font-weight: 500; color: #191F28; letter-spacing: -0.3px; font-variant-numeric: tabular-nums; }
-.hv5-rev-sum-unit { font-size: 11px; color: #8B95A1; }
+.hv5-rev-sum-unit { font-size: 11px; color: var(--text-subtle, #6B7684); }
 .hv5-rev-sum-pred-label { font-size: 11px; color: #BC6675; font-weight: 500; letter-spacing: -0.2px; }
 .hv5-rev-sum-pred-val { display: inline-flex; align-items: baseline; gap: 2px; }
 .hv5-rev-sum-pred-val > span:first-child { font-size: 13px; font-weight: 500; color: #191F28; font-variant-numeric: tabular-nums; }
@@ -785,9 +785,9 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 }
 /* [2026-08-16] 상태줄 = 실시간 분석 요약 ('실시간 분석 · 모두 정상' / 'N건 확인 필요') — 초록 라이브닷 */
 .hv5-itbi-status {
-  font-size: 11px; color: #8B95A1; display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; color: var(--text-subtle, #6B7684); display: inline-flex; align-items: center; gap: 4px;
 }
-.hv5-itbi-status b { font-weight: 600; color: #8B95A1; }
+.hv5-itbi-status b { font-weight: 600; color: var(--text-subtle, #6B7684); }
 .hv5-itbi-status.is-warn b { color: #BC6675; }
 .hv5-itbi-status-dot {
   width: 6px; height: 6px; border-radius: 50%; background: #1D9E75;
@@ -796,7 +796,7 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 }
 .hv5-itbi-all {
   background: none; border: 0; padding: 0;
-  font-size: 11px; color: #8B95A1; cursor: pointer;
+  font-size: 11px; color: var(--text-subtle, #6B7684); cursor: pointer;
   flex-shrink: 0; align-self: center;
 }
 .hv5-itbi-all:active { color: #4E5968; }
@@ -819,7 +819,7 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
   padding: 9px 13px; width: fit-content; max-width: 85%;
   text-align: left;
 }
-.hv5-itbi-msg.is-empty .hv5-itbi-msg-text { color: #8B95A1; }
+.hv5-itbi-msg.is-empty .hv5-itbi-msg-text { color: var(--text-subtle, #6B7684); }
 .hv5-itbi-msg-time { font-size: 11px; color: #B0B8C1; }
 /* [2026-08-16] 분석 표 줄(라벨+값+›) — 한 줄 고정, 넘치면 말줄임 (줄바꿈 금지).
    인사이트 말풍선(bubble-tap) 폐기 → 확인 필요 항목 전부 이 규격. 전폭(토스식 리스트) */
@@ -832,7 +832,7 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
   transition: transform 0.12s ease;
 }
 .hv5-itbi-mini:active { transform: scale(0.98); }
-.hv5-itbi-mini-label { font-size: 11px; color: #8B95A1; font-weight: 500; flex-shrink: 0; white-space: nowrap; }
+.hv5-itbi-mini-label { font-size: 11px; color: var(--text-subtle, #6B7684); font-weight: 500; flex-shrink: 0; white-space: nowrap; }
 .hv5-itbi-mini-val {
   flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: #191F28;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -889,7 +889,7 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
   width: 100%; margin: 0 0 10px;
   padding: 8px 13px;
   background: none; border: 0; border-radius: 10px;
-  font-size: 12px; color: #8B95A1; font-family: inherit;
+  font-size: 12px; color: var(--text-subtle, #6B7684); font-family: inherit;
   cursor: pointer; text-align: left;
 }
 .hv5-itbi-rest:active { background: rgba(0,0,0,0.03); }
@@ -908,11 +908,11 @@ body:has(#tab-home.active) #headerPersona { display: none !important; }
 }
 .hv5-itbi-dcard-cat {
   display: flex; align-items: center; gap: 6px;
-  font-size: 11px; color: #8B95A1; font-weight: 500; margin-bottom: 4px;
+  font-size: 11px; color: var(--text-subtle, #6B7684); font-weight: 500; margin-bottom: 4px;
 }
 .hv5-itbi-dcard-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .hv5-itbi-dcard-hl { font-size: 13.5px; font-weight: 600; color: #191F28; line-height: 1.45; letter-spacing: -0.2px; }
-.hv5-itbi-dcard-desc { font-size: 12px; color: #8B95A1; margin-top: 2px; line-height: 1.5; }
+.hv5-itbi-dcard-desc { font-size: 12px; color: var(--text-subtle, #6B7684); margin-top: 2px; line-height: 1.5; }
 .hv5-itbi-dcard-btn {
   margin-top: 9px; padding: 6px 13px;
   background: #fff; color: #4E5968;

@@ -383,7 +383,7 @@
       // 발신자
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:11px;">' + avatar +
         '<div style="flex:1;min-width:0;">' +
-          '<div style="display:flex;align-items:center;gap:6px;"><span style="font-size:15px;font-weight:700;color:#191F28;white-space:nowrap;overflow:hidden;">' + _esc(it.name) + '</span>' +
+          '<div style="display:flex;align-items:center;gap:6px;"><span title="' + _esc(it.name) + '" style="font-size:15px;font-weight:700;color:#191F28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">' + _esc(it.name) + '</span>' +
             (it.intent === 'complaint' ? '<span style="font-size:10px;font-weight:700;color:#DC2626;background:#FEF2F2;border-radius:8px;padding:2px 7px;">불만</span>' : '') +
             /* [2026-09-02] '단골' 배지가 두 벌이던 것 — 브라우저 QA 에서 잡았다.
                하나는 댓글 문구 추정(_is_returning_comment "저번에 받은 거 또"),

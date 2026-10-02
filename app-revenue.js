@@ -807,14 +807,15 @@
     }
     modal = document.createElement('div');
     modal.id = 'rvAddModal';
-    modal.style.cssText = 'position:fixed;inset:0;z-index:9001;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;justify-content:center;';
+    // [2026-10-01 mobile-ux-05] --kb-inset(app-core _viewportKeyboardHook) — iOS 키보드가 가린 만큼 시트를 올린다. 안드로이드/PC 는 0.
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9001;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;justify-content:center;padding-bottom:var(--kb-inset, 0px);';
     const _isEdit = !!(prefill && prefill._edit_id);
     const _title = _isEdit ? '매출 편집'
       : (prefill?.recorded_date ? prefill.recorded_date.slice(5).replace('-', '/') + ' 매출 입력' : '매출 입력');
     // 결제수단 4칩 (etc 제거 — 기존 etc 데이터 표시는 _tagHTML 에서 그대로 유지)
     const _methods = [['card', '카드'], ['cash', '현금'], ['transfer', '계좌'], ['membership', '회원권']];
     modal.innerHTML = `
-      <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:18px 16px;padding-bottom:max(18px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));max-height:92vh;overflow-y:auto;">
+      <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:18px 16px;padding-bottom:max(18px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));max-height:calc(92vh - var(--kb-inset, 0px));overflow-y:auto;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
           <strong style="font-size:17px;color:#191F28;letter-spacing:-0.3px;">${_title}</strong>
           <button class="ss-close" type="button" data-rv-modal-close style="margin-left:auto;background:transparent;border:none;font-size:20px;cursor:pointer;color:#8B95A1;" aria-label="닫기"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#ic-x"/></svg></button>
@@ -828,7 +829,7 @@
         </div>
         <div style="display:flex;gap:6px;justify-content:center;margin-bottom:18px;">
           ${[10000, 50000, 100000].map(v => `
-            <button type="button" data-rf-add="${v}" style="padding:7px 14px;border:0.5px solid #E5E8EB;border-radius:999px;background:#fff;cursor:pointer;font-size:12px;color:#4E5968;font-weight:500;">+${v / 10000}만</button>
+            <button type="button" class="tap44" data-rf-add="${v}" style="padding:7px 14px;border:0.5px solid #E5E8EB;border-radius:999px;background:#fff;cursor:pointer;font-size:12px;color:#4E5968;font-weight:500;">+${v / 10000}만</button>
           `).join('')}
         </div>
 
@@ -836,13 +837,13 @@
         <label style="display:block;font-size:11px;color:#8B95A1;margin-bottom:6px;">결제수단</label>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:18px;">
           ${_methods.map(([m, label]) => `
-            <button type="button" data-rf-method="${m}" style="padding:11px 0;border:0.5px solid #E5E8EB;border-radius:12px;background:#fff;cursor:pointer;font-size:13px;color:#4E5968;font-weight:500;">${label}</button>
+            <button type="button" class="tap44" data-rf-method="${m}" style="padding:11px 0;border:0.5px solid #E5E8EB;border-radius:12px;background:#fff;cursor:pointer;font-size:13px;color:#4E5968;font-weight:500;">${label}</button>
           `).join('')}
         </div>
 
         <!-- 시술 (선택) -->
         <label style="display:block;font-size:11px;color:#8B95A1;margin-bottom:6px;">시술 (선택)</label>
-        <div id="rfServiceChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;"></div>
+        <div id="rfServiceChips" style="display:flex;flex-wrap:wrap;gap:12px 6px;margin-bottom:8px;"></div>
         <input id="rfServiceCustom" type="text" maxlength="50" placeholder="시술명 직접 입력"
           style="display:none;width:100%;padding:10px 12px;border:0.5px solid #E5E8EB;border-radius:12px;margin-bottom:8px;font-size:14px;color:#191F28;background:#fff;box-sizing:border-box;" />
         <div style="height:10px;"></div>
@@ -1100,8 +1101,8 @@
       const nm = String(t.name || '').trim();
       const price = Number(t.default_price) || 0;
       const on = !!ctx.service_name && ctx.service_name === nm;
-      return `<button type="button" data-rf-svc="${_esc(nm)}" data-rf-price="${price}" style="${_chipStyle(on)}">${_esc(nm)}</button>`;
-    }).join('') + `<button type="button" id="rfSvcCustomBtn" style="${_chipStyle(false)}">+ 직접</button>`;
+      return `<button type="button" class="tap44" data-rf-svc="${_esc(nm)}" data-rf-price="${price}" style="${_chipStyle(on)}">${_esc(nm)}</button>`;
+    }).join('') + `<button type="button" class="tap44" id="rfSvcCustomBtn" style="${_chipStyle(false)}">+ 직접</button>`;
     const _selectChip = (activeEl) => {
       host.querySelectorAll('[data-rf-svc]').forEach(c => c.setAttribute('style', _chipStyle(c === activeEl)));
       const cb = modal.querySelector('#rfSvcCustomBtn');

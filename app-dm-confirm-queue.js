@@ -54,8 +54,8 @@
           <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#F7EFF0;color:#BC6675;"><svg width="15" height="15" aria-hidden="true"><use href="#ic-bot"/></svg></span>
           <strong style="font-size:17px;color:#191F28;">실시간 DM</strong>
           <span id="dcqCount" style="font-size:11px;background:#F2F4F6;color:#4E5968;padding:2px 8px;border-radius:99px;font-weight:700;">0건</span>
-          <button id="dcqSettings" aria-label="자동응답 설정" title="자동응답 설정" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#4E5968;display:inline-flex;align-items:center;padding:4px;"><i class="ph-duotone ph-gear" aria-hidden="true" style="font-size:19px;"></i></button>
-          <button id="dcqClose" aria-label="닫기" style="background:none;border:none;cursor:pointer;color:#8B95A1;display:inline-flex;align-items:center;padding:4px;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-x"/></svg></button>
+          <button id="dcqSettings" aria-label="자동응답 설정" title="자동응답 설정" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#4E5968;display:inline-flex;align-items:center;justify-content:center;padding:0;"><svg width="20" height="20" aria-hidden="true"><use href="#ic-settings"/></svg></button>
+          <button id="dcqClose" aria-label="닫기" style="background:none;border:none;cursor:pointer;color:#8B95A1;display:inline-flex;align-items:center;justify-content:center;padding:0;"><svg width="14" height="14" aria-hidden="true"><use href="#ic-x"/></svg></button>
         </div>
         <div style="font-size:11.5px;color:#8B95A1;margin-bottom:12px;line-height:1.5;">
           답장이 필요한 손님 메시지예요. 잇비 추천 답장을 확인하고 전송하세요.
@@ -63,16 +63,22 @@
         <style>@keyframes dcqSpin{to{transform:rotate(360deg)}}
           #dcqTabs::-webkit-scrollbar{display:none}
           /* [2026-08-15 기기QA] 닫기 22x22 · 설정 27x27 로 16개 기기 전부에서 최소 터치영역(44px) 미달이었다.
-             겉모습은 그대로 두고 ::after 로 히트 영역만 44x44 로 넓힌다(아이콘 크기·간격 불변). */
-          #dcqClose, #dcqSettings{position:relative;}
-          #dcqClose::after, #dcqSettings::after{content:'';position:absolute;top:50%;left:50%;
-            width:44px;height:44px;transform:translate(-50%,-50%);}
-          .dcq-tab{font-size:12.5px;padding:6px 11px;border-radius:9px;border:1px solid #E5E8EB;background:#fff;color:#8B95A1;white-space:nowrap;cursor:pointer;font-weight:600;font-family:inherit;flex:none;}
+             [2026-10-01 mobile-ux-03] ::after 44 확장은 둘이 gap 8px 로 붙어 있어 서로를 뺏었다(실측: 설정 23×44).
+             설정 아이콘은 phosphor 폰트(<i class=ph-gear>)라 폰트가 안 오면 버튼이 8×8 로 사라지기도 했다
+             → SVG 스프라이트(#ic-settings)로 바꾸고, 둘 다 **실제 박스 44×44** (아이콘 크기는 그대로,
+             세로 음수 마진으로 헤더 줄 높이도 그대로). 박스가 실제라 겹치지 않는다. */
+          #dcqClose, #dcqSettings{width:44px;height:44px;margin-top:-9px;margin-bottom:-9px;flex:none;position:relative;}
+          #dcqClose{margin-right:-10px;}
+          .dcq-tab{font-size:12.5px;padding:6px 11px;border-radius:9px;border:1px solid #E5E8EB;background:#fff;color:#8B95A1;white-space:nowrap;cursor:pointer;font-weight:600;font-family:inherit;flex:none;position:relative;}
+          /* [2026-10-01 mobile-ux-03] 채널 탭 59×31 — 보이는 크기 그대로, ::after 로 세로 44. 줄바꿈되면 row-gap 12 로 안 겹친다.
+             #dcqTabs 가 overflow-x:auto 라 세로 확장이 잘린다 → padding-block 7 + margin-block -7 로 여유(customer-v4 .cv4-chips 와 같은 식). */
+          .dcq-tab::after{content:'';position:absolute;left:0;right:0;top:50%;height:max(100%,44px);transform:translateY(-50%);}
+          #dcqTabs{padding-block:7px;margin-block:-7px 5px;}
           .dcq-tab.on{background:#191F28;border-color:#191F28;color:#fff;}</style>
         <!-- [2026-08-15] flex-wrap 추가 — 0건 탭을 숨겨도 4채널 다 살아있고 글씨 '크게'면 여전히 넘쳤다
              (실측 내용 391px vs 칸 343px). 넘칠 때만 두 줄로 접힌다 = 보통 글씨·평상시엔 한 줄 그대로.
              밀어서 보게 두면 안 된다 — scrollbar-width:none 이라 더 있다는 걸 알 방법이 없다. -->
-        <div id="dcqTabs" style="display:flex;flex-wrap:wrap;gap:6px;overflow-x:auto;margin-bottom:12px;scrollbar-width:none;">
+        <div id="dcqTabs" style="display:flex;flex-wrap:wrap;gap:12px 6px;overflow-x:auto;scrollbar-width:none;">
           <button type="button" class="dcq-tab on" data-filter="all">전체 0</button>
           <button type="button" class="dcq-tab" data-filter="instagram">인스타 0</button>
           <button type="button" class="dcq-tab" data-filter="kakao">카톡 0</button>
@@ -744,7 +750,7 @@
     const WRAP = 'text-align:center;padding:40px 20px;';
     const TITLE = 'font-size:15px;font-weight:700;color:#191F28;margin-bottom:6px;';
     const DESC = 'font-size:13px;color:#8B95A1;line-height:1.7;';
-    const BTN = 'margin-top:16px;padding:12px 20px;border:none;border-radius:13px;background:#191F28;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;';
+    const BTN = 'margin-top:16px;min-height:44px;padding:12px 20px;border:none;border-radius:13px;background:#191F28;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;';
     const box = (title, desc, btn) => `<div style="${WRAP}"><div style="${TITLE}">${title}</div><div style="${DESC}">${desc}</div>${btn || ''}</div>`;
     if (_tokenState === 'none') {
       return box('인스타가 연결되어 있지 않아요',

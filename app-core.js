@@ -3058,12 +3058,37 @@ window.startAppleLogin = async function () {
 //         재클릭이 빗나간다는 사용자 보고.
 //   해법: visualViewport 변화량을 --tab-bar-bottom CSS var 로 실시간 보정.
 //         지원되지 않는 브라우저는 CSS 폴백(safe-area + 14px) 사용.
-(function _stabilizeTabBarOnIOS() {
+// [2026-10-01 mobile-ux-05] 탭바 전용이던 보정을 **공용 훅**으로 — 저장 버튼이 키보드에 가리던 문제.
+//   iOS(WKWebView)는 키보드가 떠도 레이아웃 뷰포트가 안 줄어서 고객 추가 '추가'(713/844)·매출 입력
+//   '기록하기'(826/844)·예약 폼 sticky '예약 저장'(834/844)·잇비 입력창이 키보드 뒤에 남았다
+//   (안드로이드는 innerHeight 가 같이 줄어 스크롤로 닿는다 — evidence/mobile-ux/kb2.json).
+//   여기서 공급하는 것:
+//     html.kb-open        — 키보드가 떠 있는 동안 (iOS 만 걸린다. 안드로이드는 innerHeight 가 줄어 kb≈0)
+//     --kb-inset          — 레이아웃 뷰포트 **아래쪽이 키보드에 가린 px** (= innerH - vv.offsetTop - vv.height, 0 이상).
+//                           모달/시트/폼 루트는 이만큼 padding-bottom(또는 bottom) 을 주면 하단 버튼이 키보드 위로 올라온다.
+//                           (style-components.css · app-customer-dashboard.js · app-revenue.js · app-assistant.js 가 쓴다)
+//     window.ViewportKeyboard — { open, inset, refresh() } JS 에서 읽을 때.
+//   키보드가 뜨는 순간 포커스된 입력칸을 scrollIntoView({block:'center'}) 해 칸 자체도 키보드 위로 올린다.
+(function _viewportKeyboardHook() {
+  const root = document.documentElement;
+  const api = { open: false, inset: 0, refresh() {} };
+  try { window.ViewportKeyboard = api; } catch (_e) { /* ignore */ }
   if (!window.visualViewport) return;  // 안드로이드 Chrome 도 대부분 지원
   const vv = window.visualViewport;
-  const root = document.documentElement;
   const BASE = 14;  // px — CSS 와 동일
   let raf = 0;
+  let revealTimer = 0;
+  const _isField = (el) => !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+  // 키보드가 올라온 뒤 포커스된 칸을 가운데로. iOS 는 키보드 애니메이션(≈250ms) 동안 vv 가 여러 번 바뀌므로
+  // 마지막 변화 뒤 한 번만 — 매 이벤트마다 스크롤하면 떨린다.
+  const revealFocused = () => {
+    clearTimeout(revealTimer);
+    revealTimer = setTimeout(() => {
+      const el = document.activeElement;
+      if (!api.open || !_isField(el) || typeof el.scrollIntoView !== 'function') return;
+      try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_e) { try { el.scrollIntoView(); } catch (_e2) { /* ignore */ } }
+    }, 120);
+  };
   const update = () => {
     raf = 0;
     // 2026-05-01 ── 탭바 사라짐 버그 픽스. 이전엔 offset 그대로 max(0, x) 만 적용 →
@@ -3091,12 +3116,23 @@ window.startAppleLogin = async function () {
     //   ⚠️ 안드로이드는 키보드가 뜨면 innerHeight 자체가 줄어 `innerH - vv.h ≈ 0` 이라
     //      이 분기에 걸리지 않는다 = 기존 동작 그대로. (에뮬레이터로 확인)
     const kb = (window.innerHeight - vv.height) | 0;
-    root.classList.toggle('kb-open', kb > 100 && kb < 600);
+    const open = kb > 100 && kb < 600;
+    const wasOpen = api.open;
+    root.classList.toggle('kb-open', open);
+    // [mobile-ux-05] 가린 만큼만 — iOS 가 페이지를 같이 스크롤해(offsetTop) 레이아웃 바닥이 이미 보이면 0.
+    //   raw 가 음수(-18 실측)면 0, 키보드 높이보다 클 수 없다.
+    const inset = open ? Math.max(0, Math.min(raw, kb)) : 0;
+    api.open = open; api.inset = inset;
+    root.style.setProperty('--kb-inset', inset + 'px');
+    if (open && (!wasOpen || inset > 0)) revealFocused();
   };
   const schedule = () => { if (!raf) raf = requestAnimationFrame(update); };
+  api.refresh = update;
   vv.addEventListener('resize', schedule, { passive: true });
   vv.addEventListener('scroll', schedule, { passive: true });
   window.addEventListener('orientationchange', () => setTimeout(update, 250), { passive: true });
+  // 키보드가 이미 떠 있는 채로 다음 칸으로 옮기면(탭/다음 버튼) resize 가 안 온다 — 포커스 때도 한 번.
+  document.addEventListener('focusin', (e) => { if (api.open && _isField(e.target)) revealFocused(); }, { passive: true });
   update();
 })();
 
