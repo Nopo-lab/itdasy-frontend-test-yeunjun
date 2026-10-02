@@ -127,11 +127,11 @@ const PAGE_HELPERS = `
     const after = await page.evaluate(async (ids) => { const l = await window.loadSlotsFromDB(); const s = l.find((x) => ids.indexOf(x.id) < 0); return { n: l.length, photos: s && s.photos.length, outs: s && (s.templateOutputs || []).length, toasts: window.__toasts.splice(0) }; }, beforeIds);
     ck('Q4b 뒤로가기 ×3 으로 나가도 사진 2·합성본 1 이 임시 저장돼 있다', !(await page.evaluate(() => window.WorkspaceFlow.isOpen())) && after.n === before + 1 && after.photos === 2 && after.outs === 1 && after.toasts.some((t) => /임시 저장/.test(t)), JSON.stringify(after));
 
-    // ── Q5 [05] 캡션 결과 캐러셀 — 결과물 슬라이드가 실제 비율 ──
+    // ── Q5 [05→04] 캡션 결과 캐러셀 — 결과물 슬라이드는 **첫 장 비율로 통일**(발행 규칙: BE 가 첫 장 비율로 pad) ──
     await page.evaluate(async (id) => { const l = await window.loadSlotsFromDB(); const s = l.find((x) => x.id === id); s.caption = 'QA 캡션'; window.WorkspaceFlow.open({ slot: s, startScreen: 'caption' }); }, s1.id);
     await waitScreen('caption'); await page.waitForTimeout(1200);
     const slides = await page.$$eval('#wsv2Flow [data-fl-carslide]', (els) => els.map((e) => { const r = e.getBoundingClientRect(); return { id: e.getAttribute('data-fl-carslide'), igout: e.hasAttribute('data-fl-igout'), ar: e.style.aspectRatio, boxAr: +(r.width / r.height).toFixed(3) }; }));
-    ck('Q5 캐러셀 2장 · 전후 합성본(1:1) 칸이 1:1, 그대로(600×750) 칸이 4:5', slides.length === 2 && slides[0].igout && slides[0].ar === '1080 / 1080' && Math.abs(slides[0].boxAr - 1) < 0.02 && slides[1].ar === '600 / 750' && Math.abs(slides[1].boxAr - 0.8) < 0.02, JSON.stringify(slides));
+    ck('Q5 캐러셀 2장 · 전후 합성본(1:1) 칸이 1:1, 두 번째 결과물 칸도 첫 장 비율(1:1)로 통일(04 발행 규칙)', slides.length === 2 && slides[0].igout && slides[0].ar === '1080 / 1080' && Math.abs(slides[0].boxAr - 1) < 0.02 && slides[1].ar === '1080 / 1080' && Math.abs(slides[1].boxAr - 1) < 0.02, JSON.stringify(slides));
 
     // ── Q6 [06] 폰에 저장 = 카드 전부 ──
     await page.click('#wsv2Flow [data-fl="saveimg"]'); await page.waitForTimeout(1500);

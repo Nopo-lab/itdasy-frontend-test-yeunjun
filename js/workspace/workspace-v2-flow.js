@@ -112,12 +112,25 @@
   function _pushHist() {
     try { history.pushState({ wsv2: 'step' }, '', '#wsv2flow'); _histDepth++; } catch (_e) { void _e; }
   }
+  /* [2026-10-01 flow-workspace-photo-12] 단계 엔트리 n개 되감기(setScreen 이 방문했던 화면으로 접을 때).
+     history.go 가 일으키는 popstate 는 화면 복귀가 아니므로 표식(_rewindPending)으로 하나 삼킨다 —
+     popstate 가 영영 안 오는 환경(엔트리 부족·일부 웹뷰) 대비 1초 뒤 표식을 거둔다. */
+  var _rewindPending = [];   // 되감기 표식(토큰) — popstate 가 하나 소비, 못 받으면 1초 뒤 그 토큰만 거둔다
+  function _rewindHist(n) {
+    if (!(n > 0)) return;
+    _histDepth = Math.max(0, _histDepth - n);
+    var tok = {};
+    _rewindPending.push(tok);
+    try { history.go(-n); } catch (_e) { _rewindPending.splice(_rewindPending.indexOf(tok), 1); return; }
+    setTimeout(function () { var i = _rewindPending.indexOf(tok); if (i >= 0) _rewindPending.splice(i, 1); }, 1000);
+  }
   function _bindPop() {
     if (_popBound) return; _popBound = true;
     // 단계가 남아있으면 한 화면 뒤로 — 시스템 back/브라우저 back/인앱 back 모두 동일 결과.
     //  베이스(#wsv2flow 마지막 엔트리)가 빠질 땐 전역 sheet 레지스트리(_systemBack)가 닫고 작업실 홈으로.
     window.addEventListener('popstate', function () {
       if (_closingHist) return;
+      if (_rewindPending.length) { _rewindPending.shift(); return; }   // [12] 우리가 되감은 엔트리의 popstate — 화면 복귀 아님
       _navBack();
     });
   }
@@ -1702,11 +1715,15 @@
 	         → 한 번 디코드된 **실제 크기**(naturalWidth/Height)를 기억했다가 다시 그릴 때 width/height 로 넣는다.
 	           브라우저가 그 비율로 칸을 먼저 잡으므로 밀리지 않고, 추측이 아니라 그 이미지의 진짜 비율이다. */
 	      var _pvDim = d.templateOutput ? _capPreviewDims[d.templateOutput] : null;
-	      var photoThumb = d.templateOutput   /* [버그수정 2026-07-06] 재오픈 초안도 합성본 썸네일 */
+	      /* [2026-10-01 flow-workspace-photo-08] 카드가 2장 이상이면 입력 화면에서도 **캐러셀**(_capCarouselHtml)을 먼저 쓴다.
+	         예전엔 d.templateOutput(첫 카드) 분기가 앞서서 레이아웃에서 "3장이 올라가요" 라고 안내한 직후 캡션 화면엔 1장만 보였다
+	         (실측 e2e-phase2 caption:input carousel:[] · 2026-07-06 재오픈 썸네일 수정 때 다중 카드를 고려하지 않음). 단일이면 그대로 .wsl-cap-preview. */
+	      var _capCar = ((d.templateOutputs || []).length >= 2) ? _capCarouselHtml() : '';
+	      var photoThumb = _capCar || (d.templateOutput   /* [버그수정 2026-07-06] 재오픈 초안도 합성본 썸네일 */
 	        ? '<div class="wsl-cap-preview"><img src="' + esc(_blobDisp(d.templateOutput)) + '" alt="미리보기"' +
 	          (_pvDim ? ' width="' + _pvDim.w + '" height="' + _pvDim.h + '"' : '') + '></div>'
 	        : (_capCarouselHtml() || ((!d.textOnly && url) ?
-	        '<div class="cap-photo cap-photo--sm" style="background-image:url(' + esc(_blobDisp(url)) + ')"></div>' : ''));
+	        '<div class="cap-photo cap-photo--sm" style="background-image:url(' + esc(_blobDisp(url)) + ')"></div>' : '')));
 	      // [캡션재설계 v2 2026-07-15] 자유 서술 텍스트영역(500자) 제거 — 질문 3카드 + 시술 칩(단일선택) + 특이사항 한 줄.
       //   자유 텍스트가 시술명으로 못박혀 욕설·사담이 캡션에 그대로 실리던 verbatim 버그의 입구를 막는다.
 	      if (SIMPLE_FLOW) {
@@ -2293,7 +2310,15 @@
     // [v531] 캡션 화면을 떠날 땐 항상 입력(본문·해시태그·꼬리말) 확정 → 저장/미리보기/복사에 편집분 반영(어떤 경로든).
     if (cur === 'caption' && name !== 'caption' && el && el.classList.contains('is-open')) flushCaptionInputs();
     // 같은 화면 재렌더(doGenerate/loadRecent 등)는 push 안 함. 뒤로가기(fromBack)도 push 안 함.
-    if (name !== cur && opts.push !== false && el && el.classList.contains('is-open')) { navStack.push(cur); _pushHist(); }
+    if (name !== cur && opts.push !== false && el && el.classList.contains('is-open')) {
+      /* [2026-10-01 flow-workspace-photo-12] 이미 거쳐 온 화면으로 **돌아가는** 전환('다시 고르기' → upload 등)이면
+         그 화면까지 스택을 접고 히스토리 엔트리도 같은 수만큼 되감는다 — 경로를 선형으로 유지.
+         예전엔 무조건 push 라 upload → layout → upload → layout → caption 뒤 스택이 [upload, layout, upload, layout] 이 되어
+         뒤로가기가 같은 화면을 되밟고 4번 눌러도 안 닫혔다(실측 e2e-main-phase1 nav:back-without-caption). */
+      var _seen = navStack.indexOf(name);
+      if (_seen >= 0) { var _rw = navStack.length - _seen; navStack.length = _seen; _rewindHist(_rw); }
+      else { navStack.push(cur); _pushHist(); }
+    }
     cur = name;
     var to = SCREENS.indexOf(name);
     el.querySelectorAll('.wsv2flow__s').forEach(function (s) {
@@ -2406,6 +2431,36 @@
 	    var customer = c.customer || (d.customerId ? d.customerName : '') || '';   // [#1] 연결된 고객(customerId)만 재사용, stale 이름('방') 방지
 	    return { shop: shop, customer: customer, service: c.service || raw };
 	  }
+	  /* [2026-10-01 flow-workspace-photo-09] 카드 구성 집계 — 전후 비교 카드 / 콜라주(모아보기) 카드 / 그대로 사진.
+	     전후 판정: 결과물에 before/afterPhotoId 가 있거나, 레이아웃 id 가 전후 계열(wsl-ba-*)이거나 레이아웃 kind 가 before_after. */
+	  function _isBaOutput(o) {
+	    if (!o) return false;
+	    if (o.beforePhotoId || o.afterPhotoId) return true;
+	    var tid = String(o.templateId || '');
+	    if (!tid) return false;
+	    if (/^wsl-ba-/.test(tid)) return true;
+	    try { var L = window.WorkspaceLayout && window.WorkspaceLayout.getById ? window.WorkspaceLayout.getById(tid) : null; return !!(L && L.kind === 'before_after'); } catch (_e) { return false; }
+	  }
+	  function _cardMix() {
+	    var outs = d.templateOutputs || [], ba = 0, collage = 0, plain = 0;
+	    outs.forEach(function (o) { if (_isBaOutput(o)) ba++; else if (o && o.templateId) collage++; else plain++; });
+	    return { ba: ba, collage: collage, plain: plain, total: outs.length };
+	  }
+	  function _cardMixText(m) {
+	    var parts = [];
+	    if (m.ba) parts.push('전후 비교 ' + m.ba + '장(같은 고객의 시술 전/후 변화 컷)');
+	    if (m.collage) parts.push('여러 장 모아보기 ' + m.collage + '장');
+	    if (m.plain) parts.push('사진 ' + m.plain + '장(시술 결과 컷' + (m.ba ? '' : ', 전후 비교 아님') + ')');
+	    return '카드 ' + m.total + '장(인스타 캐러셀 한 편): ' + parts.join(' + ');
+	  }
+	  /* 실제 용도 — 전후 카드를 골랐으면 before_after. 잇비 카테고리로 정해진 d.tplPurpose(review/event/story/price) 는 그대로 존중하고,
+	     기본값(feed/없음)일 때만 카드 구성(전후 결과물 또는 레이아웃 '전·후 합치기' 선택)으로 승격한다. */
+	  function _effPurpose() {
+	    var p = d.tplPurpose || 'feed';
+	    if (p !== 'feed') return p;
+	    var hasBa = (d.templateOutputs || []).some(_isBaOutput) || d.wsComp === 'ba';
+	    return hasBa ? 'before_after' : p;
+	  }
 	  function doGenerate(extra, label) {
 	    if (d.capLoading) return;   // [audit] 생성 중 재탭 무시 — 연타 시 API 이중 호출(비용) 방지
 	    syncServiceFromDom();
@@ -2469,8 +2524,12 @@
     if (opts.customer_name) opts.photo_context += ' · 고객명: ' + opts.customer_name + '(시술받는 고객 이름. 시술명·스타일명·브랜드명이 아님. 게시글엔 고객님으로 자연스럽게만 언급)';
     // [다중pair] 결과물 여러 장이면 '캐러셀 게시글' 기준 — 중립적 전후 변화로(특정 시술명 가정 금지).
     var _outs = d.templateOutputs || [];
-    if (_outs.length >= 2) opts.photo_context += ' · 전후 결과물 ' + _outs.length + '장(인스타 캐러셀 한 편). 각 장은 같은 고객의 시술 전/후 변화 컷.';
-    else if (_outs.length === 1 && d.tplPurpose === 'before_after') opts.photo_context += ' · 시술 전후 변화 1장.';
+    /* [2026-10-01 flow-workspace-photo-09] 카드 구성 그대로 서술한다. 예전엔 2장 이상이면 무조건
+       "전후 결과물 N장 … 각 장은 같은 고객의 시술 전/후 변화 컷" 이라 '그대로' 사진 2장도 전후 컷으로 쓰여 캡션이 거짓 전제를 깔았다
+       (실측 e2e-phase2 genOpts.photo_context: 전후 1 + 그대로 2 → '전후 결과물 3장'). */
+    var _mix = _cardMix();
+    if (_outs.length >= 2) opts.photo_context += ' · ' + _cardMixText(_mix);
+    else if (_outs.length === 1 && (_mix.ba || _effPurpose() === 'before_after')) opts.photo_context += ' · 시술 전후 변화 1장.';
     // [v532] photo_context 백엔드 상한 500자 — 다중 pair 노트까지 붙은 뒤 초과 시 422(생성 실패) 방지로 클램프.
     if (opts.photo_context && opts.photo_context.length > 480) opts.photo_context = opts.photo_context.slice(0, 480);
     // [캡션재설계 v2] extra_notes — 시술명 = 정제된 칩 값(_pubSvc)만 + 특이사항 재료 규칙 + 재생성 변형 지시. 300자 내 보장.
@@ -2495,7 +2554,7 @@
       opts.extra_notes = '특정 가게 이름(상호)을 지어내거나 넣지 말고 필요하면 "저희 샵"으로만 칭할 것. ' + opts.extra_notes;
       opts.extra_notes = opts.extra_notes.slice(0, 300);
     }
-    opts.content_type = d.tplPurpose || 'feed';
+    opts.content_type = _effPurpose();   // [09] 전후 카드가 있으면 'before_after' (잇비 경로의 d.tplPurpose 만 보던 것)
     opts.caption_intent = opts.caption_intent || 'generate';
     opts.strict_user_context = true;
     if (opts.caption_intent !== 'generate' && String(d.caption || '').trim()) {
@@ -3077,7 +3136,15 @@
 	  // [다중pair] 캡션 상단 캐러셀 표시 아이템 — 템플릿 결과물(들) + (전후) 미적용 원본(남은 전/후·기본).
 	  function _unpairedPhotos() {
 	    var used = {};
-	    (d.templateOutputs || []).forEach(function (o) { if (o.beforePhotoId) used[o.beforePhotoId] = 1; if (o.afterPhotoId) used[o.afterPhotoId] = 1; });
+	    /* [2026-10-01 flow-workspace-photo-09] 어떤 카드(전후·모아보기·그대로)에든 이미 들어간 사진은 '남은 사진' 이 아니다.
+	       예전엔 before/afterPhotoId 만 봐서, 전후 1장 + 그대로 1장 구성이 before_after 용도로 저장·재진입되면
+	       그대로 카드의 사진이 결과물과 **또** 한 장으로 잡혀 캐러셀 3장·'폰에 저장' 3장이 됐다(wsv2-multipair-qa Q6). */
+	    (d.templateOutputs || []).forEach(function (o) {
+	      if (!o) return;
+	      if (o.beforePhotoId) used[o.beforePhotoId] = 1;
+	      if (o.afterPhotoId) used[o.afterPhotoId] = 1;
+	      (o.photoIds || []).forEach(function (id) { used[id] = 1; });
+	    });
 	    return _selectedOrdered().filter(function (p) { return !used[p.id]; });
 	  }
 	  function _photoById(id) { return (d.photos || []).filter(function (p) { return String(p.id) === String(id); })[0] || null; }
@@ -3128,6 +3195,12 @@
 	    if (cur === 'caption' && typeof syncCaptionFromDom === 'function') { try { syncCaptionFromDom(); } catch (_e) { void _e; } }
 	    setScreen(cur, { push: false });
 	  }
+	  function _capCarHint(outN) {
+	    var m = _cardMix();
+	    if (m.ba && m.ba === m.total) return outN + '장의 전후 결과물로 게시글을 만들어요';
+	    if (m.ba) return '전후 ' + m.ba + '장 + 사진 ' + (m.total - m.ba) + '장, 총 ' + outN + '장으로 게시글을 만들어요';
+	    return outN + '장의 사진으로 게시글을 만들어요';
+	  }
 	  function _capCarouselHtml() {
 	    var items = _displayItems();
 	    if (items.length < 2) return '';   // 결과물/표시 아이템 1개 이하 → 캐러셀 없이 기존 단일 프리뷰
@@ -3149,7 +3222,7 @@
 	    return '<div class="cap-car" data-fl-carousel>' +
 	      '<div class="cap-car__track" data-fl-cartrack>' + slides + '</div>' +
 	      '<div class="cap-car__dots">' + dots + '</div>' +
-	      (outN >= 2 ? '<p class="cap-car__hint">' + outN + '장의 전후 결과물로 게시글을 만들어요</p>' : '') +
+	      (outN >= 2 ? '<p class="cap-car__hint">' + _capCarHint(outN) + '</p>' : '') +   // [09] 구성대로 말한다('전후 결과물' 고정 X)
 	    '</div>';
 	  }
 	  function _carItems() { return _displayItems(); }
@@ -3280,6 +3353,23 @@
 	    else { p.selected = false; p.roleManual = false; }
 	    reassignRoles(); _repaintUpload();   // [v531 렉] 선택 토글도 in-place 갱신
 	  }
+	  /* [2026-10-01 flow-workspace-photo-10] 읽을 수 없는 파일 안내 — 원인별로 다르게 말한다.
+	     예전엔 .txt·손상 JPG·BMP 까지 전부 "아이폰 설정 > 카메라 > 포맷" 안내였다(실측 diag-formats: notimage.txt·fake.jpg 에도 아이폰 안내).
+	     HEIC/HEIF(MIME 또는 확장자)만 아이폰 안내, 그 외는 '이미지 파일이 아니거나 손상' + 받는 포맷. */
+	  function _isHeicFile(f) {
+	    try {
+	      if (window.HeicConvert && window.HeicConvert.isHeic) return !!window.HeicConvert.isHeic(f);
+	      var t = String((f && f.type) || '').toLowerCase();
+	      return t.indexOf('image/heic') === 0 || t.indexOf('image/heif') === 0 || /\.(heic|heif)$/i.test(String((f && f.name) || ''));
+	    } catch (_e) { return false; }
+	  }
+	  function _unreadableFilesMsg(failedFiles) {
+	    var list = failedFiles || [], heic = list.filter(_isHeicFile).length, other = list.length - heic;
+	    var heicMsg = heic + '장은 아이폰 HEIC 사진이라 읽지 못했어요 — 아이폰 설정 > 카메라 > 포맷을 \'높은 호환성\'으로 바꾸면 돼요';
+	    var otherMsg = other + '장은 이미지 파일이 아니거나 손상돼 뺐어요 — JPG·PNG·WEBP 사진을 골라 주세요';
+	    if (heic && other) return heicMsg + ' · ' + otherMsg;
+	    return heic ? heicMsg : otherMsg;
+	  }
 	  function addFiles(files, showToast, toEdit) {
 	    var _all = Array.from(files || []);
 	    files = _all.slice(0, 10);
@@ -3288,8 +3378,12 @@
 	    if (!files.length) return Promise.resolve([]);
 	    // [#6] 업로드 픽커가 느린 원인 = 폰 사진(3~8MB) 원본을 그대로 base64 로 읽어 담던 것.
 	    //   2MB 초과분은 먼저 1920px JPEG 로 축소(_resizeIfNeeded) 후 읽어 import·썸네일·편집기 로딩을 크게 단축.
-	    var _resize = (typeof window._resizeIfNeeded === 'function') ? window._resizeIfNeeded : function (f) { return Promise.resolve(f); };
-	    return Promise.all(files.map(function (f) { return Promise.resolve(_resize(f, 1920)).catch(function () { return f; }).then(fileToDataUrl); }))
+	    /* [2026-10-01 flow-workspace-photo-07] 축소는 작업실 전용 경로(WSFlowUtil.resizeForIntake: createImageBitmap + close()).
+	       공용 _resizeIfNeeded 는 <img> 디코드라 원본 비트맵이 브라우저 이미지 캐시에 남아 5장 투입 → 닫기 라운드마다 ~100MB 가 쌓였다
+	       (실측 diag-5big: 630 → 744 → 794MB · exp-decode: <img> 5장 +121MB vs bitmap+close +3MB). HEIC·구형 웹뷰는 안에서 기존 경로로 떨어진다. */
+	    var _resize = (typeof WSU.resizeForIntake === 'function') ? WSU.resizeForIntake
+	      : ((typeof window._resizeIfNeeded === 'function') ? window._resizeIfNeeded : function (f) { return Promise.resolve(f); });
+	    return Promise.all(files.map(function (f) { return Promise.resolve(_resize(f, 1920)).catch(function () { return f; }).then(fileToDataUrl).catch(function () { return null; }); }))
 	      .then(function (rawUrls) {
 	        /* [2026-09-03 P2] **읽힘 ≠ 그려짐.** FileReader 는 내용이 뭐든 base64 로 바꿔주므로
 	           디코드 불가 파일도 dataURL 이 나온다 — 아래 `!!u` 필터를 그냥 통과했다.
@@ -3310,16 +3404,20 @@
 	      .then(function (rawUrls) {
 	      // [보안감사 H-3] 읽기 실패(null)한 파일은 걸러낸다. 예전엔 한 장 실패가 Promise.all 전체를 reject 시켜
 	      //   같이 고른 정상 사진까지 조용히 버려지고 무피드백이었다. 이제 성공분만 넣고 실패 건수만 안내.
-	      var urls = rawUrls.filter(function (u) { return !!u; });
-	      var _failed = rawUrls.length - urls.length;
+	      /* [2026-10-01 flow-workspace-photo-10] 성공한 File 과 실패한 File 을 **같은 인덱스로** 갈라 둔다.
+	         예전엔 urls(성공분만) 과 files(실패 포함 원본 순서) 를 _precomputeBAHints 가 i 로 짝지어, 실패 파일이 섞이면
+	         EXIF 촬영시각이 엉뚱한 사진에 붙어 전·후 자동 추정이 어긋났다(실측 diag-formats: [ok, bad, ok] → 두 번째 ok 가 bad 의 EXIF). */
+	      var urls = [], okFiles = [], failedFiles = [];
+	      rawUrls.forEach(function (u, i) { if (u) { urls.push(u); okFiles.push(files[i]); } else failedFiles.push(files[i]); });
+	      var _failed = failedFiles.length;
 	      // [2026-09-03] 왜 실패했는지·무엇을 하면 되는지까지 말한다("오류가 발생했습니다" 금지).
-	      if (_failed > 0) { try { toast(_failed + '장은 잇데이가 읽을 수 없어 뺐어요 — 아이폰 설정 > 카메라 > 포맷을 \'높은 호환성\'으로 바꾸면 돼요'); } catch (_e) { void _e; } }
+	      if (_failed > 0) { try { toast(_unreadableFilesMsg(failedFiles)); } catch (_e) { void _e; } }
 	      if (!urls.length) { setScreen('upload'); return urls; }
 	      urls.forEach(function (u) { d.photos.push({ id: uid(), dataUrl: u, role: 'hero', selected: true, selSeq: ++d._selSeq }); });
 	      // [QA hotfix] 다중 업로드 시 전후/홍보컷 자동 확정 금지 — 사용자가 '전/후 토글' 또는
 	      //   카테고리/템플릿으로 직접 용도를 고르게 한다. (전/후 카테고리로 진입한 경우만 baMode 유지)
 	      reassignRoles();
-	      _precomputeBAHints(files, urls.length);   // [다양성 팩] EXIF/밝기로 전·후 순서 자동추정(비동기, 준비되면 재배치)
+	      _precomputeBAHints(okFiles, urls.length);   // [다양성 팩] EXIF/밝기로 전·후 순서 자동추정(비동기, 준비되면 재배치) — 성공 파일만, 같은 순서
 	      // [v564·필수1] 홈 '시작하기'→파일선택→바로 편집. 중간 업로드 화면을 건너뛴다.
 	      // [v575·필수1] 직행 진입은 편집을 '베이스 화면'으로 — push:false 로 navStack 을 비워 둔다.
 	      //   기존엔 기본 push 로 cur('upload')가 navStack 에 쌓여, 뒤로가기 시 안 거쳐온 '업로드 화면'이 떴다.
@@ -3448,11 +3546,14 @@
     slot.customer_id = d.customerId || null;
     slot.customer_name = d.customerName || '';
     slot.status = 'done';
+    /* [2026-10-01 flow-workspace-photo-09] 저장 메타의 용도는 **실제 카드 구성**을 반영한다 — 레이아웃에서 '전·후 합치기' 를 골랐으면
+       잇비 경로가 아니어도 before_after. 예전엔 d.tplPurpose(잇비 카테고리로만 정해짐)라 전후 합성본이 promo/feed 로 저장됐다. */
+    var _effP = _effPurpose();
     slot.workspaceContext = Object.assign({}, slot.workspaceContext, {
-      type: TYPE_MAP[d.tplPurpose] || 'promo',
-      expectedPhotos: d.tplPurpose === 'before_after' ? 2 : 1,
+      type: TYPE_MAP[_effP] || 'promo',
+      expectedPhotos: _effP === 'before_after' ? 2 : 1,
       defaultRatio: _cropRatio(),
-	      templatePurpose: d.tplPurpose || 'feed',
+	      templatePurpose: _effP,
 	      templateId: d.templateId || null,
 	      templateLabel: d.template || '',
 	      captionMode: d.captionMode || 'normal',
@@ -4003,6 +4104,22 @@
     if (el.querySelector('[data-fl-pubask]')) { _closePublishSheet(); return; }   // [v547] 게시 확인 sheet 먼저 닫기
     if (!_navBack()) close();   // [v531] navStack 비면 close → 작업실 홈
   }
+  /* [2026-10-01 flow-workspace-photo-07] 세션이 끝나면 이 세션의 표시용 자원을 돌려준다.
+     · WSBlobUrl: 사진·합성본 dataURL 의 blob URL (LRU 상한 192 는 작업실 열고 닫는 동안 한 번도 안 차서 라운드마다 10개씩 영구 잔류).
+       홈 썸네일처럼 **지금 그려져 있는** URL 은 남긴다(keepInUse) — 단 이 플로우의 숨은 화면(el)은 다음에 열 때 새로 그리므로 예외.
+     · _outDims/_capPreviewDims: 키가 dataURL 통짜 문자열(수백 KB)이라 세션마다 쌓였다.
+     디코드 비트맵 자체(가장 큰 덩어리)는 투입 경로(resizeForIntake)에서 close() 로 바로 반환한다 — 여기선 남은 참조만. */
+  function _releaseSessionMedia() {
+    if (!d) return;
+    var urls = [];
+    (d.photos || []).forEach(function (p) { if (p) urls.push(p.dataUrl, p.editedDataUrl, p.baseUrl); });
+    (d.templateOutputs || []).forEach(function (o) { if (o) urls.push(o.outputUrl, o._autoBase); });
+    urls.push(d.templateOutput, d.previewUrl);
+    (d._myWorkThumbs || []).forEach(function (t) { urls.push(typeof t === 'string' ? t : (t && (t.url || t.src))); });
+    urls = urls.filter(function (u) { return typeof u === 'string' && u.indexOf('data:') === 0; });
+    urls.forEach(function (u) { delete _outDims[u]; delete _capPreviewDims[u]; });
+    if (window.WSBlobUrl && window.WSBlobUrl.release) window.WSBlobUrl.release(urls, { keepInUse: true, except: el });
+  }
   function close() {
     /* [2026-10-01 flow-workspace-photo-03] 닫히는 모든 경로(뒤로가기·시스템 back·프로그램적 close)에서
        저장 안 된 변경이 있으면 조용히 임시 저장한다. 예전엔 캡션 전(AI 실패 포함) 뒤로가기 ×3 이면 사진·합성본이
@@ -4028,6 +4145,7 @@
     //   d 를 null 로 만들지 않는 이유: d 를 읽는 코드가 파일 곳곳에 있어 즉시 크래시가 난다.
     //   대신 죽음 표식만 남기고, 진행 중이던 발행 진행바는 여기서 정리한다(콜백은 UI 안 건드림).
     try { if (d) { var _wasPublishing = d._publishing; d._dead = true; if (_wasPublishing) _pubHide(); } } catch (_de) { void _de; }
+    try { _releaseSessionMedia(); } catch (_rl) { void _rl; }   // [2026-10-01 07] 이 세션의 표시용 blob URL·크기 캐시 반환
     // [slot-sync coalesce] 편집 종료 → 정착: 최종본 1회 업로드+동기화.
     try { if (window.WorkspaceSync && window.WorkspaceSync.settleSlot) window.WorkspaceSync.settleSlot(); } catch (_se) { void _se; }
     var leftover = _histDepth;

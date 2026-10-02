@@ -345,6 +345,10 @@
         }).filter(function (p) { return !!p.image_url; });   // 이미지 없는 사진은 스킵
         return {
           _complete: _complete,
+          /* [2026-10-01 flow-workspace-photo-02] '사진이 원래 없는 슬롯' 과 '있는데 payload 에 못 실은 슬롯' 을 구분해 올린다.
+             서버는 사진 있는 글에 photos:[] 가 오면 409 photos_would_be_cleared 로 거절하는데, 원장이 **의도적으로**
+             사진을 전부 뺀 경우(로컬 photos 가 비어 있음)에만 clear_photos:true 로 다시 보내야 한다. */
+          _photosIntentEmpty: !((slot && slot.photos) || []).length,
           payload: {
             slot_id: String(slot.id),
             label: slot.label || '',
@@ -559,21 +563,8 @@
       var _mark = (slot && _origSaveSlot)
         ? Promise.resolve().then(function () { slot._pending = _pendingBase; return _origSaveSlot(slot); }).catch(function () {})
         : Promise.resolve();
-      return _mark.then(function () {
-        // 사진 업로드를 기다리는 사이 다른 탭이 계정을 바꿨을 수 있다 — 보내기 직전에 한 번 더.
-        if (accountSwitched() || foreignSlot(slot)) { _roundFailed = true; return null; }
-        return window.apiFetch('/workspace/slots/upsert', {
-        method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader()), body: JSON.stringify(payload),
-      }).then(function (r) {
-        // [M2·M3] 409 = 내가 본 리비전 이후 다른 기기가 바꿈 → 덮어쓰지 말고 3-way 병합.
-        if (r.status === 409) return r.json().catch(function () { return null; }).then(function (b) {
-          var remote = b && b.detail && b.detail.slot;
-          return remote ? resolveConflict(slot, remote).then(function () { return { _conflict: true }; }) : null;
-        });
-        if (!r.ok) _roundFailed = true;   // 서버 오류·권한·세션 만료 — 이번 라운드는 실패로 센다
-        return r.ok ? r.json() : null;
-      }); }).then(function (j) {
-        if (j && j._conflict) return;   // 병합이 처리 — 이번 push 는 여기서 끝(병합본이 dirty 로 남아 다음 push)
+      return _mark.then(function () { return _sendUpsert(slot, built, payload); }).then(function (j) {
+        if (j && (j._conflict || j._held)) return;   // 병합/보류가 처리 — 이번 push 는 여기서 끝(dirty 로 남아 다음 push)
         if (j && (j.ok || j.skipped)) {
           // [버그수정 2026-07-09 TOCTOU] push(업로드) 도중 사용자가 재편집(updatedAt 변경)했으면 그 편집분은
           //   이번 payload(buildPayload 시점 스냅샷)에 없으므로 synced 로 굳히지 않는다(다음 push 로 반영).
@@ -609,6 +600,54 @@
         slot._pending = _pendingBase;
         if (_origSaveSlot) return Promise.resolve(_origSaveSlot(slot)).catch(function () {});
       }
+    });
+  }
+  /* [2026-10-01 flow-workspace-photo-02] upsert 전송 — 서버의 409 사유(detail.reason)를 가려 처리한다.
+     · 'photos_would_be_cleared' (사진 있는 글에 photos:[]):
+         - 로컬이 **의도적으로** 사진 0장(전부 뺌)이면 clear_photos:true 로 **1회** 재전송 → 서버도 0장이 돼 synced.
+         - 아니면(로컬엔 사진 항목이 있는데 실을 이미지가 없는 비정상 상태) 서버본 사진을 로컬에 되살려 dirty 로 두고 바로 다시 올린다.
+       예전엔 모든 409 를 '다른 기기 충돌' 로 읽어 3-way 병합 → 로컬 채택 → dirty 유지 → 라운드마다 또 409 (영원히 dirty, 안내 0).
+     · 그 외(reason 'conflict' 또는 reason 없음 + slot) = 다른 기기가 바꿈 → 기존 3-way 병합. */
+  function _sendUpsert(slot, built, body, tried) {
+    tried = tried || {};
+    // 사진 업로드를 기다리는 사이 다른 탭이 계정을 바꿨을 수 있다 — 보내기(재전송 포함) 직전에 한 번 더.
+    if (accountSwitched() || foreignSlot(slot)) { _roundFailed = true; return null; }
+    return window.apiFetch('/workspace/slots/upsert', {
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader()), body: JSON.stringify(body),
+    }).then(function (r) {
+      if (r.status === 409) return r.json().catch(function () { return null; }).then(function (b) {
+        var det = b && b.detail, remote = det && det.slot;
+        if (det && det.reason === 'photos_would_be_cleared') {
+          if (built._photosIntentEmpty) {
+            if (!tried.clear) {
+              log('pushSlot 409 photos_would_be_cleared — local intentionally empty, resend with clear_photos', slot && slot.id);
+              return _sendUpsert(slot, built, Object.assign({}, body, { clear_photos: true }), { clear: true });
+            }
+            _roundFailed = true;   // clear 를 명시했는데도 거절 — 한 번만 시도하고 이번 라운드 실패(서버본은 건드리지 않는다)
+            return null;
+          }
+          if (remote && !tried.restore) {
+            /* 로컬에 사진 항목은 있는데 서버로 실을 이미지가 하나도 없다(dataUrl/URL 소실) — 서버가 가진 사진이 정본.
+               여기서 clear 를 보내면 그 사진이 영영 사라지므로, 서버본 사진을 로컬로 되살리고 그걸로 다시 올린다. */
+            log('pushSlot 409 photos_would_be_cleared — local photos unusable, restore from server copy', slot && slot.id);
+            var srvPhotos = remoteToLocal(remote).photos;
+            slot.photos = srvPhotos;
+            slot.syncState = 'dirty';
+            try { if (window.showToast) window.showToast('사진을 서버에 있던 것으로 되살렸어요'); } catch (_t) { void _t; }
+            var _save = _origSaveSlot ? Promise.resolve(_origSaveSlot(slot)).catch(function () {}) : Promise.resolve();
+            return _save.then(function () { return buildPayload(slot); }).then(function (b2) {
+              if (!b2._complete) { _roundFailed = true; _heldSlots[String(slot && slot.id)] = true; return { _held: true }; }
+              return _sendUpsert(slot, b2, b2.payload, { restore: true });
+            });
+          }
+          _roundFailed = true;   // 되살릴 서버본도 없다 — 이번 라운드 실패로 세고 dirty 유지(원장에게 '아직 못 올렸어요')
+          return null;
+        }
+        // [M2·M3] 409 = 내가 본 리비전 이후 다른 기기가 바꿈 → 덮어쓰지 말고 3-way 병합.
+        return remote ? resolveConflict(slot, remote).then(function () { return { _conflict: true }; }) : null;
+      });
+      if (!r.ok) _roundFailed = true;   // 서버 오류·권한·세션 만료 — 이번 라운드는 실패로 센다
+      return r.ok ? r.json() : null;
     });
   }
   /**

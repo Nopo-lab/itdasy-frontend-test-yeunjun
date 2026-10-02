@@ -96,8 +96,60 @@
       if (image) image.style.backgroundImage = 'url("' + displayUrl + '")';
     });
   }
+  /* [2026-10-01 flow-workspace-photo-07] 작업실 사진 투입용 축소 — createImageBitmap + close().
+     왜: 공용 _resizeIfNeeded(app-gallery-utils.js)는 `new Image()` + objectURL 로 원본(4000×6000)을 디코드한다.
+       브라우저는 <img> 로 디코드한 비트맵을 URL 을 revoke 해도 **이미지 캐시에 그대로 남긴다** — 메모리 압박 신호가 올 때까지.
+       실측(exp-decode.log, 헤드리스 크로미움 renderer RSS): 큰 사진 5장 → +121MB, 10장 → +239MB (장당 ~24MB 영구 잔류).
+       createImageBitmap 은 캐시를 거치지 않고, close() 로 디코드 메모리를 **그 자리에서** 돌려준다: 5장 +3MB, 10장 +3MB.
+       작업실 "5장 투입 → 합성 → 닫기" 반복에서 라운드마다 ~100MB 가 남던 것(diag-5big)의 주원인.
+     규칙은 _resizeIfNeeded 와 같다: HEIC 는 기존 경로(변환 라이브러리)로, 긴 변 ≤ maxDim 이고 2MB 미만이면 원본 그대로,
+       아니면 maxDim 으로 축소한 JPEG(0.85). EXIF 회전은 imageOrientation:'from-image' (크로미움 실측: <img> 와 같은 2000×3000).
+       [flow-workspace-photo-10] BMP·TIFF 등 서버가 받지 않는 포맷(BE: '지원하지 않는 포맷: BMP')은 크기와 무관하게 JPEG 로 다시 굽는다 —
+       예전엔 1.4MB BMP 원본이 base64 그대로 IDB 에 저장되고 업로드에서 400 이 났다.
+     createImageBitmap 이 없거나(구형 웹뷰) 실패하면(손상·초대형) 기존 _resizeIfNeeded 로 떨어진다 — 동작 회귀 0. */
+  var _INTAKE_REENCODE = /^image\/(bmp|x-ms-bmp|x-bmp|tiff|x-icon|vnd\.microsoft\.icon)$/i;
+  function resizeForIntake(file, maxDim) {
+    maxDim = maxDim || 1920;
+    function legacy() {
+      try { return (typeof window._resizeIfNeeded === 'function') ? Promise.resolve(window._resizeIfNeeded(file, maxDim)) : Promise.resolve(file); }
+      catch (_e) { return Promise.resolve(file); }
+    }
+    try {
+      if (!file || typeof createImageBitmap !== 'function' || typeof file.size !== 'number') return legacy();
+      if (window.HeicConvert && window.HeicConvert.isHeic && window.HeicConvert.isHeic(file)) return legacy();   // HEIC 변환은 기존 경로
+    } catch (_e0) { return legacy(); }
+    var reencode = _INTAKE_REENCODE.test(String(file.type || ''));
+    var opened = null;
+    return Promise.resolve()
+      .then(function () { return createImageBitmap(file, { imageOrientation: 'from-image' }); })
+      .catch(function () { return createImageBitmap(file); })   // 옵션을 모르는 구형 브라우저
+      .then(function (bmp) {
+        opened = bmp;
+        var w = bmp.width, h = bmp.height, longSide = Math.max(w, h);
+        if (!(w > 0 && h > 0)) throw new Error('empty bitmap');
+        if (longSide <= maxDim && file.size < 2 * 1024 * 1024 && !reencode) { bmp.close(); opened = null; return file; }
+        var sc = Math.min(1, maxDim / longSide);
+        var cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(w * sc)); cv.height = Math.max(1, Math.round(h * sc));
+        var ctx = cv.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);   // JPEG 는 알파가 없다 — 투명을 검정이 아니라 흰색으로
+        ctx.drawImage(bmp, 0, 0, cv.width, cv.height);
+        bmp.close(); opened = null;   // 디코드 메모리 즉시 반환 — 이 함수의 존재 이유
+        return new Promise(function (res) {
+          var done = false;
+          function finish(blob) {
+            if (done) return; done = true;
+            try { cv.width = 1; cv.height = 1; } catch (_c) { void _c; }   // 캔버스 백킹도 바로 비운다
+            res(blob ? new File([blob], file.name || 'photo.jpg', { type: 'image/jpeg' }) : file);
+          }
+          try { cv.toBlob(function (b) { finish(b); }, 'image/jpeg', 0.85); } catch (_e) { finish(null); }
+          setTimeout(function () { finish(null); }, 15000);   // 최후 안전망(_resizeIfNeeded 와 같은 15초)
+        });
+      })
+      .catch(function () { try { if (opened) opened.close(); } catch (_c2) { void _c2; } return legacy(); });
+  }
   window.WSFlowUtil = {
-    uid: uid, toast: toast, esc: esc, fileToDataUrl: fileToDataUrl,
+    uid: uid, toast: toast, esc: esc, fileToDataUrl: fileToDataUrl, resizeForIntake: resizeForIntake,
     _isRealShopName: _isRealShopName, _thEsc: _thEsc, barClass: barClass, _caret: _caret,
     _purposeCat: _purposeCat, _containBlit: _containBlit, clone: clone, _parseHashes: _parseHashes,
     filterCss: filterCss, _extractPalette: _extractPalette, refreshCarouselImage: refreshCarouselImage

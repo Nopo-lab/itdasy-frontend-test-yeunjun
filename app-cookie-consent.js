@@ -84,7 +84,8 @@
     if (!document.getElementById('itdasyCookieBannerStyle')) {
       const st = document.createElement('style');
       st.id = 'itdasyCookieBannerStyle';
-      st.textContent = 'body:has(.subscreen-overlay.is-open) #itdasyCookieBanner { display: none !important; }';
+      // [2026-10-01 flow-workspace-photo-11] 작업실 플로우(#wsv2Flow .wsv2flow.is-open, z 9800)도 — 배너(z 9950)가 하단 CTA '레이아웃 고르기 →' 를 덮어 못 눌렀다.
+      st.textContent = 'body:has(.subscreen-overlay.is-open) #itdasyCookieBanner { display: none !important; } body:has(.wsv2flow.is-open) #itdasyCookieBanner { display: none !important; }';
       document.head.appendChild(st);
     }
     const html = `

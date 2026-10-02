@@ -46,6 +46,7 @@
 - BE `POST /workspace/slots/upsert`: 서버본에 사진이 있는데 `photos=[]` 면 409 `photos_would_be_cleared`(서버본 동봉), `clear_photos:true` 로만 삭제. `customer_id` 소유 검증.
 - 발행 비율: BE `routers/instagram.py _ig_fit_for_feed` — 허용 범위(4:5~1.91:1) 안은 그대로, 밖이면 **crop 대신 흰 여백 pad**, 캐러셀은 첫 장(clamp) 비율로 통일·pad(`to_instagram_safe` 의 force_ratio crop 폐지). 미리보기 `workspace-v2-flow.js _igFeedAspect/_igCarouselAspect/_applyIgOutAspect` 가 같은 규칙(결과물은 contain+흰 바탕, 캐러셀 슬라이드 전부 첫 장 비율). 전후 합성본 1:1 의 BEFORE/AFTER 뱃지가 발행본에서 잘리지 않는다.
 - `scripts/ws-flow-smoke.js` 9/9 · `scripts/wsv2-multipair-qa.js` 재작성 17항목. `index.html` 서버 빌드 대조는 localhost 건너뜀, `build.txt == APP_BUILD` 는 jest·smoke 가 강제.
+- (FE-G) 동기화: 409 `photos_would_be_cleared` 계약 배선 — 의도적 0장(`_photosIntentEmpty`)만 `clear_photos:true` 로 1회 재전송, 로컬에 실을 이미지가 없으면 `detail.slot` 의 사진으로 복구(토스트) 후 재전송, 그래도 거절이면 "아직 못 올렸어요"(`workspace-sync.js _sendUpsert`). 사진 투입은 `WSFlowUtil.resizeForIntake`(createImageBitmap+close, HEIC·실패는 `_resizeIfNeeded` 폴백, BMP/TIFF 는 JPEG 재인코딩)·닫을 때 `_releaseSessionMedia`(`WSBlobUrl.release`) — 큰 사진 5장×3라운드 렌더러 RSS 794→622MB(헤드리스; 실기기 재측정 필요). 캡션 입력 화면도 다중 카드 캐러셀, 캡션 컨텍스트/저장 메타는 카드 구성 기준(`_cardMix/_effPurpose`, feed 기본일 때만 before_after 승격), 읽기 실패 안내는 HEIC 만 아이폰 안내·나머지는 손상/비이미지 문구 + okFiles 기준 EXIF 매핑, navStack 선형화(`_rewindHist`), 쿠키 배너는 `.wsv2flow.is-open` 동안 숨김.
 
 **캡션·AI**
 - 진입점 5곳(시트/잇비 대화/잇비 사진/즉석/음성) 공통 빌더 `_capBasePayload` + 통로 `_capRequestGenerate`(clarification 가드). `use_persona` 는 인스타 연동 시 true, 로더 문구 정직화. 사실 출처는 원장 문구뿐(24인치·만족 멘트 주입 제거, 미매핑 category null). 레거시 `/caption/generate` status 분기.

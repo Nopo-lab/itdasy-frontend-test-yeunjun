@@ -81,5 +81,38 @@
     return blobUrl;
   }
 
-  window.WSBlobUrl = { disp: disp, _internals: { _isDataUrl: _isDataUrl, _toBlob: _toBlob, MAX: MAX } };
+  /* [2026-10-01 flow-workspace-photo-07] 세션이 끝난 사진의 blob URL 을 돌려준다(revoke).
+     왜: MAX(192) 는 '한 화면' 기준이라 작업실을 열고 닫는 동안엔 한 번도 안 찬다. 사진 5장 → 합성 → 닫기를 반복하면
+     라운드마다 사진·합성본 blob URL 이 10개씩 남고, 브라우저는 blob URL 이 살아 있는 한 **디코드한 비트맵·원본 바이트**를
+     버리지 못한다(실측 renderer RSS 630 → 744 → 794MB, JS 힙은 16MB 평탄). 닫을 때 그 세션의 dataURL 만 돌려주면
+     다음 렌더가 같은 dataURL 을 만나도 새 blob URL 을 만들 뿐이라 안전하다(표시 전용 캐시 계약 그대로).
+     opts.keepInUse: true 면 지금 문서에 그려져 있는 URL(홈 썸네일 등)은 남긴다 — 끊어진 이미지 방지.
+     opts.except: 그 요소 안의 참조는 '그려져 있음' 으로 치지 않는다(닫힌 플로우의 숨은 화면 — 다음에 열 때 새로 그린다). */
+  function _inUse(blobUrl, except) {
+    try {
+      if (typeof document === 'undefined' || !document.querySelectorAll) return false;
+      var q = '[style*="' + blobUrl + '"],[src="' + blobUrl + '"]';
+      var ns = document.querySelectorAll(q);
+      for (var i = 0; i < ns.length; i++) { if (!(except && except.contains && except.contains(ns[i]))) return true; }
+      return false;
+    } catch (_e) { return false; }
+  }
+  function release(dataUrls, opts) {
+    opts = opts || {};
+    var n = 0;
+    (dataUrls || []).forEach(function (u) {
+      if (!_isDataUrl(u)) return;
+      var bu = _cache.get(u);
+      if (!bu) return;
+      if (opts.keepInUse && _inUse(bu, opts.except)) return;
+      try { URL.revokeObjectURL(bu); } catch (_e) { void _e; }
+      _cache.delete(u);
+      var i = _order.indexOf(u); if (i >= 0) _order.splice(i, 1);
+      n++;
+    });
+    return n;
+  }
+  function size() { return _cache.size; }
+
+  window.WSBlobUrl = { disp: disp, release: release, size: size, _internals: { _isDataUrl: _isDataUrl, _toBlob: _toBlob, MAX: MAX } };
 })();
