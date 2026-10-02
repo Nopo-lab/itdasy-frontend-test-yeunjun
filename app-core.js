@@ -885,7 +885,12 @@ async function checkOnboarding() {
     const data = await res.json();
     const shopName = (data && data.shop_name) ? String(data.shop_name).trim() : '';
     const shopType = (data && data.shop_type) ? String(data.shop_type).trim() : '';
-    if (shopName) {
+    // [flow-account-firstrun-02 2026-10-02] 가입 때 서버가 넣던 임시 이름("<이름>의 샵")은 '설정된 계정' 이 아니다.
+    //   새 가입은 이제 빈 이름으로 오지만(BE register/apple/google), 그 전에 가입해 임시 이름이 그대로인 계정은
+    //   서버 플래그 shop_name_is_placeholder 로 구제한다. 단 이 기기에서 온보딩을 이미 마친 적이 있으면
+    //   (_obFinish 가 onboarding_done=1) 다시 띄우지 않는다 — 진짜 이름이 우연히 "<이름>의 샵" 인 원장이 매번 보는 사고 방지.
+    const placeholder = !!(data && data.shop_name_is_placeholder) && !localStorage.getItem('onboarding_done');
+    if (shopName && !placeholder) {
       // 서버에 이미 설정된 계정 — 온보딩 숨김 + localStorage 동기화
       if (ov) ov.classList.add('hidden');
       try {
@@ -895,7 +900,7 @@ async function checkOnboarding() {
       } catch (_) { /* storage full */ }
       applyShopType(shopType);
     } else {
-      // 진짜 신규 — 온보딩 표시
+      // 진짜 신규(빈 이름) 또는 임시 이름 그대로인 옛 가입자 — 온보딩 표시
       if (ov) ov.classList.remove('hidden');
     }
   } catch (_e) {
