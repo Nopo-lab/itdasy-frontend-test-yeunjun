@@ -9,6 +9,7 @@ const workflow = fs.readFileSync(
 describe('Supabase 장기 백업 연결', () => {
   test('폐기 가능한 파일 열쇠 대신 GitHub 전용 무열쇠 연결을 쓴다', () => {
     expect(workflow).toContain('google-github-actions/auth@v3');
+    expect(workflow).toContain('google-github-actions/upload-cloud-storage@v3');
     expect(workflow).toContain('GCP_BACKUP_WORKLOAD_IDENTITY_PROVIDER');
     expect(workflow).toContain('GCP_BACKUP_SERVICE_ACCOUNT');
     expect(workflow).not.toContain('credentials_json: ${{ secrets.GCP_BACKUP_SA_KEY }}');
