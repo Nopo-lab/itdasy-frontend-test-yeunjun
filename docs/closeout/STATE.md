@@ -1,19 +1,19 @@
 # 마감 작업 상태 (docs/closeout/STATE.md)
 
-> 새 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-02 09:10 UTC (2차 전부 커밋 · BE-F IAP 수정 + 감사 2영역 재실행 중)
+> 새 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-02 19:30 UTC (성능 수정 마무리 워크플로 `wf_6f78cade-321` 진행 중)
 
 ## 저장소 · 브랜치 · 커밋
 | 레포 | 경로 | 브랜치 | 상태 |
 |---|---|---|---|
-| 프런트 `Nopo-lab/itdasy-frontend-test-yeunjun` | `/home/user/itdasy-frontend-test-yeunjun` | `ccr-d5f1311f-u6e0c1` (origin/main `6f39a40` 기준) | 20커밋 푸시됨 — 최신 `f969568`(작업실) ← `ecc2c76` `1db1ca8` `689b19d` `702068a` `64ad4af` `03f135c` `ddf352d` `f4e983f` `6c0c010` … `c4e246f` |
-| 백엔드 `Nopo-lab/itdasy_backend-test` | `/home/user/itdasy_backend-test` (shallow clone) | `ccr-d5f1311f-be` (origin/main `8598863` 기준) | 12커밋 푸시됨 — 최신 `c2baa1a`(inbox 리뷰 반영) ← `bf62caf` `a000e38` `c921655` `29e5fcb` `e046d47` `4a9f10c` `55b5710` `9ae2965` `ce50080` `57aec85` |
+| 프런트 `Nopo-lab/itdasy-frontend-test-yeunjun` | `/home/user/itdasy-frontend-test-yeunjun` | `ccr-d5f1311f-u6e0c1` (origin/main `6f39a40` 기준) | 23커밋 푸시됨 — 최신 `c84368c`(docs) ← `c3233c0`(iap,plan) `403bf6c`(docs) `f969568`(workspace) `ecc2c76` `1db1ca8` `689b19d` `702068a` … `c4e246f` |
+| 백엔드 `Nopo-lab/itdasy_backend-test` | `/home/user/itdasy_backend-test` (shallow clone) | `ccr-d5f1311f-be` (origin/main `8598863` 기준) | 14커밋 푸시됨 — 최신 `9310ec4`(auth 커넥션 1개) ← `92b53dd`(iap,billing) `c2baa1a` `bf62caf` `a000e38` `c921655` `29e5fcb` `e046d47` `4a9f10c` `55b5710` `9ae2965` `ce50080` `57aec85` |
 
 - PR 은 만들지 않았다(사용자 명시 요청 없음). 백엔드는 `main` 머지 = 즉시 운영 배포이므로 반드시 PR 리뷰 후.
 - 운영 백엔드(`itdasy-backend-staging-…` = 운영)·운영 DB·실발송·실결제·배포·스토어 제출은 **하지 않았다**.
 
 ## 보호해야 할 것
 - 세션 시작 시 두 레포 모두 미커밋 변경 0, worktree 0. 다른 작업자 변경 없음.
-- 2차 수정은 전부 커밋·푸시됨. **BE-F(구독·결제·IAP) 에이전트가 백엔드 routers/subscription.py·iap.py·billing.py·persona.py + 프런트 app-iap.js·app-plan.js·index.html 을 미커밋으로 고치는 중**일 수 있다 — `git status` 확인 후 보고를 읽고 커밋. 함부로 reset/checkout 금지.
+- 2차 수정·IAP·인증 커넥션은 전부 커밋·푸시됨. **백엔드 작업트리에 성능 수정(BE-G, perf-backend-01~07) 미커밋 변경이 있다** — 첫 에이전트가 한도로 중단돼 워크플로 `wf_6f78cade-321`(트랙 A 칩 채점 · 트랙 B 목록 계약+프런트 → 적대적 검증 → 재수정 → 전후 측정 → 비평)이 마무리 중. 프런트도 트랙 B 가 고칠 수 있다. 보고를 읽고 검증한 뒤 커밋. 함부로 reset/checkout 금지.
 
 ## 로컬 검증 환경 (이 세션에서 세운 것 — 컨테이너 재시작 시 다시 올린다)
 ```bash
@@ -24,7 +24,7 @@ cd /home/user/itdasy-frontend-test-yeunjun && nohup python3 -m http.server 5500 
 # PostgreSQL 16 (postgres 유저로) → 127.0.0.1:5433, user itdasy, trust
 su postgres -s /bin/bash -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/itdasy-pgdata -o '-p 5433 -c listen_addresses=127.0.0.1 -c unix_socket_directories=/var/tmp/itdasy-pgdata' -l /var/tmp/pg.log start"
 ```
-- 데모 계정 `review@itdasy.com / review1234!`. PG 테스트 DB 이름은 `itdasy_relaudit_*` 규칙(가드가 다른 이름을 거부).
+- 데모 계정 `review@itdasy.com / review1234!`. PG 테스트 DB 이름은 `itdasy_relaudit_*` 규칙(가드가 다른 이름을 거부). `itdasy_relaudit_perf3` 는 성능 측정 데이터 — 테스트 DB 로 쓰지 말 것.
 - Playwright: 전역 `playwright` + `/opt/pw-browsers/chromium`(`--no-sandbox`). 외부 CDN(아이콘 폰트·웹폰트·Sentry)은 컨테이너에서 차단 → 빈 글리프는 환경 문제.
 - 백엔드 pytest 실행 env:
   `env -i PATH=$PWD/../.local-dev/venv/bin:/usr/bin:/bin HOME=$HOME PYTHONPATH=$PWD ENVIRONMENT=development USE_VERTEX_AI=false CLOUD_STORAGE_ENABLED=false DM_TASKS_ENABLED=0 ../.local-dev/venv/bin/python -m pytest -q tests` (+ PG: `ITDASY_PG_URL=postgresql+psycopg2://itdasy@127.0.0.1:5433/itdasy_relaudit_x ITDASY_PG_DESTRUCTIVE_CONFIRM=DROP:itdasy@itdasy_relaudit_x ... tests/pg`)
@@ -53,9 +53,11 @@ su postgres -s /bin/bash -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/itdas
 ## 완료(2차) — REPORT §3.3
 - BE-C 인박스 `e046d47` · BE-D 견고성 `29e5fcb` · BE-E 돈/발행/샘플 `c921655` · 프런트 쪽 `03f135c`
 
-## 진행 항목 (단독 에이전트 3개, 백그라운드)
-- BE-F: build-iap-native 01~08 수정(P1 2건 포함) — 보고 후 검증·커밋·전체 pytest/jest 재실행
-- 감사 perf-backend(대량 PG 측정)·past-defects-regression 재실행 → `scratchpad/results/*.json` → REPORT §4.3/§5 반영
+## 진행 항목 (워크플로 `wf_6f78cade-321`, 백그라운드)
+- 트랙 A: /today/morning N+1(≈1,300쿼리)·single-flight·임의 500명 상한 — 칩 결과 동일성(골든)·쿼리 수 O(1) 테스트
+- 트랙 B: GET /revenue 기본 limit 은 **2,000 유지(옛 앱 번들 호환)** + summary_only/offset opt-in, GET /bookings 무범위 기본 범위는 호출처 조사 후 결정, 대시보드 합계를 응답 total 로, sw.js 오프라인 폴백 확인
+- 측정: PG `itdasy_relaudit_perf3`(매장21·고객5만·예약10만·매출10만, **측정 전용 — tests/pg 금지**) 에서 감사와 같은 스크립트로 전후 비교
+- 끝나면: 커밋 → 백엔드 sqlite/PG 전체 · 프런트 jest/lint/smoke · 390px E2E 재실행 → REPORT §3.5/§5 갱신
 
 ## 차단 요인 (이 컨테이너에서 불가)
 - Meta 실발송·실웹훅, Apple/Google 실결제·샌드박스, 실기기 빌드(Xcode/Android SDK 없음), 스토어 콘솔, 운영 DB/배포. 전부 BLOCKED 로 보고.
