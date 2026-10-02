@@ -31,6 +31,8 @@
       return headers && headers.Authorization ? headers : null;
     } catch (_e) { return null; }
   }
+  // [mobile-ux-07 2026-10-02] 마지막 brief 실패 사유 — 에러 카드가 '서버 고장' 과 '내 인터넷' 을 구분해 말한다.
+  let _lastBriefFail = null;   // { status } | { network: true } | null
   async function _fetchBrief() {
     // [2026-06-25] 콜드스타트/인증헤더 레이스 방어 — "연결이 불안정해요" 오발생 차단.
     //   apiFetch 는 글로벌 재시도 래퍼를 안 거쳐서 1회 실패 시 그대로 null 이 됐고,
@@ -67,6 +69,7 @@
           return 'AUTH';
         }
         if (!res.ok) {
+          _lastBriefFail = { status: res.status };
           console.warn('[brief] API 응답 실패:', res.status, '(attempt ' + attempt + ')');
           continue;
         }
@@ -75,6 +78,7 @@
         _writeSWR(data);
         return data;
       } catch (_e) {
+        _lastBriefFail = { network: true };
         console.warn('[brief] fetch 예외 (attempt ' + attempt + '):', _e);
       }
     }
@@ -378,14 +382,25 @@
 
 
   function _showConnectionError(container) {
+    // [mobile-ux-07 2026-10-02] 5xx 는 원장 쪽 문제가 아니다 — "인터넷 연결을 확인하고" 는 멀쩡한 와이파이를
+    //   의심하게 만들었다(실측: /assistant/brief 500 고정 → 네트워크 끊김과 같은 문구). 서버면 서버라고 말한다.
+    //   '다시 시도' 는 전체 새로고침(location.reload) 대신 홈만 다시 그린다 — 로그인·탭 상태를 잃지 않는다.
+    const f = _lastBriefFail;
+    const server = !!(f && Number(f.status) >= 500);
+    const title = server ? '서버가 잠깐 불안정해요' : '연결이 불안정해요';
+    const sub = server ? '서버 쪽 문제예요. 잠시 후 다시 시도해주세요' : '인터넷 연결을 확인하고 다시 시도해주세요';
     container.innerHTML = `
-      <div style="text-align:center;padding:60px 20px;color:var(--text-muted)">
-        <div style="font-size:40px;margin-bottom:12px">📡</div>
-        <div style="font-size:16px;font-weight:600;margin-bottom:8px">연결이 불안정해요</div>
-        <div style="font-size:14px">인터넷 연결을 확인하고 다시 시도해주세요</div>
-        <button data-home-reload style="margin-top:16px;padding:10px 24px;background:var(--brand);color:#fff;border:none;border-radius:10px;font-size:14px;cursor:pointer">다시 시도</button>
+      <div style="text-align:center;padding:60px 20px;color:var(--text-muted)" data-home-error="${server ? 'server' : 'network'}">
+        <div style="font-size:40px;margin-bottom:12px">${server ? '🛠️' : '📡'}</div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:8px">${title}</div>
+        <div style="font-size:14px">${sub}</div>
+        <button data-home-reload class="tap44" style="margin-top:16px;padding:10px 24px;background:var(--brand);color:#fff;border:none;border-radius:10px;font-size:14px;cursor:pointer">다시 시도</button>
       </div>`;
-    container.querySelector('[data-home-reload]')?.addEventListener('click', () => location.reload());
+    container.querySelector('[data-home-reload]')?.addEventListener('click', () => {
+      _lastBriefFail = null;
+      if (window.HomeV41 && typeof window.HomeV41.refresh === 'function') { window.HomeV41.refresh(); return; }
+      location.reload();
+    });
   }
 
   // [2026-08-22 UX-COLD] 스켈레톤 — 콜드스타트(캐시 0 + BE 기동 5~15s)에 홈이 백지로 떠서

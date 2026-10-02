@@ -4267,6 +4267,12 @@ window._humanError = function (e) {
     console.warn('[_humanError] 내부 오류 원문:', raw);
     return '일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요';
   }
+  // [mobile-ux-07 2026-10-02] 한글이 한 글자도 없는 원문(서버 영문 detail·"injected 500" 류)은 원장님 문구가 아니다.
+  //   서버가 한국어 detail 을 보낸 경우("이미 예약이 있어요")만 그대로 통과한다. 원문은 console 에 남긴다.
+  if (raw && !/[\uAC00-\uD7A3]/.test(raw)) {
+    console.warn('[_humanError] 영문 원문:', raw);
+    return '일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요';
+  }
   return raw;
 };
 

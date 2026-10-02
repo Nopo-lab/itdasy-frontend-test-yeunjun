@@ -721,7 +721,10 @@
       _applyAndRender();
     } catch (e) {
       if (epoch !== _replyEpoch || _isEditingReply(list)) return;
-      list.innerHTML = `<div style="text-align:center;color:var(--danger);padding:20px;font-size:12px;">불러오기 실패: ${_esc((window._humanError ? window._humanError(e) : e.message))}</div>`;
+      // [mobile-ux-07 2026-10-02] 실패 화면에 '다시 시도' — 15초 폴링을 기다리게 하지 않는다.
+      list.innerHTML = `<div style="text-align:center;color:var(--danger);padding:20px;font-size:12px;">불러오기 실패: ${_esc((window._humanError ? window._humanError(e) : e.message))}
+        <div><button type="button" data-dcq-retry class="tap44" style="margin-top:12px;padding:8px 18px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--text);font-size:13px;">다시 시도</button></div></div>`;
+      list.querySelector('[data-dcq-retry]')?.addEventListener('click', () => { list.innerHTML = ''; _refresh(); });
     }
   }
 
