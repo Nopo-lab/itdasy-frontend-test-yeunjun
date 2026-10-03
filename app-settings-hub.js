@@ -363,6 +363,9 @@
   // ─── [flow-account-firstrun-04] 샘플 데이터 ──────────────────
   // 행은 서버가 "아직 남아 있다" 고 할 때만 보인다 — 샘플이 없는 원장에게 '지우기' 를 보여주면
   // 뭘 지우는지 모른 채 누르게 된다. 조회 실패(오프라인·401)면 행을 숨긴 채 둔다(지우기는 급하지 않다).
+  function _authHeaders() {
+    try { return (typeof window.authHeader === 'function' && window.authHeader()) || {}; } catch (_e) { return {}; }
+  }
   function _sampleRow() {
     const sheet = document.getElementById('settingsHubSheet');
     return sheet ? sheet.querySelector('.ms-sh__row[data-act="samplepurge"]') : null;
@@ -371,7 +374,8 @@
     const row = _sampleRow();
     if (!row || typeof window.apiFetch !== 'function') return;
     try {
-      const res = await window.apiFetch('/auth/sample/status');
+      // [2026-10-03] apiFetch 는 로그인 정보를 자동으로 붙이지 않는다 — 빠지면 늘 401 이라 행이 영영 안 보였다.
+      const res = await window.apiFetch('/auth/sample/status', { headers: _authHeaders() });
       if (!res || !res.ok) return;
       const st = await res.json();
       const n = Number(st && st.total) || 0;
@@ -403,7 +407,7 @@
     const row = _sampleRow();
     try {
       if (row) row.disabled = true;
-      const res = await window.apiFetch('/auth/sample/purge', { method: 'POST' });
+      const res = await window.apiFetch('/auth/sample/purge', { method: 'POST', headers: _authHeaders() });
       if (!res || !res.ok) throw new Error('purge ' + (res && res.status));
       const data = await res.json().catch(() => ({}));
       const d = (data && data.deleted) || {};

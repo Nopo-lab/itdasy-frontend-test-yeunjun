@@ -23,8 +23,12 @@ function bootHub({ status, purge, confirm = true } = {}) {
   localStorage.clear();
   window._esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const calls = [];
+  window.authHeader = () => ({ Authorization: 'Bearer test-token' });
   window.apiFetch = jest.fn(async (p, init) => {
     calls.push({ path: p, method: (init && init.method) || 'GET' });
+    // 실제 apiFetch 는 로그인 정보를 붙이지 않는다 — 서버처럼 Authorization 없으면 401 (2026-10-03 통합 점검에서 잡힘)
+    const h = (init && init.headers) || {};
+    if (String(p).startsWith('/auth/sample/') && h.Authorization !== 'Bearer test-token') return jsonRes({ detail: 'Not authenticated' }, false, 401);
     if (p === '/auth/sample/status') return typeof status === 'function' ? status() : jsonRes(status || { has_sample: false, total: 0, counts: {} });
     if (p === '/auth/sample/purge') return typeof purge === 'function' ? purge() : jsonRes(purge || { ok: true, deleted: { customers: 3, bookings: 4, inventory: 4, revenues: 0 } });
     return jsonRes({});
