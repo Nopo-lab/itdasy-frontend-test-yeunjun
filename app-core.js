@@ -4128,9 +4128,10 @@ window._preloadTabs = async function () {
   const tabs = [
     { url: '/customers',            swrKey: 'pv_cache::customers' },
     { url: `/bookings?from=${encodeURIComponent(bookingFrom)}&to=${encodeURIComponent(bookingTo)}`, swrKey: 'pv_cache::bookings_all' },
-    { url: '/revenue?period=today', swrKey: 'pv_cache::revenue::today' },
-    { url: '/revenue?period=week',  swrKey: 'pv_cache::revenue::week' },
-    { url: '/revenue?period=month', swrKey: 'pv_cache::revenue::month' },
+    // [2026-10-02 perf-backend-04] 합계만 읽는 키 — 소유자(app-perf-recovery BOOT_PREFETCH)와 같은 summary_only URL
+    { url: '/revenue?period=today&summary_only=1', swrKey: 'pv_cache::revenue::today' },
+    { url: '/revenue?period=week&summary_only=1',  swrKey: 'pv_cache::revenue::week' },
+    { url: '/revenue?period=month&summary_only=1', swrKey: 'pv_cache::revenue::month' },
     /* INVENTORY_HIDDEN */ // { url: '/inventory', swrKey: 'pv_cache::inventory' },
     { url: '/services',             swrKey: 'pv_cache::service' },
   ];

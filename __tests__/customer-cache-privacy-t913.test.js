@@ -154,8 +154,9 @@ describe.each(['app-dashboard.js', 'app-customer.js', 'app-revenue.js'])('%s pri
       _mergeOptimistic: items => items, _cache: [], _isOffline: false, _total: 0, _hasMore: false,
     });
     // [2026-10-01 flow-revenue-stats-ui-01] app-revenue _api 는 세션 비교를 _sameSession/_subOf 로 한다(사용자 sub 기준) — 함께 싣는다.
+    // [2026-10-02 BE-G2-B] _fetchPeriodData 는 목록을 has_more 까지 이어 받는다(_fetchAllRevenuePages · 잘림 안내 _noticeTruncated) — 함께 싣는다.
     const names = file === 'app-dashboard.js' ? ['_apiGet'] :
-      file === 'app-customer.js' ? ['_api', '_fetchFresh'] : ['_api', '_fetchPeriodData', '_sameSession', '_subOf'];
+      file === 'app-customer.js' ? ['_api', '_fetchFresh'] : ['_api', '_fetchPeriodData', '_fetchAllRevenuePages', '_noticeTruncated', '_sameSession', '_subOf'];
     loadFunctions(file, names, h.context);
     if (file === 'app-dashboard.js') return h.context._apiGet('/dashboard');
     if (file === 'app-customer.js') return h.context._fetchFresh();

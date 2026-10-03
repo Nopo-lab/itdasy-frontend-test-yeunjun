@@ -110,13 +110,22 @@
     if (R._swrWriteKey) R._swrWriteKey(_monthSwrKey(), summary);
     if (!isCur) {
       try {
-        const r2 = await fetch(
-          apiUrl('/revenue?period=month&year=' + _viewYear + '&month=' + _viewMonth + genParam),
-          { headers: { ...auth, 'Content-Type': 'application/json' } }
-        );
-        /* [2026-09-13 UX·돈] 목록을 못 받으면 **빈 목록(=날짜마다 0원)** 으로 그렸다. 모르면 0 이라고 하지 않는다. */
-        if (!r2.ok) throw new Error('HTTP ' + r2.status);
-        const d = await r2.json();
+        const listUrl = '/revenue?period=month&year=' + _viewYear + '&month=' + _viewMonth + genParam;
+        const getJson = async (u) => {
+          const r2 = await fetch(apiUrl(u), { headers: { ...auth, 'Content-Type': 'application/json' } });
+          /* [2026-09-13 UX·돈] 목록을 못 받으면 **빈 목록(=날짜마다 0원)** 으로 그렸다. 모르면 0 이라고 하지 않는다. */
+          if (!r2.ok) throw new Error('HTTP ' + r2.status);
+          return r2.json();
+        };
+        /* [2026-10-02 BE-G2-B · 기존 결함] 목록은 기본 2,000행에서 잘린다(has_more) — 이번 달(app-revenue.js)과
+           같은 이어받기로 끝까지 받는다. 예전엔 2,000건 넘는 지난달이 히어로(요약)와 달력이 어긋났다. */
+        let d;
+        if (typeof R._fetchAllRevenuePages === 'function') {
+          d = await R._fetchAllRevenuePages(listUrl, null, getJson);
+          if (d && d.truncated && typeof R._noticeTruncated === 'function') R._noticeTruncated(d.items.length);
+        } else {
+          d = await getJson(listUrl);
+        }
         if (typeof R._readGen === 'function' && R._readGen() !== gen) return _doFetchSummary(auth, isCur);
         _viewItems = Array.isArray(d.items) ? d.items : [];
         if (R._swrWriteKey) R._swrWriteKey(_monthItemsSwrKey(), _viewItems);

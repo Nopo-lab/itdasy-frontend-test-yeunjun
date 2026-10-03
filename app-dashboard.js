@@ -22,13 +22,17 @@
      또 불러 자기 dash_cache:: 에 따로 담았다(실측 1879ms vs 소유자 2029ms → 네트워크 2회).
      이제 소유자 캐시를 그대로 쓰니 '내 샵 관리' 첫 진입 0ms 는 그대로고 부팅 요청은 한 번이다.
      SWR 형식: {t, d: items|object, n: total} — items 가 배열이면 {items, total} 로 감싼다. */
+  /* [2026-10-02 perf-backend-04 BE-G2-B] 매출은 **합계만** 쓴다 → summary_only=1(목록 생략, 서버 total 은 기간 전체).
+     부팅 프리페치(app-perf-recovery BOOT_PREFETCH · app-core _preloadTabs 폴백)와 **같은 URL** 이어야
+     apiFetch in-flight 코얼레싱과 이 SWR 맵이 맞물린다(가드: __tests__/list-api-contract-summary-only-2026-10-01). */
   const _OWNER_SWR_KEYS = {
-    '/revenue?period=month': 'pv_cache::revenue::month',
-    '/revenue?period=today': 'pv_cache::revenue::today',
-    '/revenue?period=week':  'pv_cache::revenue::week',
+    '/revenue?period=month&summary_only=1': 'pv_cache::revenue::month',
+    '/revenue?period=today&summary_only=1': 'pv_cache::revenue::today',
+    '/revenue?period=week&summary_only=1':  'pv_cache::revenue::week',
     '/customers':            'pv_cache::customers',
     '/today/brief':          'pv_cache::today',
   };
+  function _revPath(period) { return '/revenue?period=' + period + '&summary_only=1'; }
   function _fromOwnerSWR(path, maxAgeMs) {
     try {
       const key = _OWNER_SWR_KEYS[path];
@@ -41,9 +45,11 @@
       const d = obj.d;
       if (d == null) return null;
       if (!Array.isArray(d)) return d;
-      return path === '/customers'
-        ? { items: d, total: Number.isFinite(obj.n) ? obj.n : d.length }
-        : { items: d };
+      // n = 서버가 센 total. 고객은 전체 수, 매출은 기간 전체 합계(원) — 예전엔 매출의 n 을 버려서
+      //   summary_only 캐시(d=[])로 그린 첫 화면이 0원, 목록 캐시면 잘린 items 합이 됐다.
+      const n = Number.isFinite(obj.n) ? obj.n : null;
+      if (path === '/customers') return { items: d, total: n != null ? n : d.length };
+      return n != null ? { items: d, total: n } : { items: d };
     } catch (_) { return null; }
   }
   function _getCached(path) {
@@ -134,8 +140,35 @@
     return ({ today: '어제 대비', week: '지난주 대비', month: '지난달 대비' })[p] || '지난달 대비';
   }
 
+  /* ── 재방문율 (2026-10-03 BE-G3-Z) ─────────────────────────────
+     예전엔 GET /retention/at-risk 의 summary.retention_rate 를 읽었는데 **그 필드는 서버 응답에 없다**
+     (summary 는 total/at_risk/lost 뿐) → 칸은 늘 '—' 였고, 데이터가 바뀔 때마다 이탈 고객 목록 전체
+     (perf3 매장1 1,105명·261KB, 새 대시보드 세트에서 가장 느린 호출)를 받아 버렸다. '위험 신호' 는 이미
+     /today/brief 의 at_risk_count 를 쓰므로 at-risk 호출은 쓰이는 값이 0개였다 → 호출을 뺐다.
+     재방문율은 **이미 받는 /customers** 로 센다 — 각 손님의 visit_count 는 매출 원장 기준 진실원
+     (services/customer_visits, 고객관리 화면과 같은 값)이다.
+       재방문율 = 2회 이상 방문한 손님 ÷ 1회 이상 방문한 손님 (방문 0회 손님은 분모에서 뺀다)
+     🔑 목록이 매장 전체일 때만 % 를 낸다. GET /customers 는 첫 페이지(200명, 최근 등록순)만 주므로
+        고객이 더 많으면 '최근 등록 200명' 은 신규 쪽으로 치우친 표본이다 — 그걸로 낸 % 는 매장 재방문율이
+        아니다. 그때는 숫자를 지어내지 않고 '미집계' + 이유(고객 N명 중 M명만 받음)를 그대로 보여준다.
+     반환: { val, note } — val 은 칸 값, note 는 근거 한 줄(없으면 ''). */
+  function _revisitRate(custList) {
+    if (custList && custList._failed) return { val: '불러오지 못함', note: '고객 목록을 받지 못했어요' };
+    const items = custList && Array.isArray(custList.items) ? custList.items : null;
+    if (!items) return { val: '—', note: '' };   // 아직 데이터 없음(캐시도 없음) — 곧 fresh 로 다시 그린다
+    const total = Number.isFinite(custList.total) ? custList.total : items.length;
+    if (items.length < total) {
+      return { val: '미집계', note: `고객 ${total.toLocaleString()}명 중 ${items.length.toLocaleString()}명만 받아 계산하지 않았어요` };
+    }
+    const vc = (c) => Number((c && c.visit_count) || 0);
+    const visited = items.filter(c => vc(c) >= 1).length;
+    if (visited === 0) return { val: '방문 기록 없음', note: '' };
+    const returning = items.filter(c => vc(c) >= 2).length;
+    return { val: Math.round((returning / visited) * 100) + '%', note: `방문 손님 ${visited}명 중 ${returning}명이 2회 이상` };
+  }
+
   // ── Hero 카드 (Task 6: '이번달 브리핑' 흡수, Task 7: 기간 토글 연동) ─────
-  function _heroSection(stats, prevAmount, retData, custList, briefData, period) {
+  function _heroSection(stats, prevAmount, custList, briefData, period) {
     const periodAmount = stats.period_amount != null ? stats.period_amount : stats.month_amount;
     const deltaPct = prevAmount > 0
       ? Math.round(((periodAmount - prevAmount) / prevAmount) * 100)
@@ -157,15 +190,13 @@
     } else {
       rangeStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
     }
-    const newCustomers = (custList.items || []).filter(c =>
+    const newCustomers = ((custList && custList.items) || []).filter(c =>
       c.created_at && new Date(c.created_at).getTime() >= rangeStart
     ).length;
     const newCustStr = newCustomers > 0 ? newCustomers + '명' : '—';
 
-    // 재방문: retention rate (전체 기준 — 기간 의존 X)
-    const retRate = retData && retData.summary && retData.summary.retention_rate != null
-      ? Math.round(retData.summary.retention_rate) + '%'
-      : '—';
+    // 재방문: 매장 전체 기준(기간 의존 X) — 계산 규칙·'미집계' 조건은 _revisitRate 주석
+    const revisit = _revisitRate(custList);
 
     // ── 브리핑 미니 라인 (오늘 예약 / 위험 신호) — 흡수된 hero-card 내용 ──
     const todayBookings = briefData && briefData.upcoming_count != null ? briefData.upcoming_count : null;
@@ -200,9 +231,10 @@
             <p class="db-hero__mini-lbl">신규 고객</p>
             <p class="db-hero__mini-val">${_esc(newCustStr)}</p>
           </div>
-          <div class="db-hero__mini">
+          <div class="db-hero__mini" data-db-revisit>
             <p class="db-hero__mini-lbl">재방문</p>
-            <p class="db-hero__mini-val">${_esc(retRate)}</p>
+            <p class="db-hero__mini-val">${_esc(revisit.val)}</p>
+            ${revisit.note ? `<p class="db-hero__mini-lbl" style="margin-top:2px;">${_esc(revisit.note)}</p>` : ''}
           </div>
         </div>
         ${briefRow}
@@ -288,20 +320,27 @@
   }
 
   // ── 집계 로직 ──────────────────────────────────────────
-  function _aggregateStats(monthRows, todayRows, periodRows, customersCount, bookings) {
-    const today_amount = (todayRows || []).reduce((s, r) => s + (r.amount || 0), 0);
-    const today_count = (todayRows || []).length;
-    const month_amount = (monthRows || []).reduce((s, r) => s + (r.amount || 0), 0);
-    const period_amount = (periodRows || []).reduce((s, r) => s + (r.amount || 0), 0);
-    const now = Date.now();
-    const upcoming_bookings = (bookings || []).filter(b => new Date(b.starts_at).getTime() >= now).length;
+  /* [2026-10-02 perf-backend-04 BE-G2-B] 금액은 **응답 total**(DB 가 기간 전체로 낸 합계)을 쓴다.
+     예전엔 items 를 다시 더했는데 GET /revenue 목록은 기본 2,000행에서 잘린다 — 한 달 매출이 2,000건을
+     넘는 매장은 브리핑 금액이 '최신 2,000건의 합' 이었다(2,500건·250만 원 → 200만 원). total 은 환불(음수)을
+     뺀 순매출이라 items 합과 정의가 같다. total 이 없는 옛 캐시 형태일 때만 items 합으로 폴백.
+     '다가오는 예약 수' 는 범위 없는 GET /bookings 로 세던 값인데 화면 어디에도 안 쓰였다 — 히어로의
+     '오늘 예약' 은 /today/brief 의 upcoming_count 를 쓴다. 그래서 그 호출과 함께 뺐다(perf-backend-01). */
+  function _revTotal(resp) {
+    if (resp && Number.isFinite(resp.total)) return resp.total;
+    return ((resp && resp.items) || []).reduce((s, r) => s + (r.amount || 0), 0);
+  }
+  function _revCount(resp) {
+    if (resp && Number.isFinite(resp.count)) return resp.count;
+    return ((resp && resp.items) || []).length;
+  }
+  function _aggregateStats(monthRev, todayRev, periodRev, customersCount) {
     return {
-      today_amount,
-      today_count,
-      month_amount,
-      period_amount,
+      today_amount: _revTotal(todayRev),
+      today_count: _revCount(todayRev),
+      month_amount: _revTotal(monthRev),
+      period_amount: _revTotal(periodRev),
       customer_count: customersCount,
-      upcoming_bookings,
     };
   }
 
@@ -372,7 +411,7 @@
       try { await window._perfPrefetchBoot(); } catch (_) { /* silent */ }
       return;
     }
-    const paths = ['/today/brief', '/revenue?period=month', '/customers'];
+    const paths = ['/today/brief', _revPath('month'), '/customers'];
     await Promise.all(paths.map(p => _cachedGet(p).catch(() => null)));
   }
   // 외부 노출 — 부팅 훅에서 호출
@@ -405,32 +444,31 @@
 
     // [P1-2A] stale-while-revalidate — stale 캐시 즉시 렌더 → 백그라운드 fresh fetch → 다시 렌더
     const allPaths = [
-      '/revenue?period=month',
+      _revPath('month'),
       prevPath,
-      '/revenue?period=today',
-      '/revenue?period=' + period,
+      _revPath('today'),
+      _revPath(period),
       '/customers',
-      '/bookings',
-      '/retention/at-risk',
+      null,   // [2026-10-02 perf-backend-01] 범위 없는 /bookings 제거 — 슬롯만 유지(뒤 인덱스 재정렬 방지)
+      null,   // [2026-10-03 BE-G3-Z] /retention/at-risk 제거 — 쓰던 필드(retention_rate)가 응답에 없었다. 재방문율은 /customers 로(_revisitRate)
       null,   // [2026-07-22] 재고 제거 — 슬롯만 유지(뒤 인덱스 재정렬 방지)
       '/today/brief?period=' + period,
     ];
 
     function _renderFromData(data) {
-      const [monthRev, prevRev, todayRev, periodRev, custList, bookList, ret, _inventory, briefData] = data;
+      const [monthRev, prevRev, todayRev, periodRev, custList, _bookings, _ret, _inventory, briefData] = data;
       const stats = _aggregateStats(
-        (monthRev || {}).items || [],
-        (todayRev || {}).items || [],
-        (periodRev || {}).items || [],
+        monthRev || {},
+        todayRev || {},
+        periodRev || {},
         (custList && custList.total != null) ? custList.total : ((custList || {}).items || []).length,
-        (bookList || {}).items || [],
       );
-      const prevAmount = ((prevRev || {}).items || []).reduce((s, r) => s + (r.amount || 0), 0);
+      const prevAmount = _revTotal(prevRev || {});
       body.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
           ${_periodToggle(period)}
         </div>
-        ${_heroSection(stats, prevAmount, ret, custList || { total: 0, items: [] }, briefData, period)}
+        ${_heroSection(stats, prevAmount, custList || null, briefData, period)}
         <div class="db-sec"><h2>데이터 &amp; 인사이트</h2></div>
         ${_dataInsightsList()}
       `;
@@ -446,9 +484,9 @@
         staleData[1] || { items: [] },        // prevRev
         staleData[2] || { items: [] },        // todayRev
         staleData[3] || { items: [] },        // periodRev
-        staleData[4] || { total: 0, items: [] }, // custList
-        staleData[5] || { items: [] },        // bookList
-        staleData[6],                          // ret
+        staleData[4] || null,                  // custList — 캐시 없으면 null('—', 곧 fresh 로 다시 그림). 빈 목록으로 꾸미면 재방문 칸이 '방문 기록 없음' 이 된다
+        null,                                  // (예약 슬롯 — 미사용)
+        null,                                  // (위험 고객 슬롯 — 미사용, BE-G3-Z)
         staleData[7],                          // inventory
         staleData[8],                          // briefData
       ]);
@@ -460,19 +498,21 @@
     try {
       // [PERF P1-1] critical 5개 우선 로드, 나머지 lazy (cold start 60%↓)
       const [monthRev, prevRev, todayRev, periodRev, customers] = await Promise.all([
-        _cachedGet('/revenue?period=month').catch(() => ({ items: [] })),
+        _cachedGet(_revPath('month')).catch(() => ({ items: [] })),
         prevPath ? _cachedGet(prevPath).catch(() => ({ items: [] })) : Promise.resolve({ items: [] }),
-        _cachedGet('/revenue?period=today').catch(() => ({ items: [] })),
-        _cachedGet('/revenue?period=' + period).catch(() => ({ items: [] })),
-        _cachedGet('/customers').catch(() => ({ total: 0, items: [] })),
+        _cachedGet(_revPath('today')).catch(() => ({ items: [] })),
+        _cachedGet(_revPath(period)).catch(() => ({ items: [] })),
+        // [2026-10-03 BE-G3-Z] 실패를 빈 목록({total:0, items:[]})으로 바꾸면 재방문 칸이 '방문 기록 없음' 이라고
+        //   거짓말을 한다 → 실패 표식을 달아 '불러오지 못함' 으로 그린다(합계·신규 고객 계산은 빈 목록과 같다).
+        _cachedGet('/customers').catch(() => ({ total: 0, items: [], _failed: true })),
       ]);
-      const fresh = [monthRev, prevRev, todayRev, periodRev, customers, { items: [] }, null, null, null];
+      const fresh = [monthRev, prevRev, todayRev, periodRev, customers, null, null, null, null];
       _renderFromData(fresh);
 
       // 비핵심 데이터 백그라운드 로드 (UI 먼저 그린 후)
       Promise.all([
-        _cachedGet('/bookings').catch(() => ({ items: [] })),
-        _cachedGet('/retention/at-risk').catch(() => null),
+        Promise.resolve(null),   // [2026-10-02 perf-backend-01] 범위 없는 /bookings 제거(쓰는 화면 없음) — 슬롯 유지
+        Promise.resolve(null),   // [2026-10-03 BE-G3-Z] /retention/at-risk 제거 — 쓰는 값 0개(위 _revisitRate 주석) — 슬롯 유지
         Promise.resolve(null),   // [2026-07-22] 재고 제거 — 페치 안 함(슬롯 유지)
         _cachedGet('/today/brief?period=' + period).catch(() => null),
       ]).then(([bookings, atRisk, inventory, brief]) => {

@@ -46,20 +46,57 @@
   /* INVENTORY_HIDDEN — /inventory fetch 차단. 호출은 그대로 빈 배열 반환. */
 
   // ── 이번달 사용량 (매출에서 service_name 카운트) ─────────
-  async function _loadMonthUsage() {
-    _monthUsage = {};
+  /* [2026-10-03 BE-G3-Z · 기존 결함] 이번 달 매출 목록을 **끝까지** 받아 센다.
+     GET /revenue 목록은 기본 2,000행에서 자르고 has_more 로 알린다(합계만 전체 기준 — 2026-08-04 계약).
+     예전엔 매출 엔진(app-revenue.js, 지연 그룹 'revenue')이 아직 안 떠 있으면 첫 페이지만 받아 셌다 →
+     한 달 2,000건 넘는 매장은 사용량을 적게 셌고, 달 초에만 한 시술은 '0건' 이었다(잘렸다는 표시도 없음).
+     이제 직전 수정의 '끝까지 이어 받기' 헬퍼(Revenue.fetchAllPages = app-revenue _fetchAllRevenuePages)를
+     쓰고, 엔진이 없으면 AppLoader.ensure('revenue') 로 띄운다(유휴 선로딩이 어차피 띄우는 그룹).
+     · URL 은 이번 달을 명시한다(/revenue?period=month, 서버 KST). Revenue.list('month') 는 인자와 무관하게
+       매출 화면 상태 범위를 따르고 매출 화면 _items 를 덮어써서 쓰지 않는다.
+     · 엔진을 못 띄우면 첫 페이지 + has_more 로 '일부' 를 안다. 끝까지 못 받았으면 'N건 이상'(_monthUsageState='partial').
+     · 실패하면 '0건' 이라고 하지 않는다 — '사용량 못 불러옴'(='failed'). 모르는 걸 0 으로 그리지 않는다. */
+  let _monthUsageState = 'ok';   // 'ok' | 'partial' | 'failed'
+  const _MONTH_USAGE_URL = '/revenue?period=month';
+  async function _revenuePager() {
+    const pager = () => (window.Revenue && typeof window.Revenue.fetchAllPages === 'function') ? window.Revenue.fetchAllPages : null;
+    if (pager()) return pager();
     try {
-      let items = [];
-      if (window.Revenue && typeof window.Revenue.list === 'function') {
-        items = await window.Revenue.list('month');
+      if (window.AppLoader && typeof window.AppLoader.ensure === 'function') await window.AppLoader.ensure('revenue');
+    } catch (_e) { /* 못 띄우면 아래 첫 페이지 폴백 — 'partial' 로 정직하게 */ }
+    return pager();
+  }
+  async function _loadMonthUsage() {
+    const counts = {};
+    let state = 'ok';
+    try {
+      const get = (u) => _req('GET', u);
+      const pager = await _revenuePager();
+      let items, truncated;
+      if (pager) {
+        const res = await pager(_MONTH_USAGE_URL, null, get);
+        items = (res && res.items) || [];
+        truncated = !!(res && res.truncated);
       } else {
-        const d = await _req('GET', '/revenue?period=month');
+        const d = await get(_MONTH_USAGE_URL);
         items = (d && d.items) || [];
+        truncated = !!(d && d.has_more);
       }
-      (items || []).forEach(r => {
-        if (r.service_name) _monthUsage[r.service_name] = (_monthUsage[r.service_name] || 0) + 1;
+      items.forEach(r => {
+        if (r && r.service_name) counts[r.service_name] = (counts[r.service_name] || 0) + 1;
       });
-    } catch (_) { /* 실패해도 0건 표시 */ }
+      if (truncated) state = 'partial';
+    } catch (e) {
+      state = 'failed';
+      console.warn('[services] 이번달 사용량 로드 실패', e);
+    }
+    _monthUsage = counts;
+    _monthUsageState = state;
+  }
+  function _usageLabel(name) {
+    if (_monthUsageState === 'failed') return '이번달 사용량 못 불러옴';
+    const n = _monthUsage[name] || 0;
+    return _monthUsageState === 'partial' ? `${n}건 이상 이번달` : `${n}건 이번달`;
   }
 
   // ── 유틸 ───────────────────────────────────────────────
@@ -124,7 +161,7 @@
     */
     /* INVENTORY_HIDDEN const consCount = Array.isArray(svc._consumptions) ? svc._consumptions.length : 0; */
     const dur = Number(svc.default_duration_min) || 0;
-    const usage = _monthUsage[svc.name] || 0;
+    const usage = _usageLabel(svc.name);
     return `
       <div class="svc-card" data-svc-id="${_esc(svc.id)}" style="background:#fff;border-radius:16px;padding:20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.04),0 1px 2px rgba(0,0,0,0.06);">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
@@ -145,7 +182,7 @@
           <span style="font-size:11px;padding:4px 10px;border-radius:999px;background:#F7F8FA;color:#4E5968;">${"$"}{consCount > 0 ? '소모재료 ' + consCount + '종' : '소모재료 미설정'}</span>
           -->
           ${svc.retouch_period_days ? `<span style="font-size:11px;padding:4px 10px;border-radius:999px;background:#F7EFF0;color:#BC6675;">리터치 ${_esc(svc.retouch_period_days)}일</span>` : ''}
-          <span style="margin-left:auto;font-size:11px;color:#8B95A1;">${usage}건 이번달</span>
+          <span style="margin-left:auto;font-size:11px;color:#8B95A1;">${_esc(usage)}</span>
           <a data-svc-edit="${_esc(svc.id)}" style="font-size:12px;color:#BC6675;font-weight:600;cursor:pointer;text-decoration:none;">수정</a>
         </div>
       </div>`;

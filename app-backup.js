@@ -134,27 +134,35 @@
       return;
     }
     _toast('데이터 받아오는 중...');
+    /* [2026-10-02 BE-G2-B · 기존 결함] 예전엔 매출을 GET /revenue?period=year 로 불렀다 — 서버 period 는
+       today|week|month|last_week|last_month|custom 뿐이라 **422** 였고, `.catch(() => ({ items: [] }))` 가 그 실패를
+       빈 목록으로 삼켜 '내보낼 데이터가 없어요' 라고 안내했다(검증자 실측: 9월 8건·10월 4건 있는 계정).
+       · 범위: 최근 12개월 = period=custom&from=<1년 전 다음날>&to=<오늘> (KST 날짜, 서버가 KST 자정~자정으로 해석)
+       · 목록 상한: 매출 기본 2,000행 · 고객 기본 200명에서 잘리고 has_more 로 알린다 → offset 으로 끝까지 받는다.
+       · 실패(4xx/5xx/네트워크)는 '내보내기 실패' — 데이터가 정말 0건일 때만 '내보낼 데이터가 없어요'.
+       · 끝까지 못 받으면(offset 을 모르는 옛 서버 · 페이지 상한) **잘린 파일을 완료로 저장하지 않는다** — 백업이니까.
+       · 열은 실제 응답 필드로: 예전 r.date·r.menu·r.service·r.channel 은 RevenueOut 에 없어 칸이 비었다. */
     try {
       let rows = [];
       let header = [];
       let filename = '';
       if (kind === 'revenue') {
-        const j = await _fetchJSON('/revenue?period=year').catch(() => ({ items: [] }));
-        rows = (j.items || []).map(r => [
-          r.date || r.created_at || '',
+        const items = await _fetchAllPages(`/revenue?period=custom&from=${_ymdKst(_yearAgoNextDay())}&to=${_ymdKst(new Date())}&limit=5000`);
+        rows = items.map(r => [
+          _kstDateTime(r.recorded_at || r.created_at),
           r.amount != null ? r.amount : 0,
-          r.menu || r.service || '',
-          r.channel || '',
+          r.service_name || '',
+          METHOD_LABEL[r.method] || r.method || '',
           r.customer_name || '',
           r.memo || '',
         ]);
-        header = ['날짜', '금액', '시술/메뉴', '채널', '고객', '메모'];
+        header = ['날짜', '금액', '시술/메뉴', '결제수단', '고객', '메모'];
         filename = `itdasy_revenue_${_today()}.csv`;
       } else if (kind === 'customers') {
-        const j = await _fetchJSON('/customers').catch(() => ({ items: [] }));
-        rows = (j.items || []).map(r => [
+        const items = await _fetchAllPages('/customers?limit=500');
+        rows = items.map(r => [
           r.name || '', r.phone || '', r.email || '',
-          r.last_visit || '', r.visit_count || 0, r.memo || '',
+          _kstDateTime(r.last_visit_at || r.last_visit), r.visit_count || 0, r.memo || '',
         ]);
         header = ['이름', '전화', '이메일', '최근방문', '방문횟수', '메모'];
         filename = `itdasy_customers_${_today()}.csv`;
@@ -169,8 +177,56 @@
       else _toast('파일을 저장하지 못했어요. 잠시 후 다시 시도해 주세요');
     } catch (e) {
       console.warn('[backup] export error', e);
-      _toast('내보내기 실패 — 잠시 후 다시 시도해주세요');
+      _toast(e && e._incomplete
+        ? '내보내기 실패 — 목록을 끝까지 받지 못했어요. 위의 \'전체 데이터 ZIP\' 으로 받아 주세요'
+        : '내보내기 실패 — 잠시 후 다시 시도해주세요');
     }
+  }
+
+  const METHOD_LABEL = { card: '카드', cash: '현금', transfer: '계좌', bank_transfer: '계좌', membership: '회원권', etc: '기타' };
+  const _PAGE_MAX = 50;   // 매출 5,000행 × 50 = 25만 행 · 고객 500명 × 50 = 2.5만 명 — 넘으면 잘린 채 저장하지 않는다
+
+  /** has_more 가 false 가 될 때까지 offset 으로 이어 받는다. 끝까지 못 받으면 throw(_incomplete). */
+  async function _fetchAllPages(firstPath) {
+    const all = [];
+    const seen = new Set();
+    let offset = 0;
+    for (let page = 0; page < _PAGE_MAX; page++) {
+      const j = await _fetchJSON(page === 0 ? firstPath : firstPath + '&offset=' + offset);
+      const items = (j && Array.isArray(j.items)) ? j.items : [];
+      let added = 0;
+      items.forEach((it) => {
+        const k = (it && it.id != null) ? String(it.id) : null;
+        if (k != null) { if (seen.has(k)) return; seen.add(k); }
+        all.push(it); added += 1;
+      });
+      if (!(j && j.has_more)) return all;
+      if (!added) break;                      // offset 을 모르는 옛 서버 — 같은 페이지만 온다
+      offset += Number.isFinite(j.returned) ? j.returned : items.length;
+    }
+    const err = new Error('incomplete'); err._incomplete = true;
+    throw err;
+  }
+
+  // KST 기준 날짜/시각 — recorded_at 은 UTC ISO. 원장이 보는 시각은 한국 시간이다.
+  function _kstParts(d) {
+    const k = new Date(d.getTime() + 9 * 3600 * 1000);
+    const p = (n) => String(n).padStart(2, '0');
+    return { ymd: k.getUTCFullYear() + '-' + p(k.getUTCMonth() + 1) + '-' + p(k.getUTCDate()), hm: p(k.getUTCHours()) + ':' + p(k.getUTCMinutes()) };
+  }
+  function _ymdKst(d) { return _kstParts(d).ymd; }
+  function _kstDateTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    const k = _kstParts(d);
+    return k.ymd + ' ' + k.hm;
+  }
+  // '최근 12개월' — 오늘(KST)을 포함한 365일: 1년 전 **다음날** 부터
+  function _yearAgoNextDay() {
+    const k = new Date(Date.now() + 9 * 3600 * 1000);
+    const start = Date.UTC(k.getUTCFullYear() - 1, k.getUTCMonth(), k.getUTCDate() + 1) - 9 * 3600 * 1000;
+    return new Date(start);
   }
 
   async function _fetchJSON(path) {

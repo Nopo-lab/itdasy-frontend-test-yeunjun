@@ -100,6 +100,20 @@ test('④ hoursIssue — 휴무일 / 영업시간 밖 / 정상 / 설정 없음',
 });
 
 describe('⑤ 예약 폼 — 휴무일 안내 + 저장 전 확인 (막지 않는다)', () => {
+  // [2026-10-03 시계 고정] 이 묶음은 고정 날짜(2026-10-02 금·휴무, 2026-10-05 월)로 '저장' 을 누른다.
+  //   그런데 저장 핸들러는 휴무 확인보다 **먼저** '과거 날짜 예약 방지'([A3], d < 오늘) 를 본다 — 제품 동작으로 맞다.
+  //   그래서 실제 시계로 돌리면 10-03 부터 휴무일 저장 테스트가, 10-06 부터 영업일 저장 테스트가
+  //   '과거 날짜에는 예약을 추가할 수 없어요' 토스트로 빠져 CI 가 영구히 빨갛게 된다(실측 2026-10-03: _inlineConfirm 0회).
+  //   작성 당일(2026-10-01, KST 12:00 = UTC 03:00 — UTC·KST 어느 TZ 로 돌려도 로컬 날짜가 10-01)로 Date 만 고정한다.
+  //   flush() 가 진짜 setTimeout 을 쓰므로 타이머·rAF 는 가짜로 바꾸지 않는다.
+  const PINNED_NOW = new Date('2026-10-01T03:00:00Z');
+  beforeEach(() => {
+    jest.useFakeTimers({ doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate',
+      'nextTick', 'queueMicrotask', 'requestAnimationFrame', 'cancelAnimationFrame', 'requestIdleCallback', 'cancelIdleCallback', 'hrtime', 'performance'] });
+    jest.setSystemTime(PINNED_NOW);
+  });
+  afterEach(() => { jest.useRealTimers(); });
+
   function bootCal() {
     const B = bootApi({ localBH: BH });
     window.innerWidth = 390; window.innerHeight = 844;

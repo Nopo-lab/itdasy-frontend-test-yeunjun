@@ -260,12 +260,14 @@
   const EXPENSE_WORD_RE = /(지출|비용|재료비|매입|경비|나간\s*돈|쓴\s*돈|얼마\s*썼|얼마나\s*썼|원가)/;
   function _isExpenseQ(q) { return EXPENSE_WORD_RE.test(String(q || '')); }
 
+  /* [2026-10-02 perf-backend-04 BE-G2-B] 매출 즉답 4종은 total·count 만 쓴다 → summary_only=1(목록 생략).
+     total·count 는 limit 과 무관한 기간 전체 SQL 집계라 숫자는 그대로고, 최대 2,000행 직렬화만 빠진다. */
   const ASYNC_RULES = [
     // 매출 — 오늘
     {
       type: 'revenue_today',
       test: (q) => !_isExpenseQ(q) && (/^(오늘|금일)\s*(의)?\s*(매출|얼마|벌)/.test(q) || /오늘\s*얼마/.test(q)),
-      fetch: () => _fetchJson('/revenue?period=today'),
+      fetch: () => _fetchJson('/revenue?period=today&summary_only=1'),
       format: (d) => {
         const t = d.total || 0;
         const c = d.count || 0;
@@ -277,21 +279,21 @@
     {
       type: 'revenue_week',
       test: (q) => !_isExpenseQ(q) && /(이번|금)\s*주.*(매출|얼마|벌)/.test(q),
-      fetch: () => _fetchJson('/revenue?period=week'),
+      fetch: () => _fetchJson('/revenue?period=week&summary_only=1'),
       format: (d) => `📊 이번 주 매출 **${_krw(d.total || 0)}** (${d.count || 0}건)`,
     },
     // 매출 — 이번 달
     {
       type: 'revenue_month',
       test: (q) => !_isExpenseQ(q) && /((이번|금|이)\s*달|월\s*매출|이달).*(매출|얼마|벌)?/.test(q) && /(매출|얼마|벌)/.test(q),
-      fetch: () => _fetchJson('/revenue?period=month'),
+      fetch: () => _fetchJson('/revenue?period=month&summary_only=1'),
       format: (d) => `📊 이번 달 매출 **${_krw(d.total || 0)}** (${d.count || 0}건)`,
     },
     // 매출 — 지난 달
     {
       type: 'revenue_last_month',
       test: (q) => !_isExpenseQ(q) && /(지난|저번)\s*달.*(매출|얼마|벌)/.test(q),
-      fetch: () => _fetchJson('/revenue?period=last_month'),
+      fetch: () => _fetchJson('/revenue?period=last_month&summary_only=1'),
       format: (d) => `📊 지난 달 매출 **${_krw(d.total || 0)}** (${d.count || 0}건)`,
     },
     // ── 예약 조회 [2026-07-05 확장] ─────────────────────────

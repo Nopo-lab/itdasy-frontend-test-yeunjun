@@ -86,7 +86,8 @@ describe('부팅 프리페치 소유자는 하나다', () => {
     Object.entries(byUrl).forEach(([u, n]) => expect({ u, n }).toEqual({ u, n: 1 }));
     const paths = calls.map((u) => u.split('?')[0]);
     ['/customers', '/services', '/revenue', '/bookings', '/today/brief', '/assistant/suggestions'].forEach((p) => expect(paths).toContain(p));
-    expect(calls.filter((u) => u.startsWith('/revenue?period=')).sort()).toEqual(['/revenue?period=month', '/revenue?period=today', '/revenue?period=week']);
+    // [2026-10-02 perf-backend-04] 합계만 읽는 키라 summary_only=1 (가드 상세: list-api-contract-summary-only-2026-10-01.test.js)
+    expect(calls.filter((u) => u.startsWith('/revenue?period=')).sort()).toEqual(['/revenue?period=month&summary_only=1', '/revenue?period=today&summary_only=1', '/revenue?period=week&summary_only=1']);
   });
 
   test('부팅 세트의 예약 범위 = _perfBookingRange() (키 pv_cache::bookings_all 과 1:1)', async () => {

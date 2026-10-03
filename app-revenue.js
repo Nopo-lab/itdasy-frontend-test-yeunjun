@@ -306,20 +306,65 @@
       }
     } catch (_) { /* silent */ }
   }
+  /* [2026-10-02 BE-G2-B · 기존 결함] 월 목록은 **끝까지** 받는다.
+     GET /revenue 목록은 기본 2,000행에서 자르고 has_more 로 알린다(합계 total/count 는 전체 기준 — 2026-08-04 계약).
+     매출 화면은 이 목록을 달력 칩·일 상세의 원본으로 쓰면서 has_more 를 안 읽어서, 한 달 2,000건 넘는 매장은
+     히어로(서버 합계)와 달력이 어긋났다(실측 2,450건: 히어로 2,585,000원 vs '10월 3일' 1,982,000원 · 10/1 칩 없음).
+     기본 limit 은 옛 앱 호환으로 그대로 두고(리드 결정 1·2), 여기서 offset 으로 이어 받는다.
+     · 첫 페이지 URL 은 예전 그대로 — 부팅 프리페치·apiFetch 코얼레싱·SW 오프라인 폴백이 같은 키를 본다.
+     · 2,000건 이하(보통 매장)는 요청 1번 — 예전과 같다.
+     · offset 을 모르는 옛 서버는 같은 페이지를 또 준다 → 새 행이 0 이면 멈춘다(무한 반복 금지).
+     · 페이지 사이에 행이 끼어들면 경계가 밀려 겹칠 수 있다 → id 로 중복 제거.
+     · 상한 10장(2만 행)을 넘거나 위처럼 멈추면 truncated — 호출부가 '일부만 표시' 를 사실대로 알린다.
+     isStale() 가 참이면(그 사이 매출 변경) 중간에 그만두고 null — 호출부가 현재 세대로 다시 받는다.
+     (함수 하나로 닫혀 있게 둔다 — 테스트가 이 함수만 떼어 vm 에서 돌린다: customer-cache-privacy-t913) */
+  async function _fetchAllRevenuePages(firstUrl, isStale, get) {
+    const PAGE_MAX = 10;
+    const fetchJson = get || ((u) => _api('GET', u));
+    const all = [];
+    const seen = new Set();
+    let offset = 0;
+    let d = null;
+    let truncated = false;
+    for (let page = 0; page < PAGE_MAX; page++) {
+      d = await fetchJson(page === 0 ? firstUrl : firstUrl + '&offset=' + offset);
+      if (isStale && isStale()) return null;
+      const items = (d && Array.isArray(d.items)) ? d.items : [];
+      let added = 0;
+      items.forEach((it) => {
+        const k = (it && it.id != null) ? String(it.id) : null;
+        if (k != null) { if (seen.has(k)) return; seen.add(k); }
+        all.push(it); added += 1;
+      });
+      if (!(d && d.has_more)) { truncated = false; break; }
+      truncated = true;                               // 더 있다고 했는데 아래에서 멈추면 잘린 채다
+      if (!added || !items.length) break;             // offset 무시(옛 서버) · 빈 페이지 — 더 받아도 같다
+      offset += Number.isFinite(d.returned) ? d.returned : items.length;
+    }
+    return { items: all, truncated, total: d && d.total, count: d && d.count };
+  }
+  function _noticeTruncated(n) {
+    try {
+      if (typeof window.showToast === 'function') {
+        window.showToast(`매출이 많아 달력·날짜 목록은 일부(최근 ${Number(n).toLocaleString('ko-KR')}건)만 보여요 — 합계는 전체 기준이에요`);
+      }
+    } catch (_e) { void _e; }
+  }
   async function _fetchPeriodData(p) {
     if (_periodInflight[p]) return _periodInflight[p];
     // [v221] 항상 custom + 계산된 from/to 로 호출
     const r = _computeRange();
     const gen = _mutGen;
     const url = `/revenue?period=custom&from=${r.from}&to=${r.to}` + (gen > 0 ? '&_g=' + gen : '');
-    const pr = _api('GET', url)
-      .then(d => {
-        if (gen !== _mutGen) {
+    const pr = _fetchAllRevenuePages(url, () => gen !== _mutGen)
+      .then(res => {
+        if (!res || gen !== _mutGen) {
           // 변경 전에 시작한 읽기 — 커밋 전 장부일 수 있다. 캐시에 쓰지 않고 현재 세대로 다시 받는다.
           if (_periodInflight[p] === pr) _periodInflight[p] = null;
           return _fetchPeriodData(p);
         }
-        const items = d.items || []; _writeSWRPeriod(p, items); return items;
+        if (res.truncated) _noticeTruncated(res.items.length);
+        const items = res.items; _writeSWRPeriod(p, items); return items;
       })
       .finally(() => { if (_periodInflight[p] === pr) _periodInflight[p] = null; });
     _periodInflight[p] = pr;
@@ -1416,6 +1461,13 @@
     MAX_KRW, MAX_KRW_TEXT,
     // [flow-revenue-stats-ui-02] 변경 세대 — revenue-month 가 stale 요약을 캐시에 쓰지 않기 위해 읽는다
     _readGen, _genParam,
+    // [2026-10-02 BE-G2-B] 목록 이어받기(has_more → offset) — revenue-month 의 지난달 목록도 같은 경로
+    _fetchAllRevenuePages, _noticeTruncated,
+    // [2026-10-03 BE-G3-Z] 같은 함수의 **공용 이름** — 매출 화면 밖(시술 메뉴 '이번달 사용량' 등)이 월 목록을
+    //   끝까지 받을 때 쓴다. fetchAllPages(firstUrl, isStale|null, get?) → {items, truncated, total, count} | null.
+    //   get 을 안 주면 이 파일의 _api(인증·세션 확인)로 받는다. 이 파일은 지연 그룹(revenue)이라 바깥에서는
+    //   AppLoader.ensure('revenue') 뒤에 읽어야 한다.
+    fetchAllPages: _fetchAllRevenuePages,
     // 내부 헬퍼·유틸 (분할 파일이 참조)
     _esc, _formatMan, _isPC, _tagHTML, _rvShopExample, _deleteConfirmMsg,
     PERIODS, PERIOD_LABEL, TAG_LABEL,

@@ -99,7 +99,8 @@
     dashboard: { url: '/today/brief',          key: 'pv_cache::today' },
     customer:  { url: '/customers',            key: 'pv_cache::customers' },
     // [2026-04-26 0초딜레이] 매출은 기본을 today 로 (앱 첫 진입 시 가장 자주 보는 탭)
-    revenue:   { url: '/revenue?period=today', key: 'pv_cache::revenue::today' },
+    // [2026-10-02 perf-backend-04] summary_only=1 — 이 키를 읽는 곳(내샵관리)은 합계만 쓴다. BOOT_PREFETCH 와 같은 URL.
+    revenue:   { url: '/revenue?period=today&summary_only=1', key: 'pv_cache::revenue::today' },
     service:   { url: '/services',             key: 'pv_cache::service' },
   };
   /* [2026-10-01 perf-03] 오늘 00:00(로컬) 기준 ±90일 — **일 단위**라 하루 종일 같은 문자열이다.
@@ -126,9 +127,12 @@
   const BOOT_PREFETCH = [
     { url: '/today/brief',          key: 'pv_cache::today' },
     { url: '/customers',            key: 'pv_cache::customers' },
-    { url: '/revenue?period=today', key: 'pv_cache::revenue::today' },
-    { url: '/revenue?period=week',  key: 'pv_cache::revenue::week' },
-    { url: '/revenue?period=month', key: 'pv_cache::revenue::month' },
+    /* [2026-10-02 perf-backend-04 BE-G2-B] 매출 3종은 summary_only=1 — pv_cache::revenue::<p> 를 읽는 곳은
+       내샵관리(app-dashboard _fromOwnerSWR)뿐이고 합계(n=total)만 쓴다. 예전엔 기간마다 최대 2,000행
+       전 컬럼(perf3 매장1 month 415KB)을 받아 버렸다. 매출 화면은 자기 키(pv_cache::revenue::<p>::from::to)를 쓴다. */
+    { url: '/revenue?period=today&summary_only=1', key: 'pv_cache::revenue::today' },
+    { url: '/revenue?period=week&summary_only=1',  key: 'pv_cache::revenue::week' },
+    { url: '/revenue?period=month&summary_only=1', key: 'pv_cache::revenue::month' },
     { url: '/services',             key: 'pv_cache::service' },
     { url: 'bookings',              key: 'pv_cache::bookings_all' },   // 'bookings' → _bookingRange()
   ];
