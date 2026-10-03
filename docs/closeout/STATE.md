@@ -36,7 +36,7 @@ su postgres -s /bin/bash -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/itdas
 | 프런트 `npx jest` | 228 suites / 3,363 | **278 suites / 3,746 PASS** (`6d58171`) |
 | 프런트 `npm run lint:ci` | 0 errors / 177 warnings | 0 errors / 177 warnings |
 | 프런트 `npm run smoke` · `audit:overlay` | 통과 | 통과 · 오버레이 73 미등록 0 (`6d58171`) |
-| 백엔드 `pytest tests` (sqlite, tests/pg 제외) | 4,866 passed · 301 skipped | **재실행 중 — 결과 오면 갱신** (`977d609`) |
+| 백엔드 `pytest tests` (sqlite, tests/pg 제외) | 4,866 passed · 301 skipped | **5,295 passed · 84 skipped · 1 xfailed · 실패 0 (16m26s, tests/pg 제외 — 전 회차 322 skipped 는 PG 미설정으로 건너뛴 tests/pg 를 포함한 수)** (`977d609`) |
 | 백엔드 `pytest tests/pg` (PG 16) | 221 passed | **257 passed** (`675b687` 과 같은 트리, 통합 점검). `977d609` 뒤 재실행은 새 DB 생성 권한이 막혀 못 함 |
 | 최종 E2E 390px(11단계) | — | 11/11, 페이지 오류 0 (`docs/closeout/evidence/final-verify/e2e/`) |
 | 화면 숫자 vs 백엔드 직접 조회 | — | 17/17 일치, 콘솔 오류 0 (`docs/closeout/evidence/final-verify/integ/`) |

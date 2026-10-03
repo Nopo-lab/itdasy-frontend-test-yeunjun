@@ -138,7 +138,7 @@ perf-backend 감사 7건(합성 PG: 매장 21·고객 5만·예약 10만·매출
 |---|---|---|---|---|
 | 프런트 단위/소스가드 | `npx jest` | node 22, jsdom | `6d58171` | **278 suites / 3,746 tests PASS** (기준선 228/3,363) |
 | 프런트 린트/스모크 | `npm run lint:ci` · `npm run smoke` · `npm run audit:overlay` | node 22 | `6d58171` | 0 errors / 177 warnings(기준선 177) · 통과 · 오버레이 73 미등록 0 |
-| 백엔드 단위/통합(sqlite) | `pytest -q tests --ignore=tests/pg` | python 3.11 venv | `977d609` | **재실행 중 — 결과 오면 갱신** |
+| 백엔드 단위/통합(sqlite) | `pytest -q tests --ignore=tests/pg` | python 3.11 venv | `977d609` | **5,295 passed · 84 skipped · 1 xfailed · 실패 0 (16m26s, tests/pg 제외 — 전 회차 322 skipped 는 PG 미설정으로 건너뛴 tests/pg 를 포함한 수)** |
 | 백엔드 관련 파일, 운영 설정 | 위 + `CLOUD_RUN_MAX_INSTANCES=5` | 같음 | `977d609` | 관련 49파일 단일·운영 설정 각 **577 passed** · 1 xfailed(기존). 직전 '운영 설정에서만 실패' 3개는 테스트가 배포를 명시하도록 고쳐 해소(단언 그대로) |
 | 백엔드 PostgreSQL 통합 | `pytest -q tests/pg` (ITDASY_PG_URL) | PG 16 로컬 | `675b687` 과 같은 트리 | **257 passed** (4m15s, 통합 점검). ⚠ `977d609`(라우터 3곳·캐시 키·문구) 뒤 PG 재실행은 **BLOCKED** — 새 테스트 DB 생성 권한이 이번 세션에서 막힘. sqlite 전체·관련 파일 운영 설정은 `977d609` 에서 통과 |
 | 테넌트 하네스 | `pytest tests/test_tenant_isolation_harness.py` | sqlite | `977d609` | sqlite 전체에 포함(관련 49파일 실행에도 포함) |
@@ -257,7 +257,7 @@ perf-backend 감사 7건(합성 PG: 매장 21·고객 5만·예약 10만·매출
 | 단계 | 상태 |
 |---|---|
 | 코드 수정 | 완료 — 브랜치가 각 `main` 보다 프런트 23커밋(문서 포함) · 백엔드 15커밋 앞섬, 전부 푸시. 프런트 `6d58171` · 백엔드 `977d609` |
-| 테스트 | §4.1 — 프런트 278/3,746 · 백엔드 sqlite 재실행 중 — 결과 오면 갱신 · PG 257(`675b687`) |
+| 테스트 | §4.1 — 프런트 278/3,746 · 백엔드 sqlite 5,295 passed · 84 skipped · 1 xfailed · 실패 0 (16m26s, tests/pg 제외 — 전 회차 322 skipped 는 PG 미설정으로 건너뛴 tests/pg 를 포함한 수) · PG 257(`675b687`) |
 | 스테이징(테스트 사이트) 반영 | **미반영** — PR 생성·리뷰·main 머지 후 GitHub Pages 자동 배포(`deploy.yml` 이 `?v=`·`build.txt` 자동 범프) |
 | 백엔드 배포 | **미반영** — `main` 머지가 곧 Cloud Run 배포. 마이그레이션 0070 은 기동 시 자동(중복 시 중단) |
 | 운영 승격·앱 빌드·스토어 | 미실행 |
