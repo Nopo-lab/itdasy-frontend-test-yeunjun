@@ -1,0 +1,124 @@
+{
+ "steps": [
+  {
+   "name": "01-landing",
+   "ok": true,
+   "ms": 3079,
+   "info": {
+    "title": "잇데이 · Itdasy"
+   },
+   "err": null
+  },
+  {
+   "name": "02-login",
+   "ok": true,
+   "ms": 5243,
+   "info": {
+    "token": true,
+    "onboarding": false
+   },
+   "err": null
+  },
+  {
+   "name": "03-home",
+   "ok": true,
+   "ms": 1626,
+   "info": {
+    "hv5": true,
+    "skeleton": false,
+    "errorCard": false,
+    "preConnectVisible": false,
+    "miniBar": true,
+    "consentState": null,
+    "cookieBanner": true,
+    "firstText": "잇"
+   },
+   "err": null
+  },
+  {
+   "name": "04-customers",
+   "ok": true,
+   "ms": 2612,
+   "info": {
+    "rows": 0,
+    "visible": null
+   },
+   "err": null
+  },
+  {
+   "name": "05-calendar",
+   "ok": true,
+   "ms": 3184,
+   "info": {
+    "chips": 0,
+    "error": 0
+   },
+   "err": null
+  },
+  {
+   "name": "06-revenue",
+   "ok": true,
+   "ms": 3143,
+   "info": {
+    "visible": true,
+    "text": " ‹ 2026년 10월 › 오늘 + 매출 입력 오프라인 이번달 매출 50,611,000원 4건 완료 · 지난달 같은 기간보다 +101122% 아"
+   },
+   "err": null
+  },
+  {
+   "name": "07-dm-queue",
+   "ok": true,
+   "ms": 3133,
+   "info": {
+    "listText": "인스타가 연결되어 있지 않아요인스타를 연결하면 손님이 보낸 DM 을여기에 모아 답장을 추천해 드려요.인스타 연결하기",
+    "settingsBox": [
+     44,
+     44
+    ]
+   },
+   "err": null
+  },
+  {
+   "name": "08-settings-hub",
+   "ok": true,
+   "ms": 3135,
+   "info": {
+    "sampleRowShown": false,
+    "changepw": true
+   },
+   "err": null
+  },
+  {
+   "name": "09-workspace",
+   "ok": true,
+   "ms": 3149,
+   "info": {
+    "open": true,
+    "banner": "none",
+    "cta": null
+   },
+   "err": null
+  },
+  {
+   "name": "10-workspace-close",
+   "ok": true,
+   "ms": 1309,
+   "info": {
+    "open": false
+   },
+   "err": null
+  },
+  {
+   "name": "11-logout",
+   "ok": true,
+   "ms": 6079,
+   "info": {
+    "token": false,
+    "loginVisible": true
+   },
+   "err": null
+  }
+ ],
+ "pageErrors": [],
+ "rawErrorCount": 10
+}

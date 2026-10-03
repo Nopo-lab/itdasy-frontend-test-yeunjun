@@ -23,7 +23,7 @@
 - 쿠키/오류진단 배너(`app-cookie-consent.js`): 작게·탭바 위(`_placeAboveTabBar` 재측정), `.subscreen-overlay.is-open` 동안 숨김, 카드가 `deferToCombined()` 중이면 8초 안전장치가 다시 띄우지 않음(`_cardHandled`).
 - HomeV41: 렌더 중 들어온 refresh/data-changed 는 pending 큐로 합쳐 재렌더(로그인 직후 홈 스켈레톤 영구 잔류 수정). 로그인 전(웹)엔 네트워크 렌더 없음. 오늘의 예약은 **KST 달력일**로 비교(`js/home/v41-renderers.js kstYmd`, `app-myshop-v3.js _kstYmd`). DM 큐 건수 단일 소스 = 고객 메시지 카드(`HomeV41.setDmQueueCount`). 숨은 TodayBrief 컨테이너는 네트워크 0. 잇비 카드에 생일 줄.
 - 설정 허브: 계정 섹션 **비밀번호 변경** 행(`changepw → openChangePwModal`, 소셜 계정 비노출). 샵 정보 저장 시 `shop_name`·헤더·내 샵 관리 즉시 갱신.
-- 설정 허브 **샘플 데이터 지우기** 행(`samplepurge`): 처음엔 숨김, `open()` 이 `GET /auth/sample/status`(has_sample·counts) 를 읽어 샘플이 남아 있을 때만 표시. 확인 → `POST /auth/sample/purge`(자기 매장만·멱등, 샘플 고객의 예약까지) → SWR 캐시 비움 + data-changed(force_sync) + 토스트. 실패면 행 유지·실패 토스트.
+- 설정 허브 **샘플 데이터 지우기** 행(`samplepurge`): 처음엔 숨김, `open()` 이 `GET /auth/sample/status`(has_sample·counts, **`authHeader()` 필수** — `apiFetch` 는 로그인 정보를 자동으로 안 붙인다. 빠지면 늘 401 이라 행이 영영 안 보였다, 2026-10-03) 를 읽어 샘플이 남아 있을 때만 표시. 확인 → `POST /auth/sample/purge`(자기 매장만·멱등, 샘플 고객의 예약까지) → SWR 캐시 비움 + data-changed(force_sync) + 토스트. 실패면 행 유지·실패 토스트.
 - **온보딩(업종·샵 이름)이 신규 가입자에게 실제로 뜬다**: BE register/apple/google 이 ShopSettings 를 빈 이름으로 만든다(예전 "<이름>의 샵" 임시값을 `checkOnboarding` 이 완료로 오인). 옛 가입자는 `GET /shop/settings` 의 `shop_name_is_placeholder` 로 구제 — 이 기기에서 `_obFinish` 를 마친 적(onboarding_done=1)이 없으면 온보딩 표시. (`app-core.js checkOnboarding`, BE `routers/shop.py is_placeholder_shop_name`)
 - 오류 문구: 홈 brief 가 5xx 로 끝나면 '서버가 잠깐 불안정해요'(`data-home-error="server"`), fetch 예외만 네트워크 문구, '다시 시도' 는 `HomeV41.refresh()`(전체 새로고침 아님). `app-core.js _humanError` 는 한글 없는 원문을 원장에게 보이지 않는다(한국어 detail 은 통과). DM 큐 실패 화면 '다시 시도'(`_refresh`).
 
@@ -64,6 +64,17 @@
 
 **부팅·성능**
 - 부팅 프리페치 단일 소유자 `app-perf-recovery._prefetchBoot`(`_preloadTabs`·대시보드 위임, 예약 범위 일 단위 URL) — 콜드 부팅 API 43→24. SW 첫 설치는 리로드 안 함(`_swHadController`). 지연 그룹은 홈 하이드레이션+API 유휴 뒤, saveData/2g·3g 면 photo 제외(`js/loader.js`). `/persona/consent` 는 `_nc` 대신 `cache:'no-store'`.
+
+**대량 데이터 성능·목록 계약 (3차, 2026-10-03 — 백엔드 `675b687`·`977d609`, 프런트 `4f3539b`·`6d58171`)**
+- 원칙: **파라미터 없는 옛 호출의 동작은 그대로**(스토어의 옛 앱 번들) — 새 기능은 전부 opt-in.
+- `GET /bookings`: 범위 없음 = KST −30일~+90일, 한쪽만 = 그쪽에서 400일, 폭 400일 초과·datetime 범위를 넘는 극단 날짜 → 400(안내 문구 '0003~9997년' 안은 반드시 200). `limit` opt-in(+`has_more/returned/range_*`). 겹침 검사는 PG `tstzrange`(gist `excl_booking_user_timerange`). (`routers/bookings.py`, `services/booking_scope.py`)
+- `GET /revenue`: 기본 limit 2,000 **유지**, `offset`(0~1,000,000, 넘으면 422)·`summary_only=1`(합계만, items 없음) opt-in, 정렬 tie-break `id`. summary 직전달·예약 합계는 SQL 집계, `/revenue/forecast` 는 주별 `GROUP BY` + 5분 캐시(키 `today_brief:{uid}:forecast:*`). 프런트는 목록이 필요하면 `has_more` 까지 offset 으로 이어 받고(같은 페이지 반복이면 멈춤 — 옛 서버 호환), 합계만 필요하면 `summary_only=1`(`app-revenue.js`·`app-revenue-month.js`·`app-service-templates.js`·`app-backup.js`·`app-core.js`·`app-perf-recovery.js`·`app-dashboard.js`·`assistant-intent-router.js`).
+- `GET /customers`·`GET /persona/posts` offset 상한 1,000,000(422). 상한 없는 `offset` 은 `tests/test_list_offset_bound_2026_10_03.py` 소스 가드가 잡는다.
+- `GET /retention/at-risk`: summary 는 매장 전체(500명 상한 제거, GROUP BY 판정 — 매장1 114→1,105명). items 는 '급한 순'(lost → at_risk, 오래 안 온 순, id). `limit` 생략 = 전체(옛 번들 '외 N명' = `items.length-5` 호환), 지정 = 상위 N명(최대 2000, 0=요약만) + `has_more/returned`. 직렬화는 asdict·jsonable_encoder 없이(`JSONResponse`). 새 번들이 `?limit=` 을 쓰면 '외 N명' 은 `summary.total` 로 셀 것. 대시보드는 이 API 를 안 부르고 재방문율을 `/customers` 로 센다(못 세면 '미집계').
+- `/today/morning`: 칩 채점 일괄(`services/chip_scorer.build_customer_ctx_bulk` — 계산 1회당 쿼리 ~1,300 → 16, 고객 수와 무관). 캐시 키 `today_brief:{uid}:morning:{버킷}` — 예약·매출·고객 저장 경로의 `today_brief:{uid}:*` 무효화가 같이 비운다(전엔 `today_morning:` 이라 5분 옛 목록).
+- `utils/kv_cache.get_or_set(key, factory, ttl, join=)`: single-flight + **무효화 기록**(`_inval_log` — 계산 시작 뒤 그 키가 무효화됐으면 새 요청은 합류하지 않고, 옛 결과는 저장하지 않는다). `join=JOIN_CONSISTENT`(돈·예약 수치 — today_brief·forecast·morning)는 **인스턴스 1개일 때만** 합류, `JOIN_PROCESS`(제안 카드 등)는 프로세스 안에서 항상 합류. 생략하면 키 접두로 고름. ⚠ 운영(`CLOUD_RUN_MAX_INSTANCES=5`·Redis 없음)은 메모리 캐시도 꺼져 있다 — 캐시 계약 테스트는 배포 설정을 명시할 것. 매장 단위로 한꺼번에 바뀌면 `invalidate_shop_caches(uid)`(샘플 지우기). CSV/AI/스마트 가져오기·되돌리기도 무효화한다.
+- alembic **0072** `ix_bookings_voided`(bookings(id) WHERE status='no_show' OR deleted_at IS NOT NULL) — 방문 판정 NOT EXISTS 가 전체를 훑지 않게. `models.BOOKING_VOIDED_WHERE` 와 글자 단위로 같아야 한다.
+- 테스트 시계: 예약 폼 저장을 고정 날짜로 누르는 jest 는 `jest.setSystemTime` 으로 고정(가드 `__tests__/booking-form-tests-pin-clock-2026-10-03.test.js`).
 
 **인박스·테넌트·견고성(BE)**
 - DM 큐 빈 화면 `X-Token-State` 분기(none 연결 / expired 재연결). 웹훅: enforce 인데 APP_SECRET 없으면 처리 안 함(`secret_missing`). 페르소나 서명/포스트 남의 것 404(RULE-003). 재고 조정 `CASE` 클램프(PG 500 수정). 하네스 추출 범위 `routers/*.py`+`DB_manage/*_router.py`, INVARIANT-2b(본문 FK)/5b(app.routes 대조).

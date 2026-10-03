@@ -1,0 +1,301 @@
+{
+ "steps": {
+  "login": {
+   "ms": 4679,
+   "tokenLen": 241,
+   "loginPost": [
+    200
+   ]
+  },
+  "home": {
+   "text": "잇 10월 3일 (토) 잇데이 뷰티 스튜디오 (데모) 오늘의 예약 1건 캘린더 → 14:00 속눈썹 연장 80,000원 확정 AI 잇비가 챙겼어요 5건 미완료 예약 찾았어요 김서연님 · 9/29(화) 14:00 · 외 4건 5건 › 고객 메시지 전체 보기 › 새 메시지 없어요 메시지가 오면 여기에 미리보기가 떠요 DM이 왔는데 안 보이면? → AI 잇비 베타 실시간 분석 · 모두 정상 전체 보기 › 점심 시간이네요. 잠깐 쉬셨어요? 이번달 매출 50,611,000원 › 이번주 빈 시간 토 15:00~21:00 외 3곳 › ✓ 나머지 1개는 문제 없어요 ›",
+   "brief_keys": [
+    "today_bookings",
+    "overdue_bookings",
+    "at_risk",
+    "low_stock",
+    "mom_delta_pct",
+    "week_revenue",
+    "this_month_total",
+    "this_month_count",
+    "prev_month_total",
+    "month_daily_cumulative",
+    "prev_month_same_day_total",
+    "total_customers",
+    "new_customer_count",
+    "first_visit_count",
+    "revisit_count",
+    "regular_count",
+    "birthdays_this_week",
+    "empty_slots",
+    "alert_count",
+    "monthly_goal",
+    "total_fee_tracked",
+    "payment_breakdown",
+    "estimated_month_revenue",
+    "membership_expiring_30d",
+    "membership_low_balance",
+    "membership_low_first_name",
+    "membership_expiring_first_name",
+    "retouch_due_count",
+    "retouch_due_first_name"
+   ]
+  },
+  "customers": {
+   "all": "9",
+   "newm": "4",
+   "vip": "0",
+   "count": "9명",
+   "rows": 9
+  },
+  "customers_atrisk": {
+   "count": "9명 · 0명 표시",
+   "text": "이 조건에 맞는 손님이 아직 없어요",
+   "chipOn": true
+  },
+  "insights": {
+   "text": "✨ AI 인사이트 💝 이탈 임박 고객 걱정할 고객 없음 · 고객 데이터가 쌓이면 자동으로 감지해요. 📈 이번 주 매출 예상 데이터가 더 쌓이면 예측이 가능해요 (현재 3주 / 최소 4주 매출 기록 필요) AI 인사이트는 최근 8주 데이터를 바탕으로 매 요청마다 새로 계산돼요."
+  },
+  "calendar": {
+   "stat": "오늘 1건 이번달 8건",
+   "calls": [
+    "200 /shop/settings",
+    "200 /services",
+    "200 /bookings?from=2026-09-23T15%3A00%3A00.000Z&to=2026-11-07T14%3A59%3A59.000Z",
+    "200 /bookings?from=2026-10-24T15%3A00%3A00.000Z&to=2026-12-07T14%3A59%3A59.000Z",
+    "200 /bookings?from=2026-08-24T15%3A00%3A00.000Z&to=2026-10-07T14%3A59%3A59.000Z"
+   ]
+  },
+  "revenue": {
+   "text": "‹ 2026년 10월 › + 매출 입력 이번달 매출 50,611,000원 4건 완료 · 지난달 같은 기간보다 +101122% 아직 안 받은 돈 예약 4건 80,000원 이번달 예상 매출 455,499,000원 날짜별 매출 날짜를 누르면 상세 일 월 화 수 목 금 토 27 28 29 30 1 5061만 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 10월 3일 (토) 0원 이 날은 기록된 매출이 없어요 + 이 날 매출 입력",
+   "calls": [
+    "200 /revenue?period=custom&from=2026-10-01&to=2026-10-31",
+    "200 /revenue/summary?period=month"
+   ]
+  },
+  "myshop": {
+   "text": "잇데이 뷰티 스튜디오 (데모) 잇데이 Pro 인스타분석카드 운영 관리 예약관리 오늘 1건 고객관리 9명 매출관리 50,611,000원 손님 문의 인스타 DM 인스타 댓글 내 정보 연결된 서비스 인스타 · 네이버 · 카카오 샵 관리 샵 정보 · 시술 메뉴 · 백업 이용 플랜 잇데이 Pro 고객센터 | 로그아웃",
+   "calls": [
+    "200 /assistant/brief"
+   ]
+  },
+  "dashboard_periods": {
+   "today": {
+    "active": "today",
+    "hero": "오늘 브리핑 0원 어제 대비 대기 중 신규 고객 — 재방문 57% 방문 손님 7명 중 4명이 2회 이상 오늘 예약 1건 위험 신호 없음",
+    "calls": [
+     "200 /today/brief?period=today"
+    ]
+   },
+   "week": {
+    "active": "week",
+    "hero": "이번주 브리핑 5074.1만원 지난주 대비 대기 중 신규 고객 4명 재방문 57% 방문 손님 7명 중 4명이 2회 이상 오늘 예약 1건 위험 신호 없음",
+    "calls": [
+     "200 /revenue?period=week&summary_only=1",
+     "200 /today/brief?period=week"
+    ]
+   },
+   "month": {
+    "active": "month",
+    "hero": "이번달 브리핑 5061.1만원 지난달 대비 대기 중 신규 고객 4명 재방문 57% 방문 손님 7명 중 4명이 2회 이상 오늘 예약 1건 위험 신호 없음",
+    "calls": []
+   }
+  },
+  "settings": {
+   "hubOpened": true
+  },
+  "csv": {
+   "filename": "itdasy_revenue_20261003.csv",
+   "header": "날짜,금액,시술/메뉴,결제수단,고객,메모",
+   "rows": 14,
+   "amount_sum": 51501000,
+   "sample": [
+    "날짜,금액,시술/메뉴,결제수단,고객,메모",
+    "2026-10-01 19:30,12000,,카드,,",
+    "2026-10-01 19:16,50000000,프리미엄 속눈썹 연장 + 래쉬리프트 + 눈썹 왁싱 풀세트 패키지 2시간 코스,카드,김수한무거북이와두루미삼천갑자동방삭치치카포사리사리센타워리워,큰 금액 테스트"
+   ]
+  },
+  "csv_calls": [
+   "200 /auth/sample/status",
+   "200 /revenue?period=custom&from=2025-10-04&to=2026-10-03&limit=5000"
+  ],
+  "logout": {
+   "button": true,
+   "confirmText": "확인 로그아웃 하시겠습니까? 세션과 캐시가 모두 초기화됩니다. 아니요 확인",
+   "confirmClicked": true,
+   "logoutPost": [
+    200
+   ],
+   "after": {
+    "token": null,
+    "loginVisible": true,
+    "goLoginVisible": false,
+    "anyItdasyToken": [],
+    "url": "http://127.0.0.1:5500/index.html?_logout=1790994380640",
+    "bodyTop": "Itdasy it's day. easy. 비밀번호를 잊으셨나요? 로그인 간편 로그인 N 아직 회원이 아니신가요? 회원가입"
+   }
+  }
+ },
+ "truth": {
+  "assistant_brief": {
+   "today_bookings": 1,
+   "this_month_total": 50611000,
+   "total_customers": 9,
+   "new_customer_count": 4,
+   "at_risk": 0,
+   "week_revenue": [
+    0,
+    50000,
+    80000,
+    0,
+    50611000,
+    0,
+    0
+   ]
+  },
+  "customers": {
+   "total": 9,
+   "n": 9,
+   "has_more": false,
+   "v4p": 0,
+   "atrisk": [],
+   "visited": 7,
+   "returning": 4
+  },
+  "at_risk": {
+   "summary": {
+    "total": 0,
+    "at_risk": 0,
+    "lost": 0
+   },
+   "n": 0,
+   "has_more": false,
+   "returned": 0
+  },
+  "bookings_month": {
+   "n": 8,
+   "viewCnt": 8,
+   "today": 1,
+   "statuses": [
+    "confirmed",
+    "confirmed",
+    "confirmed",
+    "confirmed",
+    "confirmed",
+    "confirmed",
+    "confirmed",
+    "confirmed"
+   ]
+  },
+  "revenue_summary": {
+   "total": 50611000,
+   "count": 4,
+   "confirmed_deposit_total": 0,
+   "pending_bookings_total": 80000
+  },
+  "rev_today": {
+   "total": 0,
+   "count": 0,
+   "net_total": 0,
+   "full_total": 0,
+   "full_items_sum": 0,
+   "full_n": 0,
+   "has_more": false
+  },
+  "rev_week": {
+   "total": 50741000,
+   "count": 6,
+   "net_total": 49033976,
+   "full_total": 50741000,
+   "full_items_sum": 50741000,
+   "full_n": 6,
+   "has_more": false
+  },
+  "rev_month": {
+   "total": 50611000,
+   "count": 4,
+   "net_total": 48907226,
+   "full_total": 50611000,
+   "full_items_sum": 50611000,
+   "full_n": 4,
+   "has_more": false
+  },
+  "csv": {
+   "from": "2025-10-04",
+   "to": "2026-10-03",
+   "total": 51501000,
+   "n": 14,
+   "items_sum": 51501000,
+   "has_more": false
+  }
+ },
+ "toasts_before_logout": [
+  "데이터 받아오는 중...",
+  "14건 내보냈어요"
+ ],
+ "completeFlowSeen": [
+  {
+   "step": "before5",
+   "vis": true,
+   "text": "⋯ 김서연 젤네일 · 9/29(화) 14:00 시술 금액 원 +1만 +5만 +10만 결제수단 카드 현금 계좌 회원권 매출에 포함 이번달 매출에 더해요 시술 주기 기록 잇비가 다음 시기 알려드려요 시술 완료 노쇼 처리 예약 취소",
+   "opens": [
+    {
+     "k": "startFromBooking",
+     "at": 1790994353737,
+     "stack": "    at http://127.0.0.1:5500/app-calendar-view.js?v=local-260831v5:3088:35"
+    }
+   ]
+  }
+ ],
+ "cfOpens": [],
+ "pageErrors": [],
+ "consoleErrors": [],
+ "requestFailed": [],
+ "apiBad": [],
+ "externalBlockedCount": 20,
+ "apiCount": 42,
+ "apiSummary": [
+  "GET 200 /health",
+  "POST 200 /auth/login",
+  "GET 200 /persona/consent",
+  "GET 200 /auth/me",
+  "GET 200 /shop/settings",
+  "GET 200 /customers",
+  "GET 200 /subscription/status",
+  "GET 200 /assistant/session/current",
+  "GET 200 /revenue?period=today&summary_only=1",
+  "GET 200 /instagram/status",
+  "GET 200 /revenue?period=month&summary_only=1",
+  "GET 200 /assistant/suggestions",
+  "GET 200 /services",
+  "GET 200 /revenue?period=week&summary_only=1",
+  "GET 200 /bookings?from=2026-07-04T15%3A00%3A00.000Z&to=2027-01-01T15%3A00%3A00.000Z",
+  "GET 200 /assistant/brief",
+  "GET 200 /workspace/slots",
+  "GET 200 /today/brief",
+  "GET 200 /bookings?from=2026-10-01T00%3A00%3A00%2B09%3A00&to=2026-10-31T23%3A59%3A59%2B09%3A00",
+  "GET 200 /today/brief?period=month",
+  "GET 200 /dm-confirm-queue",
+  "GET 200 /auth/me",
+  "GET 200 /customers",
+  "GET 200 /customers/duplicates?limit=50",
+  "GET 200 /retention/at-risk",
+  "GET 200 /revenue/forecast",
+  "GET 200 /shop/settings",
+  "GET 200 /services",
+  "GET 200 /bookings?from=2026-09-23T15%3A00%3A00.000Z&to=2026-11-07T14%3A59%3A59.000Z",
+  "GET 200 /bookings?from=2026-10-24T15%3A00%3A00.000Z&to=2026-12-07T14%3A59%3A59.000Z",
+  "GET 200 /bookings?from=2026-08-24T15%3A00%3A00.000Z&to=2026-10-07T14%3A59%3A59.000Z",
+  "GET 200 /dm-confirm-queue",
+  "GET 200 /revenue?period=custom&from=2026-10-01&to=2026-10-31",
+  "GET 200 /revenue/summary?period=month",
+  "GET 200 /assistant/brief",
+  "GET 200 /today/brief?period=today",
+  "GET 200 /revenue?period=week&summary_only=1",
+  "GET 200 /today/brief?period=week",
+  "GET 200 /auth/sample/status",
+  "GET 200 /revenue?period=custom&from=2025-10-04&to=2026-10-03&limit=5000",
+  "POST 200 /auth/logout",
+  "GET 200 /health"
+ ]
+}

@@ -1,0 +1,1 @@
+{"seen":[{"url":"http://localhost:8000/auth/sample/status","hasAuth":true},{"url":"http://localhost:8000/auth/sample/status","status":200}],"rowDisplay":"none"}

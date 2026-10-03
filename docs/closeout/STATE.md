@@ -1,19 +1,20 @@
 # 마감 작업 상태 (docs/closeout/STATE.md)
 
-> 새 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-02 19:30 UTC (성능 수정 마무리 워크플로 `wf_6f78cade-321` 진행 중)
+> 새 세션은 이 파일부터 읽는다. 마지막 갱신: 2026-10-03 (3차 성능 수정까지 커밋·푸시·재검증 완료 — 미커밋 변경 0)
 
 ## 저장소 · 브랜치 · 커밋
 | 레포 | 경로 | 브랜치 | 상태 |
 |---|---|---|---|
-| 프런트 `Nopo-lab/itdasy-frontend-test-yeunjun` | `/home/user/itdasy-frontend-test-yeunjun` | `ccr-d5f1311f-u6e0c1` (origin/main `6f39a40` 기준) | 23커밋 푸시됨 — 최신 `c84368c`(docs) ← `c3233c0`(iap,plan) `403bf6c`(docs) `f969568`(workspace) `ecc2c76` `1db1ca8` `689b19d` `702068a` … `c4e246f` |
-| 백엔드 `Nopo-lab/itdasy_backend-test` | `/home/user/itdasy_backend-test` (shallow clone) | `ccr-d5f1311f-be` (origin/main `8598863` 기준) | 14커밋 푸시됨 — 최신 `9310ec4`(auth 커넥션 1개) ← `92b53dd`(iap,billing) `c2baa1a` `bf62caf` `a000e38` `c921655` `29e5fcb` `e046d47` `4a9f10c` `55b5710` `9ae2965` `ce50080` `57aec85` |
+| 프런트 `Nopo-lab/itdasy-frontend-test-yeunjun` | `/home/user/itdasy-frontend-test-yeunjun` | `ccr-d5f1311f-u6e0c1` (origin/main `6f39a40` 기준) | main 보다 23커밋 앞섬, 전부 푸시 — 최신 `6d58171`(settings 샘플 행 인증) ← `4f3539b`(perf frontend) `fb11f04`(docs) `c84368c`(docs) ← `c3233c0`(iap,plan) `403bf6c`(docs) `f969568`(workspace) `ecc2c76` `1db1ca8` `689b19d` `702068a` … `c4e246f` |
+| 백엔드 `Nopo-lab/itdasy_backend-test` | `/home/user/itdasy_backend-test` (shallow clone) | `ccr-d5f1311f-be` (origin/main `8598863` 기준) | main 보다 15커밋 앞섬, 전부 푸시 — 최신 `977d609`(morning 무효화·offset 상한·문구) ← `675b687`(perf backend) `9310ec4`(auth 커넥션 1개) ← `92b53dd`(iap,billing) `c2baa1a` `bf62caf` `a000e38` `c921655` `29e5fcb` `e046d47` `4a9f10c` `55b5710` `9ae2965` `ce50080` `57aec85` |
 
 - PR 은 만들지 않았다(사용자 명시 요청 없음). 백엔드는 `main` 머지 = 즉시 운영 배포이므로 반드시 PR 리뷰 후.
 - 운영 백엔드(`itdasy-backend-staging-…` = 운영)·운영 DB·실발송·실결제·배포·스토어 제출은 **하지 않았다**.
 
 ## 보호해야 할 것
 - 세션 시작 시 두 레포 모두 미커밋 변경 0, worktree 0. 다른 작업자 변경 없음.
-- 2차 수정·IAP·인증 커넥션은 전부 커밋·푸시됨. **백엔드 작업트리에 성능 수정(BE-G, perf-backend-01~07) 미커밋 변경이 있다** — 첫 에이전트가 한도로 중단돼 워크플로 `wf_6f78cade-321`(트랙 A 칩 채점 · 트랙 B 목록 계약+프런트 → 적대적 검증 → 재수정 → 전후 측정 → 비평)이 마무리 중. 프런트도 트랙 B 가 고칠 수 있다. 보고를 읽고 검증한 뒤 커밋. 함부로 reset/checkout 금지.
+- 두 레포 모두 미커밋 변경 0. 3차(성능·숫자 정합)까지 커밋·푸시됨.
+- 로컬 PG 에 이번 세션 에이전트가 만든 임시 DB(`itdasy_relaudit_*`, `itdasy_ci_*` 등 합성 데이터)가 남아 있다. 지우기는 권한 확인이 필요해 하지 않았다 — `itdasy_relaudit_perf3` 는 측정 데이터라 남길 것.
 
 ## 로컬 검증 환경 (이 세션에서 세운 것 — 컨테이너 재시작 시 다시 올린다)
 ```bash
@@ -32,12 +33,13 @@ su postgres -s /bin/bash -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/itdas
 ## 테스트 현황
 | 검사 | 수정 전 기준선 | 최근 실행 (커밋 기준) |
 |---|---|---|
-| 프런트 `npx jest` | 228 suites / 3,363 | **269 suites / 3,680 PASS** (`f969568`) |
+| 프런트 `npx jest` | 228 suites / 3,363 | **278 suites / 3,746 PASS** (`6d58171`) |
 | 프런트 `npm run lint:ci` | 0 errors / 177 warnings | 0 errors / 177 warnings |
-| 프런트 `npm run smoke` · `audit:overlay` · `scripts/wsv2-multipair-qa.js` | 통과 | 통과 · QA 17/17 |
-| 백엔드 `pytest tests` (sqlite) | 4,866 passed · 301 skipped | **5,094 passed · 322 skipped · 1 xfailed** (`c2baa1a`) |
-| 백엔드 `pytest tests/pg` (PG 16) | 221 passed | **242 passed** (`c2baa1a`) |
-| 최종 E2E 390px(11단계) | — | 11/11, 페이지 오류 0 (`docs/closeout/evidence/final-e2e/`) |
+| 프런트 `npm run smoke` · `audit:overlay` | 통과 | 통과 · 오버레이 73 미등록 0 (`6d58171`) |
+| 백엔드 `pytest tests` (sqlite, tests/pg 제외) | 4,866 passed · 301 skipped | **재실행 중 — 결과 오면 갱신** (`977d609`) |
+| 백엔드 `pytest tests/pg` (PG 16) | 221 passed | **257 passed** (`675b687` 과 같은 트리, 통합 점검). `977d609` 뒤 재실행은 새 DB 생성 권한이 막혀 못 함 |
+| 최종 E2E 390px(11단계) | — | 11/11, 페이지 오류 0 (`docs/closeout/evidence/final-verify/e2e/`) |
+| 화면 숫자 vs 백엔드 직접 조회 | — | 17/17 일치, 콘솔 오류 0 (`docs/closeout/evidence/final-verify/integ/`) |
 
 ## 완료 항목 (요약 — 상세는 REPORT.md)
 1. 테스트 프런트가 운영 백엔드로 붙던 독립 페이지 3개 수정 (`c4e246f`)
@@ -53,11 +55,16 @@ su postgres -s /bin/bash -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/itdas
 ## 완료(2차) — REPORT §3.3
 - BE-C 인박스 `e046d47` · BE-D 견고성 `29e5fcb` · BE-E 돈/발행/샘플 `c921655` · 프런트 쪽 `03f135c`
 
-## 진행 항목 (워크플로 `wf_6f78cade-321`, 백그라운드)
-- 트랙 A: /today/morning N+1(≈1,300쿼리)·single-flight·임의 500명 상한 — 칩 결과 동일성(골든)·쿼리 수 O(1) 테스트
-- 트랙 B: GET /revenue 기본 limit 은 **2,000 유지(옛 앱 번들 호환)** + summary_only/offset opt-in, GET /bookings 무범위 기본 범위는 호출처 조사 후 결정, 대시보드 합계를 응답 total 로, sw.js 오프라인 폴백 확인
-- 측정: PG `itdasy_relaudit_perf3`(매장21·고객5만·예약10만·매출10만, **측정 전용 — tests/pg 금지**) 에서 감사와 같은 스크립트로 전후 비교
-- 끝나면: 커밋 → 백엔드 sqlite/PG 전체 · 프런트 jest/lint/smoke · 390px E2E 재실행 → REPORT §3.5/§5 갱신
+## 완료(3차) — REPORT §3.5 · §5.2
+- 백엔드 `675b687`(예약·매출·이탈·브리핑 성능 + 캐시 합류 정책) · `977d609`('오늘 아침' 저장 직후 반영·offset 상한·400 문구·캐시 테스트 배포 고정)
+- 프런트 `4f3539b`(summary_only·목록 끝까지 이어 받기·숨은 숫자 정직화) · `6d58171`(설정 샘플 행 인증 — `03f135c` 회귀)
+- 계약 원칙: 파라미터 없는 옛 호출 동작 불변, 새 기능은 opt-in. GET /revenue 기본 limit 2,000 유지. at-risk `limit` 생략 = 전체.
+- 측정 DB `itdasy_relaudit_perf3`(매장21·고객5만·예약10만·매출10만, **측정 전용 — tests/pg 금지**).
+
+## 다음 할 일 (REPORT §6)
+- 잇비 `POST /assistant/execute` 이벤트 루프 정지(P2, 기존) — 별도 티켓.
+- 새 번들이 at-risk `?limit=` 을 쓰면 '외 N명' 을 `summary.total` 로. 대시보드 '신규 고객' 첫 페이지 집계. 중복 PK 인덱스 64개(운영 DB 확인 후).
+- PR 생성·리뷰(사용자 요청 시) → 스테이징 → 외부 검증(Meta·결제·실기기).
 
 ## 차단 요인 (이 컨테이너에서 불가)
 - Meta 실발송·실웹훅, Apple/Google 실결제·샌드박스, 실기기 빌드(Xcode/Android SDK 없음), 스토어 콘솔, 운영 DB/배포. 전부 BLOCKED 로 보고.
@@ -65,8 +72,6 @@ su postgres -s /bin/bash -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/itdas
 
 ## 다음 실행 명령
 ```bash
-# 워크플로 결과 확인 후 백엔드 커밋
-cd /home/user/itdasy_backend-test && git status --short
 # 전체 재검증
 cd /home/user/itdasy-frontend-test-yeunjun && npx jest && npm run lint:ci && npm run smoke
 cd /home/user/itdasy_backend-test/backend && <위 env> -m pytest -q tests ; <PG env> -m pytest -q tests/pg
